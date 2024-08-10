@@ -1,4 +1,5 @@
 import { logToElement } from '@/util/log';
+import { messager } from '@/util/message';
 
 export class RealSockets {
   private websocket: WebSocket;
@@ -94,6 +95,7 @@ export class RealSockets {
   }
 
   takePhoto(): void {
+    messager.success('Photo taken');
     this.sendMessage({ photo: 'take' });
   }
 

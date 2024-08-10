@@ -4,7 +4,13 @@ import { messager } from '@/util/message';
 export class FakeSockets {
   // speed: 0-100
   forward(speed: number): void {
-    logToElement(`Moving forward with speed ${speed}`);
+    logToElement(
+      `Sent message: ${JSON.stringify({
+        action: 'move',
+        direction: 'forward',
+        speed,
+      })}`,
+    );
   }
 
   // speed: 0-100

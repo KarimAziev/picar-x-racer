@@ -84,12 +84,12 @@ ul.logs {
   position: fixed;
   left: 0;
   top: -15px;
+  width: 280px;
   list-style: none;
   background-color: black;
   opacity: 0.5;
   height: 100%;
   color: lime;
-
   overflow-y: scroll;
 }
 
@@ -118,6 +118,10 @@ ul.logs {
 .video-box div {
   flex: auto;
   background: #646cf2;
+}
+
+.video-box > div > img {
+  min-width: 60%;
 }
 .right {
   background: #646cff;
