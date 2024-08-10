@@ -161,7 +161,8 @@ class VideoCarController:
             await asyncio.Future()  # Run forever
 
     def main(self):
-        self.vilib_camera_thread()  # Start camera in a thread
+        self.Vilib.camera_start(vflip=False, hflip=False)
+        sleep(2)  # Allow the camera to start
 
         ip_address = self.get_ip_address()
         print(f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n")
