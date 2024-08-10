@@ -17,7 +17,7 @@ is_os_raspberry = os.uname().nodename == "raspberrypi"
 if is_os_raspberry:
     print("OS is raspberrypi")
     from picarx import Picarx
-    from vilib import Vilib as RealVilib  # Replace with real Vilib class
+    from vilib import Vilib
     from robot_hat.utils import reset_mcu
 else:
     from stubs import FakePicarx as Picarx
@@ -29,7 +29,7 @@ class VideoCarController:
         self.is_os_raspberry = is_os_raspberry
 
         self.Picarx = Picarx
-        self.Vilib = RealVilib if self.is_os_raspberry else Vilib
+        self.Vilib = Vilib
         self.reset_mcu = reset_mcu
         self.reset_mcu()
         sleep(0.2)  # Allow the MCU to reset
@@ -138,14 +138,15 @@ class VideoCarController:
 
     def capture_loop(self):
         while True:
-            if isinstance(self.Vilib.flask_img, list) and len(self.Vilib.flask_img) == 1:
-                print(f"Invalid Image Size: {len(self.Vilib.flask_img)}")
-                continue  # Wait until the flask_img is populated correctly
-            print(f"Valid Image Size: {len(self.Vilib.flask_img)}")
             try:
+                if not isinstance(self.Vilib.flask_img, list) or len(self.Vilib.flask_img) == 1:
+                    print(f"Invalid Image Size: {len(self.Vilib.flask_img)}")
+                    sleep(0.1)  # Allow time for the camera to capture the image
+                    continue  # Wait until the flask_img is populated correctly
                 self.vilib_img = convert_listproxy_to_array(self.Vilib.flask_img)
                 if self.draw_fps:
                     self.draw_fps_text()
+                print(f"Frame captured with shape: {self.vilib_img.shape} and dtype: {self.vilib_img.dtype}")
             except Exception as e:
                 print(f"Error in capture_loop: {e}")
 
@@ -195,17 +196,14 @@ def index():
 
 @app.route('/mjpg')
 def video_feed():
-    vc = current_app.config.get('vc')
-    return Response(gen(vc), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def convert_listproxy_to_array(listproxy_obj):
-    if isinstance(listproxy_obj, list) and len(listproxy_obj) == 1:
-        return np.array(listproxy_obj[0], dtype=np.uint8).reshape((480, 640, 3))
-    raise ValueError(f"Invalid listproxy_obj: {listproxy_obj}")  # Added logging for debugging
+    return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
 
-def gen(vc):
+def gen():
     while True:
-        frame_array = vc.vilib_img  # Use instance variable
+        frame_array = convert_listproxy_to_array(Vilib.flask_img)
         encoded, buffer = cv2.imencode('.jpg', frame_array)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
@@ -213,5 +211,5 @@ def gen(vc):
         sleep(0.1)
 
 def run_flask(vc):
-    app.config['vc'] = vc  # Store the vc instance in the Flask app configuration
+    app.config['vc'] = vc
     app.run(host='0.0.0.0', port=9000, threaded=True, debug=False)
