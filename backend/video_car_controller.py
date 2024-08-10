@@ -8,6 +8,7 @@ from flask import Flask, send_from_directory, Response
 import numpy as np
 import websockets
 import cv2
+import socket
 
 app = Flask(__name__, static_folder='../front-end/dist/assets', template_folder='../front-end/dist')
 is_os_raspberry = os.uname().nodename == "raspberrypi"
@@ -55,22 +56,29 @@ class VideoCarController:
 
         self.deceleration_timer = None
 
-
     async def handle_message(self, websocket, _path):
         async for message in websocket:
             data = json.loads(message)
             print(f"Received: {data}")
 
-            if "key" in data:
-                self.handle_key_press(data["key"])
-            elif "photo" in data and data["photo"] == "take":
-                self.take_photo()
-            elif "music" in data:
-                self.handle_music_control(data["music"])
-            elif "sound" in data:
-                self.handle_sound_control(data["sound"])
-            elif "speech" in data:
-                self.audio_handler.text_to_speech(data["speech"])
+            if "action" in data:
+                action = data["action"]
+                if action == "move":
+                    direction = data.get('direction', None)
+                    speed = data.get('speed', 0)
+                    if direction and direction in ["forward", "backward"]:
+                        self.move(direction, speed)
+                elif action == "setServo":
+                    angle = data.get('angle', 0)
+                    self.px.set_dir_servo_angle(angle)
+                elif action == "stop":
+                    self.px.stop()
+                elif action == "setCamTiltAngle":
+                    angle = data.get("angle", 0)
+                    self.set_cam_tilt_angle(angle)
+                elif action == "setCamPanAngle":
+                    angle = data.get("angle", 0)
+                    self.set_cam_pan_angle(angle)
 
     def take_photo(self):
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
@@ -92,44 +100,22 @@ class VideoCarController:
             self.audio_handler.play_sound(self.sound_path)
             sleep(0.05)
 
-    def handle_key_press(self, key):
-        if key == " ":
-            self.status = "stop"
-            self.target_speed = 0
-            self.moving = False
-            self.target_steering_angle = 0
-        elif key == "=":
-            if self.target_speed <= 90:
-                self.target_speed += 10
-        elif key == "-":
-            if self.target_speed >= 10:
-                self.target_speed -= 10
-            if self.target_speed == 0:
-                self.status = "stop"
-        elif key == "w":
-            self.status = "forward"
-            self.target_speed = 60
-            self.moving = True
-        elif key == "s":
-            self.status = "backward"
-            self.target_speed = 60
-            self.moving = True
-        elif key == "a":
-            self.target_steering_angle = -30
-        elif key == "d":
-            self.target_steering_angle = 30
-        elif key == "UP":
-            self.cam_tilt_angle = min(35, self.cam_tilt_angle + 5)
-            self.px.set_cam_tilt_angle(self.cam_tilt_angle)
-        elif key == "DOWN":
-            self.cam_tilt_angle = max(-35, self.cam_tilt_angle - 5)
-            self.px.set_cam_tilt_angle(self.cam_tilt_angle)
-        elif key == "LEFT":
-            self.cam_pan_angle = max(-35, self.cam_pan_angle - 5)
-            self.px.set_cam_pan_angle(self.cam_pan_angle)
-        elif key == "RIGHT":
-            self.cam_pan_angle = min(35, self.cam_pan_angle + 5)
-            self.px.set_cam_pan_angle(self.cam_pan_angle)
+    def move(self, direction, speed):
+        print(f"Moving {direction} with speed {speed}")
+        if direction == "forward":
+            self.px.forward(speed)
+        elif direction == "backward":
+            self.px.backward(speed)
+
+    def set_cam_tilt_angle(self, angle):
+        print(f"Setting camera tilt angle to {angle} degrees")
+        self.cam_tilt_angle = angle
+        self.px.set_cam_tilt_angle(self.cam_tilt_angle)
+
+    def set_cam_pan_angle(self, angle):
+        print(f"Setting camera pan angle to {angle} degrees")
+        self.cam_pan_angle = angle
+        self.px.set_cam_pan_angle(self.cam_pan_angle)
 
     async def start_server(self):
         async with websockets.serve(self.handle_message, "0.0.0.0", 8765):
@@ -137,8 +123,10 @@ class VideoCarController:
 
     def main(self):
         self.Vilib.camera_start(vflip=False, hflip=False)
-        # self.Vilib.display(local=False, web=True)
         sleep(2)  # wait for startup
+
+        ip_address = self.get_ip_address()
+        print(f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n")
 
         try:
             asyncio.run(self.start_server())
@@ -146,6 +134,18 @@ class VideoCarController:
             print("\nquit ...")
             self.px.stop()
             self.Vilib.camera_close()
+
+    def get_ip_address(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Doesn't matter if it fails.
+            s.connect(("8.8.8.8", 80))
+            ip_address = s.getsockname()[0]
+        except Exception:
+            ip_address = "127.0.0.1"
+        finally:
+            s.close()
+        return ip_address
 
 @app.route('/')
 def index():
