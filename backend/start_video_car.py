@@ -7,7 +7,7 @@ if __name__ == "__main__":
     controller = None
     try:
         controller = VideoCarController()
-        flask_thread = threading.Thread(target=run_flask)
+        flask_thread = threading.Thread(target=run_flask, args=(controller,))
         flask_thread.daemon = True
         flask_thread.start()
         controller.main()
