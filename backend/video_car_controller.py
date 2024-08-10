@@ -137,7 +137,7 @@ class VideoCarController:
 
     def main(self):
         self.Vilib.camera_start(vflip=False, hflip=False)
-        self.Vilib.display(local=False, web=True)
+        # self.Vilib.display(local=False, web=True)
         sleep(2)  # wait for startup
 
         try:
