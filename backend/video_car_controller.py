@@ -139,24 +139,29 @@ class VideoCarController:
     def capture_loop(self):
         while True:
             if isinstance(self.Vilib.flask_img, list) and len(self.Vilib.flask_img) == 1:
-                continue
-            self.vilib_img = convert_listproxy_to_array(self.Vilib.flask_img)
-            if self.draw_fps:
-                self.draw_fps_text()
+                print(f"Invalid Image Size: {len(self.Vilib.flask_img)}")
+                continue  # Wait until the flask_img is populated correctly
+            print(f"Valid Image Size: {len(self.Vilib.flask_img)}")
+            try:
+                self.vilib_img = convert_listproxy_to_array(self.Vilib.flask_img)
+                if self.draw_fps:
+                    self.draw_fps_text()
+            except Exception as e:
+                print(f"Error in capture_loop: {e}")
 
     def draw_fps_text(self):
         elapsed_time = time() - self.start_time
         self.start_time = time()
         fps = int(1 / elapsed_time)
-        self.vilib_img = np.array(self.vilib_img, dtype=np.uint8)
+        self.vilib_img = np.array(self.vilib_img, dtype=np.uint8)  # Ensure it is a numpy array
         cv2.putText(self.vilib_img, f"FPS: {fps}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
     async def start_server(self):
         async with websockets.serve(self.handle_message, "0.0.0.0", 8765):
-            await asyncio.Future()
+            await asyncio.Future()  # Run forever
 
     def main(self):
-        self.vilib_camera_thread()
+        self.vilib_camera_thread()  # Start camera in a thread
 
         ip_address = self.get_ip_address()
         print(f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n")
@@ -195,7 +200,7 @@ def video_feed():
 def convert_listproxy_to_array(listproxy_obj):
     if isinstance(listproxy_obj, list) and len(listproxy_obj) == 1:
         return np.array(listproxy_obj[0], dtype=np.uint8).reshape((480, 640, 3))
-    return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
+    raise ValueError(f"Invalid listproxy_obj: {listproxy_obj}")  # Added logging for debugging
 
 def gen(vc):
     while True:
@@ -207,5 +212,5 @@ def gen(vc):
         sleep(0.1)
 
 def run_flask(vc):
-    app.config['vc'] = vc
+    app.config['vc'] = vc  # Store the vc instance in the Flask app configuration
     app.run(host='0.0.0.0', port=9000, threaded=True, debug=False)
