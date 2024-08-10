@@ -14,6 +14,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"error: {e}")
     finally:
-       if controller is not None:
+        if controller is not None:
             controller.px.stop()
             controller.Vilib.camera_close()

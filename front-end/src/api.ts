@@ -79,24 +79,20 @@ export class RealSockets {
   }
 
   playMusic(): void {
-    this.sendMessage({ music: 'play' });
-  }
-
-  stopMusic(): void {
-    this.sendMessage({ music: 'stop' });
+    this.sendMessage({ action: 'playMusic' });
   }
 
   playSound(): void {
-    this.sendMessage({ sound: 'play' });
+    this.sendMessage({ action: 'playSound' });
   }
 
-  sayText(text: string): void {
-    this.sendMessage({ speech: text });
+  sayText(): void {
+    this.sendMessage({ action: 'sayText' });
   }
 
   takePhoto(): void {
     messager.success('Photo taken');
-    this.sendMessage({ photo: 'take' });
+    this.sendMessage({ action: 'takePhoto' });
   }
 
   onOpen(callback: () => void) {

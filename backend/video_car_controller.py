@@ -1,12 +1,13 @@
 import os
 import json
 import asyncio
-from time import sleep, strftime, localtime
+from time import sleep, strftime, localtime, time
 from os import geteuid, getlogin, path, environ
 from audio_handler import AudioHandler
-from flask import Flask, send_from_directory, Response
+from flask import Flask, send_from_directory, Response, current_app
 import numpy as np
 import websockets
+import threading
 import cv2
 import socket
 
@@ -14,20 +15,21 @@ app = Flask(__name__, static_folder='../front-end/dist/assets', template_folder=
 is_os_raspberry = os.uname().nodename == "raspberrypi"
 
 if is_os_raspberry:
-     print("OS is raspberrypi")
-     from picarx import Picarx
-     from vilib import Vilib
-     from robot_hat.utils import reset_mcu
+    print("OS is raspberrypi")
+    from picarx import Picarx
+    from vilib import Vilib as RealVilib  # Replace with real Vilib class
+    from robot_hat.utils import reset_mcu
 else:
-     from stubs import FakePicarx as Picarx
-     from stubs import FakeVilib as Vilib
-     from stubs import fake_reset_mcu as reset_mcu
+    from stubs import FakePicarx as Picarx
+    from stubs import FakeVilib as Vilib
+    from stubs import fake_reset_mcu as reset_mcu
+
 class VideoCarController:
     def __init__(self):
         self.is_os_raspberry = is_os_raspberry
 
         self.Picarx = Picarx
-        self.Vilib = Vilib
+        self.Vilib = RealVilib if self.is_os_raspberry else Vilib
         self.reset_mcu = reset_mcu
         self.reset_mcu()
         sleep(0.2)  # Allow the MCU to reset
@@ -41,44 +43,44 @@ class VideoCarController:
         if geteuid() != 0 and self.is_os_raspberry:
             print(f"\033[0;33m{'The program needs to be run using sudo, otherwise there may be no sound.'}\033[0m")
         self.speed = 0
-        self.target_speed = 0
         self.status = "stop"
-        self.flag_bgm = False
-        self.cam_tilt_angle = 0
-        self.cam_pan_angle = 0
-        self.steering_angle = 0
-        self.target_steering_angle = 0
-        self.moving = False
-        self.deceleration_timer = None
 
         self.music_path = environ.get('MUSIC_PATH', "../musics/robomusic.mp3")
         self.sound_path = environ.get('SOUND_PATH', "../sounds/directives.wav")
 
-        self.deceleration_timer = None
+        # Initialize Vilib camera
+        self.camera_thread = None
+        self.vilib_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
-    async def handle_message(self, websocket, _path):
+        # Drawing FPS on the image
+        self.draw_fps = True
+        self.start_time = time()
+
+    async def handle_message(self, websocket, path):
         async for message in websocket:
             data = json.loads(message)
             print(f"Received: {data}")
 
-            if "action" in data:
-                action = data["action"]
-                if action == "move":
-                    direction = data.get('direction', None)
-                    speed = data.get('speed', 0)
-                    if direction and direction in ["forward", "backward"]:
-                        self.move(direction, speed)
-                elif action == "setServo":
-                    angle = data.get('angle', 0)
-                    self.px.set_dir_servo_angle(angle)
-                elif action == "stop":
-                    self.px.stop()
-                elif action == "setCamTiltAngle":
-                    angle = data.get("angle", 0)
-                    self.set_cam_tilt_angle(angle)
-                elif action == "setCamPanAngle":
-                    angle = data.get("angle", 0)
-                    self.set_cam_pan_angle(angle)
+            action = data.get("action")
+            print(data.get('action', 'no action'))
+            if action == "move":
+                self.move(data.get('direction'), data.get('speed', 0))
+            elif action == "setServo":
+                self.set_servo_angle(data.get('angle', 0))
+            elif action == "stop":
+                self.stop()
+            elif action == "setCamTiltAngle":
+                self.set_cam_tilt_angle(data.get('angle', 0))
+            elif action == "setCamPanAngle":
+                self.set_cam_pan_angle(data.get('angle', 0))
+            elif action == "playMusic":
+                self.play_music()
+            elif action == "playSound":
+                self.play_sound()
+            elif action == "sayText":
+                self.say_text(data.get('text', ""))
+            elif action == "takePhoto":
+                self.take_photo()
 
     def take_photo(self):
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
@@ -87,43 +89,71 @@ class VideoCarController:
         self.Vilib.take_photo(name, photo_path)
         print("\nphoto saved as %s%s.jpg" % (photo_path, name))
 
-    def handle_music_control(self, action):
-        if action == "play":
-            self.flag_bgm = True
-            self.audio_handler.play_music(self.music_path)
-        elif action == "stop":
-            self.flag_bgm = False
-            self.audio_handler.stop_music()
+    def play_music(self):
+        self.audio_handler.play_music(self.music_path)
 
-    def handle_sound_control(self, action):
-        if action == "play":
-            self.audio_handler.play_sound(self.sound_path)
-            sleep(0.05)
+    def play_sound(self):
+        self.audio_handler.play_sound(self.sound_path)
+        sleep(0.05)
+
+    def say_text(self, text):
+        self.audio_handler.text_to_speech(text)
 
     def move(self, direction, speed):
         print(f"Moving {direction} with speed {speed}")
         if direction == "forward":
+            self.px.set_dir_servo_angle(0)
             self.px.forward(speed)
         elif direction == "backward":
+            self.px.set_dir_servo_angle(0)
             self.px.backward(speed)
+        elif direction == "left":
+            self.px.set_dir_servo_angle(-30)
+            self.px.forward(speed)
+        elif direction == "right":
+            self.px.set_dir_servo_angle(30)
+            self.px.forward(speed)
+
+    def set_servo_angle(self, angle):
+        print(f"Setting servo angle to {angle} degrees")
+        self.px.set_dir_servo_angle(angle)
 
     def set_cam_tilt_angle(self, angle):
         print(f"Setting camera tilt angle to {angle} degrees")
-        self.cam_tilt_angle = angle
-        self.px.set_cam_tilt_angle(self.cam_tilt_angle)
+        self.px.set_cam_tilt_angle(angle)
 
     def set_cam_pan_angle(self, angle):
         print(f"Setting camera pan angle to {angle} degrees")
-        self.cam_pan_angle = angle
-        self.px.set_cam_pan_angle(self.cam_pan_angle)
+        self.px.set_cam_pan_angle(angle)
+
+    def stop(self):
+        print("Stopping")
+        self.px.stop()
+
+    def vilib_camera_thread(self):
+        self.Vilib.camera_start(vflip=False, hflip=False)
+        self.camera_thread = threading.Thread(target=self.capture_loop)
+        self.camera_thread.daemon = True
+        self.camera_thread.start()
+
+    def capture_loop(self):
+        while True:
+            self.vilib_img = convert_listproxy_to_array(self.Vilib.flask_img)
+            if self.draw_fps:
+                self.draw_fps_text()
+
+    def draw_fps_text(self):
+        elapsed_time = time() - self.start_time
+        self.start_time = time()
+        fps = int(1 / elapsed_time)
+        cv2.putText(self.vilib_img, f"FPS: {fps}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
     async def start_server(self):
         async with websockets.serve(self.handle_message, "0.0.0.0", 8765):
             await asyncio.Future()  # Run forever
 
     def main(self):
-        self.Vilib.camera_start(vflip=False, hflip=False)
-        sleep(2)  # wait for startup
+        self.vilib_camera_thread()  # Start camera in a thread
 
         ip_address = self.get_ip_address()
         print(f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n")
@@ -156,19 +186,21 @@ def index():
 
 @app.route('/mjpg')
 def video_feed():
-    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    vc = current_app.config.get('vc')
+    return Response(gen(vc), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def convert_listproxy_to_array(listproxy_obj):
     return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
 
-def gen():
+def gen(vc):
     while True:
-        frame_array = convert_listproxy_to_array(Vilib.flask_img)  # Convert ListProxy to numpy array
+        frame_array = vc.vilib_img  # Use instance variable
         encoded, buffer = cv2.imencode('.jpg', frame_array)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         sleep(0.1)
 
-def run_flask():
+def run_flask(vc):
+    app.config['vc'] = vc
     app.run(host='0.0.0.0', port=9000, threaded=True, debug=False)

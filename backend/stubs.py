@@ -19,7 +19,7 @@ class FakePicarx:
     def set_cam_pan_angle(self, angle):
         print(f"Setting camera pan angle to {angle} degrees")
 
-class FakeVilib:
+class FakeVilib(object):
     flask_img = Manager().list(range(1))
     @staticmethod
     def take_photo(name, path):
