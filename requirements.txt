@@ -1,0 +1,7 @@
+numpy==1.26.4
+flask
+opencv-contrib-python
+google_speech
+git+https://github.com/sunfounder/vilib.git@picamera2#egg=vilib
+git+https://github.com/sunfounder/picar-x.git@v2.0#egg=picarx
+websockets

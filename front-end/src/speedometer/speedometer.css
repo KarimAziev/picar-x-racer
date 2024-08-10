@@ -1,0 +1,146 @@
+.speedometer {
+  position: relative;
+  width: 300px;
+  height: 300px;
+}
+
+.gauge {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+.gauge::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 10px solid #00ffff;
+  opacity: 0.5;
+  background: rgba(0, 0, 0, 0.4);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.gauge-center {
+  width: 120px;
+  height: 120px;
+  background: #00ffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.progress {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(135deg);
+  width: 150%;
+  height: 150%;
+  background: conic-gradient(
+    transparent 0 135deg,
+    transparent 135deg 270deg,
+    lime 0 90deg,
+    rgba(0, 0, 0, 0.4) 90deg 135deg
+  );
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 45%;
+  height: 2px;
+  background: lightcoral;
+  transform-origin: left;
+  transform: translateX(-50%) rotate(0deg);
+  z-index: 3;
+}
+
+.labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.center-label {
+  color: #00ffff;
+  font-size: 2rem;
+  position: absolute;
+  bottom: 40%;
+  right: 10%;
+}
+
+.outer-labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.outer-labels div {
+  position: absolute;
+  width: 2rem;
+  height: 2rem;
+  text-align: center;
+  transform-origin: bottom center;
+  color: #00ffff;
+}
+
+.outer-labels div:nth-child(1) {
+  transform: rotate(180deg) translateY(-120px) rotate(-180deg);
+}
+.outer-labels div:nth-child(2) {
+  transform: rotate(198deg) translateY(-120px) rotate(-198deg);
+}
+.outer-labels div:nth-child(3) {
+  transform: rotate(216deg) translateY(-120px) rotate(-216deg);
+}
+.outer-labels div:nth-child(4) {
+  transform: rotate(234deg) translateY(-120px) rotate(-234deg);
+}
+.outer-labels div:nth-child(5) {
+  transform: rotate(252deg) translateY(-120px) rotate(-252deg);
+}
+.outer-labels div:nth-child(6) {
+  transform: rotate(270deg) translateY(-120px) rotate(-270deg);
+}
+.outer-labels div:nth-child(7) {
+  transform: rotate(288deg) translateY(-120px) rotate(-288deg);
+}
+.outer-labels div:nth-child(8) {
+  transform: rotate(306deg) translateY(-120px) rotate(-306deg);
+}
+.outer-labels div:nth-child(9) {
+  transform: rotate(324deg) translateY(-120px) rotate(-324deg);
+}
+.outer-labels div:nth-child(10) {
+  transform: rotate(342deg) translateY(-120px) rotate(-342deg);
+}
+.outer-labels div:nth-child(11) {
+  transform: rotate(360deg) translateY(-120px) rotate(-360deg);
+}

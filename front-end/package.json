@@ -1,0 +1,17 @@
+{
+  "name": "picar-x-racer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite -c vite.config.ts --open",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^22.1.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.0",
+    "vite-tsconfig-paths": "^5.0.1"
+  }
+}
