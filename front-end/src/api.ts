@@ -2,12 +2,11 @@ import { messager } from '@/util/message';
 import { WSBridge } from '@/ws/bridge';
 import { FakeBridge } from '@/ws/fakeBridge';
 import { AbstractWSBridge } from '@/ws/interface';
-import { debounce } from '@/util/debounce';
 
 class ServoDirAngleController {
   constructor(private ws: AbstractWSBridge) {
     this.setDirServoAngle = this.setDirServoAngle.bind(this);
-    this.resetDirServoAngle = debounce(this.resetDirServoAngle.bind(this), 500);
+    this.resetDirServoAngle = this.resetDirServoAngle.bind(this);
   }
 
   resetDirServoAngle() {
