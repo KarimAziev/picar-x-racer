@@ -1,6 +1,67 @@
 import { logToElement } from '@/util/log';
 import { messager } from '@/util/message';
 
+export class FakeBridge {
+  private websocket: WebSocket;
+  private url: string;
+  private messageQueue: string[] = [];
+  private onOpenCallbacks: (() => void)[] = [];
+  private connected: boolean = false;
+  private useFake: boolean = false;
+
+  constructor(url: string) {
+    this.url = url;
+    this.initializeWebSocket();
+  }
+
+  private initializeWebSocket() {
+    this.websocket = new WebSocket(this.url);
+
+    this.websocket.onerror = () => {
+      this.useFake = true;
+      this.connected = false;
+      while (this.messageQueue.length > 0) {
+        this.websocket.send(this.messageQueue.shift()!);
+      }
+      this.onOpenCallbacks.forEach((callback) => callback());
+    };
+
+    this.websocket.onopen = () => {
+      console.log('WebSocket connection established');
+      this.connected = true;
+      while (this.messageQueue.length > 0) {
+        this.websocket.send(this.messageQueue.shift()!);
+      }
+      this.onOpenCallbacks.forEach((callback) => callback());
+    };
+
+    this.websocket.onclose = () => {
+      console.log('WebSocket connection closed');
+      this.connected = false;
+      this.retryConnection();
+    };
+  }
+
+  private retryConnection() {
+    setTimeout(() => {
+      console.log('Retrying WebSocket connection...');
+      this.initializeWebSocket();
+    }, 5000);
+  }
+
+  public sendMessage(message: any): void {
+    const msgString = JSON.stringify(message);
+    if (this.connected) {
+      this.websocket.send(msgString);
+      logToElement(`Sent message: ${msgString}`);
+    } else if (!this.connected && this.useFake) {
+      logToElement(`Fake message: ${msgString}`);
+    } else {
+      this.messageQueue.push(msgString);
+    }
+  }
+}
+
 export class FakeSockets {
   // speed: 0-100
   forward(speed: number): void {

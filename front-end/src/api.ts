@@ -1,105 +1,106 @@
-import { logToElement } from '@/util/log';
 import { messager } from '@/util/message';
+import { WSBridge } from '@/ws/bridge';
+import { FakeBridge } from '@/ws/fakeBridge';
+import { AbstractWSBridge } from '@/ws/interface';
+import { debounce } from '@/util/debounce';
 
-export class RealSockets {
-  private websocket: WebSocket;
-  private url: string;
-  private messageQueue: string[] = [];
-  private onOpenCallbacks: (() => void)[] = [];
-  private connected: boolean = false;
-
-  constructor(url: string) {
-    this.url = url;
-    this.initializeWebSocket();
+class ServoDirAngleController {
+  constructor(private ws: AbstractWSBridge) {
+    this.setDirServoAngle = this.setDirServoAngle.bind(this);
+    this.resetDirServoAngle = debounce(this.resetDirServoAngle.bind(this), 500);
   }
 
-  private initializeWebSocket() {
-    this.websocket = new WebSocket(this.url);
-
-    this.websocket.onopen = () => {
-      console.log('WebSocket connection established');
-      this.connected = true;
-      while (this.messageQueue.length > 0) {
-        this.websocket.send(this.messageQueue.shift()!);
-      }
-      this.onOpenCallbacks.forEach((callback) => callback());
-    };
-
-    this.websocket.onclose = () => {
-      console.log('WebSocket connection closed');
-      this.connected = false;
-      this.retryConnection();
-    };
-
-    this.websocket.onerror = (error) => {
-      console.error(`WebSocket error: ${error}`);
-      this.connected = false;
-    };
+  resetDirServoAngle() {
+    this.ws.sendMessage({ action: 'setServo', angle: 0 });
   }
 
-  private retryConnection() {
-    setTimeout(() => {
-      console.log('Retrying WebSocket connection...');
-      this.initializeWebSocket();
-    }, 5000);
+  setDirServoAngle(angle: number) {
+    this.ws.sendMessage({ action: 'setServo', angle });
+  }
+}
+
+export class Controller {
+  private speed: number = 0;
+  private direction: number = 0;
+  private ws: AbstractWSBridge;
+  private servoAngleController: ServoDirAngleController;
+
+  constructor(url: string, useFake?: boolean) {
+    this.ws = useFake ? new FakeBridge(url) : new WSBridge(url);
+    this.servoAngleController = new ServoDirAngleController(this.ws);
+    this.setDirServoAngle = this.setDirServoAngle.bind(this);
+    this.forward = this.forward.bind(this);
+    this.backward = this.backward.bind(this);
+    this.stop = this.stop.bind(this);
+    this.resetDirServoAngle = this.resetDirServoAngle.bind(this);
+    this.setCamTiltAngle = this.setCamTiltAngle.bind(this);
+    this.setCamPanAngle = this.setCamPanAngle.bind(this);
+    this.playMusic = this.playMusic.bind(this);
+    this.playSound = this.playSound.bind(this);
+    this.sayText = this.sayText.bind(this);
+    this.takePhoto = this.takePhoto.bind(this);
   }
 
-  private sendMessage(message: any): void {
-    const msgString = JSON.stringify(message);
-    if (this.connected) {
-      this.websocket.send(msgString);
-      logToElement(`Sent message: ${msgString}`);
+  forward(speed: number) {
+    if (this.speed !== speed || this.direction !== 1) {
+      this.ws.sendMessage({ action: 'move', direction: 'forward', speed });
+    }
+
+    this.direction = 1;
+    this.speed = speed;
+    return this;
+  }
+
+  backward(speed: number) {
+    if (this.speed !== speed || this.direction !== -1) {
+      this.ws.sendMessage({ action: 'move', direction: 'backward', speed });
+    }
+
+    this.direction = -1;
+    this.speed = speed;
+    return this;
+  }
+
+  stop() {
+    this.ws.sendMessage({ action: 'stop' });
+    this.direction = 0;
+    this.speed = 0;
+  }
+
+  setDirServoAngle(angle: number) {
+    if (angle === 0) {
+      this.servoAngleController.resetDirServoAngle();
     } else {
-      this.messageQueue.push(msgString);
+      this.servoAngleController.setDirServoAngle(angle);
     }
   }
 
-  forward(speed: number): void {
-    this.sendMessage({ action: 'move', direction: 'forward', speed });
-  }
-
-  backward(speed: number): void {
-    this.sendMessage({ action: 'move', direction: 'backward', speed });
-  }
-
-  stop(): void {
-    this.sendMessage({ action: 'stop' });
-  }
-
-  setDirServoAngle(angle: number): void {
-    this.sendMessage({ action: 'setServo', angle });
+  resetDirServoAngle(): void {
+    this.ws.sendMessage({ action: 'setServo', angle: 0 });
   }
 
   setCamTiltAngle(angle: number): void {
-    this.sendMessage({ action: 'setCamTiltAngle', angle });
+    this.ws.sendMessage({ action: 'setCamTiltAngle', angle });
   }
 
   setCamPanAngle(angle: number): void {
-    this.sendMessage({ action: 'setCamPanAngle', angle });
+    this.ws.sendMessage({ action: 'setCamPanAngle', angle });
   }
 
   playMusic(): void {
-    this.sendMessage({ action: 'playMusic' });
+    this.ws.sendMessage({ action: 'playMusic' });
   }
 
   playSound(): void {
-    this.sendMessage({ action: 'playSound' });
+    this.ws.sendMessage({ action: 'playSound' });
   }
 
   sayText(): void {
-    this.sendMessage({ action: 'sayText' });
+    this.ws.sendMessage({ action: 'sayText' });
   }
 
   takePhoto(): void {
+    this.ws.sendMessage({ action: 'takePhoto' });
     messager.success('Photo taken');
-    this.sendMessage({ action: 'takePhoto' });
-  }
-
-  onOpen(callback: () => void) {
-    if (this.connected) {
-      callback();
-    } else {
-      this.onOpenCallbacks.push(callback);
-    }
   }
 }

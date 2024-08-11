@@ -1,10 +1,15 @@
-import { FakeSockets } from '@/stubs';
 import { logToElement } from '@/util/log';
 import { Speedometer } from '@/speedometer/speedometer';
-import { RealSockets } from '@/api';
+import { Controller } from '@/api';
+import { messager } from '@/util/message';
+import { Drawer } from '@/drawer/drawer';
 
 const ACCELERATION = 10;
-const DECELERATION = 10;
+
+const CAM_PAN_MIN = -90;
+const CAM_PAN_MAX = 90;
+const CAM_TILT_MIN = -35;
+const CAM_TILT_MAX = 65;
 
 export class VideoCarController {
   /** Current speed of the car, from 0 to 100 */
@@ -18,9 +23,11 @@ export class VideoCarController {
   private speedometer: Speedometer;
 
   private maxSpeed: number = 80;
+  private camPan: number = 0;
+  private camTilt: number = 0;
 
   constructor(
-    private api: FakeSockets | RealSockets,
+    private api: Controller,
     private rootElement?: HTMLElement,
   ) {
     this.increaseMaxSpeed = this.increaseMaxSpeed.bind(this);
@@ -28,7 +35,16 @@ export class VideoCarController {
     this.start = this.start.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
+
     this.slowdown = this.slowdown.bind(this);
+    this.updateAngleDisplay = this.updateAngleDisplay.bind(this);
+    this.updateSpeedometer = this.updateSpeedometer.bind(this);
+    this.accelerate = this.accelerate.bind(this);
+    this.decelerate = this.decelerate.bind(this);
+    this.increaseCamPan = this.increaseCamPan.bind(this);
+    this.decreaseCamPan = this.decreaseCamPan.bind(this);
+    this.increaseCamTilt = this.increaseCamTilt.bind(this);
+    this.decreaseCamTilt = this.decreaseCamTilt.bind(this);
   }
 
   start(rootElement?: HTMLElement) {
@@ -38,7 +54,6 @@ export class VideoCarController {
     if (this.rootElement) {
       this.rootElement.innerHTML = `<div class="wrapper">
   <div class="side-menu">
-    <ul class="logs"></ul>
   </div>
   <div class="content">
 
@@ -73,6 +88,9 @@ export class VideoCarController {
     const wrapper = document.querySelector<HTMLDivElement>(
       '.speedometer-wrapper',
     ) as HTMLDivElement;
+    new Drawer({
+      rootElement: document.querySelector('.side-menu') as HTMLElement,
+    });
     this.speedometer = new Speedometer({ rootElement: wrapper });
     this.setupEventListeners();
     this.gameLoop();
@@ -85,6 +103,7 @@ export class VideoCarController {
 
   private handleKeyDown(event: KeyboardEvent) {
     const key = event.key;
+
     this.activeKeys.add(key);
 
     const otherMethods: { [key: string]: Function } = {
@@ -94,6 +113,10 @@ export class VideoCarController {
       k: this.api.sayText,
       '=': this.increaseMaxSpeed,
       '-': this.decreaseMaxSpeed,
+      ArrowRight: this.increaseCamPan,
+      ArrowLeft: this.decreaseCamPan,
+      ArrowUp: this.increaseCamTilt,
+      ArrowDown: this.decreaseCamTilt,
     };
 
     if (otherMethods[key]) {
@@ -162,11 +185,9 @@ export class VideoCarController {
 
   private accelerate() {
     const nextSpeed = Math.min(this.speed + ACCELERATION, this.maxSpeed);
-    if (this.speed !== nextSpeed || this.direction !== 1) {
-      this.api.forward(this.speed);
-      this.speed = nextSpeed;
-      this.direction = 1;
-    }
+    this.api.forward(this.speed);
+    this.speed = nextSpeed;
+    this.direction = 1;
   }
 
   private decelerate() {
@@ -180,7 +201,7 @@ export class VideoCarController {
 
   private slowdown() {
     if (this.speed > 0) {
-      this.speed = Math.max(this.speed - DECELERATION, 0);
+      this.speed = Math.max(this.speed - 5, 0);
     }
     if (this.speed === 0 && this.direction !== 0) {
       this.api.stop();
@@ -193,11 +214,42 @@ export class VideoCarController {
   }
 
   increaseMaxSpeed() {
-    this.maxSpeed = Math.min(100, this.maxSpeed + ACCELERATION);
+    const curr = Math.min(100, this.maxSpeed + ACCELERATION);
+    if (this.maxSpeed !== curr) {
+      this.maxSpeed = curr;
+      messager.success(`Increased max speed to ${this.maxSpeed}`);
+    }
   }
 
   decreaseMaxSpeed() {
-    this.maxSpeed = Math.max(20, this.maxSpeed - ACCELERATION);
+    const curr = Math.max(20, this.maxSpeed - ACCELERATION);
+    if (this.maxSpeed !== curr) {
+      this.maxSpeed = curr;
+
+      if (this.speed >= this.maxSpeed) {
+        this.speed = Math.max(20, this.maxSpeed - 10);
+      }
+    }
+  }
+
+  increaseCamTilt() {
+    this.camTilt = Math.min(this.camTilt + 5, CAM_TILT_MAX);
+    this.api.setCamTiltAngle(this.camTilt);
+  }
+
+  decreaseCamTilt() {
+    this.camTilt = Math.max(this.camTilt - 5, CAM_TILT_MIN);
+    this.api.setCamTiltAngle(this.camTilt);
+  }
+
+  increaseCamPan() {
+    this.camPan = Math.min(this.camPan + 5, CAM_PAN_MAX);
+    this.api.setCamPanAngle(this.camPan);
+  }
+
+  decreaseCamPan() {
+    this.camPan = Math.max(this.camPan - 5, CAM_PAN_MIN);
+    this.api.setCamPanAngle(this.camPan);
   }
 
   private stop() {
