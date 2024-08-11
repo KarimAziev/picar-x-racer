@@ -163,17 +163,12 @@ export class VideoCarController {
       this.slowdown();
     }
     const nextDirServoAngle = this.activeKeys.has('a')
-      ? -45
+      ? -30
       : this.activeKeys.has('d')
-        ? 45
+        ? 30
         : 0;
 
-    const currValue = this.servoAngle;
-
-    if (currValue !== nextDirServoAngle) {
-      this.api.setDirServoAngle(nextDirServoAngle);
-      this.servoAngle = nextDirServoAngle;
-    }
+    this.api.setDirServoAngle(nextDirServoAngle);
 
     if (this.activeKeys.has(' ')) {
       this.stop();
@@ -225,6 +220,7 @@ export class VideoCarController {
     const curr = Math.max(20, this.maxSpeed - ACCELERATION);
     if (this.maxSpeed !== curr) {
       this.maxSpeed = curr;
+      messager.success(`Decreased max speed to ${this.maxSpeed}`);
 
       if (this.speed >= this.maxSpeed) {
         this.speed = Math.max(20, this.maxSpeed - 10);

@@ -7,7 +7,10 @@ import { debounce } from '@/util/debounce';
 class ServoDirAngleController {
   constructor(private ws: AbstractWSBridge) {
     this.setDirServoAngle = this.setDirServoAngle.bind(this);
-    this.resetDirServoAngle = debounce(this.resetDirServoAngle.bind(this), 500);
+    this.resetDirServoAngle = debounce(
+      this.resetDirServoAngle.bind(this),
+      1000,
+    );
   }
 
   resetDirServoAngle() {
