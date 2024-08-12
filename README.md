@@ -1,16 +1,30 @@
 # Picar-X Racer
 
-Picar-X Racer is a project aimed at controlling the Picar-X vehicle using a web interface. It integrates both frontend and backend components to manage the car's movement, camera, and other functionalities.
+`Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games. It integrates both frontend and backend components to manage the car's movement, camera, and other functionalities. The new interface includes a speedometer, live camera feed, and multimedia controls.
+
+## Features
+
+- **Real-time Control with Video Game-like Precision**: Experience smooth and responsive control over your Picar-X car, similar to a video game interface.
+- **Acceleration and Speed Indicators**: Realistic acceleration, speed indicators, and smooth driving experience make navigating through tight spaces easy.
+- **Web-based Interface**: Control your Picar-X directly from your browser with an integrated live video feed and intuitive controls.
+- **Camera Handling**: Adjust the camera pan and tilt angles in real-time, and capture photos with a key press.
+- **Keybinding Feedback**: Visual feedback for key presses to enhance the control experience.
+- **Multimedia Functionality**: Play sounds and music, and convert text-to-speech for interactive experiences.
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 
 **Table of Contents**
 
 > - [Picar-X Racer](#picar-x-racer)
+>   - [Features](#features)
 >   - [Prerequisites](#prerequisites)
 >   - [Usage on Raspberry OS](#usage-on-raspberry-os)
 >     - [Setup and Build](#setup-and-build)
 >     - [Usage](#usage)
+>   - [Keybindings](#keybindings)
+>     - [Move](#move)
+>     - [Camera](#camera)
+>     - [Sound Controls](#sound-controls)
 >   - [Development on non-Raspberry OS](#development-on-non-raspberry-os)
 >     - [Backend](#backend)
 >     - [Frontend](#frontend)
@@ -22,6 +36,7 @@ Picar-X Racer is a project aimed at controlling the Picar-X vehicle using a web 
 
 - Python 3.x
 - Node.js and npm
+- Raspberry PI with Picar-X
 
 ## Usage on Raspberry OS
 
@@ -71,6 +86,40 @@ Once the application is running, open your browser and navigate to (replace `<yo
 ```
 http://<your-raspberry-pi-ip>:9000
 ```
+
+## Keybindings
+
+In the browser, you can control your Picar-x with the following keys.
+
+### Move
+
+| Key     | Action     |
+| ------- | ---------- |
+| `w`     | Move Up    |
+| `a`     | Move Left  |
+| `d`     | Move Right |
+| `s`     | Move Down  |
+| `=`     | Speed Up   |
+| `-`     | Speed Down |
+| `Space` | Stop       |
+
+### Camera
+
+| Key           | Action            |
+| ------------- | ----------------- |
+| `Arrow Up`    | Move Camera Up    |
+| `Arrow Left`  | Move Camera Left  |
+| `Arrow Right` | Move Camera Right |
+| `Arrow Down`  | Move Camera Down  |
+| `t`           | Take Photo        |
+
+### Sound Controls
+
+| Key | Action          |
+| --- | --------------- |
+| `r` | Play sound      |
+| `m` | Play/Stop Music |
+| `k` | Speech          |
 
 ## Development on non-Raspberry OS
 
