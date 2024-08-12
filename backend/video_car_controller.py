@@ -4,7 +4,8 @@ import asyncio
 from time import sleep, strftime, localtime, time
 from os import geteuid, getlogin, path, environ
 from audio_handler import AudioHandler
-from flask import Flask, send_from_directory, Response
+from flask import Flask, send_from_directory, Response, jsonify, request
+from flask_cors import CORS
 import numpy as np
 import websockets
 import threading
@@ -14,8 +15,13 @@ import socket
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 STATIC_FOLDER = os.path.join(BASE_DIR, '../front-end/dist/assets')
 TEMPLATE_FOLDER = os.path.join(BASE_DIR, '../front-end/dist')
+UPLOAD_FOLDER = os.path.join(BASE_DIR, '../uploads/')
 
 app = Flask(__name__, static_folder=STATIC_FOLDER, template_folder=TEMPLATE_FOLDER)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max file size
+CORS(app)
+
 is_os_raspberry = os.uname().nodename == "raspberrypi"
 
 if is_os_raspberry:
@@ -60,7 +66,7 @@ class VideoCarController:
         self.draw_fps = True
         self.start_time = time()
 
-    async def handle_message(self, websocket, path):
+    async def handle_message(self, websocket, _):
         async for message in websocket:
             data = json.loads(message)
             print(f"Received: {data}")
@@ -191,6 +197,28 @@ class VideoCarController:
             s.close()
         return ip_address
 
+    def list_files(self, directory):
+        """
+        Lists all files in the specified directory.
+        """
+        if not os.path.exists(directory):
+            return []
+
+        files = []
+        for file in os.listdir(directory):
+            if os.path.isfile(os.path.join(directory, file)):
+                files.append(file)
+        return files
+
+    def save_file(self, file, directory):
+        """
+        Saves uploaded file to the specified directory.
+        """
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        file_path = os.path.join(directory, file.filename)
+        file.save(file_path)
+
 @app.route('/')
 def index():
     template_folder = app.template_folder
@@ -202,13 +230,48 @@ def index():
 def video_feed():
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/api/list_files/<media_type>', methods=['GET'])
+def list_files(media_type):
+    vc = app.config['vc']
+
+    if media_type == 'music':
+        directory = os.path.join(BASE_DIR, "../musics/")
+    elif media_type == 'sounds':
+        directory = os.path.join(BASE_DIR, "../sounds/")
+    else:
+        return jsonify({"error": "Invalid media type"}), 400
+
+    files = vc.list_files(directory)
+    return jsonify({"files": files})
+
+@app.route('/api/upload/<media_type>', methods=['POST'])
+def upload_file(media_type):
+    vc = app.config['vc']
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if media_type == 'music':
+        directory = os.path.join(BASE_DIR, "../musics/")
+    elif media_type == 'sounds':
+        directory = os.path.join(BASE_DIR, "../sounds/")
+    else:
+        return jsonify({"error": "Invalid media type"}), 400
+
+    vc.save_file(file, directory)
+    return jsonify({"success": True, "filename": file.filename})
+
 def convert_listproxy_to_array(listproxy_obj):
     return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
 
 def gen():
     while True:
         frame_array = convert_listproxy_to_array(Vilib.flask_img)
-        encoded, buffer = cv2.imencode('.jpg', frame_array)
+        _, buffer = cv2.imencode('.jpg', frame_array)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
