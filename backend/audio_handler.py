@@ -1,10 +1,13 @@
-from google_speech import Speech
 from os import path, uname
+
+from google_speech import Speech
+
 
 class SingletonMeta(type):
     """
     This is a thread-safe implementation of Singleton.
     """
+
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -12,6 +15,7 @@ class SingletonMeta(type):
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
         return cls._instances[cls]
+
 
 class AudioHandler(metaclass=SingletonMeta):
     def __init__(self):
@@ -37,7 +41,7 @@ class AudioHandler(metaclass=SingletonMeta):
             print(f"Playing music {track_path}")
             self.music.music_play(track_path)
         else:
-            text = f'The music file {track_path} is missing.'
+            text = f"The music file {track_path} is missing."
             print(text)
             self.text_to_speech(text, "en")
 
@@ -49,6 +53,6 @@ class AudioHandler(metaclass=SingletonMeta):
             print(f"Playing sound {sound_path}")
             self.music.sound_play(sound_path)
         else:
-            text = f'The sound file {sound_path} is missing.'
+            text = f"The sound file {sound_path} is missing."
             print(text)
             self.text_to_speech(text, "en")

@@ -1,25 +1,27 @@
-import os
-import json
 import asyncio
-from time import sleep, strftime, localtime, time
-from os import geteuid, getlogin, path, environ
-from audio_handler import AudioHandler
-from flask import Flask, send_from_directory, Response, jsonify, request
-from flask_cors import CORS
+import json
+import os
+import socket
+import threading
+from os import environ, geteuid, getlogin, path
+from time import localtime, sleep, strftime, time
+
+import cv2
 import numpy as np
 import websockets
-import threading
-import cv2
-import socket
+from flask import Flask, Response, jsonify, request, send_from_directory
+from flask_cors import CORS
+
+from audio_handler import AudioHandler
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-STATIC_FOLDER = os.path.join(BASE_DIR, '../front-end/dist/assets')
-TEMPLATE_FOLDER = os.path.join(BASE_DIR, '../front-end/dist')
-UPLOAD_FOLDER = os.path.join(BASE_DIR, '../uploads/')
+STATIC_FOLDER = os.path.join(BASE_DIR, "../front-end/dist/assets")
+TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../front-end/dist")
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "../uploads/")
 
 app = Flask(__name__, static_folder=STATIC_FOLDER, template_folder=TEMPLATE_FOLDER)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max file size
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max file size
 CORS(app)
 
 is_os_raspberry = os.uname().nodename == "raspberrypi"
@@ -27,12 +29,13 @@ is_os_raspberry = os.uname().nodename == "raspberrypi"
 if is_os_raspberry:
     print("OS is raspberrypi")
     from picarx import Picarx
-    from vilib import Vilib
     from robot_hat.utils import reset_mcu
+    from vilib import Vilib
 else:
     from stubs import FakePicarx as Picarx
     from stubs import FakeVilib as Vilib
     from stubs import fake_reset_mcu as reset_mcu
+
 
 class VideoCarController:
     def __init__(self):
@@ -51,12 +54,18 @@ class VideoCarController:
         self.audio_handler = AudioHandler()
 
         if geteuid() != 0 and self.is_os_raspberry:
-            print(f"\033[0;33m{'The program needs to be run using sudo, otherwise there may be no sound.'}\033[0m")
+            print(
+                f"\033[0;33m{'The program needs to be run using sudo, otherwise there may be no sound.'}\033[0m"
+            )
         self.speed = 0
         self.status = "stop"
 
-        self.music_path = environ.get('MUSIC_PATH', os.path.join(BASE_DIR, "../musics/robomusic.mp3"))
-        self.sound_path = environ.get('SOUND_PATH', os.path.join(BASE_DIR, "../sounds/directives.wav"))
+        self.music_path = environ.get(
+            "MUSIC_PATH", os.path.join(BASE_DIR, "../musics/robomusic.mp3")
+        )
+        self.sound_path = environ.get(
+            "SOUND_PATH", os.path.join(BASE_DIR, "../sounds/directives.wav")
+        )
 
         # Initialize Vilib camera
         self.camera_thread = None
@@ -72,23 +81,23 @@ class VideoCarController:
             print(f"Received: {data}")
 
             action = data.get("action")
-            print(data.get('action', 'no action'))
+            print(data.get("action", "no action"))
             if action == "move":
-                self.move(data.get('direction'), data.get('speed', 0))
+                self.move(data.get("direction"), data.get("speed", 0))
             elif action == "setServo":
-                self.set_servo_angle(data.get('angle', 0))
+                self.set_servo_angle(data.get("angle", 0))
             elif action == "stop":
                 self.stop()
             elif action == "setCamTiltAngle":
-                self.set_cam_tilt_angle(data.get('angle', 0))
+                self.set_cam_tilt_angle(data.get("angle", 0))
             elif action == "setCamPanAngle":
-                self.set_cam_pan_angle(data.get('angle', 0))
+                self.set_cam_pan_angle(data.get("angle", 0))
             elif action == "playMusic":
                 self.play_music()
             elif action == "playSound":
                 self.play_sound()
             elif action == "sayText":
-                self.say_text(data.get('text', ""))
+                self.say_text(data.get("text", ""))
             elif action == "takePhoto":
                 self.take_photo()
 
@@ -149,14 +158,19 @@ class VideoCarController:
     def capture_loop(self):
         while True:
             try:
-                if not isinstance(self.Vilib.flask_img, list) or len(self.Vilib.flask_img) == 1:
+                if (
+                    not isinstance(self.Vilib.flask_img, list)
+                    or len(self.Vilib.flask_img) == 1
+                ):
                     print(f"Invalid Image Size: {len(self.Vilib.flask_img)}")
                     sleep(0.1)  # Allow time for the camera to capture the image
                     continue  # Wait until the flask_img is populated correctly
                 self.vilib_img = convert_listproxy_to_array(self.Vilib.flask_img)
                 if self.draw_fps:
                     self.draw_fps_text()
-                print(f"Frame captured with shape: {self.vilib_img.shape} and dtype: {self.vilib_img.dtype}")
+                print(
+                    f"Frame captured with shape: {self.vilib_img.shape} and dtype: {self.vilib_img.dtype}"
+                )
             except Exception as e:
                 print(f"Error in capture_loop: {e}")
 
@@ -164,8 +178,18 @@ class VideoCarController:
         elapsed_time = time() - self.start_time
         self.start_time = time()
         fps = int(1 / elapsed_time)
-        self.vilib_img = np.array(self.vilib_img, dtype=np.uint8)  # Ensure it is a numpy array
-        cv2.putText(self.vilib_img, f"FPS: {fps}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        self.vilib_img = np.array(
+            self.vilib_img, dtype=np.uint8
+        )  # Ensure it is a numpy array
+        cv2.putText(
+            self.vilib_img,
+            f"FPS: {fps}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 255, 255),
+            2,
+        )
 
     async def start_server(self):
         async with websockets.serve(self.handle_message, "0.0.0.0", 8765):
@@ -176,7 +200,9 @@ class VideoCarController:
         sleep(2)  # Allow the camera to start
 
         ip_address = self.get_ip_address()
-        print(f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n")
+        print(
+            f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
+        )
 
         try:
             asyncio.run(self.start_server())
@@ -219,24 +245,27 @@ class VideoCarController:
         file_path = os.path.join(directory, file.filename)
         file.save(file_path)
 
-@app.route('/')
+
+@app.route("/")
 def index():
     template_folder = app.template_folder
     if isinstance(template_folder, str):
-        return send_from_directory(template_folder, 'index.html')
+        return send_from_directory(template_folder, "index.html")
     raise ValueError("Template folder is not a valid path.")
 
-@app.route('/mjpg')
+
+@app.route("/mjpg")
 def video_feed():
-    return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(gen(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
-@app.route('/api/list_files/<media_type>', methods=['GET'])
+
+@app.route("/api/list_files/<media_type>", methods=["GET"])
 def list_files(media_type):
-    vc = app.config['vc']
+    vc = app.config["vc"]
 
-    if media_type == 'music':
+    if media_type == "music":
         directory = os.path.join(BASE_DIR, "../musics/")
-    elif media_type == 'sounds':
+    elif media_type == "sounds":
         directory = os.path.join(BASE_DIR, "../sounds/")
     else:
         return jsonify({"error": "Invalid media type"}), 400
@@ -244,20 +273,21 @@ def list_files(media_type):
     files = vc.list_files(directory)
     return jsonify({"files": files})
 
-@app.route('/api/upload/<media_type>', methods=['POST'])
-def upload_file(media_type):
-    vc = app.config['vc']
 
-    if 'file' not in request.files:
+@app.route("/api/upload/<media_type>", methods=["POST"])
+def upload_file(media_type):
+    vc = app.config["vc"]
+
+    if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
 
-    file = request.files['file']
-    if file.filename == '':
+    file = request.files["file"]
+    if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    if media_type == 'music':
+    if media_type == "music":
         directory = os.path.join(BASE_DIR, "../musics/")
-    elif media_type == 'sounds':
+    elif media_type == "sounds":
         directory = os.path.join(BASE_DIR, "../sounds/")
     else:
         return jsonify({"error": "Invalid media type"}), 400
@@ -265,18 +295,20 @@ def upload_file(media_type):
     vc.save_file(file, directory)
     return jsonify({"success": True, "filename": file.filename})
 
+
 def convert_listproxy_to_array(listproxy_obj):
     return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
+
 
 def gen():
     while True:
         frame_array = convert_listproxy_to_array(Vilib.flask_img)
-        _, buffer = cv2.imencode('.jpg', frame_array)
+        _, buffer = cv2.imencode(".jpg", frame_array)
         frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
         sleep(0.1)
 
+
 def run_flask(vc):
-    app.config['vc'] = vc
-    app.run(host='0.0.0.0', port=9000, threaded=True, debug=False)
+    app.config["vc"] = vc
+    app.run(host="0.0.0.0", port=9000, threaded=True, debug=False)

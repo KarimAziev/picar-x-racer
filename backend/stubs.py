@@ -1,5 +1,6 @@
 from multiprocessing import Manager
 
+
 class FakePicarx:
     def set_dir_servo_angle(self, angle):
         print(f"Setting servo angle to {angle} degrees")
@@ -19,8 +20,10 @@ class FakePicarx:
     def set_cam_pan_angle(self, angle):
         print(f"Setting camera pan angle to {angle} degrees")
 
+
 class FakeVilib(object):
     flask_img = Manager().list(range(1))
+
     @staticmethod
     def take_photo(name, path):
         print(f"Taking photo '{name}' at path {path}")
@@ -54,6 +57,7 @@ class FakeMusic:
     @staticmethod
     def music_set_volume(volume):
         print(f"Setting music volume to {volume}")
+
 
 def fake_reset_mcu():
     print("Resetting MCU")
