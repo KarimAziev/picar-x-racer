@@ -91,21 +91,15 @@ button:focus-visible {
   background: #646cf2;
 }
 
-.video-box div {
-  flex: auto;
-  background: #646cf2;
-}
-
-.video-box > div > img {
-  min-width: 60%;
+.video-box > img {
+  min-width: 1280px;
+  min-height: 720px;
+  max-height: 100vh;
 }
 .right {
-  background: #646cff;
-  opacity: 0.5;
   position: absolute;
   right: 0;
-  width: 20%;
-
+  width: 400px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
