@@ -62,7 +62,7 @@ sudo python3 -m pip install -r ./requirements.txt
 4. Install [SoX](https://sourceforge.net/projects/sox/) with MP3 support. It is needed for Google Speech.
 
 ```bash
-sudo apt-get install sox libsox-fmt-mp3.
+sudo apt-get install sox libsox-fmt-mp3
 ```
 
 5. Build the frontend:
