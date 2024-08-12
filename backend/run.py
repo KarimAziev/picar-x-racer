@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import threading
-
-from video_car_controller import VideoCarController, run_flask
+from controllers.video_car_controller import VideoCarController
+from api.flask_setup import run_flask
 
 if __name__ == "__main__":
     controller = None

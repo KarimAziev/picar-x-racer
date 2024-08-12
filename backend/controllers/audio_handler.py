@@ -1,6 +1,12 @@
-from os import path, uname
+from os import path
+from util.os_checks import is_raspberry_pi
 
-from google_speech import Speech
+try:
+    from google_speech import Speech
+
+    google_speech_available = True
+except ImportError:
+    google_speech_available = False
 
 
 class SingletonMeta(type):
@@ -19,9 +25,8 @@ class SingletonMeta(type):
 
 class AudioHandler(metaclass=SingletonMeta):
     def __init__(self):
-        self.is_os_raspbery = uname().nodename == "raspberrypi"
+        self.is_os_raspbery = is_raspberry_pi()
         if self.is_os_raspbery:
-            print("OS is raspberrypi")
             from robot_hat import Music
         else:
             from stubs import FakeMusic as Music
@@ -29,12 +34,17 @@ class AudioHandler(metaclass=SingletonMeta):
         self.music.music_set_volume(100)
 
     def text_to_speech(self, words: str, lang="en"):
-        try:
-            print(f"Playing text-to-speech for: {words}")
-            speech = Speech(words, lang)
-            speech.play()
-        except Exception as e:
-            print(f"Error playing text-to-speech audio: {e}")
+        if google_speech_available:
+            try:
+                print(f"Playing text-to-speech for: {words}")
+                speech = Speech(words, lang)
+                speech.play()
+            except Exception as e:
+                print(f"Error playing text-to-speech audio: {e}")
+        else:
+            print(
+                f"google_speech not available. Unable to play text-to-speech for: {words}"
+            )
 
     def play_music(self, track_path: str):
         if path.exists(track_path):

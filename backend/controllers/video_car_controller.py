@@ -9,22 +9,18 @@ from time import localtime, sleep, strftime, time
 import cv2
 import numpy as np
 import websockets
-from flask import Flask, Response, jsonify, request, send_from_directory
-from flask_cors import CORS
 
-from audio_handler import AudioHandler
+from controllers.audio_handler import AudioHandler
+from util.os_checks import is_raspberry_pi
 
-BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SETTINGS_FILE_PATH = os.path.join(BASE_DIR, "user_settings.json")
 STATIC_FOLDER = os.path.join(BASE_DIR, "../front-end/dist/assets")
 TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../front-end/dist")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "../uploads/")
 
-app = Flask(__name__, static_folder=STATIC_FOLDER, template_folder=TEMPLATE_FOLDER)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max file size
-CORS(app)
-
-is_os_raspberry = os.uname().nodename == "raspberrypi"
+is_os_raspberry = is_raspberry_pi()
 
 if is_os_raspberry:
     print("OS is raspberrypi")
@@ -61,11 +57,15 @@ class VideoCarController:
         self.status = "stop"
 
         self.music_path = environ.get(
-            "MUSIC_PATH", os.path.join(BASE_DIR, "../musics/robomusic.mp3")
+            "MUSIC_PATH", os.path.join(BASE_DIR, "musics/robomusic.mp3")
         )
         self.sound_path = environ.get(
-            "SOUND_PATH", os.path.join(BASE_DIR, "../sounds/directives.wav")
+            "SOUND_PATH", os.path.join(BASE_DIR, "sounds/directives.wav")
         )
+
+        self.STATIC_FOLDER = STATIC_FOLDER
+        self.TEMPLATE_FOLDER = TEMPLATE_FOLDER
+        self.UPLOAD_FOLDER = UPLOAD_FOLDER
 
         # Initialize Vilib camera
         self.camera_thread = None
@@ -74,6 +74,26 @@ class VideoCarController:
         # Drawing FPS on the image
         self.draw_fps = True
         self.start_time = time()
+
+        # Load user settings
+        self.settings = self.load_settings()
+
+    def load_settings(self):
+        try:
+            with open(SETTINGS_FILE_PATH, "r") as settings_file:
+                settings = json.load(settings_file)
+                return settings
+        except FileNotFoundError:
+            return {
+                "default_sound": None,
+                "default_music": None,
+                "default_text": "Hello, I'm your video car!",
+            }
+
+    def save_settings(self, new_settings):
+        with open(SETTINGS_FILE_PATH, "w") as settings_file:
+            json.dump(new_settings, settings_file, indent=2)
+        self.settings = new_settings
 
     async def handle_message(self, websocket, _):
         async for message in websocket:
@@ -93,11 +113,11 @@ class VideoCarController:
             elif action == "setCamPanAngle":
                 self.set_cam_pan_angle(data.get("angle", 0))
             elif action == "playMusic":
-                self.play_music()
+                self.play_music(data.get("file"))
             elif action == "playSound":
-                self.play_sound()
+                self.play_sound(data.get("file"))
             elif action == "sayText":
-                self.say_text(data.get("text", ""))
+                self.say_text(data.get("text"))
             elif action == "takePhoto":
                 self.take_photo()
 
@@ -108,14 +128,35 @@ class VideoCarController:
         self.Vilib.take_photo(name, photo_path)
         print("\nphoto saved as %s%s.jpg" % (photo_path, name))
 
-    def play_music(self):
-        self.audio_handler.play_music(self.music_path)
+    def play_music(self, file=None):
+        file = file or self.settings.get("default_music") or self.music_path
+        if file:
+            path_to_file = (
+                os.path.join(BASE_DIR, "musics", file)
+                if file != self.music_path
+                else file
+            )
+            self.audio_handler.play_music(path_to_file)
+            print(f"Playing music: {path_to_file}")
+        else:
+            print("No music file specified or available to play.")
 
-    def play_sound(self):
-        self.audio_handler.play_sound(self.sound_path)
-        sleep(0.05)
+    def play_sound(self, file=None):
+        file = file or self.settings.get("default_sound") or self.sound_path
+        if file:
+            path_to_file = (
+                os.path.join(BASE_DIR, "sounds", file)
+                if file != self.sound_path
+                else file
+            )
+            self.audio_handler.play_sound(path_to_file)
+            sleep(0.05)
+            print(f"Playing sound: {path_to_file}")
+        else:
+            print("No sound file specified or available to play.")
 
-    def say_text(self, text):
+    def say_text(self, text=None):
+        text = text or self.settings.get("default_text", "Hello, I'm your video car!")
         self.audio_handler.text_to_speech(text)
 
     def move(self, direction, speed):
@@ -246,69 +287,5 @@ class VideoCarController:
         file.save(file_path)
 
 
-@app.route("/")
-def index():
-    template_folder = app.template_folder
-    if isinstance(template_folder, str):
-        return send_from_directory(template_folder, "index.html")
-    raise ValueError("Template folder is not a valid path.")
-
-
-@app.route("/mjpg")
-def video_feed():
-    return Response(gen(), mimetype="multipart/x-mixed-replace; boundary=frame")
-
-
-@app.route("/api/list_files/<media_type>", methods=["GET"])
-def list_files(media_type):
-    vc = app.config["vc"]
-
-    if media_type == "music":
-        directory = os.path.join(BASE_DIR, "../musics/")
-    elif media_type == "sounds":
-        directory = os.path.join(BASE_DIR, "../sounds/")
-    else:
-        return jsonify({"error": "Invalid media type"}), 400
-
-    files = vc.list_files(directory)
-    return jsonify({"files": files})
-
-
-@app.route("/api/upload/<media_type>", methods=["POST"])
-def upload_file(media_type):
-    vc = app.config["vc"]
-
-    if "file" not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
-
-    if media_type == "music":
-        directory = os.path.join(BASE_DIR, "../musics/")
-    elif media_type == "sounds":
-        directory = os.path.join(BASE_DIR, "../sounds/")
-    else:
-        return jsonify({"error": "Invalid media type"}), 400
-
-    vc.save_file(file, directory)
-    return jsonify({"success": True, "filename": file.filename})
-
-
 def convert_listproxy_to_array(listproxy_obj):
     return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
-
-
-def gen():
-    while True:
-        frame_array = convert_listproxy_to_array(Vilib.flask_img)
-        _, buffer = cv2.imencode(".jpg", frame_array)
-        frame = buffer.tobytes()
-        yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-        sleep(0.1)
-
-
-def run_flask(vc):
-    app.config["vc"] = vc
-    app.run(host="0.0.0.0", port=9000, threaded=True, debug=False)

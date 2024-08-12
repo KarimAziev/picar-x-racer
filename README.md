@@ -44,7 +44,13 @@ cd ~/picar-x-racer/
 sudo python3 -m pip install -r ./requirements.txt
 ```
 
-4. Build the frontend:
+4. Install [SoX](https://sourceforge.net/projects/sox/) with MP3 support. It is needed for Google Speech.
+
+```bash
+sudo apt-get install sox libsox-fmt-mp3.
+```
+
+5. Build the frontend:
 
 ```bash
 cd ~/picar-x-racer/front-end/
@@ -57,7 +63,7 @@ npm run build
 Run the script to start the server:
 
 ```bash
-sudo python3 ~/picar-x-racer/backend/start_video_car.py
+sudo python3 ~/picar-x-racer/backend/run.py
 ```
 
 Once the application is running, open your browser and navigate to (replace `<your-raspberry-pi-ip>` with the actual IP):
