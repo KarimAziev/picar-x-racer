@@ -4,14 +4,18 @@ import asyncio
 from time import sleep, strftime, localtime, time
 from os import geteuid, getlogin, path, environ
 from audio_handler import AudioHandler
-from flask import Flask, send_from_directory, Response, current_app
+from flask import Flask, send_from_directory, Response
 import numpy as np
 import websockets
 import threading
 import cv2
 import socket
 
-app = Flask(__name__, static_folder='../front-end/dist/assets', template_folder='../front-end/dist')
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+STATIC_FOLDER = os.path.join(BASE_DIR, '../front-end/dist/assets')
+TEMPLATE_FOLDER = os.path.join(BASE_DIR, '../front-end/dist')
+
+app = Flask(__name__, static_folder=STATIC_FOLDER, template_folder=TEMPLATE_FOLDER)
 is_os_raspberry = os.uname().nodename == "raspberrypi"
 
 if is_os_raspberry:
@@ -45,8 +49,8 @@ class VideoCarController:
         self.speed = 0
         self.status = "stop"
 
-        self.music_path = environ.get('MUSIC_PATH', "../musics/robomusic.mp3")
-        self.sound_path = environ.get('SOUND_PATH', "../sounds/directives.wav")
+        self.music_path = environ.get('MUSIC_PATH', os.path.join(BASE_DIR, "../musics/robomusic.mp3"))
+        self.sound_path = environ.get('SOUND_PATH', os.path.join(BASE_DIR, "../sounds/directives.wav"))
 
         # Initialize Vilib camera
         self.camera_thread = None
