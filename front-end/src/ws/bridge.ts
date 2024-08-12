@@ -1,5 +1,6 @@
 import { logToElement } from '@/util/log';
 import { AbstractWSBridge } from '@/ws/interface';
+import { messager } from '@/util/message';
 
 export class WSBridge implements AbstractWSBridge {
   private websocket: WebSocket;
@@ -27,11 +28,13 @@ export class WSBridge implements AbstractWSBridge {
 
     this.websocket.onerror = (error) => {
       console.error(`WebSocket error: ${error}`);
+      messager.error('WebSocket error');
       this.connected = false;
     };
 
     this.websocket.onclose = () => {
       console.log('WebSocket connection closed');
+      messager.error('WebSocket connection closed');
       this.connected = false;
       this.retryConnection();
     };

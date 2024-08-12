@@ -18,7 +18,6 @@ export class VideoCarController {
    * Current direction: -1 for backward, 1 for forward, 0 for stopped
    */
   private direction: number = 0;
-  private servoAngle: number = -1;
   private activeKeys: Set<string> = new Set();
   private speedometer: Speedometer;
 
@@ -37,7 +36,6 @@ export class VideoCarController {
     this.handleKeyUp = this.handleKeyUp.bind(this);
 
     this.slowdown = this.slowdown.bind(this);
-    this.updateAngleDisplay = this.updateAngleDisplay.bind(this);
     this.updateSpeedometer = this.updateSpeedometer.bind(this);
     this.accelerate = this.accelerate.bind(this);
     this.decelerate = this.decelerate.bind(this);
@@ -45,6 +43,9 @@ export class VideoCarController {
     this.decreaseCamPan = this.decreaseCamPan.bind(this);
     this.increaseCamTilt = this.increaseCamTilt.bind(this);
     this.decreaseCamTilt = this.decreaseCamTilt.bind(this);
+    this.resetCamTilt = this.resetCamTilt.bind(this);
+    this.resetCamPan = this.resetCamPan.bind(this);
+    this.resetCameraRotate = this.resetCameraRotate.bind(this);
   }
 
   start(rootElement?: HTMLElement) {
@@ -58,9 +59,7 @@ export class VideoCarController {
   <div class="content">
 
   <div class="video-box">
-      <div>
-        <img src="/mjpg" alt="Video">
-      </div>
+      <img src="/mjpg" alt="Video">
   </div>
       </div>
   <div class="right">
@@ -102,6 +101,10 @@ export class VideoCarController {
   }
 
   private handleKeyDown(event: KeyboardEvent) {
+    if (event.repeat) {
+      return;
+    }
+
     const key = event.key;
 
     this.activeKeys.add(key);
@@ -117,6 +120,7 @@ export class VideoCarController {
       ArrowLeft: this.decreaseCamPan,
       ArrowUp: this.increaseCamTilt,
       ArrowDown: this.decreaseCamTilt,
+      '0': this.resetCameraRotate,
     };
 
     if (otherMethods[key]) {
@@ -175,7 +179,6 @@ export class VideoCarController {
     }
 
     this.updateSpeedometer();
-    this.updateAngleDisplay();
   }
 
   private accelerate() {
@@ -228,6 +231,11 @@ export class VideoCarController {
     }
   }
 
+  resetCamTilt() {
+    this.camTilt = 0;
+    this.api.setCamTiltAngle(0);
+  }
+
   increaseCamTilt() {
     this.camTilt = Math.min(this.camTilt + 5, CAM_TILT_MAX);
     this.api.setCamTiltAngle(this.camTilt);
@@ -243,9 +251,20 @@ export class VideoCarController {
     this.api.setCamPanAngle(this.camPan);
   }
 
+  resetCamPan() {
+    this.camPan = 0;
+    this.api.setCamPanAngle(0);
+  }
+
   decreaseCamPan() {
     this.camPan = Math.max(this.camPan - 5, CAM_PAN_MIN);
     this.api.setCamPanAngle(this.camPan);
+  }
+
+  resetCameraRotate() {
+    this.resetCamPan();
+    this.resetCamTilt();
+    messager.info('A camera pan and tilt reset.');
   }
 
   private stop() {
@@ -256,12 +275,5 @@ export class VideoCarController {
 
   private updateSpeedometer() {
     this.speedometer.updateValue(this.speed);
-  }
-
-  private updateAngleDisplay() {
-    const angleElement = document.querySelector('.angle-wrapper');
-    if (angleElement) {
-      angleElement.textContent = `Angle: ${this.servoAngle}°`;
-    }
   }
 }
