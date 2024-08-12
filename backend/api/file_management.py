@@ -1,4 +1,3 @@
-import os
 from typing import TYPE_CHECKING
 from flask import Blueprint, current_app, jsonify, request
 
@@ -7,17 +6,15 @@ if TYPE_CHECKING:
 
 file_management_bp = Blueprint("file_management", __name__)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-
 
 @file_management_bp.route("/api/list_files/<media_type>", methods=["GET"])
 def list_files(media_type):
     vc: "VideoCarController" = current_app.config["vc"]
 
     if media_type == "music":
-        directory = os.path.join(BASE_DIR, "musics")
+        directory = vc.MUSIC_DIR
     elif media_type == "sounds":
-        directory = os.path.join(BASE_DIR, "sounds")
+        directory = vc.SOUNDS_DIR
     else:
         return jsonify({"error": "Invalid media type"}), 400
 
@@ -37,9 +34,9 @@ def upload_file(media_type):
         return jsonify({"error": "No selected file"}), 400
 
     if media_type == "music":
-        directory = os.path.join(BASE_DIR, "musics")
+        directory = vc.MUSIC_DIR
     elif media_type == "sounds":
-        directory = os.path.join(BASE_DIR, "sounds")
+        directory = vc.SOUNDS_DIR
     else:
         return jsonify({"error": "Invalid media type"}), 400
 

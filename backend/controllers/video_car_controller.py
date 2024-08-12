@@ -9,16 +9,17 @@ from time import localtime, sleep, strftime, time
 import cv2
 import numpy as np
 import websockets
-
-from controllers.audio_handler import AudioHandler
 from util.os_checks import is_raspberry_pi
 
+from controllers.audio_handler import AudioHandler
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-SETTINGS_FILE_PATH = os.path.join(BASE_DIR, "user_settings.json")
-STATIC_FOLDER = os.path.join(BASE_DIR, "../front-end/dist/assets")
-TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../front-end/dist")
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "../uploads/")
+MUSIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../music"))
+SOUNDS_DIR = os.path.join(BASE_DIR, "../sounds")
+SETTINGS_FILE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../user_settings.json"))
+STATIC_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "../front-end/dist/assets"))
+TEMPLATE_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "../front-end/dist"))
+UPLOAD_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "../uploads/"))
 
 is_os_raspberry = is_raspberry_pi()
 
@@ -55,12 +56,14 @@ class VideoCarController:
             )
         self.speed = 0
         self.status = "stop"
+        self.SOUNDS_DIR = SOUNDS_DIR
+        self.MUSIC_DIR = MUSIC_DIR
 
         self.music_path = environ.get(
-            "MUSIC_PATH", os.path.join(BASE_DIR, "musics/robomusic.mp3")
+            "MUSIC_PATH", os.path.join(MUSIC_DIR, "robomusic.mp3")
         )
         self.sound_path = environ.get(
-            "SOUND_PATH", os.path.join(BASE_DIR, "sounds/directives.wav")
+            "SOUND_PATH", os.path.join(SOUNDS_DIR, "directives.wav")
         )
 
         self.STATIC_FOLDER = STATIC_FOLDER
@@ -132,9 +135,9 @@ class VideoCarController:
         file = file or self.settings.get("default_music") or self.music_path
         if file:
             path_to_file = (
-                os.path.join(BASE_DIR, "musics", file)
-                if file != self.music_path
-                else file
+                file
+                if os.path.isabs(file) or file == self.music_path
+                else os.path.join(self.MUSIC_DIR, file)
             )
             self.audio_handler.play_music(path_to_file)
             print(f"Playing music: {path_to_file}")
@@ -145,9 +148,9 @@ class VideoCarController:
         file = file or self.settings.get("default_sound") or self.sound_path
         if file:
             path_to_file = (
-                os.path.join(BASE_DIR, "sounds", file)
-                if file != self.sound_path
-                else file
+                file
+                if os.path.isabs(file) or file == self.sound_path
+                else os.path.join(self.SOUNDS_DIR, file)
             )
             self.audio_handler.play_sound(path_to_file)
             sleep(0.05)
