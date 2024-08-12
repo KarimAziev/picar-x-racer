@@ -15,7 +15,7 @@ from controllers.audio_handler import AudioHandler
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 MUSIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../music"))
-SOUNDS_DIR = os.path.join(BASE_DIR, "../sounds")
+SOUNDS_DIR = os.path.abspath(os.path.join(BASE_DIR, "../sounds"))
 SETTINGS_FILE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../user_settings.json"))
 STATIC_FOLDER = os.path.join(BASE_DIR, "../front-end/dist/assets")
 TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../front-end/dist")
