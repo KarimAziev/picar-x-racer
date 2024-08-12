@@ -19,6 +19,7 @@ export class VideoCarController {
    */
   private direction: number = 0;
   private activeKeys: Set<string> = new Set();
+  private inactiveKeys: Set<string> = new Set();
   private speedometer: Speedometer;
 
   private maxSpeed: number = 80;
@@ -166,13 +167,18 @@ export class VideoCarController {
     } else {
       this.slowdown();
     }
-    const nextDirServoAngle = this.activeKeys.has('a')
-      ? -30
-      : this.activeKeys.has('d')
-        ? 30
-        : 0;
 
-    this.api.setDirServoAngle(nextDirServoAngle);
+    if (this.activeKeys.has('a')) {
+      this.api.setDirServoAngle(-30);
+      this.inactiveKeys.add('a');
+    } else if (this.activeKeys.has('d')) {
+      this.api.setDirServoAngle(30);
+      this.inactiveKeys.add('d');
+    } else if (this.inactiveKeys.has('d') || this.inactiveKeys.has('a')) {
+      this.inactiveKeys.delete('d');
+      this.inactiveKeys.delete('a');
+      this.api.setDirServoAngle(0);
+    }
 
     if (this.activeKeys.has(' ')) {
       this.stop();
