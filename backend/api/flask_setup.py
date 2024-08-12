@@ -1,6 +1,5 @@
 from flask import Flask
 from flask_cors import CORS
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -15,14 +14,15 @@ def create_app(controller: "VideoCarController"):
     )
     CORS(app)
 
-    # Register Blueprints
     from api.video_feed import video_feed_bp
     from api.file_management import file_management_bp
     from api.settings import settings_bp
+    from api.main import main_bp
 
     app.register_blueprint(video_feed_bp)
     app.register_blueprint(file_management_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(main_bp)
 
     app.config["UPLOAD_FOLDER"] = controller.UPLOAD_FOLDER
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max file size
