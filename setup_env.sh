@@ -58,8 +58,10 @@ EOF
   pip install ./robot-hat --force-reinstall
 
   # Return to the scripts directory
-  # shellcheck disable=SC2103
+  echo "Installing dependencies."
   pip install -r requirements.txt
+  echo "Installing dev dependencies."
+  pip install -r requirements-dev.txt
   echo "IDE environment setup completed."
 else
   echo "This is a Raspbian OS. Standard installation will proceed."
