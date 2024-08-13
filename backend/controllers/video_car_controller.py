@@ -2,11 +2,9 @@ import asyncio
 import json
 import os
 import socket
-import threading
 from os import environ, geteuid, getlogin, path
 from time import localtime, sleep, strftime, time
 
-import cv2
 import numpy as np
 import websockets
 from util.os_checks import is_raspberry_pi
@@ -193,48 +191,6 @@ class VideoCarController:
         print("Stopping")
         self.px.stop()
 
-    def vilib_camera_thread(self):
-        self.Vilib.camera_start(vflip=False, hflip=False)
-        self.camera_thread = threading.Thread(target=self.capture_loop)
-        self.camera_thread.daemon = True
-        self.camera_thread.start()
-
-    def capture_loop(self):
-        while True:
-            try:
-                if (
-                    not isinstance(self.Vilib.flask_img, list)
-                    or len(self.Vilib.flask_img) == 1
-                ):
-                    print(f"Invalid Image Size: {len(self.Vilib.flask_img)}")
-                    sleep(0.1)  # Allow time for the camera to capture the image
-                    continue  # Wait until the flask_img is populated correctly
-                self.vilib_img = convert_listproxy_to_array(self.Vilib.flask_img)
-                if self.draw_fps:
-                    self.draw_fps_text()
-                print(
-                    f"Frame captured with shape: {self.vilib_img.shape} and dtype: {self.vilib_img.dtype}"
-                )
-            except Exception as e:
-                print(f"Error in capture_loop: {e}")
-
-    def draw_fps_text(self):
-        elapsed_time = time() - self.start_time
-        self.start_time = time()
-        fps = int(1 / elapsed_time)
-        self.vilib_img = np.array(
-            self.vilib_img, dtype=np.uint8
-        )  # Ensure it is a numpy array
-        cv2.putText(
-            self.vilib_img,
-            f"FPS: {fps}",
-            (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (255, 255, 255),
-            2,
-        )
-
     async def start_server(self):
         async with websockets.serve(self.handle_message, "0.0.0.0", 8765):
             await asyncio.Future()  # Run forever
@@ -267,7 +223,7 @@ class VideoCarController:
             s.close()
         return ip_address
 
-    def list_files(self, directory):
+    def list_files(self, directory: str):
         """
         Lists all files in the specified directory.
         """
@@ -288,7 +244,3 @@ class VideoCarController:
             os.makedirs(directory)
         file_path = os.path.join(directory, file.filename)
         file.save(file_path)
-
-
-def convert_listproxy_to_array(listproxy_obj):
-    return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
