@@ -67,14 +67,12 @@ export class VideoCarController {
   <div class="side-menu">
   </div>
   <div class="content">
-
   <div class="video-box">
       <img src="/mjpg" alt="Video">
   </div>
       </div>
   <div class="right">
       <div class="camera-visualization"></div>
-      <div class="gauge-angle"></div>
     <div class="speedometer-wrapper"></div>
   </div>
 </div>
