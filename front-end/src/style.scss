@@ -1,0 +1,161 @@
+@import 'assets/variables';
+
+:root {
+  font-family: var(--font-family);
+  line-height: var(--line-height);
+  font-weight: var(--font-weight);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: var(--text-color-light);
+    background-color: var(--bg-color-light);
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: var(--button-bg-color-light);
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+a {
+  font-weight: 500;
+  color: var(--link-color);
+  text-decoration: inherit;
+}
+a:hover {
+  color: var(--link-hover-color);
+}
+
+#app {
+  text-align: center;
+}
+
+button {
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: var(--button-bg-color);
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:focus,
+button:focus-visible {
+  outline: none;
+}
+
+.wrapper {
+  width: 100%;
+  display: flex;
+}
+
+.side-menu {
+  position: relative;
+}
+
+.content {
+  flex: auto;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.video-box {
+  width: 100%;
+  height: 100vh;
+  text-align: center;
+  justify-items: center;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  font-size: 20px;
+  background: var(--video-bg-color);
+}
+
+.video-box > img {
+  min-width: 1280px;
+  min-height: 720px;
+  max-height: 100vh;
+}
+
+.right {
+  position: absolute;
+  right: 0;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.active-keys {
+  top: 0;
+  right: 5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin: 20px 0;
+}
+
+kbd {
+  padding: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--kbd-text-color);
+  border: 2px solid var(--kbd-border-color);
+  border-radius: 5px;
+  background-color: var(--kbd-bg-color);
+  box-shadow: 2px 2px 4px var(--kbd-shadow-color);
+  text-align: center;
+  display: inline-block;
+  margin: 5px;
+  transition: background-color 0.2s;
+}
+
+kbd.active {
+  background-color: var(--kbd-active-bg);
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+}
+
+.space {
+  width: 90px;
+  text-align: center;
+  padding: 10px 15px;
+}
+
+.gauge-cam-tilt {
+  transform: rotate(-90deg);
+}
+
+.camera-visualization {
+  // width: 200px;
+  // height: 100px; // Set appropriate height
+  canvas {
+    width: 200px;
+    height: 200px;
+
+    display: block;
+  }
+}

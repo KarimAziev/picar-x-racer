@@ -1,5 +1,5 @@
 import { logToElement } from '@/util/log';
-import { CameraVisualization } from '@/camera/camera';
+import { CarVisualization } from '@/car-visualization/car';
 import { Speedometer } from '@/speedometer/speedometer';
 import { Controller } from '@/api';
 import { messager } from '@/util/message';
@@ -20,7 +20,7 @@ export class VideoCarController {
    */
   private direction: number = 0;
   private activeKeys: Set<string> = new Set();
-  private camVisualization: CameraVisualization;
+  private camVisualization: CarVisualization;
   private inactiveKeys: Set<string> = new Set();
   private speedometer: Speedometer;
   private angle: number = 0;
@@ -90,7 +90,7 @@ export class VideoCarController {
     const camWrapper = document.querySelector<HTMLDivElement>(
       '.camera-visualization',
     ) as HTMLDivElement;
-    this.camVisualization = new CameraVisualization(camWrapper);
+    this.camVisualization = new CarVisualization(camWrapper);
   }
 
   start(rootElement?: HTMLElement) {

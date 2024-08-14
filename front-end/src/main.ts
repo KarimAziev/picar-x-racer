@@ -1,7 +1,6 @@
-import './style.css';
-
-import { VideoCarController } from './video-car-controller';
 import { Controller } from '@/api';
+import { VideoCarController } from './video-car-controller';
+import './style.scss';
 
 document.addEventListener('DOMContentLoaded', () => {
   const controller = new VideoCarController(

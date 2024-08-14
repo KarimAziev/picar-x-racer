@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import './camera.scss';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-export class CameraVisualization {
+export class CarVisualization {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
