@@ -1,4 +1,5 @@
 import { logToElement } from '@/util/log';
+import { CameraVisualization } from '@/camera/camera';
 import { Speedometer } from '@/speedometer/speedometer';
 import { Controller } from '@/api';
 import { messager } from '@/util/message';
@@ -19,9 +20,10 @@ export class VideoCarController {
    */
   private direction: number = 0;
   private activeKeys: Set<string> = new Set();
+  private camVisualization: CameraVisualization;
   private inactiveKeys: Set<string> = new Set();
   private speedometer: Speedometer;
-
+  private angle: number = 0;
   private maxSpeed: number = 80;
   private camPan: number = 0;
   private camTilt: number = 0;
@@ -32,11 +34,18 @@ export class VideoCarController {
   ) {
     this.increaseMaxSpeed = this.increaseMaxSpeed.bind(this);
     this.decreaseMaxSpeed = this.decreaseMaxSpeed.bind(this);
+    this.render = this.render.bind(this);
+    this.gameLoop = this.gameLoop.bind(this);
+    this.updateCarState = this.updateCarState.bind(this);
+
+    this.setupEventListeners = this.setupEventListeners.bind(this);
     this.start = this.start.bind(this);
+    this.stop = this.stop.bind(this);
+    this.slowdown = this.slowdown.bind(this);
+
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
 
-    this.slowdown = this.slowdown.bind(this);
     this.updateSpeedometer = this.updateSpeedometer.bind(this);
     this.accelerate = this.accelerate.bind(this);
     this.decelerate = this.decelerate.bind(this);
@@ -49,7 +58,7 @@ export class VideoCarController {
     this.resetCameraRotate = this.resetCameraRotate.bind(this);
   }
 
-  start(rootElement?: HTMLElement) {
+  render(rootElement?: HTMLElement) {
     if (rootElement) {
       this.rootElement = rootElement;
     }
@@ -64,26 +73,28 @@ export class VideoCarController {
   </div>
       </div>
   <div class="right">
-      <div class="active-keys">
-      <div class="row">
-        <kbd class="w">w</kbd>
-      </div>
-      <div class="row">
-        <kbd class="a">a</kbd>
-        <kbd class="s">s</kbd>
-        <kbd class="d">d</kbd>
-      </div>
-      <div class="row">
-        <kbd class="space">Space</kbd>
-      </div>
-    </div>
-    <div class="angle-wrapper"></div>
+      <div class="camera-visualization"></div>
+      <div class="gauge-angle"></div>
     <div class="speedometer-wrapper"></div>
   </div>
 </div>
 `;
     }
+    const wrapper = document.querySelector<HTMLDivElement>(
+      '.speedometer-wrapper',
+    ) as HTMLDivElement;
+    new Drawer({
+      rootElement: document.querySelector('.side-menu') as HTMLElement,
+    });
+    this.speedometer = new Speedometer({ rootElement: wrapper });
+    const camWrapper = document.querySelector<HTMLDivElement>(
+      '.camera-visualization',
+    ) as HTMLDivElement;
+    this.camVisualization = new CameraVisualization(camWrapper);
+  }
 
+  start(rootElement?: HTMLElement) {
+    this.render(rootElement);
     logToElement('STARTING GAME');
     const wrapper = document.querySelector<HTMLDivElement>(
       '.speedometer-wrapper',
@@ -102,13 +113,10 @@ export class VideoCarController {
   }
 
   private handleKeyDown(event: KeyboardEvent) {
-    if (event.repeat) {
-      return;
-    }
-
     const key = event.key;
-
-    this.activeKeys.add(key);
+    if (!event.repeat) {
+      this.activeKeys.add(key);
+    }
 
     const otherMethods: { [key: string]: Function } = {
       t: this.api.takePhoto,
@@ -127,32 +135,30 @@ export class VideoCarController {
     if (otherMethods[key]) {
       otherMethods[key]();
     }
-
-    this.updateKeyHighlight();
   }
 
   private handleKeyUp(event: KeyboardEvent) {
     const key = event.key;
 
     this.activeKeys.delete(key);
-
-    this.updateKeyHighlight();
   }
 
-  private updateKeyHighlight() {
-    ['w', 'a', 's', 'd', ' '].forEach((key) => {
-      const keyElement = document.querySelector(
-        `kbd.${key === ' ' ? 'space' : key}`,
-      );
-      if (keyElement) {
-        if (this.activeKeys.has(key)) {
-          keyElement.classList.add('active');
-        } else {
-          keyElement.classList.remove('active');
-        }
-      }
-    });
-  }
+  /**
+   * private updateKeyHighlight() {
+   *   ['w', 'a', 's', 'd', ' '].forEach((key) => {
+   *     const keyElement = document.querySelector(
+   *       `kbd.${key === ' ' ? 'space' : key}`,
+   *     );
+   *     if (keyElement) {
+   *       if (this.activeKeys.has(key)) {
+   *         keyElement.classList.add('active');
+   *       } else {
+   *         keyElement.classList.remove('active');
+   *       }
+   *     }
+   *   });
+   * }
+   */
 
   private gameLoop() {
     this.updateCarState();
@@ -169,15 +175,18 @@ export class VideoCarController {
     }
 
     if (this.activeKeys.has('a')) {
-      this.api.setDirServoAngle(-30);
+      this.angle = -30;
       this.inactiveKeys.add('a');
+      this.updateAngleGauge();
     } else if (this.activeKeys.has('d')) {
-      this.api.setDirServoAngle(30);
+      this.angle = 30;
       this.inactiveKeys.add('d');
+      this.updateAngleGauge();
     } else if (this.inactiveKeys.has('d') || this.inactiveKeys.has('a')) {
       this.inactiveKeys.delete('d');
       this.inactiveKeys.delete('a');
-      this.api.setDirServoAngle(0);
+      this.angle = 0;
+      this.updateAngleGauge();
     }
 
     if (this.activeKeys.has(' ')) {
@@ -185,6 +194,21 @@ export class VideoCarController {
     }
 
     this.updateSpeedometer();
+  }
+
+  updateAngleGauge() {
+    this.api.setDirServoAngle(this.angle);
+    this.camVisualization.updateServoDir(this.angle);
+  }
+
+  updateCamTilt() {
+    this.api.setCamTiltAngle(this.camTilt);
+    this.camVisualization.updateTilt(this.camTilt);
+  }
+
+  updateCamPan() {
+    this.api.setCamPanAngle(this.camPan);
+    this.camVisualization.updatePan(this.camPan);
   }
 
   private accelerate() {
@@ -217,6 +241,16 @@ export class VideoCarController {
     }
   }
 
+  private stop() {
+    this.speed = 0;
+    this.direction = 0;
+    this.api.stop();
+  }
+
+  private updateSpeedometer() {
+    this.speedometer.updateValue(this.speed);
+  }
+
   increaseMaxSpeed() {
     const curr = Math.min(100, this.maxSpeed + ACCELERATION);
     if (this.maxSpeed !== curr) {
@@ -239,47 +273,37 @@ export class VideoCarController {
 
   resetCamTilt() {
     this.camTilt = 0;
-    this.api.setCamTiltAngle(0);
+    this.updateCamTilt();
   }
 
   increaseCamTilt() {
     this.camTilt = Math.min(this.camTilt + 5, CAM_TILT_MAX);
-    this.api.setCamTiltAngle(this.camTilt);
+    this.updateCamTilt();
   }
 
   decreaseCamTilt() {
     this.camTilt = Math.max(this.camTilt - 5, CAM_TILT_MIN);
-    this.api.setCamTiltAngle(this.camTilt);
+    this.updateCamTilt();
   }
 
   increaseCamPan() {
     this.camPan = Math.min(this.camPan + 5, CAM_PAN_MAX);
-    this.api.setCamPanAngle(this.camPan);
+    this.updateCamPan();
   }
 
   resetCamPan() {
     this.camPan = 0;
-    this.api.setCamPanAngle(0);
+    this.updateCamPan();
   }
 
   decreaseCamPan() {
     this.camPan = Math.max(this.camPan - 5, CAM_PAN_MIN);
-    this.api.setCamPanAngle(this.camPan);
+    this.updateCamPan();
   }
 
   resetCameraRotate() {
     this.resetCamPan();
     this.resetCamTilt();
     messager.info('A camera pan and tilt reset.');
-  }
-
-  private stop() {
-    this.speed = 0;
-    this.direction = 0;
-    this.api.stop();
-  }
-
-  private updateSpeedometer() {
-    this.speedometer.updateValue(this.speed);
   }
 }

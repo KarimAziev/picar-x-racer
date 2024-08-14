@@ -25,13 +25,14 @@ export class CameraVisualization {
 
   private initialize() {
     const width = 300;
-    const height = 400;
+    const height = 300;
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(20, width / height, 0.1, 1000);
 
-    this.camera.position.set(0, 10, 0);
-    this.camera.lookAt(this.scene.position);
+    this.camera.position.set(0, 5, 10);
+
+    this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     const ambientLight = new THREE.AmbientLight(0x404040);
     this.scene.add(ambientLight);
@@ -57,7 +58,7 @@ export class CameraVisualization {
     this.cameraObject = new THREE.Object3D();
     this.scene.add(this.cameraObject);
 
-    const bodyGeometry = new THREE.BoxGeometry(2, 0.3, 1);
+    const bodyGeometry = new THREE.BoxGeometry(1, 0.3, 2.5);
     const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.set(0, -0.3, 0);
@@ -68,7 +69,6 @@ export class CameraVisualization {
     const head = new THREE.Mesh(headGeometry, headMaterial);
     this.cameraObject.add(head);
 
-    // Adding the "eyes" or camera object with a beam
     const eyeGeometry = new THREE.SphereGeometry(0.1, 32, 32);
     const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
     const eyeCamera = new THREE.Mesh(eyeGeometry, eyeMaterial);
@@ -86,7 +86,6 @@ export class CameraVisualization {
     beam.rotation.x = Math.PI / 2;
     eyeCamera.add(beam);
 
-    // Adding "ears" to the head
     const earGeometry = new THREE.BoxGeometry(0.1, 0.3, 0.1);
     const earMaterial = new THREE.MeshPhongMaterial({ color: 0x3d3d3d });
     const leftEar = new THREE.Mesh(earGeometry, earMaterial);
@@ -103,19 +102,17 @@ export class CameraVisualization {
       wheel.rotation.z = -Math.PI / 2;
 
       if (i < 2) {
-        // Front wheels
         this.wheels.front.push(wheel);
       } else {
-        // Back wheels
         this.wheels.back.push(wheel);
       }
       this.scene.add(wheel);
     }
 
-    this.wheels.front[0].position.set(-0.7, -0.4, 0.4);
-    this.wheels.front[1].position.set(0.7, -0.4, 0.4);
-    this.wheels.back[0].position.set(-0.7, -0.4, -0.8);
-    this.wheels.back[1].position.set(0.7, -0.4, -0.8);
+    this.wheels.front[0].position.set(-0.6, -0.4, 1);
+    this.wheels.front[1].position.set(0.6, -0.4, 1);
+    this.wheels.back[0].position.set(-0.6, -0.4, -1.2);
+    this.wheels.back[1].position.set(0.6, -0.4, -1.2);
 
     new OrbitControls(this.camera, this.renderer.domElement);
 
@@ -135,7 +132,7 @@ export class CameraVisualization {
   private updateCameraRotation() {
     this.cameraObject.rotation.y = Math.PI + THREE.MathUtils.degToRad(this.pan);
     this.cameraObject.rotation.x = THREE.MathUtils.degToRad(this.tilt);
-    // Update front wheel rotations based on servo angle
+
     this.wheels.back.forEach((wheel) => {
       wheel.rotation.y = THREE.MathUtils.degToRad(this.servoAngle);
     });
@@ -152,7 +149,7 @@ export class CameraVisualization {
   }
 
   public updateServoDir(angle: number) {
-    this.servoAngle = angle;
+    this.servoAngle = -angle;
     this.servoDirEl.innerText = `Servo Angle: ${angle}`;
 
     this.wheels.back.forEach((wheel) => {
