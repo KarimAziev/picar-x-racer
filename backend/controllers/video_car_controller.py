@@ -7,6 +7,7 @@ from time import localtime, sleep, strftime, time
 
 import numpy as np
 import websockets
+from websockets import WebSocketServerProtocol
 from util.os_checks import is_raspberry_pi
 
 from controllers.audio_handler import AudioHandler
@@ -96,7 +97,7 @@ class VideoCarController:
             json.dump(new_settings, settings_file, indent=2)
         self.settings = new_settings
 
-    async def handle_message(self, websocket, _):
+    async def handle_message(self, websocket: WebSocketServerProtocol, _):
         async for message in websocket:
             data = json.loads(message)
             print(f"Received: {data}")
