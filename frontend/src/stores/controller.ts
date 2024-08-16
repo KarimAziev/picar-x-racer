@@ -28,7 +28,9 @@ export type StoreState = {
   messageQueue: string[];
   url?: string;
   reconnectedEnabled?: boolean;
+  distance?: number;
 };
+
 const defaultState: StoreState = {
   speed: 0,
   direction: 0,
@@ -58,6 +60,16 @@ export const useControllerStore = defineStore("controller", {
         while (this.messageQueue.length > 0) {
           this.websocket!.send(this.messageQueue.shift()!);
         }
+      };
+
+      this.websocket.onmessage = (msg) => {
+        let data;
+        try {
+          data = JSON.parse(msg.data);
+          if (data) {
+            this.distance = data?.distance;
+          }
+        } catch (error) {}
       };
 
       this.websocket.onerror = (error) => {
@@ -223,6 +235,10 @@ export const useControllerStore = defineStore("controller", {
 
     sayText(): void {
       this.sendMessage({ action: "sayText" });
+    },
+
+    getDistance(): void {
+      this.sendMessage({ action: "getDistance" });
     },
 
     takePhoto(): void {

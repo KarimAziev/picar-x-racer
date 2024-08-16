@@ -3,6 +3,8 @@
     <InfoItem label="Camera Tilt:" :value="store.camTilt" />
     <InfoItem label="Camera Pan:" :value="store.camPan" />
     <InfoItem label="Servo Direction:" :value="store.servoAngle" />
+    <InfoItem label="Distance:" :value="store.distance" />
+    <InfoItem label="Max Speed:" :value="store.maxSpeed" />
   </div>
 </template>
 

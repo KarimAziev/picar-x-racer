@@ -46,6 +46,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     ArrowUp: store.increaseCamTilt,
     ArrowDown: store.decreaseCamTilt,
     "0": store.resetCameraRotate,
+    u: store.getDistance,
   };
 
   if (otherMethods[key]) {

@@ -117,6 +117,10 @@ class VideoCarController:
                 self.say_text(data.get("text"))
             elif action == "takePhoto":
                 self.take_photo()
+            elif action == "getDistance":
+                distance = self.get_distance()
+                response = json.dumps({"distance": distance})
+                await websocket.send(response)
 
     def take_photo(self):
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
@@ -199,6 +203,9 @@ class VideoCarController:
     def stop(self):
         print("Stopping")
         self.px.stop()
+
+    def get_distance(self):
+        return self.px.get_distance()
 
     async def start_server(self):
         async with websockets.serve(self.handle_message, "0.0.0.0", 8765):
