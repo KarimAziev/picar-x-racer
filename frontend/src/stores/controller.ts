@@ -200,7 +200,7 @@ export const useControllerStore = defineStore("controller", {
         Math.max(CAM_PAN_MIN, servoAngle),
         CAM_PAN_MAX,
       );
-      this.sendMessage({ action: "setCamTiltAngle", servoAngle: nextAngle });
+      this.sendMessage({ action: "setCamTiltAngle", angle: nextAngle });
       this.camTilt = nextAngle;
     },
 
@@ -209,7 +209,7 @@ export const useControllerStore = defineStore("controller", {
         Math.max(CAM_PAN_MIN, servoAngle),
         CAM_PAN_MAX,
       );
-      this.sendMessage({ action: "setCamPanAngle", servoAngle: nextAngle });
+      this.sendMessage({ action: "setCamPanAngle", angle: nextAngle });
       this.camPan = nextAngle;
     },
 
@@ -233,7 +233,7 @@ export const useControllerStore = defineStore("controller", {
         Math.max(SERVO_DIR_ANGLE_MIN, servoAngle),
         SERVO_DIR_ANGLE_MAX,
       );
-      this.sendMessage({ action: "setServo", servoAngle: nextAngle });
+      this.sendMessage({ action: "setServo", angle: nextAngle });
       this.servoAngle = nextAngle;
     },
     cleanup() {
