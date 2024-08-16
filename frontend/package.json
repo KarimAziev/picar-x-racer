@@ -1,0 +1,37 @@
+{
+  "name": "picar-x-racer",
+  "description": "Picar-X Racer Frontend - A modern web interface for controlling the Picar-X vehicle with real-time controls, camera feed, and multimedia functionalities.",
+  "author": "Karim Aziev <karim.aziev@gmail.com>",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open",
+    "build": "vue-tsc -b && vite build -c vite.config.prod.ts",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@primevue/themes": "^4.0.4",
+    "autoprefixer": "^10.4.20",
+    "axios": "^1.7.4",
+    "pinia": "^2.1.7",
+    "postcss": "^8.4.41",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.0.4",
+    "three": "^0.167.1",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "vue-speedometer": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.3.0",
+    "@types/three": "^0.167.1",
+    "@vitejs/plugin-vue": "^5.1.2",
+    "prettier": "^3.2.5",
+    "sass": "^1.77.8",
+    "typescript": "^5.5.3",
+    "unplugin-vue-components": "^0.27.4",
+    "vite": "^5.4.0",
+    "vue-tsc": "^2.0.29"
+  }
+}

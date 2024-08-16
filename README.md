@@ -70,7 +70,7 @@ sudo apt-get install sox libsox-fmt-mp3
 5. Build the frontend:
 
 ```bash
-cd ~/picar-x-racer/front-end/
+cd ~/picar-x-racer/frontend/
 npm install
 npm run build
 ```
@@ -142,7 +142,7 @@ This script checks whether you are on Raspbian OS. If not, it sets up a virtual 
 Navigate to the frontend directory:
 
 ```bash
-cd ./front-end
+cd ./frontend
 ```
 
 Install dependencies:

@@ -4,7 +4,8 @@ import os
 import socket
 from os import environ, geteuid, getlogin, path
 from time import localtime, sleep, strftime, time
-
+from werkzeug.datastructures import FileStorage
+from typing import List
 import numpy as np
 import websockets
 from util.os_checks import is_raspberry_pi
@@ -16,9 +17,10 @@ from controllers.audio_handler import AudioHandler
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 MUSIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../music"))
 SOUNDS_DIR = os.path.abspath(os.path.join(BASE_DIR, "../sounds"))
+PHOTOS_DIR = os.path.abspath(os.path.join(BASE_DIR, "../photos"))
 SETTINGS_FILE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../user_settings.json"))
-STATIC_FOLDER = os.path.join(BASE_DIR, "../front-end/dist/assets")
-TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../front-end/dist")
+STATIC_FOLDER = os.path.join(BASE_DIR, "../frontend/dist/assets")
+TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../frontend/dist")
 UPLOAD_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "../uploads/"))
 
 
@@ -45,6 +47,7 @@ class VideoCarController:
         self.status = "stop"
         self.SOUNDS_DIR = SOUNDS_DIR
         self.MUSIC_DIR = MUSIC_DIR
+        self.PHOTOS_DIR = PHOTOS_DIR
 
         self.music_path = environ.get(
             "MUSIC_PATH",
@@ -59,6 +62,7 @@ class VideoCarController:
         self.STATIC_FOLDER = STATIC_FOLDER
         self.TEMPLATE_FOLDER = TEMPLATE_FOLDER
         self.UPLOAD_FOLDER = UPLOAD_FOLDER
+        self.is_playing_sound_or_music = None
 
         # Initialize Vilib camera
         self.camera_thread = None
@@ -117,9 +121,8 @@ class VideoCarController:
     def take_photo(self):
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
         name = "photo_%s" % _time
-        photo_path = f"{self.user_home}/Pictures/picar-x/"
-        Vilib.take_photo(name, photo_path)
-        print("\nphoto saved as %s%s.jpg" % (photo_path, name))
+        Vilib.take_photo(name, path=self.PHOTOS_DIR)
+        print(f"photo saved as {self.PHOTOS_DIR}/{name}.jpg")
 
     def play_music(self, file=None):
         """
@@ -134,7 +137,7 @@ class VideoCarController:
                 file if os.path.isabs(file) else os.path.join(self.MUSIC_DIR, file)
             )
             self.audio_handler.play_music(path_to_file)
-            print(f"Playing music: {path_to_file}")
+            print(f"Music finished: {path_to_file}")
         else:
             print("No music file specified or available to play.")
 
@@ -224,7 +227,7 @@ class VideoCarController:
             s.close()
         return ip_address
 
-    def list_files(self, directory: str):
+    def list_files(self, directory: str) -> List[str]:
         """
         Lists all files in the specified directory.
         """
@@ -237,11 +240,25 @@ class VideoCarController:
                 files.append(file)
         return files
 
-    def save_file(self, file, directory):
+    def remove_file(self, file: str, directory: str):
+        """
+        Remove file if in directory.
+        """
+
+        full_name = os.path.join(directory, file)
+
+        os.remove(full_name)
+        return True
+
+    def save_file(self, file: FileStorage, directory: str) -> str:
         """
         Saves uploaded file to the specified directory.
         """
         if not os.path.exists(directory):
             os.makedirs(directory)
-        file_path = os.path.join(directory, file.filename)
+        filename = file.filename
+        if not isinstance(filename, str):
+            raise ValueError("Invalid filename.")
+        file_path = os.path.join(directory, filename)
         file.save(file_path)
+        return file_path
