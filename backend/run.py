@@ -3,6 +3,7 @@
 import threading
 from controllers.video_car_controller import VideoCarController
 from api.flask_setup import run_flask
+from util.platform_adapters import Vilib
 
 if __name__ == "__main__":
     controller = None
@@ -17,4 +18,4 @@ if __name__ == "__main__":
     finally:
         if controller is not None:
             controller.px.stop()
-            controller.Vilib.camera_close()
+            Vilib.camera_close()

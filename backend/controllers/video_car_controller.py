@@ -7,8 +7,9 @@ from time import localtime, sleep, strftime, time
 
 import numpy as np
 import websockets
-from websockets import WebSocketServerProtocol
 from util.os_checks import is_raspberry_pi
+from util.platform_adapters import Picarx, Vilib, reset_mcu
+from websockets import WebSocketServerProtocol
 
 from controllers.audio_handler import AudioHandler
 
@@ -20,25 +21,12 @@ STATIC_FOLDER = os.path.join(BASE_DIR, "../front-end/dist/assets")
 TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../front-end/dist")
 UPLOAD_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "../uploads/"))
 
-is_os_raspberry = is_raspberry_pi()
-
-if is_os_raspberry:
-    print("OS is raspberrypi")
-    from picarx import Picarx
-    from robot_hat.utils import reset_mcu
-    from vilib import Vilib
-else:
-    from stubs import FakePicarx as Picarx
-    from stubs import FakeVilib as Vilib
-    from stubs import fake_reset_mcu as reset_mcu
-
 
 class VideoCarController:
     def __init__(self):
-        self.is_os_raspberry = is_os_raspberry
+        self.is_os_raspberry = is_raspberry_pi()
 
         self.Picarx = Picarx
-        self.Vilib = Vilib
         self.reset_mcu = reset_mcu
         self.reset_mcu()
         sleep(0.2)  # Allow the MCU to reset
@@ -127,10 +115,16 @@ class VideoCarController:
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
         name = "photo_%s" % _time
         photo_path = f"{self.user_home}/Pictures/picar-x/"
-        self.Vilib.take_photo(name, photo_path)
+        Vilib.take_photo(name, photo_path)
         print("\nphoto saved as %s%s.jpg" % (photo_path, name))
 
     def play_music(self, file=None):
+        """
+        Handle playing a file based on the given file path.
+
+        Args:
+            file: absolute or relative path to a sound file.
+        """
         file = file or self.settings.get("default_music") or self.music_path
         if file:
             path_to_file = (
@@ -144,6 +138,12 @@ class VideoCarController:
             print("No music file specified or available to play.")
 
     def play_sound(self, file=None):
+        """
+        Handle playing a sound file based on the given file path.
+
+        Args:
+            file: absolute or relative path to a sound file.
+        """
         file = file or self.settings.get("default_sound") or self.sound_path
         if file:
             path_to_file = (
@@ -197,7 +197,7 @@ class VideoCarController:
             await asyncio.Future()  # Run forever
 
     def main(self):
-        self.Vilib.camera_start(vflip=False, hflip=False)
+        Vilib.camera_start(vflip=False, hflip=False)
         sleep(2)  # Allow the camera to start
 
         ip_address = self.get_ip_address()
@@ -210,7 +210,7 @@ class VideoCarController:
         except KeyboardInterrupt:
             print("\nquit ...")
             self.px.stop()
-            self.Vilib.camera_close()
+            Vilib.camera_close()
 
     def get_ip_address(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

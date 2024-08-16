@@ -2,3 +2,5 @@ git+https://github.com/sunfounder/vilib.git@picamera2#egg=vilib
 git+https://github.com/sunfounder/picar-x.git@v2.0#egg=picarx
 isort
 black
+pyaudio
+pygame

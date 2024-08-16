@@ -1,5 +1,5 @@
 from os import path
-from util.os_checks import is_raspberry_pi
+from util.platform_adapters import Music
 
 try:
     from google_speech import Speech
@@ -25,11 +25,6 @@ class SingletonMeta(type):
 
 class AudioHandler(metaclass=SingletonMeta):
     def __init__(self):
-        self.is_os_raspbery = is_raspberry_pi()
-        if self.is_os_raspbery:
-            from robot_hat import Music
-        else:
-            from stubs import FakeMusic as Music
         self.music = Music()
         self.music.music_set_volume(100)
 
