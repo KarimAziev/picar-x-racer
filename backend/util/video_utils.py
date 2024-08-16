@@ -77,4 +77,4 @@ def gen() -> Generator[bytes, None, None]:
 
         yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
 
-        sleep(0.1)
+        sleep(0.03)
