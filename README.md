@@ -12,6 +12,8 @@
 - **Camera Handling**: Adjust the camera pan and tilt angles in real-time, and capture photos with a key press.
 - **Keybinding Feedback**: Visual feedback for key presses to enhance the control experience.
 - **Multimedia Functionality**: Play sounds and music, and convert text-to-speech for interactive experiences.
+- **3D Car Visualization**: A real-time 3D model of the Picar-X that reflects and displays the car's angles, providing an enhanced visual control experience.
+- **Comprehensive Settings Panel**: Manage text-to-speech, sound, music, and image settings seamlessly.
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 
@@ -23,6 +25,7 @@
 >   - [Usage on Raspberry OS](#usage-on-raspberry-os)
 >     - [Setup and Build](#setup-and-build)
 >     - [Usage](#usage)
+>   - [Settings Panel](#settings-panel)
 >   - [Keybindings](#keybindings)
 >     - [Move](#move)
 >     - [Camera](#camera)
@@ -88,6 +91,19 @@ Once the application is running, open your browser and navigate to (replace `<yo
 ```
 http://<your-raspberry-pi-ip>:9000
 ```
+
+After navigating to the control interface, you can customize your experience via the comprehensive settings panel:
+
+## Settings Panel
+
+- **Text-to-Speech**: Configure the default text that will be converted into speech.
+- **Default Sound**: Select a default sound from the available list to play during specific events.
+- **Sounds**: Upload new sound files and manage existing ones.
+- **Default Music**: Choose default background music from the available list.
+- **Music**: Upload new music files and manage existing ones.
+- **Photos**: Manage and download photos captured by the Picar-X camera.
+
+The settings panel is user-friendly, allowing for quick adjustments and uploads directly from your browser to tailor the Picar-X experience to your preference.
 
 ## Keybindings
 
