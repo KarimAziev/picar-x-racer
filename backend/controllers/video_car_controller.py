@@ -47,7 +47,10 @@ class VideoCarController:
         self.MUSIC_DIR = MUSIC_DIR
 
         self.music_path = environ.get(
-            "MUSIC_PATH", os.path.join(MUSIC_DIR, "robomusic.mp3")
+            "MUSIC_PATH",
+            os.path.join(
+                MUSIC_DIR, "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3"
+            ),
         )
         self.sound_path = environ.get(
             "SOUND_PATH", os.path.join(SOUNDS_DIR, "directives.wav")
@@ -76,7 +79,7 @@ class VideoCarController:
         except FileNotFoundError:
             return {
                 "default_sound": None,
-                "default_music": None,
+                "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
                 "default_text": "Hello, I'm your video car!",
             }
 
@@ -128,9 +131,7 @@ class VideoCarController:
         file = file or self.settings.get("default_music") or self.music_path
         if file:
             path_to_file = (
-                file
-                if os.path.isabs(file) or file == self.music_path
-                else os.path.join(self.MUSIC_DIR, file)
+                file if os.path.isabs(file) else os.path.join(self.MUSIC_DIR, file)
             )
             self.audio_handler.play_music(path_to_file)
             print(f"Playing music: {path_to_file}")
@@ -152,7 +153,6 @@ class VideoCarController:
                 else os.path.join(self.SOUNDS_DIR, file)
             )
             self.audio_handler.play_sound(path_to_file)
-            sleep(0.05)
             print(f"Playing sound: {path_to_file}")
         else:
             print("No sound file specified or available to play.")
