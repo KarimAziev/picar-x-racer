@@ -131,6 +131,9 @@ class VideoCarController:
         Args:
             file: absolute or relative path to a sound file.
         """
+        if self.audio_handler.is_music_playing():
+            return self.audio_handler.stop_music()
+
         file = file or self.settings.get("default_music") or self.music_path
         if file:
             path_to_file = (
@@ -148,6 +151,8 @@ class VideoCarController:
         Args:
             file: absolute or relative path to a sound file.
         """
+        if self.audio_handler.is_sound_playing():
+            return self.audio_handler.stop_sound()
         file = file or self.settings.get("default_sound") or self.sound_path
         if file:
             path_to_file = (

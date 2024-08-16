@@ -1,4 +1,5 @@
 from os import path
+import time
 from util.platform_adapters import Music
 
 try:
@@ -27,6 +28,8 @@ class AudioHandler(metaclass=SingletonMeta):
     def __init__(self):
         self.music = Music()
         self.music.music_set_volume(100)
+        self.sound_playing = False
+        self.sound_end_time = None
 
     def text_to_speech(self, words: str, lang="en"):
         if google_speech_available:
@@ -53,11 +56,31 @@ class AudioHandler(metaclass=SingletonMeta):
     def stop_music(self):
         self.music.music_stop()
 
+    def is_music_playing(self):
+        return self.music.pygame.mixer.get_busy()
+
     def play_sound(self, sound_path: str):
         if path.exists(sound_path):
             print(f"Playing sound {sound_path}")
-            self.music.sound_play(sound_path)
+            sound_length = self.music.sound_length(sound_path)
+            self.music.sound_play_threading(sound_path)
+            self.sound_playing = True
+            self.sound_end_time = time.time() + sound_length
         else:
             text = f"The sound file {sound_path} is missing."
             print(text)
             self.text_to_speech(text, "en")
+
+    def is_sound_playing(self):
+        if (
+            self.sound_playing
+            and self.sound_end_time is not None
+            and time.time() >= self.sound_end_time
+        ):
+            self.sound_playing = False
+        return self.sound_playing
+
+    def stop_sound(self):
+        """Stop currently playing sound (Note: This is a naive implementation)."""
+        self.sound_playing = False
+        self.music.pygame.mixer.stop()
