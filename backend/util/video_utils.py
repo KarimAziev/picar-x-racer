@@ -65,11 +65,10 @@ def gen() -> Generator[bytes, None, None]:
     while True:
         # Convert the ListProxy object to a Numpy array with original dimensions
         frame_array = convert_listproxy_to_array(Vilib.flask_img)
-        enhanced_frame = enhance_frame(frame_array)
 
         # Resize the frame to the target resolution using high-quality interpolation
         resized_frame = cv2.resize(
-            enhanced_frame, (TARGET_WIDTH, TARGET_HEIGHT), interpolation=cv2.INTER_CUBIC
+            frame_array, (TARGET_WIDTH, TARGET_HEIGHT), interpolation=cv2.INTER_CUBIC
         )
 
         _, buffer = cv2.imencode(".jpg", resized_frame)
