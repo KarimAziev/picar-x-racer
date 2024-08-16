@@ -1,20 +1,9 @@
 <template>
   <div class="video-box">
-    <img
-      v-if="!store.loading"
-      :src="imgPath"
-      width="1280"
-      height="720"
-      alt="Video"
-    />
-    <ProgressSpinner v-else />
+    <img :src="imgPath" width="1280" height="720" alt="Video" />
   </div>
 </template>
 <script setup lang="ts">
-import ProgressSpinner from "primevue/progressspinner";
-import { useControllerStore } from "@/stores/controller";
-
-const store = useControllerStore();
 const imgPath = "/mjpg";
 </script>
 
