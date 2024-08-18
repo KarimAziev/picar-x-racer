@@ -46,8 +46,12 @@ class AudioHandler(metaclass=SingletonMeta):
 
     def play_music(self, track_path: str):
         if path.exists(track_path):
-            print(f"Playing music {track_path}")
-            self.music.music_play(track_path)
+            if self.is_music_playing():
+                print(f"Stopping currently playing music")
+                self.stop_music()
+            else:
+                print(f"Playing music {track_path}")
+                self.music.music_play(track_path)
         else:
             text = f"The music file {track_path} is missing."
             print(text)
@@ -57,15 +61,19 @@ class AudioHandler(metaclass=SingletonMeta):
         self.music.music_stop()
 
     def is_music_playing(self):
-        return self.music.pygame.mixer.get_busy()
+        return self.music.pygame.mixer.music.get_busy()
 
     def play_sound(self, sound_path: str):
         if path.exists(sound_path):
-            print(f"Playing sound {sound_path}")
-            sound_length = self.music.sound_length(sound_path)
-            self.music.sound_play_threading(sound_path)
-            self.sound_playing = True
-            self.sound_end_time = time.time() + sound_length
+            if self.is_sound_playing():
+                print(f"Stopping currently playing sound")
+                self.stop_sound()
+            else:
+                print(f"Playing sound {sound_path}")
+                sound_length = self.music.sound_length(sound_path)
+                self.music.sound_play_threading(sound_path)
+                self.sound_playing = True
+                self.sound_end_time = time.time() + sound_length
         else:
             text = f"The sound file {sound_path} is missing."
             print(text)
@@ -81,6 +89,5 @@ class AudioHandler(metaclass=SingletonMeta):
         return self.sound_playing
 
     def stop_sound(self):
-        """Stop currently playing sound (Note: This is a naive implementation)."""
         self.sound_playing = False
         self.music.pygame.mixer.stop()
