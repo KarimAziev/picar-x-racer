@@ -4,8 +4,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { useControllerStore } from "@/stores/controller";
-import { CarModelRenderer } from "@/components/CarModelViewer/CarModelRenderer";
+import { CarModelRenderer } from "@/features/controller/components/CarModelViewer/CarModelRenderer";
+import { useControllerStore } from "@/features/controller/store";
 
 const store = useControllerStore();
 const rootElement = ref<HTMLElement | null>(null);

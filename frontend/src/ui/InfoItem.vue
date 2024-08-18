@@ -1,12 +1,16 @@
 <template>
   <div class="info-item">
     <span class="info-label">{{ label }}</span>
-    <b class="info-value">{{ value }}°</b>
+    <b class="info-value">{{ value }}</b>
     <slot></slot>
   </div>
 </template>
 <script setup lang="ts">
-defineProps<{ label?: string; value?: string | number }>();
+defineProps<{
+  label?: string;
+  value?: string | number;
+  valueSuffix?: string;
+}>();
 </script>
 <style scoped lang="scss">
 .info-item {

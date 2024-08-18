@@ -5,5 +5,5 @@
 </template>
 
 <script setup lang="ts">
-import CarController from '@/components/CarController.vue'
+import CarController from "@/features/controller/CarController.vue";
 </script>

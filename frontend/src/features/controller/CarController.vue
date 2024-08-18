@@ -12,11 +12,11 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import { useControllerStore } from "@/stores/controller";
-import Speedometer from "@/components/Speedometer.vue";
-import TextInfo from "@/components/TextInfo.vue";
-import VideoBox from "@/components/VideoBox.vue";
-import CarModelViewer from "@/components/CarModelViewer/CarModelViewer.vue";
+import { useControllerStore } from "@/features/controller/store";
+import Speedometer from "@/features/controller/components/Speedometer.vue";
+import TextInfo from "@/features/controller/components/TextInfo.vue";
+import VideoBox from "@/features/controller/components/VideoBox.vue";
+import CarModelViewer from "@/features/controller/components/CarModelViewer/CarModelViewer.vue";
 
 const store = useControllerStore();
 const loopTimer = ref();
@@ -37,7 +37,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   const otherMethods: { [key: string]: Function } = {
     t: store.takePhoto,
     m: store.playMusic,
-    r: store.playSound,
+    o: store.playSound,
     k: store.sayText,
     "=": store.increaseMaxSpeed,
     "-": store.decreaseMaxSpeed,

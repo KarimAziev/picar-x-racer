@@ -1,10 +1,11 @@
 <template>
-  <NavDrawer />
+  <SettingsPopup />
   <RouterView />
+  <Toast />
 </template>
 
 <script setup lang="ts">
 import { RouterView } from "vue-router";
-
-import NavDrawer from "@/components/NavDrawer.vue";
+import Toast from "primevue/toast";
+import SettingsPopup from "@/features/settings/SettingsPopup.vue";
 </script>

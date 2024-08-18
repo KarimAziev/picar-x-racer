@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import Settings from "@/components/Settings.vue";
+import Settings from "@/features/settings/Settings.vue";
 </script>
 
 <style>

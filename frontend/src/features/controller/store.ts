@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { messager } from "@/util/message";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -73,7 +74,8 @@ export const useControllerStore = defineStore("controller", {
       };
 
       this.websocket.onerror = (error) => {
-        console.error(`WebSocket error: ${error}`);
+        console.error(`WebSocket error: ${error.type}`);
+        messager.error("WebSocket error");
         this.loading = false;
         this.connected = false;
       };
