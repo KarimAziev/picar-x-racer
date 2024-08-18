@@ -11,8 +11,16 @@ import websockets
 from util.os_checks import is_raspberry_pi
 from util.platform_adapters import Picarx, Vilib, reset_mcu
 from websockets import WebSocketServerProtocol
-
+import logging
 from controllers.audio_handler import AudioHandler
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # Set to the desired log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 MUSIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../music"))
@@ -40,8 +48,8 @@ class VideoCarController:
         self.audio_handler = AudioHandler()
 
         if geteuid() != 0 and self.is_os_raspberry:
-            print(
-                f"\033[0;33m{'The program needs to be run using sudo, otherwise there may be no sound.'}\033[0m"
+            logger.warning(
+                "The program needs to be run using sudo, otherwise there may be no sound."
             )
         self.speed = 0
         self.status = "stop"
@@ -95,10 +103,10 @@ class VideoCarController:
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
         async for message in websocket:
             data = json.loads(message)
-            print(f"Received: {data}")
+            logger.info(f"Received: {data}")
 
             action = data.get("action")
-            print(data.get("action", "no action"))
+            logger.info(data.get("action", "no action"))
             if action == "move":
                 self.move(data.get("direction"), data.get("speed", 0))
             elif action == "setServo":
@@ -126,7 +134,7 @@ class VideoCarController:
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
         name = "photo_%s" % _time
         Vilib.take_photo(name, path=self.PHOTOS_DIR)
-        print(f"photo saved as {self.PHOTOS_DIR}/{name}.jpg")
+        return name
 
     def play_music(self, file=None):
         """
@@ -141,9 +149,9 @@ class VideoCarController:
                 file if os.path.isabs(file) else os.path.join(self.MUSIC_DIR, file)
             )
             self.audio_handler.play_music(path_to_file)
-            print(f"Music finished: {path_to_file}")
+            logger.info(f"Music finished: {path_to_file}")
         else:
-            print("No music file specified or available to play.")
+            logger.warning("No music file specified or available to play.")
 
     def play_sound(self, file=None):
         """
@@ -160,16 +168,16 @@ class VideoCarController:
                 else os.path.join(self.SOUNDS_DIR, file)
             )
             self.audio_handler.play_sound(path_to_file)
-            print(f"Playing sound: {path_to_file}")
+            logger.info(f"Playing sound: {path_to_file}")
         else:
-            print("No sound file specified or available to play.")
+            logger.warning("No sound file specified or available to play.")
 
     def say_text(self, text=None):
         text = text or self.settings.get("default_text", "Hello, I'm your video car!")
         self.audio_handler.text_to_speech(text)
 
     def move(self, direction, speed):
-        print(f"Moving {direction} with speed {speed}")
+        logger.info(f"Moving {direction} with speed {speed}")
         if direction == "forward":
             self.px.set_dir_servo_angle(0)
             self.px.forward(speed)
@@ -184,19 +192,19 @@ class VideoCarController:
             self.px.forward(speed)
 
     def set_servo_angle(self, angle):
-        print(f"Setting servo angle to {angle} degrees")
+        logger.info(f"Setting servo angle to {angle} degrees")
         self.px.set_dir_servo_angle(angle)
 
     def set_cam_tilt_angle(self, angle):
-        print(f"Setting camera tilt angle to {angle} degrees")
+        logger.info(f"Setting camera tilt angle to {angle} degrees")
         self.px.set_cam_tilt_angle(angle)
 
     def set_cam_pan_angle(self, angle):
-        print(f"Setting camera pan angle to {angle} degrees")
+        logger.info(f"Setting camera pan angle to {angle} degrees")
         self.px.set_cam_pan_angle(angle)
 
     def stop(self):
-        print("Stopping")
+        logger.info("Stopping")
         self.px.stop()
 
     def get_distance(self):
@@ -211,14 +219,14 @@ class VideoCarController:
         sleep(2)  # Allow the camera to start
 
         ip_address = self.get_ip_address()
-        print(
+        logger.info(
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
         )
 
         try:
             asyncio.run(self.start_server())
         except KeyboardInterrupt:
-            print("\nquit ...")
+            logger.info("\nquit ...")
             self.px.stop()
             Vilib.camera_close()
 

@@ -1,8 +1,10 @@
-from multiprocessing import Manager
+import os
+import cv2
 import time
 import threading
 import numpy as np
-import cv2
+from typing import Optional
+from multiprocessing import Manager
 
 
 class Vilib(object):
@@ -13,17 +15,18 @@ class Vilib(object):
     flask_thread = None
     camera_thread = None
     flask_start = False
+    capture = None
 
     qrcode_display_thread = None
     qrcode_making_completed = False
     qrcode_img = Manager().list(range(1))
-    qrcode_img_encode = None
+    qrcode_img_encode: Optional[np.ndarray] = None
     qrcode_win_name = "qrcode"
 
-    img = Manager().list(range(1))
-    flask_img = Manager().list(range(1))
+    img: Optional[np.ndarray] = None
+    flask_img: Optional[np.ndarray] = None
 
-    Windows_Name = "picamera"
+    Windows_Name = "webcam"
     imshow_flag = False
     web_display_flag = False
     imshow_qrcode_flag = False
@@ -49,26 +52,22 @@ class Vilib(object):
     traffic_detect_sw = False
 
     @staticmethod
-    def mock_camera():
-        frame_shape = (480, 640, 3)
-        x = 0
-        y = 0
-        dx = 5
-        dy = 5
+    def camera_loop():
+        Vilib.capture = cv2.VideoCapture(0)
+        if not Vilib.capture.isOpened():
+            raise RuntimeError("Error: Webcam not found or unable to open.")
+
         while Vilib.camera_run:
-            frame = np.zeros(frame_shape, dtype=np.uint8)
-            x += dx
-            y += dy
-            if x <= 0 or x >= 540:
-                dx = -dx
-            if y <= 0 or y >= 400:
-                dy = -dy
-            cv2.circle(frame, (x, y), 20, (255, 255, 255), -1)  # Draw a moving circle
+            ret, frame = Vilib.capture.read()
+            if not ret:
+                continue
 
-            # Mock image data and functionalities
+            if Vilib.camera_vflip:
+                frame = cv2.flip(frame, 0)
+            if Vilib.camera_hflip:
+                frame = cv2.flip(frame, 1)
+
             Vilib.img = frame
-
-            # Copy image data for Flask streaming
             Vilib.flask_img = frame
 
             # Display on desktop
@@ -78,6 +77,7 @@ class Vilib(object):
 
             time.sleep(0.033)  # ~30 FPS
 
+        Vilib.capture.release()
         cv2.destroyAllWindows()
 
     @staticmethod
@@ -86,7 +86,7 @@ class Vilib(object):
         Vilib.camera_hflip = hflip
         Vilib.camera_vflip = vflip
         Vilib.camera_run = True
-        Vilib.camera_thread = threading.Thread(target=Vilib.mock_camera, name="vilib")
+        Vilib.camera_thread = threading.Thread(target=Vilib.camera_loop, name="vilib")
         Vilib.camera_thread.daemon = False
         Vilib.camera_thread.start()
 
@@ -95,15 +95,30 @@ class Vilib(object):
         print("Closing camera")
         if Vilib.camera_thread is not None:
             Vilib.camera_run = False
-            time.sleep(0.1)
+            Vilib.camera_thread.join()
 
     @staticmethod
     def display(local=True, web=True):
         print(f"Displaying camera feed with local={local}, web={web}")
+        Vilib.imshow_flag = local
 
     @staticmethod
     def take_photo(photo_name, path):
         print(f"Taking photo '{photo_name}' at path {path}")
+        if not os.path.exists(path):
+            os.makedirs(name=path, mode=0o751, exist_ok=True)
+            time.sleep(0.01)
+        status = False
+        for _ in range(5):
+            if Vilib.img is not None:
+                status = cv2.imwrite(os.path.join(path, photo_name + ".jpg"), Vilib.img)
+                break
+            else:
+                time.sleep(0.01)
+        else:
+            status = False
+
+        return status
 
     @staticmethod
     def show_fps(color=None, fps_size=None, fps_origin=None):

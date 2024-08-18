@@ -29,7 +29,7 @@ def create_app(controller: "VideoCarController"):
     app.register_blueprint(main_bp)
 
     app.config["UPLOAD_FOLDER"] = controller.UPLOAD_FOLDER
-    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max file size
+    # app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max file size
     app.config["vc"] = controller
 
     return app
