@@ -124,17 +124,20 @@ class VideoCarController:
             elif action == "sayText":
                 self.say_text(data.get("text"))
             elif action == "takePhoto":
-                self.take_photo()
+                name = self.take_photo()
+                response = json.dumps({"file": name, "type": "takePhoto"})
+                await websocket.send(response)
             elif action == "getDistance":
                 distance = self.get_distance()
-                response = json.dumps({"distance": distance})
+                response = json.dumps({"distance": distance, "type": "getDistance"})
                 await websocket.send(response)
 
     def take_photo(self):
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
         name = "photo_%s" % _time
+
         Vilib.take_photo(name, path=self.PHOTOS_DIR)
-        return name
+        return f"{name}.jpg"
 
     def play_music(self, file=None):
         """

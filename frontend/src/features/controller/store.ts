@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { messager } from "@/util/message";
+import { useSettingsStore } from "@/features/settings/store";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -67,8 +68,13 @@ export const useControllerStore = defineStore("controller", {
         let data;
         try {
           data = JSON.parse(msg.data);
-          if (data) {
+          const type = data?.type;
+          if (type === "getDistance") {
             this.distance = data?.distance;
+          }
+          if (type === "takePhoto" && data.file) {
+            const settings = useSettingsStore();
+            settings.downloadFile("image", data.file);
           }
         } catch (error) {}
       };
