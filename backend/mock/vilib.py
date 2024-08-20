@@ -20,7 +20,7 @@ class Vilib(object):
     qrcode_display_thread = None
     qrcode_making_completed = False
     qrcode_img = Manager().list(range(1))
-    qrcode_img_encode: Optional[np.ndarray] = None
+    qrcode_img_encode = None
     qrcode_win_name = "qrcode"
 
     img: Optional[np.ndarray] = None
