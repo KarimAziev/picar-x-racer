@@ -4,104 +4,20 @@
       <VideoBox />
     </div>
     <div class="right">
-      <CarModelViewer />
-      <TextInfo />
-      <Speedometer />
+      <Controller />
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
-import { useControllerStore } from "@/features/controller/store";
-import Speedometer from "@/features/controller/components/Speedometer.vue";
-import TextInfo from "@/features/controller/components/TextInfo.vue";
+import { onMounted } from "vue";
 import VideoBox from "@/features/controller/components/VideoBox.vue";
-import CarModelViewer from "@/features/controller/components/CarModelViewer/CarModelViewer.vue";
+import { useSettingsStore } from "@/features/settings/stores";
+import Controller from "@/features/controller/components/Controller.vue";
 
-const store = useControllerStore();
-const loopTimer = ref();
-const activeKeys = ref(new Set<string>());
-const inactiveKeys = ref(new Set<string>());
-
-const handleKeyUp = (event: KeyboardEvent) => {
-  const key = event.key;
-  activeKeys.value.delete(key);
-};
-
-const handleKeyDown = (event: KeyboardEvent) => {
-  const key = event.key;
-  if (!event.repeat) {
-    activeKeys.value.add(key);
-  }
-
-  const otherMethods: { [key: string]: Function } = {
-    t: store.takePhoto,
-    m: store.playMusic,
-    o: store.playSound,
-    k: store.sayText,
-    "=": store.increaseMaxSpeed,
-    "-": store.decreaseMaxSpeed,
-    ArrowRight: store.increaseCamPan,
-    ArrowLeft: store.decreaseCamPan,
-    ArrowUp: store.increaseCamTilt,
-    ArrowDown: store.decreaseCamTilt,
-    "0": store.resetCameraRotate,
-    u: store.getDistance,
-  };
-
-  if (otherMethods[key]) {
-    event.preventDefault();
-    otherMethods[key]();
-  }
-};
-
-const gameLoop = () => {
-  updateCarState();
-  loopTimer.value = setTimeout(() => gameLoop(), 50);
-};
-
-const updateCarState = () => {
-  if (activeKeys.value.has("w")) {
-    store.accelerate();
-  } else if (activeKeys.value.has("s")) {
-    store.decelerate();
-  } else {
-    store.slowdown();
-  }
-
-  if (activeKeys.value.has("a")) {
-    inactiveKeys.value.add("a");
-    store.setDirServoAngle(-30);
-  } else if (activeKeys.value.has("d")) {
-    inactiveKeys.value.add("d");
-    store.setDirServoAngle(30);
-  } else if (inactiveKeys.value.has("d") || inactiveKeys.value.has("a")) {
-    inactiveKeys.value.delete("d");
-    inactiveKeys.value.delete("a");
-    store.resetDirServoAngle();
-  }
-
-  if (activeKeys.value.has(" ")) {
-    store.stop();
-  }
-};
+const settings = useSettingsStore();
 
 onMounted(() => {
-  store.reconnectedEnabled = true;
-  store.initializeWebSocket("ws://" + window.location.hostname + ":8765");
-  window.addEventListener("keydown", handleKeyDown);
-  window.addEventListener("keyup", handleKeyUp);
-  gameLoop();
-});
-
-onUnmounted(() => {
-  if (loopTimer.value) {
-    clearTimeout(loopTimer.value);
-    loopTimer.value = undefined;
-  }
-  window.removeEventListener("keydown", handleKeyDown);
-  window.removeEventListener("keyup", handleKeyUp);
-  store.cleanup();
+  settings.fetchSettings();
 });
 </script>
 
@@ -112,45 +28,13 @@ onUnmounted(() => {
   width: 100%;
   display: flex;
 }
-.side-menu {
-  position: relative;
-}
+
 .content {
   flex: auto;
 }
-.video-box {
-  width: 100%;
-  height: 100vh;
-  text-align: center;
-  justify-items: center;
-  justify-content: center;
-  display: flex;
-  align-items: center;
-  font-weight: bold;
-  font-size: 20px;
-  background: var(--video-bg-color);
-}
-
-.video-box > img {
-  min-width: 1280px;
-  min-height: 720px;
-  max-height: 100vh;
-}
 
 .right {
   position: absolute;
-  right: 0;
-  width: 400px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-}
-
-.right {
-  position: absolute;
-  top: 0;
   right: 0;
   width: 400px;
   display: flex;

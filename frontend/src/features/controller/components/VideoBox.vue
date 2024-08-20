@@ -14,15 +14,10 @@
 
     <div
       class="video-box"
-      :style="{ width: width + 'px', height: height + 'px' }"
       ref="videoBox"
+      :style="{ width: width + 'px', height: height + 'px' }"
     >
-      <img
-        :src="imgPath"
-        class="image-feed"
-        :style="{ width: width + 'px', height: height + 'px' }"
-        alt="Video"
-      />
+      <img :src="imgPath" class="image-feed" alt="Video" />
       <div class="resizers" @mousedown="initResize">
         <div class="resizer top-left" data-resize="top-left"></div>
         <div class="resizer top-right" data-resize="top-right"></div>
@@ -138,10 +133,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  width: 100%;
   position: relative;
-  overflow: hidden;
+  height: 100vh;
 }
 
 .field {
@@ -164,28 +157,31 @@ onBeforeUnmount(() => {
 
 .video-box {
   position: relative;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid var(--video-bg-color);
+
   box-sizing: border-box;
   user-select: none;
 }
 
 .image-feed {
+  width: 100%;
   display: block;
+  height: 100%;
   user-select: none;
-  object-fit: cover;
 }
 
 .resizers {
-  width: 100%;
-  height: 100%;
   position: absolute;
   top: 0;
   left: 0;
+  bottom: 0;
+  right: 0;
   pointer-events: none;
   z-index: 10;
+  overflow: hidden;
 }
 
 .resizer {

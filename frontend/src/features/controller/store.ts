@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { messager } from "@/util/message";
-import { useSettingsStore } from "@/features/settings/store";
+import { useImageStore } from "@/features/settings/stores";
+import { MethodsWithoutParams } from "@/util/ts-helpers";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -73,8 +74,8 @@ export const useControllerStore = defineStore("controller", {
             this.distance = data?.distance;
           }
           if (type === "takePhoto" && data.file) {
-            const settings = useSettingsStore();
-            settings.downloadFile("image", data.file);
+            const imageStore = useImageStore();
+            imageStore.downloadFile(data.file);
           }
         } catch (error) {}
       };
@@ -96,7 +97,7 @@ export const useControllerStore = defineStore("controller", {
     },
 
     retryConnection() {
-      if (this.reconnectedEnabled) {
+      if (this.reconnectedEnabled && !this.connected) {
         setTimeout(() => {
           console.log("Retrying WebSocket connection...");
           if (this.url) {
@@ -211,6 +212,15 @@ export const useControllerStore = defineStore("controller", {
       this.speed = speed;
     },
 
+    setDirServoAngle(servoAngle: number) {
+      const nextAngle = Math.min(
+        Math.max(SERVO_DIR_ANGLE_MIN, servoAngle),
+        SERVO_DIR_ANGLE_MAX,
+      );
+      this.sendMessage({ action: "setServo", angle: nextAngle });
+      this.servoAngle = nextAngle;
+    },
+
     resetDirServoAngle(): void {
       this.setDirServoAngle(0);
     },
@@ -252,13 +262,11 @@ export const useControllerStore = defineStore("controller", {
     takePhoto(): void {
       this.sendMessage({ action: "takePhoto" });
     },
-    setDirServoAngle(servoAngle: number) {
-      const nextAngle = Math.min(
-        Math.max(SERVO_DIR_ANGLE_MIN, servoAngle),
-        SERVO_DIR_ANGLE_MAX,
-      );
-      this.sendMessage({ action: "setServo", angle: nextAngle });
-      this.servoAngle = nextAngle;
+    left() {
+      this.setDirServoAngle(-30);
+    },
+    right() {
+      this.setDirServoAngle(30);
     },
     cleanup() {
       this.reconnectedEnabled = false;
@@ -275,3 +283,11 @@ export const useControllerStore = defineStore("controller", {
     },
   },
 });
+
+export type ControllerState = Omit<
+  ReturnType<typeof useControllerStore>,
+  keyof ReturnType<typeof defineStore>
+>;
+
+export type ControllerActions = MethodsWithoutParams<ControllerState>;
+export type ControllerActionName = keyof ControllerActions;
