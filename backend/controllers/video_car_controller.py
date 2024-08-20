@@ -96,9 +96,18 @@ class VideoCarController:
             }
 
     def save_settings(self, new_settings):
+
+        existing_settings = self.load_settings()
+
+        merged_settings = {
+            **existing_settings,
+            **new_settings,
+        }
+
         with open(SETTINGS_FILE_PATH, "w") as settings_file:
-            json.dump(new_settings, settings_file, indent=2)
-        self.settings = new_settings
+            json.dump(merged_settings, settings_file, indent=2)
+
+        self.settings = merged_settings
 
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
         async for message in websocket:

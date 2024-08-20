@@ -19,9 +19,7 @@ def update_settings():
     vc: "VideoCarController" = current_app.config["vc"]
     new_settings: Union[Dict[str, Any], None] = request.json
 
-    required_keys = {"default_sound", "default_music", "default_text"}
-
-    if not isinstance(new_settings, dict) or not required_keys.issubset(new_settings):
+    if not isinstance(new_settings, dict):
         return jsonify({"error": "Invalid settings format"}), 400
 
     vc.save_settings(new_settings)
