@@ -86,7 +86,17 @@ const commandsToOptions = (obj: Record<string, string[]>): Fields => {
     options: [...allCommandOptions],
   });
 
-  const res = Object.entries(obj).flatMap(([cmd, keybindings]) =>
+  const commandOrder = new Map<string, number>(
+    allCommandOptions.map((option, index) => [option.value, index]),
+  );
+
+  const sortedEntries = Object.entries(obj).sort(
+    ([cmdA], [cmdB]) =>
+      (commandOrder.get(cmdA) ?? Infinity) -
+      (commandOrder.get(cmdB) ?? Infinity),
+  );
+
+  const res = sortedEntries.flatMap(([cmd, keybindings]) =>
     keybindings.map((k) => {
       const keyItem = makeKeybindingItem(k);
       const cmdItem = makeCommandItem(cmd);
