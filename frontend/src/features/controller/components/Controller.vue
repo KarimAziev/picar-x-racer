@@ -68,10 +68,6 @@ const updateCarState = () => {
   const rightKey = findKey(settings.settings.keybindings?.right);
   const stopKey = findKey(settings.settings.keybindings?.stop);
 
-  if (leftKey || rightKey || stopKey) {
-    console.log("leftKey", leftKey, "rightKey", rightKey, "stopKey", stopKey);
-  }
-
   if (findKey(settings.settings.keybindings?.accelerate)) {
     store.accelerate();
   } else if (findKey(settings.settings.keybindings?.decelerate)) {
