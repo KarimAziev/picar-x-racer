@@ -105,7 +105,7 @@ const handleKeyDown = (ev: KeyboardEvent) => {
     }
   }
 
-  keyEvents.value.push(ev);
+  keyEvents.value = [ev];
   keyInput.value = formatKeyboardEvents(keyEvents.value);
   submit();
 };
@@ -131,18 +131,15 @@ const resetRecording = () => {
 const submit = () => {
   if (validateInput()) {
     props.onSubmit?.(keyInput.value);
-    closeDialog();
+    removeKeyDownListener();
   }
 };
 
 const cancel = () => {
   if (props.onCancel) {
     props.onCancel();
+    removeKeyDownListener();
   }
-};
-
-const closeDialog = () => {
-  removeKeyDownListener();
 };
 
 onMounted(() => {

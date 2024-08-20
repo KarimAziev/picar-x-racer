@@ -21,7 +21,9 @@
           <div class="field">
             <InputText
               v-model="fieldPair[1].value"
+              readonly
               @beforeinput="(event) => startRecording(event, index)"
+              @focus="(event) => startRecording(event, index)"
               name="keybinding"
               class="input-text"
             />
