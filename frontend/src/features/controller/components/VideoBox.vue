@@ -174,6 +174,7 @@ onBeforeUnmount(() => {
   width: 100%;
   display: block;
   height: 100%;
+  object-fit: contain;
   user-select: none;
 }
 
