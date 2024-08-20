@@ -1,7 +1,7 @@
 <template>
   <div class="info-item">
-    <span class="info-label">{{ label }}</span>
-    <b class="info-value">{{ value }}</b>
+    <samp class="info-label">{{ label }}</samp>
+    <samp class="info-value">{{ value }}</samp>
     <slot></slot>
   </div>
 </template>
@@ -15,6 +15,7 @@ defineProps<{
 <style scoped lang="scss">
 .info-item {
   display: flex;
+  color: var(--p-primary-200);
   justify-content: space-between;
   align-items: center;
 }

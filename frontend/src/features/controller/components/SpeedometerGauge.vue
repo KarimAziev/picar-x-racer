@@ -6,76 +6,81 @@
       <div class="needle" ref="needleRef"></div>
     </div>
     <div class="labels">
-      <div class="center-label" ref="centerLabelRef">{{ adjustedValue }}</div>
+      <samp class="center-label" ref="centerLabelRef">{{ adjustedValue }}</samp>
     </div>
     <div class="outer-labels" ref="outerLabelsRef">
-      <div v-for="label in outerLabels" :key="label.value" :style="label.style">
+      <samp
+        v-for="label in outerLabels"
+        :key="label.value"
+        :style="label.style"
+      >
         {{ label.value }}
-      </div>
+      </samp>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from "vue";
 
 export interface SpeedometerParams {
-  value: number
-  minValue: number
-  maxValue: number
-  segments: number
+  value: number;
+  minValue: number;
+  maxValue: number;
+  segments: number;
 }
 
-const props = defineProps<SpeedometerParams>()
-const speedometerRef = ref<HTMLElement | null>(null)
-const needleRef = ref<HTMLElement | null>(null)
-const centerLabelRef = ref<HTMLElement | null>(null)
-const outerLabelsRef = ref<HTMLElement | null>(null)
+const props = defineProps<SpeedometerParams>();
+const speedometerRef = ref<HTMLElement | null>(null);
+const needleRef = ref<HTMLElement | null>(null);
+const centerLabelRef = ref<HTMLElement | null>(null);
+const outerLabelsRef = ref<HTMLElement | null>(null);
 
 const adjustedValue = computed(() => {
-  return Math.max(props.minValue, Math.min(props.value, props.maxValue))
-})
+  return Math.max(props.minValue, Math.min(props.value, props.maxValue));
+});
 
 const renderOuterLabels = () => {
-  const labels = []
+  const labels = [];
   for (let i = 0; i <= props.segments; i++) {
-    const step = (props.maxValue - props.minValue) / props.segments
-    const value = step * i
-    const rotation = 180 + i * (180 / props.segments)
+    const step = (props.maxValue - props.minValue) / props.segments;
+    const value = step * i;
+    const rotation = 180 + i * (180 / props.segments);
     labels.push({
       value,
-      style: `transform: rotate(${rotation}deg) translateY(-120px) rotate(-${rotation}deg);`
-    })
+      style: `transform: rotate(${rotation}deg) translateY(-120px) rotate(-${rotation}deg);`,
+    });
   }
-  return labels
-}
+  return labels;
+};
 
-const outerLabels = renderOuterLabels()
+const outerLabels = renderOuterLabels();
 
 const updateNeedle = (value: number) => {
   if (needleRef.value && centerLabelRef.value) {
-    const rotation = ((value - props.minValue) / (props.maxValue - props.minValue)) * 180 - 90
-    needleRef.value.style.transform = `translateY(-100%) rotate(${rotation + 180}deg)`
-    centerLabelRef.value.textContent = `${value}`
+    const rotation =
+      ((value - props.minValue) / (props.maxValue - props.minValue)) * 180 - 90;
+    needleRef.value.style.transform = `translateY(-100%) rotate(${rotation + 180}deg)`;
+    centerLabelRef.value.textContent = `${value}`;
   }
-}
+};
 
 watch(
   () => props.value,
   (newValue) => {
-    updateNeedle(newValue)
-  }
-)
+    updateNeedle(newValue);
+  },
+);
 
 onMounted(() => {
   if (speedometerRef.value) {
-    updateNeedle(adjustedValue.value)
+    updateNeedle(adjustedValue.value);
   }
-})
+});
 </script>
 
 <style scoped>
-@import '/src/assets/scss/variables.scss';
+@import "/src/assets/scss/variables.scss";
 
 .speedometer {
   position: relative;
@@ -92,12 +97,12 @@ onMounted(() => {
 }
 
 .gauge::before {
-  content: '';
+  content: "";
   display: block;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 10px solid #00ffff;
+  border: 10px solid var(--p-primary-400);
   opacity: 0.5;
   background: rgba(0, 0, 0, 0.4);
   position: absolute;
@@ -109,7 +114,7 @@ onMounted(() => {
 .gauge-center {
   width: 120px;
   height: 120px;
-  background: #00ffff;
+  background: var(--p-primary-400);
   border-radius: 50%;
   position: absolute;
   top: 50%;
@@ -161,7 +166,7 @@ onMounted(() => {
 }
 
 .center-label {
-  color: #00ffff;
+  color: var(--p-primary-400);
   font-size: 2rem;
   position: absolute;
   bottom: 40%;
@@ -181,12 +186,12 @@ onMounted(() => {
   z-index: 10;
 }
 
-.outer-labels div {
+.outer-labels samp {
   position: absolute;
   width: 2rem;
   height: 2rem;
   text-align: center;
   transform-origin: bottom center;
-  color: #00ffff;
+  color: var(--p-primary-400);
 }
 </style>

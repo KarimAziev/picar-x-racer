@@ -48,19 +48,19 @@ export class CarModelRenderer {
     this.scene.add(body);
 
     const headGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-    const headMaterial = new THREE.MeshPhongMaterial({ color: 0x3d3d3d });
+    const headMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     this.cameraObject.add(head);
 
     const eyeGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-    const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+    const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x10b981 });
     const eyeCamera = new THREE.Mesh(eyeGeometry, eyeMaterial);
     eyeCamera.position.set(0, 0.15, 0.25);
     head.add(eyeCamera);
 
     const beamGeometry = new THREE.ConeGeometry(0.05, 1, 32);
     const beamMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0000ff,
+      color: 0x10b981,
       opacity: 0.6,
       transparent: true,
     });

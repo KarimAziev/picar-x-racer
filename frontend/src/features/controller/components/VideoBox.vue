@@ -2,7 +2,6 @@
   <div class="video-box-container">
     <div class="controls">
       <div class="field">
-        <label for="fullscreen">Fullscreen: </label>
         <ToggleSwitch
           v-tooltip="'Toggle Fullscreen'"
           id="fullscreen"
@@ -135,11 +134,16 @@ onBeforeUnmount(() => {
   justify-content: center;
   position: relative;
   height: 100vh;
+  color: var(--p-primary-200);
 }
 
 .field {
   display: flex;
+
   align-items: center;
+  samp {
+    font-weight: bold;
+  }
 }
 
 .controls {
