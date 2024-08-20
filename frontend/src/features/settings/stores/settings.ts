@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import { handleError } from "@/util/error";
 import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
+import { messager } from "@/util/message";
 
 export interface State {
   open?: boolean;
@@ -48,6 +49,7 @@ export const useStore = defineStore("settings", {
       this.loading = true;
       try {
         await axios.post("/api/settings", this.settings);
+        messager.success("Settings saved");
       } catch (error) {
         handleError(error, "Error saving settings");
       } finally {
