@@ -12,9 +12,9 @@ dev: frontend-backend-dev
 
 .PHONY: frontend-backend-dev
 frontend-backend-dev:
-	cd $(FRONTEND_DIR) && npx concurrently -k "npm run dev" "bash -c 'cd .. && source $(VENV_DIR)/bin/activate && python3 -u $(BACKEND_DIR)/run.py'"
+	cd $(FRONTEND_DIR) && npx concurrently -k "bash -c 'cd .. && source $(VENV_DIR)/bin/activate && python3 -u $(BACKEND_DIR)/run.py'" "npm run dev"
 
-.PHONY: frontend-dev
+.PHONY : frontend-dev
 frontend-dev:
 	cd $(FRONTEND_DIR) && npm run dev
 
