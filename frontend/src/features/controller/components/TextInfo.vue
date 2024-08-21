@@ -11,7 +11,7 @@
     <InfoItem
       label="Battery Voltage"
       :value="batteryVoltage"
-      :value-suffix="isNumber(store.batteryVoltage) ? 'sm' : ''"
+      :value-suffix="isNumber(store.batteryVoltage) ? 'V' : ''"
     />
     <InfoItem
       label="Distance"
