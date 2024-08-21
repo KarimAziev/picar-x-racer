@@ -1,24 +1,40 @@
 import asyncio
 import json
+import logging
 import os
 import socket
 from os import environ, geteuid, getlogin, path
 from time import localtime, sleep, strftime, time
-from werkzeug.datastructures import FileStorage
 from typing import List
+import traceback
+from colorlog import ColoredFormatter
 import numpy as np
 import websockets
 from util.os_checks import is_raspberry_pi
-from util.platform_adapters import Picarx, Vilib, reset_mcu
+from util.platform_adapters import Picarx, Vilib, reset_mcu, get_battery_voltage
 from websockets import WebSocketServerProtocol
-import logging
+from werkzeug.datastructures import FileStorage
+
 from controllers.audio_handler import AudioHandler
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # Set to the desired log level
+logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+formatter = ColoredFormatter(
+    "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt=None,
+    reset=True,
+    log_colors={
+        "DEBUG": "cyan",
+        "INFO": "green",
+        "WARNING": "yellow",
+        "ERROR": "red",
+        "CRITICAL": "red,bg_white",
+    },
+    secondary_log_colors={},
+    style="%",
+)
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -116,30 +132,45 @@ class VideoCarController:
 
             action = data.get("action")
             logger.info(data.get("action", "no action"))
-            if action == "move":
-                self.move(data.get("direction"), data.get("speed", 0))
-            elif action == "setServo":
-                self.set_servo_angle(data.get("angle", 0))
-            elif action == "stop":
-                self.stop()
-            elif action == "setCamTiltAngle":
-                self.set_cam_tilt_angle(data.get("angle", 0))
-            elif action == "setCamPanAngle":
-                self.set_cam_pan_angle(data.get("angle", 0))
-            elif action == "playMusic":
-                self.play_music(data.get("file"))
-            elif action == "playSound":
-                self.play_sound(data.get("file"))
-            elif action == "sayText":
-                self.say_text(data.get("text"))
-            elif action == "takePhoto":
-                name = self.take_photo()
-                response = json.dumps({"file": name, "type": "takePhoto"})
-                await websocket.send(response)
-            elif action == "getDistance":
-                distance = self.get_distance()
-                response = json.dumps({"distance": distance, "type": "getDistance"})
-                await websocket.send(response)
+
+            try:
+                if action == "move":
+                    self.move(data.get("direction"), data.get("speed", 0))
+                elif action == "setServo":
+                    self.set_servo_angle(data.get("angle", 0))
+                elif action == "stop":
+                    self.stop()
+                elif action == "setCamTiltAngle":
+                    self.set_cam_tilt_angle(data.get("angle", 0))
+                elif action == "setCamPanAngle":
+                    self.set_cam_pan_angle(data.get("angle", 0))
+                elif action == "playMusic":
+                    self.play_music(data.get("file"))
+                elif action == "playSound":
+                    self.play_sound(data.get("file"))
+                elif action == "sayText":
+                    self.say_text(data.get("text"))
+                elif action == "takePhoto":
+                    name = self.take_photo()
+                    response = json.dumps({"payload": name, "type": action})
+                    await websocket.send(response)
+                elif action == "getDistance":
+                    distance = self.get_distance()
+                    response = json.dumps({"payload": distance, "type": action})
+                    await websocket.send(response)
+                elif action == "getBatteryVoltage":
+                    value: float = get_battery_voltage()
+                    response = json.dumps({"payload": value, "type": action})
+                    await websocket.send(response)
+                else:
+                    logger.warning(f"Unknown action: {action}")
+                    response = json.dumps({"error": "Unknown action", "type": action})
+                    await websocket.send(response)
+            except Exception as e:
+                logger.error(f"Error handling action {action}: {e}")
+                logger.error(traceback.format_exc())
+                error_response = json.dumps({"type": action, "error": str(e)})
+                await websocket.send(error_response)
 
     def take_photo(self):
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
@@ -220,7 +251,16 @@ class VideoCarController:
         self.px.stop()
 
     def get_distance(self):
-        return self.px.get_distance()
+        try:
+            distance = self.px.get_distance()
+            if distance == -1:
+                raise ValueError("Timeout waiting for echo response")
+            elif distance == -2:
+                raise ValueError("Failed to detect pulse start or end")
+            return distance
+        except Exception as e:
+            logger.error(f"Failed to get distance: {e}")
+            raise
 
     async def start_server(self):
         async with websockets.serve(self.handle_message, "0.0.0.0", 8765):

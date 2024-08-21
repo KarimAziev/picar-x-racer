@@ -21,6 +21,7 @@ export const defaultKeybindinds: Partial<
   resetCameraRotate: ["0"],
   sayText: ["k"],
   takePhoto: ["t"],
+  getBatteryVoltage: ["b"],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -41,6 +42,7 @@ export const commandLabels: Record<string, string> = {
   playSound: "Play Sound",
   sayText: "Say Text",
   takePhoto: "Make photo",
+  getBatteryVoltage: "Show Battery Voltage",
 };
 
 export const allCommandOptions = objectKeysToOptions(

@@ -1,58 +1,25 @@
 {
   "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
   "default_sound": "directives.wav",
-  "default_text": "Target",
+  "default_text": "Target identified",
   "keybindings": {
-    "accelerate": [
-      "w"
-    ],
-    "decelerate": [
-      "s"
-    ],
-    "left": [
-      "a"
-    ],
-    "right": [
-      "d"
-    ],
-    "stop": [
-      "Space"
-    ],
-    "decreaseCamPan": [
-      "ArrowLeft"
-    ],
-    "decreaseCamTilt": [
-      "ArrowDown"
-    ],
-    "increaseCamPan": [
-      "ArrowRight"
-    ],
-    "increaseCamTilt": [
-      "ArrowUp"
-    ],
-    "decreaseMaxSpeed": [
-      "-"
-    ],
-    "increaseMaxSpeed": [
-      "="
-    ],
-    "getDistance": [
-      "u"
-    ],
-    "playMusic": [
-      "m"
-    ],
-    "playSound": [
-      "o"
-    ],
-    "resetCameraRotate": [
-      "0"
-    ],
-    "sayText": [
-      "k"
-    ],
-    "takePhoto": [
-      "t"
-    ]
+    "accelerate": ["w"],
+    "decelerate": ["s"],
+    "left": ["a"],
+    "right": ["d"],
+    "stop": ["Space"],
+    "increaseCamTilt": ["ArrowUp"],
+    "decreaseCamTilt": ["ArrowDown"],
+    "decreaseCamPan": ["ArrowLeft"],
+    "increaseCamPan": ["ArrowRight"],
+    "resetCameraRotate": ["0"],
+    "decreaseMaxSpeed": ["-"],
+    "increaseMaxSpeed": ["="],
+    "playMusic": ["m"],
+    "playSound": ["o"],
+    "sayText": ["k"],
+    "takePhoto": ["t"],
+    "getDistance": ["u"],
+    "getBatteryVoltage": ["b"]
   }
 }

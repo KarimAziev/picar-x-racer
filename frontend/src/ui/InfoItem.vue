@@ -1,7 +1,7 @@
 <template>
-  <div class="info-item">
+  <div class="info-item" :class="class">
     <samp class="info-label">{{ label }}</samp>
-    <samp class="info-value">{{ value }}</samp>
+    <samp class="info-value">{{ value }}{{ valueSuffix }}</samp>
     <slot></slot>
   </div>
 </template>
@@ -10,6 +10,7 @@ defineProps<{
   label?: string;
   value?: string | number;
   valueSuffix?: string;
+  class?: string;
 }>();
 </script>
 <style scoped lang="scss">
@@ -28,6 +29,5 @@ defineProps<{
 .info-value {
   flex: 1;
   text-align: right;
-  min-width: 50px;
 }
 </style>

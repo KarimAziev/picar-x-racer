@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { messager } from "@/util/message";
 import { useImageStore } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
+import { isNumber } from "@/util/guards";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -32,6 +33,7 @@ export type StoreState = {
   url?: string;
   reconnectedEnabled?: boolean;
   distance?: number;
+  batteryVoltage?: number;
 };
 
 const defaultState: StoreState = {
@@ -70,12 +72,27 @@ export const useControllerStore = defineStore("controller", {
         try {
           data = JSON.parse(msg.data);
           const type = data?.type;
-          if (type === "getDistance") {
-            this.distance = data?.distance;
-          }
-          if (type === "takePhoto" && data.file) {
-            const imageStore = useImageStore();
-            imageStore.downloadFile(data.file);
+          switch (type) {
+            case "getDistance":
+              const value = data.payload;
+              this.distance = data.error || value;
+              break;
+            case "takePhoto":
+              const imageStore = useImageStore();
+              if (data.payload) {
+                imageStore.downloadFile(data.payload);
+              } else if (data.error) {
+                messager.error(`Couldn't take photo: ${data.error}`);
+              }
+              break;
+            case "getBatteryVoltage":
+              this.batteryVoltage = data.error || data.payload;
+              break;
+
+            default:
+              if (data.error) {
+                messager.error(data.error);
+              }
           }
         } catch (error) {}
       };
@@ -267,6 +284,9 @@ export const useControllerStore = defineStore("controller", {
     },
     right() {
       this.setDirServoAngle(30);
+    },
+    getBatteryVoltage() {
+      this.sendMessage({ action: "getBatteryVoltage" });
     },
     cleanup() {
       this.reconnectedEnabled = false;
