@@ -2,7 +2,6 @@ import { defineStore } from "pinia";
 import { messager } from "@/util/message";
 import { useImageStore } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
-import { isNumber } from "@/util/guards";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
