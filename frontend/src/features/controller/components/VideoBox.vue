@@ -16,7 +16,7 @@
       ref="videoBox"
       :style="{ width: width + 'px', height: height + 'px' }"
     >
-      <img :src="imgPath" class="image-feed" alt="Video" />
+      <ImageFeed />
       <div class="resizers" @mousedown="initResize">
         <div class="resizer top-left" data-resize="top-left"></div>
         <div class="resizer top-right" data-resize="top-right"></div>
@@ -34,8 +34,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
+import ImageFeed from "@/ui/ImageFeed.vue";
 
-const imgPath = "/mjpg";
 const fullScreen = ref(false);
 
 const windowInnerHeight = ref(window.innerHeight);
@@ -167,14 +167,6 @@ onBeforeUnmount(() => {
   justify-content: center;
 
   box-sizing: border-box;
-  user-select: none;
-}
-
-.image-feed {
-  width: 100%;
-  display: block;
-  height: 100%;
-  object-fit: contain;
   user-select: none;
 }
 
