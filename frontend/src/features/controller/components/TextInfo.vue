@@ -8,11 +8,7 @@
       value-suffix="°"
     />
     <InfoItem label="Max Speed" :value="store.maxSpeed" />
-    <InfoItem
-      label="Battery Voltage"
-      :value="batteryVoltage"
-      :value-suffix="isNumber(store.batteryVoltage) ? 'V' : ''"
-    />
+    <InfoItem label="Battery Voltage" :value="batteryVoltage" />
     <InfoItem
       label="Distance"
       :value="distance"
@@ -27,13 +23,14 @@ import { useControllerStore } from "@/features/controller/store";
 import InfoItem from "@/ui/InfoItem.vue";
 import { isNumber } from "@/util/guards";
 
+const FULLY_CHARGED_VOLTAGE = 8.4;
 const distance = computed(() =>
   isNumber(store.distance) ? store.distance.toFixed(2) : store.distance,
 );
 
 const batteryVoltage = computed(() =>
   isNumber(store.batteryVoltage)
-    ? store.batteryVoltage.toFixed(2)
+    ? `${store.batteryVoltage.toFixed(2)}V of ${FULLY_CHARGED_VOLTAGE.toFixed(2)}V`
     : store.batteryVoltage,
 );
 
