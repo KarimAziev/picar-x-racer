@@ -3,7 +3,7 @@ from util.os_checks import is_raspberry_pi
 is_os_raspberry = is_raspberry_pi()
 
 if is_os_raspberry:
-    from picarx import Picarx
+    from modules.picarx import Picarx
     from vilib import Vilib
     from robot_hat import Music
     from robot_hat.utils import (
