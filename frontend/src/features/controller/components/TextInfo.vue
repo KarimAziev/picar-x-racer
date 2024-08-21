@@ -7,16 +7,16 @@
       :value="store.servoAngle"
       value-suffix="°"
     />
-    <InfoItem
-      label="Distance"
-      :value="distance"
-      :value-suffix="isNumber(store.distance) ? 'sm' : ''"
-    />
     <InfoItem label="Max Speed" :value="store.maxSpeed" />
     <InfoItem
       label="Battery Voltage"
       :value="batteryVoltage"
       :value-suffix="isNumber(store.batteryVoltage) ? 'sm' : ''"
+    />
+    <InfoItem
+      label="Distance"
+      :value="distance"
+      :value-suffix="isNumber(store.distance) ? 'sm' : ''"
     />
   </div>
 </template>
@@ -42,8 +42,9 @@ const store = useControllerStore();
 <style scoped lang="scss">
 .info {
   display: flex;
-  width: 300px;
+  width: 350px;
   flex-direction: column;
   gap: 10px;
+  text-transform: uppercase;
 }
 </style>

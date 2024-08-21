@@ -1,6 +1,6 @@
 <template>
   <div class="info-item" :class="class">
-    <samp class="info-label">{{ label }}</samp>
+    <span class="info-label">{{ label }}</span>
     <samp class="info-value">{{ value }}{{ valueSuffix }}</samp>
     <slot></slot>
   </div>
