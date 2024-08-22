@@ -31,9 +31,9 @@ const distance = computed(() =>
 
 <style scoped lang="scss">
 .info {
+  text-transform: uppercase;
   display: flex;
   width: 350px;
   flex-direction: column;
-  gap: 10px;
 }
 </style>
