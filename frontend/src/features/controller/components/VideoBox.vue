@@ -123,6 +123,9 @@ const stopResize = () => {
 
 onMounted(() => {
   window.addEventListener("resize", handleResize);
+  if (settingsStore.settings.fullscreen) {
+    handleResize();
+  }
 });
 
 onBeforeUnmount(() => {
