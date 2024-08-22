@@ -2,79 +2,32 @@
   "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
   "default_sound": "directives.wav",
   "default_text": "Target identified",
-  "fullscreen": false,
+  "fullscreen": true,
   "video_feed_url": "/mjpg-mq",
   "battery_full_voltage": 8.4,
   "keybindings": {
-    "accelerate": [
-      "w"
-    ],
-    "decelerate": [
-      "s"
-    ],
-    "decreaseCamPan": [
-      "ArrowLeft"
-    ],
-    "decreaseCamTilt": [
-      "ArrowDown"
-    ],
-    "decreaseMaxSpeed": [
-      "-"
-    ],
-    "decreaseQuality": [
-      ","
-    ],
-    "getBatteryVoltage": [
-      "b"
-    ],
-    "getDistance": [
-      "u"
-    ],
-    "increaseCamPan": [
-      "ArrowRight"
-    ],
-    "increaseCamTilt": [
-      "ArrowUp"
-    ],
-    "increaseMaxSpeed": [
-      "="
-    ],
-    "increaseQuality": [
-      ".",
-      "PageUp"
-    ],
-    "left": [
-      "a"
-    ],
-    "openGeneralSettings": [
-      "h"
-    ],
-    "openShortcutsSettings": [
-      "Shift-?"
-    ],
-    "playMusic": [
-      "m"
-    ],
-    "playSound": [
-      "o"
-    ],
-    "resetCameraRotate": [
-      "0"
-    ],
-    "right": [
-      "d"
-    ],
-    "sayText": [
-      "k"
-    ],
-    "stop": [
-      "Space"
-    ],
-    "takePhoto": [
-      "t"
-    ],
-    "toggleFullscreen": [
-      "f"
-    ]
+    "accelerate": ["w"],
+    "decelerate": ["s"],
+    "decreaseCamPan": ["ArrowLeft"],
+    "decreaseCamTilt": ["ArrowDown"],
+    "decreaseMaxSpeed": ["-"],
+    "decreaseQuality": [",", "PageDown"],
+    "getBatteryVoltage": ["b"],
+    "getDistance": ["u"],
+    "increaseCamPan": ["ArrowRight"],
+    "increaseCamTilt": ["ArrowUp"],
+    "increaseMaxSpeed": ["="],
+    "increaseQuality": [".", "PageUp"],
+    "left": ["a"],
+    "openGeneralSettings": ["h"],
+    "openShortcutsSettings": ["Shift-?"],
+    "playMusic": ["m"],
+    "playSound": ["o"],
+    "resetCameraRotate": ["0"],
+    "right": ["d"],
+    "sayText": ["k"],
+    "stop": ["Space"],
+    "takePhoto": ["t"],
+    "toggleFullscreen": ["f"]
   }
 }
