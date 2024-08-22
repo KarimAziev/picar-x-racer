@@ -1,14 +1,14 @@
 <template>
-  <Tabs value="0">
+  <Tabs v-model:value="popupStore.tab" lazy>
     <TabList>
-      <Tab value="0">General</Tab>
-      <Tab value="1">Keybindings</Tab>
+      <Tab :value="SettingsTab.GENERAL">General</Tab>
+      <Tab :value="SettingsTab.KEYBINDINGS">Keybindings</Tab>
     </TabList>
     <TabPanels>
-      <TabPanel value="0">
+      <TabPanel :value="SettingsTab.GENERAL">
         <GeneralPanel />
       </TabPanel>
-      <TabPanel value="1">
+      <TabPanel :value="SettingsTab.KEYBINDINGS">
         <KeybindingsPanel />
       </TabPanel>
     </TabPanels>
@@ -23,4 +23,17 @@ import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
 import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vue";
 import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
+import { SettingsTab } from "@/features/settings/enums";
+import { usePopupStore } from "@/features/settings/stores";
+
+const popupStore = usePopupStore();
 </script>
+<style scoped lang="scss">
+.p-tab-active {
+  color: var(--color-text);
+  font-family: var(--font-family);
+}
+.p-tab {
+  font-family: var(--font-family);
+}
+</style>

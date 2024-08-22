@@ -13,7 +13,9 @@ import { useSettingsStore } from "@/features/settings/stores";
 import type { ControllerActionName } from "@/features/controller/store";
 import { formatKeyEventItem } from "@/util/keyboard-util";
 import { groupKeys } from "@/features/settings/util";
+import { usePopupStore } from "@/features/settings/stores";
 
+const popupStore = usePopupStore();
 const settings = useSettingsStore();
 const store = useControllerStore();
 const ignored: ControllerActionName[] = [
@@ -37,7 +39,7 @@ const handleKeyUp = (event: KeyboardEvent) => {
 };
 
 const handleKeyDown = (event: KeyboardEvent) => {
-  if (settings.open) {
+  if (popupStore.isOpen) {
     return;
   }
 

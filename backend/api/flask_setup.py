@@ -20,12 +20,14 @@ def create_app(controller: "VideoCarController"):
     from api.file_management import file_management_bp
     from api.settings import settings_bp
     from api.qrcode_routes import qrcode_bp
+    from api.battery import battery_bp
     from api.main import main_bp
 
     app.register_blueprint(video_feed_bp)
     app.register_blueprint(qrcode_bp)
     app.register_blueprint(file_management_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(battery_bp)
     app.register_blueprint(main_bp)
 
     app.config["UPLOAD_FOLDER"] = controller.UPLOAD_FOLDER

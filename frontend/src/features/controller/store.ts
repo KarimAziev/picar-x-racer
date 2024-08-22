@@ -1,7 +1,13 @@
 import { defineStore } from "pinia";
 import { messager } from "@/util/message";
-import { useImageStore } from "@/features/settings/stores";
+import {
+  useImageStore,
+  useSettingsStore,
+  usePopupStore,
+  useBatteryStore,
+} from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
+import { SettingsTab } from "@/features/settings/enums";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -32,7 +38,6 @@ export type StoreState = {
   url?: string;
   reconnectedEnabled?: boolean;
   distance?: number;
-  batteryVoltage?: number;
 };
 
 const defaultState: StoreState = {
@@ -83,9 +88,6 @@ export const useControllerStore = defineStore("controller", {
               } else if (data.error) {
                 messager.error(`Couldn't take photo: ${data.error}`);
               }
-              break;
-            case "getBatteryVoltage":
-              this.batteryVoltage = data.error || data.payload;
               break;
 
             default:
@@ -278,6 +280,7 @@ export const useControllerStore = defineStore("controller", {
     takePhoto(): void {
       this.sendMessage({ action: "takePhoto" });
     },
+
     left() {
       this.setDirServoAngle(-30);
     },
@@ -285,7 +288,30 @@ export const useControllerStore = defineStore("controller", {
       this.setDirServoAngle(30);
     },
     getBatteryVoltage() {
-      this.sendMessage({ action: "getBatteryVoltage" });
+      const batteryStore = useBatteryStore();
+      batteryStore.fetchBatteryStatus();
+    },
+    toggleFullscreen() {
+      const settingsStore = useSettingsStore();
+      settingsStore.settings.fullscreen = !settingsStore.settings.fullscreen;
+    },
+    openShortcutsSettings() {
+      const popupStore = usePopupStore();
+      popupStore.tab = SettingsTab.KEYBINDINGS;
+      popupStore.isOpen = true;
+    },
+    openGeneralSettings() {
+      const popupStore = usePopupStore();
+      popupStore.tab = SettingsTab.GENERAL;
+      popupStore.isOpen = true;
+    },
+    increaseQuality() {
+      const settingsStore = useSettingsStore();
+      settingsStore.increaseQuality();
+    },
+    decreaseQuality() {
+      const settingsStore = useSettingsStore();
+      settingsStore.decreaseQuality();
     },
     cleanup() {
       this.reconnectedEnabled = false;

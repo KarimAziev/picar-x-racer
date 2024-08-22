@@ -10,7 +10,7 @@ where the Raspberry Pi hardware is not available.
 import time
 import os
 import re
-import random
+from .battery import Battery
 
 
 def set_volume(value):
@@ -114,6 +114,9 @@ def reset_mcu():
     print("Mock: MCU reset done.")
 
 
+battery = Battery()
+
+
 def get_battery_voltage():
     """
     Generate the total battery voltage by simulating the reading from two 18650 batteries.
@@ -130,11 +133,4 @@ def get_battery_voltage():
     :return: The total battery voltage in volts (V), which is a sum of two battery voltages.
     :rtype: float
     """
-    # Assume each battery voltage is between 3.0V and 4.2V
-    battery_voltage_1 = random.uniform(3.0, 4.2)
-    battery_voltage_2 = random.uniform(3.0, 4.2)
-
-    # Total voltage is the sum of both battery voltages
-    total_voltage = battery_voltage_1 + battery_voltage_2
-
-    return total_voltage
+    return battery.get_battery_voltage()

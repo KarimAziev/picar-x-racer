@@ -1,7 +1,7 @@
 <template>
-  <div class="info-item" :class="class">
+  <div class="info-item typed" :class="class">
     <span class="info-label">{{ label }}</span>
-    <samp class="info-value">{{ value }}&nbsp;{{ valueSuffix }}</samp>
+    <samp class="info-value">{{ value }}{{ valueSuffix }}</samp>
     <slot></slot>
   </div>
 </template>
@@ -14,9 +14,9 @@ defineProps<{
 }>();
 </script>
 <style scoped lang="scss">
+@import "@/assets/animation.scss";
 .info-item {
   display: flex;
-  color: var(--p-primary-200);
   justify-content: space-between;
   align-items: center;
 }

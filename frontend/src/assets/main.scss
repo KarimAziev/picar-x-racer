@@ -1,35 +1,13 @@
-@import './base.scss';
+@import "./base.scss";
 
 #app {
-  /* max-width: 1280px; */
   margin: 0 auto;
-  /* padding: 2rem; */
   font-weight: normal;
 }
 
-a,
-.violet {
+a {
   text-decoration: none;
   color: var(--color-text);
   transition: 0.4s;
   padding: 3px;
-}
-
-@media (hover: hover) {
-  a:hover {
-    background-color: var(--vt-c-violet);
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    /* margin: 0; */
-    /* min-height: 100vh; */
-  }
-
-  #app {
-    /* display: grid; */
-    /* grid-template-columns: 1fr 1fr; */
-    /* padding: 0 2rem; */
-  }
 }

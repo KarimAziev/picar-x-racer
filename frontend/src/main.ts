@@ -1,6 +1,5 @@
-import "./assets/main.scss";
 import "primeicons/primeicons.css";
-
+import "./assets/main.scss";
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import PrimeVue from "primevue/config";

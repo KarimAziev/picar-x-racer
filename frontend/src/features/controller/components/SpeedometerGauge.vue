@@ -102,7 +102,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 10px solid var(--p-primary-400);
+  border: 10px solid var(--color-text);
   opacity: 0.5;
   background: rgba(0, 0, 0, 0.4);
   position: absolute;
@@ -114,7 +114,7 @@ onMounted(() => {
 .gauge-center {
   width: 120px;
   height: 120px;
-  background: var(--p-primary-400);
+  background: var(--color-text);
   border-radius: 50%;
   position: absolute;
   top: 50%;
@@ -166,7 +166,7 @@ onMounted(() => {
 }
 
 .center-label {
-  color: var(--p-primary-400);
+  color: var(--color-text);
   font-size: 2rem;
   position: absolute;
   bottom: 40%;
@@ -192,6 +192,6 @@ onMounted(() => {
   height: 2rem;
   text-align: center;
   transform-origin: bottom center;
-  color: var(--p-primary-400);
+  color: var(--color-text);
 }
 </style>

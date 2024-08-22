@@ -2,20 +2,24 @@
   <Button
     severity="secondary"
     icon="pi pi-bars"
-    @click="store.open = true"
+    @click="popupStore.isOpen = true"
     class="drawer-button"
   />
   <Dialog
-    v-model:visible="store.open"
+    v-model:visible="popupStore.isOpen"
     header="Settings"
     dismissableMask
-    closable
     modal
-    :closeOnEscape="false"
+    :closable="!popupStore.isKeyRecording"
+    :closeOnEscape="!popupStore.isKeyRecording"
   >
     <Settings />
     <div class="flex justify-content-end gap-2">
-      <Button type="button" label="Close" @click="store.open = false"></Button>
+      <Button
+        type="button"
+        label="Close"
+        @click="popupStore.isOpen = false"
+      ></Button>
     </div>
   </Dialog>
 </template>
@@ -24,9 +28,9 @@
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import Settings from "@/features/settings/Settings.vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { usePopupStore } from "@/features/settings/stores";
 
-const store = useSettingsStore();
+const popupStore = usePopupStore();
 </script>
 <style scoped lang="scss">
 .drawer-button {
@@ -34,5 +38,9 @@ const store = useSettingsStore();
   z-index: 12;
   top: 5px;
   left: 5px;
+}
+.p-dialog {
+  color: var(--color-text);
+  font-family: var(--font-family);
 }
 </style>

@@ -11,10 +11,23 @@
           cols="30"
         />
       </div>
+      <div class="field">
+        <label for="video_feed_url">Video URL</label>
+        <Select
+          id="video_feed_url"
+          @blur="autoSaveSettings"
+          class="select"
+          v-model="store.settings.video_feed_url"
+          optionLabel="label"
+          optionValue="value"
+          :options="videoFeedOptions"
+        />
+      </div>
       <Divider />
       <div class="field">
         <label for="default_sound">Default Sound</label>
         <Select
+          id="default_sound"
           @blur="autoSaveSettings"
           class="select"
           v-model="store.settings.default_sound"
@@ -26,6 +39,7 @@
       <div class="field">
         <label for="default_music">Default Music</label>
         <Select
+          id="default_music"
           @blur="autoSaveSettings"
           class="select"
           v-model="store.settings.default_music"
@@ -38,11 +52,13 @@
       </Panel>
     </div>
   </Panel>
+  <Toast />
 </template>
 
 <script setup lang="ts">
 import { onMounted } from "vue";
 import Divider from "primevue/divider";
+import Toast from "primevue/toast";
 
 import {
   useSettingsStore,
@@ -56,6 +72,12 @@ import Textarea from "primevue/textarea";
 import Sounds from "@/features/settings/components/Sounds.vue";
 import Music from "@/features/settings/components/Music.vue";
 import Images from "@/features/settings/components/Images.vue";
+import { VideoFeedURL } from "@/features/settings/enums";
+
+const videoFeedOptions = Object.entries(VideoFeedURL).map(([key, value]) => ({
+  value,
+  label: key.toUpperCase(),
+}));
 
 const store = useSettingsStore();
 const musicStore = useMusicStore();
@@ -66,7 +88,6 @@ function autoSaveSettings() {
 }
 
 onMounted(() => {
-  store.fetchSettings();
   musicStore.fetchData();
   soundStore.fetchData();
 });

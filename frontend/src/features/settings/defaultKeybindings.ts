@@ -22,6 +22,11 @@ export const defaultKeybindinds: Partial<
   sayText: ["k"],
   takePhoto: ["t"],
   getBatteryVoltage: ["b"],
+  toggleFullscreen: ["f"],
+  openShortcutsSettings: ["?"],
+  openGeneralSettings: ["g"],
+  increaseQuality: ["."],
+  decreaseQuality: [","],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -43,6 +48,11 @@ export const commandLabels: Record<string, string> = {
   sayText: "Say Text",
   takePhoto: "Make photo",
   getBatteryVoltage: "Show Battery Voltage",
+  toggleFullscreen: "Toggle Fullscreen",
+  openShortcutsSettings: "Open Shortcuts Settings",
+  openGeneralSettings: "Open General Settings",
+  increaseQuality: "Increase Video Quality",
+  decreaseQuality: "Decrease Video Quality",
 };
 
 export const allCommandOptions = objectKeysToOptions(

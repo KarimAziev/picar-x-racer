@@ -52,7 +52,7 @@
       </div>
     </form>
     <KeyRecorder
-      v-if="showRecorder"
+      v-if="keyRecorderOpen"
       :onSubmit="handleKeySubmit"
       :onCancel="handleKeyCancel"
       :validate="validateKey"
@@ -67,13 +67,16 @@ import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Button from "primevue/button";
 import KeyRecorder from "./KeyRecorder.vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import {
   defaultKeybindinds,
   allCommandOptions,
 } from "@/features/settings/defaultKeybindings";
 
+const popupStore = usePopupStore();
+
 const store = useSettingsStore();
+const keyRecorderOpen = computed(() => popupStore.isKeyRecording);
 
 const commandsToOptions = (obj: Record<string, string[]>): Fields => {
   const makeKeybindingItem = (key: string): KeybindingField => ({
@@ -143,8 +146,8 @@ export interface DynamicFormParams {
   onReset?: () => { fields: Fields };
 }
 
-const showRecorder = ref(false);
 const currentRecordingIndex = ref<number | null>(null);
+
 const pairsToConfig = (fields: Fields) =>
   fields.reduce(
     (acc, [cmdItem, keyItem]) => {
@@ -215,19 +218,19 @@ const validateKey = (key: string, idx: number) => {
 const startRecording = (event: Event, index: number) => {
   event?.preventDefault();
   currentRecordingIndex.value = index;
-  showRecorder.value = true;
+  popupStore.isKeyRecording = true;
 };
 
 const handleKeySubmit = (keytext: string) => {
   if (currentRecordingIndex.value !== null) {
     fields.value[currentRecordingIndex.value][1].value = keytext;
   }
-  showRecorder.value = false;
+  popupStore.isKeyRecording = false;
   validateAll();
 };
 
 const handleKeyCancel = () => {
-  showRecorder.value = false;
+  popupStore.isKeyRecording = false;
 };
 
 const handleSubmit = async () => {

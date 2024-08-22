@@ -6,7 +6,7 @@
           v-tooltip="'Toggle Fullscreen'"
           id="fullscreen"
           class="fullscreen-switch"
-          v-model="fullScreen"
+          v-model="settingsStore.settings.fullscreen"
         />
       </div>
     </div>
@@ -17,7 +17,7 @@
       :style="{ width: width + 'px', height: height + 'px' }"
     >
       <ImageFeed />
-      <div class="resizers" @mousedown="initResize">
+      <div class="resizers" @mousedown="initResize" v-if="isResizable">
         <div class="resizer top-left" data-resize="top-left"></div>
         <div class="resizer top-right" data-resize="top-right"></div>
         <div class="resizer bottom-left" data-resize="bottom-left"></div>
@@ -32,11 +32,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
 import ImageFeed from "@/ui/ImageFeed.vue";
+import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
 
-const fullScreen = ref(false);
+const popupStore = usePopupStore();
+const settingsStore = useSettingsStore();
+
+const isResizable = computed(() => !popupStore.isOpen);
 
 const windowInnerHeight = ref(window.innerHeight);
 const windowInnerWidth = ref(window.innerWidth);
@@ -57,7 +61,7 @@ const resetSize = () => {
 };
 
 watch(
-  () => fullScreen.value,
+  () => settingsStore.settings.fullscreen,
   (newVal) => {
     if (newVal) {
       setFullWidthHeight();
@@ -71,7 +75,7 @@ const handleResize = () => {
   windowInnerHeight.value = window.innerHeight;
   windowInnerWidth.value = window.innerWidth;
 
-  if (fullScreen.value) {
+  if (settingsStore.settings.fullscreen) {
     setFullWidthHeight();
   }
 };
