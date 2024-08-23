@@ -1,7 +1,6 @@
 import { isAxiosError } from "axios";
 
 import { isError } from "@/util/guards";
-import { messager } from "@/util/message";
 
 export const retrieveResponseBody = (error: unknown) => {
   try {
@@ -30,9 +29,4 @@ export const retrieveError = <Err>(error: Err) => {
       text: (error as Error)?.message || "An error occured",
     };
   }
-};
-
-export const handleError = <Err>(error: Err, title?: string) => {
-  const data = retrieveError(error);
-  messager.error(data.text, title ? { title } : data);
 };

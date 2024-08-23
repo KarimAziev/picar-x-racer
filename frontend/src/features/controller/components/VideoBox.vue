@@ -3,25 +3,34 @@
     <FullscreenToggle />
     <div class="video-box" ref="videoBox">
       <ImageFeed />
-      <div class="resizers" @mousedown="initResize" v-if="isResizable">
-        <div class="resizer top-left" data-resize="top-left"></div>
-        <div class="resizer top-right" data-resize="top-right"></div>
-        <div class="resizer bottom-left" data-resize="bottom-left"></div>
-        <div class="resizer bottom-right" data-resize="bottom-right"></div>
-        <div class="resizer top" data-resize="top"></div>
-        <div class="resizer right" data-resize="right"></div>
-        <div class="resizer bottom" data-resize="bottom"></div>
-        <div class="resizer left" data-resize="left"></div>
-      </div>
+      <component :is="Resizers" v-model="size" v-if="isResizable" />
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
+import {
+  ref,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+  computed,
+  defineAsyncComponent,
+} from "vue";
+import ProgressSpinner from "primevue/progressspinner";
 import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
-import ImageFeed from "@/ui/ImageFeed.vue";
 import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
+
+const Resizers = defineAsyncComponent({
+  loader: () => import("@/ui/Resizers.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+const ImageFeed = defineAsyncComponent({
+  loader: () => import("@/ui/ImageFeed.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
 
 const [defaultWidth, defaultHeight] = [1280, 720];
 const aspectRatio = defaultWidth / defaultHeight;
@@ -33,9 +42,7 @@ const isResizable = computed(() => !popupStore.isOpen);
 
 const windowInnerHeight = ref(window.innerHeight);
 const windowInnerWidth = ref(window.innerWidth);
-
-const width = ref(defaultWidth);
-const height = ref(defaultHeight);
+const size = ref({ width: defaultWidth, height: defaultHeight });
 
 const videoBox = ref<HTMLDivElement | null>(null);
 
@@ -44,18 +51,27 @@ const setFullWidthHeight = () => {
 
   if (ratio > aspectRatio) {
     // Window is wider than the aspect ratio
-    height.value = windowInnerHeight.value;
-    width.value = aspectRatio * windowInnerHeight.value;
+    size.value.height = windowInnerHeight.value;
+    size.value.width = aspectRatio * windowInnerHeight.value;
   } else {
     // Window is taller than or equal to the aspect ratio
-    width.value = windowInnerWidth.value;
-    height.value = windowInnerWidth.value / aspectRatio;
+    size.value.width = windowInnerWidth.value;
+    size.value.height = windowInnerWidth.value / aspectRatio;
   }
 };
 
 const resetSize = () => {
-  width.value = defaultWidth;
-  height.value = defaultHeight;
+  size.value.width = defaultWidth;
+  size.value.height = defaultHeight;
+};
+
+const handleResize = () => {
+  windowInnerHeight.value = window.innerHeight;
+  windowInnerWidth.value = window.innerWidth;
+
+  if (fullscreen.value) {
+    setFullWidthHeight();
+  }
 };
 
 watch(
@@ -70,81 +86,21 @@ watch(
 );
 
 watch(
-  () => width.value,
+  () => size.value.width,
   (newVal) => {
     if (videoBox.value) {
       videoBox.value.style.width = `${newVal}px`;
     }
   },
 );
-
 watch(
-  () => height.value,
+  () => size.value.height,
   (newVal) => {
     if (videoBox.value) {
       videoBox.value.style.height = `${newVal}px`;
     }
   },
 );
-
-const handleResize = () => {
-  windowInnerHeight.value = window.innerHeight;
-  windowInnerWidth.value = window.innerWidth;
-
-  if (fullscreen.value) {
-    setFullWidthHeight();
-  }
-};
-
-const resizing = ref(false);
-const resizeType = ref("");
-const startX = ref(0);
-const startY = ref(0);
-const startWidth = ref(0);
-const startHeight = ref(0);
-
-const initResize = (event: MouseEvent) => {
-  if (event.button !== 0) {
-    return;
-  }
-  if (!(event.target as HTMLElement).classList.contains("resizer")) {
-    return;
-  }
-  resizing.value = true;
-  resizeType.value = (event.target as HTMLElement).dataset.resize || "";
-  startX.value = event.clientX;
-  startY.value = event.clientY;
-  startWidth.value = width.value;
-  startHeight.value = height.value;
-
-  window.addEventListener("mouseup", stopResize);
-  window.addEventListener("mousemove", doResize);
-};
-
-const doResize = (event: MouseEvent) => {
-  if (!resizing.value) {
-    return;
-  }
-  if (resizeType.value.includes("right")) {
-    width.value = startWidth.value + (event.clientX - startX.value);
-  } else if (resizeType.value.includes("left")) {
-    width.value = startWidth.value - (event.clientX - startX.value);
-  }
-  if (resizeType.value.includes("bottom")) {
-    height.value = startHeight.value + (event.clientY - startY.value);
-  } else if (resizeType.value.includes("top")) {
-    height.value = startHeight.value - (event.clientY - startY.value);
-  }
-};
-
-const stopResize = () => {
-  if (!resizing.value) {
-    return;
-  }
-  resizing.value = false;
-  window.removeEventListener("mousemove", doResize);
-  window.removeEventListener("mouseup", stopResize);
-};
 
 onMounted(() => {
   window.addEventListener("resize", handleResize);
@@ -171,99 +127,9 @@ onBeforeUnmount(() => {
 
 .video-box {
   position: relative;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
-  box-sizing: border-box;
   user-select: none;
-}
-
-.resizers {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  pointer-events: none;
-  z-index: 10;
-  overflow: hidden;
-}
-
-.resizer {
-  position: absolute;
-  pointer-events: all;
-  opacity: 0.1;
-}
-
-$base-size: 120px;
-
-.resizer.top-left,
-.resizer.top-right,
-.resizer.bottom-left,
-.resizer.bottom-right {
-  width: $base-size;
-  height: $base-size;
-  z-index: 11;
-  border-radius: 50%;
-  background-color: var(--vt-c-divider-dark-1);
-}
-
-.resizer.top-left {
-  top: calc(-#{$base-size} / 2);
-  left: calc(-#{$base-size} / 2);
-  cursor: nwse-resize;
-}
-
-.resizer.top-right {
-  top: calc(-#{$base-size} / 2);
-  right: calc(-#{$base-size} / 2);
-  cursor: nesw-resize;
-}
-
-.resizer.bottom-left {
-  bottom: calc(-#{$base-size} / 2);
-  left: calc(-#{$base-size} / 2);
-  cursor: nesw-resize;
-}
-
-.resizer.bottom-right {
-  bottom: calc(-#{$base-size} / 2);
-  right: calc(-#{$base-size} / 2);
-
-  cursor: nwse-resize;
-}
-
-.resizer.top,
-.resizer.bottom {
-  left: 50%;
-  width: 100%;
-  height: 50%;
-  cursor: ns-resize;
-  margin-left: -50%;
-}
-
-.resizer.top {
-  top: -5px;
-}
-
-.resizer.bottom {
-  bottom: -5px;
-}
-
-.resizer.left,
-.resizer.right {
-  width: 20px;
-  height: 100%;
-  cursor: ew-resize;
-}
-
-.resizer.left {
-  left: -5px;
-}
-
-.resizer.right {
-  right: -5px;
 }
 </style>

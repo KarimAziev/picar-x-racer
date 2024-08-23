@@ -26,11 +26,13 @@
 import { ref } from "vue";
 import { default as FileUpload } from "primevue/fileupload";
 import Panel from "primevue/panel";
-import { useToast } from "primevue/usetoast";
+
 import type { FileUploadUploadEvent } from "primevue/fileupload";
 import FileList from "@/features/settings/components/FileList.vue";
 
-const toast = useToast();
+import { useMessagerStore } from "@/features/messager/store";
+
+const messager = useMessagerStore();
 const loading = ref(false);
 
 const props = defineProps<{
@@ -47,12 +49,7 @@ const onUpload = async (_event: FileUploadUploadEvent) => {
   if (props.fetchData) {
     await props.fetchData();
   }
-  toast.add({
-    severity: "info",
-    summary: "Success",
-    detail: "File Uploaded",
-    life: 3000,
-  });
+  messager.info("File Uploaded");
 };
 </script>
 

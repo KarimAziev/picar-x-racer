@@ -9,21 +9,21 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted } from "vue";
-import VideoBox from "@/features/controller/components/VideoBox.vue";
-import { useSettingsStore } from "@/features/settings/stores";
-import Controller from "@/features/controller/components/Controller.vue";
+import ProgressSpinner from "primevue/progressspinner";
+import { defineAsyncComponent } from "vue";
 
-const settings = useSettingsStore();
+const VideoBox = defineAsyncComponent({
+  loader: () => import("@/features/controller/components/VideoBox.vue"),
+  loadingComponent: ProgressSpinner,
+});
 
-onMounted(() => {
-  settings.fetchSettings();
+const Controller = defineAsyncComponent({
+  loader: () => import("@/features/controller/components/Controller.vue"),
+  loadingComponent: ProgressSpinner,
 });
 </script>
 
 <style scoped lang="scss">
-@import "/src/assets/scss/variables.scss";
-
 .wrapper {
   width: 100%;
   display: flex;
@@ -32,15 +32,14 @@ onMounted(() => {
 .content {
   flex: auto;
 }
-
 .right {
   position: absolute;
   right: 0;
   width: 400px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  height: 100%;
 }
 </style>

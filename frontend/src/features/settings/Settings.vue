@@ -31,9 +31,7 @@ const popupStore = usePopupStore();
 <style scoped lang="scss">
 .p-tab-active {
   color: var(--color-text);
-  font-family: var(--font-family);
 }
 .p-tab {
-  font-family: var(--font-family);
 }
 </style>

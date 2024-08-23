@@ -1,5 +1,4 @@
 import { defineStore } from "pinia";
-import { messager } from "@/util/message";
 import {
   useImageStore,
   useSettingsStore,
@@ -8,6 +7,7 @@ import {
 } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
+import { useMessagerStore } from "@/features/messager/store";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -58,6 +58,7 @@ export const useControllerStore = defineStore("controller", {
   state: (): StoreState => ({ ...defaultState }),
   actions: {
     initializeWebSocket(url: string) {
+      const messager = useMessagerStore();
       this.url = url;
 
       this.websocket = new WebSocket(url);
@@ -65,6 +66,7 @@ export const useControllerStore = defineStore("controller", {
       this.websocket!.onopen = () => {
         this.loading = false;
         console.log(`WebSocket connection established with URL: ${url}`);
+        messager.info("Connection status: Open");
         this.connected = true;
         while (this.messageQueue.length > 0) {
           this.websocket!.send(this.messageQueue.shift()!);
@@ -80,8 +82,20 @@ export const useControllerStore = defineStore("controller", {
             case "getDistance":
               const value = data.payload;
               this.distance = data.error || value;
+              const text = data.error
+                ? `DISTANCE ERROR: ${this.distance}`
+                : `DISTANCE: ${value}`;
+              if (data.error) {
+                setTimeout(() => {
+                  messager.info(text);
+                }, 1000);
+              } else {
+                messager.info(`DISTANCE: ${value.toFixed(2)} sm`);
+              }
+
               break;
             case "takePhoto":
+              messager.info("Recorded");
               const imageStore = useImageStore();
               if (data.payload) {
                 imageStore.downloadFile(data.payload);
@@ -115,9 +129,11 @@ export const useControllerStore = defineStore("controller", {
     },
 
     retryConnection() {
+      const messager = useMessagerStore();
       if (this.reconnectedEnabled && !this.connected) {
         setTimeout(() => {
           console.log("Retrying WebSocket connection...");
+          messager.info("Retrying connection...");
           if (this.url) {
             this.initializeWebSocket(this.url);
           }
@@ -135,6 +151,8 @@ export const useControllerStore = defineStore("controller", {
     },
 
     close() {
+      const messager = useMessagerStore();
+      messager.info("Closing connection...");
       this.websocket?.close();
     },
     accelerate() {
@@ -262,22 +280,32 @@ export const useControllerStore = defineStore("controller", {
     },
 
     playMusic(): void {
+      const messager = useMessagerStore();
+      messager.info("Playback...");
       this.sendMessage({ action: "playMusic" });
     },
 
     playSound(): void {
+      const messager = useMessagerStore();
+      messager.info("Playback sound...");
       this.sendMessage({ action: "playSound" });
     },
 
     sayText(): void {
+      const messager = useMessagerStore();
+      messager.info("Talking..");
       this.sendMessage({ action: "sayText" });
     },
 
     getDistance(): void {
+      const messager = useMessagerStore();
+      messager.info("Distance measure...");
       this.sendMessage({ action: "getDistance" });
     },
 
     takePhoto(): void {
+      const messager = useMessagerStore();
+      messager.info("Recording photo...");
       this.sendMessage({ action: "takePhoto" });
     },
 

@@ -72,7 +72,7 @@ onUnmounted(() => {
   white-space: nowrap;
   animation:
     typing 2s steps(30, end),
-    blink-caret 1s steps(1, end) reverse;
+    blink-caret 2s steps(1, end) reverse;
   border-right: 3px solid transparent;
 }
 .typed::after {

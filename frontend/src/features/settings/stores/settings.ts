@@ -1,12 +1,16 @@
 import { defineStore } from "pinia";
 import axios from "axios";
-import { handleError } from "@/util/error";
 import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
-import { messager } from "@/util/message";
 import { VideoFeedURL } from "@/features/settings/enums";
+import { useMessagerStore } from "@/features/messager/store";
+
+export const wait = async (delay: number) =>
+  new Promise((resolve) => setTimeout(resolve, delay));
 
 export interface State {
   loading?: boolean;
+  loaded?: boolean;
+  saving?: boolean;
   settings: {
     fullscreen: boolean;
     default_text: string;
@@ -35,34 +39,48 @@ export const useStore = defineStore("settings", {
 
   actions: {
     async fetchSettings() {
+      const messager = useMessagerStore();
       try {
+        if (!this.loaded) {
+          messager.info("Loading...");
+        }
+
         this.loading = true;
+        await wait(1000);
         const response = await axios.get("/api/settings");
+
         const data = {
           ...this.settings,
           keybindings: { ...defaultKeybindinds },
           ...response.data,
         };
         this.settings = data;
+        if (!this.loaded) {
+          messager.info("Memory loaded: OK");
+        }
       } catch (error) {
         console.error("Error fetching settings:", error);
-        handleError(error, "Error fetching settings");
+        messager.handleError(error, "Error fetching settings");
       } finally {
         this.loading = false;
+        // this.loaded = true;
       }
     },
     async saveSettings() {
-      this.loading = true;
+      const messager = useMessagerStore();
+      this.saving = true;
       try {
+        await wait(2000);
         await axios.post("/api/settings", this.settings);
         messager.success("Settings saved");
       } catch (error) {
-        handleError(error, "Error saving settings");
+        messager.handleError(error, "Error saving settings");
       } finally {
-        this.loading = false;
+        this.saving = false;
       }
     },
     increaseQuality() {
+      const messager = useMessagerStore();
       const levels = [VideoFeedURL.lq, VideoFeedURL.mq, VideoFeedURL.hq];
       const idx = levels.indexOf(this.settings.video_feed_url);
       const nextURL = levels[idx + 1];
@@ -74,6 +92,7 @@ export const useStore = defineStore("settings", {
       }
     },
     decreaseQuality() {
+      const messager = useMessagerStore();
       const levels = [VideoFeedURL.lq, VideoFeedURL.mq, VideoFeedURL.hq];
       const idx = levels.indexOf(this.settings.video_feed_url);
       const nextURL = levels[idx - 1];

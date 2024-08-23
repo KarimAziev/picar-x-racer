@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import axios from "axios";
-import { handleError } from "@/util/error";
+import { useMessagerStore } from "@/features/messager/store";
 import { downloadFile, removeFile } from "@/features/settings/api";
 import { APIMediaType } from "@/features/settings/interface";
 
@@ -18,23 +18,34 @@ export const useStore = defineStore("images", {
   state: () => ({ ...defaultState }),
   actions: {
     async fetchData() {
+      const messager = useMessagerStore();
       const mediaType: APIMediaType = "image";
       try {
         this.loading = true;
         const response = await axios.get(`/api/list_files/${mediaType}`);
         this.data = response.data.files;
       } catch (error) {
-        handleError(error, "Error fetching images");
+        messager.handleError(error, "Error fetching images");
       } finally {
         this.loading = false;
       }
     },
 
     async removeFile(file: string) {
-      return await removeFile(mediaType, file);
+      const messager = useMessagerStore();
+      try {
+        await removeFile(mediaType, file);
+      } catch (error) {
+        messager.handleError(error);
+      }
     },
     async downloadFile(fileName: string) {
-      return await downloadFile(mediaType, fileName);
+      const messager = useMessagerStore();
+      try {
+        await downloadFile(mediaType, fileName);
+      } catch (error) {
+        messager.handleError(error);
+      }
     },
   },
 });

@@ -31,10 +31,10 @@
 import { onMounted, ref } from "vue";
 import Button from "primevue/button";
 import Loading from "@/ui/Loading.vue";
-import { useToast } from "primevue/usetoast";
-const loading = ref(false);
+import { useMessagerStore } from "@/features/messager/store";
 
-const toast = useToast();
+const messager = useMessagerStore();
+const loading = ref(false);
 const props = defineProps<{
   files: string[];
   fetchData?: () => Promise<any>;
@@ -49,13 +49,10 @@ const handleRemove = async (track: string) => {
       if (props.fetchData) {
         await props.fetchData();
       }
-      toast.add({
-        severity: "info",
-        summary: "Success",
-        detail: "File Removed",
-        life: 3000,
-      });
-    } catch (_err) {}
+      messager.info("File Removed");
+    } catch (err) {
+      messager.error("Error: File is not removed ");
+    }
   }
 };
 

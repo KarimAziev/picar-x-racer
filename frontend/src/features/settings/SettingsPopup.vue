@@ -17,6 +17,13 @@
     <div class="flex justify-content-end gap-2">
       <Button
         type="button"
+        label="Save"
+        :loading="isSaving"
+        @click="saveSettings"
+      ></Button>
+      <Button
+        type="button"
+        outlined
         label="Close"
         @click="popupStore.isOpen = false"
       ></Button>
@@ -27,10 +34,17 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
+import { computed } from "vue";
 import Settings from "@/features/settings/Settings.vue";
-import { usePopupStore } from "@/features/settings/stores";
+import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
 
 const popupStore = usePopupStore();
+const settingsStore = useSettingsStore();
+const isSaving = computed(() => settingsStore.saving);
+
+const saveSettings = () => {
+  settingsStore.saveSettings();
+};
 </script>
 <style scoped lang="scss">
 .drawer-button {
