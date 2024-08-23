@@ -15,7 +15,7 @@ const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
   width: 100%;
   display: block;
   height: 100%;
-  object-fit: contain;
+
   user-select: none;
 }
 </style>

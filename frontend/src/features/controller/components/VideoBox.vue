@@ -1,11 +1,7 @@
 <template>
   <div class="video-box-container">
     <FullscreenToggle />
-    <div
-      class="video-box"
-      ref="videoBox"
-      :style="{ width: width + 'px', height: height + 'px' }"
-    >
+    <div class="video-box" ref="videoBox">
       <ImageFeed />
       <div class="resizers" @mousedown="initResize" v-if="isResizable">
         <div class="resizer top-left" data-resize="top-left"></div>
@@ -27,6 +23,8 @@ import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
 import ImageFeed from "@/ui/ImageFeed.vue";
 import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
 
+const [defaultWidth, defaultHeight] = [1280, 720];
+const aspectRatio = defaultWidth / defaultHeight;
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 
@@ -36,19 +34,28 @@ const isResizable = computed(() => !popupStore.isOpen);
 const windowInnerHeight = ref(window.innerHeight);
 const windowInnerWidth = ref(window.innerWidth);
 
-const width = ref(1280);
-const height = ref(720);
+const width = ref(defaultWidth);
+const height = ref(defaultHeight);
 
 const videoBox = ref<HTMLDivElement | null>(null);
 
 const setFullWidthHeight = () => {
-  width.value = windowInnerWidth.value;
-  height.value = windowInnerHeight.value;
+  const ratio = windowInnerWidth.value / windowInnerHeight.value;
+
+  if (ratio > aspectRatio) {
+    // Window is wider than the aspect ratio
+    height.value = windowInnerHeight.value;
+    width.value = aspectRatio * windowInnerHeight.value;
+  } else {
+    // Window is taller than or equal to the aspect ratio
+    width.value = windowInnerWidth.value;
+    height.value = windowInnerWidth.value / aspectRatio;
+  }
 };
 
 const resetSize = () => {
-  width.value = 1280;
-  height.value = 720;
+  width.value = defaultWidth;
+  height.value = defaultHeight;
 };
 
 watch(
@@ -58,6 +65,24 @@ watch(
       setFullWidthHeight();
     } else {
       resetSize();
+    }
+  },
+);
+
+watch(
+  () => width.value,
+  (newVal) => {
+    if (videoBox.value) {
+      videoBox.value.style.width = `${newVal}px`;
+    }
+  },
+);
+
+watch(
+  () => height.value,
+  (newVal) => {
+    if (videoBox.value) {
+      videoBox.value.style.height = `${newVal}px`;
     }
   },
 );
@@ -79,6 +104,9 @@ const startWidth = ref(0);
 const startHeight = ref(0);
 
 const initResize = (event: MouseEvent) => {
+  if (event.button !== 0) {
+    return;
+  }
   if (!(event.target as HTMLElement).classList.contains("resizer")) {
     return;
   }
@@ -94,7 +122,9 @@ const initResize = (event: MouseEvent) => {
 };
 
 const doResize = (event: MouseEvent) => {
-  if (!resizing.value) return;
+  if (!resizing.value) {
+    return;
+  }
   if (resizeType.value.includes("right")) {
     width.value = startWidth.value + (event.clientX - startX.value);
   } else if (resizeType.value.includes("left")) {
@@ -108,7 +138,9 @@ const doResize = (event: MouseEvent) => {
 };
 
 const stopResize = () => {
-  if (!resizing.value) return;
+  if (!resizing.value) {
+    return;
+  }
   resizing.value = false;
   window.removeEventListener("mousemove", doResize);
   window.removeEventListener("mouseup", stopResize);
