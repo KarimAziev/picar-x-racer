@@ -1,16 +1,6 @@
 <template>
   <div class="video-box-container">
-    <div class="controls">
-      <div class="field">
-        <ToggleSwitch
-          v-tooltip="'Toggle Fullscreen'"
-          id="fullscreen"
-          class="fullscreen-switch"
-          v-model="settingsStore.settings.fullscreen"
-        />
-      </div>
-    </div>
-
+    <FullscreenToggle />
     <div
       class="video-box"
       ref="videoBox"
@@ -33,13 +23,14 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
-import ToggleSwitch from "primevue/toggleswitch";
-import ImageFeed from "@/ui/ImageFeed.vue";
 import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
+import ImageFeed from "@/ui/ImageFeed.vue";
+import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
 
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 
+const fullscreen = computed(() => settingsStore.settings.fullscreen);
 const isResizable = computed(() => !popupStore.isOpen);
 
 const windowInnerHeight = ref(window.innerHeight);
@@ -61,7 +52,7 @@ const resetSize = () => {
 };
 
 watch(
-  () => settingsStore.settings.fullscreen,
+  () => fullscreen.value,
   (newVal) => {
     if (newVal) {
       setFullWidthHeight();
@@ -75,7 +66,7 @@ const handleResize = () => {
   windowInnerHeight.value = window.innerHeight;
   windowInnerWidth.value = window.innerWidth;
 
-  if (settingsStore.settings.fullscreen) {
+  if (fullscreen.value) {
     setFullWidthHeight();
   }
 };
@@ -88,7 +79,9 @@ const startWidth = ref(0);
 const startHeight = ref(0);
 
 const initResize = (event: MouseEvent) => {
-  if (!(event.target as HTMLElement).classList.contains("resizer")) return;
+  if (!(event.target as HTMLElement).classList.contains("resizer")) {
+    return;
+  }
   resizing.value = true;
   resizeType.value = (event.target as HTMLElement).dataset.resize || "";
   startX.value = event.clientX;
@@ -123,7 +116,7 @@ const stopResize = () => {
 
 onMounted(() => {
   window.addEventListener("resize", handleResize);
-  if (settingsStore.settings.fullscreen) {
+  if (fullscreen.value) {
     handleResize();
   }
 });
@@ -142,28 +135,6 @@ onBeforeUnmount(() => {
   position: relative;
   height: 100vh;
   color: var(--p-primary-200);
-}
-
-.field {
-  display: flex;
-
-  align-items: center;
-  samp {
-    font-weight: bold;
-  }
-}
-
-.controls {
-  position: absolute;
-  padding: 10px;
-  right: 0;
-  top: 0;
-  z-index: 12;
-  margin-bottom: 1rem;
-}
-
-.controls label {
-  padding: 0 0.5rem 0 0;
 }
 
 .video-box {
