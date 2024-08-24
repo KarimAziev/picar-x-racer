@@ -16,6 +16,9 @@ export interface MessageItem {
   id: number;
 }
 
+export type ShowMessageProps = Omit<MessageItemParams, "text">;
+export type ShowMessageTypeProps = Omit<ShowMessageProps, "type">;
+
 export interface State {
   messages: MessageItem[];
 }
@@ -28,36 +31,24 @@ export const useMessagerStore = defineStore("messager", {
   state: () => ({ ...defaultState }),
 
   actions: {
-    error(text: string, props?: Omit<MessageItemParams, "text" | "type">) {
+    show(text: string, props?: ShowMessageProps) {
+      const type = props?.type || "info";
       const id = new Date().getTime();
-      const msg = { text, delay: 2000, ...props, type: "error" as "error", id };
-      this.messages.push(msg);
+      const params = { text, delay: 2000, ...props, type, id };
+      const self = this;
+      self.messages.push(params);
       setTimeout(() => {
-        this.messages = this.messages.filter((m) => m.id !== id);
-      }, msg.delay);
+        self.messages = self.messages.filter((m) => m.id !== id);
+      }, params.delay);
     },
-    info(text: string, props?: Omit<MessageItemParams, "text" | "type">) {
-      const id = new Date().getTime();
-      const msg = { text, delay: 2000, ...props, type: "info" as "info", id };
-      this.messages.push(msg);
-      setTimeout(() => {
-        this.messages = this.messages.filter((m) => m.id !== id);
-      }, msg.delay);
+    error(text: string, props?: ShowMessageTypeProps) {
+      return this.show(text, { ...props, type: "error" });
     },
-    success(text: string, props?: Omit<MessageItemParams, "text" | "type">) {
-      const id = new Date().getTime();
-      const msg = {
-        text,
-        delay: 2000,
-        ...props,
-        type: "success" as "success",
-        id,
-      };
-
-      this.messages.push(msg);
-      setTimeout(() => {
-        this.messages = this.messages.filter((m) => m.id !== id);
-      }, msg.delay);
+    info(text: string, props?: ShowMessageTypeProps) {
+      return this.show(text, { ...props, type: "info" });
+    },
+    success(text: string, props?: ShowMessageTypeProps) {
+      return this.show(text, { ...props, type: "success" });
     },
     handleError<Err>(error: Err, title?: string) {
       const data = retrieveError(error);
