@@ -50,12 +50,31 @@ class Vilib(object):
     objects_detection_labels = None
     qrcode_detect_sw = False
     traffic_detect_sw = False
+    camera_index = None
+
+    @staticmethod
+    def find_available_cameras(max_index=10):
+        available_cameras = []
+        for index in range(max_index):
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                available_cameras.append(index)
+                cap.release()
+        return available_cameras
 
     @staticmethod
     def camera_loop():
-        Vilib.capture = cv2.VideoCapture(0)
+        if Vilib.camera_index is None:
+            available_cameras = Vilib.find_available_cameras()
+            if not available_cameras:
+                raise RuntimeError("Error: No available cameras found.")
+            Vilib.camera_index = available_cameras[-1]
+
+        Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
         if not Vilib.capture.isOpened():
-            raise RuntimeError("Error: Webcam not found or unable to open.")
+            raise RuntimeError(
+                f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
+            )
 
         while Vilib.camera_run:
             ret, frame = Vilib.capture.read()
