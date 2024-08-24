@@ -16,6 +16,7 @@ const CAM_TILT_MIN = -35;
 const CAM_TILT_MAX = 65;
 const SERVO_DIR_ANGLE_MIN = -30;
 const SERVO_DIR_ANGLE_MAX = 30;
+const MIN_SPEED = 10;
 
 export type StoreState = {
   loading: boolean;
@@ -81,16 +82,12 @@ export const useControllerStore = defineStore("controller", {
           switch (type) {
             case "getDistance":
               const value = data.payload;
+              const error = data.error;
               this.distance = data.error || value;
-              const text = data.error
-                ? `DISTANCE ERROR: ${this.distance}`
-                : `DISTANCE: ${value}`;
-              if (data.error) {
-                setTimeout(() => {
-                  messager.info(text);
-                }, 1000);
+              if (error) {
+                messager.error(error, "distance error");
               } else {
-                messager.info(`DISTANCE: ${value.toFixed(2)} sm`);
+                messager.info(`${value.toFixed(2)} sm`, "distance");
               }
 
               break;
@@ -191,12 +188,13 @@ export const useControllerStore = defineStore("controller", {
     },
 
     decreaseMaxSpeed() {
-      const curr = Math.max(20, this.maxSpeed - ACCELERATION);
+      const curr = Math.max(MIN_SPEED, this.maxSpeed - ACCELERATION);
+
       if (this.maxSpeed !== curr) {
         this.maxSpeed = curr;
 
         if (this.speed >= this.maxSpeed) {
-          this.speed = Math.max(20, this.maxSpeed - 10);
+          this.speed = Math.max(MIN_SPEED, this.maxSpeed - ACCELERATION);
         }
       }
     },
@@ -321,7 +319,19 @@ export const useControllerStore = defineStore("controller", {
     },
     toggleFullscreen() {
       const settingsStore = useSettingsStore();
-      settingsStore.settings.fullscreen = !settingsStore.settings.fullscreen;
+      settingsStore.toggleSettingsProp("fullscreen");
+    },
+    toggleTextInfo() {
+      const settingsStore = useSettingsStore();
+      settingsStore.toggleSettingsProp("text_info_view");
+    },
+    toggleSpeedometerView() {
+      const settingsStore = useSettingsStore();
+      settingsStore.toggleSettingsProp("speedometer_view");
+    },
+    toggleCarModelView() {
+      const settingsStore = useSettingsStore();
+      settingsStore.toggleSettingsProp("car_model_view");
     },
     openShortcutsSettings() {
       const popupStore = usePopupStore();
@@ -341,6 +351,7 @@ export const useControllerStore = defineStore("controller", {
       const settingsStore = useSettingsStore();
       settingsStore.decreaseQuality();
     },
+
     cleanup() {
       this.reconnectedEnabled = false;
 

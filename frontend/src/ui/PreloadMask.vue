@@ -1,66 +1,83 @@
 <template>
-  <div class="preloader-wrapper" v-if="showPreloader">
-    <div
-      class="preloader"
-      v-for="(text, index) in visibleMessages"
-      :key="index"
-    >
-      <RoboText>{{ text }}</RoboText>
+  <transition name="fade">
+    <div class="wrapper" v-if="showPreloader">
+      <div class="content">
+        <ResizableContainer
+          :default-width="1280"
+          :default-height="720"
+          :fullscreen="true"
+        >
+          <ScanLines class="box" />
+        </ResizableContainer>
+      </div>
     </div>
-  </div>
-  <slot v-else></slot>
+  </transition>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
-import RoboText from "@/ui/RoboText.vue";
+
+import ResizableContainer from "@/ui/ResizableContainer.vue";
+import ScanLines from "@/ui/ScanLines.vue";
 
 const props = defineProps<{ loading?: boolean; delay?: number }>();
 
-const showPreloader = ref(true);
-const allMessages = ["LOAD RASPBERRY", "MEMORY SET", "SYSTEM STATUS", "OK_"];
-const visibleMessages = ref<string[]>([]);
+const showPreloader = ref(false);
 
-const delayDuration = props.delay ?? 500; // in ms
-
-let messageIndex = 0;
-let delayTimeout: ReturnType<typeof setTimeout> | null = null;
-
-const showNextMessage = () => {
-  if (messageIndex < allMessages.length) {
-    visibleMessages.value.push(allMessages[messageIndex]);
-    messageIndex++;
-    delayTimeout = setTimeout(showNextMessage, delayDuration);
-  } else {
-    showPreloader.value = false;
-    if (delayTimeout) {
-      clearTimeout(delayTimeout);
-    }
-  }
+const initPreloader = () => {
+  setTimeout(() => {
+    showPreloader.value = true;
+    setTimeout(() => {
+      showPreloader.value = false;
+    }, props.delay ?? 4000);
+  }, 100);
 };
 
 if (props.loading) {
-  showNextMessage();
+  initPreloader();
+} else {
+  showPreloader.value = false;
 }
 </script>
 
 <style scoped lang="scss">
-.preloader-wrapper {
-  position: absolute;
-  text-align: left;
+.wrapper {
+  width: 100%;
+  display: flex;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
+  z-index: 15;
 }
 
-.preloader {
+.content {
+  flex: auto;
   display: flex;
   align-items: center;
-  margin: 0 auto;
+  justify-content: center;
+}
+
+.box {
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
+  user-select: none;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity 2s,
+    visibility 2s;
+  visibility: visible;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+  visibility: hidden;
 }
 </style>

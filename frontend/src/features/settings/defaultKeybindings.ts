@@ -27,6 +27,9 @@ export const defaultKeybindinds: Partial<
   openGeneralSettings: ["g"],
   increaseQuality: ["."],
   decreaseQuality: [","],
+  toggleSpeedometerView: ["N"],
+  toggleCarModelView: ["M"],
+  toggleTextInfo: ["I"],
 };
 
 export const commandLabels: Record<string, string> = {

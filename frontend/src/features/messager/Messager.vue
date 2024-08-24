@@ -1,14 +1,14 @@
 <template>
-  <div class="message-wrapper">
-    <div
-      class="message"
-      v-for="message in store.messages"
-      :key="message.id"
-      :class="message.type"
-    >
-      <RoboText :key="message.id">{{ message.text }}</RoboText>
-    </div>
-  </div>
+  <ul class="message-wrapper">
+    <li class="message" v-for="message in store.messages" :key="message.id">
+      <RoboText
+        :title="message.title"
+        :type="message.type"
+        :key="message.id"
+        :text="message.text"
+      />
+    </li>
+  </ul>
 </template>
 
 <script setup lang="ts">
@@ -22,25 +22,13 @@ const store = useMessagerStore();
 .message-wrapper {
   position: fixed;
   top: 100px;
-  left: 20px;
+  left: 0;
   z-index: 1000;
 }
 
 .message {
+  list-style: none;
+  padding: 0;
   text-transform: uppercase;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.message.success {
-  color: var(--robo-color-primary);
-}
-
-.message.info {
-  color: var(--robo-color-primary);
-}
-
-.message.error {
-  color: var(red);
 }
 </style>

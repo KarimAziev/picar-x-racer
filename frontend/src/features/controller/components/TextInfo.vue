@@ -24,5 +24,6 @@ const store = useControllerStore();
   display: flex;
   width: 350px;
   flex-direction: column;
+  padding: 1rem;
 }
 </style>

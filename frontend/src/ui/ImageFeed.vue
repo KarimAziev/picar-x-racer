@@ -15,7 +15,7 @@ const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
   width: 100%;
   display: block;
   height: 100%;
-
+  box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
   user-select: none;
 }
 </style>

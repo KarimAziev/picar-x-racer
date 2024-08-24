@@ -3,23 +3,24 @@
     <div class="content">
       <VideoBox />
     </div>
-    <div class="right">
+    <div class="right" v-if="loaded">
       <Controller />
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import ProgressSpinner from "primevue/progressspinner";
-import { defineAsyncComponent } from "vue";
+import { computed, defineAsyncComponent } from "vue";
+import { useSettingsStore } from "@/features/settings/stores";
+
+const storeSettings = useSettingsStore();
+const loaded = computed(() => storeSettings.loaded);
 
 const VideoBox = defineAsyncComponent({
   loader: () => import("@/features/controller/components/VideoBox.vue"),
-  loadingComponent: ProgressSpinner,
 });
 
 const Controller = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Controller.vue"),
-  loadingComponent: ProgressSpinner,
 });
 </script>
 
@@ -39,6 +40,7 @@ const Controller = defineAsyncComponent({
   height: 100%;
   display: flex;
   flex-direction: column;
+  padding: 1rem 0;
   justify-content: space-between;
   align-items: center;
 }

@@ -5,6 +5,9 @@
   "fullscreen": true,
   "video_feed_url": "/mjpg-mq",
   "battery_full_voltage": 8.4,
+  "car_model_view": true,
+  "speedometer_view": true,
+  "text_info_view": true,
   "keybindings": {
     "accelerate": ["w"],
     "decelerate": ["s"],
@@ -28,6 +31,9 @@
     "sayText": ["k"],
     "stop": ["Space"],
     "takePhoto": ["t"],
-    "toggleFullscreen": ["f"]
+    "toggleFullscreen": ["f"],
+    "toggleSpeedometerView": ["N"],
+    "toggleCarModelView": ["M"],
+    "toggleTextInfo": ["I"]
   }
 }

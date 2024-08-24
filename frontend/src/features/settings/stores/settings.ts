@@ -3,24 +3,33 @@ import axios from "axios";
 import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
 import { VideoFeedURL } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
+import { wait } from "@/util/wait";
 
-export const wait = async (delay: number) =>
-  new Promise((resolve) => setTimeout(resolve, delay));
+export interface Settings {
+  fullscreen: boolean;
+  default_text: string;
+  default_sound: string;
+  default_music: string;
+  keybindings: Record<string, string[]>;
+  video_feed_url: VideoFeedURL;
+  battery_full_voltage: number;
+  text_info_view?: boolean;
+  speedometer_view?: boolean;
+  car_model_view?: boolean;
+}
 
 export interface State {
   loading?: boolean;
   loaded?: boolean;
   saving?: boolean;
-  settings: {
-    fullscreen: boolean;
-    default_text: string;
-    default_sound: string;
-    default_music: string;
-    keybindings: Record<string, string[]>;
-    video_feed_url: VideoFeedURL;
-    battery_full_voltage: number;
-  };
+  settings: Settings;
 }
+
+export type ToggleableSettings = {
+  [K in keyof Settings as Required<Settings>[K] extends boolean
+    ? K
+    : never]: Settings[K];
+};
 
 const defaultState: State = {
   settings: {
@@ -39,6 +48,9 @@ export const useStore = defineStore("settings", {
 
   actions: {
     async fetchSettings() {
+      if (!this.loaded) {
+        return this.fetchSettingsInitial();
+      }
       const messager = useMessagerStore();
       try {
         if (!this.loaded) {
@@ -46,8 +58,8 @@ export const useStore = defineStore("settings", {
         }
 
         this.loading = true;
-        await wait(1000);
         const response = await axios.get("/api/settings");
+        await wait(1000);
 
         const data = {
           ...this.settings,
@@ -63,7 +75,34 @@ export const useStore = defineStore("settings", {
         messager.handleError(error, "Error fetching settings");
       } finally {
         this.loading = false;
-        // this.loaded = true;
+      }
+    },
+    async fetchSettingsInitial() {
+      const messager = useMessagerStore();
+      messager.info("loading...");
+      try {
+        this.loading = true;
+        await wait(1000);
+        const response = await axios.get("/api/settings");
+
+        const data = {
+          ...this.settings,
+          keybindings: { ...defaultKeybindinds },
+          ...response.data,
+        };
+        this.settings = data;
+        await wait(1000);
+
+        messager.info("Memory set: OK_");
+        await wait(1000);
+        messager.info("System status: OK_");
+        await wait(1000);
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+        messager.handleError(error, "Error fetching settings");
+      } finally {
+        this.loading = false;
+        this.loaded = true;
       }
     },
     async saveSettings() {
@@ -102,6 +141,15 @@ export const useStore = defineStore("settings", {
       } else {
         messager.info(`${this.settings.video_feed_url} is lowest quality!`);
       }
+    },
+    toggleSettingsProp(prop: keyof ToggleableSettings) {
+      const messager = useMessagerStore();
+      if (this.settings[prop]) {
+        this.settings[prop] = false;
+      } else {
+        this.settings[prop] = true;
+      }
+      messager.info(`${prop} setted to ${this.settings[prop]}`);
     },
   },
 });
