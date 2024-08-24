@@ -103,8 +103,6 @@ class VideoCarController:
         # Load user settings
         self.settings = self.load_settings()
 
-        self.message_queue = asyncio.Queue()
-
     def load_settings(self):
         try:
             with open(SETTINGS_FILE_PATH, "r") as settings_file:
