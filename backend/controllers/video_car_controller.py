@@ -96,12 +96,12 @@ class VideoCarController:
         self.camera_thread = None
         self.vilib_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
-        # Drawing FPS on the image
-        self.draw_fps = True
         self.start_time = time()
 
         # Load user settings
         self.settings = self.load_settings()
+
+        self.message_queue = asyncio.Queue()
 
     def load_settings(self):
         try:
@@ -130,6 +130,7 @@ class VideoCarController:
         self.settings = merged_settings
 
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
+        asyncio.create_task(self.process_messages(websocket))
         async for message in websocket:
             data = json.loads(message)
             logger.info(f"Received: {data}")
@@ -177,7 +178,7 @@ class VideoCarController:
                     await websocket.send(response)
                     if self.avoid_obstacles_mode:
                         self.avoid_obstacles_task = asyncio.create_task(
-                            self.avoid_obstacles(websocket)
+                            self.avoid_obstacles()
                         )
                     else:
                         if self.avoid_obstacles_task:
@@ -213,61 +214,81 @@ class VideoCarController:
         Vilib.take_photo(name, path=self.PHOTOS_DIR)
         return f"{name}.jpg"
 
-    async def avoid_obstacles(self, websocket):
+    async def process_messages(self, websocket):
+        """Continuously process the message queue and send messages."""
+        while True:
+            message = await self.message_queue.get()
+            await websocket.send(message)
+            self.message_queue.task_done()
+
+    async def avoid_obstacles(self):
         POWER = 50
         SafeDistance = 40  # > 40 safe
         DangerDistance = 20  # > 20 && < 40 turn around,
+        DistanceThreshold = 5  # Set a threshold to minimize frequent updates
+
+        last_sent_distance = None  # Keep track of last sent distance value
         try:
             while self.avoid_obstacles_mode:
                 distance = round(self.px.ultrasonic.read(), 2)
 
-                await websocket.send(
-                    json.dumps({"payload": distance, "type": "getDistance"})
-                )
+                # Only queue distance if it changes significantly
+                if (
+                    last_sent_distance is None
+                    or abs(distance - last_sent_distance) >= DistanceThreshold
+                ):
+                    await self.message_queue.put(
+                        json.dumps({"payload": distance, "type": "getDistance"})
+                    )
+                    last_sent_distance = distance
+
                 if distance >= SafeDistance:
                     self.px.set_dir_servo_angle(0)
                     self.px.forward(POWER)
-                    response = json.dumps(
-                        {
-                            "payload": {
-                                "direction": "forward",
-                                "speed": POWER,
-                                "servoAngle": 0,
-                            },
-                            "type": "move",
-                        }
+                    await self.message_queue.put(
+                        json.dumps(
+                            {
+                                "payload": {
+                                    "direction": "forward",
+                                    "speed": POWER,
+                                    "servoAngle": 0,
+                                },
+                                "type": "move",
+                            }
+                        )
                     )
-                    await websocket.send(response)
                 elif distance >= DangerDistance:
-                    response = json.dumps(
-                        {
-                            "payload": {
-                                "direction": "forward",
-                                "speed": POWER,
-                                "servoAngle": 30,
-                            },
-                            "type": "move",
-                        }
-                    )
                     self.px.set_dir_servo_angle(30)
                     self.px.forward(POWER)
                     await asyncio.sleep(0.1)
-                    await websocket.send(response)
-                else:
-                    response = json.dumps(
-                        {
-                            "payload": {
-                                "direction": "backward",
-                                "speed": POWER,
-                                "servoAngle": -30,
-                            },
-                            "type": "move",
-                        }
+                    await self.message_queue.put(
+                        json.dumps(
+                            {
+                                "payload": {
+                                    "direction": "forward",
+                                    "speed": POWER,
+                                    "servoAngle": 30,
+                                },
+                                "type": "move",
+                            }
+                        )
                     )
+                else:
                     self.px.set_dir_servo_angle(-30)
                     self.px.backward(POWER)
                     await asyncio.sleep(0.5)
-                    await websocket.send(response)
+                    await self.message_queue.put(
+                        json.dumps(
+                            {
+                                "payload": {
+                                    "direction": "backward",
+                                    "speed": POWER,
+                                    "servoAngle": -30,
+                                },
+                                "type": "move",
+                            }
+                        )
+                    )
         finally:
             self.px.forward(0)
 
@@ -367,12 +388,10 @@ class VideoCarController:
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
         )
 
-        try:
-            asyncio.run(self.start_server())
-        except KeyboardInterrupt:
-            logger.info("\nquit ...")
-            self.px.stop()
-            Vilib.camera_close()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        server_task = loop.create_task(self.start_server())
+        loop.run_until_complete(server_task)
 
     def list_files(self, directory: str) -> List[str]:
         """
