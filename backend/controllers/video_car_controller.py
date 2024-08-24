@@ -177,7 +177,7 @@ class VideoCarController:
                     )
                     await websocket.send(response)
                     if self.avoid_obstacles_mode:
-                        self.avoid_obstacles_task = asyncio.create_task(
+                        self.avoid_obstacles_task = self.loop.create_task(
                             self.avoid_obstacles()
                         )
                     else:
@@ -391,15 +391,13 @@ class VideoCarController:
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
         )
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        server_task = loop.create_task(self.start_server())
+        server_task = self.loop.create_task(self.start_server())
         try:
-            loop.run_until_complete(server_task)
+            self.loop.run_until_complete(server_task)
         except KeyboardInterrupt:
             server_task.cancel()
-            loop.run_until_complete(server_task)
-            loop.close()
+            self.loop.run_until_complete(server_task)
+            self.loop.close()
         finally:
             Vilib.camera_close()
 
