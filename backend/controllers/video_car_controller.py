@@ -392,7 +392,7 @@ class VideoCarController:
         )
 
         loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        asyncio.set_event_loop(self.loop)
         server_task = loop.create_task(self.start_server())
         try:
             loop.run_until_complete(server_task)
