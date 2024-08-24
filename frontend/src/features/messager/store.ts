@@ -7,6 +7,7 @@ export interface MessageItemParams {
   text: string;
   delay?: number;
   type: "success" | "info" | "error";
+  immediately?: boolean;
 }
 
 export interface MessageItem {
@@ -15,6 +16,7 @@ export interface MessageItem {
   delay: number;
   type: "success" | "info" | "error";
   id: number;
+  immediately?: boolean;
 }
 
 export type ShowMessageProps = Omit<MessageItemParams, "text">;
@@ -60,9 +62,12 @@ export const useMessagerStore = defineStore("messager", {
       const type = props?.type || "info";
       const id = new Date().getTime();
       const params = { text, delay: 10000, ...props, type, id };
-
-      this.queue.push(params);
-      this.processQueue();
+      if (params.immediately) {
+        this.add(params);
+      } else {
+        this.queue.push(params);
+        this.processQueue();
+      }
     },
 
     error(text: string, props?: ShowMessageTypeProps | string) {

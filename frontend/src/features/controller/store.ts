@@ -136,7 +136,9 @@ export const useControllerStore = defineStore("controller", {
 
             case "avoidObstacles":
               this.avoidObstacles = data.payload;
-              messager.info(`Avoid Obstacles: ${data.payload}`);
+              messager.info(`Avoid Obstacles: ${data.payload}`, {
+                immediately: true,
+              });
               break;
 
             default:
