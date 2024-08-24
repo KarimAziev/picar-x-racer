@@ -4,7 +4,7 @@ is_os_raspberry = is_raspberry_pi()
 
 if is_os_raspberry:
     from modules.picarx import Picarx
-    from vilib import Vilib
+    from modules.vilib import Vilib
     from robot_hat import Music
     from robot_hat.utils import (
         reset_mcu,
@@ -17,7 +17,7 @@ if is_os_raspberry:
     )
 else:
     from mock.picarx import Picarx
-    from mock.vilib import Vilib
+    from modules.vilib import Vilib
     from mock.music import Music
     from mock.robot_hat_fake_utils import (
         reset_mcu,
