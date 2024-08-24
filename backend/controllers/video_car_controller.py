@@ -217,57 +217,59 @@ class VideoCarController:
         POWER = 50
         SafeDistance = 40  # > 40 safe
         DangerDistance = 20  # > 20 && < 40 turn around,
-        while self.avoid_obstacles_mode:
-            distance = round(self.px.ultrasonic.read(), 2)
+        try:
+            while self.avoid_obstacles_mode:
+                distance = round(self.px.ultrasonic.read(), 2)
 
-            await websocket.send(
-                json.dumps({"payload": distance, "type": "getDistance"})
-            )
-            if distance >= SafeDistance:
-                self.px.set_dir_servo_angle(0)
-                self.px.forward(POWER)
-                response = json.dumps(
-                    {
-                        "payload": {
-                            "direction": "forward",
-                            "speed": POWER,
-                            "servoAngle": 0,
-                        },
-                        "type": "move",
-                    }
+                await websocket.send(
+                    json.dumps({"payload": distance, "type": "getDistance"})
                 )
-                await websocket.send(response)
-            elif distance >= DangerDistance:
-                response = json.dumps(
-                    {
-                        "payload": {
-                            "direction": "forward",
-                            "speed": POWER,
-                            "servoAngle": 30,
-                        },
-                        "type": "move",
-                    }
-                )
-                await websocket.send(response)
-                self.px.set_dir_servo_angle(30)
-                self.px.forward(POWER)
-            else:
-                response = json.dumps(
-                    {
-                        "payload": {
-                            "direction": "backward",
-                            "speed": POWER,
-                            "servoAngle": -30,
-                        },
-                        "type": "move",
-                    }
-                )
-                await websocket.send(response)
-                self.px.set_dir_servo_angle(-30)
-                self.px.backward(POWER)
-
-            # Sleep for a short period to allow other tasks to run
-            await asyncio.sleep(0.1)
+                if distance >= SafeDistance:
+                    self.px.set_dir_servo_angle(0)
+                    self.px.forward(POWER)
+                    response = json.dumps(
+                        {
+                            "payload": {
+                                "direction": "forward",
+                                "speed": POWER,
+                                "servoAngle": 0,
+                            },
+                            "type": "move",
+                        }
+                    )
+                    await websocket.send(response)
+                elif distance >= DangerDistance:
+                    response = json.dumps(
+                        {
+                            "payload": {
+                                "direction": "forward",
+                                "speed": POWER,
+                                "servoAngle": 30,
+                            },
+                            "type": "move",
+                        }
+                    )
+                    self.px.set_dir_servo_angle(30)
+                    self.px.forward(POWER)
+                    await asyncio.sleep(0.1)
+                    await websocket.send(response)
+                else:
+                    response = json.dumps(
+                        {
+                            "payload": {
+                                "direction": "backward",
+                                "speed": POWER,
+                                "servoAngle": -30,
+                            },
+                            "type": "move",
+                        }
+                    )
+                    self.px.set_dir_servo_angle(-30)
+                    self.px.backward(POWER)
+                    await asyncio.sleep(0.5)
+                    await websocket.send(response)
+        finally:
+            self.px.forward(0)
 
     def play_music(self, file=None):
         """
