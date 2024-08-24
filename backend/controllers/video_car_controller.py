@@ -64,6 +64,8 @@ class VideoCarController:
         self.user = getlogin()
         self.user_home = path.expanduser(f"~{self.user}")
 
+        self.loop = asyncio.get_event_loop()
+        self.message_queue = asyncio.Queue()
         self.px = self.Picarx()
         self.audio_handler = AudioHandler()
 
@@ -177,7 +179,7 @@ class VideoCarController:
                     )
                     await websocket.send(response)
                     if self.avoid_obstacles_mode:
-                        self.avoid_obstacles_task = asyncio.create_task(
+                        self.avoid_obstacles_task = self.loop.create_task(
                             self.avoid_obstacles()
                         )
                     else:
@@ -384,7 +386,8 @@ class VideoCarController:
 
     def main(self):
         Vilib.camera_start(vflip=False, hflip=False)
-        sleep(2)  # Allow the camera to start
+
+        sleep(2)
 
         ip_address = get_ip_address()
         logger.info(
@@ -393,6 +396,7 @@ class VideoCarController:
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        self.loop = loop
         server_task = loop.create_task(self.start_server())
         loop.run_until_complete(server_task)
 
