@@ -225,9 +225,10 @@ class VideoCarController:
         POWER = 50
         SafeDistance = 40  # > 40 safe
         DangerDistance = 20  # > 20 && < 40 turn around,
-        DistanceThreshold = 5  # Set a threshold to minimize frequent updates
+        DistanceThreshold = 2  # Set a threshold to minimize frequent updates
 
         last_sent_distance = None  # Keep track of last sent distance value
+
         try:
             while self.avoid_obstacles_mode:
                 distance = round(self.px.ultrasonic.read(), 2)
@@ -235,60 +236,62 @@ class VideoCarController:
                 # Only queue distance if it changes significantly
                 if (
                     last_sent_distance is None
-                    or abs(distance - last_sent_distance) >= DistanceThreshold
+                    or abs(distance - last_sent_distance) > DistanceThreshold
                 ):
-                    await self.message_queue.put(
-                        json.dumps({"payload": distance, "type": "getDistance"})
-                    )
                     last_sent_distance = distance
+                    asyncio.create_task(
+                        self.message_queue.put(
+                            json.dumps({"payload": distance, "type": "getDistance"})
+                        )
+                    )
 
                 if distance >= SafeDistance:
                     self.px.set_dir_servo_angle(0)
                     self.px.forward(POWER)
-                    await self.message_queue.put(
-                        json.dumps(
-                            {
-                                "payload": {
-                                    "direction": "forward",
-                                    "speed": POWER,
-                                    "servoAngle": 0,
-                                },
-                                "type": "move",
-                            }
-                        )
-                    )
+                    servo_angle = 0
                 elif distance >= DangerDistance:
                     self.px.set_dir_servo_angle(30)
                     self.px.forward(POWER)
+                    servo_angle = 30
                     await asyncio.sleep(0.1)
-                    await self.message_queue.put(
-                        json.dumps(
-                            {
-                                "payload": {
-                                    "direction": "forward",
-                                    "speed": POWER,
-                                    "servoAngle": 30,
-                                },
-                                "type": "move",
-                            }
-                        )
-                    )
                 else:
                     self.px.set_dir_servo_angle(-30)
                     self.px.backward(POWER)
+                    servo_angle = -30
                     await asyncio.sleep(0.5)
-                    await self.message_queue.put(
-                        json.dumps(
-                            {
-                                "payload": {
-                                    "direction": "backward",
-                                    "speed": POWER,
-                                    "servoAngle": -30,
-                                },
-                                "type": "move",
-                            }
+
+                # Send move command in a non-blocking fashion
+                if distance >= DangerDistance:
+                    asyncio.create_task(
+                        self.message_queue.put(
+                            json.dumps(
+                                {
+                                    "payload": {
+                                        "direction": "forward",
+                                        "speed": POWER,
+                                        "servoAngle": servo_angle,
+                                    },
+                                    "type": "move",
+                                }
+                            )
                         )
                     )
+                else:
+                    asyncio.create_task(
+                        self.message_queue.put(
+                            json.dumps(
+                                {
+                                    "payload": {
+                                        "direction": "backward",
+                                        "speed": POWER,
+                                        "servoAngle": servo_angle,
+                                    },
+                                    "type": "move",
+                                }
+                            )
+                        )
+                    )
+
         finally:
             self.px.forward(0)
 

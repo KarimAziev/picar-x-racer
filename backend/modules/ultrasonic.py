@@ -34,21 +34,15 @@ class Ultrasonic:
         while self.echo.gpio.value == 0:
             pulse_start = time.time()
             if pulse_start - timeout_start > self.timeout:
-                print("Timeout waiting for echo start signal")
                 return -1
         while self.echo.gpio.value == 1:
             pulse_end = time.time()
             if pulse_end - timeout_start > self.timeout:
-                print("Timeout waiting for echo end signal")
                 return -1
         if pulse_start == 0 or pulse_end == 0:
-            print("Failed to detect pulse start or end")
             return -2
         during = pulse_end - pulse_start
         cm = round(during * self.SOUND_SPEED / 2 * 100, 2)
-        print(
-            f"pulse_start: {pulse_start}, pulse_end: {pulse_end}, during: {during}, cm: {cm}"
-        )
         return cm
 
     def read(self, times=10):
