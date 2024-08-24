@@ -106,42 +106,42 @@ class Vilib(object):
     @staticmethod
     def camera_loop():
         logger.info("Starting camera loop")
-        if not is_raspberry_pi():
-            if Vilib.camera_index is None:
-                available_cameras = Vilib.find_available_cameras()
-                if not available_cameras:
-                    raise RuntimeError("Error: No available cameras found.")
-                Vilib.camera_index = available_cameras[-1]
 
-            Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
-            if not Vilib.capture.isOpened():
-                raise RuntimeError(
-                    f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
+        available_cameras = Vilib.find_available_cameras()
+        logger.info(f"Available cameras: {available_cameras}")
+
+        if is_raspberry_pi() and available_cameras == [0]:
+            logger.info("Only internal Pi Camera module detected. Using Picamera2.")
+            if Picamera2 is None:
+                raise RuntimeError("Picamera2 library is not installed.")
+
+            try:
+                picam2 = Picamera2()
+                preview_config = picam2.create_preview_configuration(
+                    main={"format": "RGB888", "size": (640, 480)}
                 )
+                preview_config["transform"] = libcamera.Transform(
+                    hflip=Vilib.camera_hflip, vflip=Vilib.camera_vflip
+                )
+                picam2.configure(preview_config)
+                picam2.start()
+            except Exception as e:
+                logger.error(f"Error starting Picamera2: {e}")
+                Vilib.camera_run = False
+                return
 
             fps = 0
-            start_time = 0
+            start_time = time.time()
             framecount = 0
 
             while Vilib.camera_run:
-                ret, frame = Vilib.capture.read()
-                if not ret:
-                    logger.warning("Warning: Failed to read frame from camera.")
-                    continue
-
-                if Vilib.camera_vflip:
-                    frame = cv2.flip(frame, 0)
-                if Vilib.camera_hflip:
-                    frame = cv2.flip(frame, 1)
-
-                Vilib.img = frame
+                Vilib.img = picam2.capture_array()
 
                 # Image processing functions
                 Vilib.img = Vilib.color_detect_func(Vilib.img)
                 Vilib.img = Vilib.face_detect_func(Vilib.img)
                 Vilib.img = Vilib.traffic_detect_fuc(Vilib.img)
                 Vilib.img = Vilib.qrcode_detect_func(Vilib.img)
-
                 Vilib.img = Vilib.image_classify_fuc(Vilib.img)
                 Vilib.img = Vilib.object_detect_fuc(Vilib.img)
                 Vilib.img = Vilib.hands_detect_fuc(Vilib.img)
@@ -174,175 +174,80 @@ class Vilib(object):
                     cv2.waitKey(1)
 
                 Vilib.flask_img = Vilib.img
-                if Vilib.flask_img is None:
-                    logger.warning(
-                        "Warning: Vilib.flask_img is None after assigning frame."
+                time.sleep(0.033)  # ~30 FPS
+
+            picam2.close()
+            cv2.destroyAllWindows()
+
+        else:
+            logger.info("Using external USB camera if available.")
+            Vilib.camera_index = (
+                available_cameras[-1] if available_cameras else 0
+            )  # Fallback to 0 if none found
+            Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
+            if not Vilib.capture.isOpened():
+                raise RuntimeError(
+                    f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
+                )
+
+            fps = 0
+            start_time = 0
+            framecount = 0
+
+            while Vilib.camera_run:
+                ret, frame = Vilib.capture.read()
+                if not ret:
+                    logger.warning("Warning: Failed to read frame from camera.")
+                    continue
+
+                if Vilib.camera_vflip:
+                    frame = cv2.flip(frame, 0)
+                if Vilib.camera_hflip:
+                    frame = cv2.flip(frame, 1)
+
+                Vilib.img = frame
+
+                # Image processing functions
+                Vilib.img = Vilib.color_detect_func(Vilib.img)
+                Vilib.img = Vilib.face_detect_func(Vilib.img)
+                Vilib.img = Vilib.traffic_detect_fuc(Vilib.img)
+                Vilib.img = Vilib.qrcode_detect_func(Vilib.img)
+                Vilib.img = Vilib.image_classify_fuc(Vilib.img)
+                Vilib.img = Vilib.object_detect_fuc(Vilib.img)
+                Vilib.img = Vilib.hands_detect_fuc(Vilib.img)
+                Vilib.img = Vilib.pose_detect_fuc(Vilib.img)
+
+                # Calculate FPS
+                framecount += 1
+                elapsed_time = float(time.time() - start_time)
+                if elapsed_time > 1:
+                    fps = round(framecount / elapsed_time, 1)
+                    framecount = 0
+                    start_time = time.time()
+
+                # Draw FPS on frame
+                if Vilib.draw_fps:
+                    cv2.putText(
+                        Vilib.img,
+                        f"FPS: {fps}",
+                        Vilib.fps_origin,
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        Vilib.fps_size,
+                        Vilib.fps_color,
+                        1,
+                        cv2.LINE_AA,
                     )
+
+                # Display on desktop
+                if Vilib.imshow_flag:
+                    cv2.imshow(Vilib.Windows_Name, Vilib.img)
+                    cv2.waitKey(1)
+
+                Vilib.flask_img = Vilib.img
                 time.sleep(0.033)  # ~30 FPS
 
             Vilib.capture.release()
             cv2.destroyAllWindows()
-
-        else:
-            # Logic for Raspberry Pi
-            available_cameras = Vilib.find_available_cameras()
-            logger.info(f"available_cameras for Raspberry PI {available_cameras}")
-            # if external cameras if available
-            if available_cameras:
-                Vilib.camera_index = available_cameras[-1]
-                Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
-                if not Vilib.capture.isOpened():
-                    raise RuntimeError(
-                        f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
-                    )
-
-                fps = 0
-                start_time = 0
-                framecount = 0
-
-                while Vilib.camera_run:
-                    ret, frame = Vilib.capture.read()
-                    if not ret:
-                        continue
-
-                    if Vilib.camera_vflip:
-                        frame = cv2.flip(frame, 0)
-                    if Vilib.camera_hflip:
-                        frame = cv2.flip(frame, 1)
-
-                    Vilib.img = frame
-
-                    # Image processing functions
-                    Vilib.img = Vilib.color_detect_func(Vilib.img)
-                    Vilib.img = Vilib.face_detect_func(Vilib.img)
-                    Vilib.img = Vilib.traffic_detect_fuc(Vilib.img)
-                    Vilib.img = Vilib.qrcode_detect_func(Vilib.img)
-
-                    Vilib.img = Vilib.image_classify_fuc(Vilib.img)
-                    Vilib.img = Vilib.object_detect_fuc(Vilib.img)
-                    Vilib.img = Vilib.hands_detect_fuc(Vilib.img)
-                    Vilib.img = Vilib.pose_detect_fuc(Vilib.img)
-
-                    # Calculate FPS
-                    framecount += 1
-                    elapsed_time = float(time.time() - start_time)
-                    if elapsed_time > 1:
-                        fps = round(framecount / elapsed_time, 1)
-                        framecount = 0
-                        start_time = time.time()
-
-                    # Draw FPS on frame
-                    if Vilib.draw_fps:
-                        cv2.putText(
-                            Vilib.img,
-                            f"FPS: {fps}",
-                            Vilib.fps_origin,
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            Vilib.fps_size,
-                            Vilib.fps_color,
-                            1,
-                            cv2.LINE_AA,
-                        )
-
-                    # Display on desktop
-                    if Vilib.imshow_flag:
-                        cv2.imshow(Vilib.Windows_Name, Vilib.img)
-                        cv2.waitKey(1)
-
-                    Vilib.flask_img = Vilib.img
-                    time.sleep(0.033)  # ~30 FPS
-
-                Vilib.capture.release()
-                cv2.destroyAllWindows()
-
-            else:
-                logger.info("Using Picamera2")
-                if Picamera2 is None:
-                    raise RuntimeError(
-                        "Error: No external camera found and Picamera2 module is not available."
-                    )
-                picam2 = Picamera2()
-
-                preview_config = picam2.preview_configuration
-                preview_config.size = (640, 480)
-                preview_config.format = "RGB888"
-                if libcamera is None:
-                    raise RuntimeError("Error: No libcamera found and Picamera2.")
-
-                preview_config.transform = libcamera.Transform(
-                    hflip=Vilib.camera_hflip, vflip=Vilib.camera_vflip
-                )
-                preview_config.colour_space = libcamera.ColorSpace.Sycc()
-                preview_config.buffer_count = 4
-                preview_config.queue = True
-                preview_config.controls = {"FrameRate": 30}
-
-                try:
-                    picam2.start()
-                except Exception as e:
-                    logger.error(f"Error: {e}")
-                    logger.error(
-                        "\nPlease check whether the camera is connected well. "
-                        'You can use the "libcamera-hello" command to test the camera.'
-                    )
-                    Vilib.camera_run = False
-                    return
-
-                fps = 0
-                start_time = 0
-                framecount = 0
-
-                try:
-                    start_time = time.time()
-                    while Vilib.camera_run:
-                        Vilib.img = picam2.capture_array()
-
-                        # Image processing functions
-                        Vilib.img = Vilib.color_detect_func(Vilib.img)
-                        Vilib.img = Vilib.face_detect_func(Vilib.img)
-                        Vilib.img = Vilib.traffic_detect_fuc(Vilib.img)
-                        Vilib.img = Vilib.qrcode_detect_func(Vilib.img)
-
-                        Vilib.img = Vilib.image_classify_fuc(Vilib.img)
-                        Vilib.img = Vilib.object_detect_fuc(Vilib.img)
-                        Vilib.img = Vilib.hands_detect_fuc(Vilib.img)
-                        Vilib.img = Vilib.pose_detect_fuc(Vilib.img)
-
-                        # Calculate FPS
-                        framecount += 1
-                        elapsed_time = float(time.time() - start_time)
-                        if elapsed_time > 1:
-                            fps = round(framecount / elapsed_time, 1)
-                            framecount = 0
-                            start_time = time.time()
-
-                        # Draw FPS on frame
-                        if Vilib.draw_fps:
-                            cv2.putText(
-                                Vilib.img,
-                                f"FPS: {fps}",
-                                Vilib.fps_origin,
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                Vilib.fps_size,
-                                Vilib.fps_color,
-                                1,
-                                cv2.LINE_AA,
-                            )
-
-                        # Display on desktop
-                        if Vilib.imshow_flag:
-                            cv2.imshow(Vilib.Windows_Name, Vilib.img)
-                            cv2.waitKey(1)
-
-                        Vilib.flask_img = Vilib.img
-                        time.sleep(0.033)  # ~30 FPS
-
-                except KeyboardInterrupt as e:
-                    logger.error(f"Keyboard Interrupt: {e}")
-                finally:
-                    logger.info("camera close")
-                    picam2.close()
-                    cv2.destroyAllWindows()
 
     @staticmethod
     def camera_start(vflip=False, hflip=False):
