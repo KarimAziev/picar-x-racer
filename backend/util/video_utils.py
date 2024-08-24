@@ -3,7 +3,30 @@ import numpy as np
 from time import sleep
 from typing import Generator
 from util.platform_adapters import Vilib
+from colorlog import ColoredFormatter
 from concurrent.futures import ThreadPoolExecutor
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = ColoredFormatter(
+    "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt=None,
+    reset=True,
+    log_colors={
+        "DEBUG": "cyan",
+        "INFO": "green",
+        "WARNING": "yellow",
+        "ERROR": "red",
+        "CRITICAL": "red,bg_white",
+    },
+    secondary_log_colors={},
+    style="%",
+)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 1280
@@ -23,6 +46,9 @@ def convert_listproxy_to_array(listproxy_obj):
     Returns:
         np.ndarray: The converted NumPy array.
     """
+    if listproxy_obj is None:
+        logger.error("ListProxy object is None")
+        raise ValueError("ListProxy object is None")
     return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
 
 
@@ -53,6 +79,9 @@ def get_frame() -> bytes:
     Returns:
         bytes: The encoded frame.
     """
+    if Vilib.flask_img is None:
+        logger.error("Vilib.flask_img is None")
+        raise ValueError("Vilib.flask_img is None")
     frame_array = convert_listproxy_to_array(Vilib.flask_img)
     _, buffer = cv2.imencode(".jpg", frame_array)
     return buffer.tobytes()
@@ -65,6 +94,10 @@ def get_qrcode_pictrue() -> bytes:
     Returns:
         bytes: The encoded QR code picture.
     """
+    if Vilib.flask_img is None:
+        logger.error("Vilib.flask_img is None")
+        raise ValueError("Vilib.flask_img is None")
+
     frame_array = convert_listproxy_to_array(Vilib.flask_img)
     _, buffer = cv2.imencode(".jpg", frame_array)
     return buffer.tobytes()
@@ -77,6 +110,10 @@ def get_png_frame() -> bytes:
     Returns:
         bytes: The encoded frame.
     """
+    if Vilib.flask_img is None:
+        logger.error("Vilib.flask_img is None")
+        raise ValueError("Vilib.flask_img is None")
+
     frame_array = convert_listproxy_to_array(Vilib.flask_img)
     _, buffer = cv2.imencode(".png", frame_array)
     return buffer.tobytes()
@@ -129,14 +166,17 @@ def async_generate_video_stream(width: int, height: int, format=".jpg", quality=
         bytes: Encoded frames in byte-string format ready for streaming.
     """
     while True:
-        frame = convert_listproxy_to_array(Vilib.flask_img)
-        future = executor.submit(
-            resize_and_encode, frame, width, height, format, quality
-        )
-        encoded_frame = future.result()
-        yield (
-            b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
-        )
+        if Vilib.flask_img is not None:
+            frame = convert_listproxy_to_array(Vilib.flask_img)
+            future = executor.submit(
+                resize_and_encode, frame, width, height, format, quality
+            )
+            encoded_frame = future.result()
+            yield (
+                b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
+            )
+        else:
+            logger.warning("Vilib.flask_img is None, skipping frame.")
         sleep(0.05)
 
 

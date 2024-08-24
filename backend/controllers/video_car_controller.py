@@ -2,16 +2,17 @@ import asyncio
 import json
 import logging
 import os
-import socket
+import traceback
 from os import environ, geteuid, getlogin, path
 from time import localtime, sleep, strftime, time
 from typing import List
-import traceback
-from colorlog import ColoredFormatter
+
 import numpy as np
 import websockets
+from colorlog import ColoredFormatter
+from util.get_ip_address import get_ip_address
 from util.os_checks import is_raspberry_pi
-from util.platform_adapters import Picarx, Vilib, reset_mcu, get_battery_voltage
+from util.platform_adapters import Picarx, Vilib, get_battery_voltage, reset_mcu
 from websockets import WebSocketServerProtocol
 from werkzeug.datastructures import FileStorage
 
@@ -270,7 +271,7 @@ class VideoCarController:
         Vilib.camera_start(vflip=False, hflip=False)
         sleep(2)  # Allow the camera to start
 
-        ip_address = self.get_ip_address()
+        ip_address = get_ip_address()
         logger.info(
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
         )
@@ -281,18 +282,6 @@ class VideoCarController:
             logger.info("\nquit ...")
             self.px.stop()
             Vilib.camera_close()
-
-    def get_ip_address(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            # Doesn't matter if it fails.
-            s.connect(("8.8.8.8", 80))
-            ip_address = s.getsockname()[0]
-        except Exception:
-            ip_address = "127.0.0.1"
-        finally:
-            s.close()
-        return ip_address
 
     def list_files(self, directory: str) -> List[str]:
         """
