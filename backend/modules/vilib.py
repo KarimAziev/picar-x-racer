@@ -99,6 +99,8 @@ class Vilib(object):
             if cap.isOpened():
                 available_cameras.append(index)
                 cap.release()
+            else:
+                cap.release()
         return available_cameras
 
     @staticmethod
