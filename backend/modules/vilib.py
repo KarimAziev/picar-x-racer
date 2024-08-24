@@ -105,7 +105,6 @@ class Vilib(object):
     def camera_loop():
         logger.info("Starting camera loop")
         if not is_raspberry_pi():
-            # Original logic if not Raspberry Pi
             if Vilib.camera_index is None:
                 available_cameras = Vilib.find_available_cameras()
                 if not available_cameras:
@@ -185,8 +184,9 @@ class Vilib(object):
         else:
             # Logic for Raspberry Pi
             available_cameras = Vilib.find_available_cameras()
+            logger.info(f"available_cameras for Raspberry PI {available_cameras}")
+            # if external cameras if available
             if available_cameras:
-                # Use external camera if available
                 Vilib.camera_index = available_cameras[-1]
                 Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
                 if not Vilib.capture.isOpened():
@@ -254,7 +254,7 @@ class Vilib(object):
                 cv2.destroyAllWindows()
 
             else:
-                # Fallback to Picamera2
+                logger.info("Using Picamera2")
                 if Picamera2 is None:
                     raise RuntimeError(
                         "Error: No external camera found and Picamera2 module is not available."
