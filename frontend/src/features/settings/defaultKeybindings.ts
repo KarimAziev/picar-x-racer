@@ -30,6 +30,8 @@ export const defaultKeybindinds: Partial<
   toggleSpeedometerView: ["N"],
   toggleCarModelView: ["M"],
   toggleTextInfo: ["I"],
+  toggleDrawFPS: ["F"],
+  toggleAvoidObstaclesMode: ["O"],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -56,6 +58,8 @@ export const commandLabels: Record<string, string> = {
   openGeneralSettings: "Open General Settings",
   increaseQuality: "Increase Video Quality",
   decreaseQuality: "Decrease Video Quality",
+  toggleDrawFPS: "Toggle FPS drawing",
+  toggleAvoidObstaclesMode: "Toggle Avoid Obstacles Mode",
 };
 
 export const allCommandOptions = objectKeysToOptions(

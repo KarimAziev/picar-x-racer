@@ -3,10 +3,10 @@ import json
 import logging
 import os
 import traceback
+from datetime import datetime, timedelta
 from os import environ, geteuid, getlogin, path
 from time import localtime, sleep, strftime, time
 from typing import List
-
 import numpy as np
 import websockets
 from colorlog import ColoredFormatter
@@ -52,6 +52,9 @@ UPLOAD_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "../uploads/"))
 class VideoCarController:
     def __init__(self):
         self.is_os_raspberry = is_raspberry_pi()
+        self.last_toggle_time = None
+        self.avoid_obstacles_mode = False
+        self.avoid_obstacles_task = None
 
         self.Picarx = Picarx
         self.reset_mcu = reset_mcu
@@ -155,6 +158,36 @@ class VideoCarController:
                     name = self.take_photo()
                     response = json.dumps({"payload": name, "type": action})
                     await websocket.send(response)
+                elif action == "drawFPS":
+                    Vilib.draw_fps = not Vilib.draw_fps
+                elif action == "avoidObstacles":
+                    now = datetime.utcnow()
+                    if self.last_toggle_time and (
+                        now - self.last_toggle_time
+                    ) < timedelta(seconds=1):
+                        logger.info(
+                            f"Debounce: Too quick toggle of avoidObstacles detected."
+                        )
+                        continue
+                    self.last_toggle_time = now
+                    self.avoid_obstacles_mode = not self.avoid_obstacles_mode
+                    response = json.dumps(
+                        {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
+                    )
+                    await websocket.send(response)
+                    if self.avoid_obstacles_mode:
+                        self.avoid_obstacles_task = asyncio.create_task(
+                            self.avoid_obstacles(websocket)
+                        )
+                    else:
+                        if self.avoid_obstacles_task:
+                            self.avoid_obstacles_task.cancel()
+                            try:
+                                await self.avoid_obstacles_task
+                            except asyncio.CancelledError:
+                                logger.info("Avoid obstacles task was cancelled")
+                                self.avoid_obstacles_task = None
+
                 elif action == "getDistance":
                     distance = self.get_distance()
                     response = json.dumps({"payload": distance, "type": action})
@@ -179,6 +212,62 @@ class VideoCarController:
 
         Vilib.take_photo(name, path=self.PHOTOS_DIR)
         return f"{name}.jpg"
+
+    async def avoid_obstacles(self, websocket):
+        POWER = 50
+        SafeDistance = 40  # > 40 safe
+        DangerDistance = 20  # > 20 && < 40 turn around,
+        while self.avoid_obstacles_mode:
+            distance = round(self.px.ultrasonic.read(), 2)
+
+            await websocket.send(
+                json.dumps({"payload": distance, "type": "getDistance"})
+            )
+            if distance >= SafeDistance:
+                self.px.set_dir_servo_angle(0)
+                self.px.forward(POWER)
+                response = json.dumps(
+                    {
+                        "payload": {
+                            "direction": "forward",
+                            "speed": POWER,
+                            "servoAngle": 0,
+                        },
+                        "type": "move",
+                    }
+                )
+                await websocket.send(response)
+            elif distance >= DangerDistance:
+                response = json.dumps(
+                    {
+                        "payload": {
+                            "direction": "forward",
+                            "speed": POWER,
+                            "servoAngle": 30,
+                        },
+                        "type": "move",
+                    }
+                )
+                await websocket.send(response)
+                self.px.set_dir_servo_angle(30)
+                self.px.forward(POWER)
+            else:
+                response = json.dumps(
+                    {
+                        "payload": {
+                            "direction": "backward",
+                            "speed": POWER,
+                            "servoAngle": -30,
+                        },
+                        "type": "move",
+                    }
+                )
+                await websocket.send(response)
+                self.px.set_dir_servo_angle(-30)
+                self.px.backward(POWER)
+
+            # Sleep for a short period to allow other tasks to run
+            await asyncio.sleep(0.1)
 
     def play_music(self, file=None):
         """

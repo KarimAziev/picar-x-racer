@@ -8,6 +8,7 @@ import {
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
+import { isNumber } from "@/util/guards";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -39,6 +40,7 @@ export type StoreState = {
   url?: string;
   reconnectedEnabled?: boolean;
   distance?: number;
+  avoidObstacles: false;
 };
 
 const defaultState: StoreState = {
@@ -53,6 +55,7 @@ const defaultState: StoreState = {
   loading: false,
   url: "ws://" + window.location.hostname + ":8765",
   reconnectedEnabled: true,
+  avoidObstacles: false,
 } as const;
 
 export const useControllerStore = defineStore("controller", {
@@ -99,6 +102,41 @@ export const useControllerStore = defineStore("controller", {
               } else if (data.error) {
                 messager.error(`Couldn't take photo: ${data.error}`);
               }
+              break;
+
+            case "stop":
+              this.direction = 0;
+              this.speed = 0;
+              break;
+
+            case "move":
+              const { direction, speed, servoAngle } = data.payload;
+              this.direction =
+                direction === "forward" ? 1 : direction === "backward" ? -1 : 0;
+              if (isNumber(speed)) {
+                this.speed = speed;
+              }
+              if (isNumber(servoAngle)) {
+                this.servoAngle = servoAngle;
+              }
+
+              break;
+
+            case "setServo":
+              this.servoAngle = data.paylaod;
+              break;
+
+            case "setCamPanAngle":
+              this.camPan = data.payload;
+              break;
+
+            case "setCamTiltAngle":
+              this.camTilt = data.payload;
+              break;
+
+            case "avoidObstacles":
+              this.avoidObstacles = data.payload;
+              messager.info(`Avoid Obstacles: ${data.payload}`);
               break;
 
             default:
@@ -332,6 +370,12 @@ export const useControllerStore = defineStore("controller", {
     toggleCarModelView() {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("car_model_view");
+    },
+    toggleAvoidObstaclesMode() {
+      this.sendMessage({ action: "avoidObstacles" });
+    },
+    toggleDrawFPS() {
+      this.sendMessage({ action: "drawFPS" });
     },
     openShortcutsSettings() {
       const popupStore = usePopupStore();

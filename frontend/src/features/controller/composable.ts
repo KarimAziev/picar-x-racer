@@ -66,7 +66,7 @@ export const useCarController = () => {
       store.accelerate();
     } else if (findKey(settings.settings.keybindings?.decelerate)) {
       store.decelerate();
-    } else {
+    } else if (!store.avoidObstacles) {
       store.slowdown();
     }
 
