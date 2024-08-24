@@ -177,13 +177,13 @@ class VideoCarController:
                     )
                     await websocket.send(response)
                     if self.avoid_obstacles_mode:
-                        self.avoid_obstacles_task = self.loop.create_task(
+                        self.avoid_obstacles_task = asyncio.create_task(
                             self.avoid_obstacles()
                         )
                     else:
                         if self.avoid_obstacles_task:
-                            self.avoid_obstacles_task.cancel()
                             try:
+                                self.avoid_obstacles_task.cancel()
                                 await self.avoid_obstacles_task
                             except asyncio.CancelledError:
                                 logger.info("Avoid obstacles task was cancelled")
