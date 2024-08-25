@@ -10,19 +10,21 @@ if ! grep -q "Raspbian" /etc/os-release; then
 
   pip install --upgrade pip
   # Clone the robot-hat repository
-  git clone -b v2.0 https://github.com/sunfounder/robot-hat.git
-  # shellcheck disable=SC2164
+  if [ ! -d "./robot-hat" ]; then
+    echo "Cloning robot hat"
+    git clone -b v2.0 https://github.com/sunfounder/robot-hat.git
+    # shellcheck disable=SC2164
 
-  # Override setup.py
-  # The original `setup.py` script in the robot-hat repository includes
-  # additional logic for handling Raspbian-specific dependencies,
-  # configurations, and commands that are not applicable or necessary in a
-  # general development environment.
-  #
-  # Overriding the script simplifies installation by removing these additional
-  # steps, making it more straightforward and less error-prone for non-Raspbian
-  # systems.
-  cat << EOF > ./robot-hat/setup.py
+    # Override setup.py
+    # The original `setup.py` script in the robot-hat repository includes
+    # additional logic for handling Raspbian-specific dependencies,
+    # configurations, and commands that are not applicable or necessary in a
+    # general development environment.
+    #
+    # Overriding the script simplifies installation by removing these additional
+    # steps, making it more straightforward and less error-prone for non-Raspbian
+    # systems.
+    cat << EOF > ./robot-hat/setup.py
 from setuptools import setup, find_packages
 import sys
 
@@ -54,8 +56,9 @@ setup(
 )
 EOF
 
-  # Install the modified package
-  pip install ./robot-hat --force-reinstall
+    # Install the modified package
+    pip install ./robot-hat --force-reinstall
+  fi
 
   # Return to the scripts directory
   echo "Installing dependencies."
