@@ -2,7 +2,7 @@
 
 import threading
 from controllers.video_car_controller import VideoCarController
-from api.flask_setup import run_flask
+from endpoints.flask_setup import run_flask
 from util.platform_adapters import Vilib
 
 if __name__ == "__main__":

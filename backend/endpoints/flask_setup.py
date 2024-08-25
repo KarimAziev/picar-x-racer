@@ -16,12 +16,12 @@ def create_app(controller: "VideoCarController"):
     CORS(app)
     app.config["IS_RASPBERRY_PI"] = is_raspberry_pi()
 
-    from api.video_feed import video_feed_bp
-    from api.file_management import file_management_bp
-    from api.settings import settings_bp
-    from api.qrcode_routes import qrcode_bp
-    from api.battery import battery_bp
-    from api.main import main_bp
+    from endpoints.video_feed import video_feed_bp
+    from endpoints.file_management import file_management_bp
+    from endpoints.settings import settings_bp
+    from endpoints.qrcode_routes import qrcode_bp
+    from endpoints.battery import battery_bp
+    from endpoints.main import main_bp
 
     app.register_blueprint(video_feed_bp)
     app.register_blueprint(qrcode_bp)

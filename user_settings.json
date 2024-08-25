@@ -8,7 +8,6 @@
   "car_model_view": true,
   "speedometer_view": true,
   "text_info_view": true,
-
   "keybindings": {
     "accelerate": ["w"],
     "decelerate": ["s"],
