@@ -1,5 +1,8 @@
 <template>
-  <div class="info">
+  <div v-if="store.avoidObstacles" class="info">
+    <InfoItem label="Autopilot is on" />
+  </div>
+  <div class="info" v-else>
     <InfoItem label="Camera Tilt" :value="store.camTilt" value-suffix="°" />
     <InfoItem label="Camera Pan" :value="store.camPan" value-suffix="°" />
     <InfoItem

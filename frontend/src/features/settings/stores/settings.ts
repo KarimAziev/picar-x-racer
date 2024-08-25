@@ -61,7 +61,6 @@ export const useStore = defineStore("settings", {
           ...response.data,
         };
         this.settings = data;
-        this.fetchDimensions();
       } catch (error) {
         messager.handleError(error, "Error fetching settings");
       } finally {
@@ -73,13 +72,10 @@ export const useStore = defineStore("settings", {
       messager.info("loading...");
       try {
         this.loading = true;
-        await wait(1000);
         await this.fetchSettings();
-        await wait(500);
-        messager.info("Memory set: OK_");
-        await wait(500);
-        messager.info("System status: OK_");
-        await wait(500);
+        messager.info("Memory set: OK");
+        messager.info("System status: OK");
+        await this.fetchDimensions();
       } catch (error) {
         console.error("Error fetching settings:", error);
         messager.handleError(error, "Error fetching settings");
@@ -108,6 +104,7 @@ export const useStore = defineStore("settings", {
         this.loading = true;
         const { data } = await axios.get("api/frame-dimensions");
         const { height, width } = data;
+
         if (isNumber(height)) {
           this.dimensions.height = height;
         }
@@ -120,29 +117,25 @@ export const useStore = defineStore("settings", {
         this.loading = false;
       }
     },
-    async increaseQuality() {
+    increaseQuality() {
       const messager = useMessagerStore();
       const levels = [VideoFeedURL.lq, VideoFeedURL.mq, VideoFeedURL.hq];
       const idx = levels.indexOf(this.settings.video_feed_url);
       const nextURL = levels[idx + 1];
       if (nextURL) {
-        await wait(1000);
         this.settings.video_feed_url = nextURL;
-        await this.fetchDimensions();
         messager.info(`Increased quality to ${nextURL.split("-").pop()}`);
       } else {
         messager.info(`${this.settings.video_feed_url} is highest quality `);
       }
     },
-    async decreaseQuality() {
+    decreaseQuality() {
       const messager = useMessagerStore();
       const levels = [VideoFeedURL.lq, VideoFeedURL.mq, VideoFeedURL.hq];
       const idx = levels.indexOf(this.settings.video_feed_url);
       const nextURL = levels[idx - 1];
       if (nextURL) {
-        await wait(1000);
         this.settings.video_feed_url = nextURL;
-        await this.fetchDimensions();
         messager.info(`Decreased quality to ${nextURL.split("-").pop()}`);
       } else {
         messager.info(`${this.settings.video_feed_url} is lowest quality!`);

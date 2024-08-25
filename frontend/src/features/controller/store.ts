@@ -21,6 +21,13 @@ const SERVO_DIR_ANGLE_MAX = 30;
 const MIN_SPEED = 10;
 const MAX_SPEED = 100;
 
+export interface Modes {
+  /**
+   * Whether avoid obstacles mode is enabled.
+   */
+  avoidObstacles: boolean;
+}
+
 export interface Gauges {
   /** Current speed of the car, from 0 to 100 */
   speed: number;
@@ -50,11 +57,7 @@ export interface Gauges {
   distance: number;
 }
 
-export interface StoreState extends Gauges {
-  /**
-   * Whether avoid obstacles mode is enabled.
-   */
-  avoidObstacles: false;
+export interface StoreState extends Gauges, Modes {
   /**
    * Whether the WebSocket is loading.
    */
@@ -91,9 +94,13 @@ const defaultGauges: Gauges = {
   distance: 0,
 } as const;
 
+const modes: Modes = {
+  avoidObstacles: false,
+};
+
 const defaultState: StoreState = {
   ...defaultGauges,
-  avoidObstacles: false,
+  ...modes,
   connected: false,
   reconnectedEnabled: true,
   messageQueue: [],
@@ -183,9 +190,14 @@ export const useControllerStore = defineStore("controller", {
               if (data.error) {
                 messager.error(data.error);
               } else if (isPlainObject(payload)) {
-                Object.entries(payload as Gauges).forEach(([k, value]) => {
+                Object.entries(payload).forEach(([k, value]) => {
                   if (k in defaultGauges && isNumber(value)) {
                     this[k as keyof Gauges] = value as Gauges[keyof Gauges];
+                  } else if (
+                    k in modes &&
+                    (value === false || value === true)
+                  ) {
+                    this[k as keyof typeof modes] = value as boolean;
                   }
                 });
               } else if (

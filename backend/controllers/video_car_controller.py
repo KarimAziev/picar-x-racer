@@ -110,7 +110,6 @@ class VideoCarController:
         self.settings = merged_settings
 
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
-        asyncio.create_task(self.process_messages(websocket))
         async for message in websocket:
             data = json.loads(message)
             logger.info(f"Received: {data}")
@@ -158,6 +157,25 @@ class VideoCarController:
                         continue
                     self.last_toggle_time = now
                     self.avoid_obstacles_mode = not self.avoid_obstacles_mode
+                    self.stop()
+                    self.set_cam_tilt_angle(0)
+                    self.set_cam_pan_angle(0)
+                    await websocket.send(
+                        json.dumps(
+                            {
+                                "payload": {
+                                    "direction": 0,
+                                    "servoAngle": 0,
+                                    "camPan": 0,
+                                    "camTilt": 0,
+                                    "speed": 0,
+                                    "maxSpeed": 50,
+                                    "avoidObstacles": self.avoid_obstacles_mode,
+                                },
+                                "type": "update",
+                            }
+                        )
+                    )
                     response = json.dumps(
                         {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
                     )
@@ -210,74 +228,23 @@ class VideoCarController:
 
     async def avoid_obstacles(self):
         POWER = 50
-        SafeDistance = 40  # > 40 safe
-        DangerDistance = 20  # > 20 && < 40 turn around,
-        DistanceThreshold = 2  # Set a threshold to minimize frequent updates
-
-        last_sent_distance = None  # Keep track of last sent distance value
-
+        SafeDistance = 40
+        DangerDistance = 20
         try:
-            while self.avoid_obstacles_mode:
+            while True:
                 distance = round(self.px.ultrasonic.read(), 2)
-
-                # Only queue distance if it changes significantly
-                if (
-                    last_sent_distance is None
-                    or abs(distance - last_sent_distance) > DistanceThreshold
-                ):
-                    last_sent_distance = distance
-                    asyncio.create_task(
-                        self.message_queue.put(
-                            json.dumps({"payload": distance, "type": "getDistance"})
-                        )
-                    )
-
+                logger.info(f"distance: {distance}")
                 if distance >= SafeDistance:
                     self.px.set_dir_servo_angle(0)
                     self.px.forward(POWER)
-                    servo_angle = 0
                 elif distance >= DangerDistance:
                     self.px.set_dir_servo_angle(30)
                     self.px.forward(POWER)
-                    servo_angle = 30
                     await asyncio.sleep(0.1)
                 else:
                     self.px.set_dir_servo_angle(-30)
                     self.px.backward(POWER)
-                    servo_angle = -30
                     await asyncio.sleep(0.5)
-
-                # Send move command in a non-blocking fashion
-                if distance >= DangerDistance:
-                    asyncio.create_task(
-                        self.message_queue.put(
-                            json.dumps(
-                                {
-                                    "payload": {
-                                        "direction": 1,
-                                        "speed": POWER,
-                                        "servoAngle": servo_angle,
-                                    },
-                                    "type": "move",
-                                }
-                            )
-                        )
-                    )
-                else:
-                    asyncio.create_task(
-                        self.message_queue.put(
-                            json.dumps(
-                                {
-                                    "payload": {
-                                        "direction": -1,
-                                        "speed": POWER,
-                                        "servoAngle": servo_angle,
-                                    },
-                                    "type": "move",
-                                }
-                            )
-                        )
-                    )
 
         finally:
             self.px.forward(0)

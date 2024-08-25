@@ -7,13 +7,22 @@
 import { useCarController } from "@/features/controller/composable";
 import { defineAsyncComponent, computed } from "vue";
 import { useSettingsStore } from "@/features/settings/stores";
+import { useControllerStore } from "@/features/controller/store";
 
 const settingsStore = useSettingsStore();
-const isTextInfoVisible = computed(() => settingsStore.settings.text_info_view);
-const isSpeedometerVisible = computed(
-  () => settingsStore.settings.speedometer_view,
+const controllerStore = useControllerStore();
+const isTextInfoVisible = computed(
+  () =>
+    !controllerStore.avoidObstacles && settingsStore.settings.text_info_view,
 );
-const isCarModelVisible = computed(() => settingsStore.settings.car_model_view);
+const isSpeedometerVisible = computed(
+  () =>
+    !controllerStore.avoidObstacles && settingsStore.settings.speedometer_view,
+);
+const isCarModelVisible = computed(
+  () =>
+    !controllerStore.avoidObstacles && settingsStore.settings.car_model_view,
+);
 
 const CarModelViewer = defineAsyncComponent({
   loader: () =>

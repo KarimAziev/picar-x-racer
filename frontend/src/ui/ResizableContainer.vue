@@ -81,6 +81,28 @@ watch(
 );
 
 watch(
+  () => defaultWidth.value,
+  (newVal) => {
+    if (fullscreen.value) {
+      setFullWidthHeight();
+    } else {
+      size.value.width = newVal;
+    }
+  },
+);
+
+watch(
+  () => defaultHeight.value,
+  (newVal) => {
+    if (fullscreen.value) {
+      setFullWidthHeight();
+    } else {
+      size.value.height = newVal;
+    }
+  },
+);
+
+watch(
   () => size.value.width,
   (newVal) => {
     if (resizableWrapper.value) {

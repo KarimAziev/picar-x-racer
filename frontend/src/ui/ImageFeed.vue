@@ -4,10 +4,12 @@
 
 <script setup lang="ts">
 import { useSettingsStore } from "@/features/settings/stores";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 
 const settingsStore = useSettingsStore();
 const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
+
+watch(() => videoFeedUrl.value, settingsStore.fetchDimensions);
 </script>
 
 <style scoped lang="scss">

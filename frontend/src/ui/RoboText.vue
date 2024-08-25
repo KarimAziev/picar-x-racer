@@ -8,7 +8,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { wait } from "@/util/wait";
 
 const props = defineProps<{
   text?: string;
@@ -20,26 +19,52 @@ const msg = ref("");
 const isCaretVisible = ref(true);
 const title = ref("");
 
-const typeTitle = async () => {
-  if (props.title) {
-    for (let i = 0; props.title.length > i; i++) {
-      title.value += `${props.title[i]}`;
-      await wait(10);
+const typeTitle = () => {
+  return new Promise<void>((resolve) => {
+    if (!props.title) {
+      return resolve();
     }
-  }
+
+    let index = 0;
+
+    const typeNextChar = () => {
+      if (!props.title) {
+        return;
+      }
+      if (index < props.title.length) {
+        title.value += props.title[index++];
+        requestAnimationFrame(typeNextChar);
+      } else {
+        resolve();
+      }
+    };
+
+    typeNextChar();
+  });
 };
-const typeText = async () => {
-  if (props.title) {
-    await typeTitle();
-  }
-  if (props.text) {
-    for (let i = 0; props.text.length > i; i++) {
-      msg.value += `${props.text[i]}`;
-      await wait(10);
-    }
-  }
-  await wait(200);
-  isCaretVisible.value = false;
+
+const typeText = () => {
+  typeTitle().then(() => {
+    if (!props.text) return;
+
+    let index = 0;
+
+    const typeNextChar = () => {
+      if (!props.text) {
+        return;
+      }
+      if (index < props.text.length) {
+        msg.value += props.text[index++];
+        requestAnimationFrame(typeNextChar);
+      } else {
+        setTimeout(() => {
+          isCaretVisible.value = false;
+        }, 200);
+      }
+    };
+
+    typeNextChar();
+  });
 };
 
 onMounted(typeText);
