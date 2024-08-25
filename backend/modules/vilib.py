@@ -196,7 +196,6 @@ class Vilib(object):
                 )
 
             Vilib.flask_img = Vilib.img
-            time.sleep(0.033)
 
         Vilib.capture.release()
 

@@ -179,7 +179,6 @@ def async_generate_video_stream(width: int, height: int, format=".jpg", quality=
             )
         else:
             logger.warning("Vilib.flask_img is None, skipping frame.")
-        sleep(0.05)
 
 
 def async_generate_video_stream_no_transform(format=".png"):
@@ -205,7 +204,6 @@ def async_generate_video_stream_no_transform(format=".png"):
             )
         else:
             logger.warning("Vilib.flask_img is None, skipping frame.")
-        sleep(0.05)
 
 
 def generate_high_quality_stream() -> Generator[bytes, None, None]:
