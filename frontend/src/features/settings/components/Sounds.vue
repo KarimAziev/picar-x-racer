@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import FilesPanel from "@/features/settings/components/FilesPanel.vue";
-import { useStore, mediaType } from "@/features/settings/stores/music";
+import { useStore, mediaType } from "@/features/settings/stores/sounds";
 
 const apiURL = `/api/upload/${mediaType}`;
 
