@@ -1,4 +1,8 @@
 import random
+import time
+from config.logging_config import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class Ultrasonic:
@@ -8,6 +12,7 @@ class Ultrasonic:
         self.trig = trig
         self.echo = echo
         self.timeout = timeout
+        self.dir_current_angle = 0
 
     def read(self, times=10):
         for _ in range(times):
@@ -29,6 +34,7 @@ class Picarx(object):
         ultrasonic_pins: list = ["D2", "D3"],
         _: str = CONFIG,
     ):
+        time.sleep(0.2)
         trig, echo = ultrasonic_pins
         self.grayscale_pins = grayscale_pins
         self.motor_pins = motor_pins
@@ -36,22 +42,22 @@ class Picarx(object):
         self.ultrasonic = Ultrasonic(trig, echo)
 
     def set_dir_servo_angle(self, angle: int):
-        print(f"Setting servo angle to {angle} degrees")
+        logger.info(f"Setting servo angle to {angle} degrees")
 
     def forward(self, speed: int):
-        print(f"Moving forward with speed {speed}")
+        logger.info(f"Moving forward with speed {speed}")
 
     def backward(self, speed: int):
-        print(f"Moving backward with speed {speed}")
+        logger.info(f"Moving backward with speed {speed}")
 
     def stop(self):
-        print("Stopping")
+        logger.info("Stopping")
 
     def set_cam_tilt_angle(self, angle: int):
-        print(f"Setting camera tilt angle to {angle} degrees")
+        logger.info(f"Setting camera tilt angle to {angle} degrees")
 
     def set_cam_pan_angle(self, angle: int):
-        print(f"Setting camera pan angle to {angle} degrees")
+        logger.info(f"Setting camera pan angle to {angle} degrees")
 
     def get_distance(self):
         return self.ultrasonic.read()

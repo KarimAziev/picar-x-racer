@@ -8,7 +8,8 @@ import {
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
-import { isNumber } from "@/util/guards";
+import { isNumber, isPlainObject, isString } from "@/util/guards";
+import { constrain } from "@/util/constrain";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -18,9 +19,9 @@ const CAM_TILT_MAX = 65;
 const SERVO_DIR_ANGLE_MIN = -30;
 const SERVO_DIR_ANGLE_MAX = 30;
 const MIN_SPEED = 10;
+const MAX_SPEED = 100;
 
-export type StoreState = {
-  loading: boolean;
+export interface Gauges {
   /** Current speed of the car, from 0 to 100 */
   speed: number;
   /**
@@ -31,31 +32,73 @@ export type StoreState = {
    * Current direction servo
    */
   servoAngle: number;
+  /**
+   * Current maximum speed for accelerating or decelerating
+   */
   maxSpeed: number;
+  /**
+   * Camera pan angle
+   */
   camPan: number;
+  /**
+   * Camera tilt angle
+   */
   camTilt: number;
-  connected: boolean;
-  websocket?: WebSocket;
-  messageQueue: string[];
-  url?: string;
-  reconnectedEnabled?: boolean;
-  distance?: number;
-  avoidObstacles: false;
-};
+  /**
+   * Last measured distance
+   */
+  distance: number;
+}
 
-const defaultState: StoreState = {
+export interface StoreState extends Gauges {
+  /**
+   * Whether avoid obstacles mode is enabled.
+   */
+  avoidObstacles: false;
+  /**
+   * Whether the WebSocket is loading.
+   */
+  loading: boolean;
+  /**
+   * Whether the WebSocket connection is opened.
+   */
+  connected: boolean;
+  /**
+   * Current WebSocket instance
+   */
+  websocket?: WebSocket;
+  /**
+   * The WebSocket messages queue
+   */
+  messageQueue: string[];
+  /**
+   * The WebSocket URL
+   */
+  url?: string;
+  /**
+   * Whether WebSocket is allowed to reconnect.
+   */
+  reconnectedEnabled?: boolean;
+}
+
+const defaultGauges: Gauges = {
   speed: 0,
   direction: 0,
   servoAngle: 0,
   maxSpeed: 80,
   camPan: 0,
   camTilt: 0,
-  messageQueue: [],
+  distance: 0,
+} as const;
+
+const defaultState: StoreState = {
+  ...defaultGauges,
+  avoidObstacles: false,
   connected: false,
+  reconnectedEnabled: true,
+  messageQueue: [],
   loading: false,
   url: "ws://" + window.location.hostname + ":8765",
-  reconnectedEnabled: true,
-  avoidObstacles: false,
 } as const;
 
 export const useControllerStore = defineStore("controller", {
@@ -81,25 +124,27 @@ export const useControllerStore = defineStore("controller", {
         let data;
         try {
           data = JSON.parse(msg.data);
-          const type = data?.type;
+          if (!isPlainObject(data)) {
+            return;
+          }
+          const { type, payload, error } = data;
+
           switch (type) {
             case "getDistance":
-              const value = data.payload;
-              const error = data.error;
-              this.distance = data.error || value;
+              this.distance = error || payload;
               if (error) {
                 messager.error(error, "distance error");
               } else {
-                messager.info(`${value.toFixed(2)} sm`, "distance");
+                messager.info(`${payload.toFixed(2)} sm`, "distance");
               }
 
               break;
             case "takePhoto":
-              messager.info("Recorded");
+              messager.info("Photo taken");
               const imageStore = useImageStore();
-              if (data.payload) {
-                imageStore.downloadFile(data.payload);
-              } else if (data.error) {
+              if (payload) {
+                imageStore.downloadFile(payload);
+              } else if (error) {
                 messager.error(`Couldn't take photo: ${data.error}`);
               }
               break;
@@ -109,34 +154,27 @@ export const useControllerStore = defineStore("controller", {
               this.speed = 0;
               break;
 
-            case "move":
-              const { direction, speed, servoAngle } = data.payload;
-              this.direction =
-                direction === "forward" ? 1 : direction === "backward" ? -1 : 0;
-              if (isNumber(speed)) {
-                this.speed = speed;
-              }
-              if (isNumber(servoAngle)) {
-                this.servoAngle = servoAngle;
-              }
-
-              break;
-
-            case "setServo":
-              this.servoAngle = data.paylaod;
+            case "setServoDirAngle":
+              this.servoAngle = payload;
               break;
 
             case "setCamPanAngle":
-              this.camPan = data.payload;
+              this.camPan = payload;
               break;
 
             case "setCamTiltAngle":
-              this.camTilt = data.payload;
+              this.camTilt = payload;
               break;
 
             case "avoidObstacles":
-              this.avoidObstacles = data.payload;
-              messager.info(`Avoid Obstacles: ${data.payload}`, {
+              this.avoidObstacles = payload;
+              messager.info(`Avoid Obstacles: ${payload}`, {
+                immediately: true,
+              });
+              break;
+
+            case "drawFPS":
+              messager.info(`Draw FPS: ${payload}`, {
                 immediately: true,
               });
               break;
@@ -144,6 +182,18 @@ export const useControllerStore = defineStore("controller", {
             default:
               if (data.error) {
                 messager.error(data.error);
+              } else if (isPlainObject(payload)) {
+                Object.entries(payload as Gauges).forEach(([k, value]) => {
+                  if (k in defaultGauges && isNumber(value)) {
+                    this[k as keyof Gauges] = value as Gauges[keyof Gauges];
+                  }
+                });
+              } else if (
+                isNumber(payload) &&
+                isString(type) &&
+                type in defaultGauges
+              ) {
+                this[type as keyof Gauges] = payload;
               }
           }
         } catch (error) {}
@@ -192,6 +242,74 @@ export const useControllerStore = defineStore("controller", {
       messager.info("Closing connection...");
       this.websocket?.close();
     },
+    cleanup() {
+      this.reconnectedEnabled = false;
+
+      this.stop();
+      this.resetDirServoAngle();
+      this.resetCameraRotate();
+      this.close();
+
+      this.loading = false;
+      this.speed = 0;
+      this.websocket = undefined;
+      this.messageQueue = [];
+    },
+    // command workers
+    setMaxSpeed(value: number) {
+      const newValue = constrain(MIN_SPEED, MAX_SPEED, value);
+      if (newValue !== this.maxSpeed) {
+        this.maxSpeed = newValue;
+      }
+      if (this.speed >= newValue) {
+        this.speed = constrain(MIN_SPEED, newValue, newValue - ACCELERATION);
+      }
+    },
+    setCamTiltAngle(angle: number): void {
+      const nextAngle = constrain(CAM_TILT_MIN, CAM_TILT_MAX, angle);
+      this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
+      this.camTilt = nextAngle;
+    },
+
+    setCamPanAngle(servoAngle: number): void {
+      const nextAngle = constrain(CAM_PAN_MIN, CAM_PAN_MAX, servoAngle);
+      this.camPan = nextAngle;
+    },
+
+    move(speed: number, direction: number) {
+      speed = constrain(0, this.maxSpeed, speed);
+      if (this.speed !== speed || this.direction !== direction) {
+        this.sendMessage({
+          action: "move",
+          payload: {
+            direction,
+            speed,
+          },
+        });
+      }
+
+      this.direction = direction;
+      this.speed = speed;
+    },
+
+    forward(speed: number) {
+      this.move(speed, 1);
+    },
+
+    backward(speed: number) {
+      this.move(speed, -1);
+    },
+
+    setDirServoAngle(servoAngle: number) {
+      const nextAngle = constrain(
+        SERVO_DIR_ANGLE_MIN,
+        SERVO_DIR_ANGLE_MAX,
+        servoAngle,
+      );
+      this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
+      this.servoAngle = nextAngle;
+    },
+    // commands
     accelerate() {
       this.forward(Math.min(this.speed + ACCELERATION, this.maxSpeed));
     },
@@ -219,24 +337,12 @@ export const useControllerStore = defineStore("controller", {
       this.direction = 0;
       this.speed = 0;
     },
-
     increaseMaxSpeed() {
-      const curr = Math.min(100, this.maxSpeed + ACCELERATION);
-      if (this.maxSpeed !== curr) {
-        this.maxSpeed = curr;
-      }
+      this.setMaxSpeed(this.maxSpeed + ACCELERATION);
     },
 
     decreaseMaxSpeed() {
-      const curr = Math.max(MIN_SPEED, this.maxSpeed - ACCELERATION);
-
-      if (this.maxSpeed !== curr) {
-        this.maxSpeed = curr;
-
-        if (this.speed >= this.maxSpeed) {
-          this.speed = Math.max(MIN_SPEED, this.maxSpeed - ACCELERATION);
-        }
-      }
+      this.setMaxSpeed(this.maxSpeed - ACCELERATION);
     },
 
     resetCamTilt() {
@@ -244,15 +350,15 @@ export const useControllerStore = defineStore("controller", {
     },
 
     increaseCamTilt() {
-      this.setCamTiltAngle(Math.min(this.camTilt + 5, CAM_TILT_MAX));
+      this.setCamTiltAngle(this.camTilt + 5);
     },
 
     decreaseCamTilt() {
-      this.setCamTiltAngle(Math.max(this.camTilt - 5, CAM_TILT_MIN));
+      this.setCamTiltAngle(this.camTilt - 5);
     },
 
     increaseCamPan() {
-      this.setCamPanAngle(Math.min(this.camPan + 5, CAM_PAN_MAX));
+      this.setCamPanAngle(this.camPan + 5);
     },
 
     resetCamPan() {
@@ -260,7 +366,7 @@ export const useControllerStore = defineStore("controller", {
     },
 
     decreaseCamPan() {
-      this.setCamPanAngle(Math.max(this.camPan - 5, CAM_PAN_MIN));
+      this.setCamPanAngle(this.camPan - 5);
     },
 
     resetCameraRotate() {
@@ -268,53 +374,8 @@ export const useControllerStore = defineStore("controller", {
       this.resetCamTilt();
     },
 
-    forward(speed: number) {
-      if (this.speed !== speed || this.direction !== 1) {
-        this.sendMessage({ action: "move", direction: "forward", speed });
-      }
-
-      this.direction = 1;
-      this.speed = speed;
-    },
-
-    backward(speed: number) {
-      if (this.speed !== speed || this.direction !== -1) {
-        this.sendMessage({ action: "move", direction: "backward", speed });
-      }
-
-      this.direction = -1;
-      this.speed = speed;
-    },
-
-    setDirServoAngle(servoAngle: number) {
-      const nextAngle = Math.min(
-        Math.max(SERVO_DIR_ANGLE_MIN, servoAngle),
-        SERVO_DIR_ANGLE_MAX,
-      );
-      this.sendMessage({ action: "setServo", angle: nextAngle });
-      this.servoAngle = nextAngle;
-    },
-
     resetDirServoAngle(): void {
       this.setDirServoAngle(0);
-    },
-
-    setCamTiltAngle(servoAngle: number): void {
-      const nextAngle = Math.min(
-        Math.max(CAM_PAN_MIN, servoAngle),
-        CAM_PAN_MAX,
-      );
-      this.sendMessage({ action: "setCamTiltAngle", angle: nextAngle });
-      this.camTilt = nextAngle;
-    },
-
-    setCamPanAngle(servoAngle: number): void {
-      const nextAngle = Math.min(
-        Math.max(CAM_PAN_MIN, servoAngle),
-        CAM_PAN_MAX,
-      );
-      this.sendMessage({ action: "setCamPanAngle", angle: nextAngle });
-      this.camPan = nextAngle;
     },
 
     playMusic(): void {
@@ -346,13 +407,20 @@ export const useControllerStore = defineStore("controller", {
       messager.info("Recording photo...");
       this.sendMessage({ action: "takePhoto" });
     },
+    toggleAvoidObstaclesMode() {
+      this.sendMessage({ action: "avoidObstacles" });
+    },
+    toggleDrawFPS() {
+      this.sendMessage({ action: "drawFPS" });
+    },
 
     left() {
-      this.setDirServoAngle(-30);
+      this.setDirServoAngle(SERVO_DIR_ANGLE_MIN);
     },
     right() {
-      this.setDirServoAngle(30);
+      this.setDirServoAngle(SERVO_DIR_ANGLE_MAX);
     },
+    // UI commands
     getBatteryVoltage() {
       const batteryStore = useBatteryStore();
       batteryStore.fetchBatteryStatus();
@@ -373,12 +441,6 @@ export const useControllerStore = defineStore("controller", {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("car_model_view");
     },
-    toggleAvoidObstaclesMode() {
-      this.sendMessage({ action: "avoidObstacles" });
-    },
-    toggleDrawFPS() {
-      this.sendMessage({ action: "drawFPS" });
-    },
     openShortcutsSettings() {
       const popupStore = usePopupStore();
       popupStore.tab = SettingsTab.KEYBINDINGS;
@@ -396,20 +458,6 @@ export const useControllerStore = defineStore("controller", {
     decreaseQuality() {
       const settingsStore = useSettingsStore();
       settingsStore.decreaseQuality();
-    },
-
-    cleanup() {
-      this.reconnectedEnabled = false;
-
-      this.stop();
-      this.resetDirServoAngle();
-      this.resetCameraRotate();
-      this.websocket?.close();
-
-      this.loading = false;
-      this.speed = 0;
-      this.websocket = undefined;
-      this.messageQueue = [];
     },
   },
 });

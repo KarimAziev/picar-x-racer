@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import os
 import traceback
 from datetime import datetime, timedelta
@@ -9,35 +8,16 @@ from time import localtime, sleep, strftime, time
 from typing import List
 import numpy as np
 import websockets
-from colorlog import ColoredFormatter
 from util.get_ip_address import get_ip_address
 from util.os_checks import is_raspberry_pi
 from util.platform_adapters import Picarx, Vilib, get_battery_voltage, reset_mcu
 from websockets import WebSocketServerProtocol
 from werkzeug.datastructures import FileStorage
+from config.logging_config import setup_logger
 
 from controllers.audio_handler import AudioHandler
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = ColoredFormatter(
-    "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt=None,
-    reset=True,
-    log_colors={
-        "DEBUG": "cyan",
-        "INFO": "green",
-        "WARNING": "yellow",
-        "ERROR": "red",
-        "CRITICAL": "red,bg_white",
-    },
-    secondary_log_colors={},
-    style="%",
-)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+logger = setup_logger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 MUSIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../music"))
@@ -140,27 +120,33 @@ class VideoCarController:
 
             try:
                 if action == "move":
-                    self.move(data.get("direction"), data.get("speed", 0))
-                elif action == "setServo":
-                    self.set_servo_angle(data.get("angle", 0))
+                    payload = data.get("payload", {})
+                    direction = payload.get("direction", 0)
+                    speed = payload.get("speed", 0)
+                    self.move(direction, speed)
+                elif action == "setServoDirAngle":
+                    self.set_servo_angle(data.get("payload", 0))
                 elif action == "stop":
                     self.stop()
                 elif action == "setCamTiltAngle":
-                    self.set_cam_tilt_angle(data.get("angle", 0))
+                    self.set_cam_tilt_angle(data.get("payload", 0))
                 elif action == "setCamPanAngle":
-                    self.set_cam_pan_angle(data.get("angle", 0))
+                    self.set_cam_pan_angle(data.get("payload", 0))
                 elif action == "playMusic":
-                    self.play_music(data.get("file"))
+                    self.play_music(data.get("payload"))
                 elif action == "playSound":
-                    self.play_sound(data.get("file"))
+                    self.play_sound(data.get("payload"))
                 elif action == "sayText":
-                    self.say_text(data.get("text"))
+                    self.say_text(data.get("payload"))
                 elif action == "takePhoto":
                     name = self.take_photo()
                     response = json.dumps({"payload": name, "type": action})
                     await websocket.send(response)
                 elif action == "drawFPS":
                     Vilib.draw_fps = not Vilib.draw_fps
+                    await websocket.send(
+                        json.dumps({"payload": Vilib.draw_fps, "type": "drawFPS"})
+                    )
                 elif action == "avoidObstacles":
                     now = datetime.utcnow()
                     if self.last_toggle_time and (
@@ -198,8 +184,9 @@ class VideoCarController:
                     response = json.dumps({"payload": value, "type": action})
                     await websocket.send(response)
                 else:
-                    logger.warning(f"Unknown action: {action}")
-                    response = json.dumps({"error": "Unknown action", "type": action})
+                    error_msg = "Unknown action: {action}"
+                    logger.warning(error_msg)
+                    response = json.dumps({"error": error_msg, "type": action})
                     await websocket.send(response)
             except Exception as e:
                 logger.error(f"Error handling action {action}: {e}")
@@ -267,7 +254,7 @@ class VideoCarController:
                             json.dumps(
                                 {
                                     "payload": {
-                                        "direction": "forward",
+                                        "direction": 1,
                                         "speed": POWER,
                                         "servoAngle": servo_angle,
                                     },
@@ -282,7 +269,7 @@ class VideoCarController:
                             json.dumps(
                                 {
                                     "payload": {
-                                        "direction": "backward",
+                                        "direction": -1,
                                         "speed": POWER,
                                         "servoAngle": servo_angle,
                                     },
@@ -335,20 +322,14 @@ class VideoCarController:
         text = text or self.settings.get("default_text", "Hello, I'm your video car!")
         self.audio_handler.text_to_speech(text)
 
-    def move(self, direction, speed):
+    def move(self, direction: int, speed: int):
         logger.info(f"Moving {direction} with speed {speed}")
-        if direction == "forward":
+        if direction == 1:
             self.px.set_dir_servo_angle(0)
             self.px.forward(speed)
-        elif direction == "backward":
+        elif direction == -1:
             self.px.set_dir_servo_angle(0)
             self.px.backward(speed)
-        elif direction == "left":
-            self.px.set_dir_servo_angle(-30)
-            self.px.forward(speed)
-        elif direction == "right":
-            self.px.set_dir_servo_angle(30)
-            self.px.forward(speed)
 
     def set_servo_angle(self, angle):
         logger.info(f"Setting servo angle to {angle} degrees")
