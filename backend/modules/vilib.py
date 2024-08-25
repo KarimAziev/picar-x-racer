@@ -1,13 +1,12 @@
 import os
-import logging
 import threading
 import time
 from multiprocessing import Manager
 from typing import Optional
-from colorlog import ColoredFormatter
+
 import cv2
 import numpy as np
-from util.os_checks import is_raspberry_pi
+from config.logging_config import setup_logger
 
 try:
     from picamera2 import Picamera2
@@ -17,26 +16,7 @@ except ImportError:
     libcamera = None
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = ColoredFormatter(
-    "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt=None,
-    reset=True,
-    log_colors={
-        "DEBUG": "cyan",
-        "INFO": "green",
-        "WARNING": "yellow",
-        "ERROR": "red",
-        "CRITICAL": "red,bg_white",
-    },
-    secondary_log_colors={},
-    style="%",
-)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+logger = setup_logger(__name__)
 
 user = os.getlogin()
 user_home = os.path.expanduser(f"~{user}")
