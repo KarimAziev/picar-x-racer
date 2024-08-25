@@ -3,7 +3,7 @@
   "default_sound": "directives.wav",
   "default_text": "Target identified",
   "fullscreen": true,
-  "video_feed_url": "/mjpg-mq",
+  "video_feed_url": "/mjpg-lq",
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,
@@ -31,11 +31,11 @@
     "sayText": ["k"],
     "stop": ["Space"],
     "takePhoto": ["t"],
+    "toggleAvoidObstaclesMode": ["O"],
+    "toggleCarModelView": ["M"],
+    "toggleDrawFPS": ["F"],
     "toggleFullscreen": ["f"],
     "toggleSpeedometerView": ["N"],
-    "toggleCarModelView": ["M"],
-    "toggleTextInfo": ["I"],
-    "toggleDrawFPS": ["F"],
-    "toggleAvoidObstaclesMode": ["O"]
+    "toggleTextInfo": ["I"]
   }
 }
