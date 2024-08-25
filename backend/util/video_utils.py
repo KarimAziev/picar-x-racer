@@ -1,32 +1,14 @@
-import cv2
-import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from typing import Generator
-from util.platform_adapters import Vilib
-from colorlog import ColoredFormatter
-from concurrent.futures import ThreadPoolExecutor
-import logging
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = ColoredFormatter(
-    "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt=None,
-    reset=True,
-    log_colors={
-        "DEBUG": "cyan",
-        "INFO": "green",
-        "WARNING": "yellow",
-        "ERROR": "red",
-        "CRITICAL": "red,bg_white",
-    },
-    secondary_log_colors={},
-    style="%",
-)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+import cv2
+import numpy as np
+from config.logging_config import setup_logger
+
+from util.platform_adapters import Vilib
+
+logger = setup_logger(__name__)
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 1280
@@ -49,7 +31,19 @@ def convert_listproxy_to_array(listproxy_obj):
     if listproxy_obj is None:
         logger.error("ListProxy object is None")
         raise ValueError("ListProxy object is None")
-    return np.array(listproxy_obj, dtype=np.uint8).reshape((480, 640, 3))
+
+    np_array = np.array(listproxy_obj, dtype=np.uint8)
+
+    return np_array
+
+
+def gen():
+    while True:
+        frame_array = convert_listproxy_to_array(Vilib.flask_img)
+        _, buffer = cv2.imencode(".jpg", frame_array)
+        frame = buffer.tobytes()
+        yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+        sleep(0.1)
 
 
 def enhance_frame(frame: np.ndarray) -> np.ndarray:

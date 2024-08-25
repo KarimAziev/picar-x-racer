@@ -2,19 +2,11 @@ import os
 import threading
 import time
 from multiprocessing import Manager
-from typing import Optional
-
+from typing import Optional, List, Tuple
+import subprocess
 import cv2
 import numpy as np
 from config.logging_config import setup_logger
-
-try:
-    from picamera2 import Picamera2
-    import libcamera  # type: ignore
-except ImportError:
-    Picamera2 = None
-    libcamera = None
-
 
 logger = setup_logger(__name__)
 
@@ -23,6 +15,8 @@ user_home = os.path.expanduser(f"~{user}")
 
 DEFAULLT_PICTURES_PATH = "%s/Pictures/vilib/" % user_home
 DEFAULLT_VIDEOS_PATH = "%s/Videos/vilib/" % user_home
+
+CameraInfo = Tuple[int, str, Optional[str]]
 
 
 class Vilib(object):
@@ -69,165 +63,142 @@ class Vilib(object):
     objects_detection_labels = None
     qrcode_detect_sw = False
     traffic_detect_sw = False
-    camera_index = None
+    camera_index: Optional[int] = None
+    is_greyscale_camera = False
 
     @staticmethod
-    def find_available_cameras(max_index=10):
-        available_cameras = []
-        for index in range(max_index):
+    def get_device_info(device_path: str) -> str:
+        try:
+            result = subprocess.run(
+                ["v4l2-ctl", "--device", device_path, "--all"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            return result.stdout
+        except Exception as e:
+            return f"Error checking device {device_path}: {e}"
+
+    @staticmethod
+    def find_available_cameras() -> List[CameraInfo]:
+        camera_indices: List[CameraInfo] = []
+
+        video_devices = [f for f in os.listdir("/dev") if f.startswith("video")]
+        for device in video_devices:
+            device_path = os.path.join("/dev", device)
+            index = int(device.replace("video", ""))
             cap = cv2.VideoCapture(index)
             if cap.isOpened():
-                available_cameras.append(index)
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    device_info = Vilib.get_device_info(device_path)
+                    camera_indices.append((index, device_path, device_info))
                 cap.release()
+
+        return camera_indices
+
+    @staticmethod
+    def prioritize_cameras(available_cameras: List[CameraInfo]):
+        color_cameras: List[CameraInfo] = []
+        greyscale_cameras: List[CameraInfo] = []
+
+        for index, device_path, device_info in available_cameras:
+            if device_info and "8-bit Greyscale" in device_info:
+                greyscale_cameras.append((index, device_path, device_info))
             else:
-                cap.release()
-        return available_cameras
+                color_cameras.append((index, device_path, device_info))
+
+        if color_cameras:
+            return color_cameras[0]
+        elif greyscale_cameras:
+            return greyscale_cameras[0]
+        else:
+            return None, None, None
+
+    @staticmethod
+    def read_camera(index: int, is_greyscale: bool) -> Optional[np.ndarray]:
+        cap = cv2.VideoCapture(index)
+        if cap.isOpened():
+            ret, frame = cap.read()
+            cap.release()
+            if ret:
+                if is_greyscale:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+                return frame
+        return None
 
     @staticmethod
     def camera_loop():
         logger.info("Starting camera loop")
 
         available_cameras = Vilib.find_available_cameras()
-        logger.info(f"Available cameras: {available_cameras}")
+        logger.info(
+            f"Available cameras: {[(idx, path) for idx, path, _ in available_cameras]}"
+        )
 
-        if is_raspberry_pi() and available_cameras == [0]:
-            logger.info("Only internal Pi Camera module detected. Using Picamera2.")
-            if Picamera2 is None:
-                raise RuntimeError("Picamera2 library is not installed.")
+        Vilib.camera_index, device_path, device_info = Vilib.prioritize_cameras(
+            available_cameras
+        )
+        if (
+            Vilib.camera_index is not None
+            and device_info
+            and "8-bit Greyscale" in device_info
+        ):
+            Vilib.is_greyscale_camera = "8-bit Greyscale" in device_info
+        elif Vilib.camera_index is None:
+            raise RuntimeError("Error: No available cameras found.")
 
-            try:
-                picam2 = Picamera2()
-                preview_config = picam2.create_preview_configuration(
-                    main={"format": "RGB888", "size": (640, 480)}
-                )
-                preview_config["transform"] = libcamera.Transform(
-                    hflip=Vilib.camera_hflip, vflip=Vilib.camera_vflip
-                )
-                picam2.configure(preview_config)
-                picam2.start()
-            except Exception as e:
-                logger.error(f"Error starting Picamera2: {e}")
-                Vilib.camera_run = False
-                return
+        logger.info(
+            f"Starting camera {Vilib.camera_index} with device path {device_path}, greyscale={Vilib.is_greyscale_camera}"
+        )
 
-            fps = 0
-            start_time = time.time()
-            framecount = 0
+        Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
+        if not Vilib.capture.isOpened():
+            raise RuntimeError(
+                f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
+            )
 
-            while Vilib.camera_run:
-                Vilib.img = picam2.capture_array()
+        fps = 0
+        start_time = 0
+        framecount = 0
 
-                # Image processing functions
-                Vilib.img = Vilib.color_detect_func(Vilib.img)
-                Vilib.img = Vilib.face_detect_func(Vilib.img)
-                Vilib.img = Vilib.traffic_detect_fuc(Vilib.img)
-                Vilib.img = Vilib.qrcode_detect_func(Vilib.img)
-                Vilib.img = Vilib.image_classify_fuc(Vilib.img)
-                Vilib.img = Vilib.object_detect_fuc(Vilib.img)
-                Vilib.img = Vilib.hands_detect_fuc(Vilib.img)
-                Vilib.img = Vilib.pose_detect_fuc(Vilib.img)
+        while Vilib.camera_run:
+            ret, frame = Vilib.capture.read()
+            if not ret:
+                logger.warning("Warning: Failed to read frame from camera.")
+                continue
 
-                # Calculate FPS
-                framecount += 1
-                elapsed_time = float(time.time() - start_time)
-                if elapsed_time > 1:
-                    fps = round(framecount / elapsed_time, 1)
-                    framecount = 0
-                    start_time = time.time()
+            if Vilib.camera_vflip:
+                frame = cv2.flip(frame, 0)
+            if Vilib.camera_hflip:
+                frame = cv2.flip(frame, 1)
 
-                # Draw FPS on frame
-                if Vilib.draw_fps:
-                    cv2.putText(
-                        Vilib.img,
-                        f"FPS: {fps}",
-                        Vilib.fps_origin,
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        Vilib.fps_size,
-                        Vilib.fps_color,
-                        1,
-                        cv2.LINE_AA,
-                    )
+            Vilib.img = frame
+            # Calculate FPS
+            framecount += 1
+            elapsed_time = float(time.time() - start_time)
+            if elapsed_time > 1:
+                fps = round(framecount / elapsed_time, 1)
+                framecount = 0
+                start_time = time.time()
 
-                # Display on desktop
-                if Vilib.imshow_flag:
-                    cv2.imshow(Vilib.Windows_Name, Vilib.img)
-                    cv2.waitKey(1)
-
-                Vilib.flask_img = Vilib.img
-                time.sleep(0.033)  # ~30 FPS
-
-            picam2.close()
-            cv2.destroyAllWindows()
-
-        else:
-            logger.info("Using external USB camera if available.")
-            Vilib.camera_index = (
-                available_cameras[-1] if available_cameras else 0
-            )  # Fallback to 0 if none found
-            Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
-            if not Vilib.capture.isOpened():
-                raise RuntimeError(
-                    f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
+            # Draw FPS on frame
+            if Vilib.draw_fps:
+                cv2.putText(
+                    Vilib.img,
+                    f"FPS: {fps}",
+                    Vilib.fps_origin,
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    Vilib.fps_size,
+                    Vilib.fps_color,
+                    1,
+                    cv2.LINE_AA,
                 )
 
-            fps = 0
-            start_time = 0
-            framecount = 0
+            Vilib.flask_img = Vilib.img
+            time.sleep(0.033)
 
-            while Vilib.camera_run:
-                ret, frame = Vilib.capture.read()
-                if not ret:
-                    logger.warning("Warning: Failed to read frame from camera.")
-                    continue
-
-                if Vilib.camera_vflip:
-                    frame = cv2.flip(frame, 0)
-                if Vilib.camera_hflip:
-                    frame = cv2.flip(frame, 1)
-
-                Vilib.img = frame
-
-                # Image processing functions
-                Vilib.img = Vilib.color_detect_func(Vilib.img)
-                Vilib.img = Vilib.face_detect_func(Vilib.img)
-                Vilib.img = Vilib.traffic_detect_fuc(Vilib.img)
-                Vilib.img = Vilib.qrcode_detect_func(Vilib.img)
-                Vilib.img = Vilib.image_classify_fuc(Vilib.img)
-                Vilib.img = Vilib.object_detect_fuc(Vilib.img)
-                Vilib.img = Vilib.hands_detect_fuc(Vilib.img)
-                Vilib.img = Vilib.pose_detect_fuc(Vilib.img)
-
-                # Calculate FPS
-                framecount += 1
-                elapsed_time = float(time.time() - start_time)
-                if elapsed_time > 1:
-                    fps = round(framecount / elapsed_time, 1)
-                    framecount = 0
-                    start_time = time.time()
-
-                # Draw FPS on frame
-                if Vilib.draw_fps:
-                    cv2.putText(
-                        Vilib.img,
-                        f"FPS: {fps}",
-                        Vilib.fps_origin,
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        Vilib.fps_size,
-                        Vilib.fps_color,
-                        1,
-                        cv2.LINE_AA,
-                    )
-
-                # Display on desktop
-                if Vilib.imshow_flag:
-                    cv2.imshow(Vilib.Windows_Name, Vilib.img)
-                    cv2.waitKey(1)
-
-                Vilib.flask_img = Vilib.img
-                time.sleep(0.033)  # ~30 FPS
-
-            Vilib.capture.release()
-            cv2.destroyAllWindows()
+        Vilib.capture.release()
 
     @staticmethod
     def camera_start(vflip=False, hflip=False):
@@ -245,11 +216,6 @@ class Vilib(object):
         if Vilib.camera_thread is not None:
             Vilib.camera_run = False
             Vilib.camera_thread.join()
-
-    @staticmethod
-    def display(local=True, web=True):
-        logger.info(f"Displaying camera feed with local={local}, web={web}")
-        Vilib.imshow_flag = local
 
     @staticmethod
     def take_photo(photo_name, path):
