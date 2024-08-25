@@ -25,11 +25,9 @@
 >   - [Usage on Raspberry OS](#usage-on-raspberry-os)
 >     - [Setup and Build](#setup-and-build)
 >     - [Usage](#usage)
->   - [Settings Panel](#settings-panel)
->   - [Keybindings](#keybindings)
->     - [Move](#move)
->     - [Camera](#camera)
->     - [Sound Controls](#sound-controls)
+>   - [Settings](#settings)
+>     - [Default Keybindings](#default-keybindings)
+>     - [Avoid Obstacles Mode](#avoid-obstacles-mode)
 >   - [Development on non-Raspberry OS](#development-on-non-raspberry-os)
 >     - [Backend](#backend)
 >     - [Frontend](#frontend)
@@ -94,7 +92,11 @@ http://<your-raspberry-pi-ip>:9000
 
 After navigating to the control interface, you can customize your experience via the comprehensive settings panel:
 
-## Settings Panel
+## Settings
+
+To access settings press the icon in the right top corner, or press `h` to open the general settings, or `?` - to open keybindings settings.
+
+![Alt text](./demo/settings-general.png)
 
 - **Text-to-Speech**: Configure the default text that will be converted into speech.
 - **Default Sound**: Select a default sound from the available list to play during specific events.
@@ -105,39 +107,48 @@ After navigating to the control interface, you can customize your experience via
 
 The settings panel is user-friendly, allowing for quick adjustments and uploads directly from your browser to tailor the Picar-X experience to your preference.
 
-## Keybindings
+![Alt text](./demo/keybindings-settings.png)
 
-In the browser, you can control your Picar-x with the following keys.
+### Default Keybindings
 
-### Move
+In the browser, you can control your Picar-X with the following keys (all the keys can be changed in the settings).
 
-| Key     | Action     |
-| ------- | ---------- |
-| `w`     | Move Up    |
-| `a`     | Move Left  |
-| `d`     | Move Right |
-| `s`     | Move Down  |
-| `=`     | Speed Up   |
-| `-`     | Speed Down |
-| `Space` | Stop       |
+| Label                       | Default Key | Description                                                     |
+| --------------------------- | ----------- | --------------------------------------------------------------- |
+| Move Forward                | w           | Accelerates the car forward.                                    |
+| Move Backward               | s           | Accelerates the car backward.                                   |
+| Move Left                   | a           | Turns the car left.                                             |
+| Move Right                  | d           | Turns the car right.                                            |
+| Stop                        | Space       | Stops the car.                                                  |
+| Camera Left                 | ArrowLeft   | Pans the camera to the left.                                    |
+| Camera Down                 | ArrowDown   | Tilts the camera downward.                                      |
+| Camera Right                | ArrowRight  | Pans the camera to the right.                                   |
+| Camera Up                   | ArrowUp     | Tilts the camera upward.                                        |
+| Decrease Max Speed          | -           | Decreases the car's maximum speed.                              |
+| Increase Max Speed          | =           | Increases the car's maximum speed.                              |
+| Measure Distance            | u           | Measures the distance to obstacles.                             |
+| Play Music                  | m           | Plays music.                                                    |
+| Play Sound                  | o           | Plays a sound.                                                  |
+| Reset Camera Orientation    | 0           | Resets the camera's pan and tilt to default orientation.        |
+| Say Text                    | k           | Speaks out a predefined text.                                   |
+| Take Photo                  | t           | Captures a photo using the camera.                              |
+| Show Battery Voltage        | b           | Displays the current battery voltage.                           |
+| Toggle Fullscreen           | f           | Enters or exits full-screen mode.                               |
+| Open Shortcuts Settings     | ?           | Opens the settings menu for keyboard shortcuts.                 |
+| Open General Settings       | h           | Opens the general settings menu.                                |
+| Increase Video Quality      | .           | Increases the video quality.                                    |
+| Increase Video Quality      | PageUp      | Increases the video quality.                                    |
+| Decrease Video Quality      | ,           | Decreases the video quality.                                    |
+| Decrease Video Quality      | PageDown    | Decreases the video quality.                                    |
+| Toggle Speedometer View     | N           | Toggles the speedometer display on or off.                      |
+| Toggle 3D Car View          | M           | Toggles the 3D view of the car on or off.                       |
+| Toggle Text Info            | I           | Toggles text information on or off.                             |
+| Toggle FPS Drawing          | F           | Turns the FPS display on or off.                                |
+| Toggle Avoid Obstacles Mode | O           | Activates a special mode. [See details](#avoid-obstacles-mode). |
 
-### Camera
+### Avoid Obstacles Mode
 
-| Key           | Action            |
-| ------------- | ----------------- |
-| `Arrow Up`    | Move Camera Up    |
-| `Arrow Left`  | Move Camera Left  |
-| `Arrow Right` | Move Camera Right |
-| `Arrow Down`  | Move Camera Down  |
-| `t`           | Take Photo        |
-
-### Sound Controls
-
-| Key | Action          |
-| --- | --------------- |
-| `r` | Play sound      |
-| `m` | Play/Stop Music |
-| `k` | Speech          |
+Activates a mode where the car automatically adjusts its movements to avoid obstacles based on distance measurements from a sensor.
 
 ## Development on non-Raspberry OS
 
