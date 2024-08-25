@@ -8,6 +8,7 @@
   "car_model_view": true,
   "speedometer_view": true,
   "text_info_view": true,
+
   "keybindings": {
     "accelerate": ["w"],
     "decelerate": ["s"],
@@ -23,7 +24,7 @@
     "increaseQuality": [".", "PageUp"],
     "left": ["a"],
     "openGeneralSettings": ["h"],
-    "openShortcutsSettings": ["Shift-?"],
+    "openShortcutsSettings": ["?"],
     "playMusic": ["m"],
     "playSound": ["o"],
     "resetCameraRotate": ["0"],

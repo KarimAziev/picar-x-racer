@@ -2,7 +2,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useControllerStore } from "@/features/controller/store";
 import { useSettingsStore } from "@/features/settings/stores";
 import type { ControllerActionName } from "@/features/controller/store";
-import { formatKeyEventItem } from "@/util/keyboard-util";
+import { formatKeyEventItem, formatKeyboardEvents } from "@/util/keyboard-util";
 import { groupKeys } from "@/features/settings/util";
 import { usePopupStore } from "@/features/settings/stores";
 
@@ -35,8 +35,7 @@ export const useCarController = () => {
       return;
     }
 
-    const key = formatKeyEventItem(event);
-
+    const key = formatKeyboardEvents([event]);
     const commandName = keybindings.value[key];
 
     if (commandName) {

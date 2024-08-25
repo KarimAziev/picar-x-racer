@@ -170,7 +170,8 @@ export function formatKeyboardEvents(
       acc.push(label);
       return acc;
     }, [] as string[])
-    .join(" ");
+    .join(" ")
+    .replace(/^Shift-/g, "");
 }
 
 /**
