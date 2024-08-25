@@ -325,10 +325,8 @@ class VideoCarController:
     def move(self, direction: int, speed: int):
         logger.info(f"Moving {direction} with speed {speed}")
         if direction == 1:
-            self.px.set_dir_servo_angle(0)
             self.px.forward(speed)
         elif direction == -1:
-            self.px.set_dir_servo_angle(0)
             self.px.backward(speed)
 
     def set_servo_angle(self, angle):
