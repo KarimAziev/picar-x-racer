@@ -451,13 +451,13 @@ export const useControllerStore = defineStore("controller", {
       popupStore.tab = SettingsTab.GENERAL;
       popupStore.isOpen = true;
     },
-    increaseQuality() {
+    async increaseQuality() {
       const settingsStore = useSettingsStore();
-      settingsStore.increaseQuality();
+      await settingsStore.increaseQuality();
     },
-    decreaseQuality() {
+    async decreaseQuality() {
       const settingsStore = useSettingsStore();
-      settingsStore.decreaseQuality();
+      await settingsStore.decreaseQuality();
     },
   },
 });

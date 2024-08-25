@@ -1,8 +1,10 @@
-from flask import Blueprint, Response
+from flask import Blueprint, Response, jsonify
+from util.platform_adapters import Vilib
 from util.video_utils import (
-    generate_medium_quality_stream,
-    generate_low_quality_stream,
+    convert_listproxy_to_array,
     generate_high_quality_stream,
+    generate_low_quality_stream,
+    generate_medium_quality_stream,
     get_frame,
     get_png_frame,
 )
@@ -91,3 +93,17 @@ def video_feed_png():
     response = Response(get_png_frame(), mimetype="image/png")
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
+
+
+@video_feed_bp.route("/api/frame-dimensions", methods=["GET"])
+def frame_dimensions():
+    """
+    Get the dimensions of the current video frame.
+
+    Returns:
+        JSON
+            A JSON object containing the width and height of the video frame.
+    """
+    frame_array = convert_listproxy_to_array(Vilib.flask_img)
+    height, width = frame_array.shape[:2]
+    return jsonify({"width": width, "height": height})

@@ -23,8 +23,9 @@ const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 
 const fullscreen = computed(() => settingsStore.settings.fullscreen);
+const defaultWidth = computed(() => settingsStore.dimensions.width);
+const defaultHeight = computed(() => settingsStore.dimensions.height);
 const isResizable = computed(() => !popupStore.isOpen);
-const [defaultWidth, defaultHeight] = [1280, 720];
 </script>
 
 <style scoped lang="scss"></style>

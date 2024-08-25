@@ -37,15 +37,6 @@ def convert_listproxy_to_array(listproxy_obj):
     return np_array
 
 
-def gen():
-    while True:
-        frame_array = convert_listproxy_to_array(Vilib.flask_img)
-        _, buffer = cv2.imencode(".jpg", frame_array)
-        frame = buffer.tobytes()
-        yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-        sleep(0.1)
-
-
 def enhance_frame(frame: np.ndarray) -> np.ndarray:
     """
     Enhance the input video frame by denoising and applying CLAHE.
@@ -126,7 +117,9 @@ def get_qrcode() -> bytes:
     return Vilib.qrcode_img_encode
 
 
-def resize_and_encode(frame, width, height, format=".jpg", quality=90):
+def resize_and_encode(
+    frame: np.ndarray, width: int, height: int, format=".jpg", quality=90
+):
     """
     Resize and encode frame.
 
@@ -143,6 +136,21 @@ def resize_and_encode(frame, width, height, format=".jpg", quality=90):
     resized_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC)
     encode_params = [cv2.IMWRITE_JPEG_QUALITY, quality] if format == ".jpg" else []
     _, buffer = cv2.imencode(format, resized_frame, encode_params)
+    return buffer.tobytes()
+
+
+def encode(frame_array: np.ndarray, format=".jpg"):
+    """
+    Encode frame.
+
+    Parameters:
+        frame (np.ndarray): The input frame to resize and encode.
+        format (str): The encoding format, e.g., '.jpg' or '.png'. Default is '.jpg'.
+
+    Returns:
+        bytes: The encoded frame.
+    """
+    _, buffer = cv2.imencode(format, frame_array)
     return buffer.tobytes()
 
 
@@ -174,6 +182,32 @@ def async_generate_video_stream(width: int, height: int, format=".jpg", quality=
         sleep(0.05)
 
 
+def async_generate_video_stream_no_transform(format=".png"):
+    """
+    Asynchronously generate a video stream encoded in the specified format and quality.
+
+    Parameters:
+        width (int): Target width for the encoded frames.
+        height (int): Target height for the encoded frames.
+        format (str): The encoding format ('jpg' or 'png'). Default is '.jpg'.
+        quality (int): The encoding quality (applicable only for JPEG). Default is 90.
+
+    Yields:
+        bytes: Encoded frames in byte-string format ready for streaming.
+    """
+    while True:
+        if Vilib.flask_img is not None:
+            frame_array = convert_listproxy_to_array(Vilib.flask_img)
+            future = executor.submit(encode, frame_array, format)
+            encoded_frame = future.result()
+            yield (
+                b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
+            )
+        else:
+            logger.warning("Vilib.flask_img is None, skipping frame.")
+        sleep(0.05)
+
+
 def generate_high_quality_stream() -> Generator[bytes, None, None]:
     """
     Generate a high-quality video stream.
@@ -191,7 +225,7 @@ def generate_medium_quality_stream() -> Generator[bytes, None, None]:
     Returns:
         Generator[bytes, None, None]: A generator yielding medium-quality video frames.
     """
-    return async_generate_video_stream(TARGET_WIDTH, TARGET_HEIGHT, quality=75)
+    return async_generate_video_stream_no_transform(".jpg")
 
 
 def generate_low_quality_stream() -> Generator[bytes, None, None]:
@@ -201,4 +235,4 @@ def generate_low_quality_stream() -> Generator[bytes, None, None]:
     Returns:
         Generator[bytes, None, None]: A generator yielding low-quality video frames.
     """
-    return async_generate_video_stream(640, 360, quality=50)
+    return async_generate_video_stream_no_transform(".png")
