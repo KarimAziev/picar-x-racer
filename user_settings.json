@@ -3,7 +3,7 @@
   "default_sound": "directives.wav",
   "default_text": "Target identified",
   "fullscreen": true,
-  "video_feed_url": "/mjpg-lq",
+  "video_feed_url": "/mjpg-hq",
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,

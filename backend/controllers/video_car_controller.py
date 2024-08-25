@@ -330,8 +330,11 @@ class VideoCarController:
 
     def main(self):
         Vilib.camera_start(vflip=False, hflip=False)
-        sleep(2)  # Allow the camera to start
+        while Vilib.flask_img is None:
+            logger.info("waiting for flask img")
+            sleep(1)
 
+        logger.info("flask img is ready")
         ip_address = get_ip_address()
         logger.info(
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"

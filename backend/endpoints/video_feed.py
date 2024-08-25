@@ -104,6 +104,7 @@ def frame_dimensions():
         JSON
             A JSON object containing the width and height of the video frame.
     """
+
     frame_array = convert_listproxy_to_array(Vilib.flask_img)
     height, width = frame_array.shape[:2]
     return jsonify({"width": width, "height": height})
