@@ -153,7 +153,7 @@ class VideoCarController:
                         now - self.last_toggle_time
                     ) < timedelta(seconds=1):
                         logger.info(
-                            f"Debounce: Too quick toggle of avoidObstacles detected."
+                            "Debounce: Too quick toggle of avoidObstacles detected."
                         )
                         continue
                     self.last_toggle_time = now
