@@ -43,7 +43,7 @@ const defaultState: State = {
     video_feed_url: VideoFeedURL.lq,
     battery_full_voltage: 8.4,
   },
-  dimensions: { width: 1280, height: 720 },
+  dimensions: { width: 640, height: 480 },
 };
 
 export const useStore = defineStore("settings", {

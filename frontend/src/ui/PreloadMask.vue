@@ -3,8 +3,8 @@
     <div class="wrapper" v-if="showPreloader">
       <div class="content">
         <ResizableContainer
-          :default-width="1280"
-          :default-height="720"
+          :default-width="640"
+          :default-height="480"
           :fullscreen="true"
         >
           <ScanLines class="box" />

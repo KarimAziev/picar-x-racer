@@ -29,8 +29,8 @@ const props = defineProps<{
   defaultHeight?: number;
   class?: string;
 }>();
-const defaultWidth = computed(() => props.defaultWidth || 1280);
-const defaultHeight = computed(() => props.defaultHeight || 720);
+const defaultWidth = computed(() => props.defaultWidth || 640);
+const defaultHeight = computed(() => props.defaultHeight || 480);
 const aspectRatio = computed(() => defaultWidth.value / defaultHeight.value);
 const isResizable = computed(() => props.isResizable);
 const fullscreen = computed(() => props.fullscreen);
