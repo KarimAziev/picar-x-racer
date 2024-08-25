@@ -1,5 +1,5 @@
 <template>
-  <Tabs v-model:value="popupStore.tab" lazy>
+  <Tabs v-model:value="popupStore.tab" class="robo-tabs" lazy>
     <TabList>
       <Tab :value="SettingsTab.GENERAL">General</Tab>
       <Tab :value="SettingsTab.KEYBINDINGS">Keybindings</Tab>
@@ -29,9 +29,7 @@ import { usePopupStore } from "@/features/settings/stores";
 const popupStore = usePopupStore();
 </script>
 <style scoped lang="scss">
-.p-tab-active {
-  color: var(--color-text);
-}
-.p-tab {
+.robo-tabs {
+  font-family: var(--font-family-settings);
 }
 </style>

@@ -53,9 +53,7 @@ const saveSettings = () => {
   top: 5px;
   left: 5px;
 }
-.p-dialog {
-  color: var(--color-text);
-}
+
 .footer {
   display: flex;
   justify-content: flex-start;
