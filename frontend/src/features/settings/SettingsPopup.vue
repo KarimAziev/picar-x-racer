@@ -14,7 +14,7 @@
     :closeOnEscape="!popupStore.isKeyRecording"
   >
     <Settings />
-    <div class="flex justify-content-end gap-2">
+    <div class="footer">
       <Button
         type="button"
         label="Save"
@@ -55,6 +55,11 @@ const saveSettings = () => {
 }
 .p-dialog {
   color: var(--color-text);
-  font-family: var(--font-family);
+}
+.footer {
+  display: flex;
+  justify-content: flex-start;
+  gap: 1rem;
+  margin-top: 2rem;
 }
 </style>
