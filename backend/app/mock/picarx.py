@@ -1,6 +1,6 @@
 import random
 import time
-from config.logging_config import setup_logger
+from app.config.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

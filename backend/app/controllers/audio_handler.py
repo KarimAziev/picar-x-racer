@@ -1,6 +1,7 @@
-from os import path
 import time
-from util.platform_adapters import Music
+from os import path
+
+from app.util.platform_adapters import Music
 
 try:
     from google_speech import Speech

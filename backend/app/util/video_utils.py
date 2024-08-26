@@ -4,9 +4,9 @@ from typing import Generator
 
 import cv2
 import numpy as np
-from config.logging_config import setup_logger
+from app.config.logging_config import setup_logger
 
-from util.platform_adapters import Vilib
+from app.util.platform_adapters import Vilib
 
 logger = setup_logger(__name__)
 

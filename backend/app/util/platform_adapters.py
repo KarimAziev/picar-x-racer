@@ -1,10 +1,10 @@
-from util.os_checks import is_raspberry_pi
+from app.util.os_checks import is_raspberry_pi
 
 is_os_raspberry = is_raspberry_pi()
 
 if is_os_raspberry:
-    from modules.picarx import Picarx
-    from modules.vilib import Vilib
+    from app.modules.picarx import Picarx
+    from app.modules.vilib import Vilib
     from robot_hat import Music
     from robot_hat.utils import (
         reset_mcu,
@@ -16,10 +16,10 @@ if is_os_raspberry:
         get_battery_voltage,
     )
 else:
-    from mock.picarx import Picarx
-    from modules.vilib import Vilib
-    from mock.music import Music
-    from mock.robot_hat_fake_utils import (
+    from app.mock.picarx import Picarx
+    from app.modules.vilib import Vilib
+    from app.mock.music import Music
+    from app.mock.robot_hat_fake_utils import (
         reset_mcu,
         get_ip,
         set_volume,

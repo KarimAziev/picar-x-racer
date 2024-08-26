@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 from typing import TYPE_CHECKING, Dict, Any, Union
 
 if TYPE_CHECKING:
-    from controllers.video_car_controller import VideoCarController
+    from app.controllers.video_car_controller import VideoCarController
 
 
 settings_bp = Blueprint("settings", __name__)

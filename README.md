@@ -31,6 +31,10 @@
 >   - [Development on non-Raspberry OS](#development-on-non-raspberry-os)
 >     - [Backend](#backend)
 >     - [Frontend](#frontend)
+>     - [Makefile Usage](#makefile-usage)
+>       - [Development Environment Setup](#development-environment-setup)
+>       - [Production Environment Setup](#production-environment-setup)
+>       - [Cleanup Targets](#cleanup-targets)
 >   - [Project Status](#project-status)
 
 <!-- markdown-toc end -->
@@ -55,10 +59,10 @@ To run on Raspberry OS, follow these steps:
 git clone https://github.com/KarimAziev/picar-x-racer.git ~/picar-x-racer/
 ```
 
-3. Install dependencies. Use the same Python environment as you used for the Picar-X installation. Assuming you installed it using `sudo python3`, as mentioned in the Picar-X manual:
+3. Install backend dependencies. Use the same Python environment as you used for the Picar-X installation. Assuming you installed it using `sudo python3`, as mentioned in the Picar-X manual:
 
 ```bash
-cd ~/picar-x-racer/
+cd ~/picar-x-racer/backend/
 sudo python3 -m pip install -r ./requirements.txt
 ```
 
@@ -78,7 +82,7 @@ npm run build
 
 ### Usage
 
-Run the script to start the server:
+Run the script to start the server. Use the same Python environment as you used for the Picar-X installation. Assuming you installed it using `sudo python3`, as mentioned in the Picar-X manual:
 
 ```bash
 sudo python3 ~/picar-x-racer/backend/run.py
@@ -104,8 +108,7 @@ To access settings press the icon in the right top corner, or press `h` to open 
 - **Default Music**: Choose default background music from the available list.
 - **Music**: Upload new music files and manage existing ones.
 - **Photos**: Manage and download photos captured by the Picar-X camera.
-
-The settings panel is user-friendly, allowing for quick adjustments and uploads directly from your browser to tailor the Picar-X experience to your preference.
+- **Keybindings**: You can change all key bindings.
 
 ![Alt text](./demo/keybindings-settings.png)
 
@@ -159,6 +162,10 @@ For development outside of Raspberry Pi, you may want to set up a virtual enviro
 Run the following command to set up your environment. It will create a virtual environment, clone, and install `robot-hat` in a special way:
 
 ```bash
+cd ./backend
+```
+
+```bash
 ./setup_env.sh
 ```
 
@@ -182,6 +189,88 @@ Run the application:
 
 ```bash
 npm run dev
+```
+
+### Makefile Usage
+
+You can also use the `Makefile` to manage various setup and development tasks more efficiently. Below are some of the make targets available:
+
+#### Development Environment Setup
+
+- **Setup and Run Development Environment**: Install dependencies and run the development environment.
+
+```bash
+make dev-with-install
+```
+
+- **Run Development Environment without Installing Dependencies**:
+
+```bash
+make dev-without-install
+```
+
+- **Run Frontend Development Server**:
+
+```bash
+make frontend-dev
+```
+
+- **Run Backend Development Server**:
+
+```bash
+make backend-dev-run
+```
+
+#### Production Environment Setup
+
+- **Install and Build Both Frontend and Backend (Development)**:
+
+```bash
+make build-dev-all
+```
+
+- **Install and Build Both Frontend and Backend (Production)**:
+
+```bash
+make sudo-build-all
+```
+
+- **Run Backend in Production Mode**:
+
+```bash
+make backend-sudo-run
+```
+
+- **Install Backend Dependencies (Production)**:
+
+```bash
+make backend-sudo-install
+```
+
+#### Cleanup Targets
+
+- **Clean All Build Artifacts**:
+
+```bash
+make clean
+```
+
+- **Clean Python Bytecode Files**:
+
+```bash
+make clean-pyc
+```
+
+- **Clean Frontend Build Artifacts**:
+
+```bash
+make clean-build
+```
+
+- **Display Help Message**:
+
+```bash
+make help
 ```
 
 ## Project Status

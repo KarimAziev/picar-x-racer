@@ -1,6 +1,6 @@
 from flask import Blueprint, Response, jsonify
-from util.platform_adapters import Vilib
-from util.video_utils import (
+from app.util.platform_adapters import Vilib
+from app.util.video_utils import (
     convert_listproxy_to_array,
     generate_high_quality_stream,
     generate_low_quality_stream,

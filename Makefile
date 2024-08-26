@@ -1,31 +1,40 @@
 FRONTEND_DIR := frontend
 BACKEND_DIR := backend
-VENV_DIR := .venv
+VENV_DIR := $(BACKEND_DIR)/.venv
 
 # Phony targets
-.PHONY: all dev frontend-backend-dev frontend-dev backend-dev build sudo-build backend-sudo-run backend-sudo-install frontend-install frontend-build backend-install clean clean-pyc help
+.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-dev-run build-dev-all sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build backend-dev-install clean clean-pyc help
 
 # Default target
-all: dev
+all: dev-with-install
 
 # Development environment setup
-dev: frontend-backend-dev
+dev: dev-without-install
 
-frontend-backend-dev: frontend-install
+dev-without-install:
 	cd $(FRONTEND_DIR) && npx concurrently -k \
 		"bash -c 'cd .. && source $(VENV_DIR)/bin/activate && python3 -u $(BACKEND_DIR)/run.py'" \
-		"npm run dev"
+		"bash -c 'sleep 2 && npm run dev'"
+
+dev-with-install: frontend-install backend-dev-install dev-without-install
+
+# Frontend installation and build
+frontend-install:
+	cd $(FRONTEND_DIR) && npm install
 
 frontend-dev:
 	cd $(FRONTEND_DIR) && npm run dev
 
-backend-dev:
-	bash -c "source $(VENV_DIR)/bin/activate && python3 -u $(BACKEND_DIR)/run.py"
+frontend-build:
+	cd $(FRONTEND_DIR) && npm run build
+
+backend-dev-run:
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u $(BACKEND_DIR)/run.py"
 
 # Build targets for production
-build: frontend-install frontend-build backend-install backend-run
+build-dev-all: frontend-install frontend-build backend-dev-install backend-dev-run
 
-sudo-build: frontend-install frontend-build backend-sudo-install backend-sudo-run
+sudo-build-all: frontend-install frontend-build backend-sudo-install backend-sudo-run
 
 # Backend run (production mode)
 backend-sudo-run:
@@ -33,22 +42,11 @@ backend-sudo-run:
 
 # Backend install (production mode)
 backend-sudo-install:
-	sudo python3 -m pip install -r ./requirements.txt
-
-# Frontend installation and build
-frontend-install:
-	cd $(FRONTEND_DIR) && npm install
-
-frontend-build:
-	cd $(FRONTEND_DIR) && npm run build
+	sudo python3 -m pip install -r $(BACKEND_DIR)/requirements.txt
 
 # Backend setup for development
-backend-install:
-	bash ./setup_env.sh
-
-# Backend setup (general)
-backend-setup: backend-install
-	@echo "Backend setup is complete."
+backend-dev-install:
+	cd $(BACKEND_DIR) && bash ./setup_env.sh
 
 # Cleanup targets
 clean: clean-pyc clean-build
@@ -62,12 +60,23 @@ clean-build:
 # Help target
 help:
 	@echo "Usage:"
-	@echo "  make all            - Run both frontend and backend in development mode"
-	@echo "  make dev            - Alias for all, run both frontend and backend in development mode"
-	@echo "  make frontend-dev   - Run frontend in development mode"
-	@echo "  make backend-dev    - Run backend in development mode"
-	@echo "  make build          - Build frontend and run backend (production mode)"
-	@echo "  make sudo-build     - Build frontend and run backend with sudo (production mode)"
-	@echo "  make clean          - Clean build and Python artifacts"
-	@echo "  make clean-pyc      - Clean Python bytecode files"
-	@echo "  make help           - Show this help message"
+	@echo "  make <target>"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all                        Default target (alias for 'dev')"
+	@echo "  dev                        (alias for 'dev-without-install')"
+	@echo "  dev-without-install        Run development environment without installing dependencies"
+	@echo "  dev-with-install           Install dependencies and run development environment"
+	@echo "  frontend-dev               Run frontend development server"
+	@echo "  backend-dev-run            Run backend development server (with venv)"
+	@echo "  build-dev-all              Install and build both front and back ends for development"
+	@echo "  sudo-build-all             Install and build both front and back ends for production (with sudo)"
+	@echo "  backend-sudo-run           Run backend in production mode (with sudo)"
+	@echo "  backend-sudo-install       Install backend dependencies for production (with sudo)"
+	@echo "  frontend-install           Install frontend dependencies"
+	@echo "  frontend-build             Build frontend for production"
+	@echo "  backend-dev-install        Set up backend for development (with venv)"
+	@echo "  clean                      Clean all build artifacts"
+	@echo "  clean-pyc                  Remove Python bytecode files"
+	@echo "  clean-build                Clean frontend build artifacts"
+	@echo "  help                       Display this help message"

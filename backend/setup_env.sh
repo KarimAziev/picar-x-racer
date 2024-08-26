@@ -13,8 +13,6 @@ if ! grep -q "Raspbian" /etc/os-release; then
   if [ ! -d "./robot-hat" ]; then
     echo "Cloning robot hat"
     git clone -b v2.0 https://github.com/sunfounder/robot-hat.git
-    # shellcheck disable=SC2164
-
     # Override setup.py
     # The original `setup.py` script in the robot-hat repository includes
     # additional logic for handling Raspbian-specific dependencies,

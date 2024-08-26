@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
-
 import threading
-from controllers.video_car_controller import VideoCarController
-from endpoints.flask_setup import run_flask
-from util.platform_adapters import Vilib
+from app.controllers.video_car_controller import VideoCarController
+from app.endpoints.flask_setup import run_flask
+from app.util.platform_adapters import Vilib
 
 if __name__ == "__main__":
     controller = None

@@ -6,27 +6,26 @@ from datetime import datetime, timedelta
 from os import environ, geteuid, getlogin, path
 from time import localtime, sleep, strftime, time
 from typing import List
+
 import numpy as np
 import websockets
-from util.get_ip_address import get_ip_address
-from util.os_checks import is_raspberry_pi
-from util.platform_adapters import Picarx, Vilib, get_battery_voltage, reset_mcu
+from app.config.logging_config import setup_logger
+from app.config.paths import (
+    MUSIC_DIR,
+    PHOTOS_DIR,
+    SETTINGS_FILE_PATH,
+    SOUNDS_DIR,
+    STATIC_FOLDER,
+    TEMPLATE_FOLDER,
+)
+from app.controllers.audio_handler import AudioHandler
+from app.util.get_ip_address import get_ip_address
+from app.util.os_checks import is_raspberry_pi
+from app.util.platform_adapters import Picarx, Vilib, get_battery_voltage, reset_mcu
 from websockets import WebSocketServerProtocol
 from werkzeug.datastructures import FileStorage
-from config.logging_config import setup_logger
-
-from controllers.audio_handler import AudioHandler
 
 logger = setup_logger(__name__)
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-MUSIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../music"))
-SOUNDS_DIR = os.path.abspath(os.path.join(BASE_DIR, "../sounds"))
-PHOTOS_DIR = os.path.abspath(os.path.join(BASE_DIR, "../photos"))
-SETTINGS_FILE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../user_settings.json"))
-STATIC_FOLDER = os.path.join(BASE_DIR, "../frontend/dist/assets")
-TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../frontend/dist")
-UPLOAD_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "../uploads/"))
 
 
 class VideoCarController:
@@ -71,7 +70,6 @@ class VideoCarController:
 
         self.STATIC_FOLDER = STATIC_FOLDER
         self.TEMPLATE_FOLDER = TEMPLATE_FOLDER
-        self.UPLOAD_FOLDER = UPLOAD_FOLDER
         self.is_playing_sound_or_music = None
 
         # Initialize Vilib camera

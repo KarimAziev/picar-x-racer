@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from flask import Blueprint, current_app, jsonify, request, send_from_directory
 
 if TYPE_CHECKING:
-    from controllers.video_car_controller import VideoCarController
+    from app.controllers.video_car_controller import VideoCarController
 
 file_management_bp = Blueprint("file_management", __name__)
 

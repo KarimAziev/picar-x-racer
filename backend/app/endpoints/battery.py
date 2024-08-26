@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-from util.platform_adapters import get_battery_voltage as read_battery_voltage
+from app.util.platform_adapters import get_battery_voltage as read_battery_voltage
 
 
 battery_bp = Blueprint("battery_voltage", __name__)

@@ -1,10 +1,10 @@
 from flask import Flask
 from flask_cors import CORS
 from typing import TYPE_CHECKING
-from util.os_checks import is_raspberry_pi
+from app.util.os_checks import is_raspberry_pi
 
 if TYPE_CHECKING:
-    from controllers.video_car_controller import VideoCarController
+    from app.controllers.video_car_controller import VideoCarController
 
 
 def create_app(controller: "VideoCarController"):
@@ -16,12 +16,12 @@ def create_app(controller: "VideoCarController"):
     CORS(app)
     app.config["IS_RASPBERRY_PI"] = is_raspberry_pi()
 
-    from endpoints.video_feed import video_feed_bp
-    from endpoints.file_management import file_management_bp
-    from endpoints.settings import settings_bp
-    from endpoints.qrcode_routes import qrcode_bp
-    from endpoints.battery import battery_bp
-    from endpoints.main import main_bp
+    from app.endpoints.video_feed import video_feed_bp
+    from app.endpoints.file_management import file_management_bp
+    from app.endpoints.settings import settings_bp
+    from app.endpoints.qrcode_routes import qrcode_bp
+    from app.endpoints.battery import battery_bp
+    from app.endpoints.main import main_bp
 
     app.register_blueprint(video_feed_bp)
     app.register_blueprint(qrcode_bp)
@@ -30,8 +30,6 @@ def create_app(controller: "VideoCarController"):
     app.register_blueprint(battery_bp)
     app.register_blueprint(main_bp)
 
-    app.config["UPLOAD_FOLDER"] = controller.UPLOAD_FOLDER
-    # app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max file size
     app.config["vc"] = controller
 
     return app

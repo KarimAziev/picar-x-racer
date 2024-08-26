@@ -1,6 +1,6 @@
 from flask import Blueprint, Response
-from util.video_utils import get_qrcode
-from util.platform_adapters import Vilib
+from app.util.video_utils import get_qrcode
+from app.util.platform_adapters import Vilib
 
 qrcode_bp = Blueprint("qrcode", __name__)
 

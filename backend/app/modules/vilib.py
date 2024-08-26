@@ -6,15 +6,16 @@ from typing import Optional, List, Tuple
 import subprocess
 import cv2
 import numpy as np
-from config.logging_config import setup_logger
+from app.config.logging_config import setup_logger
+from app.config.paths import (
+    DEFAULT_VIDEOS_PATH,
+)
 
 logger = setup_logger(__name__)
 
 user = os.getlogin()
 user_home = os.path.expanduser(f"~{user}")
 
-DEFAULLT_PICTURES_PATH = "%s/Pictures/vilib/" % user_home
-DEFAULLT_VIDEOS_PATH = "%s/Videos/vilib/" % user_home
 
 CameraInfo = Tuple[int, str, Optional[str]]
 
@@ -217,7 +218,7 @@ class Vilib(object):
             Vilib.camera_thread.join()
 
     @staticmethod
-    def take_photo(photo_name, path):
+    def take_photo(photo_name: str, path: str):
         logger.info(f"Taking photo '{photo_name}' at path {path}")
         if not os.path.exists(path):
             os.makedirs(name=path, mode=0o751, exist_ok=True)
@@ -246,7 +247,7 @@ class Vilib(object):
     rec_video_set["isColor"] = True
 
     rec_video_set["name"] = "default"
-    rec_video_set["path"] = DEFAULLT_VIDEOS_PATH
+    rec_video_set["path"] = DEFAULT_VIDEOS_PATH
 
     rec_video_set["start_flag"] = False
     rec_video_set["stop_flag"] = False
