@@ -132,32 +132,31 @@ class Vilib(object):
     def camera_loop():
         logger.info("Starting camera loop")
 
-        available_cameras = Vilib.find_available_cameras()
-        logger.info(
-            f"Available cameras: {[(idx, path) for idx, path, _ in available_cameras]}"
-        )
-
-        Vilib.camera_index, device_path, device_info = Vilib.prioritize_cameras(
-            available_cameras
-        )
-        if (
-            Vilib.camera_index is not None
-            and device_info
-            and "8-bit Greyscale" in device_info
-        ):
-            Vilib.is_greyscale_camera = "8-bit Greyscale" in device_info
-        elif Vilib.camera_index is None:
-            raise RuntimeError("Error: No available cameras found.")
-
-        logger.info(
-            f"Starting camera {Vilib.camera_index} with device path {device_path}, greyscale={Vilib.is_greyscale_camera}"
-        )
-
+        Vilib.camera_index = 0
         Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
-        if not Vilib.capture.isOpened():
-            raise RuntimeError(
-                f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
-            )
+        # available_cameras = Vilib.find_available_cameras()
+
+        # Vilib.camera_index, device_path, device_info = Vilib.prioritize_cameras(
+        #     available_cameras
+        # )
+        # if (
+        #     Vilib.camera_index is not None
+        #     and device_info
+        #     and "8-bit Greyscale" in device_info
+        # ):
+        #     Vilib.is_greyscale_camera = "8-bit Greyscale" in device_info
+        # elif Vilib.camera_index is None:
+        #     raise RuntimeError("Error: No available cameras found.")
+
+        # logger.info(
+        #     f"Starting camera {Vilib.camera_index} with device path {device_path}, greyscale={Vilib.is_greyscale_camera}"
+        # )
+
+        # Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
+        # if not Vilib.capture.isOpened():
+        #     raise RuntimeError(
+        #         f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
+        #     )
 
         fps = 0
         start_time = 0
