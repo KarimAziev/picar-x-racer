@@ -1,5 +1,5 @@
 from flask import Blueprint, Response
-from app.util.video_utils import get_qrcode
+from time import sleep
 from app.util.platform_adapters import Vilib
 
 qrcode_bp = Blueprint("qrcode", __name__)
@@ -31,6 +31,19 @@ def qrcode_feed():
 </html>
 """
     return Response(qrcode_html, mimetype="text/html")
+
+
+def get_qrcode() -> bytes:
+    """
+    Get the encoded QR code image as a byte array. Waits until the QR code
+    image is available.
+
+    Returns:
+        bytes: The QR code image in encoded bytes.
+    """
+    while Vilib.qrcode_img_encode is None:
+        sleep(0.2)
+    return Vilib.qrcode_img_encode
 
 
 @qrcode_bp.route("/qrcode.png")

@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, jsonify
+from app.config.logging_config import setup_logger
 from app.util.platform_adapters import Vilib
 from app.util.video_utils import (
     convert_listproxy_to_array,
@@ -8,8 +8,11 @@ from app.util.video_utils import (
     get_frame,
     get_png_frame,
 )
+from flask import Blueprint, Response, jsonify
 
 video_feed_bp = Blueprint("video_feed", __name__)
+
+logger = setup_logger(__name__)
 
 
 @video_feed_bp.route("/mjpg-hq")
@@ -21,6 +24,7 @@ def video_feed_hq() -> Response:
     Response
         A Flask response object containing the high quality video stream.
     """
+    logger.info("Serving high quality stream.")
     response = Response(
         generate_high_quality_stream(),
         mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -38,6 +42,7 @@ def video_feed_mq() -> Response:
     Response
         A Flask response object containing the medium quality video stream.
     """
+    logger.info("Serving medium quality stream.")
     response = Response(
         generate_medium_quality_stream(),
         mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -55,6 +60,7 @@ def video_feed_lq() -> Response:
     Response
         A Flask response object containing the low quality video stream.
     """
+    logger.info("Serving low quality stream.")
     response = Response(
         generate_low_quality_stream(),
         mimetype="multipart/x-mixed-replace; boundary=frame",

@@ -66,6 +66,7 @@ class Vilib(object):
     traffic_detect_sw = False
     camera_index: Optional[int] = None
     is_greyscale_camera = False
+    target_fps = 30
 
     @staticmethod
     def get_device_info(device_path: str) -> str:
@@ -134,76 +135,66 @@ class Vilib(object):
 
         Vilib.camera_index = 0
         Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
-        # available_cameras = Vilib.find_available_cameras()
 
-        # Vilib.camera_index, device_path, device_info = Vilib.prioritize_cameras(
-        #     available_cameras
-        # )
-        # if (
-        #     Vilib.camera_index is not None
-        #     and device_info
-        #     and "8-bit Greyscale" in device_info
-        # ):
-        #     Vilib.is_greyscale_camera = "8-bit Greyscale" in device_info
-        # elif Vilib.camera_index is None:
-        #     raise RuntimeError("Error: No available cameras found.")
+        if not Vilib.capture.isOpened():
+            logger.error("Failed to open camera.")
+            return
 
-        # logger.info(
-        #     f"Starting camera {Vilib.camera_index} with device path {device_path}, greyscale={Vilib.is_greyscale_camera}"
-        # )
-
-        # Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
-        # if not Vilib.capture.isOpened():
-        #     raise RuntimeError(
-        #         f"Error: Camera with index {Vilib.camera_index} not found or unable to open."
-        #     )
+        # set fixed fps
+        Vilib.capture.set(cv2.CAP_PROP_FPS, Vilib.target_fps)
 
         fps = 0
-        start_time = 0
         framecount = 0
+        start_time = time.perf_counter()
 
-        while Vilib.camera_run:
-            ret, frame = Vilib.capture.read()
-            if not ret:
-                logger.warning("Warning: Failed to read frame from camera.")
-                continue
+        try:
+            while Vilib.camera_run:
+                ret, frame = Vilib.capture.read()
+                if not ret:
+                    logger.warning("Warning: Failed to read frame from camera.")
+                    continue
 
-            if Vilib.camera_vflip:
-                frame = cv2.flip(frame, 0)
-            if Vilib.camera_hflip:
-                frame = cv2.flip(frame, 1)
+                if Vilib.camera_vflip:
+                    frame = cv2.flip(frame, 0)
+                if Vilib.camera_hflip:
+                    frame = cv2.flip(frame, 1)
 
-            Vilib.img = frame
-            # Calculate FPS
-            framecount += 1
-            elapsed_time = float(time.time() - start_time)
-            if elapsed_time > 1:
-                fps = round(framecount / elapsed_time, 1)
-                framecount = 0
-                start_time = time.time()
+                Vilib.img = frame
+                # Calculate FPS
+                framecount += 1
+                elapsed_time = time.perf_counter() - start_time
+                if elapsed_time > 1:
+                    fps = round(framecount / elapsed_time, 1)
+                    framecount = 0
+                    start_time = time.perf_counter()
 
-            # Draw FPS on frame
-            if Vilib.draw_fps:
-                cv2.putText(
-                    Vilib.img,
-                    f"FPS: {fps}",
-                    Vilib.fps_origin,
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    Vilib.fps_size,
-                    Vilib.fps_color,
-                    1,
-                    cv2.LINE_AA,
-                )
+                # Draw FPS on frame
+                if Vilib.draw_fps:
+                    cv2.putText(
+                        Vilib.img,
+                        f"FPS: {fps}",
+                        Vilib.fps_origin,
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        Vilib.fps_size,
+                        Vilib.fps_color,
+                        1,
+                        cv2.LINE_AA,
+                    )
 
-            Vilib.flask_img = Vilib.img
-
-        Vilib.capture.release()
+                with threading.Lock():
+                    Vilib.flask_img = Vilib.img.copy()
+        except Exception as e:
+            logger.error(f"Exception occurred in camera loop: {e}")
+        finally:
+            Vilib.capture.release()
+            logger.info("Camera loop terminated and camera released.")
 
     @staticmethod
-    def camera_start(vflip=False, hflip=False):
-        logger.info(f"Starting camera with vflip={vflip}, hflip={hflip}")
+    def camera_start(vflip=False, hflip=False, fps=30):
+        logger.info(f"Starting camera with vflip={vflip}, hflip={hflip}, fps={fps}")
         Vilib.camera_hflip = hflip
         Vilib.camera_vflip = vflip
+        Vilib.target_fps = fps
         Vilib.camera_run = True
         Vilib.camera_thread = threading.Thread(target=Vilib.camera_loop, name="vilib")
         Vilib.camera_thread.daemon = False
