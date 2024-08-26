@@ -466,11 +466,11 @@ export const useControllerStore = defineStore("controller", {
     },
     async increaseQuality() {
       const settingsStore = useSettingsStore();
-      await settingsStore.increaseQuality();
+      settingsStore.increaseQuality();
     },
     async decreaseQuality() {
       const settingsStore = useSettingsStore();
-      await settingsStore.decreaseQuality();
+      settingsStore.decreaseQuality();
     },
   },
 });
