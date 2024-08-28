@@ -16,10 +16,17 @@ onMounted(() => {
     carVisualization = new CarModelRenderer(rootElement.value);
     carVisualization.updatePan(store.camPan);
     carVisualization.updateTilt(store.camTilt);
-
+    carVisualization.updateDistance(store.distance);
     carVisualization.updateServoDir(store.servoAngle);
   }
 });
+
+watch(
+  () => store.distance,
+  (newVal) => {
+    carVisualization?.updateDistance(newVal);
+  },
+);
 
 watch(
   () => store.camPan,
