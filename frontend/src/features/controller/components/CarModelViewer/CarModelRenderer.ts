@@ -37,23 +37,38 @@ export class CarModelRenderer {
     front: [],
     back: [],
   };
+  private height: number;
+  private width: number;
 
   private distanceLine: THREE.Line;
   private distanceSpheres: THREE.Mesh[] = [];
   private maxDistance: number = 400; // The maximum measurable distance in cm
   private distanceCone: THREE.Mesh;
 
-  constructor(private rootElement: HTMLElement) {
+  constructor(
+    private rootElement: HTMLElement,
+    params = { width: 300, height: 300 },
+  ) {
+    this.height = params.height;
+    this.width = params.width;
     this.initialize();
   }
 
-  private initialize() {
-    const width = 300;
-    const height = 300;
+  setSize(width: number, height: number) {
+    this.height = height;
+    this.width = width;
+    this.renderer.setSize(width, height);
+  }
 
+  private initialize() {
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera(20, width / height, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(
+      20,
+      this.width / this.height,
+      0.1,
+      1000,
+    );
     this.camera.position.set(0, 5, -10);
 
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
@@ -66,7 +81,7 @@ export class CarModelRenderer {
     this.scene.add(directionalLight);
 
     this.renderer = new THREE.WebGLRenderer({ alpha: true });
-    this.renderer.setSize(width, height);
+    this.renderer.setSize(this.width, this.height);
     this.rootElement.appendChild(this.renderer.domElement);
 
     this.cameraObject = new THREE.Object3D();
@@ -94,38 +109,11 @@ export class CarModelRenderer {
     this.cameraObject.add(head);
     this.scene.add(this.cameraObject);
 
-    const eyeGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-    const eyeMaterial = new THREE.MeshPhongMaterial({ color: colors.black });
-    const eyeCamera = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    eyeCamera.position.set(0, 0, 0.2);
-
-    head.add(eyeCamera);
-
-    const earMaterial = new THREE.MeshPhongMaterial({ color: colors.white });
-    const earGeometry = new THREE.BufferGeometry();
-
-    const vertices = new Float32Array([
-      -0.2, 0.1, 0.0, 0.2, 0.1, 0.0, 0.0, 0.3, 0.0,
-    ]);
-
-    // indexes for connecting vertices
-    const indices = new Uint16Array([0, 1, 2]);
-
-    earGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(vertices, 3),
-    );
-    earGeometry.setIndex(new THREE.BufferAttribute(indices, 1));
-
-    earGeometry.computeVertexNormals();
-
     const camEye = new THREE.Mesh(
       new THREE.BoxGeometry(0.2, 0.2, 0.5),
       new THREE.MeshPhongMaterial({ color: colors.black }),
     );
 
-    const leftEar = new THREE.Mesh(earGeometry, earMaterial);
-    const rightEar = new THREE.Mesh(earGeometry, earMaterial);
     const neck = new THREE.Mesh(
       new THREE.CylinderGeometry(0.1, 0.1, 0.6),
       new THREE.MeshBasicMaterial({ color: colors.grey }),
@@ -141,34 +129,31 @@ export class CarModelRenderer {
     const wireGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.7);
     const wireMaterial = new THREE.MeshPhongMaterial({ color: colors.white2 });
     const wire = new THREE.Mesh(wireGeometry, wireMaterial);
+
+    const leftEar = this.createTriangle(0.1, colors.white);
+    const rightEar = this.createTriangle(0.1, colors.white);
+
+    const backRightWall = this.createRectangle(0.2, 0.2, colors.white);
+    const backLeftWall = this.createRectangle(0.2, 0.2, colors.white);
+    backRightWall.position.set(0, -0.2, 0);
+    backLeftWall.position.set(0, -0.2, 0);
+    leftEar.add(backLeftWall);
+    rightEar.add(backRightWall);
+
     body.add(raspberry);
     raspberry.position.set(0, 0.2, -0.3);
     wire.position.set(0, 0.1, 0.1);
     raspberry.add(wire);
-    leftEar.position.set(0.2, -0.2, -0.1);
+    leftEar.position.set(0.2, -0.2, 0.1);
     leftEar.rotation.x = Math.PI / 2;
-    rightEar.position.set(0.2, 0.2, -0.1);
+    rightEar.position.set(0.2, 0.2, 0.1);
     rightEar.rotation.x = Math.PI / 2;
 
-    const backWallGeometry = new THREE.PlaneGeometry(0.35, 0.2);
-    const backWallMaterial = new THREE.MeshPhongMaterial({
-      color: colors.white,
-    });
-    const backWallLeft = new THREE.Mesh(backWallGeometry, backWallMaterial);
-    const backWallRight = new THREE.Mesh(backWallGeometry, backWallMaterial);
-
-    backWallLeft.position.set(0.2, -0.2, -0.1);
-
-    backWallLeft.rotation.x = Math.PI / 2;
-    backWallRight.position.set(0.2, 0.2, -0.1);
-    backWallRight.rotation.x = Math.PI / 2;
     camEye.position.set(0, 0, 0);
 
     head.add(camEye);
     head.add(leftEar);
     head.add(rightEar);
-    head.add(backWallLeft);
-    head.add(backWallRight);
 
     for (let i = 0; i < 4; i++) {
       const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.18, 32);
@@ -262,6 +247,49 @@ export class CarModelRenderer {
     }
 
     requestAnimationFrame(this.animate.bind(this));
+  }
+
+  private createRectangle(width: number, height: number, color = 0x00ff00) {
+    const geometry = new THREE.PlaneGeometry(width, height);
+
+    const material = new THREE.MeshPhongMaterial({
+      color,
+      side: THREE.DoubleSide,
+    });
+
+    const rectangle = new THREE.Mesh(geometry, material);
+
+    return rectangle;
+  }
+
+  private createTriangle(size: number, color = 0x00ff00) {
+    const vertices = new Float32Array([
+      0.0,
+      size,
+      0.0, // Vertex 1
+      -size,
+      -size,
+      0.0, // Vertex 2
+      size,
+      -size,
+      0.0, // Vertex 3
+    ]);
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(vertices, 3),
+    );
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshPhongMaterial({
+      color: color,
+      side: THREE.DoubleSide,
+    });
+
+    const triangle = new THREE.Mesh(geometry, material);
+
+    return triangle;
   }
 
   // value is a number - centimeters

@@ -11,9 +11,14 @@ const store = useControllerStore();
 const rootElement = ref<HTMLElement | null>(null);
 let carVisualization: CarModelRenderer | null = null;
 
+const props = defineProps<{ height?: number; width?: number }>();
+
 onMounted(() => {
   if (rootElement.value) {
-    carVisualization = new CarModelRenderer(rootElement.value);
+    carVisualization = new CarModelRenderer(rootElement.value, {
+      width: props.width || 300,
+      height: props.height || 300,
+    });
     carVisualization.updatePan(store.camPan);
     carVisualization.updateTilt(store.camTilt);
     carVisualization.updateDistance(store.distance);
