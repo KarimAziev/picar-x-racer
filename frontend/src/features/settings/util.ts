@@ -1,6 +1,5 @@
 import { ControllerActionName } from "@/features/controller/store";
-
-export const READONLY_KEY = "Escape";
+import { startCase } from "@/util/str";
 
 export const objectKeysToOptions = (
   obj: Record<string, string[]>,
@@ -8,14 +7,7 @@ export const objectKeysToOptions = (
 ) =>
   Object.keys(obj).map((c) => ({
     value: c,
-    label:
-      (labelsMap && labelsMap[c]) ||
-      c
-        .trim()
-        .replace(/([a-z])([A-Z])/g, "$1 $2")
-        .split(" ")
-        .map((v) => v[0].toUpperCase() + v.slice(1))
-        .join(" "),
+    label: (labelsMap && labelsMap[c]) || startCase(c),
   }));
 
 export const groupKeys = (data: Record<ControllerActionName, string[]>) =>
