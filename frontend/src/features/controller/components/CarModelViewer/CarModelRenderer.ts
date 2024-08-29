@@ -33,6 +33,9 @@ export class CarModelRenderer {
   private servoAngle: number = 0;
   private cameraObject: THREE.Object3D;
   private head: THREE.Mesh;
+  private neck: THREE.Mesh;
+  private body: THREE.Mesh;
+  private ultrasonic: THREE.Mesh;
   private frontWheelAxle: THREE.Mesh<
     THREE.CylinderGeometry,
     THREE.MeshPhongMaterial,
@@ -43,6 +46,7 @@ export class CarModelRenderer {
     THREE.MeshPhongMaterial,
     THREE.Object3DEventMap
   >;
+  private controlBoard: THREE.Mesh;
 
   private wheels: { front: THREE.Mesh[]; back: THREE.Mesh[] } = {
     front: [],
@@ -67,10 +71,84 @@ export class CarModelRenderer {
     this.initialize();
   }
 
-  setSize(width: number, height: number) {
+  public setSize(width: number, height: number) {
     this.height = height;
     this.width = width;
     this.renderer.setSize(width, height);
+  }
+
+  // value is a number - centimeters
+  public updateDistance(value: number) {
+    const distanceInMeters = value / 100;
+
+    const positions = this.distanceLine.geometry.attributes.position
+      .array as Float32Array;
+
+    // The first point is always at the initial position
+    positions[0] = 0;
+    positions[1] = 0.2;
+    positions[2] = 0.25;
+
+    positions[3] = 0;
+    positions[4] = 0.2;
+    positions[5] = 0.25 + distanceInMeters;
+
+    this.distanceLine.geometry.attributes.position.needsUpdate = true;
+
+    const color = getColorForDistance(value, 100);
+    (this.distanceLine.material as THREE.LineBasicMaterial).color = color;
+
+    this.distanceCone.scale.set(1, distanceInMeters, 1);
+    (this.distanceCone.material as THREE.MeshBasicMaterial).opacity = Math.max(
+      0.1,
+      1 - distanceInMeters / 1,
+    );
+
+    this.distanceCone.position.z = 0.25 + distanceInMeters / 2;
+
+    this.distanceSpheres.forEach((sphere, index) => {
+      const sphereDistance = (index * 10) / 100;
+      (sphere.material as THREE.MeshBasicMaterial).color = getColorForDistance(
+        sphereDistance * 100,
+        this.maxDistance,
+      );
+
+      if (sphereDistance <= distanceInMeters) {
+        sphere.visible = true;
+      } else {
+        sphere.visible = false;
+      }
+    });
+  }
+
+  public updatePan(pan: number) {
+    this.pan = pan;
+  }
+
+  public updateTilt(tilt: number) {
+    this.tilt = tilt;
+  }
+
+  public updateServoDir(angle: number) {
+    this.servoAngle = angle;
+    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
+  }
+
+  private animate() {
+    requestAnimationFrame(this.animate.bind(this));
+    this.updateCameraRotation();
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  private updateCameraRotation() {
+    this.head.rotation.copy(
+      new THREE.Euler(
+        THREE.MathUtils.degToRad(-this.tilt),
+        THREE.MathUtils.degToRad(-this.pan),
+        Math.PI / 2,
+      ),
+    );
+    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
   }
 
   private initialize() {
@@ -82,7 +160,8 @@ export class CarModelRenderer {
       0.1,
       1000,
     );
-    this.camera.position.set(0, 5, -10);
+
+    this.camera.position.set(5, 5, -10);
 
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
@@ -90,7 +169,8 @@ export class CarModelRenderer {
     this.scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(colors.white, 1);
-    directionalLight.position.set(-1, 2, 4).normalize();
+    directionalLight.position.set(1, 2, 4).normalize();
+
     this.scene.add(directionalLight);
 
     this.renderer = new THREE.WebGLRenderer({ alpha: true });
@@ -98,30 +178,81 @@ export class CarModelRenderer {
     this.rootElement.appendChild(this.renderer.domElement);
 
     this.cameraObject = new THREE.Object3D();
+    this.body = this.createBody();
 
+    this.ultrasonic = this.createUltrasonic();
+    this.ultrasonic.position.set(0, -0.1, 0.8);
+
+    this.body.add(this.ultrasonic);
+
+    // adding neck with head
+    const neckPos = 0.2;
+    this.head = this.createHead();
+    this.neck = this.createNeck();
+    this.head.position.set(0, neckPos, 0);
+    this.neck.position.set(0, neckPos, 0.6);
+    this.neck.add(this.head);
+    this.body.add(this.neck);
+
+    // adding controlBoard to the back of the car
+    this.controlBoard = this.createControlBoard();
+    this.controlBoard.position.set(0, 0.2, -0.3);
+    this.body.add(this.controlBoard);
+
+    // adding axles with wheels
+    const wheelPairs = this.createWheelPairs();
+
+    wheelPairs.forEach((pair) => {
+      this.body.add(pair);
+    });
+
+    new OrbitControls(this.camera, this.renderer.domElement);
+
+    this.cameraObject.add(this.body);
+    this.scene.add(this.cameraObject);
+
+    this.updateTilt(this.tilt);
+    this.updateServoDir(this.servoAngle);
+    this.updatePan(this.pan);
+
+    requestAnimationFrame(this.animate.bind(this));
+  }
+
+  private createBody() {
     const bodyGeometry = new THREE.BoxGeometry(0.5, 0.1, 1.5);
     const bodyMaterial = new THREE.MeshPhongMaterial({ color: colors.white });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.set(0, -0.3, 0);
+    return body;
+  }
 
-    const ultrasonicGeometry = new THREE.BoxGeometry(0.7, 0.4, 0.1);
-    const ultrasonicMaterial = new THREE.MeshPhongMaterial({
-      color: colors.white,
-    });
-    const ultrasonic = new THREE.Mesh(ultrasonicGeometry, ultrasonicMaterial);
-    ultrasonic.position.set(0, -0.4, 0.8);
-    this.scene.add(ultrasonic);
-
-    this.head = this.createHead();
-    const neck = new THREE.Mesh(
+  private createNeck() {
+    return new THREE.Mesh(
       new THREE.CylinderGeometry(0.1, 0.1, 0.6),
       new THREE.MeshBasicMaterial({ color: colors.grey }),
     );
-    neck.position.set(0, 0.2, 0.6);
-    this.head.position.set(0, 0.2, 0);
-    neck.add(this.head);
-    body.add(neck);
+  }
 
+  private createWheelPairs() {
+    const components = [
+      this.createWheelPair(1.2, 0.28),
+      this.createWheelPair(1.22, 0.3),
+    ];
+    for (let i = 0; i < components.length; i++) {
+      const isFront = i === 0;
+      const comp = components[i];
+      const axle = comp.axle;
+      const wheels = comp.wheels;
+
+      axle.rotation.z = -Math.PI / 2;
+      axle.position.set(0, 0, isFront ? 0.3 : -0.4);
+
+      this[isFront ? "frontWheelAxle" : "backWheelAxle"] = axle;
+      this.wheels[isFront ? "front" : "back"] = wheels;
+    }
+    return [this.frontWheelAxle, this.backWheelAxle];
+  }
+
+  private createControlBoard() {
     const raspberryGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.9);
     const raspberryMaterial = new THREE.MeshPhongMaterial({
       color: colors.grey,
@@ -130,39 +261,22 @@ export class CarModelRenderer {
     const wireGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.7);
     const wireMaterial = new THREE.MeshPhongMaterial({ color: colors.white2 });
     const wire = new THREE.Mesh(wireGeometry, wireMaterial);
-
-    body.add(raspberry);
-
-    const frontWheelComponents = this.createWheelPair(1.2, 0.28);
-    this.frontWheelAxle = frontWheelComponents.axle;
-    const frontWheels = frontWheelComponents.wheels;
-    this.wheels.front = frontWheels;
-
-    this.frontWheelAxle.rotation.z = -Math.PI / 2;
-    this.frontWheelAxle.position.set(0, 0, 0.3);
-    const backWheelComponents = this.createWheelPair(1.22, 0.3);
-    this.backWheelAxle = backWheelComponents.axle;
-
-    this.backWheelAxle.rotation.z = -Math.PI / 2;
-    this.backWheelAxle.position.set(0, 0, -0.4);
-    const backWheels = frontWheelComponents.wheels;
-    this.wheels.back = backWheels;
-
-    body.add(this.frontWheelAxle);
-    body.add(this.backWheelAxle);
-    raspberry.position.set(0, 0.2, -0.3);
     wire.position.set(0, 0.1, 0.1);
     raspberry.add(wire);
+    return raspberry;
+  }
 
-    new OrbitControls(this.camera, this.renderer.domElement);
-
-    this.updateTilt(this.tilt);
-    this.updateServoDir(this.servoAngle);
-    this.updatePan(this.pan);
+  private createUltrasonic() {
+    const ultrasonicGeometry = new THREE.BoxGeometry(0.7, 0.3, 0.1);
+    const ultrasonicMaterial = new THREE.MeshPhongMaterial({
+      color: colors.white,
+    });
+    const ultrasonic = new THREE.Mesh(ultrasonicGeometry, ultrasonicMaterial);
+    this.scene.add(ultrasonic);
 
     const distanceGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, -1, 0), // Start point (the front of the car)
-      new THREE.Vector3(0, -1, 0), // End point (initially the same as the start point)
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Vector3(0, -1, 0),
     ]);
 
     const distanceMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
@@ -188,13 +302,10 @@ export class CarModelRenderer {
       const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
       sphere.position.set(0, 0, 0.25 + i / 100);
       this.distanceSpheres.push(sphere);
-      body.add(sphere);
+      ultrasonic.add(sphere);
     }
 
-    this.cameraObject.add(body);
-    this.scene.add(this.cameraObject);
-
-    requestAnimationFrame(this.animate.bind(this));
+    return ultrasonic;
   }
 
   private createWheelPair(height = 1.2, wheelSize = 0.3) {
@@ -304,79 +415,5 @@ export class CarModelRenderer {
     const triangle = new THREE.Mesh(geometry, material);
 
     return triangle;
-  }
-
-  // value is a number - centimeters
-  public updateDistance(value: number) {
-    const distanceInMeters = value / 100;
-
-    const positions = this.distanceLine.geometry.attributes.position
-      .array as Float32Array;
-
-    // The first point is always at the initial position
-    positions[0] = 0;
-    positions[1] = 0.2;
-    positions[2] = 0.25;
-
-    positions[3] = 0;
-    positions[4] = 0.2;
-    positions[5] = 0.25 + distanceInMeters;
-
-    this.distanceLine.geometry.attributes.position.needsUpdate = true;
-
-    const color = getColorForDistance(value, 100);
-    (this.distanceLine.material as THREE.LineBasicMaterial).color = color;
-
-    this.distanceCone.scale.set(1, distanceInMeters, 1);
-    (this.distanceCone.material as THREE.MeshBasicMaterial).opacity = Math.max(
-      0.1,
-      1 - distanceInMeters / 1,
-    );
-
-    this.distanceCone.position.z = 0.25 + distanceInMeters / 2;
-
-    this.distanceSpheres.forEach((sphere, index) => {
-      const sphereDistance = (index * 10) / 100;
-      (sphere.material as THREE.MeshBasicMaterial).color = getColorForDistance(
-        sphereDistance * 100,
-        this.maxDistance,
-      );
-
-      if (sphereDistance <= distanceInMeters) {
-        sphere.visible = true;
-      } else {
-        sphere.visible = false;
-      }
-    });
-  }
-
-  private animate() {
-    requestAnimationFrame(this.animate.bind(this));
-    this.updateCameraRotation();
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  private updateCameraRotation() {
-    this.head.rotation.copy(
-      new THREE.Euler(
-        THREE.MathUtils.degToRad(-this.tilt),
-        THREE.MathUtils.degToRad(-this.pan),
-        Math.PI / 2,
-      ),
-    );
-    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
-  }
-
-  public updatePan(pan: number) {
-    this.pan = pan;
-  }
-
-  public updateTilt(tilt: number) {
-    this.tilt = tilt;
-  }
-
-  public updateServoDir(angle: number) {
-    this.servoAngle = angle;
-    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
   }
 }
