@@ -33,16 +33,29 @@ export class CarModelRenderer {
   private servoAngle: number = 0;
   private cameraObject: THREE.Object3D;
   private head: THREE.Mesh;
+  private frontWheelAxle: THREE.Mesh<
+    THREE.CylinderGeometry,
+    THREE.MeshPhongMaterial,
+    THREE.Object3DEventMap
+  >;
+  private backWheelAxle: THREE.Mesh<
+    THREE.CylinderGeometry,
+    THREE.MeshPhongMaterial,
+    THREE.Object3DEventMap
+  >;
+
   private wheels: { front: THREE.Mesh[]; back: THREE.Mesh[] } = {
     front: [],
     back: [],
   };
+
   private height: number;
   private width: number;
 
   private distanceLine: THREE.Line;
   private distanceSpheres: THREE.Mesh[] = [];
-  private maxDistance: number = 400; // The maximum measurable distance in cm
+  // The maximum measurable distance in cm
+  private maxDistance: number = 400;
   private distanceCone: THREE.Mesh;
 
   constructor(
@@ -99,27 +112,15 @@ export class CarModelRenderer {
     ultrasonic.position.set(0, -0.4, 0.8);
     this.scene.add(ultrasonic);
 
-    const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4, 1);
-    const headMaterial = new THREE.MeshPhongMaterial({ color: colors.white });
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    this.head = head;
-    /**
-     * head.position.set(0, 0.1, 0.7);
-     */
-
-    const camEye = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.1, 0.2),
-      new THREE.MeshPhongMaterial({ color: colors.black }),
-    );
-    camEye.position.set(0, 0, 0.15);
+    this.head = this.createHead();
     const neck = new THREE.Mesh(
       new THREE.CylinderGeometry(0.1, 0.1, 0.6),
       new THREE.MeshBasicMaterial({ color: colors.grey }),
     );
     neck.position.set(0, 0.2, 0.6);
-    body.add(neck);
+    this.head.position.set(0, 0.2, 0);
     neck.add(this.head);
-    head.position.set(0, 0.2, 0);
+    body.add(neck);
 
     const raspberryGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.9);
     const raspberryMaterial = new THREE.MeshPhongMaterial({
@@ -130,81 +131,28 @@ export class CarModelRenderer {
     const wireMaterial = new THREE.MeshPhongMaterial({ color: colors.white2 });
     const wire = new THREE.Mesh(wireGeometry, wireMaterial);
 
-    const leftEar = this.createTriangle(0.1, colors.white);
-    const rightEar = this.createTriangle(0.1, colors.white);
-
-    const backRightWall = this.createRectangle(0.2, 0.2, colors.white);
-    const backLeftWall = this.createRectangle(0.2, 0.2, colors.white);
-    backRightWall.position.set(0, -0.2, 0);
-    backLeftWall.position.set(0, -0.2, 0);
-    leftEar.add(backLeftWall);
-    rightEar.add(backRightWall);
-
     body.add(raspberry);
+
+    const frontWheelComponents = this.createWheelPair(1.2, 0.28);
+    this.frontWheelAxle = frontWheelComponents.axle;
+    const frontWheels = frontWheelComponents.wheels;
+    this.wheels.front = frontWheels;
+
+    this.frontWheelAxle.rotation.z = -Math.PI / 2;
+    this.frontWheelAxle.position.set(0, 0, 0.3);
+    const backWheelComponents = this.createWheelPair(1.22, 0.3);
+    this.backWheelAxle = backWheelComponents.axle;
+
+    this.backWheelAxle.rotation.z = -Math.PI / 2;
+    this.backWheelAxle.position.set(0, 0, -0.4);
+    const backWheels = frontWheelComponents.wheels;
+    this.wheels.back = backWheels;
+
+    body.add(this.frontWheelAxle);
+    body.add(this.backWheelAxle);
     raspberry.position.set(0, 0.2, -0.3);
     wire.position.set(0, 0.1, 0.1);
     raspberry.add(wire);
-    leftEar.position.set(0.2, -0.2, 0.1);
-    leftEar.rotation.x = Math.PI / 2;
-    rightEar.position.set(0.2, 0.2, 0.1);
-    rightEar.rotation.x = Math.PI / 2;
-
-    head.add(camEye);
-    head.add(leftEar);
-    head.add(rightEar);
-
-    for (let i = 0; i < 4; i++) {
-      const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.18, 32);
-      const wheelMaterial = new THREE.MeshPhongMaterial({
-        color: colors.black,
-      });
-      const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-      const smallWheelGeometry = new THREE.CylinderGeometry(
-        0.25,
-        0.25,
-        0.19,
-        32,
-      );
-      const smallWheelMaterial = new THREE.MeshPhongMaterial({
-        color: 0xf9f9f9,
-      });
-      const smallWheel = new THREE.Mesh(smallWheelGeometry, smallWheelMaterial);
-      const extraSmallWheelGeometry = new THREE.CylinderGeometry(
-        0.05,
-        0.05,
-        0.5,
-        32,
-      );
-      const extraSmallWheelMaterial = new THREE.MeshPhongMaterial({
-        color: colors.black,
-      });
-      const extraSmallWheel = new THREE.Mesh(
-        extraSmallWheelGeometry,
-        extraSmallWheelMaterial,
-      );
-      smallWheel.add(extraSmallWheel);
-
-      wheel.rotation.z = -Math.PI / 2;
-      extraSmallWheel.position.set(
-        0,
-        i === 0 ? 0.1 : i === 1 ? -0.1 : i === 2 ? 0.1 : -0.1,
-        0,
-      );
-
-      wheel.add(smallWheel);
-      if (i < 2) {
-        this.wheels.front.push(wheel);
-      } else {
-        this.wheels.back.push(wheel);
-      }
-
-      this.scene.add(wheel);
-    }
-
-    this.wheels.front[0].position.set(-0.6, -0.4, 0.4);
-    this.wheels.front[1].position.set(0.6, -0.4, 0.4);
-    this.wheels.back[0].position.set(-0.6, -0.4, -0.4);
-    this.wheels.back[1].position.set(0.6, -0.4, -0.4);
 
     new OrbitControls(this.camera, this.renderer.domElement);
 
@@ -232,7 +180,6 @@ export class CarModelRenderer {
     this.distanceCone.rotation.x = Math.PI / 2;
     ultrasonic.add(this.distanceCone);
 
-    // spheres at regular intervals
     const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
     for (let i = 0; i <= this.maxDistance; i += 10) {
       const sphereMaterial = new THREE.MeshBasicMaterial({
@@ -248,6 +195,72 @@ export class CarModelRenderer {
     this.scene.add(this.cameraObject);
 
     requestAnimationFrame(this.animate.bind(this));
+  }
+
+  private createWheelPair(height = 1.2, wheelSize = 0.3) {
+    const axleGeometry = new THREE.CylinderGeometry(0.05, 0.05, height, 32);
+    const axleMaterial = new THREE.MeshPhongMaterial({
+      color: colors.grey,
+    });
+    const axle = new THREE.Mesh(axleGeometry, axleMaterial);
+    const wheelA = this.createWheel(wheelSize);
+    const pos = height / 2 - 0.1;
+    wheelA.position.set(0, pos, 0);
+    const wheelB = this.createWheel(wheelSize);
+    wheelB.position.set(0, -pos, 0);
+    axle.add(wheelA);
+    axle.add(wheelB);
+    return { axle, wheels: [wheelA, wheelB] };
+  }
+
+  private createWheel(size = 0.3) {
+    const wheelGeometry = new THREE.CylinderGeometry(size, size, 0.18, 32);
+    const wheelMaterial = new THREE.MeshPhongMaterial({
+      color: colors.black,
+    });
+    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+    const smallWheelGeometry = new THREE.CylinderGeometry(
+      size - 0.05,
+      size - 0.05,
+      0.19,
+      32,
+    );
+    const smallWheelMaterial = new THREE.MeshPhongMaterial({
+      color: 0xf9f9f9,
+    });
+    const smallWheel = new THREE.Mesh(smallWheelGeometry, smallWheelMaterial);
+    wheel.add(smallWheel);
+    return wheel;
+  }
+
+  private createHead() {
+    const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4, 1);
+    const headMaterial = new THREE.MeshPhongMaterial({ color: colors.white });
+    this.head = new THREE.Mesh(headGeometry, headMaterial);
+    const leftEar = this.createTriangle(0.1, colors.white);
+    const rightEar = this.createTriangle(0.1, colors.white);
+
+    const backRightWall = this.createRectangle(0.2, 0.2, colors.white);
+    const backLeftWall = this.createRectangle(0.2, 0.2, colors.white);
+
+    const camEye = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.1, 0.2),
+      new THREE.MeshPhongMaterial({ color: colors.black }),
+    );
+    camEye.position.set(0, 0, 0.15);
+    backRightWall.position.set(0, -0.2, 0);
+    backLeftWall.position.set(0, -0.2, 0);
+    leftEar.add(backLeftWall);
+    rightEar.add(backRightWall);
+    leftEar.position.set(0.2, -0.2, 0.1);
+    leftEar.rotation.x = Math.PI / 2;
+    rightEar.position.set(0.2, 0.2, 0.1);
+    rightEar.rotation.x = Math.PI / 2;
+
+    this.head.add(camEye);
+    this.head.add(leftEar);
+    this.head.add(rightEar);
+    return this.head;
   }
 
   private createRectangle(width: number, height: number, color = 0x00ff00) {
@@ -351,9 +364,7 @@ export class CarModelRenderer {
         Math.PI / 2,
       ),
     );
-    this.wheels.front.forEach((wheel) => {
-      wheel.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
-    });
+    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
   }
 
   public updatePan(pan: number) {
@@ -366,11 +377,6 @@ export class CarModelRenderer {
 
   public updateServoDir(angle: number) {
     this.servoAngle = angle;
-
-    this.wheels.front.forEach((wheel) => {
-      wheel.rotation.copy(
-        new THREE.Euler(0, THREE.MathUtils.degToRad(angle), -Math.PI / 2),
-      );
-    });
+    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
   }
 }
