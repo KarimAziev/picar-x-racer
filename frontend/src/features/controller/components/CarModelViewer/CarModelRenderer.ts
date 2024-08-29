@@ -90,7 +90,6 @@ export class CarModelRenderer {
     const bodyMaterial = new THREE.MeshPhongMaterial({ color: colors.white });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.set(0, -0.3, 0);
-    this.scene.add(body);
 
     const ultrasonicGeometry = new THREE.BoxGeometry(0.7, 0.4, 0.1);
     const ultrasonicMaterial = new THREE.MeshPhongMaterial({
@@ -104,22 +103,23 @@ export class CarModelRenderer {
     const headMaterial = new THREE.MeshPhongMaterial({ color: colors.white });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     this.head = head;
-    head.position.set(0, 0.1, 0.7);
-
-    this.cameraObject.add(head);
-    this.scene.add(this.cameraObject);
+    /**
+     * head.position.set(0, 0.1, 0.7);
+     */
 
     const camEye = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.2, 0.5),
+      new THREE.BoxGeometry(0.2, 0.1, 0.2),
       new THREE.MeshPhongMaterial({ color: colors.black }),
     );
-
+    camEye.position.set(0, 0, 0.15);
     const neck = new THREE.Mesh(
       new THREE.CylinderGeometry(0.1, 0.1, 0.6),
       new THREE.MeshBasicMaterial({ color: colors.grey }),
     );
     neck.position.set(0, 0.2, 0.6);
     body.add(neck);
+    neck.add(this.head);
+    head.position.set(0, 0.2, 0);
 
     const raspberryGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.9);
     const raspberryMaterial = new THREE.MeshPhongMaterial({
@@ -148,8 +148,6 @@ export class CarModelRenderer {
     leftEar.rotation.x = Math.PI / 2;
     rightEar.position.set(0.2, 0.2, 0.1);
     rightEar.rotation.x = Math.PI / 2;
-
-    camEye.position.set(0, 0, 0);
 
     head.add(camEye);
     head.add(leftEar);
@@ -245,6 +243,9 @@ export class CarModelRenderer {
       this.distanceSpheres.push(sphere);
       body.add(sphere);
     }
+
+    this.cameraObject.add(body);
+    this.scene.add(this.cameraObject);
 
     requestAnimationFrame(this.animate.bind(this));
   }
