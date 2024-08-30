@@ -1,15 +1,14 @@
 from app.util.os_checks import is_raspberry_pi
+from app.modules.vilib import Vilib
+from app.modules.music import Music
 
 is_os_raspberry = is_raspberry_pi()
 
 if is_os_raspberry:
     from app.modules.picarx import Picarx
-    from app.modules.vilib import Vilib
-    from robot_hat import Music
     from robot_hat.utils import (
         reset_mcu,
         get_ip,
-        set_volume,
         run_command,
         is_installed,
         mapping,
@@ -17,12 +16,9 @@ if is_os_raspberry:
     )
 else:
     from app.mock.picarx import Picarx
-    from app.modules.vilib import Vilib
-    from app.mock.music import Music
     from app.mock.robot_hat_fake_utils import (
         reset_mcu,
         get_ip,
-        set_volume,
         run_command,
         is_installed,
         mapping,
@@ -31,11 +27,8 @@ else:
 
 
 Picarx = Picarx
-Vilib = Vilib
-Music = Music
 reset_mcu = reset_mcu
 get_ip = get_ip
-set_volume = set_volume
 run_command = run_command
 is_installed = is_installed
 mapping = mapping
@@ -47,7 +40,6 @@ __all__ = [
     "Music",
     "reset_mcu",
     "get_ip",
-    "set_volume",
     "run_command",
     "is_installed",
     "mapping",
