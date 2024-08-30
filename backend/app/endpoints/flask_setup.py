@@ -5,9 +5,12 @@ from app.util.os_checks import is_raspberry_pi
 
 if TYPE_CHECKING:
     from app.controllers.video_car_controller import VideoCarController
+    from app.controllers.video_stream import VideoStreamManager
 
 
-def create_app(controller: "VideoCarController"):
+def create_app(
+    controller: "VideoCarController", video_stream_manager: "VideoStreamManager"
+):
     app = Flask(
         __name__,
         static_folder=controller.STATIC_FOLDER,
@@ -31,10 +34,11 @@ def create_app(controller: "VideoCarController"):
     app.register_blueprint(main_bp)
 
     app.config["vc"] = controller
+    app.config["video_manager"] = video_stream_manager
 
     return app
 
 
-def run_flask(vc: "VideoCarController"):
-    app = create_app(vc)
+def run_flask(vc: "VideoCarController", video_stream_manager: "VideoStreamManager"):
+    app = create_app(controller=vc, video_stream_manager=video_stream_manager)
     app.run(host="0.0.0.0", port=9000, threaded=True, debug=False)

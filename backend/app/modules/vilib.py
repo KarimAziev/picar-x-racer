@@ -1,5 +1,6 @@
 import os
 import threading
+import asyncio
 import time
 from multiprocessing import Manager
 from typing import Optional, List, Tuple
@@ -25,7 +26,6 @@ class Vilib(object):
     camera_hflip = False
     camera_run = False
 
-    flask_thread = None
     camera_thread = None
     flask_start = False
     capture = None
@@ -66,6 +66,7 @@ class Vilib(object):
     traffic_detect_sw = False
     camera_index: Optional[int] = None
     is_greyscale_camera = False
+    starting = False
     target_fps = 30
 
     @staticmethod
@@ -137,7 +138,8 @@ class Vilib(object):
         Vilib.capture = cv2.VideoCapture(Vilib.camera_index)
 
         if not Vilib.capture.isOpened():
-            logger.error("Failed to open camera.")
+            Vilib.capture.release()
+            logger.error(f"Failed to open camera at {Vilib.camera_index}.")
             return
 
         # set fixed fps
@@ -203,23 +205,45 @@ class Vilib(object):
     @staticmethod
     def camera_close():
         logger.info("Closing camera")
+        Vilib.camera_run = False
         if Vilib.camera_thread is not None:
-            Vilib.camera_run = False
             Vilib.camera_thread.join()
 
+        Vilib.img = None
+        Vilib.flask_img = None
+
     @staticmethod
-    def take_photo(photo_name: str, path: str):
+    async def ensure_camera(vflip=False, hflip=False, fps=30):
+        if not Vilib.camera_run:
+            Vilib.camera_start(vflip, hflip, fps)
+
+        while Vilib.img is None:
+            logger.info("waiting for flask img")
+            await asyncio.sleep(0.1)
+
+    @staticmethod
+    async def start_camera_and_wait_for_flask_img(vflip=False, hflip=False, fps=30):
+        if not Vilib.camera_run:
+            Vilib.camera_start(vflip, hflip, fps)
+
+        while Vilib.flask_img is None:
+            logger.info("waiting for flask img")
+            await asyncio.sleep(0.1)
+
+    @staticmethod
+    async def take_photo(photo_name: str, path: str):
         logger.info(f"Taking photo '{photo_name}' at path {path}")
         if not os.path.exists(path):
             os.makedirs(name=path, mode=0o751, exist_ok=True)
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
+
         status = False
         for _ in range(5):
             if Vilib.img is not None:
                 status = cv2.imwrite(os.path.join(path, photo_name + ".jpg"), Vilib.img)
                 break
             else:
-                time.sleep(0.01)
+                await asyncio.sleep(0.01)
         else:
             status = False
 

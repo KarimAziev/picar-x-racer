@@ -1,6 +1,6 @@
-from robot_hat import Pin, ADC, PWM, Servo, fileDB
+from robot_hat import Pin, ADC, PWM, Servo, fileDB, Grayscale_Module, utils
 from .ultrasonic import Ultrasonic
-from robot_hat import Grayscale_Module, utils
+import asyncio
 import time
 import os
 
@@ -253,48 +253,14 @@ class Picarx:
             self.set_motor_speed(1, speed)
             self.set_motor_speed(2, -1 * speed)
 
-    def stop(self):
+    async def stop(self):
         """
         Execute twice to make sure it stops
         """
         for _ in range(2):
             self.motor_speed_pins[0].pulse_width_percent(0)
             self.motor_speed_pins[1].pulse_width_percent(0)
-            time.sleep(0.002)
-
-    # def backward(self, speed):
-    #     current_angle = self.dir_current_angle
-    #     if current_angle != 0:
-    #         abs_current_angle = abs(current_angle)
-    #         if abs_current_angle > self.DIR_MAX:
-    #             abs_current_angle = self.DIR_MAX
-    #         power_scale = (100 - abs_current_angle) / 100.0
-    #         if (current_angle / abs_current_angle) > 0:
-    #             self.set_motor_speed(1, -1*speed)
-    #             self.set_motor_speed(2, speed * power_scale)
-    #         else:
-    #             self.set_motor_speed(1, -1*speed * power_scale)
-    #             self.set_motor_speed(2, speed )
-    #     else:
-    #         self.set_motor_speed(1, -1*speed)
-    #         self.set_motor_speed(2, speed)
-
-    # def forward(self, speed):
-    #     current_angle = self.dir_current_angle
-    #     if current_angle != 0:
-    #         abs_current_angle = abs(current_angle)
-    #         if abs_current_angle > self.DIR_MAX:
-    #             abs_current_angle = self.DIR_MAX
-    #         power_scale = (100 - abs_current_angle) / 100.0
-    #         if (current_angle / abs_current_angle) > 0:
-    #             self.set_motor_speed(1, 1*speed * power_scale)
-    #             self.set_motor_speed(2, -speed)
-    #         else:
-    #             self.set_motor_speed(1, speed)
-    #             self.set_motor_speed(2, -1*speed * power_scale)
-    #     else:
-    #         self.set_motor_speed(1, speed)
-    #         self.set_motor_speed(2, -1*speed)
+            await asyncio.sleep(0.002)
 
     def get_distance(self):
         return self.ultrasonic.read()
@@ -338,10 +304,3 @@ class Picarx:
             self.config_flie.set("cliff_reference", str(self.cliff_reference))
         else:
             raise ValueError("cliff reference must be a 1*3 list")
-
-
-if __name__ == "__main__":
-    px = Picarx()
-    px.forward(50)
-    time.sleep(1)
-    px.stop()

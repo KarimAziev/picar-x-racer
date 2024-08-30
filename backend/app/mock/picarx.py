@@ -1,3 +1,4 @@
+import asyncio
 import random
 import time
 from app.config.logging_config import setup_logger
@@ -14,15 +15,35 @@ class Ultrasonic:
         self.timeout = timeout
         self.dir_current_angle = 0
 
-    def read(self, times=10):
+    async def _read(self):
+        await asyncio.sleep(0.001)
+        await asyncio.sleep(0.00001)
+
+        return random.choice([random.uniform(0.0, 400.0)])
+
+    async def read(self, times=10):
         for _ in range(times):
-            a = random.choice([random.uniform(0.0, 200.0), -2, -1])
+            a = await self._read()
             if a != -1:
                 return a
         return -1
 
 
 class Picarx(object):
+    DEFAULT_LINE_REF = [1000, 1000, 1000]
+    DEFAULT_CLIFF_REF = [500, 500, 500]
+
+    DIR_MIN = -30
+    DIR_MAX = 30
+    CAM_PAN_MIN = -90
+    CAM_PAN_MAX = 90
+    CAM_TILT_MIN = -35
+    CAM_TILT_MAX = 65
+
+    PERIOD = 4095
+    PRESCALER = 10
+    TIMEOUT = 0.02
+
     ultrasonic: Ultrasonic
     CONFIG = "/opt/picar-x/picar-x.conf"
 
@@ -39,6 +60,8 @@ class Picarx(object):
         self.grayscale_pins = grayscale_pins
         self.motor_pins = motor_pins
         self.servo_pins = servo_pins
+        self.dir_current_angle = 0
+        self.speed = 0
         self.ultrasonic = Ultrasonic(trig, echo)
 
     def set_dir_servo_angle(self, angle: int):
@@ -50,8 +73,10 @@ class Picarx(object):
     def backward(self, speed: int):
         logger.info(f"Moving backward with speed {speed}")
 
-    def stop(self):
-        logger.info("Stopping")
+    async def stop(self):
+        for _ in range(2):
+            await asyncio.sleep(0.002)
+        logger.info("Stopped")
 
     def set_cam_tilt_angle(self, angle: int):
         logger.info(f"Setting camera tilt angle to {angle} degrees")
@@ -59,5 +84,5 @@ class Picarx(object):
     def set_cam_pan_angle(self, angle: int):
         logger.info(f"Setting camera pan angle to {angle} degrees")
 
-    def get_distance(self):
-        return self.ultrasonic.read()
+    async def get_distance(self):
+        return await self.ultrasonic.read()

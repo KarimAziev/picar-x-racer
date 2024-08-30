@@ -4,10 +4,9 @@ import os
 import traceback
 from datetime import datetime, timedelta
 from os import environ, geteuid, getlogin, path
-from time import localtime, sleep, strftime, time
+from time import localtime, sleep, strftime
 from typing import List
 
-import numpy as np
 import websockets
 from app.config.logging_config import setup_logger
 from app.config.paths import (
@@ -19,6 +18,7 @@ from app.config.paths import (
     TEMPLATE_FOLDER,
 )
 from app.controllers.audio_handler import AudioHandler
+from app.controllers.video_stream import VideoStreamManager
 from app.util.get_ip_address import get_ip_address
 from app.util.os_checks import is_raspberry_pi
 from app.util.platform_adapters import Picarx, Vilib, get_battery_voltage, reset_mcu
@@ -29,8 +29,9 @@ logger = setup_logger(__name__)
 
 
 class VideoCarController:
-    def __init__(self):
+    def __init__(self, video_manager: VideoStreamManager):
         self.is_os_raspberry = is_raspberry_pi()
+        self.video_manager = video_manager
         self.last_toggle_time = None
         self.avoid_obstacles_mode = False
         self.avoid_obstacles_task = None
@@ -52,8 +53,6 @@ class VideoCarController:
             logger.warning(
                 "The program needs to be run using sudo, otherwise there may be no sound."
             )
-        self.speed = 0
-        self.status = "stop"
         self.SOUNDS_DIR = SOUNDS_DIR
         self.MUSIC_DIR = MUSIC_DIR
         self.PHOTOS_DIR = PHOTOS_DIR
@@ -70,13 +69,6 @@ class VideoCarController:
 
         self.STATIC_FOLDER = STATIC_FOLDER
         self.TEMPLATE_FOLDER = TEMPLATE_FOLDER
-        self.is_playing_sound_or_music = None
-
-        # Initialize Vilib camera
-        self.camera_thread = None
-        self.vilib_img = np.zeros((480, 640, 3), dtype=np.uint8)
-
-        self.start_time = time()
 
         # Load user settings
         self.settings = self.load_settings()
@@ -94,7 +86,6 @@ class VideoCarController:
             }
 
     def save_settings(self, new_settings):
-
         existing_settings = self.load_settings()
 
         merged_settings = {
@@ -108,6 +99,7 @@ class VideoCarController:
         self.settings = merged_settings
 
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
+        logger.info("handle_message initted")
         async for message in websocket:
             data = json.loads(message)
             logger.info(f"Received: {data}")
@@ -124,7 +116,7 @@ class VideoCarController:
                 elif action == "setServoDirAngle":
                     self.set_servo_angle(data.get("payload", 0))
                 elif action == "stop":
-                    self.stop()
+                    await self.px.stop()
                 elif action == "setCamTiltAngle":
                     self.set_cam_tilt_angle(data.get("payload", 0))
                 elif action == "setCamPanAngle":
@@ -136,9 +128,10 @@ class VideoCarController:
                 elif action == "sayText":
                     self.say_text(data.get("payload"))
                 elif action == "takePhoto":
-                    name = self.take_photo()
-                    response = json.dumps({"payload": name, "type": action})
-                    await websocket.send(response)
+                    name = await self.take_photo()
+                    if name:
+                        response = json.dumps({"payload": name, "type": action})
+                        await websocket.send(response)
                 elif action == "drawFPS":
                     Vilib.draw_fps = not Vilib.draw_fps
                     await websocket.send(
@@ -155,7 +148,7 @@ class VideoCarController:
                         continue
                     self.last_toggle_time = now
                     self.avoid_obstacles_mode = not self.avoid_obstacles_mode
-                    self.stop()
+                    await self.px.stop()
                     self.set_cam_tilt_angle(0)
                     self.set_cam_pan_angle(0)
                     await websocket.send(
@@ -192,7 +185,7 @@ class VideoCarController:
                                 self.avoid_obstacles_task = None
 
                 elif action == "getDistance":
-                    distance = self.get_distance()
+                    distance = await self.get_distance()
                     response = json.dumps({"payload": distance, "type": action})
                     await websocket.send(response)
                 elif action == "getBatteryVoltage":
@@ -210,12 +203,13 @@ class VideoCarController:
                 error_response = json.dumps({"type": action, "error": str(e)})
                 await websocket.send(error_response)
 
-    def take_photo(self):
+    async def take_photo(self):
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
         name = "photo_%s" % _time
 
-        Vilib.take_photo(name, path=self.PHOTOS_DIR)
-        return f"{name}.jpg"
+        status = await Vilib.take_photo(name, path=self.PHOTOS_DIR)
+        if status:
+            return f"{name}.jpg"
 
     async def process_messages(self, websocket):
         """Continuously process the message queue and send messages."""
@@ -230,7 +224,8 @@ class VideoCarController:
         DangerDistance = 20
         try:
             while True:
-                distance = round(self.px.ultrasonic.read(), 2)
+                value = await self.px.ultrasonic.read()
+                distance = round(value, 2)
                 logger.info(f"distance: {distance}")
                 if distance >= SafeDistance:
                     self.px.set_dir_servo_angle(0)
@@ -306,13 +301,9 @@ class VideoCarController:
         logger.info(f"Setting camera pan angle to {angle} degrees")
         self.px.set_cam_pan_angle(angle)
 
-    def stop(self):
-        logger.info("Stopping")
-        self.px.stop()
-
-    def get_distance(self):
+    async def get_distance(self):
         try:
-            distance = self.px.get_distance()
+            distance = await self.px.get_distance()
             if distance == -1:
                 raise ValueError("Timeout waiting for echo response")
             elif distance == -2:
@@ -327,12 +318,6 @@ class VideoCarController:
             await asyncio.Future()  # Run forever
 
     def main(self):
-        Vilib.camera_start(vflip=False, hflip=False)
-        while Vilib.flask_img is None:
-            logger.info("waiting for flask img")
-            sleep(1)
-
-        logger.info("flask img is ready")
         ip_address = get_ip_address()
         logger.info(
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"

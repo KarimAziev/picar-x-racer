@@ -1,7 +1,9 @@
 from robot_hat.pin import Pin
+import asyncio
 import time
 
 
+# 0 to 400 cm
 class Ultrasonic:
     SOUND_SPEED = 343.3
 
@@ -18,11 +20,11 @@ class Ultrasonic:
         self.trig = Pin(trig._pin_num)
         self.echo = Pin(echo._pin_num, mode=Pin.IN, pull=Pin.PULL_DOWN)
 
-    def _read(self):
+    async def _read(self):
         self.trig.off()
-        time.sleep(0.001)
+        await asyncio.sleep(0.001)
         self.trig.on()
-        time.sleep(0.00001)
+        await asyncio.sleep(0.00001)
         self.trig.off()
 
         pulse_end = 0
@@ -45,9 +47,9 @@ class Ultrasonic:
         cm = round(during * self.SOUND_SPEED / 2 * 100, 2)
         return cm
 
-    def read(self, times=10):
+    async def read(self, times=10):
         for _ in range(times):
-            a = self._read()
+            a = await self._read()
             if a != -1:
                 return a
         return -1
