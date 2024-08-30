@@ -66,7 +66,7 @@ class Vilib(object):
     traffic_detect_sw = False
     camera_index: Optional[int] = None
     is_greyscale_camera = False
-    target_fps = 60
+    target_fps = 30
 
     @staticmethod
     def get_device_info(device_path: str) -> str:
@@ -190,7 +190,7 @@ class Vilib(object):
             logger.info("Camera loop terminated and camera released.")
 
     @staticmethod
-    def camera_start(vflip=False, hflip=False, fps=60):
+    def camera_start(vflip=False, hflip=False, fps=30):
         logger.info(f"Starting camera with vflip={vflip}, hflip={hflip}, fps={fps}")
         Vilib.camera_hflip = hflip
         Vilib.camera_vflip = vflip
