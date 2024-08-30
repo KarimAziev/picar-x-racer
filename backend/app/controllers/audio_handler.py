@@ -1,6 +1,6 @@
 import time
 from os import path
-
+from app.util.singleton_meta import SingletonMeta
 from app.util.platform_adapters import Music
 
 try:
@@ -9,20 +9,6 @@ try:
     google_speech_available = True
 except ImportError:
     google_speech_available = False
-
-
-class SingletonMeta(type):
-    """
-    This is a thread-safe implementation of Singleton.
-    """
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            instance = super().__call__(*args, **kwargs)
-            cls._instances[cls] = instance
-        return cls._instances[cls]
 
 
 class AudioHandler(metaclass=SingletonMeta):

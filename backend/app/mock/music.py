@@ -299,7 +299,9 @@ class Music:
         )
         obj.start()
 
-    def music_play(self, filename, loops=1, start=0.0, volume=None):
+    def music_play(
+        self, filename, loops=1, start=0.0, volume: int | float | None = None
+    ):
         """
         Play music file
 
@@ -317,7 +319,7 @@ class Music:
         self.pygame.mixer.music.load(filename)
         self.pygame.mixer.music.play(loops, start)
 
-    def music_set_volume(self, value):
+    def music_set_volume(self, value: int | float):
         """
         Set music volume
 
@@ -343,7 +345,7 @@ class Music:
         """Unpause music(resume music)"""
         self.pygame.mixer.music.unpause()
 
-    def sound_length(self, filename):
+    def sound_length(self, filename: str):
         """
         Get sound effect length in seconds
 
@@ -427,5 +429,3 @@ class Music:
             format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, output=True
         )
         stream.write(frames)
-        # stream.stop_stream()
-        # stream.close()
