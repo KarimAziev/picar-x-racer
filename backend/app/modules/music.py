@@ -1,3 +1,4 @@
+from typing import Optional
 import time
 import threading
 import pyaudio
@@ -173,7 +174,7 @@ class Music:
         self.tempo(120, 1 / 4)
         self.key_signature(0)
 
-    def time_signature(self, top: None | int = None, bottom: int | None = None):
+    def time_signature(self, top: Optional[int] = None, bottom: Optional[int] = None):
         """
         Set/get time signature
 
@@ -191,7 +192,7 @@ class Music:
         self._time_signature = (top, bottom)
         return self._time_signature
 
-    def key_signature(self, key: None | int = None):
+    def key_signature(self, key: Optional[int] = None):
         """
         Set/get key signature
 
@@ -210,7 +211,7 @@ class Music:
         self._key_signature = key
         return self._key_signature
 
-    def tempo(self, tempo: float | None = None, note_value=QUARTER_NOTE):
+    def tempo(self, tempo: Optional[float] = None, note_value=QUARTER_NOTE):
         """
         Set/get tempo beat per minute(bpm)
 
@@ -222,16 +223,13 @@ class Music:
         """
         if tempo == None and note_value == None:
             return self._tempo
-
-        if tempo is None:
-            raise ValueError("Invalid 'tempo' value: None is not allowed")
-
-        try:
-            self._tempo = (tempo, note_value)
-            self.beat_unit = 60.0 / tempo
-            return self._tempo
-        except:
-            raise ValueError("tempo must be int not {}".format(tempo))
+        if tempo is not None:
+            try:
+                self._tempo = (tempo, note_value)
+                self.beat_unit = 60.0 / tempo
+                return self._tempo
+            except:
+                raise ValueError("tempo must be int not {}".format(tempo))
 
     def beat(self, beat):
         """
@@ -299,9 +297,7 @@ class Music:
         )
         obj.start()
 
-    def music_play(
-        self, filename, loops=1, start=0.0, volume: int | float | None = None
-    ):
+    def music_play(self, filename, loops=1, start=0.0, volume=None):
         """
         Play music file
 
@@ -319,7 +315,7 @@ class Music:
         self.pygame.mixer.music.load(filename)
         self.pygame.mixer.music.play(loops, start)
 
-    def music_set_volume(self, value: int | float):
+    def music_set_volume(self, value):
         """
         Set music volume
 
@@ -345,7 +341,7 @@ class Music:
         """Unpause music(resume music)"""
         self.pygame.mixer.music.unpause()
 
-    def sound_length(self, filename: str):
+    def sound_length(self, filename):
         """
         Get sound effect length in seconds
 
@@ -429,3 +425,5 @@ class Music:
             format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, output=True
         )
         stream.write(frames)
+        # stream.stop_stream()
+        # stream.close()
