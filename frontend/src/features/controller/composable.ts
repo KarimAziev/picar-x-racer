@@ -87,7 +87,9 @@ export const useCarController = () => {
 
   onMounted(() => {
     store.reconnectedEnabled = true;
-    store.initializeWebSocket("ws://" + window.location.hostname + ":8765");
+    if (!store.connected && !store.loading) {
+      store.initializeWebSocket("ws://" + window.location.hostname + ":8765");
+    }
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 

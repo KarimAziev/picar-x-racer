@@ -138,11 +138,10 @@ export const useControllerStore = defineStore("controller", {
 
           switch (type) {
             case "getDistance":
-              this.distance = error || payload;
               if (error) {
                 messager.error(error, "distance error");
               } else {
-                messager.info(`${payload.toFixed(2)} sm`, "distance");
+                this.distance = payload;
               }
 
               break;
@@ -410,8 +409,6 @@ export const useControllerStore = defineStore("controller", {
     },
 
     getDistance(): void {
-      const messager = useMessagerStore();
-      messager.info("Distance measure...");
       this.sendMessage({ action: "getDistance" });
     },
 
@@ -438,6 +435,24 @@ export const useControllerStore = defineStore("controller", {
       const batteryStore = useBatteryStore();
       batteryStore.fetchBatteryStatus();
     },
+    increaseQuality() {
+      const settingsStore = useSettingsStore();
+      settingsStore.increaseQuality();
+    },
+    decreaseQuality() {
+      const settingsStore = useSettingsStore();
+      settingsStore.decreaseQuality();
+    },
+    openShortcutsSettings() {
+      const popupStore = usePopupStore();
+      popupStore.tab = SettingsTab.KEYBINDINGS;
+      popupStore.isOpen = true;
+    },
+    openGeneralSettings() {
+      const popupStore = usePopupStore();
+      popupStore.tab = SettingsTab.GENERAL;
+      popupStore.isOpen = true;
+    },
     toggleFullscreen() {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("fullscreen");
@@ -454,23 +469,17 @@ export const useControllerStore = defineStore("controller", {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("car_model_view");
     },
-    openShortcutsSettings() {
-      const popupStore = usePopupStore();
-      popupStore.tab = SettingsTab.KEYBINDINGS;
-      popupStore.isOpen = true;
-    },
-    openGeneralSettings() {
-      const popupStore = usePopupStore();
-      popupStore.tab = SettingsTab.GENERAL;
-      popupStore.isOpen = true;
-    },
-    async increaseQuality() {
+    toggleAutoDownloadPhoto() {
       const settingsStore = useSettingsStore();
-      settingsStore.increaseQuality();
+      settingsStore.toggleSettingsProp("auto_download_photo");
     },
-    async decreaseQuality() {
+    toggleAutoMeasureDistanceMode() {
       const settingsStore = useSettingsStore();
-      settingsStore.decreaseQuality();
+      settingsStore.toggleSettingsProp("auto_measure_distance_mode");
+    },
+    toggleVirtualMode() {
+      const settingsStore = useSettingsStore();
+      settingsStore.toggleSettingsProp("virtual_mode");
     },
   },
 });

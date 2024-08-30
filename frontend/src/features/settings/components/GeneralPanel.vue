@@ -1,20 +1,19 @@
 <template>
   <ScrollPanel class="wrapper">
+    <Panel header="Appearance">
+      <SwitchSettings />
+    </Panel>
     <div class="field">
-      <label>Text to speech</label>
+      <label for="default_text">Text to speech</label>
       <Textarea
         v-tooltip="'Type the text to speech'"
-        @blur="autoSaveSettings"
         v-model="store.settings.default_text"
-        rows="5"
-        cols="30"
       />
     </div>
     <div class="field">
       <label for="video_feed_url">Video URL</label>
       <Select
         id="video_feed_url"
-        @blur="autoSaveSettings"
         class="select"
         v-model="store.settings.video_feed_url"
         optionLabel="label"
@@ -27,7 +26,6 @@
       <label for="default_sound">Default Sound</label>
       <Select
         id="default_sound"
-        @blur="autoSaveSettings"
         class="select"
         v-model="store.settings.default_sound"
         :options="soundStore.data"
@@ -39,7 +37,6 @@
       <label for="default_music">Default Music</label>
       <Select
         id="default_music"
-        @blur="autoSaveSettings"
         class="select"
         v-model="store.settings.default_music"
         :options="musicStore.data"
@@ -70,6 +67,7 @@ import Sounds from "@/features/settings/components/Sounds.vue";
 import Music from "@/features/settings/components/Music.vue";
 import Images from "@/features/settings/components/Images.vue";
 import { VideoFeedURL } from "@/features/settings/enums";
+import SwitchSettings from "@/features/settings/components/SwitchSettings.vue";
 
 const videoFeedOptions = Object.entries(VideoFeedURL).map(([key, value]) => ({
   value,
@@ -79,10 +77,6 @@ const videoFeedOptions = Object.entries(VideoFeedURL).map(([key, value]) => ({
 const store = useSettingsStore();
 const musicStore = useMusicStore();
 const soundStore = useSoundStore();
-
-function autoSaveSettings() {
-  store.saveSettings();
-}
 
 onMounted(() => {
   musicStore.fetchData();
@@ -94,7 +88,7 @@ onMounted(() => {
 @import "/src/assets/scss/variables.scss";
 
 .wrapper {
-  min-width: 820px;
+  min-width: 620px;
   max-width: 1200px;
   height: 800px;
 }

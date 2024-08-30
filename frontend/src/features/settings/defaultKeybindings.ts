@@ -32,6 +32,9 @@ export const defaultKeybindinds: Partial<
   toggleTextInfo: ["I"],
   toggleDrawFPS: ["F"],
   toggleAvoidObstaclesMode: ["O"],
+  toggleVirtualMode: ["*"],
+  toggleAutoMeasureDistanceMode: ["U"],
+  toggleAutoDownloadPhoto: ["P"],
 };
 
 export const commandLabels: Record<string, string> = {

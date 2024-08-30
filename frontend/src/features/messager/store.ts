@@ -58,10 +58,10 @@ export const useMessagerStore = defineStore("messager", {
       this.processing = false;
     },
 
-    show(text: string, props?: ShowMessageProps) {
+    show(text: any, props?: ShowMessageProps) {
       const type = props?.type || "info";
       const id = new Date().getTime();
-      const params = { text, delay: 10000, ...props, type, id };
+      const params = { text: `${text}`, delay: 10000, ...props, type, id };
       if (params.immediately) {
         this.add(params);
       } else {
@@ -70,7 +70,7 @@ export const useMessagerStore = defineStore("messager", {
       }
     },
 
-    error(text: string, props?: ShowMessageTypeProps | string) {
+    error(text: any, props?: ShowMessageTypeProps | string) {
       const type = "error";
       if (isString(props)) {
         return this.show(text, { title: props, type });
@@ -78,7 +78,7 @@ export const useMessagerStore = defineStore("messager", {
       return this.show(text, { ...props, type });
     },
 
-    info(text: string, props?: ShowMessageTypeProps | string) {
+    info(text: any, props?: ShowMessageTypeProps | string) {
       const type = "info";
       if (isString(props)) {
         return this.show(text, { title: props, type });
@@ -86,7 +86,7 @@ export const useMessagerStore = defineStore("messager", {
       return this.show(text, { ...props, type });
     },
 
-    success(text: string, props?: ShowMessageTypeProps | string) {
+    success(text: any, props?: ShowMessageTypeProps | string) {
       const type = "success";
       if (isString(props)) {
         return this.show(text, { title: props, type });

@@ -3,39 +3,109 @@
   "default_sound": "directives.wav",
   "default_text": "Target identified",
   "fullscreen": true,
-  "video_feed_url": "/mjpg-hq",
+  "video_feed_url": "/mjpg-mq",
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,
   "text_info_view": true,
+  "auto_download_photo": true,
+  "auto_measure_distance_mode": true,
+  "virtual_mode": false,
   "keybindings": {
-    "accelerate": ["w"],
-    "decelerate": ["s"],
-    "decreaseCamPan": ["ArrowLeft"],
-    "decreaseCamTilt": ["ArrowDown"],
-    "decreaseMaxSpeed": ["-"],
-    "decreaseQuality": [",", "PageDown"],
-    "getBatteryVoltage": ["b"],
-    "getDistance": ["u"],
-    "increaseCamPan": ["ArrowRight"],
-    "increaseCamTilt": ["ArrowUp"],
-    "increaseMaxSpeed": ["="],
-    "increaseQuality": [".", "PageUp"],
-    "left": ["a"],
-    "openGeneralSettings": ["h"],
-    "openShortcutsSettings": ["?"],
-    "playMusic": ["m"],
-    "playSound": ["o"],
-    "resetCameraRotate": ["0"],
-    "right": ["d"],
-    "sayText": ["k"],
-    "stop": ["Space"],
-    "takePhoto": ["t"],
-    "toggleAvoidObstaclesMode": ["O"],
-    "toggleCarModelView": ["M"],
-    "toggleDrawFPS": ["F"],
-    "toggleFullscreen": ["f"],
-    "toggleSpeedometerView": ["N"],
-    "toggleTextInfo": ["I"]
+    "accelerate": [
+      "w"
+    ],
+    "decelerate": [
+      "s"
+    ],
+    "decreaseCamPan": [
+      "ArrowLeft"
+    ],
+    "decreaseCamTilt": [
+      "ArrowDown"
+    ],
+    "decreaseMaxSpeed": [
+      "-"
+    ],
+    "decreaseQuality": [
+      ",",
+      "PageDown"
+    ],
+    "getBatteryVoltage": [
+      "b"
+    ],
+    "getDistance": [
+      "u"
+    ],
+    "increaseCamPan": [
+      "ArrowRight"
+    ],
+    "increaseCamTilt": [
+      "ArrowUp"
+    ],
+    "increaseMaxSpeed": [
+      "="
+    ],
+    "increaseQuality": [
+      ".",
+      "PageUp"
+    ],
+    "left": [
+      "a"
+    ],
+    "openGeneralSettings": [
+      "h"
+    ],
+    "openShortcutsSettings": [
+      "?"
+    ],
+    "playMusic": [
+      "m"
+    ],
+    "playSound": [
+      "o"
+    ],
+    "resetCameraRotate": [
+      "0"
+    ],
+    "right": [
+      "d"
+    ],
+    "sayText": [
+      "k"
+    ],
+    "stop": [
+      "Space"
+    ],
+    "takePhoto": [
+      "t"
+    ],
+    "toggleAvoidObstaclesMode": [
+      "O"
+    ],
+    "toggleCarModelView": [
+      "M"
+    ],
+    "toggleDrawFPS": [
+      "F"
+    ],
+    "toggleFullscreen": [
+      "f"
+    ],
+    "toggleSpeedometerView": [
+      "N"
+    ],
+    "toggleTextInfo": [
+      "I"
+    ],
+    "toggleVirtualMode": [
+      "*"
+    ],
+    "toggleAutoMeasureDistanceMode": [
+      "U"
+    ],
+    "toggleAutoDownloadPhoto": [
+      "P"
+    ]
   }
 }

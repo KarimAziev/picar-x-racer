@@ -11,6 +11,7 @@ import { useControllerStore } from "@/features/controller/store";
 
 const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
+
 const isTextInfoVisible = computed(
   () =>
     !controllerStore.avoidObstacles && settingsStore.settings.text_info_view,

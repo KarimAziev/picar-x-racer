@@ -10,6 +10,11 @@
       :value="store.servoAngle"
       value-suffix="°"
     />
+    <InfoItem
+      label="Distance"
+      :value="store.distance.toFixed(2)"
+      value-suffix="cm"
+    />
     <InfoItem label="Max Speed" :value="store.maxSpeed" />
   </div>
 </template>

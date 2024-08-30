@@ -23,13 +23,24 @@ import ScanLines from "@/ui/ScanLines.vue";
 const props = defineProps<{ loading?: boolean; delay?: number }>();
 
 const showPreloader = ref(false);
+let animationFrameId;
 
 const initPreloader = () => {
   setTimeout(() => {
     showPreloader.value = true;
-    setTimeout(() => {
-      showPreloader.value = false;
-    }, props.delay ?? 4000);
+    const startTime = performance.now();
+    const duration = props.delay ?? 500;
+
+    const hidePreloader = (currentTime: number) => {
+      const elapsedTime = currentTime - startTime;
+      if (elapsedTime >= duration) {
+        showPreloader.value = false;
+      } else {
+        animationFrameId = requestAnimationFrame(hidePreloader);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(hidePreloader);
   }, 100);
 };
 
@@ -37,6 +48,9 @@ if (props.loading) {
   initPreloader();
 } else {
   showPreloader.value = false;
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+  }
 }
 </script>
 

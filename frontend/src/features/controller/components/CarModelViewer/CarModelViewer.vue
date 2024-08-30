@@ -23,6 +23,7 @@ onMounted(() => {
     carVisualization.updateTilt(store.camTilt);
     carVisualization.updateDistance(store.distance);
     carVisualization.updateServoDir(store.servoAngle);
+    carVisualization.updateSpeed(store.speed);
   }
 });
 
@@ -30,6 +31,20 @@ watch(
   () => store.distance,
   (newVal) => {
     carVisualization?.updateDistance(newVal);
+  },
+);
+
+watch(
+  () => store.speed,
+  (newVal) => {
+    carVisualization?.updateSpeed(newVal);
+  },
+);
+
+watch(
+  () => store.direction,
+  (newVal) => {
+    carVisualization?.updateDirection(newVal);
   },
 );
 

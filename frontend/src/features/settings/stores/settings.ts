@@ -2,21 +2,28 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
 import { VideoFeedURL } from "@/features/settings/enums";
-import { useMessagerStore } from "@/features/messager/store";
+import {
+  useMessagerStore,
+  ShowMessageTypeProps,
+} from "@/features/messager/store";
 import { wait } from "@/util/wait";
 import { isNumber } from "@/util/guards";
+import { toggleableSettings } from "@/features/settings/config";
+import { SettingsTab } from "@/features/settings/enums";
+import { useStore as usePopupStore } from "@/features/settings/stores/popup";
+import { omit } from "@/util/obj";
 
-export interface Settings {
-  fullscreen: boolean;
+export type ToggleableSettings = {
+  [P in keyof typeof toggleableSettings]: boolean;
+};
+
+export interface Settings extends Partial<ToggleableSettings> {
   default_text: string;
   default_sound: string;
   default_music: string;
   keybindings: Record<string, string[]>;
   video_feed_url: VideoFeedURL;
   battery_full_voltage: number;
-  text_info_view?: boolean;
-  speedometer_view?: boolean;
-  car_model_view?: boolean;
 }
 
 export interface State {
@@ -26,12 +33,6 @@ export interface State {
   settings: Settings;
   dimensions: { width: number; height: number };
 }
-
-export type ToggleableSettings = {
-  [K in keyof Settings as Required<Settings>[K] extends boolean
-    ? K
-    : never]: Settings[K];
-};
 
 const defaultState: State = {
   settings: {
@@ -75,7 +76,6 @@ export const useStore = defineStore("settings", {
         await this.fetchSettings();
         messager.info("Memory set: OK");
         messager.info("System status: OK");
-        await this.fetchDimensions();
       } catch (error) {
         console.error("Error fetching settings:", error);
         messager.handleError(error, "Error fetching settings");
@@ -86,10 +86,41 @@ export const useStore = defineStore("settings", {
     },
     async saveSettings() {
       const messager = useMessagerStore();
+      const popupStore = usePopupStore();
+      const data =
+        popupStore.tab === SettingsTab.GENERAL
+          ? omit(["keybindings"], this.settings)
+          : { keybindings: this.settings.keybindings };
+      this.saving = true;
+      try {
+        await wait(2000);
+        await axios.post("/api/settings", data);
+        messager.success("Settings saved");
+      } catch (error) {
+        messager.handleError(error, "Error saving settings");
+      } finally {
+        this.saving = false;
+      }
+    },
+    async saveAllSettings() {
+      const messager = useMessagerStore();
       this.saving = true;
       try {
         await wait(2000);
         await axios.post("/api/settings", this.settings);
+        messager.success("Settings saved");
+      } catch (error) {
+        messager.handleError(error, "Error saving settings");
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async saveData(data: Partial<Settings>) {
+      const messager = useMessagerStore();
+      this.saving = true;
+      try {
+        await axios.post("/api/settings", data);
         messager.success("Settings saved");
       } catch (error) {
         messager.handleError(error, "Error saving settings");
@@ -141,14 +172,18 @@ export const useStore = defineStore("settings", {
         messager.info(`${this.settings.video_feed_url} is lowest quality!`);
       }
     },
-    toggleSettingsProp(prop: keyof ToggleableSettings) {
+    toggleSettingsProp(
+      prop: keyof ToggleableSettings,
+      showMsg?: boolean,
+      msgParams?: ShowMessageTypeProps | string,
+    ) {
       const messager = useMessagerStore();
-      if (this.settings[prop]) {
-        this.settings[prop] = false;
-      } else {
-        this.settings[prop] = true;
+      const nextValue = !this.settings[prop];
+      this.settings[prop] = nextValue;
+      if (showMsg) {
+        messager.info(`${prop}: ${nextValue}`, msgParams);
       }
-      messager.info(`${prop} setted to ${this.settings[prop]}`);
+      return nextValue;
     },
   },
 });

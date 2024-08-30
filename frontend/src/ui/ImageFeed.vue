@@ -1,5 +1,10 @@
 <template>
-  <img :src="videoFeedUrl" class="image-feed" alt="Video" />
+  <img
+    :src="videoFeedUrl"
+    class="image-feed"
+    alt="Video"
+    @load="handleOnLoad"
+  />
 </template>
 
 <script setup lang="ts">
@@ -8,6 +13,9 @@ import { computed, watch } from "vue";
 
 const settingsStore = useSettingsStore();
 const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
+const handleOnLoad = () => {
+  console.log("LOADED");
+};
 
 watch(() => videoFeedUrl.value, settingsStore.fetchDimensions);
 </script>
