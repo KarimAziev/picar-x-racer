@@ -13,18 +13,6 @@ import re
 from .battery import Battery
 
 
-def set_volume(value):
-    """
-    Set volume
-
-    :param value: volume(0~100)
-    :type value: int
-    """
-    value = min(100, max(0, value))
-    cmd = "sudo amixer -M sset 'PCM' %d%%" % value
-    os.system(cmd)
-
-
 def run_command(cmd):
     """
     Run command and return status and output
