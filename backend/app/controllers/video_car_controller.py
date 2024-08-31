@@ -324,7 +324,7 @@ class VideoCarController:
             self.loop.run_until_complete(server_task)
             self.loop.close()
         finally:
-            Vilib.camera_close()
+            self.video_manager.camera_close()
 
     def list_files(self, directory: str) -> List[str]:
         """
