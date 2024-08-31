@@ -1,6 +1,4 @@
 from app.util.platform_adapters import Picarx
-
-from app.modules.vilib import Vilib
 import asyncio
 import json
 import os
@@ -132,11 +130,6 @@ class VideoCarController:
                     if name:
                         response = json.dumps({"payload": name, "type": action})
                         await websocket.send(response)
-                elif action == "drawFPS":
-                    Vilib.draw_fps = not Vilib.draw_fps
-                    await websocket.send(
-                        json.dumps({"payload": Vilib.draw_fps, "type": "drawFPS"})
-                    )
                 elif action == "avoidObstacles":
                     now = datetime.utcnow()
                     if self.last_toggle_time and (
@@ -204,10 +197,10 @@ class VideoCarController:
                 await websocket.send(error_response)
 
     async def take_photo(self):
+
         _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
         name = "photo_%s" % _time
-
-        status = await Vilib.take_photo(name, path=self.PHOTOS_DIR)
+        status = await self.video_manager.take_photo(name, path=self.PHOTOS_DIR)
         if status:
             return f"{name}.jpg"
 
