@@ -57,7 +57,9 @@ class ADXL345(I2C):
         super().__init__(address=address, bus=bus, *args, **kwargs)
         self.address = address
 
-    def read(self, axis: Optional[int] = None) -> Union[float, List[float]]:
+    def read(
+        self, axis: Optional[int] = None
+    ) -> Union[float, List[Union[float, None]], None]:
         """
         Read an axis from ADXL345
 
@@ -71,7 +73,7 @@ class ADXL345(I2C):
         else:
             return self._read(axis)
 
-    def _read(self, axis: int) -> float:
+    def _read(self, axis: int) -> Union[float, None]:
         raw_2 = 0
         result = super().read()
         data = (0x08 << 8) + self._REG_POWER_CTL
@@ -84,11 +86,12 @@ class ADXL345(I2C):
         self.mem_write(0, 0x31)
         self.mem_write(8, 0x2D)
         raw = self.mem_read(2, self._AXISES[axis])
-        if raw[1] >> 7 == 1:
-            raw_1 = raw[1] ^ 128 ^ 127
-            raw_2 = (raw_1 + 1) * -1
-        else:
-            raw_2 = raw[1]
-        g = raw_2 << 8 | raw[0]
-        value = g / 256.0
-        return value
+        if raw:
+            if raw[1] >> 7 == 1:
+                raw_1 = raw[1] ^ 128 ^ 127
+                raw_2 = (raw_1 + 1) * -1
+            else:
+                raw_2 = raw[1]
+            g = raw_2 << 8 | raw[0]
+            value = g / 256.0
+            return value

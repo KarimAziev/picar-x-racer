@@ -1,7 +1,8 @@
+from app.robot_hat.music import Music
 import time
 from os import path
 from app.util.singleton_meta import SingletonMeta
-from app.util.platform_adapters import Music
+
 
 try:
     from google_speech import Speech

@@ -1,3 +1,5 @@
+from app.robot_hat.mock.pin_mock import Pin
+
 """
 This module provides mock implementations of the "robot_hat.utils" functions to
 facilitate development on non-Raspberry Pi operating systems.
@@ -94,12 +96,19 @@ def get_ip(ifaces=["wlan0", "eth0"]):
 
 def reset_mcu():
     """
-    Mock function to reset mcu on Robot Hat.
+    Reset mcu on Robot Hat.
+
+    This is helpful if the mcu somehow stuck in a I2C data
+    transfer loop, and Raspberry Pi getting IOError while
+    Reading ADC, manipulating PWM, etc.
     """
-    # Mock behavior: Simply print a message to indicate the reset process
-    print("Mock: Resetting MCU...")
-    time.sleep(0.02)  # Simulate the delay in resetting
-    print("Mock: MCU reset done.")
+    mcu_reset = Pin("MCURST")
+    mcu_reset.off()
+    time.sleep(0.01)
+    mcu_reset.on()
+    time.sleep(0.01)
+
+    mcu_reset.close()
 
 
 battery = Battery()

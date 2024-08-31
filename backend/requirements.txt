@@ -1,5 +1,6 @@
 absl-py==2.1.0
 appdirs==1.4.4
+asgiref==3.8.1
 attrs==24.2.0
 blinker==1.8.2
 certifi==2024.7.4
@@ -7,6 +8,7 @@ cffi==1.17.0
 charset-normalizer==3.3.2
 click==8.1.7
 colorlog==6.8.2
+colorzero==2.0
 contourpy==1.2.1
 cycler==0.12.1
 Flask==3.0.3
@@ -14,6 +16,7 @@ Flask-Cors==4.0.1
 flatbuffers==24.3.25
 fonttools==4.53.1
 google-speech==1.2.0
+gpiozero==2.0.1
 idna==3.7
 itsdangerous==2.2.0
 jax==0.4.31

@@ -1,9 +1,12 @@
+from app.util.platform_adapters import Picarx
+
+from app.modules.vilib import Vilib
 import asyncio
 import json
 import os
 import traceback
 from datetime import datetime, timedelta
-from os import environ, geteuid, getlogin, path
+from os import environ, getlogin, path
 from time import localtime, sleep, strftime
 from typing import List
 
@@ -21,7 +24,7 @@ from app.controllers.audio_handler import AudioHandler
 from app.controllers.video_stream import VideoStreamManager
 from app.util.get_ip_address import get_ip_address
 from app.util.os_checks import is_raspberry_pi
-from app.util.platform_adapters import Picarx, Vilib, get_battery_voltage, reset_mcu
+from app.util.platform_adapters import get_battery_voltage, reset_mcu
 from websockets import WebSocketServerProtocol
 from werkzeug.datastructures import FileStorage
 
@@ -37,6 +40,7 @@ class VideoCarController:
         self.avoid_obstacles_task = None
 
         self.Picarx = Picarx
+        print("Picarx")
         self.reset_mcu = reset_mcu
         self.reset_mcu()
         sleep(0.2)  # Allow the MCU to reset
@@ -49,10 +53,6 @@ class VideoCarController:
         self.px = self.Picarx()
         self.audio_handler = AudioHandler()
 
-        if geteuid() != 0 and self.is_os_raspberry:
-            logger.warning(
-                "The program needs to be run using sudo, otherwise there may be no sound."
-            )
         self.SOUNDS_DIR = SOUNDS_DIR
         self.MUSIC_DIR = MUSIC_DIR
         self.PHOTOS_DIR = PHOTOS_DIR
@@ -116,7 +116,7 @@ class VideoCarController:
                 elif action == "setServoDirAngle":
                     self.set_servo_angle(data.get("payload", 0))
                 elif action == "stop":
-                    await self.px.stop()
+                    self.px.stop()
                 elif action == "setCamTiltAngle":
                     self.set_cam_tilt_angle(data.get("payload", 0))
                 elif action == "setCamPanAngle":
@@ -148,7 +148,7 @@ class VideoCarController:
                         continue
                     self.last_toggle_time = now
                     self.avoid_obstacles_mode = not self.avoid_obstacles_mode
-                    await self.px.stop()
+                    self.px.stop()
                     self.set_cam_tilt_angle(0)
                     self.set_cam_pan_angle(0)
                     await websocket.send(

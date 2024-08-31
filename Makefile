@@ -3,10 +3,10 @@ BACKEND_DIR := backend
 VENV_DIR := $(BACKEND_DIR)/.venv
 
 # Phony targets
-.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-dev-run build-dev-all sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build backend-dev-install clean clean-pyc help
+.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build backend-dev-install clean clean-pyc help
 
 # Default target
-all: dev-with-install
+all: build-all-no-sudo
 
 # Development environment setup
 dev: dev-without-install
@@ -28,11 +28,14 @@ frontend-dev:
 frontend-build:
 	cd $(FRONTEND_DIR) && npm run build
 
-backend-dev-run:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u $(BACKEND_DIR)/run.py"
+backend-venv-run:
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py"
 
 # Build targets for production
-build-dev-all: frontend-install frontend-build backend-dev-install backend-dev-run
+build-dev-all: frontend-install frontend-build backend-dev-install backend-venv-run
+
+# Build targets for production
+build-all-no-sudo: frontend-install frontend-build backend-dev-install backend-venv-run
 
 sudo-build-all: frontend-install frontend-build backend-sudo-install backend-sudo-run
 
@@ -63,13 +66,14 @@ help:
 	@echo "  make <target>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  all                        Default target (alias for 'dev')"
+	@echo "  all                        Default target (alias for 'build-all-no-sudo')"
 	@echo "  dev                        (alias for 'dev-without-install')"
 	@echo "  dev-without-install        Run development environment without installing dependencies"
 	@echo "  dev-with-install           Install dependencies and run development environment"
 	@echo "  frontend-dev               Run frontend development server"
-	@echo "  backend-dev-run            Run backend development server (with venv)"
+	@echo "  backend-venv-run           Run backend development server (with venv)"
 	@echo "  build-dev-all              Install and build both front and back ends for development"
+	@echo "  build-all-no-sudo          Install and build both front and back ends"
 	@echo "  sudo-build-all             Install and build both front and back ends for production (with sudo)"
 	@echo "  backend-sudo-run           Run backend in production mode (with sudo)"
 	@echo "  backend-sudo-install       Install backend dependencies for production (with sudo)"

@@ -1,11 +1,19 @@
-from robot_hat import Pin, ADC, PWM, Servo, fileDB, Grayscale_Module, utils
-from .ultrasonic import Ultrasonic
-import asyncio
+from app.robot_hat.filedb import fileDB
+from app.config.paths import PICARX_CONFIG_FILE
+from app.robot_hat.grayscale import ADC
+from app.robot_hat.servo import Servo
+from app.robot_hat.pwm import PWM
+from app.robot_hat.adc import ADC
+from app.robot_hat.pin import Pin
+from app.robot_hat.ultrasonic import Ultrasonic
+from app.robot_hat.grayscale import Grayscale_Module
+from app.robot_hat.utils import (
+    reset_mcu,
+)
 import time
-import os
 
 
-def constrain(x, min_val: int, max_val: int):
+def constrain(x: int, min_val: int, max_val: int):
     """
     Constrains value to be within a range.
     """
@@ -13,7 +21,7 @@ def constrain(x, min_val: int, max_val: int):
 
 
 class Picarx:
-    CONFIG = "/opt/picar-x/picar-x.conf"
+    CONFIG = PICARX_CONFIG_FILE
 
     DEFAULT_LINE_REF = [1000, 1000, 1000]
     DEFAULT_CLIFF_REF = [500, 500, 500]
@@ -38,11 +46,11 @@ class Picarx:
         config: str = CONFIG,
     ):
         # reset robot_hat
-        utils.reset_mcu()
+        reset_mcu()
         time.sleep(0.2)
 
         # Set up the config file
-        self.config_flie = fileDB(config, "777", os.getlogin())
+        self.config_file = fileDB(config)
 
         # --------- servos init ---------
         self.cam_pan = Servo(servo_pins[0])
@@ -50,13 +58,13 @@ class Picarx:
         self.dir_servo_pin = Servo(servo_pins[2])
         # Get calibration values
         self.dir_cali_val = float(
-            self.config_flie.get("picarx_dir_servo", default_value=0) or 0
+            self.config_file.get("picarx_dir_servo", default_value=0) or 0
         )
         self.cam_pan_cali_val = float(
-            self.config_flie.get("picarx_cam_pan_servo", default_value=0) or 0
+            self.config_file.get("picarx_cam_pan_servo", default_value=0) or 0
         )
         self.cam_tilt_cali_val = float(
-            self.config_flie.get("picarx_cam_tilt_servo", default_value=0) or 0
+            self.config_file.get("picarx_cam_tilt_servo", default_value=0) or 0
         )
         # Set servos to init angle
         self.dir_servo_pin.angle(self.dir_cali_val)
@@ -71,7 +79,7 @@ class Picarx:
         self.motor_direction_pins = [self.left_rear_dir_pin, self.right_rear_dir_pin]
         self.motor_speed_pins = [self.left_rear_pwm_pin, self.right_rear_pwm_pin]
         # Get calibration values
-        self.cali_dir_value = self.config_flie.get(
+        self.cali_dir_value = self.config_file.get(
             "picarx_dir_motor", default_value="[1, 1]"
         )
         self.cali_dir_value = (
@@ -94,7 +102,7 @@ class Picarx:
         adc0, adc1, adc2 = [ADC(pin) for pin in grayscale_pins]
         self.grayscale = Grayscale_Module(adc0, adc1, adc2)
         # Get reference
-        self.line_reference = self.config_flie.get(
+        self.line_reference = self.config_file.get(
             "line_reference", default_value=str(self.DEFAULT_LINE_REF)
         )
         self.line_reference = (
@@ -102,7 +110,7 @@ class Picarx:
             if self.line_reference
             else self.DEFAULT_LINE_REF
         )
-        self.cliff_reference = self.config_flie.get(
+        self.cliff_reference = self.config_file.get(
             "cliff_reference", default_value=str(self.DEFAULT_CLIFF_REF)
         )
         self.cliff_reference = (
@@ -181,7 +189,7 @@ class Picarx:
 
         if value in {1, -1} and 0 <= motor < len(self.cali_dir_value):
             self.cali_dir_value[motor] = value
-            self.config_flie.set("picarx_dir_motor", str(self.cali_dir_value))
+            self.config_file.set("picarx_dir_motor", str(self.cali_dir_value))
         else:
             raise ValueError(
                 f"Invalid value {value} for motor calibration. Must be 1 or -1."
@@ -189,7 +197,7 @@ class Picarx:
 
     def dir_servo_calibrate(self, value):
         self.dir_cali_val = value
-        self.config_flie.set("picarx_dir_servo", str(value))
+        self.config_file.set("picarx_dir_servo", str(value))
         self.dir_servo_pin.angle(value)
 
     def set_dir_servo_angle(self, value):
@@ -199,12 +207,12 @@ class Picarx:
 
     def cam_pan_servo_calibrate(self, value):
         self.cam_pan_cali_val = value
-        self.config_flie.set("picarx_cam_pan_servo", str(value))
+        self.config_file.set("picarx_cam_pan_servo", str(value))
         self.cam_pan.angle(value)
 
     def cam_tilt_servo_calibrate(self, value):
         self.cam_tilt_cali_val = value
-        self.config_flie.set("picarx_cam_tilt_servo", str(value))
+        self.config_file.set("picarx_cam_tilt_servo", str(value))
         self.cam_tilt.angle(value)
 
     def set_cam_pan_angle(self, value):
@@ -253,14 +261,13 @@ class Picarx:
             self.set_motor_speed(1, speed)
             self.set_motor_speed(2, -1 * speed)
 
-    async def stop(self):
+    def stop(self):
         """
         Execute twice to make sure it stops
         """
         for _ in range(2):
             self.motor_speed_pins[0].pulse_width_percent(0)
             self.motor_speed_pins[1].pulse_width_percent(0)
-            await asyncio.sleep(0.002)
 
     def get_distance(self):
         return self.ultrasonic.read()
@@ -269,7 +276,7 @@ class Picarx:
         if isinstance(value, list) and len(value) == 3:
             self.line_reference = value
             self.grayscale.reference(self.line_reference)
-            self.config_flie.set("line_reference", str(self.line_reference))
+            self.config_file.set("line_reference", str(self.line_reference))
         else:
             raise ValueError("grayscale reference must be a 1*3 list")
 
@@ -301,6 +308,6 @@ class Picarx:
     def set_cliff_reference(self, value):
         if isinstance(value, list) and len(value) == 3:
             self.cliff_reference = value
-            self.config_flie.set("cliff_reference", str(self.cliff_reference))
+            self.config_file.set("cliff_reference", str(self.cliff_reference))
         else:
             raise ValueError("cliff reference must be a 1*3 list")
