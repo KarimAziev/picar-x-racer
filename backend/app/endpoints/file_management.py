@@ -16,8 +16,11 @@ def list_files(media_type):
 
     if media_type == "music":
         files = vc.list_user_music()
-    if media_type == "default_music":
+        logger.debug(f"music files {files}")
+    elif media_type == "default_music":
         files = vc.list_default_music()
+    elif media_type == "default_sound":
+        files = vc.list_default_sounds()
     elif media_type == "sound":
         files = vc.list_user_sounds()
     elif media_type == "image":
