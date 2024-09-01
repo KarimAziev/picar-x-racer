@@ -13,7 +13,7 @@ except ImportError:
     google_speech_available = False
 
 
-class AudioHandler(metaclass=SingletonMeta):
+class AudioController(metaclass=SingletonMeta):
     def __init__(self):
         self.music = Music()
         self.logger = Logger("AudioController")

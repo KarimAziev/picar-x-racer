@@ -5,17 +5,17 @@ from app.util.os_checks import is_raspberry_pi
 from app.config.paths import TEMPLATE_FOLDER, STATIC_FOLDER
 
 if TYPE_CHECKING:
-    from app.controllers.video_car_controller import VideoCarController
-    from app.controllers.video_stream import VideoStreamManager
-    from app.controllers.audio_handler import AudioHandler
+    from app.controllers.car_controller import CarController
+    from app.controllers.camera_controller import CameraController
+    from app.controllers.audio_controller import AudioController
     from app.controllers.files_controller import FilesController
 
 
 def create_app(
-    car_manager: "VideoCarController",
-    camera_manager: "VideoStreamManager",
+    car_manager: "CarController",
+    camera_manager: "CameraController",
     file_manager: "FilesController",
-    audio_manager: "AudioHandler",
+    audio_manager: "AudioController",
 ):
     app = Flask(
         __name__,
@@ -50,10 +50,10 @@ def create_app(
 
 
 def run_flask(
-    car_manager: "VideoCarController",
-    camera_manager: "VideoStreamManager",
+    car_manager: "CarController",
+    camera_manager: "CameraController",
     file_manager: "FilesController",
-    audio_manager: "AudioHandler",
+    audio_manager: "AudioController",
 ):
     app = create_app(
         car_manager=car_manager,

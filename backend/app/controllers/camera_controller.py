@@ -15,7 +15,7 @@ TARGET_WIDTH = 640
 TARGET_HEIGHT = 480
 
 
-class VideoStreamManager(metaclass=SingletonMeta):
+class CameraController(metaclass=SingletonMeta):
     def __init__(self, max_workers=4, target_fps=60):
         self.max_workers = max_workers
         self.executor = ThreadPoolExecutor(max_workers=max_workers)

@@ -4,7 +4,7 @@ from app.config.logging_config import setup_logger
 from time import localtime, strftime
 
 if TYPE_CHECKING:
-    from app.controllers.video_stream import VideoStreamManager
+    from app.controllers.camera_controller import CameraController
     from app.controllers.files_controller import FilesController
 
 video_feed_bp = Blueprint("video_feed", __name__)
@@ -13,7 +13,7 @@ logger = setup_logger(__name__)
 
 @video_feed_bp.route("/mjpg-hq")
 async def video_feed_hq() -> Response:
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     logger.info("Serving high quality stream.")
     await camera_manager.start_camera_and_wait_for_flask_img()
 
@@ -30,7 +30,7 @@ async def video_feed_hq() -> Response:
 
 @video_feed_bp.route("/mjpg-mq")
 async def video_feed_mq() -> Response:
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     logger.info("Serving medium quality stream.")
     await camera_manager.start_camera_and_wait_for_flask_img()
 
@@ -47,7 +47,7 @@ async def video_feed_mq() -> Response:
 
 @video_feed_bp.route("/mjpg-lq")
 async def video_feed_lq() -> Response:
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     logger.info("Serving low quality stream.")
     await camera_manager.start_camera_and_wait_for_flask_img()
 
@@ -64,7 +64,7 @@ async def video_feed_lq() -> Response:
 
 @video_feed_bp.route("/mjpg.jpg")
 async def video_feed_jpg():
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     await camera_manager.start_camera_and_wait_for_flask_img()
 
     if camera_manager.executor_shutdown:
@@ -77,7 +77,7 @@ async def video_feed_jpg():
 
 @video_feed_bp.route("/mjpg.png")
 async def video_feed_png():
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     await camera_manager.start_camera_and_wait_for_flask_img()
 
     if camera_manager.executor_shutdown:
@@ -90,7 +90,7 @@ async def video_feed_png():
 
 @video_feed_bp.route("/api/take-photo", methods=["GET"])
 async def take_photo():
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     file_manager: "FilesController" = current_app.config["file_manager"]
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"
@@ -102,7 +102,7 @@ async def take_photo():
 
 @video_feed_bp.route("/api/frame-dimensions", methods=["GET"])
 async def frame_dimensions():
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     await camera_manager.start_camera_and_wait_for_flask_img()
 
     if camera_manager.executor_shutdown:
@@ -115,7 +115,7 @@ async def frame_dimensions():
 
 @video_feed_bp.route("/api/close-camera", methods=["GET"])
 def close_camera():
-    camera_manager: "VideoStreamManager" = current_app.config["camera_manager"]
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
     camera_manager.camera_close()  # Close the camera
     if not camera_manager.executor_shutdown:
         camera_manager.executor.shutdown(wait=True)

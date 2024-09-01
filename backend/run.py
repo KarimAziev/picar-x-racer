@@ -1,13 +1,12 @@
 import logging
 from app.util.file_util import copy_file_if_not_exists
 import threading
-from app.controllers.video_car_controller import VideoCarController
-from app.controllers.video_stream import VideoStreamManager
+from app.controllers.camera_controller import CameraController
+from app.controllers.car_controller import CarController
+from app.controllers.camera_controller import CameraController
 from app.endpoints.flask_setup import run_flask
 from app.config.paths import PICARX_CONFIG_FILE, PICARX_OLD_CONFIG_FILE
-from app.controllers.video_car_controller import VideoCarController
-from app.controllers.video_stream import VideoStreamManager
-from app.controllers.audio_handler import AudioHandler
+from app.controllers.audio_controller import AudioController
 from app.controllers.files_controller import FilesController
 
 
@@ -21,9 +20,9 @@ if __name__ == "__main__":
     video_manager = None
     try:
         file_manager = FilesController()
-        audio_manager = AudioHandler()
-        camera_manager = VideoStreamManager()
-        car_manager = VideoCarController(
+        audio_manager = AudioController()
+        camera_manager = CameraController()
+        car_manager = CarController(
             camera_manager=camera_manager,
             file_manager=file_manager,
             audio_manager=audio_manager,

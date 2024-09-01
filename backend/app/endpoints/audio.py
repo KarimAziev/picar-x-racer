@@ -6,7 +6,7 @@ from app.util.logger import Logger
 
 if TYPE_CHECKING:
     from app.controllers.files_controller import FilesController
-    from app.controllers.audio_handler import AudioHandler
+    from app.controllers.audio_controller import AudioController
 
 audio_management_bp = Blueprint("audio_management", __name__)
 logger = Logger(__name__)
@@ -15,7 +15,7 @@ logger = Logger(__name__)
 @audio_management_bp.route("/api/play-sound", methods=["POST"])
 def play_sound():
     file_manager: "FilesController" = current_app.config["file_manager"]
-    audio_manager: "AudioHandler" = current_app.config["audio_manager"]
+    audio_manager: "AudioController" = current_app.config["audio_manager"]
     payload: Union[Dict[str, Any], None] = request.json
 
     if not isinstance(payload, dict):
@@ -42,7 +42,7 @@ def play_sound():
 @audio_management_bp.route("/api/play-music", methods=["POST"])
 def play_music():
     file_manager: "FilesController" = current_app.config["file_manager"]
-    audio_manager: "AudioHandler" = current_app.config["audio_manager"]
+    audio_manager: "AudioController" = current_app.config["audio_manager"]
     payload: Union[Dict[str, Any], None] = request.json
 
     if not isinstance(payload, dict):
@@ -62,7 +62,7 @@ def play_music():
 @audio_management_bp.route("/api/play-tts", methods=["POST"])
 def text_to_speech():
     file_manager: "FilesController" = current_app.config["file_manager"]
-    audio_manager: "AudioHandler" = current_app.config["audio_manager"]
+    audio_manager: "AudioController" = current_app.config["audio_manager"]
     payload: Union[Dict[str, str], None] = request.json
 
     if not isinstance(payload, dict):

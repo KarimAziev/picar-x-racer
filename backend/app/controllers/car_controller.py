@@ -7,23 +7,23 @@ from os import getlogin, path
 from time import sleep
 from app.util.logger import Logger
 import websockets
-from app.controllers.audio_handler import AudioHandler
-from app.controllers.video_stream import VideoStreamManager
+from app.controllers.audio_controller import AudioController
+from app.controllers.camera_controller import CameraController
 from app.util.get_ip_address import get_ip_address
 from app.util.platform_adapters import get_battery_voltage, reset_mcu
 from websockets import WebSocketServerProtocol
 from app.controllers.files_controller import FilesController
 
 
-class VideoCarController(Logger):
+class CarController(Logger):
     def __init__(
         self,
-        camera_manager: VideoStreamManager,
+        camera_manager: CameraController,
         file_manager: FilesController,
-        audio_manager: AudioHandler,
+        audio_manager: AudioController,
         **kwargs,
     ):
-        super().__init__(name="VideoCarController", **kwargs)
+        super().__init__(name="CarController", **kwargs)
         self.camera_manager = camera_manager
         self.audio_manager = audio_manager
         self.file_manager = file_manager
