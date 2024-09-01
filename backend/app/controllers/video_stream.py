@@ -176,6 +176,8 @@ class VideoStreamManager(metaclass=SingletonMeta):
                 if self.camera_hflip:
                     frame = cv2.flip(frame, 1)
 
+                self.img = frame
+
                 with self.lock:
                     self.flask_img = frame.copy()
 
