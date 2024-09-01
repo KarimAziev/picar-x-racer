@@ -25,7 +25,7 @@ class AudioController(metaclass=SingletonMeta):
     def text_to_speech(self, words: str, lang="en"):
         if google_speech_available:
             try:
-                self.logger.info(f"text-to-speech: {words}")
+                self.logger.info(f"text-to-speech: {words} lang {lang}")
                 speech = Speech(words, lang)
                 speech.play()
             except Exception as e:
