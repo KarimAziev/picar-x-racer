@@ -3,13 +3,23 @@
     <Panel header="Appearance">
       <SwitchSettings />
     </Panel>
-    <div class="field">
-      <label for="default_text">Text to speech</label>
-      <Textarea
-        v-tooltip="'Type the text to speech'"
-        v-model="store.settings.default_text"
-      />
-    </div>
+    <Panel header="Text to Speech">
+      <div class="field">
+        <label for="default_language">Language</label>
+        <Select
+          id="languages"
+          v-model="store.settings.default_language"
+          :options="ttsLanguages"
+        />
+      </div>
+      <div class="field">
+        <label for="default_text">Text</label>
+        <Textarea
+          v-tooltip="'Type the text to speech'"
+          v-model="store.settings.default_text"
+        />
+      </div>
+    </Panel>
     <div class="field">
       <label for="video_feed_url">Video URL</label>
       <Select
@@ -28,7 +38,7 @@
         id="default_sound"
         class="select"
         v-model="store.settings.default_sound"
-        :options="soundStore.data"
+        :options="allSounds"
       />
     </div>
     <Sounds />
@@ -39,7 +49,7 @@
         id="default_music"
         class="select"
         v-model="store.settings.default_music"
-        :options="musicStore.data"
+        :options="allMusic"
       />
     </div>
     <Music />
@@ -50,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { computed } from "vue";
 import Divider from "primevue/divider";
 
 import {
@@ -68,6 +78,7 @@ import Music from "@/features/settings/components/Music.vue";
 import Images from "@/features/settings/components/Images.vue";
 import { VideoFeedURL } from "@/features/settings/enums";
 import SwitchSettings from "@/features/settings/components/SwitchSettings.vue";
+import { ttsLanguages } from "@/features/settings/config";
 
 const videoFeedOptions = Object.entries(VideoFeedURL).map(([key, value]) => ({
   value,
@@ -78,10 +89,14 @@ const store = useSettingsStore();
 const musicStore = useMusicStore();
 const soundStore = useSoundStore();
 
-onMounted(() => {
-  musicStore.fetchData();
-  soundStore.fetchData();
-});
+const allSounds = computed(() => [
+  ...soundStore.data,
+  ...soundStore.defaultData,
+]);
+const allMusic = computed(() => [
+  ...musicStore.data,
+  ...musicStore.defaultData,
+]);
 </script>
 
 <style scoped lang="scss">

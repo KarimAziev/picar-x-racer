@@ -416,7 +416,7 @@ export const useControllerStore = defineStore("controller", {
       const messager = useMessagerStore();
       const settingsStore = useSettingsStore();
       const text = settingsStore.settings.default_text;
-      const lang = settingsStore.settings.default_lang;
+      const lang = settingsStore.settings.default_language;
       if (text) {
         try {
           const response = await playTTS(text, lang);

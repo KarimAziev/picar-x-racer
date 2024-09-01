@@ -6,12 +6,14 @@ import { APIMediaType } from "@/features/settings/interface";
 
 export interface State {
   data: string[];
+  defaultData: [];
   loading: boolean;
 }
 
 const defaultState: State = {
   loading: false,
   data: [],
+  defaultData: [],
 };
 
 export const mediaType: APIMediaType = "sound";
@@ -25,6 +27,24 @@ export const useStore = defineStore("sounds", {
         this.loading = true;
         const response = await axios.get(`/api/list_files/${mediaType}`);
         this.data = response.data.files;
+      } catch (error) {
+        messager.handleError(error, `Error fetching ${mediaType}`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchDefaultData() {
+      const messager = useMessagerStore();
+      try {
+        this.loading = true;
+        const response = await axios.get(`/api/list_files/default_sound`);
+        this.defaultData = response.data.files;
+        console.log(
+          "%c<useStore.actions.fetchDefaultData sounds.ts 43>           this.defaultData: %o :\n",
+          "background-color: #e0ffff; color: black",
+          this.defaultData,
+        );
       } catch (error) {
         messager.handleError(error, `Error fetching ${mediaType}`);
       } finally {

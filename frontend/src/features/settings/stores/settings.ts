@@ -20,7 +20,7 @@ export type ToggleableSettings = {
 export interface Settings extends Partial<ToggleableSettings> {
   default_text: string;
   default_sound: string;
-  default_lang?: string;
+  default_language: string;
   default_music: string;
   keybindings: Record<string, string[]>;
   video_feed_url: VideoFeedURL;
@@ -41,6 +41,7 @@ const defaultState: State = {
     keybindings: {},
     default_text: "",
     default_sound: "",
+    default_language: "en",
     default_music: "",
     video_feed_url: VideoFeedURL.lq,
     battery_full_voltage: 8.4,

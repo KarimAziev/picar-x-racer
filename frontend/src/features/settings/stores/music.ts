@@ -7,11 +7,13 @@ import { useMessagerStore } from "@/features/messager/store";
 export interface State {
   data: string[];
   loading: boolean;
+  defaultData: [];
 }
 
 const defaultState: State = {
   loading: false,
   data: [],
+  defaultData: [],
 };
 
 export const mediaType: APIMediaType = "music";
@@ -25,6 +27,24 @@ export const useStore = defineStore("music", {
         this.loading = true;
         const response = await axios.get(`/api/list_files/${mediaType}`);
         this.data = response.data.files;
+      } catch (error) {
+        messager.handleError(error, `Error fetching ${mediaType}`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchDefaultData() {
+      const messager = useMessagerStore();
+      try {
+        this.loading = true;
+        const response = await axios.get(`/api/list_files/default_music`);
+        this.defaultData = response.data.files;
+        console.log(
+          "%c<useStore.actions.fetchDefaultData music.ts 43>           response.data.files: %o :\n",
+          "background-color: #fafad2; color: black",
+          response.data.files,
+        );
       } catch (error) {
         messager.handleError(error, `Error fetching ${mediaType}`);
       } finally {
