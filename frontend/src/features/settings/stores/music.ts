@@ -40,11 +40,6 @@ export const useStore = defineStore("music", {
         this.loading = true;
         const response = await axios.get(`/api/list_files/default_music`);
         this.defaultData = response.data.files;
-        console.log(
-          "%c<useStore.actions.fetchDefaultData music.ts 43>           response.data.files: %o :\n",
-          "background-color: #fafad2; color: black",
-          response.data.files,
-        );
       } catch (error) {
         messager.handleError(error, `Error fetching ${mediaType}`);
       } finally {
