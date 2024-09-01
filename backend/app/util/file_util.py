@@ -8,7 +8,7 @@ def copy_file_if_not_exists(source: str, target: str):
     """
     Copies a file from source to target if the target file does not exist.
     """
-    if os.path.exists(target) and not os.path.exists(source):
+    if os.path.exists(source) and not os.path.exists(target):
         dir = os.path.dirname(target)
         if not os.path.exists(dir):
             os.makedirs(dir)
