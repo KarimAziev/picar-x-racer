@@ -15,6 +15,9 @@ def expand_file_in_project_dir(file: str):
     return path.abspath(path.join(PROJECT_DIR, file))
 
 
+DEFAULT_USER_SETTINGS = path.abspath(path.join(PROJECT_DIR, "user_settings.json"))
+DEFAULT_MUSIC_DIR = expand_file_in_project_dir("music")
+DEFAULT_SOUND_DIR = expand_file_in_project_dir("sounds")
 SETTINGS_FILE_PATH = path.abspath(path.join(PROJECT_DIR, "user_settings.json"))
 MUSIC_DIR = expand_file_in_project_dir("music")
 SOUNDS_DIR = expand_file_in_project_dir("sounds")

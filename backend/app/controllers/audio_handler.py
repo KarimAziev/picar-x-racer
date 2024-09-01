@@ -15,6 +15,7 @@ except ImportError:
 class AudioHandler(metaclass=SingletonMeta):
     def __init__(self):
         self.music = Music()
+        self.google_speech_available = google_speech_available
         self.music.music_set_volume(100)
         self.sound_playing = False
         self.sound_end_time = None
@@ -43,7 +44,6 @@ class AudioHandler(metaclass=SingletonMeta):
         else:
             text = f"The music file {track_path} is missing."
             print(text)
-            self.text_to_speech(text, "en")
 
     def stop_music(self):
         self.music.music_stop()
@@ -65,7 +65,6 @@ class AudioHandler(metaclass=SingletonMeta):
         else:
             text = f"The sound file {sound_path} is missing."
             print(text)
-            self.text_to_speech(text, "en")
 
     def is_sound_playing(self):
         if (

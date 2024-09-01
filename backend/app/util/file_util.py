@@ -1,13 +1,26 @@
 import shutil
-from os import makedirs, path
+import json
+from os import path
+import os
 
 
 def copy_file_if_not_exists(source: str, target: str):
     """
     Copies a file from source to target if the target file does not exist.
     """
-    if path.exists(target) and not path.exists(source):
-        dir = path.dirname(target)
-        if not path.exists(dir):
-            makedirs(dir)
+    if os.path.exists(target) and not os.path.exists(source):
+        dir = os.path.dirname(target)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
         shutil.copyfile(source, target)
+
+
+def load_json_file(file: str):
+    with open(file, "r") as f:
+        return json.load(f)
+
+
+def ensure_parent_dir_exists(file: str):
+    dir = path.dirname(file)
+    if not path.exists(dir):
+        os.makedirs(dir)

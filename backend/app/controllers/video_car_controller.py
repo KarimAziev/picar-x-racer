@@ -1,44 +1,38 @@
 from app.util.platform_adapters import Picarx
 import asyncio
 import json
-import os
 import traceback
 from datetime import datetime, timedelta
-from os import environ, getlogin, path
-from time import localtime, sleep, strftime
-from typing import List
-
+from os import getlogin, path
+from time import sleep
+from app.util.logger import Logger
 import websockets
-from app.config.logging_config import setup_logger
-from app.config.paths import (
-    MUSIC_DIR,
-    PHOTOS_DIR,
-    SETTINGS_FILE_PATH,
-    SOUNDS_DIR,
-    STATIC_FOLDER,
-    TEMPLATE_FOLDER,
-)
 from app.controllers.audio_handler import AudioHandler
 from app.controllers.video_stream import VideoStreamManager
 from app.util.get_ip_address import get_ip_address
-from app.util.os_checks import is_raspberry_pi
 from app.util.platform_adapters import get_battery_voltage, reset_mcu
 from websockets import WebSocketServerProtocol
-from werkzeug.datastructures import FileStorage
-
-logger = setup_logger(__name__)
+from app.controllers.files_controller import FilesController
 
 
-class VideoCarController:
-    def __init__(self, video_manager: VideoStreamManager):
-        self.is_os_raspberry = is_raspberry_pi()
-        self.video_manager = video_manager
+class VideoCarController(Logger):
+    def __init__(
+        self,
+        camera_manager: VideoStreamManager,
+        file_manager: FilesController,
+        audio_manager: AudioHandler,
+        **kwargs,
+    ):
+        super().__init__(name="VideoCarController", **kwargs)
+        self.camera_manager = camera_manager
+        self.audio_manager = audio_manager
+        self.file_manager = file_manager
         self.last_toggle_time = None
         self.avoid_obstacles_mode = False
         self.avoid_obstacles_task = None
 
         self.Picarx = Picarx
-        print("Picarx")
+
         self.reset_mcu = reset_mcu
         self.reset_mcu()
         sleep(0.2)  # Allow the MCU to reset
@@ -49,61 +43,19 @@ class VideoCarController:
         self.loop = asyncio.get_event_loop()
         self.message_queue = asyncio.Queue()
         self.px = self.Picarx()
-        self.audio_handler = AudioHandler()
-
-        self.SOUNDS_DIR = SOUNDS_DIR
-        self.MUSIC_DIR = MUSIC_DIR
-        self.PHOTOS_DIR = PHOTOS_DIR
-
-        self.music_path = environ.get(
-            "MUSIC_PATH",
-            os.path.join(
-                MUSIC_DIR, "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3"
-            ),
-        )
-        self.sound_path = environ.get(
-            "SOUND_PATH", os.path.join(SOUNDS_DIR, "directives.wav")
-        )
-
-        self.STATIC_FOLDER = STATIC_FOLDER
-        self.TEMPLATE_FOLDER = TEMPLATE_FOLDER
-
-        # Load user settings
-        self.settings = self.load_settings()
-
-    def load_settings(self):
-        try:
-            with open(SETTINGS_FILE_PATH, "r") as settings_file:
-                settings = json.load(settings_file)
-                return settings
-        except FileNotFoundError:
-            return {
-                "default_sound": None,
-                "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
-                "default_text": "Hello, I'm your video car!",
-            }
-
-    def save_settings(self, new_settings):
-        existing_settings = self.load_settings()
-
-        merged_settings = {
-            **existing_settings,
-            **new_settings,
-        }
-
-        with open(SETTINGS_FILE_PATH, "w") as settings_file:
-            json.dump(merged_settings, settings_file, indent=2)
-
-        self.settings = merged_settings
 
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
-        logger.info("handle_message initted")
+        self.info("handle_message initted")
         async for message in websocket:
             data = json.loads(message)
-            logger.info(f"Received: {data}")
-
-            action = data.get("action")
-            logger.info(data.get("action", "no action"))
+            action = data.get("action") if data else None
+            payload = data.get("payload") if data else None
+            if action and payload:
+                self.info(f"{action} payload: {payload}")
+            elif action:
+                self.info(f"{action}")
+            else:
+                self.info(f"received invalid message {data}")
 
             try:
                 if action == "move":
@@ -125,17 +77,12 @@ class VideoCarController:
                     self.play_sound(data.get("payload"))
                 elif action == "sayText":
                     self.say_text(data.get("payload"))
-                elif action == "takePhoto":
-                    name = await self.take_photo()
-                    if name:
-                        response = json.dumps({"payload": name, "type": action})
-                        await websocket.send(response)
                 elif action == "avoidObstacles":
                     now = datetime.utcnow()
                     if self.last_toggle_time and (
                         now - self.last_toggle_time
                     ) < timedelta(seconds=1):
-                        logger.info(
+                        self.info(
                             "Debounce: Too quick toggle of avoidObstacles detected."
                         )
                         continue
@@ -174,7 +121,7 @@ class VideoCarController:
                                 self.avoid_obstacles_task.cancel()
                                 await self.avoid_obstacles_task
                             except asyncio.CancelledError:
-                                logger.info("Avoid obstacles task was cancelled")
+                                self.info("Avoid obstacles task was cancelled")
                                 self.avoid_obstacles_task = None
 
                 elif action == "getDistance":
@@ -187,22 +134,14 @@ class VideoCarController:
                     await websocket.send(response)
                 else:
                     error_msg = "Unknown action: {action}"
-                    logger.warning(error_msg)
+                    self.warning(error_msg)
                     response = json.dumps({"error": error_msg, "type": action})
                     await websocket.send(response)
             except Exception as e:
-                logger.error(f"Error handling action {action}: {e}")
-                logger.error(traceback.format_exc())
+                self.error(f"Error handling action {action}: {e}")
+                self.error(traceback.format_exc())
                 error_response = json.dumps({"type": action, "error": str(e)})
                 await websocket.send(error_response)
-
-    async def take_photo(self):
-
-        _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
-        name = "photo_%s" % _time
-        status = await self.video_manager.take_photo(name, path=self.PHOTOS_DIR)
-        if status:
-            return f"{name}.jpg"
 
     async def process_messages(self, websocket):
         """Continuously process the message queue and send messages."""
@@ -219,7 +158,7 @@ class VideoCarController:
             while True:
                 value = await self.px.ultrasonic.read()
                 distance = round(value, 2)
-                logger.info(f"distance: {distance}")
+                self.info(f"distance: {distance}")
                 if distance >= SafeDistance:
                     self.px.set_dir_servo_angle(0)
                     self.px.forward(POWER)
@@ -235,63 +174,23 @@ class VideoCarController:
         finally:
             self.px.forward(0)
 
-    def play_music(self, file=None):
-        """
-        Handle playing a file based on the given file path.
-
-        Args:
-            file: absolute or relative path to a sound file.
-        """
-        file = file or self.settings.get("default_music") or self.music_path
-        if file:
-            path_to_file = (
-                file if os.path.isabs(file) else os.path.join(self.MUSIC_DIR, file)
-            )
-            self.audio_handler.play_music(path_to_file)
-            logger.info(f"Music finished: {path_to_file}")
-        else:
-            logger.warning("No music file specified or available to play.")
-
-    def play_sound(self, file=None):
-        """
-        Handle playing a sound file based on the given file path.
-
-        Args:
-            file: absolute or relative path to a sound file.
-        """
-        file = file or self.settings.get("default_sound") or self.sound_path
-        if file:
-            path_to_file = (
-                file
-                if os.path.isabs(file) or file == self.sound_path
-                else os.path.join(self.SOUNDS_DIR, file)
-            )
-            self.audio_handler.play_sound(path_to_file)
-            logger.info(f"Playing sound: {path_to_file}")
-        else:
-            logger.warning("No sound file specified or available to play.")
-
-    def say_text(self, text=None):
-        text = text or self.settings.get("default_text", "Hello, I'm your video car!")
-        self.audio_handler.text_to_speech(text)
-
     def move(self, direction: int, speed: int):
-        logger.info(f"Moving {direction} with speed {speed}")
+        self.info(f"Moving {direction} with speed {speed}")
         if direction == 1:
             self.px.forward(speed)
         elif direction == -1:
             self.px.backward(speed)
 
     def set_servo_angle(self, angle):
-        logger.info(f"Setting servo angle to {angle} degrees")
+        self.info(f"Setting servo angle to {angle} degrees")
         self.px.set_dir_servo_angle(angle)
 
     def set_cam_tilt_angle(self, angle):
-        logger.info(f"Setting camera tilt angle to {angle} degrees")
+        self.info(f"Setting camera tilt angle to {angle} degrees")
         self.px.set_cam_tilt_angle(angle)
 
     def set_cam_pan_angle(self, angle):
-        logger.info(f"Setting camera pan angle to {angle} degrees")
+        self.info(f"Setting camera pan angle to {angle} degrees")
         self.px.set_cam_pan_angle(angle)
 
     async def get_distance(self):
@@ -303,7 +202,7 @@ class VideoCarController:
                 raise ValueError("Failed to detect pulse start or end")
             return distance
         except Exception as e:
-            logger.error(f"Failed to get distance: {e}")
+            self.error(f"Failed to get distance: {e}")
             raise
 
     async def start_server(self):
@@ -312,7 +211,7 @@ class VideoCarController:
 
     def main(self):
         ip_address = get_ip_address()
-        logger.info(
+        self.info(
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
         )
 
@@ -324,40 +223,5 @@ class VideoCarController:
             self.loop.run_until_complete(server_task)
             self.loop.close()
         finally:
-            self.video_manager.camera_close()
-
-    def list_files(self, directory: str) -> List[str]:
-        """
-        Lists all files in the specified directory.
-        """
-        if not os.path.exists(directory):
-            return []
-
-        files = []
-        for file in os.listdir(directory):
-            if os.path.isfile(os.path.join(directory, file)):
-                files.append(file)
-        return files
-
-    def remove_file(self, file: str, directory: str):
-        """
-        Remove file if in directory.
-        """
-
-        full_name = os.path.join(directory, file)
-
-        os.remove(full_name)
-        return True
-
-    def save_file(self, file: FileStorage, directory: str) -> str:
-        """
-        Saves uploaded file to the specified directory.
-        """
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        filename = file.filename
-        if not isinstance(filename, str):
-            raise ValueError("Invalid filename.")
-        file_path = os.path.join(directory, filename)
-        file.save(file_path)
-        return file_path
+            if self.camera_manager:
+                self.camera_manager.camera_close()

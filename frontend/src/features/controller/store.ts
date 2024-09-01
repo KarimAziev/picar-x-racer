@@ -10,6 +10,12 @@ import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
 import { constrain } from "@/util/constrain";
+import {
+  playMusic,
+  playSound,
+  playTTS,
+  takePhoto,
+} from "@/features/controller/api";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -145,16 +151,6 @@ export const useControllerStore = defineStore("controller", {
               }
 
               break;
-            case "takePhoto":
-              messager.info("Photo taken");
-              const imageStore = useImageStore();
-              if (payload) {
-                imageStore.downloadFile(payload);
-              } else if (error) {
-                messager.error(`Couldn't take photo: ${data.error}`);
-              }
-              break;
-
             case "stop":
               this.direction = 0;
               this.speed = 0;
@@ -175,12 +171,6 @@ export const useControllerStore = defineStore("controller", {
             case "avoidObstacles":
               this.avoidObstacles = payload;
               messager.info(`Avoid Obstacles: ${payload}`, {
-                immediately: true,
-              });
-              break;
-
-            case "drawFPS":
-              messager.info(`Draw FPS: ${payload}`, {
                 immediately: true,
               });
               break;
@@ -390,40 +380,76 @@ export const useControllerStore = defineStore("controller", {
       this.setDirServoAngle(0);
     },
 
-    playMusic(): void {
+    async playMusic() {
       const messager = useMessagerStore();
-      messager.info("Playback...");
-      this.sendMessage({ action: "playMusic" });
+      const settingsStore = useSettingsStore();
+      const name = settingsStore.settings.default_music;
+      if (name) {
+        try {
+          const response = await playMusic(name);
+          const data = response.data;
+          const msg = data.playing ? `Playing ${name}` : "Stoped playing";
+          messager.info(msg);
+        } catch (error) {
+          messager.handleError(error);
+        }
+      }
     },
 
-    playSound(): void {
+    async playSound() {
       const messager = useMessagerStore();
-      messager.info("Playback sound...");
-      this.sendMessage({ action: "playSound" });
+      const settingsStore = useSettingsStore();
+      const name = settingsStore.settings.default_sound;
+      if (name) {
+        try {
+          const response = await playSound(name);
+          const data = response.data;
+          const msg = data.playing ? `Playing ${name}` : "Stoped playing";
+          messager.info(msg);
+        } catch (error) {
+          messager.handleError(error);
+        }
+      }
     },
 
-    sayText(): void {
+    async sayText() {
       const messager = useMessagerStore();
-      messager.info("Talking..");
-      this.sendMessage({ action: "sayText" });
+      const settingsStore = useSettingsStore();
+      const text = settingsStore.settings.default_text;
+      const lang = settingsStore.settings.default_lang;
+      if (text) {
+        try {
+          const response = await playTTS(text, lang);
+          const data = response.data;
+          const msg = data.status ? `Speaking: ${text}` : "Not speaking";
+          messager.info(msg);
+        } catch (error) {
+          messager.handleError(error);
+        }
+      }
     },
 
     getDistance(): void {
       this.sendMessage({ action: "getDistance" });
     },
 
-    takePhoto(): void {
+    async takePhoto() {
       const messager = useMessagerStore();
-      messager.info("Recording photo...");
-      this.sendMessage({ action: "takePhoto" });
+      const imageStore = useImageStore();
+      const settingsStore = useSettingsStore();
+      try {
+        const response = await takePhoto();
+        const file = response.data.file;
+        if (file && settingsStore.settings.auto_download_photo) {
+          await imageStore.downloadFile(file);
+        }
+      } catch (error) {
+        messager.handleError(error);
+      }
     },
     toggleAvoidObstaclesMode() {
       this.sendMessage({ action: "avoidObstacles" });
     },
-    toggleDrawFPS() {
-      this.sendMessage({ action: "drawFPS" });
-    },
-
     left() {
       this.setDirServoAngle(SERVO_DIR_ANGLE_MIN);
     },

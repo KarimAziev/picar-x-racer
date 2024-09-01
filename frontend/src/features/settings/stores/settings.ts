@@ -20,6 +20,7 @@ export type ToggleableSettings = {
 export interface Settings extends Partial<ToggleableSettings> {
   default_text: string;
   default_sound: string;
+  default_lang?: string;
   default_music: string;
   keybindings: Record<string, string[]>;
   video_feed_url: VideoFeedURL;

@@ -1,4 +1,5 @@
 import os
+import json
 from time import sleep
 
 
@@ -128,3 +129,24 @@ class fileDB(object):
         conf = open(self.db, "w")
         conf.writelines(lines)
         conf.close()
+
+    def get_all_as_json(self):
+        """
+        Get all key-value pairs as a JSON string.
+
+        :return: the key-value pairs in JSON format
+        :rtype: str
+        """
+        try:
+            data = {}
+            with open(self.db, "r") as conf:
+                lines = conf.readlines()
+
+            for line in lines:
+                if line.strip() and line[0] != "#":
+                    key, value = line.split("=")
+                    data[key.strip()] = value.replace(" ", "").strip()
+
+            return json.dumps(data, indent=4)
+        except Exception as e:
+            raise Exception(f"Failed to parse database file: {e}")

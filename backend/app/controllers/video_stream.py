@@ -232,7 +232,7 @@ class VideoStreamManager(metaclass=SingletonMeta):
                 img_copy = self.img.copy() if self.img is not None else None
 
             if img_copy is not None:
-                status = cv2.imwrite(os.path.join(path, photo_name + ".jpg"), img_copy)
+                status = cv2.imwrite(os.path.join(path, photo_name), img_copy)
                 break
             else:
                 await asyncio.sleep(0.01)
