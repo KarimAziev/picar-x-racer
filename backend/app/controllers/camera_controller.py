@@ -235,7 +235,6 @@ class CameraController(metaclass=SingletonMeta):
 
     def camera_thread_func(self):
         logger.info("Starting camera loop")
-        self.find_camera_index()
         cap = cv2.VideoCapture(self.camera_index)
         if not cap.isOpened():
             cap.release()
