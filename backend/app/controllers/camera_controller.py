@@ -1,18 +1,22 @@
 import asyncio
+import subprocess
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Generator, Optional
+from typing import Generator, Optional, List, Tuple
 import threading
 import cv2
 import numpy as np
 from app.config.logging_config import setup_logger
 from app.util.singleton_meta import SingletonMeta
 
+
 logger = setup_logger(__name__)
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 640
 TARGET_HEIGHT = 480
+
+CameraInfo = Tuple[int, str, Optional[str]]
 
 
 class CameraController(metaclass=SingletonMeta):
@@ -29,6 +33,67 @@ class CameraController(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.flask_img: Optional[np.ndarray] = None
         self.lock = threading.Lock()
+
+    @staticmethod
+    def get_device_info(device_path: str) -> str:
+        try:
+            result = subprocess.run(
+                ["v4l2-ctl", "--device", device_path, "--all"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            return result.stdout
+        except Exception as e:
+            return f"Error checking device {device_path}: {e}"
+
+    @staticmethod
+    def find_available_cameras() -> List[CameraInfo]:
+        camera_indices: List[CameraInfo] = []
+
+        video_devices = [f for f in os.listdir("/dev") if f.startswith("video")]
+        for device in video_devices:
+            device_path = os.path.join("/dev", device)
+            index = int(device.replace("video", ""))
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    device_info = CameraController.get_device_info(device_path)
+                    camera_indices.append((index, device_path, device_info))
+                cap.release()
+
+        return camera_indices
+
+    @staticmethod
+    def prioritize_cameras(available_cameras: List[CameraInfo]):
+        color_cameras: List[CameraInfo] = []
+        greyscale_cameras: List[CameraInfo] = []
+
+        for index, device_path, device_info in available_cameras:
+            if device_info and "8-bit Greyscale" in device_info:
+                greyscale_cameras.append((index, device_path, device_info))
+            else:
+                color_cameras.append((index, device_path, device_info))
+
+        if color_cameras:
+            return color_cameras[0]
+        elif greyscale_cameras:
+            return greyscale_cameras[0]
+        else:
+            return None, None, None
+
+    @staticmethod
+    def read_camera(index: int, is_greyscale: bool) -> Optional[np.ndarray]:
+        cap = cv2.VideoCapture(index)
+        if cap.isOpened():
+            ret, frame = cap.read()
+            cap.release()
+            if ret:
+                if is_greyscale:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+                return frame
+        return None
 
     def recreate_executor(self):
         if self.executor_shutdown:
@@ -153,15 +218,32 @@ class CameraController(metaclass=SingletonMeta):
     def generate_low_quality_stream(self) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream_no_transform(".png")
 
+    def find_camera_index(self):
+        available_cameras = CameraController.find_available_cameras()
+        logger.info(
+            f"Available cameras: {[(idx, path) for idx, path, _ in available_cameras]}"
+        )
+
+        camera_index, device_path, device_info = CameraController.prioritize_cameras(
+            available_cameras
+        )
+        logger.info(
+            f"camera_index {camera_index} device_path {device_path} device_info {device_info}"
+        )
+        if camera_index:
+            self.camera_index = camera_index
+
     def camera_thread_func(self):
         logger.info("Starting camera loop")
+        self.find_camera_index()
         cap = cv2.VideoCapture(self.camera_index)
-
         if not cap.isOpened():
             cap.release()
             logger.error(f"Failed to open camera at {self.camera_index}.")
-            return
+            raise SystemExit(f"Exiting: Camera {self.camera_index} couldn't be opened.")
 
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
         cap.set(cv2.CAP_PROP_FPS, self.target_fps)
 
         try:
