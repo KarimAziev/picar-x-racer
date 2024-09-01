@@ -12,6 +12,7 @@ import { toggleableSettings } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { omit } from "@/util/obj";
+import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
 
 export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
@@ -72,9 +73,11 @@ export const useStore = defineStore("settings", {
     },
     async fetchSettingsInitial() {
       const messager = useMessagerStore();
+      const calibrationStore = useCalibrationStore();
       messager.info("loading...");
       try {
         this.loading = true;
+        await calibrationStore.fetchData();
         await this.fetchSettings();
         messager.info("Memory set: OK");
         messager.info("System status: OK");

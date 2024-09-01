@@ -147,6 +147,6 @@ class fileDB(object):
                     key, value = line.split("=")
                     data[key.strip()] = value.replace(" ", "").strip()
 
-            return json.dumps(data, indent=4)
+            return data
         except Exception as e:
             raise Exception(f"Failed to parse database file: {e}")
