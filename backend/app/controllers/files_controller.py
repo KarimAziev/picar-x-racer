@@ -80,6 +80,9 @@ class FilesController(Logger):
     def list_default_music(self):
         return self.list_files(self.default_user_music_dir)
 
+    def list_default_sounds(self):
+        return self.list_files(self.default_user_sounds_dir)
+
     def list_user_photos(self) -> List[str]:
         """
         Lists user photos.
@@ -153,7 +156,7 @@ class FilesController(Logger):
             raise FileNotFoundError
 
     def get_music_directory(self, filename: str):
-        user_file = path.join(filename, self.user_music_dir)
+        user_file = path.join(self.user_music_dir, filename)
         if path.exists(user_file):
             return user_file
         elif path.exists(path.join(self.default_user_music_dir, filename)):
