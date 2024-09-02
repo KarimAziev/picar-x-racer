@@ -13,7 +13,7 @@ from app.controllers.files_controller import FilesController
 copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
 from app.util.logger import Logger
 
-Logger.set_global_log_level(logging.DEBUG)
+Logger.set_global_log_level(logging.INFO)
 
 if __name__ == "__main__":
     controller = None

@@ -5,7 +5,6 @@ from colorlog import ColoredFormatter
 class Logger(object):
     def __init__(self, name: str, level: int = logging.DEBUG):
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
         self.logger.propagate = False
 
         if not self.logger.handlers:
