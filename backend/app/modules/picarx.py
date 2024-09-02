@@ -101,7 +101,7 @@ class Picarx(Logger):
 
         # --------- grayscale module init ---------
         adc0, adc1, adc2 = [ADC(pin) for pin in grayscale_pins]
-        self.grayscale = Grayscale_Module(adc0, adc1, adc2, reference=None)
+        self.grayscale = Grayscale_Module(adc0, adc1, adc2)
         # get reference
         self.line_reference = self.config_file.get(
             "line_reference", default_value=str(self.DEFAULT_LINE_REF)
