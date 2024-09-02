@@ -3,14 +3,13 @@ import asyncio
 import json
 import traceback
 from datetime import datetime, timedelta
-from os import getlogin, path
 from time import sleep
 from app.util.logger import Logger
 import websockets
 from app.controllers.audio_controller import AudioController
 from app.controllers.camera_controller import CameraController
 from app.util.get_ip_address import get_ip_address
-from app.util.platform_adapters import get_battery_voltage, reset_mcu
+from app.util.platform_adapters import reset_mcu
 from websockets import WebSocketServerProtocol
 from app.controllers.files_controller import FilesController
 
@@ -21,37 +20,31 @@ class CarController(Logger):
         camera_manager: CameraController,
         file_manager: FilesController,
         audio_manager: AudioController,
+        picarx: "Picarx",
         **kwargs,
     ):
-        super().__init__(name="CarController", **kwargs)
+        super().__init__(name=__name__, **kwargs)
+        reset_mcu()
+        sleep(0.2)
         self.camera_manager = camera_manager
         self.audio_manager = audio_manager
         self.file_manager = file_manager
+        self.px = picarx
+
         self.last_toggle_time = None
         self.avoid_obstacles_mode = False
         self.avoid_obstacles_task = None
-
-        self.Picarx = Picarx
-
-        self.reset_mcu = reset_mcu
-        self.reset_mcu()
-        sleep(0.2)  # Allow the MCU to reset
-
-        self.user = getlogin()
-        self.user_home = path.expanduser(f"~{self.user}")
+        self.calibration_mode = False
 
         self.loop = asyncio.get_event_loop()
-        self.message_queue = asyncio.Queue()
-        self.px = self.Picarx()
 
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
-        self.info("handle_message initted")
         async for message in websocket:
             data = json.loads(message)
             action = data.get("action") if data else None
             payload = data.get("payload") if data else None
-            if action and payload:
-                self.info(f"{action} payload: {payload}")
+            if action and payload is not None:
+                self.info(f"{action} {payload}")
             elif action:
                 self.info(f"{action}")
             else:
@@ -59,24 +52,18 @@ class CarController(Logger):
 
             try:
                 if action == "move":
-                    payload = data.get("payload", {})
+                    payload = data.get("payload", {"direction": 0, "speed": 0})
                     direction = payload.get("direction", 0)
                     speed = payload.get("speed", 0)
                     self.move(direction, speed)
                 elif action == "setServoDirAngle":
-                    self.set_servo_angle(data.get("payload", 0))
+                    self.px.set_dir_servo_angle(data.get("payload", 0))
                 elif action == "stop":
                     self.px.stop()
                 elif action == "setCamTiltAngle":
-                    self.set_cam_tilt_angle(data.get("payload", 0))
+                    self.px.set_cam_tilt_angle(data.get("payload", 0))
                 elif action == "setCamPanAngle":
-                    self.set_cam_pan_angle(data.get("payload", 0))
-                elif action == "playMusic":
-                    self.play_music(data.get("payload"))
-                elif action == "playSound":
-                    self.play_sound(data.get("payload"))
-                elif action == "sayText":
-                    self.say_text(data.get("payload"))
+                    self.px.set_cam_pan_angle(data.get("payload", 0))
                 elif action == "avoidObstacles":
                     now = datetime.utcnow()
                     if self.last_toggle_time and (
@@ -88,49 +75,11 @@ class CarController(Logger):
                         continue
                     self.last_toggle_time = now
                     self.avoid_obstacles_mode = not self.avoid_obstacles_mode
-                    self.px.stop()
-                    self.set_cam_tilt_angle(0)
-                    self.set_cam_pan_angle(0)
-                    await websocket.send(
-                        json.dumps(
-                            {
-                                "payload": {
-                                    "direction": 0,
-                                    "servoAngle": 0,
-                                    "camPan": 0,
-                                    "camTilt": 0,
-                                    "speed": 0,
-                                    "maxSpeed": 50,
-                                    "avoidObstacles": self.avoid_obstacles_mode,
-                                },
-                                "type": "update",
-                            }
-                        )
-                    )
-                    response = json.dumps(
-                        {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
-                    )
-                    await websocket.send(response)
-                    if self.avoid_obstacles_mode:
-                        self.avoid_obstacles_task = asyncio.create_task(
-                            self.avoid_obstacles()
-                        )
-                    else:
-                        if self.avoid_obstacles_task:
-                            try:
-                                self.avoid_obstacles_task.cancel()
-                                await self.avoid_obstacles_task
-                            except asyncio.CancelledError:
-                                self.info("Avoid obstacles task was cancelled")
-                                self.avoid_obstacles_task = None
+                    await self.handle_avoid_obstacles_mode(websocket)
 
                 elif action == "getDistance":
                     distance = await self.get_distance()
                     response = json.dumps({"payload": distance, "type": action})
-                    await websocket.send(response)
-                elif action == "getBatteryVoltage":
-                    value: float = get_battery_voltage()
-                    response = json.dumps({"payload": value, "type": action})
                     await websocket.send(response)
                 else:
                     error_msg = "Unknown action: {action}"
@@ -143,12 +92,51 @@ class CarController(Logger):
                 error_response = json.dumps({"type": action, "error": str(e)})
                 await websocket.send(error_response)
 
-    async def process_messages(self, websocket):
-        """Continuously process the message queue and send messages."""
-        while True:
-            message = await self.message_queue.get()
-            await websocket.send(message)
-            self.message_queue.task_done()
+    async def handle_calibration_message(self, websocket: WebSocketServerProtocol, _):
+        async for message in websocket:
+            data = json.loads(message)
+            action = data.get("action") if data else None
+            payload = data.get("payload") if data else None
+
+    async def handle_px_reset(self, websocket: WebSocketServerProtocol):
+        self.px.stop()
+        self.px.set_cam_tilt_angle(0)
+        self.px.set_cam_pan_angle(0)
+        self.px.set_dir_servo_angle(0)
+        await websocket.send(
+            json.dumps(
+                {
+                    "payload": {
+                        "direction": 0,
+                        "servoAngle": 0,
+                        "camPan": 0,
+                        "camTilt": 0,
+                        "speed": 0,
+                        "maxSpeed": 30,
+                    },
+                    "type": "update",
+                }
+            )
+        )
+
+    async def handle_avoid_obstacles_mode(self, websocket: WebSocketServerProtocol):
+        await self.handle_px_reset(websocket)
+        response = json.dumps(
+            {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
+        )
+        await websocket.send(response)
+        await self.cancel_avoid_obstales_task()
+        if self.avoid_obstacles_mode:
+            self.avoid_obstacles_task = asyncio.create_task(self.avoid_obstacles())
+
+    async def cancel_avoid_obstales_task(self):
+        if self.avoid_obstacles_task:
+            try:
+                self.avoid_obstacles_task.cancel()
+                await self.avoid_obstacles_task
+            except asyncio.CancelledError:
+                self.info("Avoid obstacles task was cancelled")
+                self.avoid_obstacles_task = None
 
     async def avoid_obstacles(self):
         POWER = 50
@@ -180,18 +168,6 @@ class CarController(Logger):
             self.px.forward(speed)
         elif direction == -1:
             self.px.backward(speed)
-
-    def set_servo_angle(self, angle):
-        self.info(f"Setting servo angle to {angle} degrees")
-        self.px.set_dir_servo_angle(angle)
-
-    def set_cam_tilt_angle(self, angle):
-        self.info(f"Setting camera tilt angle to {angle} degrees")
-        self.px.set_cam_tilt_angle(angle)
-
-    def set_cam_pan_angle(self, angle):
-        self.info(f"Setting camera pan angle to {angle} degrees")
-        self.px.set_cam_pan_angle(angle)
 
     async def get_distance(self):
         try:

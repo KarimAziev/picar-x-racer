@@ -38,7 +38,6 @@ else:
         get_battery_voltage,
     )
 
-Picarx = Picarx
 
 reset_mcu = reset_mcu
 get_ip = get_ip
