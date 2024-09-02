@@ -3,7 +3,7 @@ import axios from "axios";
 import { useMessagerStore } from "@/features/messager/store";
 
 export interface Data {
-  [key: string]: string | number;
+  [key: string]: string | number | null;
 }
 export interface State {
   data: Data;
@@ -12,7 +12,12 @@ export interface State {
 
 const defaultState: State = {
   loading: false,
-  data: {},
+  data: {
+    picarx_cam_pan_servo: null,
+    picarx_cam_tilt_servo: null,
+    picarx_dir_motor: null,
+    picarx_dir_servo: null,
+  },
 };
 
 export const useStore = defineStore("calibration", {

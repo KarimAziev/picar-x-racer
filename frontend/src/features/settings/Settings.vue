@@ -3,6 +3,7 @@
     <TabList>
       <Tab :value="SettingsTab.GENERAL">General</Tab>
       <Tab :value="SettingsTab.KEYBINDINGS">Keybindings</Tab>
+      <Tab :value="SettingsTab.CALIBRATION">Calibration</Tab>
     </TabList>
     <TabPanels>
       <TabPanel :value="SettingsTab.GENERAL">
@@ -10,6 +11,9 @@
       </TabPanel>
       <TabPanel :value="SettingsTab.KEYBINDINGS">
         <KeybindingsPanel />
+      </TabPanel>
+      <TabPanel :value="SettingsTab.CALIBRATION">
+        <Calibration />
       </TabPanel>
     </TabPanels>
   </Tabs>
@@ -25,6 +29,7 @@ import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vu
 import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
 import { SettingsTab } from "@/features/settings/enums";
 import { usePopupStore } from "@/features/settings/stores";
+import Calibration from "@/features/settings/components/Calibration.vue";
 
 const popupStore = usePopupStore();
 </script>

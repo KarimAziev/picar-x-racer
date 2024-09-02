@@ -22,6 +22,7 @@
 > - [Picar-X Racer](#picar-x-racer)
 >   - [Features](#features)
 >   - [Prerequisites](#prerequisites)
+>   - [Usage on Bookworm OS](#usage-on-bookworm-os)
 >   - [Usage on Raspberry OS](#usage-on-raspberry-os)
 >     - [Setup and Build](#setup-and-build)
 >     - [Usage](#usage)
@@ -45,31 +46,46 @@
 - Node.js and npm
 - Raspberry PI with Picar-X
 
+## Usage on Bookworm OS
+
+In order to use `cv2` on `Bookworm`, you need to add the following lines in `/boot/firmware/config.txt`
+
+```
+camera_auto_detect=0
+start_x=1
+gpu_mem=128
+dtoverlay=vc4-kms-v3d
+```
+
 ## Usage on Raspberry OS
 
 ### Setup and Build
 
 To run on Raspberry OS, follow these steps:
 
-1. Install [all the modules](https://docs.sunfounder.com/projects/picar-x/en/latest/python/python_start/install_all_modules.html) required by Picar-X.
+1. Install `portaudio19-dev` required by Pyaudio.
 
-2. Clone this repository to your Raspberry Pi:
+```bash
+sudo apt-get install portaudio19-dev
+```
+
+2. Install [SoX](https://sourceforge.net/projects/sox/) with MP3 support. It is needed for Google Speech.
+
+```bash
+sudo apt-get install sox libsox-fmt-mp3
+```
+
+3. Clone this repository to your Raspberry Pi:
 
 ```bash
 git clone https://github.com/KarimAziev/picar-x-racer.git ~/picar-x-racer/
 ```
 
-3. Install backend dependencies. Use the same Python environment as you used for the Picar-X installation. Assuming you installed it using `sudo python3`, as mentioned in the Picar-X manual:
+4. Install backend dependencies. Use the same Python environment as you used for the Picar-X installation. Assuming you installed it using `sudo python3`, as mentioned in the Picar-X manual:
 
 ```bash
 cd ~/picar-x-racer/backend/
 sudo python3 -m pip install -r ./requirements.txt
-```
-
-4. Install [SoX](https://sourceforge.net/projects/sox/) with MP3 support. It is needed for Google Speech.
-
-```bash
-sudo apt-get install sox libsox-fmt-mp3
 ```
 
 5. Build the frontend:
