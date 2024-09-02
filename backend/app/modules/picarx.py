@@ -7,13 +7,13 @@ from app.config.paths import PICARX_CONFIG_FILE
 # from app.robot_hat.pwm import PWM
 # from app.robot_hat.adc import ADC
 # from app.robot_hat.pin import Pin
-from app.robot_hat.ultrasonic import Ultrasonic
-from app.robot_hat.grayscale import Grayscale_Module
+# from app.robot_hat.ultrasonic import Ultrasonic
+# from app.robot_hat.grayscale import Grayscale_Module
 
 # from app.robot_hat.utils import (
 #     reset_mcu,
 # )
-from robot_hat import Pin, ADC, PWM, Servo, fileDB, utils
+from robot_hat import Pin, ADC, PWM, Servo, fileDB, utils, Ultrasonic, Grayscale_Module
 import time
 
 
@@ -102,7 +102,7 @@ class Picarx:
 
         # --------- grayscale module init ---------
         adc0, adc1, adc2 = [ADC(pin) for pin in grayscale_pins]
-        self.grayscale = Grayscale_Module(adc0, adc1, adc2)
+        self.grayscale = Grayscale_Module(adc0, adc1, adc2, reference=None)
         # Get reference
         self.line_reference = self.config_file.get(
             "line_reference", default_value=str(self.DEFAULT_LINE_REF)
