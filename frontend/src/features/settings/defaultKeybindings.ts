@@ -34,6 +34,7 @@ export const defaultKeybindinds: Partial<
   toggleVirtualMode: ["*"],
   toggleAutoMeasureDistanceMode: ["U"],
   toggleAutoDownloadPhoto: ["P"],
+  toggleCalibration: ["C"],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -61,6 +62,19 @@ export const commandLabels: Record<string, string> = {
   increaseQuality: "Increase Video Quality",
   decreaseQuality: "Decrease Video Quality",
   toggleAvoidObstaclesMode: "Toggle Avoid Obstacles Mode",
+  toggleCalibration: "Toggle Calibration Mode",
+};
+
+export const calibrationModeRemap: Partial<
+  Record<ControllerActionName, ControllerActionName>
+> = {
+  left: "decreaseServoDirCali",
+  right: "increaseServoDirCali",
+  decreaseCamTilt: "decreaseCamTiltCali",
+  increaseCamTilt: "increaseCamTiltCali",
+  decreaseCamPan: "decreaseCamPanCali",
+  increaseCamPan: "increaseCamPanCali",
+  resetCameraRotate: "resetCalibration",
 };
 
 export const allCommandOptions = objectKeysToOptions(

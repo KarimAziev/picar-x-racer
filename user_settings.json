@@ -42,6 +42,7 @@
     "toggleTextInfo": ["I"],
     "toggleVirtualMode": ["*"],
     "toggleAutoMeasureDistanceMode": ["U"],
-    "toggleAutoDownloadPhoto": ["P"]
+    "toggleAutoDownloadPhoto": ["P"],
+    "toggleCalibration": ["C"]
   }
 }

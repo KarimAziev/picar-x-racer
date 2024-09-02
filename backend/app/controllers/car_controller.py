@@ -12,6 +12,7 @@ from app.util.get_ip_address import get_ip_address
 from app.util.platform_adapters import reset_mcu
 from websockets import WebSocketServerProtocol
 from app.controllers.files_controller import FilesController
+from app.controllers.calibration_controller import CalibrationController
 
 
 class CarController(Logger):
@@ -30,6 +31,7 @@ class CarController(Logger):
         self.audio_manager = audio_manager
         self.file_manager = file_manager
         self.px = picarx
+        self.calibration = CalibrationController(picarx)
 
         self.last_toggle_time = None
         self.avoid_obstacles_mode = False
@@ -51,6 +53,7 @@ class CarController(Logger):
                 self.info(f"received invalid message {data}")
 
             try:
+                calibrationData = None
                 if action == "move":
                     payload = data.get("payload", {"direction": 0, "speed": 0})
                     direction = payload.get("direction", 0)
@@ -58,6 +61,27 @@ class CarController(Logger):
                     self.move(direction, speed)
                 elif action == "setServoDirAngle":
                     self.px.set_dir_servo_angle(data.get("payload", 0))
+                elif action == "servoTest":
+                    self.calibration.servos_test()
+                elif action == "increaseCamPanCali":
+                    calibrationData = self.calibration.increase_cam_pan_angle()
+                elif action == "decreaseCamPanCali":
+                    calibrationData = self.calibration.decrease_cam_pan_angle()
+                elif action == "increaseCamTiltCali":
+                    calibrationData = self.calibration.increase_cam_tilt_angle()
+                elif action == "decreaseCamTiltCali":
+                    calibrationData = self.calibration.decrease_cam_tilt_angle()
+                elif action == "increaseServoDirCali":
+                    calibrationData = self.calibration.increase_servo_dir_angle()
+                elif action == "decreaseServoDirCali":
+                    calibrationData = self.calibration.decrease_servo_dir_angle()
+                elif action == "saveCalibration":
+                    data = self.calibration.save_calibration()
+                    await websocket.send(
+                        json.dumps({"type": "saveCalibration", "payload": data})
+                    )
+                elif action == "resetCalibration":
+                    calibrationData = self.calibration.servos_reset()
                 elif action == "stop":
                     self.px.stop()
                 elif action == "setCamTiltAngle":
@@ -86,17 +110,20 @@ class CarController(Logger):
                     self.warning(error_msg)
                     response = json.dumps({"error": error_msg, "type": action})
                     await websocket.send(response)
+
+                if calibrationData:
+                    self.info(f"calibrationData {calibrationData}")
+                    await websocket.send(
+                        json.dumps(
+                            {"type": "updateCalibration", "payload": calibrationData}
+                        )
+                    )
+
             except Exception as e:
                 self.error(f"Error handling action {action}: {e}")
                 self.error(traceback.format_exc())
                 error_response = json.dumps({"type": action, "error": str(e)})
                 await websocket.send(error_response)
-
-    async def handle_calibration_message(self, websocket: WebSocketServerProtocol, _):
-        async for message in websocket:
-            data = json.loads(message)
-            action = data.get("action") if data else None
-            payload = data.get("payload") if data else None
 
     async def handle_px_reset(self, websocket: WebSocketServerProtocol):
         self.px.stop()

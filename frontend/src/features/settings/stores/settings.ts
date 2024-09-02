@@ -13,6 +13,7 @@ import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { omit } from "@/util/obj";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
+import type { ControllerActionName } from "@/features/controller/store";
 
 export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
@@ -23,7 +24,7 @@ export interface Settings extends Partial<ToggleableSettings> {
   default_sound: string;
   default_language: string;
   default_music: string;
-  keybindings: Record<string, string[]>;
+  keybindings: Partial<Record<ControllerActionName, string[]>>;
   video_feed_url: VideoFeedURL;
   battery_full_voltage: number;
 }

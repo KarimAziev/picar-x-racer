@@ -26,7 +26,9 @@ class FilesController(Logger):
         super().__init__(name="FilesController", *args, **kwargs)
         self.user = os.getlogin()
         self.user_home = path.expanduser(f"~{self.user}")
-        self.user_settings_file = path.join(CONFIG_USER_DIR, "user_settings.json")
+        self.user_settings_file = path.join(
+            CONFIG_USER_DIR, "picar-x-racer", "user_settings.json"
+        )
         self.user_photos_dir = environ.get(
             "PHOTOS_PATH", "%s/Pictures/picar-x-racer/" % self.user_home
         )

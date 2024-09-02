@@ -18,10 +18,10 @@
     "postcss": "^8.4.41",
     "primeicons": "^7.0.0",
     "primevue": "^4.0.4",
+    "rename-obj-map": "^2.0.2",
     "three": "^0.167.1",
     "vue": "^3.4.21",
-    "vue-router": "^4.3.0",
-    "vue-speedometer": "^3.0.1"
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.3.0",

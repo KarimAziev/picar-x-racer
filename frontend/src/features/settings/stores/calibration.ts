@@ -28,10 +28,10 @@ export const useStore = defineStore("calibration", {
       try {
         this.loading = true;
         const response = await axios.get("/api/calibration");
-        Object.entries(response.data).forEach(([key, value]) => [
-          messager.info(`${value}`, key),
-        ]);
-        this.data = response.data;
+        Object.entries(response.data).forEach(([key, value]) => {
+          messager.info(`${value}`, key);
+        });
+        this.data = { ...this.data, ...response.data };
       } catch (error) {
         messager.handleError(error, `Error fetching calibration settings`);
       } finally {

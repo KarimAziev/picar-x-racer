@@ -4,6 +4,7 @@ import {
   useSettingsStore,
   usePopupStore,
   useBatteryStore,
+  useCalibrationStore,
 } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
@@ -32,6 +33,10 @@ export interface Modes {
    * Whether avoid obstacles mode is enabled.
    */
   avoidObstacles: boolean;
+  /**
+   * Whether calibration mode is enabled.
+   */
+  calibrationMode: boolean;
 }
 
 export interface Gauges {
@@ -102,6 +107,7 @@ const defaultGauges: Gauges = {
 
 const modes: Modes = {
   avoidObstacles: false,
+  calibrationMode: false,
 };
 
 const defaultState: StoreState = {
@@ -119,6 +125,7 @@ export const useControllerStore = defineStore("controller", {
   actions: {
     initializeWebSocket(url: string) {
       const messager = useMessagerStore();
+      const calibrationStore = useCalibrationStore();
       this.url = url;
 
       this.websocket = new WebSocket(url);
@@ -173,6 +180,16 @@ export const useControllerStore = defineStore("controller", {
               messager.info(`Avoid Obstacles: ${payload}`, {
                 immediately: true,
               });
+              break;
+
+            case "updateCalibration":
+              calibrationStore.data = payload;
+              break;
+
+            case "saveCalibration":
+              calibrationStore.data = payload;
+              this.calibrationMode = false;
+              messager.info(`Calibration saved`);
               break;
 
             default:
@@ -455,6 +472,44 @@ export const useControllerStore = defineStore("controller", {
     },
     right() {
       this.setDirServoAngle(SERVO_DIR_ANGLE_MAX);
+    },
+
+    toggleCalibration() {
+      const popupStore = usePopupStore();
+      this.calibrationMode = !this.calibrationMode;
+      if (this.calibrationMode) {
+        this.stop();
+        this.resetCameraRotate();
+        this.resetDirServoAngle();
+        popupStore.isOpen = false;
+      } else {
+        popupStore.tab = SettingsTab.CALIBRATION;
+        popupStore.isOpen = true;
+      }
+    },
+    increaseCamPanCali() {
+      this.sendMessage({ action: "increaseCamPanCali" });
+    },
+    decreaseCamPanCali() {
+      this.sendMessage({ action: "decreaseCamPanCali" });
+    },
+    increaseCamTiltCali() {
+      this.sendMessage({ action: "increaseCamTiltCali" });
+    },
+    decreaseCamTiltCali() {
+      this.sendMessage({ action: "decreaseCamTiltCali" });
+    },
+    increaseServoDirCali() {
+      this.sendMessage({ action: "increaseServoDirCali" });
+    },
+    decreaseServoDirCali() {
+      this.sendMessage({ action: "decreaseServoDirCali" });
+    },
+    saveCalibration() {
+      this.sendMessage({ action: "saveCalibration" });
+    },
+    resetCalibration() {
+      this.sendMessage({ action: "resetCalibration" });
     },
     // UI commands
     getBatteryVoltage() {

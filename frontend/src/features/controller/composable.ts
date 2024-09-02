@@ -1,10 +1,12 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { renameKeys } from "rename-obj-map";
 import { useControllerStore } from "@/features/controller/store";
 import { useSettingsStore } from "@/features/settings/stores";
 import type { ControllerActionName } from "@/features/controller/store";
 import { formatKeyEventItem, formatKeyboardEvents } from "@/util/keyboard-util";
 import { groupKeys } from "@/features/settings/util";
 import { usePopupStore } from "@/features/settings/stores";
+import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
 
 export const useCarController = () => {
   const popupStore = usePopupStore();
@@ -19,7 +21,14 @@ export const useCarController = () => {
     "stop",
   ];
 
-  const keybindings = computed(() => groupKeys(settings.settings.keybindings));
+  const keybindings = computed(() => {
+    const data = store.calibrationMode
+      ? groupKeys(
+          renameKeys(calibrationModeRemap, settings.settings.keybindings),
+        )
+      : groupKeys(settings.settings.keybindings);
+    return data;
+  });
 
   const loopTimer = ref();
   const activeKeys = ref(new Set<string>());

@@ -10,7 +10,9 @@ export const objectKeysToOptions = (
     label: (labelsMap && labelsMap[c]) || startCase(c),
   }));
 
-export const groupKeys = (data: Record<ControllerActionName, string[]>) =>
+export const groupKeys = (
+  data: Partial<Record<ControllerActionName, string[]>>,
+) =>
   Object.entries(data).reduce(
     (acc, [command, keys]) => {
       keys.forEach((k) => {
