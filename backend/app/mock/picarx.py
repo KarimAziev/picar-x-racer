@@ -106,16 +106,10 @@ class Picarx(object):
         self.motor_direction_pins = [self.left_rear_dir_pin, self.right_rear_dir_pin]
         self.motor_speed_pins = [self.left_rear_pwm_pin, self.right_rear_pwm_pin]
         # Get calibration values
-        self.cali_dir_value = self.config_file.get(
-            "picarx_dir_motor", default_value="[1, 1]"
-        )
+        temp = self.config_file.get("picarx_dir_motor", default_value="[1, 1]") or ""
         self.cali_dir_value = (
-            [
-                int(i.strip())
-                for i in self.cali_dir_value.strip("[]").split(",")
-                if i.strip().isdigit()
-            ]
-            if self.cali_dir_value
+            [int(i.strip()) for i in temp.strip("[]").split(",") if i.strip().isdigit()]
+            if temp
             else [1, 1]
         )
         self.cali_speed_value = [0, 0]

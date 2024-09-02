@@ -64,7 +64,7 @@ class fileDB(object):
         except Exception as e:
             raise (e)
 
-    def get(self, name, default_value=None):
+    def get(self, name: str, default_value=None):
         """
         Get value with data's name
 
