@@ -1,16 +1,19 @@
-from app.robot_hat.filedb import fileDB
 from app.util.logger import Logger
 from app.config.paths import PICARX_CONFIG_FILE
-from app.robot_hat.grayscale import ADC
-from app.robot_hat.servo import Servo
-from app.robot_hat.pwm import PWM
-from app.robot_hat.adc import ADC
-from app.robot_hat.pin import Pin
+
+# from app.robot_hat.filedb import fileDB
+# from app.robot_hat.grayscale import ADC
+# from app.robot_hat.servo import Servo
+# from app.robot_hat.pwm import PWM
+# from app.robot_hat.adc import ADC
+# from app.robot_hat.pin import Pin
 from app.robot_hat.ultrasonic import Ultrasonic
 from app.robot_hat.grayscale import Grayscale_Module
-from app.robot_hat.utils import (
-    reset_mcu,
-)
+
+# from app.robot_hat.utils import (
+#     reset_mcu,
+# )
+from robot_hat import Pin, ADC, PWM, Servo, fileDB, utils
 import time
 
 
@@ -48,7 +51,7 @@ class Picarx:
     ):
 
         # reset robot_hat
-        reset_mcu()
+        utils.reset_mcu()
         time.sleep(0.2)
         self.logger = Logger(name=__name__)
 
