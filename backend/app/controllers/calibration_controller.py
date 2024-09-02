@@ -45,7 +45,7 @@ class CalibrationController(Logger):
         sleep(0.5)
 
     def servos_move(self, servo_num, value):
-        self.logger.info(f"servos_move servo_num {servo_num} value {value}")
+        self.info(f"SERVOS_MOVE servo_num {servo_num} value {value}")
         if servo_num == 0:
             self.px.set_dir_servo_angle(value)
         elif servo_num == 1:

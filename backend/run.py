@@ -12,7 +12,7 @@ from app.controllers.files_controller import FilesController
 from app.util.logger import Logger
 
 
-Logger.set_global_log_level(logging.INFO)
+Logger.set_global_log_level(logging.DEBUG)
 
 
 def run_app():
