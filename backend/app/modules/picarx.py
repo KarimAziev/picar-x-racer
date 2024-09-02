@@ -1,4 +1,5 @@
 from app.robot_hat.filedb import fileDB
+from app.util.logger import Logger
 from app.config.paths import PICARX_CONFIG_FILE
 from app.robot_hat.grayscale import ADC
 from app.robot_hat.servo import Servo
@@ -45,9 +46,11 @@ class Picarx:
         ultrasonic_pins: list[str] = ["D2", "D3"],
         config: str = CONFIG,
     ):
+
         # reset robot_hat
         reset_mcu()
         time.sleep(0.2)
+        self.logger = Logger(name=__name__)
 
         # Set up the config file
         self.config_file = fileDB(config)
@@ -197,8 +200,13 @@ class Picarx:
         self.dir_servo_pin.angle(value)
 
     def set_dir_servo_angle(self, value):
+        self.logger.info(f"set_dir_servo_angle {value}")
         self.dir_current_angle = constrain(value, self.DIR_MIN, self.DIR_MAX)
+        self.logger.info(
+            f"set_dir_servo_angle dir_current_angle {self.dir_current_angle}"
+        )
         angle_value = self.dir_current_angle + self.dir_cali_val
+        self.logger.info(f"set_dir_servo_angle angle_value {angle_value}")
         self.dir_servo_pin.angle(angle_value)
 
     def cam_pan_servo_calibrate(self, value):
@@ -207,12 +215,15 @@ class Picarx:
         self.cam_pan.angle(value)
 
     def cam_tilt_servo_calibrate(self, value):
+        self.logger.info(f"cam_tilt_servo_calibrate {value}")
         self.cam_tilt_cali_val = value
         self.config_file.set("picarx_cam_tilt_servo", str(value))
         self.cam_tilt.angle(value)
 
     def set_cam_pan_angle(self, value):
+        self.logger.info(f"set_cam_pan_angle {value}")
         value = constrain(value, self.CAM_PAN_MIN, self.CAM_PAN_MAX)
+        self.logger.info(f"set_cam_pan_angle constained {value}")
         self.cam_pan.angle(-1 * (value + -1 * self.cam_pan_cali_val))
 
     def set_cam_tilt_angle(self, value):
