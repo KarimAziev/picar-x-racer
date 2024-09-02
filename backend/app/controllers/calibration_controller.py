@@ -51,7 +51,6 @@ class CalibrationController(Logger):
             self.px.set_cam_pan_angle(value)
         elif servo_num == 2:
             self.px.set_cam_tilt_angle(value)
-        sleep(0.2)
 
     def set_servos_offset(self, servo_num, value):
         if servo_num == 0:
@@ -73,7 +72,7 @@ class CalibrationController(Logger):
 
         self.servos_offset[servo_num] = round(self.servos_offset[servo_num], 2)
         self.set_servos_offset(servo_num, self.servos_offset[servo_num])
-        self.servos_move(servo_num, 0)
+        self.servos_move(servo_num, servo_num)
 
     def decrease_servo_angle(self, servo_num: int):
         self.servos_offset[servo_num] -= 0.4
@@ -82,7 +81,7 @@ class CalibrationController(Logger):
 
         self.servos_offset[servo_num] = round(self.servos_offset[servo_num], 2)
         self.set_servos_offset(servo_num, self.servos_offset[servo_num])
-        self.servos_move(servo_num, 0)
+        self.servos_move(servo_num, servo_num)
 
     def increase_servo_dir_angle(self):
         self.increase_servo_angle(0)
