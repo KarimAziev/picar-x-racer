@@ -1,11 +1,12 @@
-from app.config.paths import ROBOT_HAT_CONFIG_FILE
-from .basic import Basic_class
-from .servo import Servo
 import time
+
+from app.config.paths import ROBOT_HAT_CONFIG_FILE
+
 from .filedb import fileDB
+from .servo import Servo
 
 
-class Robot(Basic_class):
+class Robot(object):
     """
     Robot class
     """

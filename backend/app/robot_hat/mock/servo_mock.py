@@ -56,9 +56,9 @@ class Servo(PWM):
             angle = -90
         if angle > 90:
             angle = 90
-        self._debug(f"Set angle to: {angle}")
+        self.logger.debug(f"Set angle to: {angle}")
         pulse_width_time = mapping(angle, -90, 90, self.MIN_PW, self.MAX_PW)
-        self._debug(f"Pulse width: {pulse_width_time}")
+        self.logger.debug(f"Pulse width: {pulse_width_time}")
         self.pulse_width_time(pulse_width_time)
 
     def pulse_width_time(self, pulse_width_time):
@@ -74,7 +74,7 @@ class Servo(PWM):
             pulse_width_time = self.MIN_PW
 
         pwr = pulse_width_time / 20000
-        self._debug(f"pulse width rate: {pwr}")
+        self.logger.debug(f"pulse width rate: {pwr}")
         value = int(pwr * self.PERIOD)
-        self._debug(f"pulse width value: {value}")
+        self.logger.debug(f"pulse width value: {value}")
         self.pulse_width(value)

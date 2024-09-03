@@ -1,8 +1,8 @@
 from app.config.paths import ROBOT_HAT_CONFIG_FILE
-from .basic import Basic_class
-from .pwm import PWM
-from .pin import Pin
+
 from .filedb import fileDB
+from .pin import Pin
+from .pwm import PWM
 
 
 class Motor:
@@ -54,7 +54,7 @@ class Motor:
         self._is_reverse = is_reverse
 
 
-class Motors(Basic_class):
+class Motors(object):
     """Motors"""
 
     DB_FILE = "motors.db"

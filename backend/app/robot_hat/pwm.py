@@ -1,4 +1,7 @@
 import math
+
+from app.util.logger import Logger
+
 from .i2c import I2C
 
 timer = [{"arr": 1}] * 4
@@ -31,16 +34,19 @@ class PWM(I2C):
         else:
             super().__init__(address, *args, **kwargs)
 
+        self.logger = Logger(__name__)
+
         if isinstance(channel, str):
             if channel.startswith("P"):
                 channel = int(channel[1:])
             else:
-                raise ValueError(
-                    f'PWM channel should be between [P0, P15], not "{channel}"'
-                )
+                msg = f'PWM channel should be between [P0, P15], not "{channel}"'
+                self.logger.error(msg)
+                raise ValueError(msg)
         if isinstance(channel, int):
             if channel > 15 or channel < 0:
-                raise ValueError(f'channel must be in range of 0-15, not "{channel}"')
+                msg = f'channel must be in range of 0-15, not "{channel}"'
+                raise ValueError(msg)
 
         self.channel = channel
         self.timer = int(channel / 4)
@@ -84,7 +90,7 @@ class PWM(I2C):
         i = result_acy.index(min(result_acy))
         psc = result_ap[i][0]
         arr = result_ap[i][1]
-        self._debug(f"prescaler: {psc}, period: {arr}")
+        self.logger.debug(f"prescaler: {psc}, period: {arr}")
         self.prescaler(psc)
         self.period(arr)
 
@@ -103,7 +109,7 @@ class PWM(I2C):
         self._prescaler = round(prescaler)
         self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
         reg = self.REG_PSC + self.timer
-        self._debug(f"Set prescaler to: {self._prescaler}")
+        self.logger.debug(f"Set prescaler to: {self._prescaler}")
         self._i2c_write(reg, self._prescaler - 1)
 
     def period(self, arr=None):
@@ -122,7 +128,7 @@ class PWM(I2C):
         timer[self.timer]["arr"] = round(arr)
         self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
         reg = self.REG_ARR + self.timer
-        self._debug(f"Set arr to: {timer[self.timer]['arr']}")
+        self.logger.debug(f"Set arr to: {timer[self.timer]['arr']}")
         self._i2c_write(reg, timer[self.timer]["arr"])
 
     def pulse_width(self, pulse_width=None):

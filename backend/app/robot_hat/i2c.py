@@ -1,4 +1,6 @@
-from .basic import Basic_class
+from app.util.logger import Logger
+from smbus2 import SMBus
+
 from .utils import run_command
 
 
@@ -9,7 +11,7 @@ def _retry_wrapper(func):
             try:
                 return func(self, *arg, **kwargs)
             except OSError:
-                self._debug(f"OSError: {func.__name__}")
+                self.logger.debug(f"OSError: {func.__name__}")
                 continue
         else:
             return False
@@ -17,7 +19,7 @@ def _retry_wrapper(func):
     return wrapper
 
 
-class I2C(Basic_class):
+class I2C(object):
     """
     I2C bus read/write functions
     """
@@ -36,7 +38,8 @@ class I2C(Basic_class):
         :type bus: int
         """
         super().__init__(*args, **kwargs)
-        from smbus2 import SMBus
+
+        self.logger = Logger(name=__name__)
 
         self._bus = bus
         self._smbus = SMBus(self._bus)
@@ -56,28 +59,28 @@ class I2C(Basic_class):
     @_retry_wrapper
     def _write_byte(self, data):
         # with I2C.i2c_lock.get_lock():
-        self._debug(f"_write_byte: [0x{data:02X}]")
+        self.logger.debug(f"_write_byte: [0x{data:02X}]")
         result = self._smbus.write_byte(self.address, data) if self.address else None
         return result
 
     @_retry_wrapper
     def _write_byte_data(self, reg, data):
         # with I2C.i2c_lock.get_lock():
-        self._debug(f"_write_byte_data: [0x{reg:02X}] [0x{data:02X}]")
+        self.logger.debug(f"_write_byte_data: [0x{reg:02X}] [0x{data:02X}]")
         if self.address:
             return self._smbus.write_byte_data(self.address, reg, data)
 
     @_retry_wrapper
     def _write_word_data(self, reg, data):
         # with I2C.i2c_lock.get_lock():
-        self._debug(f"_write_word_data: [0x{reg:02X}] [0x{data:04X}]")
+        self.logger.debug(f"_write_word_data: [0x{reg:02X}] [0x{data:04X}]")
         if self.address:
             return self._smbus.write_word_data(self.address, reg, data)
 
     @_retry_wrapper
     def _write_i2c_block_data(self, reg, data):
         # with I2C.i2c_lock.get_lock():
-        self._debug(
+        self.logger.debug(
             f"_write_i2c_block_data: [0x{reg:02X}] {[f'0x{i:02X}' for i in data]}"
         )
         if self.address:
@@ -88,7 +91,7 @@ class I2C(Basic_class):
         # with I2C.i2c_lock.get_lock():
         if self.address:
             result = self._smbus.read_byte(self.address)
-            self._debug(f"_read_byte: [0x{result:02X}]")
+            self.logger.debug(f"_read_byte: [0x{result:02X}]")
             return result
 
     @_retry_wrapper
@@ -96,7 +99,7 @@ class I2C(Basic_class):
         # with I2C.i2c_lock.get_lock():
         if self.address:
             result = self._smbus.read_byte_data(self.address, reg)
-            self._debug(f"_read_byte_data: [0x{reg:02X}] [0x{result:02X}]")
+            self.logger.debug(f"_read_byte_data: [0x{reg:02X}] [0x{result:02X}]")
             return result
 
     @_retry_wrapper
@@ -105,7 +108,7 @@ class I2C(Basic_class):
         if self.address:
             result = self._smbus.read_word_data(self.address, reg)
             result_list = [result & 0xFF, (result >> 8) & 0xFF]
-            self._debug(f"_read_word_data: [0x{reg:02X}] [0x{result:04X}]")
+            self.logger.debug(f"_read_word_data: [0x{reg:02X}] [0x{result:04X}]")
             return result_list
 
     @_retry_wrapper
@@ -113,7 +116,7 @@ class I2C(Basic_class):
         # with I2C.i2c_lock.get_lock():
         if self.address:
             result = self._smbus.read_i2c_block_data(self.address, reg, num)
-            self._debug(
+            self.logger.debug(
                 f"_read_i2c_block_data: [0x{reg:02X}] {[f'0x{i:02X}' for i in result]}"
             )
             return result
@@ -155,7 +158,7 @@ class I2C(Basic_class):
                 if address != "--":
                     addresses.append(int(address, 16))
                     addresses_str.append(f"0x{address}")
-        self._debug(f"Conneceted i2c device: {addresses_str}")
+        self.logger.debug(f"Conneceted i2c device: {addresses_str}")
         return addresses
 
     def write(self, data):

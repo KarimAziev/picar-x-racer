@@ -1,12 +1,13 @@
-from app.util.platform_adapters import Picarx
 from time import sleep
+
+from app.modules.picarx import Picarx
 from app.util.logger import Logger
 
 
 class CalibrationController(Logger):
     def __init__(
         self,
-        picarx: "Picarx",
+        picarx: Picarx,
         **kwargs,
     ):
         super().__init__(name=__name__, **kwargs)
@@ -21,6 +22,7 @@ class CalibrationController(Logger):
         self.motors_cali = self.px.cali_dir_value
         self.servos_offset = list.copy(self.servos_cali)
         self.motors_offset = list.copy(self.motors_cali)
+        self.step = 0.4
 
         self.motor_run = False
 
@@ -47,42 +49,47 @@ class CalibrationController(Logger):
     def servos_move(self, servo_num, value):
         self.info(f"SERVOS_MOVE servo_num {servo_num} value {value}")
         if servo_num == 0:
+            self.debug(f"SERVOS_MOVE set_dir_servo_angle {value}")
             self.px.set_dir_servo_angle(value)
         elif servo_num == 1:
+            self.debug(f"SERVOS_MOVE set_cam_pan_angle {value}")
             self.px.set_cam_pan_angle(value)
         elif servo_num == 2:
+            self.debug(f"SERVOS_MOVE set_cam_tilt_angle {value}")
             self.px.set_cam_tilt_angle(value)
 
     def set_servos_offset(self, servo_num, value):
+        self.debug(f"Setting servos offset {servo_num} to {value}")
         if servo_num == 0:
             self.px.dir_cali_val = value
+            self.debug(f"px.dir_cali_val {self.px.dir_cali_val}")
         elif servo_num == 1:
             self.px.cam_pan_cali_val = value
+            self.debug(f"px.cam_pan_cali_val {self.px.cam_pan_cali_val}")
         elif servo_num == 2:
             self.px.cam_tilt_cali_val = value
+            self.debug(f"px.cam_tilt_cali_val {self.px.cam_tilt_cali_val}")
 
     def servos_reset(self):
         for i in range(3):
             self.servos_move(i, 0)
-        self.get_calibration_data()
+        return self.get_calibration_data()
 
     def increase_servo_angle(self, servo_num: int):
-        self.servos_offset[servo_num] += 0.4
+        self.servos_offset[servo_num] += self.step
         if self.servos_offset[servo_num] > 20:
             self.servos_offset[servo_num] = 20
-
         self.servos_offset[servo_num] = round(self.servos_offset[servo_num], 2)
         self.set_servos_offset(servo_num, self.servos_offset[servo_num])
-        self.servos_move(servo_num, servo_num)
+        self.servos_move(servo_num, 0)
 
     def decrease_servo_angle(self, servo_num: int):
-        self.servos_offset[servo_num] -= 0.4
+        self.servos_offset[servo_num] -= self.step
         if self.servos_offset[servo_num] < -20:
             self.servos_offset[servo_num] = -20
-
         self.servos_offset[servo_num] = round(self.servos_offset[servo_num], 2)
         self.set_servos_offset(servo_num, self.servos_offset[servo_num])
-        self.servos_move(servo_num, servo_num)
+        self.servos_move(servo_num, 0)
 
     def increase_servo_dir_angle(self):
         self.increase_servo_angle(0)

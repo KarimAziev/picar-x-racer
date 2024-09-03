@@ -1,3 +1,5 @@
+from app.util.logger import Logger
+
 from .pwm import PWM
 from .utils import mapping
 
@@ -18,6 +20,8 @@ class Servo(PWM):
         :type channel: int/str
         """
         super().__init__(channel, address, *args, **kwargs)
+        self.logger = Logger(__name__)
+        self.logger.debug(f"channel {channel} address f{address}")
         self.period(self.PERIOD)
         prescaler = self.CLOCK / self.FREQ / self.PERIOD
         self.prescaler(prescaler)
@@ -30,16 +34,17 @@ class Servo(PWM):
         :type angle: float
         """
         if not (isinstance(angle, int) or isinstance(angle, float)):
-            raise ValueError(
-                "Angle value should be int or float value, not %s" % type(angle)
-            )
+            msg = "Angle value should be int or float value, not %s" % type(angle)
+            self.logger.error(msg)
+            raise ValueError(msg)
+        self.logger.debug(f"Set angle to: {angle}")
         if angle < -90:
             angle = -90
         if angle > 90:
             angle = 90
-        self._debug(f"Set angle to: {angle}")
+        self.logger.debug(f"Set angle to: {angle}")
         pulse_width_time = mapping(angle, -90, 90, self.MIN_PW, self.MAX_PW)
-        self._debug(f"Pulse width: {pulse_width_time}")
+        self.logger.debug(f"Pulse width: {pulse_width_time}")
         self.pulse_width_time(pulse_width_time)
 
     def pulse_width_time(self, pulse_width_time):
@@ -49,13 +54,14 @@ class Servo(PWM):
         :param pulse_width_time: pulse width time(500~2500)
         :type pulse_width_time: float
         """
+        self.logger.debug(f"pulse_width_time: {pulse_width_time}")
         if pulse_width_time > self.MAX_PW:
             pulse_width_time = self.MAX_PW
         if pulse_width_time < self.MIN_PW:
             pulse_width_time = self.MIN_PW
-
+        self.logger.debug(f"Adjusted pulse_width_time: {pulse_width_time}")
         pwr = pulse_width_time / 20000
-        self._debug(f"pulse width rate: {pwr}")
+        self.logger.debug(f"pulse width rate: {pwr}")
         value = int(pwr * self.PERIOD)
-        self._debug(f"pulse width value: {value}")
+        self.logger.debug(f"pulse width value: {value}")
         self.pulse_width(value)

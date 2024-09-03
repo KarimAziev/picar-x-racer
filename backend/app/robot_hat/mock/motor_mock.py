@@ -1,9 +1,10 @@
 import time
-from app.robot_hat.basic import Basic_class
-from app.robot_hat.filedb import fileDB
+
 from app.config.paths import ROBOT_HAT_CONFIG_FILE
-from .pwm_mock import PWM
+from app.robot_hat.filedb import fileDB
+
 from .pin_mock import Pin
+from .pwm_mock import PWM
 
 
 class Motor:
@@ -56,7 +57,7 @@ class Motor:
         self._is_reverse = is_reversed
 
 
-class Motors(Basic_class):
+class Motors(object):
     """Motors"""
 
     DB_FILE = ROBOT_HAT_CONFIG_FILE

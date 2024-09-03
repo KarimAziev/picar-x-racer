@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from .basic import Basic_class
-from gpiozero import OutputDevice, InputDevice, Button
+from app.util.logger import Logger
+from gpiozero import Button, InputDevice, OutputDevice
 
 
-class Pin(Basic_class):
+class Pin(object):
     """Pin manipulation class"""
 
     OUT = 0x01
@@ -66,16 +66,21 @@ class Pin(Basic_class):
         :type pull: int
         """
         super().__init__(*args, **kwargs)
+        self.logger = Logger(__name__)
 
         # parse pin
         if isinstance(pin, str):
             if pin not in self.dict().keys():
-                raise ValueError(f'Pin should be in {self._dict.keys()}, not "{pin}"')
+                msg = f'Pin should be in {self._dict.keys()}, not "{pin}"'
+                self.logger.error(msg)
+                raise ValueError(msg)
             self._board_name = pin
             self._pin_num = self.dict()[pin]
         elif isinstance(pin, int):
             if pin not in self.dict().values():
-                raise ValueError(f'Pin should be in {self._dict.values()}, not "{pin}"')
+                msg = f'Pin should be in {self._dict.values()}, not "{pin}"'
+                self.logger.error(msg)
+                raise ValueError(msg)
             self._board_name = {i for i in self._dict if self._dict[i] == pin}
             self._pin_num = pin
         else:
@@ -84,7 +89,7 @@ class Pin(Basic_class):
         self._value = 0
         self.gpio = None
         self.setup(mode, pull)
-        self._info("Pin init finished.")
+        self.logger.info("Pin init finished.")
 
     def close(self):
         self.gpio.close()
@@ -169,7 +174,7 @@ class Pin(Basic_class):
             if self._mode in [None, self.OUT]:
                 self.setup(self.IN)
             result = self.gpio.value
-            self._debug(f"read pin {self.gpio.pin}: {result}")
+            self.logger.debug(f"read pin {self.gpio.pin}: {result}")
             return result
         else:
             if self._mode in [self.IN]:

@@ -1,9 +1,11 @@
-from app.robot_hat.basic import Basic_class
-from typing import Optional, Dict, Union
+from typing import Dict, Optional, Union
+
+from app.util.logger import Logger
 
 
-class MockGPIO:
+class MockGPIO(Logger):
     def __init__(self, pin, mode=None, pull=None):
+        super().__init__(name=__name__)
         self.pin = pin
         self.mode = mode
         self.pull = pull
@@ -11,17 +13,18 @@ class MockGPIO:
 
     def on(self):
         self.value = 1
-        print(f"[MOCK] GPIO{self.pin} set to HIGH")
+        self.logger.info(f"[MOCK] GPIO{self.pin} set to HIGH")
 
     def off(self):
         self.value = 0
-        print(f"[MOCK] GPIO{self.pin} set to LOW")
+        self.logger.info(f"[MOCK] GPIO{self.pin} set to LOW")
 
     def close(self):
         print(f"[MOCK] GPIO{self.pin} closed")
+        self.logger.info(f"[MOCK] GPIO{self.pin} closed")
 
 
-class Pin(Basic_class):
+class Pin(Logger):
     """Pin manipulation class"""
 
     OUT = 0x01
@@ -90,7 +93,7 @@ class Pin(Basic_class):
         :param pull: pin pull up/down(PUD_UP/PUD_DOWN/PUD_NONE)
         :type pull: int
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(name=__name__, *args, **kwargs)
 
         # parse pin
         pin_dict = self.dict()
@@ -110,7 +113,7 @@ class Pin(Basic_class):
         self._value = 0
         self.gpio = None
         self.setup(mode, pull)
-        self._info("Pin init finished.")
+        self.logger.info("Pin init finished.")
 
     def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
         """
@@ -174,7 +177,9 @@ class Pin(Basic_class):
             if self._mode in [None, self.OUT]:
                 self.setup(self.IN)
             result = self.gpio.value if self.gpio else None
-            self._debug(f"read pin {self.gpio.pin if self.gpio else None}: {result}")
+            self.logger.debug(
+                f"read pin {self.gpio.pin if self.gpio else None}: {result}"
+            )
             return result
         else:
             if self._mode in [self.IN]:
@@ -202,7 +207,7 @@ class Pin(Basic_class):
         return self.off()
 
     def irq(self, handler, trigger, bouncetime=200, pull=None):
-        self._debug(
+        self.logger.debug(
             f"read pin {handler}: trigger {trigger} bouncetime {bouncetime} pull {pull}"
         )
 

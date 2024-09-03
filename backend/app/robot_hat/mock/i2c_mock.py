@@ -1,5 +1,6 @@
 import random
-from app.robot_hat.basic import Basic_class
+
+from app.util.logger import Logger
 
 
 # Mocking command runner for i2cdetect simulation
@@ -25,7 +26,7 @@ def _retry_wrapper(func):
             try:
                 return func(self, *args, **kwargs)
             except OSError:
-                self._debug(f"OSError: {func.__name__}")
+                self.logger.debug(f"OSError: {func.__name__}")
                 continue
         else:
             return False
@@ -33,11 +34,12 @@ def _retry_wrapper(func):
     return wrapper
 
 
-class I2C(Basic_class):
+class I2C(object):
     RETRY = 5
 
     def __init__(self, address=None, bus=1, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.logger = Logger(name=__name__)
         self._bus = bus
         self._smbus = None  # We don't have actual smbus, it's simulated.
         if isinstance(address, list):
@@ -53,22 +55,22 @@ class I2C(Basic_class):
 
     @_retry_wrapper
     def _write_byte(self, data):
-        self._debug(f"_write_byte: [0x{data:02X}]")
+        self.logger.debug(f"_write_byte: [0x{data:02X}]")
         return 0  # Simulate successful write
 
     @_retry_wrapper
     def _write_byte_data(self, reg, data):
-        self._debug(f"_write_byte_data: [0x{reg:02X}] [0x{data:02X}]")
+        self.logger.debug(f"_write_byte_data: [0x{reg:02X}] [0x{data:02X}]")
         return 0  # Simulate successful write
 
     @_retry_wrapper
     def _write_word_data(self, reg, data):
-        self._debug(f"_write_word_data: [0x{reg:02X}] [0x{data:04X}]")
+        self.logger.debug(f"_write_word_data: [0x{reg:02X}] [0x{data:04X}]")
         return 0  # Simulate successful write
 
     @_retry_wrapper
     def _write_i2c_block_data(self, reg, data):
-        self._debug(
+        self.logger.debug(
             f"_write_i2c_block_data: [0x{reg:02X}] {[f'0x{i:02X}' for i in data]}"
         )
         return 0  # Simulate successful write
@@ -76,26 +78,26 @@ class I2C(Basic_class):
     @_retry_wrapper
     def _read_byte(self):
         result = random.randint(0, 255)  # Simulate a random byte read
-        self._debug(f"_read_byte: [0x{result:02X}]")
+        self.logger.debug(f"_read_byte: [0x{result:02X}]")
         return result
 
     @_retry_wrapper
     def _read_byte_data(self, reg):
         result = random.randint(0, 255)  # Simulate a random byte read
-        self._debug(f"_read_byte_data: [0x{reg:02X}] [0x{result:02X}]")
+        self.logger.debug(f"_read_byte_data: [0x{reg:02X}] [0x{result:02X}]")
         return result
 
     @_retry_wrapper
     def _read_word_data(self, reg):
         result = random.randint(0, 65535)  # Simulate a random word read
         result_list = [result & 0xFF, (result >> 8) & 0xFF]
-        self._debug(f"_read_word_data: [0x{reg:02X}] [0x{result:04X}]")
+        self.logger.debug(f"_read_word_data: [0x{reg:02X}] [0x{result:04X}]")
         return result_list
 
     @_retry_wrapper
     def _read_i2c_block_data(self, reg, num):
         result = [random.randint(0, 255) for _ in range(num)]  # Simulate a block read
-        self._debug(
+        self.logger.debug(
             f"_read_i2c_block_data: [0x{reg:02X}] {[f'0x{i:02X}' for i in result]}"
         )
         return result

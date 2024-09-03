@@ -1,6 +1,7 @@
 import asyncio
-from .pin_mock import Pin
 import time
+
+from .pin_mock import Pin
 
 
 # 0 to 400 cm
@@ -114,7 +115,7 @@ class Ultrasonic:
         cm = round(during * self.SOUND_SPEED / 2 * 100, 2)
         return cm
 
-    async def read(self, times: int = 10) -> float:
+    async def read(self, times: int = 10):
         """
         Attempt to read the distance measurement multiple times and return the first successful read.
 

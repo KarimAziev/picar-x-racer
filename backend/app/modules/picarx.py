@@ -1,17 +1,15 @@
-from app.robot_hat.filedb import fileDB
-from app.util.logger import Logger
-from app.config.paths import PICARX_CONFIG_FILE
-from app.robot_hat.grayscale import ADC
-from app.robot_hat.servo import Servo
-from app.robot_hat.pwm import PWM
-from app.robot_hat.adc import ADC
-from app.robot_hat.pin import Pin
-from app.robot_hat.ultrasonic import Ultrasonic
-from app.robot_hat.grayscale import Grayscale_Module
-from app.robot_hat.utils import (
-    reset_mcu,
-)
 import time
+
+from app.config.paths import PICARX_CONFIG_FILE
+from app.robot_hat.adc import ADC
+from app.robot_hat.filedb import fileDB
+from app.robot_hat.grayscale import Grayscale_Module
+from app.robot_hat.pin import Pin
+from app.robot_hat.pwm import PWM
+from app.robot_hat.servo import Servo
+from app.robot_hat.ultrasonic import Ultrasonic
+from app.robot_hat.utils import reset_mcu
+from app.util.logger import Logger
 
 
 def constrain(x: int, min_val: int, max_val: int):
@@ -60,15 +58,19 @@ class Picarx:
         self.cam_tilt = Servo(servo_pins[1])
         self.dir_servo_pin = Servo(servo_pins[2])
         # Get calibration values
-        self.dir_cali_val = float(
-            self.config_file.get("picarx_dir_servo", default_value=0) or 0
-        )
+        cali_val = self.config_file.get("picarx_dir_servo")
+        cali_val_float = float(cali_val) if cali_val else 0.0
+        self.dir_cali_val = cali_val_float
+        self.logger.debug(f"dir_cali_val {self.dir_cali_val}")
+
         self.cam_pan_cali_val = float(
             self.config_file.get("picarx_cam_pan_servo", default_value=0) or 0
         )
+        self.logger.debug(f"init cam_pan_cali_val with {self.cam_pan_cali_val}")
         self.cam_tilt_cali_val = float(
             self.config_file.get("picarx_cam_tilt_servo", default_value=0) or 0
         )
+        self.logger.debug(f"init cam_tilt_cali_val with {self.cam_tilt_cali_val}")
         # Set servos to init angle
         self.dir_servo_pin.angle(self.dir_cali_val)
         self.cam_pan.angle(self.cam_pan_cali_val)
@@ -90,6 +92,7 @@ class Picarx:
             if temp
             else [1, 1]
         )
+        self.logger.debug(f"init cali_dir_value with {self.cali_dir_value}")
         self.cali_speed_value = [0, 0]
         self.dir_current_angle = 0
         # Init pwm
@@ -134,27 +137,43 @@ class Picarx:
         param speed: speed
         type speed: int
         """
+        motor_names = {
+            1: "left",
+            2: "right",
+        }
+
+        self.logger.debug(
+            f"setting speed for motor {motor} ({motor_names.get(motor)}) with speed {speed}"
+        )
         speed = constrain(speed, -100, 100)
         motor -= 1
 
         if self.cali_dir_value is None or not self.cali_dir_value:
-            raise ValueError("Calibration direction values are not set properly.")
+            msg = "Calibration direction values are not set properly."
+            self.logger.error(msg)
+            raise ValueError(msg)
         if self.cali_speed_value is None or not self.cali_speed_value:
-            raise ValueError("Calibration speed values are not set properly.")
+            msg = "Calibration speed values are not set properly."
+            self.logger.error(msg)
+            raise ValueError(msg)
 
         if (
             motor < 0
             or motor >= len(self.cali_dir_value)
             or motor >= len(self.cali_speed_value)
         ):
-            raise IndexError("Motor index out of range.")
+            msg = "Motor index out of range."
+            self.logger.error(msg)
+            raise IndexError(msg)
         direction = (
             1 * self.cali_dir_value[motor]
             if speed >= 0
             else -1 * self.cali_dir_value[motor]
         )
         if not isinstance(direction, int):
-            raise TypeError("Direction should be an int type.")
+            msg = "Direction should be an int type."
+            self.logger.error(msg)
+            raise TypeError(msg)
 
         speed = abs(speed)
         if speed != 0:
@@ -199,14 +218,17 @@ class Picarx:
         self.config_file.set("picarx_dir_servo", str(value))
         self.dir_servo_pin.angle(value)
 
-    def set_dir_servo_angle(self, value):
-        self.logger.info(
-            f"set_dir_servo_angle from {self.dir_current_angle} to {value}"
+    def set_dir_servo_angle(self, value: int):
+        next_value = constrain(value, self.DIR_MIN, self.DIR_MAX)
+        self.logger.debug(
+            f"Updating dir_current_angle from {self.dir_current_angle} to {next_value} (original param is {value})"
         )
-        self.dir_current_angle = constrain(value, self.DIR_MIN, self.DIR_MAX)
-        self.logger.info(f"set_dir_servo_angle changed to {self.dir_current_angle}")
+        self.dir_current_angle = next_value
+        self.logger.debug(
+            f"Calculating angle_value: dir_current_angle ({self.dir_current_angle}) + dir_cali_val ({self.dir_cali_val}) = {self.dir_current_angle + self.dir_cali_val}"
+        )
         angle_value = self.dir_current_angle + self.dir_cali_val
-        self.logger.info(f"set_dir_servo_angle angle_value {angle_value}")
+        self.logger.info(f"updating angle_value {angle_value}")
         self.dir_servo_pin.angle(angle_value)
 
     def cam_pan_servo_calibrate(self, value):
@@ -221,14 +243,20 @@ class Picarx:
         self.cam_tilt.angle(value)
 
     def set_cam_pan_angle(self, value):
-        self.logger.info(f"set_cam_pan_angle {value}")
+        self.logger.debug(f"Updating cam pan angle {value}")
         value = constrain(value, self.CAM_PAN_MIN, self.CAM_PAN_MAX)
-        self.logger.info(f"set_cam_pan_angle constained {value}")
-        self.cam_pan.angle(-1 * (value + -1 * self.cam_pan_cali_val))
+        self.logger.debug(f"Adjusted cam pan angle value {value}")
+        next_value = -1 * (value + -1 * self.cam_pan_cali_val)
+        self.logger.debug(f"Setting cam_pan.angle to {next_value}")
+        self.cam_pan.angle(next_value)
 
     def set_cam_tilt_angle(self, value):
+        self.logger.debug(f"Updating cam tilt angle {value}")
         value = constrain(value, self.CAM_TILT_MIN, self.CAM_TILT_MAX)
-        self.cam_tilt.angle(-1 * (value + -1 * self.cam_tilt_cali_val))
+        self.logger.debug(f"Adjusted cam tilt angle value {value}")
+        next_value = -1 * (value + -1 * self.cam_tilt_cali_val)
+        self.logger.debug(f"Setting cam_tilt angle to {next_value}")
+        self.cam_tilt.angle(next_value)
 
     def set_power(self, speed):
         self.set_motor_speed(1, speed)
@@ -253,10 +281,17 @@ class Picarx:
 
     def forward(self, speed):
         current_angle = self.dir_current_angle
+        self.logger.debug(
+            f"forward with speed {speed} and current_angle is {current_angle}"
+        )
         abs_current_angle = abs(current_angle)
+        self.logger.debug(
+            f"abs current_angle is {abs_current_angle} abs_current_angle > self.DIR_MAX = {abs_current_angle > self.DIR_MAX}"
+        )
         if abs_current_angle > self.DIR_MAX:
             abs_current_angle = self.DIR_MAX
         power_scale = (100 - abs_current_angle) / 100.0
+        self.logger.debug(f"power_scale is {power_scale}")
         if current_angle != 0:
             if (current_angle / abs_current_angle) > 0:
                 self.set_motor_speed(1, speed * power_scale)
@@ -275,6 +310,7 @@ class Picarx:
         for _ in range(2):
             self.motor_speed_pins[0].pulse_width_percent(0)
             self.motor_speed_pins[1].pulse_width_percent(0)
+            time.sleep(0.002)
 
     def get_distance(self):
         return self.ultrasonic.read()
