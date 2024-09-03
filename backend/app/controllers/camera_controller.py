@@ -1,12 +1,13 @@
 import asyncio
-import subprocess
 import os
-from concurrent.futures import ThreadPoolExecutor
-from app.util.logger import Logger
-from typing import Generator, Optional, List, Tuple
+import subprocess
 import threading
+from concurrent.futures import ThreadPoolExecutor
+from typing import Generator, List, Optional, Tuple
+
 import cv2
 import numpy as np
+from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 
 # Constants for target width and height of video streams
@@ -214,6 +215,17 @@ class CameraController(metaclass=SingletonMeta):
             self.camera_thread.join()
         with self.lock:
             self.flask_img = None
+
+    def shutdown(self):
+        """
+        Close the camera and clean up resources.
+        """
+        self.logger.info("Closing camera")
+        self.camera_close()
+
+        if not self.executor_shutdown:
+            self.executor.shutdown(wait=True)
+            self.executor_shutdown = True
 
     def recreate_executor(self):
         """

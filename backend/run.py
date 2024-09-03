@@ -15,7 +15,6 @@ Logger.set_global_log_level(Logger.DEBUG)
 
 
 def run_app():
-    video_manager = None
     try:
         copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
         file_manager = FilesController()
@@ -38,9 +37,6 @@ def run_app():
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         logger.log_exception("Cancelled", e)
-    finally:
-        if video_manager:
-            video_manager.camera_close()
 
 
 if __name__ == "__main__":

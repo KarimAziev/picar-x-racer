@@ -238,9 +238,7 @@ class CarController(Logger):
         try:
             self.loop.run_until_complete(server_task)
         except KeyboardInterrupt:
-            self.loop.run_until_complete(self.stop_server())
             self.loop.run_until_complete(self.cancel_avoid_obstacles_task())
+            self.loop.run_until_complete(self.stop_server())
+            self.camera_manager.shutdown()
             self.loop.close()
-        finally:
-            if self.camera_manager:
-                self.camera_manager.camera_close()
