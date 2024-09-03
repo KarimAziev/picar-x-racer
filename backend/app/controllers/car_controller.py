@@ -123,10 +123,10 @@ class CarController(Logger):
         ):
             self.info("Debounce: Too quick toggle of avoidObstacles detected.")
             return
-
+        await self.cancel_avoid_obstacles_task()
+        await self.handle_px_reset(websocket)
         self.last_toggle_time = now
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
-        await self.handle_px_reset(websocket)
 
         response = json.dumps(
             {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
