@@ -476,15 +476,19 @@ export const useControllerStore = defineStore("controller", {
 
     toggleCalibration() {
       const popupStore = usePopupStore();
+      const messager = useMessagerStore();
       this.calibrationMode = !this.calibrationMode;
       if (this.calibrationMode) {
         this.stop();
         this.resetCameraRotate();
         this.resetDirServoAngle();
+        this.maxSpeed = MIN_SPEED;
         popupStore.isOpen = false;
+        messager.info("Starting calibration");
       } else {
         popupStore.tab = SettingsTab.CALIBRATION;
         popupStore.isOpen = true;
+        messager.info("Calibration finished");
       }
     },
     increaseCamPanCali() {
@@ -507,6 +511,9 @@ export const useControllerStore = defineStore("controller", {
     },
     saveCalibration() {
       this.sendMessage({ action: "saveCalibration" });
+    },
+    servoTest() {
+      this.sendMessage({ action: "servoTest" });
     },
     resetCalibration() {
       this.sendMessage({ action: "resetCalibration" });

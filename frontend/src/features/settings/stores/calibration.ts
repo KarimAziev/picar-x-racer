@@ -13,10 +13,10 @@ export interface State {
 const defaultState: State = {
   loading: false,
   data: {
+    picarx_dir_servo: null,
     picarx_cam_pan_servo: null,
     picarx_cam_tilt_servo: null,
     picarx_dir_motor: null,
-    picarx_dir_servo: null,
   },
 };
 
@@ -30,8 +30,8 @@ export const useStore = defineStore("calibration", {
         const response = await axios.get("/api/calibration");
         Object.entries(response.data).forEach(([key, value]) => {
           messager.info(`${value}`, key);
+          this.data[key] = value as string | number | null;
         });
-        this.data = { ...this.data, ...response.data };
       } catch (error) {
         messager.handleError(error, `Error fetching calibration settings`);
       } finally {

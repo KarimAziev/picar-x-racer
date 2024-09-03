@@ -3,9 +3,24 @@
     <InfoItem label="Autopilot is on" />
   </div>
   <div class="info" v-else>
-    <InfoItem label="Camera Tilt" :value="camTilt" value-suffix="°" />
-    <InfoItem label="Camera Pan" :value="camPan" value-suffix="°" />
-    <InfoItem label="Servo Direction" :value="servoAngle" value-suffix="°" />
+    <InfoItem
+      v-if="!calibrationMode"
+      label="Camera Tilt"
+      :value="camTilt"
+      value-suffix="°"
+    />
+    <InfoItem
+      v-if="!calibrationMode"
+      label="Camera Pan"
+      :value="camPan"
+      value-suffix="°"
+    />
+    <InfoItem
+      v-if="!calibrationMode"
+      label="Servo Direction"
+      :value="servoAngle"
+      value-suffix="°"
+    />
     <InfoItem label="Distance" :value="distance.toFixed(2)" value-suffix="cm" />
     <InfoItem label="Max Speed" :value="maxSpeed" />
     <InfoItem
@@ -20,13 +35,16 @@
       <Button size="small" outlined @click="store.saveCalibration"
         >Save calibration
       </Button>
-      <Button size="small" text @click="store.resetCalibration"
-        >Reset calibration</Button
+      <Button size="small" text @click="store.toggleCalibration"
+        >Stop calibration</Button
       >
     </div>
     <div v-if="calibrationMode" class="calibration-buttons">
-      <Button size="small" plain @click="store.toggleCalibration"
-        >Stop calibration</Button
+      <Button size="small" outlined @click="store.servoTest"
+        >Test servos
+      </Button>
+      <Button size="small" text @click="store.resetCalibration"
+        >Reset servos</Button
       >
     </div>
   </div>

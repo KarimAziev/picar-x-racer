@@ -23,7 +23,11 @@ import { useControllerStore } from "@/features/controller/store";
 
 const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
+const popupStore = usePopupStore();
+const storeSettings = useSettingsStore();
 
+const isSettingsOpened = computed(() => popupStore.isOpen);
+const loaded = computed(() => storeSettings.loaded);
 const isVirtualMode = computed(() => settingsStore.settings.virtual_mode);
 
 const isTextInfoVisible = computed(
@@ -54,18 +58,11 @@ const Speedometer = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Speedometer.vue"),
 });
 
-const popupStore = usePopupStore();
-
-const storeSettings = useSettingsStore();
-const loaded = computed(() => storeSettings.loaded);
-
 const VideoBox = defineAsyncComponent({
   loader: () => import("@/features/controller/components/VideoBox.vue"),
 });
 
-const isSettingsOpened = computed(() => popupStore.isOpen);
-
-useCarController();
+useCarController(controllerStore, settingsStore, popupStore);
 </script>
 
 <style scoped lang="scss">

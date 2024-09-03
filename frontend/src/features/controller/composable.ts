@@ -8,10 +8,11 @@ import { groupKeys } from "@/features/settings/util";
 import { usePopupStore } from "@/features/settings/stores";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
 
-export const useCarController = () => {
-  const popupStore = usePopupStore();
-  const settings = useSettingsStore();
-  const store = useControllerStore();
+export const useCarController = (
+  controllerStore: ReturnType<typeof useControllerStore>,
+  settingsStore: ReturnType<typeof useSettingsStore>,
+  popupStore: ReturnType<typeof usePopupStore>,
+) => {
   const ignored: ControllerActionName[] = [
     "left",
     "right",
@@ -21,18 +22,25 @@ export const useCarController = () => {
     "stop",
   ];
 
+  const settingsKeybindings = computed(
+    () => settingsStore.settings.keybindings,
+  );
+
   const keybindings = computed(() => {
-    const data = store.calibrationMode
+    const data = controllerStore.calibrationMode
       ? groupKeys(
-          renameKeys(calibrationModeRemap, settings.settings.keybindings),
+          renameKeys(calibrationModeRemap, { ...settingsKeybindings.value }),
         )
-      : groupKeys(settings.settings.keybindings);
+      : groupKeys({ ...settingsKeybindings.value });
     return data;
   });
 
   const loopTimer = ref();
   const activeKeys = ref(new Set<string>());
   const inactiveKeys = ref(new Set<string>());
+
+  const findKey = (keys?: string[]) =>
+    keys && keys.find((k) => activeKeys.value.has(k));
 
   const handleKeyUp = (event: KeyboardEvent) => {
     const key = formatKeyEventItem(event);
@@ -50,8 +58,8 @@ export const useCarController = () => {
     if (commandName) {
       event.preventDefault();
 
-      if (!ignored.includes(commandName) && store[commandName]) {
-        store[commandName]();
+      if (!ignored.includes(commandName) && controllerStore[commandName]) {
+        controllerStore[commandName]();
       } else if (!event.repeat) {
         activeKeys.value.add(key);
       }
@@ -64,40 +72,40 @@ export const useCarController = () => {
   };
 
   const updateCarState = () => {
-    const findKey = (keys?: string[]) =>
-      keys && keys.find((k) => activeKeys.value.has(k));
-    const leftKey = findKey(settings.settings.keybindings?.left);
-    const rightKey = findKey(settings.settings.keybindings?.right);
-    const stopKey = findKey(settings.settings.keybindings?.stop);
+    const leftKey = findKey(settingsKeybindings.value.left);
+    const rightKey = findKey(settingsKeybindings.value?.right);
+    const stopKey = findKey(settingsKeybindings.value?.stop);
 
-    if (findKey(settings.settings.keybindings?.accelerate)) {
-      store.accelerate();
-    } else if (findKey(settings.settings.keybindings?.decelerate)) {
-      store.decelerate();
-    } else if (!store.avoidObstacles) {
-      store.slowdown();
+    if (findKey(settingsKeybindings.value?.accelerate)) {
+      controllerStore.accelerate();
+    } else if (findKey(settingsKeybindings.value?.decelerate)) {
+      controllerStore.decelerate();
+    } else if (!controllerStore.avoidObstacles) {
+      controllerStore.slowdown();
     }
 
     if (leftKey) {
       inactiveKeys.value.add(leftKey);
-      store.left();
+      controllerStore.left();
     } else if (rightKey) {
       inactiveKeys.value.add(rightKey);
-      store.right();
+      controllerStore.right();
     } else if (inactiveKeys.value.size > 0) {
       inactiveKeys.value.clear();
-      store.resetDirServoAngle();
+      controllerStore.resetDirServoAngle();
     }
 
     if (stopKey) {
-      store.stop();
+      controllerStore.stop();
     }
   };
 
   onMounted(() => {
-    store.reconnectedEnabled = true;
-    if (!store.connected && !store.loading) {
-      store.initializeWebSocket("ws://" + window.location.hostname + ":8765");
+    controllerStore.reconnectedEnabled = true;
+    if (!controllerStore.connected && !controllerStore.loading) {
+      controllerStore.initializeWebSocket(
+        "ws://" + window.location.hostname + ":8765",
+      );
     }
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -112,6 +120,6 @@ export const useCarController = () => {
     }
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
-    store.cleanup();
+    controllerStore.cleanup();
   });
 };

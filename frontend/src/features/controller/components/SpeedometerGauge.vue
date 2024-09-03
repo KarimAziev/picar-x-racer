@@ -36,9 +36,7 @@ const needleRef = ref<HTMLElement | null>(null);
 const centerLabelRef = ref<HTMLElement | null>(null);
 const outerLabelsRef = ref<HTMLElement | null>(null);
 
-const adjustedValue = computed(() => {
-  return Math.max(props.minValue, Math.min(props.value, props.maxValue));
-});
+const adjustedValue = computed(() => props.value);
 
 const renderOuterLabels = () => {
   const labels = [];
@@ -58,9 +56,13 @@ const outerLabels = renderOuterLabels();
 
 const updateNeedle = (value: number) => {
   if (needleRef.value && centerLabelRef.value) {
+    const absVal = Math.abs(value);
+    const step = (props.maxValue - props.minValue) / props.segments;
+
     const rotation =
-      ((value - props.minValue) / (props.maxValue - props.minValue)) * 180 - 90;
-    needleRef.value.style.transform = `translateY(-100%) rotate(${rotation + 180}deg)`;
+      ((absVal - props.minValue) / step) * (180 / props.segments);
+
+    needleRef.value.style.transform = `translateY(-100%) rotate(${rotation + 90}deg)`;
     centerLabelRef.value.textContent = `${value}`;
   }
 };
