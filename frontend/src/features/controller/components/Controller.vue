@@ -6,11 +6,12 @@
 <script setup lang="ts">
 import { useCarController } from "@/features/controller/composable";
 import { defineAsyncComponent, computed } from "vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { useControllerStore } from "@/features/controller/store";
 
 const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
+const popupStore = usePopupStore();
 
 const isTextInfoVisible = computed(
   () =>
@@ -40,5 +41,5 @@ const Speedometer = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Speedometer.vue"),
 });
 
-useCarController();
+useCarController(controllerStore, settingsStore, popupStore);
 </script>
