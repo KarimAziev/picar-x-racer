@@ -57,19 +57,22 @@ class CameraController(metaclass=SingletonMeta):
             HUMAN_FULL_BODY_CASCADE_PATH
         )
 
-        self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+        self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5n")
 
     def detect_cat_faces(self, frame: np.ndarray) -> np.ndarray:
-        img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        results = self.yolo_model(img_rgb)
+        reduced_frame = cv2.resize(frame, (320, 240))
+        results = self.yolo_model(reduced_frame)
+        scale_x = frame.shape[1] / reduced_frame.shape[1]
+        scale_y = frame.shape[0] / reduced_frame.shape[0]
 
         for result in results.xyxy[0]:
             x1, y1, x2, y2, conf, cls = result
             if self.yolo_model.names[int(cls)] == "cat":
-                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(
+                x1, y1, x2, y2 = map(
+                    int, [x1 * scale_x, y1 * scale_y, x2 * scale_x, y2 * scale_y]
+                )
+                frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                frame = cv2.putText(
                     frame,
                     f"{self.yolo_model.names[int(cls)]} {conf:.2f}",
                     (x1, y1 - 10),
@@ -78,7 +81,6 @@ class CameraController(metaclass=SingletonMeta):
                     (0, 255, 0),
                     2,
                 )
-
         return frame
 
     def detect_full_body_faces(self, frame: np.ndarray) -> np.ndarray:
