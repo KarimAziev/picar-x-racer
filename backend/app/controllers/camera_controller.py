@@ -58,8 +58,11 @@ class CameraController(metaclass=SingletonMeta):
 
     def detect_cat_faces(self, frame: np.ndarray) -> np.ndarray:
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        gray_frame = cv2.equalizeHist(gray_frame)
+
         cat_faces = self.cat_face_cascade.detectMultiScale(
-            gray_frame, scaleFactor=1.1, minNeighbors=5
+            gray_frame, scaleFactor=1.05, minNeighbors=3
         )
         for x, y, w, h in cat_faces:
             frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
