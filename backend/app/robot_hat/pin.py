@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+from typing import Dict, Optional, Union
+
 from app.util.logger import Logger
 from gpiozero import Button, InputDevice, OutputDevice
 
@@ -54,7 +55,14 @@ class Pin(object):
         "CE": 8,
     }
 
-    def __init__(self, pin, mode=None, pull=None, *args, **kwargs):
+    def __init__(
+        self,
+        pin: Union[int, str],
+        mode: Optional[int] = None,
+        pull: Optional[int] = None,
+        *args,
+        **kwargs,
+    ):
         """
         Initialize a pin
 
@@ -66,37 +74,64 @@ class Pin(object):
         :type pull: int
         """
         super().__init__(*args, **kwargs)
+
         self.logger = Logger(__name__)
 
         # parse pin
+        pin_dict = self.dict()
         if isinstance(pin, str):
-            if pin not in self.dict().keys():
+            if pin not in pin_dict.keys():
                 msg = f'Pin should be in {self._dict.keys()}, not "{pin}"'
                 self.logger.error(msg)
                 raise ValueError(msg)
             self._board_name = pin
-            self._pin_num = self.dict()[pin]
+            self._pin_num = pin_dict[pin]
         elif isinstance(pin, int):
-            if pin not in self.dict().values():
-                msg = f'Pin should be in {self._dict.values()}, not "{pin}"'
+            if pin not in pin_dict.values():
+                msg = f'Pin should be in {pin_dict.values()}, not "{pin}"'
                 self.logger.error(msg)
                 raise ValueError(msg)
-            self._board_name = {i for i in self._dict if self._dict[i] == pin}
+            self._board_name = {i for i in pin_dict if pin_dict[i] == pin}
             self._pin_num = pin
         else:
-            raise ValueError(f'Pin should be in {self._dict.keys()}, not "{pin}"')
+            msg = f'Pin should be in {pin_dict.keys()}, not "{pin}"'
+            self.logger.error(msg)
+            raise ValueError(msg)
         # setup
         self._value = 0
         self.gpio = None
         self.setup(mode, pull)
         self.logger.info("Pin init finished.")
 
+    def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
+        """
+        Set/get the pin dictionary
+
+        :param _dict: pin dictionary, leave it empty to get the dictionary
+        :type _dict: dict
+        :return: pin dictionary
+        :rtype: dict
+        """
+        if _dict is None:
+            return self._dict
+        else:
+            if not isinstance(_dict, dict):
+                raise ValueError(
+                    f'Argument should be a pin dictionary like {{"my pin": ezblock.Pin.cpu.GPIO17}}, not {_dict}'
+                )
+            self._dict = _dict
+        return self._dict
+
     def close(self):
-        self.gpio.close()
+        if self.gpio:
+            self.gpio.close()
 
     def deinit(self):
-        self.gpio.close()
-        self.gpio.pin_factory.close()
+        if self.gpio:
+            self.gpio.close()
+            pin_factory = self.gpio.pin_factory
+            if pin_factory is not None:
+                pin_factory.close()
 
     def setup(self, mode, pull=None):
         """
@@ -107,6 +142,7 @@ class Pin(object):
         :param pull: pin pull up/down(PUD_UP/PUD_DOWN/PUD_NONE)
         :type pull: int
         """
+
         # check mode
         if mode in [None, self.OUT, self.IN]:
             self._mode = mode
@@ -132,24 +168,6 @@ class Pin(object):
             else:
                 self.gpio = InputDevice(self._pin_num, pull_up=False)
 
-    def dict(self, _dict=None):
-        """
-        Set/get the pin dictionary
-
-        :param _dict: pin dictionary, leave it empty to get the dictionary
-        :type _dict: dict
-        :return: pin dictionary
-        :rtype: dict
-        """
-        if _dict == None:
-            return self._dict
-        else:
-            if not isinstance(_dict, dict):
-                raise ValueError(
-                    f'Argument should be a pin dictionary like {{"my pin": ezblock.Pin.cpu.GPIO17}}, not {_dict}'
-                )
-            self._dict = _dict
-
     def __call__(self, value):
         """
         Set/get the pin value
@@ -161,7 +179,7 @@ class Pin(object):
         """
         return self.value(value)
 
-    def value(self, value: bool = None):
+    def value(self, value: Optional[int] = None):
         """
         Set/get the pin value
 
@@ -173,19 +191,23 @@ class Pin(object):
         if value == None:
             if self._mode in [None, self.OUT]:
                 self.setup(self.IN)
-            result = self.gpio.value
-            self.logger.debug(f"read pin {self.gpio.pin}: {result}")
+            result = self.gpio.value if self.gpio else None
+            self.logger.debug(
+                f"read pin {self.gpio.pin if self.gpio else None}: {result}"
+            )
             return result
         else:
             if self._mode in [self.IN]:
                 self.setup(self.OUT)
             if bool(value):
-                value = 1
-                self.gpio.on()
+                res = 1
+                if isinstance(self.gpio, OutputDevice):
+                    self.gpio.on()
             else:
-                value = 0
-                self.gpio.off()
-            return value
+                res = 0
+                if isinstance(self.gpio, OutputDevice):
+                    self.gpio.off()
+            return res
 
     def on(self):
         """
@@ -234,6 +256,7 @@ class Pin(object):
         :param bouncetime: interrupt bouncetime in miliseconds
         :type bouncetime: int
         """
+
         # check trigger
         if trigger not in [self.IRQ_FALLING, self.IRQ_RISING, self.IRQ_RISING_FALLING]:
             raise ValueError(
@@ -266,8 +289,8 @@ class Pin(object):
             self._bouncetime = bouncetime
         else:
             if bouncetime != self._bouncetime:
-                pressed_handler = self.gpio.when_pressed
-                released_handler = self.gpio.when_released
+                pressed_handler = self.gpio.when_activated
+                released_handler = self.gpio.when_deactivated
                 self.gpio.close()
                 self.gpio = Button(
                     pin=self._pin_num,
