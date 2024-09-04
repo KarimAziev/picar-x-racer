@@ -24,11 +24,9 @@ import { useControllerStore } from "@/features/controller/store";
 const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
 const popupStore = usePopupStore();
-const storeSettings = useSettingsStore();
-
-const isSettingsOpened = computed(() => popupStore.isOpen);
-const loaded = computed(() => storeSettings.loaded);
 const isVirtualMode = computed(() => settingsStore.settings.virtual_mode);
+const isSettingsOpened = computed(() => popupStore.isOpen);
+const loaded = computed(() => settingsStore.loaded);
 
 const isTextInfoVisible = computed(
   () =>
