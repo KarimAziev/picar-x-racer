@@ -1,5 +1,6 @@
+from os import getlogin, path
+
 from platformdirs import user_config_dir
-from os import path, getlogin
 
 user = getlogin()
 user_home = path.expanduser(f"~{user}")
@@ -29,3 +30,19 @@ PICARX_CONFIG_DIR = path.join(CONFIG_USER_DIR, "picar-x")
 PICARX_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "picar-x.conf")
 ROBOT_HAT_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "robot-hat.conf")
 PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
+
+CAT_FACE_CASCADE_PATH = expand_file_in_project_dir(
+    "data/haarcascades/haarcascade_frontalcatface.xml"
+)
+HUMAN_FACE_CASCADE_PATH = expand_file_in_project_dir(
+    "data/haarcascades/haarcascade_frontalface_default.xml"
+)
+HUMAN_FULL_BODY_CASCADE_PATH = expand_file_in_project_dir(
+    "data/haarcascades/haarcascade_fullbody.xml"
+)
+HUMAN_FACE_CASCADE_PATH_EXTENDED = expand_file_in_project_dir(
+    "data/haarcascades/haarcascade_frontalface_default.xml"
+)
+CAT_FACE_EXTENDED_CASCADE_PATH = expand_file_in_project_dir(
+    "data/haarcascades/haarcascade_frontalcatface_extended.xml"
+)

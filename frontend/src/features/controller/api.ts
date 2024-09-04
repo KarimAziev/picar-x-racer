@@ -10,3 +10,4 @@ export const playTTS = (text: string, lang?: string) =>
   axios.post(`/api/play-tts`, { text, lang });
 
 export const takePhoto = () => axios.get(`/api/take-photo`);
+export const cameraClose = () => axios.get(`/api/close-camera`);

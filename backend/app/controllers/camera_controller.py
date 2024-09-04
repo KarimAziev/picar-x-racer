@@ -3,12 +3,19 @@ import os
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Generator, List, Optional, Tuple
+from typing import Callable, Generator, List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
+from app.config.paths import (
+    CAT_FACE_CASCADE_PATH,
+    CAT_FACE_EXTENDED_CASCADE_PATH,
+    HUMAN_FACE_CASCADE_PATH,
+    HUMAN_FULL_BODY_CASCADE_PATH,
+)
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+from app.util.video_utils import enhance_frame
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 640
@@ -24,14 +31,7 @@ class CameraController(metaclass=SingletonMeta):
     and streaming video frames to clients.
     """
 
-    def __init__(self, max_workers=4, target_fps=60):
-        """
-        Initialize CameraController with optional parameters for max_workers and target_fps.
-
-        Args:
-            max_workers (int): Maximum number of worker threads.
-            target_fps (int): Target frames per second for the camera.
-        """
+    def __init__(self, max_workers=4, target_fps=30):
         self.max_workers = max_workers
         self.logger = Logger(name=__name__)
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -47,6 +47,144 @@ class CameraController(metaclass=SingletonMeta):
         self.video_devices: List[str] = []
         self.failed_camera_indexes: List[int] = []
         self.lock = threading.Lock()
+        self.cat_face_cascade = cv2.CascadeClassifier(CAT_FACE_CASCADE_PATH)
+        self.cat_face_extended_cascade = cv2.CascadeClassifier(
+            CAT_FACE_EXTENDED_CASCADE_PATH
+        )
+        self.human_face_cascade = cv2.CascadeClassifier(HUMAN_FACE_CASCADE_PATH)
+        self.human_full_body_cascade = cv2.CascadeClassifier(
+            HUMAN_FULL_BODY_CASCADE_PATH
+        )
+
+    def detect_cat_faces(self, frame: np.ndarray) -> np.ndarray:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cat_faces = self.cat_face_cascade.detectMultiScale(
+            gray_frame, scaleFactor=1.1, minNeighbors=5
+        )
+        for x, y, w, h in cat_faces:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        return frame
+
+    def detect_full_body_faces(self, frame: np.ndarray) -> np.ndarray:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cat_faces = self.human_full_body_cascade.detectMultiScale(
+            gray_frame, scaleFactor=1.1, minNeighbors=5
+        )
+        for x, y, w, h in cat_faces:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        return frame
+
+    def detect_cat_extended_faces(self, frame: np.ndarray) -> np.ndarray:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cat_faces = self.cat_face_extended_cascade.detectMultiScale(
+            gray_frame, scaleFactor=1.1, minNeighbors=5
+        )
+        for x, y, w, h in cat_faces:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        return frame
+
+    def detect_human_faces(self, frame: np.ndarray) -> np.ndarray:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        human_faces = self.human_face_cascade.detectMultiScale(
+            gray_frame, scaleFactor=1.1, minNeighbors=5
+        )
+        for x, y, w, h in human_faces:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        return frame
+
+    def async_generate_video_stream(
+        self,
+        format=".png",
+        encode_params: Sequence[int] = [],
+        frame_enhancer: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+        height: Optional[int] = None,
+        detection_func: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+    ):
+        self.active_clients += 1
+        self.logger.info(f"Active Clients: {self.active_clients}")
+
+        try:
+            while True:
+                with self.lock:
+                    img_copy = (
+                        self.flask_img.copy() if self.flask_img is not None else None
+                    )
+
+                if img_copy is not None:
+                    if detection_func:
+                        img_copy = detection_func(img_copy)
+
+                    if self.executor_shutdown:
+                        self.logger.warning(
+                            "Executor already shutdown, cannot submit new task."
+                        )
+                        break
+                    future = self.executor.submit(
+                        self.encode,
+                        img_copy,
+                        format,
+                        encode_params,
+                        frame_enhancer,
+                        height,
+                    )
+                    encoded_frame = future.result()
+                    yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
+                else:
+                    self.logger.debug("Flask image is None, skipping frame.")
+        finally:
+            self.active_clients -= 1
+            self.logger.info(f"Active Clients: {self.active_clients}")
+            if self.active_clients == 0 and not self.executor_shutdown:
+                self.executor.shutdown(wait=True, cancel_futures=True)
+                self.executor_shutdown = True
+                self.logger.info("Executor shut down due to no active clients.")
+                self.camera_close()  # Close the camera when no active clients
+
+    def generate_high_quality_stream_jpg_cat_recognize(
+        self,
+    ) -> Generator[bytes, None, None]:
+        return self.async_generate_video_stream(
+            ".jpg",
+            [cv2.IMWRITE_JPEG_QUALITY, 100],
+            None,
+            detection_func=self.detect_cat_faces,
+        )
+
+    def generate_high_quality_stream_jpg_cat_extended_recognize(
+        self,
+    ) -> Generator[bytes, None, None]:
+        return self.async_generate_video_stream(
+            ".jpg",
+            [cv2.IMWRITE_JPEG_QUALITY, 100],
+            None,
+            detection_func=self.detect_cat_extended_faces,
+        )
+
+    def generate_high_quality_stream_jpg_human_recognize(
+        self,
+    ) -> Generator[bytes, None, None]:
+        return self.async_generate_video_stream(
+            ".jpg",
+            [cv2.IMWRITE_JPEG_QUALITY, 100],
+            None,
+            detection_func=self.detect_human_faces,
+        )
+
+    def generate_high_quality_stream_jpg_human_full_body_recognize(
+        self,
+    ) -> Generator[bytes, None, None]:
+        return self.async_generate_video_stream(
+            ".jpg",
+            [cv2.IMWRITE_JPEG_QUALITY, 100],
+            None,
+            detection_func=self.detect_full_body_faces,
+        )
+
+    @staticmethod
+    def height_to_width(height: int):
+        aspect_ratio = TARGET_WIDTH / TARGET_HEIGHT
+        width = aspect_ratio * height
+        return int(width)
 
     @staticmethod
     def get_device_info(device_path: str) -> str:
@@ -128,8 +266,9 @@ class CameraController(metaclass=SingletonMeta):
                     f"Exiting: Camera {self.camera_index} couldn't be opened."
                 )
 
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
+        # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1200)
+        # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 800)
+
         cap.set(cv2.CAP_PROP_FPS, self.target_fps)
         return cap
 
@@ -185,7 +324,7 @@ class CameraController(metaclass=SingletonMeta):
                 self.flask_img = None
             self.logger.info("Camera loop terminated and camera released.")
 
-    def camera_start(self, vflip=False, hflip=False, fps=60):
+    def camera_start(self, vflip=False, hflip=False, fps=30):
         """
         Start the camera capturing loop in a separate thread.
 
@@ -227,6 +366,11 @@ class CameraController(metaclass=SingletonMeta):
             self.executor.shutdown(wait=True)
             self.executor_shutdown = True
 
+    async def restart(self):
+        self.shutdown()
+        self.recreate_executor()
+        await self.start_camera_and_wait_for_flask_img()
+
     def recreate_executor(self):
         """
         Recreate the ThreadPoolExecutor if it has been shut down.
@@ -234,6 +378,58 @@ class CameraController(metaclass=SingletonMeta):
         if self.executor_shutdown:
             self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
             self.executor_shutdown = False
+
+    async def start_camera_and_wait_for_flask_img(
+        self, vflip=False, hflip=False, fps=30
+    ):
+        """
+        Asynchronously start the camera and wait for the Flask image to be available.
+
+        Args:
+            vflip (bool): Flag to determine vertical flip of the camera frame.
+            hflip (bool): Flag to determine horizontal flip of the camera frame.
+            fps (int): Frames per second for the camera.
+        """
+        if not self.camera_run:
+            self.camera_start(vflip, hflip, fps)
+
+        while True:
+            with self.lock:
+                if self.flask_img is not None:
+                    break
+            self.logger.debug("waiting for flask img")
+            await asyncio.sleep(0.1)
+
+    async def take_photo(self, photo_name: str, path: str) -> bool:
+        """
+        Asynchronously take a photo and save it to the specified path.
+
+        Args:
+            photo_name (str): Name of the photo file.
+            path (str): Directory path to save the photo.
+
+        Returns:
+            bool: Status indicating success or failure of taking the photo.
+        """
+        self.logger.info(f"Taking photo '{photo_name}' at path {path}")
+        if not os.path.exists(path):
+            os.makedirs(name=path, mode=0o751, exist_ok=True)
+            await asyncio.sleep(0.01)
+
+        status = False
+        for _ in range(5):
+            with self.lock:
+                img_copy = self.img.copy() if self.img is not None else None
+
+            if img_copy is not None:
+                status = cv2.imwrite(os.path.join(path, photo_name), img_copy)
+                break
+            else:
+                await asyncio.sleep(0.01)
+        else:
+            status = False
+
+        return status
 
     def convert_listproxy_to_array(self, listproxy_obj):
         """
@@ -295,7 +491,7 @@ class CameraController(metaclass=SingletonMeta):
         return buffer.tobytes()
 
     def resize_and_encode(
-        self, frame: np.ndarray, width: int, height: int, format=".jpg", quality=90
+        self, frame: np.ndarray, width: int, height: int, format=".jpg", quality=100
     ):
         """
         Resize the frame and encode it to the specified format.
@@ -305,7 +501,7 @@ class CameraController(metaclass=SingletonMeta):
             width (int): Width to resize the frame.
             height (int): Height to resize the frame.
             format (str): Encoding format (default is ".jpg").
-            quality (int): Quality of JPEG encoding (default is 90).
+            quality (int): Quality of JPEG encoding (default is 100).
 
         Returns:
             bytes: Encoded frame as a byte array.
@@ -317,7 +513,14 @@ class CameraController(metaclass=SingletonMeta):
         _, buffer = cv2.imencode(format, resized_frame, encode_params)
         return buffer.tobytes()
 
-    def encode(self, frame_array: np.ndarray, format=".jpg"):
+    def encode(
+        self,
+        frame_array: np.ndarray,
+        format=".jpg",
+        params: Sequence[int] = [],
+        frame_enhancer: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+        height: Optional[int] = None,
+    ):
         """
         Encode the frame array to the specified format.
 
@@ -328,171 +531,53 @@ class CameraController(metaclass=SingletonMeta):
         Returns:
             bytes: Encoded frame as a byte array.
         """
-        _, buffer = cv2.imencode(format, frame_array)
+        width = CameraController.height_to_width(height) if height else None
+
+        if frame_enhancer:
+            frame_array = frame_enhancer(frame_array)
+
+        if height and width:
+            frame = cv2.resize(frame_array, (width, height))
+        else:
+            frame = frame_array
+
+        _, buffer = cv2.imencode(format, frame, params)
         return buffer.tobytes()
 
-    def async_generate_video_stream(
-        self, width: int, height: int, format=".jpg", quality=90
-    ):
-        """
-        Asynchronously generate a video stream with specified width, height, format, and quality.
-
-        Args:
-            width (int): Width to resize the frame.
-            height (int): Height to resize the frame.
-            format (str): Encoding format (default is ".jpg").
-            quality (int): Quality of JPEG encoding (default is 90).
-
-        Yields:
-            bytes: Frame data in the specified format, wrapped according to HTTP multipart standards.
-        """
-        self.active_clients += 1
-        self.logger.info(f"Active Clients: {self.active_clients}")
-
-        try:
-            while True:
-                with self.lock:
-                    img_copy = (
-                        self.flask_img.copy() if self.flask_img is not None else None
-                    )
-
-                if img_copy is not None:
-                    if self.executor_shutdown:
-                        self.logger.warning(
-                            "Executor already shutdown, cannot submit new task."
-                        )
-                        break
-                    future = self.executor.submit(
-                        self.resize_and_encode, img_copy, width, height, format, quality
-                    )
-                    encoded_frame = future.result()
-                    yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
-                else:
-                    self.logger.debug("Flask image is None, skipping frame.")
-        finally:
-            self.active_clients -= 1
-            self.logger.info(f"Active Clients: {self.active_clients}")
-            if self.active_clients == 0 and not self.executor_shutdown:
-                self.executor.shutdown(wait=True, cancel_futures=True)
-                self.executor_shutdown = True
-                self.logger.info("Executor shut down due to no active clients.")
-                self.camera_close()  # Close the camera when no active clients
-
-    def async_generate_video_stream_no_transform(self, format=".png"):
-        """
-        Asynchronously generate a video stream with the original frame format.
-
-        Args:
-            format (str): Encoding format (default is ".png").
-
-        Yields:
-            bytes: Frame data in the specified format, wrapped according to HTTP multipart standards.
-        """
-        self.active_clients += 1
-        self.logger.info(f"Active Clients: {self.active_clients}")
-
-        try:
-            while True:
-                with self.lock:
-                    img_copy = (
-                        self.flask_img.copy() if self.flask_img is not None else None
-                    )
-
-                if img_copy is not None:
-                    if self.executor_shutdown:
-                        self.logger.warning(
-                            "Executor already shutdown, cannot submit new task."
-                        )
-                        break
-                    future = self.executor.submit(self.encode, img_copy, format)
-                    encoded_frame = future.result()
-                    yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
-                else:
-                    self.logger.debug("Flask image is None, skipping frame.")
-        finally:
-            self.active_clients -= 1
-            self.logger.info(f"Active Clients: {self.active_clients}")
-            if self.active_clients == 0 and not self.executor_shutdown:
-                self.executor.shutdown(wait=True, cancel_futures=True)
-                self.executor_shutdown = True
-                self.logger.info("Executor shut down due to no active clients.")
-                self.camera_close()  # Close the camera when no active clients
-
-    def generate_high_quality_stream(self) -> Generator[bytes, None, None]:
+    def generate_high_quality_stream_jpg(self) -> Generator[bytes, None, None]:
         """
         Generate a high-quality video stream with target width and height.
 
         Returns:
             Generator[bytes, None, None]: High-quality video stream.
         """
-        return self.async_generate_video_stream(TARGET_WIDTH, TARGET_HEIGHT)
+        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 100])
 
-    def generate_medium_quality_stream(self) -> Generator[bytes, None, None]:
+    def generate_medium_quality_stream_jpg(self) -> Generator[bytes, None, None]:
         """
         Generate a medium-quality video stream with JPEG format.
 
         Returns:
             Generator[bytes, None, None]: Medium-quality video stream.
         """
-        return self.async_generate_video_stream_no_transform(".jpg")
+        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 95])
 
-    def generate_low_quality_stream(self) -> Generator[bytes, None, None]:
+    def generate_extra_high_quality_stream_jpg(self) -> Generator[bytes, None, None]:
         """
-        Generate a low-quality video stream with PNG format.
+        Generate extra high-quality video stream with target width and height.
 
         Returns:
-            Generator[bytes, None, None]: Low-quality video stream.
+            Generator[bytes, None, None]: High-quality video stream.
         """
-        return self.async_generate_video_stream_no_transform(".png")
+        return self.async_generate_video_stream(
+            ".jpg", [cv2.IMWRITE_JPEG_QUALITY, 100], enhance_frame
+        )
 
-    async def start_camera_and_wait_for_flask_img(
-        self, vflip=False, hflip=False, fps=30
-    ):
-        """
-        Asynchronously start the camera and wait for the Flask image to be available.
+    def generate_low_quality_stream_jpg(self) -> Generator[bytes, None, None]:
+        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 80])
 
-        Args:
-            vflip (bool): Flag to determine vertical flip of the camera frame.
-            hflip (bool): Flag to determine horizontal flip of the camera frame.
-            fps (int): Frames per second for the camera.
-        """
-        if not self.camera_run:
-            self.camera_start(vflip, hflip, fps)
+    def generate_extra_low_quality_stream_jpg(self) -> Generator[bytes, None, None]:
+        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 20])
 
-        while True:
-            with self.lock:
-                if self.flask_img is not None:
-                    break
-            self.logger.debug("waiting for flask img")
-            await asyncio.sleep(0.1)
-
-    async def take_photo(self, photo_name: str, path: str) -> bool:
-        """
-        Asynchronously take a photo and save it to the specified path.
-
-        Args:
-            photo_name (str): Name of the photo file.
-            path (str): Directory path to save the photo.
-
-        Returns:
-            bool: Status indicating success or failure of taking the photo.
-        """
-        self.logger.info(f"Taking photo '{photo_name}' at path {path}")
-        if not os.path.exists(path):
-            os.makedirs(name=path, mode=0o751, exist_ok=True)
-            await asyncio.sleep(0.01)
-
-        status = False
-        for _ in range(5):
-            with self.lock:
-                img_copy = self.img.copy() if self.img is not None else None
-
-            if img_copy is not None:
-                status = cv2.imwrite(os.path.join(path, photo_name), img_copy)
-                break
-            else:
-                await asyncio.sleep(0.01)
-        else:
-            status = False
-
-        return status
+    def generate_low_quality_stream_png(self) -> Generator[bytes, None, None]:
+        return self.async_generate_video_stream(".png", [])

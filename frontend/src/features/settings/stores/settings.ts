@@ -45,7 +45,7 @@ const defaultState: State = {
     default_sound: "",
     default_language: "en",
     default_music: "",
-    video_feed_url: VideoFeedURL.lq,
+    video_feed_url: VideoFeedURL.high_quality_mode,
     battery_full_voltage: 8.4,
   },
   dimensions: { width: 640, height: 480 },
@@ -156,26 +156,26 @@ export const useStore = defineStore("settings", {
     },
     increaseQuality() {
       const messager = useMessagerStore();
-      const levels = [VideoFeedURL.lq, VideoFeedURL.mq, VideoFeedURL.hq];
-      const idx = levels.indexOf(this.settings.video_feed_url);
-      const nextURL = levels[idx + 1];
-      if (nextURL) {
-        this.settings.video_feed_url = nextURL;
-        messager.info(`Increased quality to ${nextURL.split("-").pop()}`);
-      } else {
-        messager.info(`${this.settings.video_feed_url} is highest quality `);
+      const levels = Object.entries(VideoFeedURL);
+      const idx = levels.findIndex(
+        ([_key, val]) => val === this.settings.video_feed_url,
+      );
+      const nextEntry = levels[idx + 1] || levels[0];
+      if (nextEntry) {
+        this.settings.video_feed_url = nextEntry[1];
+        messager.info(`Setted ${nextEntry[0]}`);
       }
     },
     decreaseQuality() {
       const messager = useMessagerStore();
-      const levels = [VideoFeedURL.lq, VideoFeedURL.mq, VideoFeedURL.hq];
-      const idx = levels.indexOf(this.settings.video_feed_url);
-      const nextURL = levels[idx - 1];
-      if (nextURL) {
-        this.settings.video_feed_url = nextURL;
-        messager.info(`Decreased quality to ${nextURL.split("-").pop()}`);
-      } else {
-        messager.info(`${this.settings.video_feed_url} is lowest quality!`);
+      const levels = Object.entries(VideoFeedURL);
+      const idx = levels.findIndex(
+        ([_key, val]) => val === this.settings.video_feed_url,
+      );
+      const nextEntry = levels[idx + 1] || levels[levels.length - 1];
+      if (nextEntry) {
+        this.settings.video_feed_url = nextEntry[1];
+        messager.info(`Setted ${nextEntry[0]}`);
       }
     },
     toggleSettingsProp(
