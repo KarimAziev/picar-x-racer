@@ -7,6 +7,7 @@ from typing import Callable, Generator, List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
+import torch
 from app.config.paths import (
     CAT_FACE_CASCADE_PATH,
     CAT_FACE_EXTENDED_CASCADE_PATH,
@@ -56,16 +57,28 @@ class CameraController(metaclass=SingletonMeta):
             HUMAN_FULL_BODY_CASCADE_PATH
         )
 
+        self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+
     def detect_cat_faces(self, frame: np.ndarray) -> np.ndarray:
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        gray_frame = cv2.equalizeHist(gray_frame)
+        results = self.yolo_model(rgb_frame)
 
-        cat_faces = self.cat_face_cascade.detectMultiScale(
-            gray_frame, scaleFactor=1.05, minNeighbors=3
-        )
-        for x, y, w, h in cat_faces:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        for result in results.xyxy[0]:
+            x1, y1, x2, y2, conf, cls = result
+            if self.yolo_model.names[int(cls)] == "cat":
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                frame = cv2.putText(
+                    frame,
+                    f"{self.yolo_model.names[int(cls)]} {conf:.2f}",
+                    (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),
+                    2,
+                )
+
         return frame
 
     def detect_full_body_faces(self, frame: np.ndarray) -> np.ndarray:
