@@ -367,9 +367,9 @@ class CameraController(metaclass=SingletonMeta):
             self.executor_shutdown = True
 
     async def restart(self):
-        self.shutdown()
-        self.recreate_executor()
         await self.start_camera_and_wait_for_flask_img()
+        if self.executor_shutdown:
+            self.recreate_executor()
 
     def recreate_executor(self):
         """
