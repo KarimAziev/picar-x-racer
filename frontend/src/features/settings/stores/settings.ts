@@ -172,7 +172,7 @@ export const useStore = defineStore("settings", {
       const idx = levels.findIndex(
         ([_key, val]) => val === this.settings.video_feed_url,
       );
-      const nextEntry = levels[idx + 1] || levels[levels.length - 1];
+      const nextEntry = levels[idx - 1] || levels[levels.length - 1];
       if (nextEntry) {
         this.settings.video_feed_url = nextEntry[1];
         messager.info(`Setted ${nextEntry[0]}`);
