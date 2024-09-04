@@ -69,7 +69,12 @@ export class CarModelRenderer {
   public setSize(width: number, height: number) {
     this.height = height;
     this.width = width;
+    const w = width;
+    const h = height;
+    const fullWidth = w;
+    const fullHeight = h;
     this.renderer.setSize(width, height);
+    this.camera.setViewOffset(fullWidth, fullHeight, w * 0, h * 0, w, h);
   }
 
   public updatePan(pan: number) {
