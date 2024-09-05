@@ -10,7 +10,7 @@
   "speedometer_view": true,
   "text_info_view": true,
   "auto_download_photo": true,
-  "auto_measure_distance_mode": true,
+  "auto_measure_distance_mode": false,
   "virtual_mode": false,
   "keybindings": {
     "accelerate": ["w"],
