@@ -43,8 +43,6 @@ def close_camera():
     camera_manager: "CameraController" = current_app.config["camera_manager"]
     logger.warning(f"Closing camera {camera_manager.active_clients}")
     if camera_manager.active_clients <= 1:
-        camera_manager.shutdown()
-        if camera_manager.executor_shutdown:
-            camera_manager.recreate_executor()
+        camera_manager.camera_close()
 
     return jsonify({"OK": True})

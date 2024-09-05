@@ -8,6 +8,7 @@ from typing import Callable, Generator, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 import torch
+import torchvision.transforms as T
 from app.config.paths import (
     CAT_FACE_CASCADE_PATH,
     CAT_FACE_EXTENDED_CASCADE_PATH,
@@ -48,6 +49,7 @@ class CameraController(metaclass=SingletonMeta):
         self.video_devices: List[str] = []
         self.failed_camera_indexes: List[int] = []
         self.lock = threading.Lock()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.cat_face_cascade = cv2.CascadeClassifier(CAT_FACE_CASCADE_PATH)
         self.cat_face_extended_cascade = cv2.CascadeClassifier(
             CAT_FACE_EXTENDED_CASCADE_PATH
@@ -56,10 +58,77 @@ class CameraController(metaclass=SingletonMeta):
         self.human_full_body_cascade = cv2.CascadeClassifier(
             HUMAN_FULL_BODY_CASCADE_PATH
         )
-
         self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5n")
 
+        self.frame_skip_interval = 2
+        self.frame_counter = 0
+
+    def detect_cat_extended_faces(self, frame: np.ndarray) -> np.ndarray:
+        if self.frame_counter % self.frame_skip_interval != 0:
+            return frame
+        try:
+            border_color = (191, 255, 0)
+
+            # Resize frame to a square shape, e.g., 320x320
+            resized_frame = cv2.resize(frame, (320, 320))
+
+            # Convert the frame to a torch tensor and move to the appropriate device
+            transform = T.ToTensor()
+            tensor_frame = transform(resized_frame).unsqueeze(0).to(self.device)
+
+            # Perform the detection
+            results = self.yolo_model(tensor_frame)[0]
+
+            # Scale factors to map results back to original frame size
+            scale_x = frame.shape[1] / resized_frame.shape[1]
+            scale_y = frame.shape[0] / resized_frame.shape[0]
+
+            for (
+                result
+            ) in (
+                results.cpu().numpy()
+            ):  # move results back to CPU for further processing
+                x1, y1, x2, y2 = result[:4]
+                conf = result[4]
+                class_scores = result[5:]
+                cls = np.argmax(class_scores)
+                cls_name = self.yolo_model.names[cls]
+
+                if cls_name == "cat" and conf > 0.25:  # confidence threshold
+                    x1, y1, x2, y2 = map(
+                        int, [x1 * scale_x, y1 * scale_y, x2 * scale_x, y2 * scale_y]
+                    )
+                    frame = cv2.rectangle(frame, (x1, y1), (x2, y2), border_color, 2)
+                    frame = cv2.putText(
+                        frame,
+                        f"{cls_name} {conf:.2f}",
+                        (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        border_color,
+                        2,
+                    )
+        except Exception as e:
+            self.logger.error(f"Error in detect_cat_faces: {e}")
+
+        return frame
+
+    def detect_full_body_faces(self, frame: np.ndarray) -> np.ndarray:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        human_full_bodies = self.human_full_body_cascade.detectMultiScale(
+            gray_frame, scaleFactor=1.1, minNeighbors=5
+        )
+        for x, y, w, h in human_full_bodies:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
+        return frame
+
     def detect_cat_faces(self, frame: np.ndarray) -> np.ndarray:
+        if self.frame_counter % self.frame_skip_interval != 0:
+            return frame
+
+        if self.yolo_model is None:
+            self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5n")
+
         border_color = (191, 255, 0)
 
         reduced_frame = cv2.resize(frame, (320, 240))
@@ -85,25 +154,9 @@ class CameraController(metaclass=SingletonMeta):
                 )
         return frame
 
-    def detect_full_body_faces(self, frame: np.ndarray) -> np.ndarray:
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        human_full_bodies = self.human_full_body_cascade.detectMultiScale(
-            gray_frame, scaleFactor=1.1, minNeighbors=5
-        )
-        for x, y, w, h in human_full_bodies:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
-        return frame
-
-    def detect_cat_extended_faces(self, frame: np.ndarray) -> np.ndarray:
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        cat_extended_faces = self.cat_face_extended_cascade.detectMultiScale(
-            gray_frame, scaleFactor=1.1, minNeighbors=5
-        )
-        for x, y, w, h in cat_extended_faces:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
-        return frame
-
     def detect_human_faces(self, frame: np.ndarray) -> np.ndarray:
+        if self.frame_counter % self.frame_skip_interval != 0:
+            return frame
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         human_faces = self.human_face_cascade.detectMultiScale(
             gray_frame, scaleFactor=1.1, minNeighbors=5
@@ -123,7 +176,6 @@ class CameraController(metaclass=SingletonMeta):
         self.active_clients += 1
         self.logger.info(f"Active Clients: {self.active_clients}")
         skip_count = 0
-
         try:
             while True:
                 with self.lock:
@@ -133,8 +185,11 @@ class CameraController(metaclass=SingletonMeta):
 
                 if img_copy is not None:
                     skip_count = 0
+
+                    # Process frame in a separate thread
                     if detection_func:
-                        img_copy = detection_func(img_copy)
+                        future = self.executor.submit(detection_func, img_copy)
+                        img_copy = future.result()
 
                     if self.executor_shutdown:
                         self.logger.warning(
@@ -164,12 +219,62 @@ class CameraController(metaclass=SingletonMeta):
                 self.logger.info("Executor shut down due to no active clients.")
                 self.camera_close()  # Close the camera when no active clients
 
+    def camera_thread_func(self):
+        self.logger.info(f"Starting camera loop with camera index {self.camera_index}")
+        cap = self.camera_thread_func_setup()
+
+        failed_counter = 0
+        max_failed_attempt_count = 10
+
+        try:
+            while self.camera_run:
+                ret, frame = cap.read()
+                if not ret:
+                    if failed_counter < max_failed_attempt_count:
+                        failed_counter += 1
+                        self.logger.error("Failed to read frame from camera.")
+                        continue
+                    else:
+                        self.failed_camera_indexes.append(self.camera_index)
+                        cap.release()
+                        new_index, _, device_info = self.find_camera_index()
+                        if isinstance(new_index, int):
+                            self.logger.info(
+                                f"Camera index {self.camera_index} is failed, trying {new_index}: {device_info}"
+                            )
+                            self.camera_index = new_index
+                            cap = self.camera_thread_func_setup()
+                            failed_counter = 0
+                            continue
+                else:
+                    failed_counter = 0
+
+                if self.camera_vflip:
+                    frame = cv2.flip(frame, 0)
+                if self.camera_hflip:
+                    frame = cv2.flip(frame, 1)
+
+                self.frame_counter += 1  # Increment frame counter
+
+                self.img = frame
+
+                with self.lock:
+                    self.flask_img = frame.copy()
+
+        except Exception as e:
+            self.logger.error(f"Exception occurred in camera loop: {e}")
+        finally:
+            cap.release()
+            with self.lock:
+                self.flask_img = None
+            self.logger.info("Camera loop terminated and camera released.")
+
     def generate_high_quality_stream_jpg_cat_recognize(
         self,
     ) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream(
-            ".jpg",
-            [cv2.IMWRITE_JPEG_QUALITY, 100],
+            ".png",
+            [],
             None,
             detection_func=self.detect_cat_faces,
         )
@@ -178,8 +283,8 @@ class CameraController(metaclass=SingletonMeta):
         self,
     ) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream(
-            ".jpg",
-            [cv2.IMWRITE_JPEG_QUALITY, 100],
+            ".png",
+            [],
             None,
             detection_func=self.detect_cat_extended_faces,
         )
@@ -188,8 +293,8 @@ class CameraController(metaclass=SingletonMeta):
         self,
     ) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream(
-            ".jpg",
-            [cv2.IMWRITE_JPEG_QUALITY, 100],
+            ".png",
+            [],
             None,
             detection_func=self.detect_human_faces,
         )
@@ -295,58 +400,6 @@ class CameraController(metaclass=SingletonMeta):
 
         cap.set(cv2.CAP_PROP_FPS, self.target_fps)
         return cap
-
-    def camera_thread_func(self):
-        """
-        Camera loop function that continuously captures frames, performs flips if required,
-        and updates the current frame.
-        """
-        self.logger.info(f"Starting camera loop with camera index {self.camera_index}")
-        cap = self.camera_thread_func_setup()
-
-        failed_counter = 0
-        max_failed_attempt_count = 10
-
-        try:
-            while self.camera_run:
-                ret, frame = cap.read()
-                if not ret:
-                    if failed_counter < max_failed_attempt_count:
-                        failed_counter += 1
-                        self.logger.error("Failed to read frame from camera.")
-                        continue
-                    else:
-                        self.failed_camera_indexes.append(self.camera_index)
-                        cap.release()
-                        new_index, _, device_info = self.find_camera_index()
-                        if isinstance(new_index, int):
-                            self.logger.info(
-                                f"Camera index {self.camera_index} is failed, trying {new_index}: {device_info}"
-                            )
-                            self.camera_index = new_index
-                            cap = self.camera_thread_func_setup()
-                            failed_counter = 0
-                            continue
-                else:
-                    failed_counter = 0
-
-                if self.camera_vflip:
-                    frame = cv2.flip(frame, 0)
-                if self.camera_hflip:
-                    frame = cv2.flip(frame, 1)
-
-                self.img = frame
-
-                with self.lock:
-                    self.flask_img = frame.copy()
-
-        except Exception as e:
-            self.logger.error(f"Exception occurred in camera loop: {e}")
-        finally:
-            cap.release()
-            with self.lock:
-                self.flask_img = None
-            self.logger.info("Camera loop terminated and camera released.")
 
     def camera_start(self, vflip=False, hflip=False, fps=30):
         """
