@@ -16,3 +16,5 @@ export enum VideoFeedURL {
   human_recognize_mode = "/mjpg-hq/human-face-recognize",
   human_body_recognize_mode = "/mjpg-hq/human-body-recognize",
 }
+
+export const videoFeedEntities = Object.entries(VideoFeedURL);
