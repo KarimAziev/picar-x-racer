@@ -1,4 +1,3 @@
-from app.modules.vilib import Vilib
 from app.robot_hat.filedb import fileDB
 from app.util.os_checks import is_raspberry_pi
 
@@ -53,7 +52,6 @@ Grayscale_Module = Grayscale_Module
 Ultrasonic = Ultrasonic
 
 __all__ = [
-    "Vilib",
     "reset_mcu",
     "get_ip",
     "run_command",
