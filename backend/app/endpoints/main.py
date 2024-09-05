@@ -1,9 +1,9 @@
-from flask import Blueprint, send_from_directory, current_app
-from app.config.logging_config import setup_logger
+from app.util.logger import Logger
+from flask import Blueprint, current_app, send_from_directory
 
 main_bp = Blueprint("main", __name__)
 
-logger = setup_logger(__name__)
+logger = Logger(__name__)
 
 
 def index():

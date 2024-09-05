@@ -1,18 +1,17 @@
-import os
-import threading
 import asyncio
+import os
+import subprocess
+import threading
 import time
 from multiprocessing import Manager
-from typing import Optional, List, Tuple
-import subprocess
+from typing import List, Optional, Tuple
+
 import cv2
 import numpy as np
-from app.config.logging_config import setup_logger
-from app.config.paths import (
-    DEFAULT_VIDEOS_PATH,
-)
+from app.config.paths import DEFAULT_VIDEOS_PATH
+from app.util.logger import Logger
 
-logger = setup_logger(__name__)
+logger = Logger(__name__)
 
 user = os.getlogin()
 user_home = os.path.expanduser(f"~{user}")

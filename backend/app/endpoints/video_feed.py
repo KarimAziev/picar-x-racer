@@ -1,7 +1,7 @@
 from time import localtime, strftime
 from typing import TYPE_CHECKING
 
-from app.config.logging_config import setup_logger
+from app.util.logger import Logger
 from flask import Blueprint, Response, current_app, jsonify
 
 if TYPE_CHECKING:
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from app.controllers.files_controller import FilesController
 
 video_feed_bp = Blueprint("video_feed", __name__)
-logger = setup_logger(__name__)
+logger = Logger(__name__)
 
 
 @video_feed_bp.route("/mjpg-hq")

@@ -3,10 +3,10 @@ from typing import Generator
 
 import cv2
 import numpy as np
-from app.config.logging_config import setup_logger
+from app.util.logger import Logger
 from app.util.platform_adapters import Vilib
 
-logger = setup_logger(__name__)
+logger = Logger(__name__)
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 640

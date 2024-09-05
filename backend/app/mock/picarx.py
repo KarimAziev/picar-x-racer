@@ -2,7 +2,6 @@ import asyncio
 import random
 import time
 
-from app.config.logging_config import setup_logger
 from app.config.paths import PICARX_CONFIG_FILE
 from app.mock.robot_hat_fake_utils import reset_mcu
 from app.robot_hat.filedb import fileDB
@@ -13,7 +12,7 @@ from app.robot_hat.mock.pwm_mock import PWM
 from app.robot_hat.mock.servo_mock import Servo
 from app.util.logger import Logger
 
-logger = setup_logger(__name__)
+logger = Logger(__name__)
 
 
 def constrain(x: int, min_val: int, max_val: int):
