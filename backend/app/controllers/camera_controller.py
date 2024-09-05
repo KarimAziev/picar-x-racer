@@ -60,6 +60,8 @@ class CameraController(metaclass=SingletonMeta):
         self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5n")
 
     def detect_cat_faces(self, frame: np.ndarray) -> np.ndarray:
+        border_color = (191, 255, 0)
+
         reduced_frame = cv2.resize(frame, (320, 240))
         results = self.yolo_model(reduced_frame)
         scale_x = frame.shape[1] / reduced_frame.shape[1]
@@ -71,34 +73,34 @@ class CameraController(metaclass=SingletonMeta):
                 x1, y1, x2, y2 = map(
                     int, [x1 * scale_x, y1 * scale_y, x2 * scale_x, y2 * scale_y]
                 )
-                frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                frame = cv2.rectangle(frame, (x1, y1), (x2, y2), border_color, 2)
                 frame = cv2.putText(
                     frame,
                     f"{self.yolo_model.names[int(cls)]} {conf:.2f}",
                     (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
-                    (0, 255, 0),
+                    border_color,
                     2,
                 )
         return frame
 
     def detect_full_body_faces(self, frame: np.ndarray) -> np.ndarray:
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        cat_faces = self.human_full_body_cascade.detectMultiScale(
+        human_full_bodies = self.human_full_body_cascade.detectMultiScale(
             gray_frame, scaleFactor=1.1, minNeighbors=5
         )
-        for x, y, w, h in cat_faces:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        for x, y, w, h in human_full_bodies:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
         return frame
 
     def detect_cat_extended_faces(self, frame: np.ndarray) -> np.ndarray:
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        cat_faces = self.cat_face_extended_cascade.detectMultiScale(
+        cat_extended_faces = self.cat_face_extended_cascade.detectMultiScale(
             gray_frame, scaleFactor=1.1, minNeighbors=5
         )
-        for x, y, w, h in cat_faces:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        for x, y, w, h in cat_extended_faces:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
         return frame
 
     def detect_human_faces(self, frame: np.ndarray) -> np.ndarray:
@@ -107,7 +109,7 @@ class CameraController(metaclass=SingletonMeta):
             gray_frame, scaleFactor=1.1, minNeighbors=5
         )
         for x, y, w, h in human_faces:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
         return frame
 
     def async_generate_video_stream(
