@@ -1,3 +1,14 @@
+"""
+A module to manage Pulse Width Modulation (PWM) which allows you to control the power delivered to devices
+like LEDs, motors, and other actuators.
+
+Pulse Width Modulation (PWM) is a technique used to encode information or control the amount of power
+delivered to a device. It does this by changing the width of the digital pulses applied to the device.
+
+- **High Pulse**: The duration when the signal is high.
+- **Low Pulse**: The duration when the signal is low.
+"""
+
 import math
 
 from app.util.logger import Logger
@@ -8,26 +19,79 @@ timer = [{"arr": 1}] * 4
 
 
 class PWM(I2C):
-    """Pulse width modulation (PWM)"""
+    """
+    A class to manage Pulse Width Modulation (PWM) which allows you to control the power delivered to devices
+    like LEDs, motors, and other actuators.
+
+    ### Key Features:
+    - Set and get the frequency of PWM signals.
+    - Set and get the prescaler and period values for fine-tuning.
+    - Set and get the pulse width and its percentage.
+
+    ### Attributes:
+        - `REG_CHN` (int): Channel register prefix (default is 0x20).
+        - `REG_PSC` (int): Prescaler register prefix (default is 0x40).
+        - `REG_ARR` (int): Period register prefix (default is 0x44).
+        - `ADDR` (List[int]): List of I2C addresses that the PWM controller can use.
+        - `CLOCK` (float): Clock frequency for the PWM module.
+
+    ### Methods:
+        - `__init__(self, channel, address=None, *args, **kwargs)`: Initialize the PWM module.
+        - `_i2c_write(self, reg, value)`: Write to an I2C register.
+        - `freq(self, freq=None)`: Set or get the PWM frequency.
+        - `prescaler(self, prescaler=None)`: Set or get the prescaler value.
+        - `period(self, arr=None)`: Set or get the period value.
+        - `pulse_width(self, pulse_width=None)`: Set or get the pulse width value.
+        - `pulse_width_percent(self, pulse_width_percent=None)`: Set or get the pulse width percentage.
+
+    #### What is PWM?
+    Pulse Width Modulation (PWM) is a technique used to encode information or control the amount of power
+    delivered to a device. It does this by changing the width of the digital pulses applied to the device.
+
+    - **High Pulse**: The duration when the signal is high.
+    - **Low Pulse**: The duration when the signal is low.
+
+    #### Playing with PWM
+    Using PWM, you can easily control devices like LEDs, motors, and more. Adjust the 'pulse width' or 'frequency'
+    to control the behavior of these devices. For example, controlling the brightness of an LED or the speed of a motor.
+
+    Here's a visual representation of PWM signals:
+
+    ```
+    ^
+    |          ____       ____       ____
+    |         |    |     |    |     |    |
+    |         |    |     |    |     |    |
+    | ____    |    |_____|    |_____|    |_____|
+    |<---T--->|<---T--->|<---T--->|<---T--->
+    ```
+
+    In the above visualization:
+    - T is the period.
+    - The signal goes high for a fraction of the period (pulse width) and low for the remaining period.
+
+    """
 
     REG_CHN = 0x20
     """Channel register prefix"""
     REG_PSC = 0x40
     """Prescaler register prefix"""
     REG_ARR = 0x44
-    """Period registor prefix"""
+    """Period register prefix"""
 
     ADDR = [0x14, 0x15]
+    """List of possible I2C addresses"""
 
     CLOCK = 72000000.0
-    """Clock frequency"""
+    """Clock frequency in Hz"""
 
     def __init__(self, channel, address=None, *args, **kwargs):
         """
-        Initialize PWM
+        Initialize the PWM module.
 
-        :param channel: PWM channel number(0-13/P0-P13)
-        :type channel: int/str
+        Args:
+            channel (int or str): PWM channel number (0-15 or P0-P15).
+            address (Optional[List[int]]): I2C device address or list of addresses.
         """
         if address is None:
             super().__init__(self.ADDR, *args, **kwargs)
@@ -55,55 +119,63 @@ class PWM(I2C):
         self.freq(50)
 
     def _i2c_write(self, reg, value):
+        """
+        Write a value to an I2C register.
+
+        Args:
+            reg (int): Register address.
+            value (int): Value to write.
+
+        Returns:
+            None
+        """
         value_h = value >> 8
         value_l = value & 0xFF
         self.write([reg, value_h, value_l])
 
     def freq(self, freq=None):
         """
-        Set/get frequency, leave blank to get frequency
+        Set or get the PWM frequency.
 
-        :param freq: frequency(0-65535)(Hz)
-        :type freq: float
-        :return: frequency
-        :rtype: float
+        Args:
+            freq (Optional[float]): Frequency in Hz (0-65535). Leave blank to get the current frequency.
+
+        Returns:
+            float: The current frequency.
         """
-        if freq == None:
+        if freq is None:
             return self._freq
 
         self._freq = int(freq)
-        # [prescaler,arr] list
-        result_ap = []
-        # accuracy list
-        result_acy = []
-        # middle value for equal arr prescaler
+        result_ap = []  # List of [prescaler, period]
+        result_acy = []  # Accuracy list
+
         st = int(math.sqrt(self.CLOCK / self._freq))
-        # get -5 value as start
         st -= 5
-        # prevent negetive value
         if st <= 0:
             st = 1
         for psc in range(st, st + 10):
             arr = int(self.CLOCK / self._freq / psc)
             result_ap.append([psc, arr])
             result_acy.append(abs(self._freq - self.CLOCK / psc / arr))
+
         i = result_acy.index(min(result_acy))
-        psc = result_ap[i][0]
-        arr = result_ap[i][1]
-        self.logger.debug(f"prescaler: {psc}, period: {arr}")
+        psc, arr = result_ap[i]
+        self.logger.debug(f"Prescaler: {psc}, Period: {arr}")
         self.prescaler(psc)
         self.period(arr)
 
     def prescaler(self, prescaler=None):
         """
-        Set/get prescaler, leave blank to get prescaler
+        Set or get the prescaler value.
 
-        :param prescaler: prescaler(0-65535)
-        :type prescaler: int
-        :return: prescaler
-        :rtype: int
+        Args:
+            prescaler (Optional[int]): Prescaler value (0-65535). Leave blank to get the current prescaler value.
+
+        Returns:
+            int: The current prescaler value.
         """
-        if prescaler == None:
+        if prescaler is None:
             return self._prescaler
 
         self._prescaler = round(prescaler)
@@ -114,33 +186,35 @@ class PWM(I2C):
 
     def period(self, arr=None):
         """
-        Set/get period, leave blank to get period
+        Set or get the period value.
 
-        :param arr: period(0-65535)
-        :type arr: int
-        :return: period
-        :rtype: int
+        Args:
+            arr (Optional[int]): Period value (0-65535). Leave blank to get the current period value.
+
+        Returns:
+            int: The current period value.
         """
         global timer
-        if arr == None:
+        if arr is None:
             return timer[self.timer]["arr"]
 
         timer[self.timer]["arr"] = round(arr)
         self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
         reg = self.REG_ARR + self.timer
-        self.logger.debug(f"Set arr to: {timer[self.timer]['arr']}")
+        self.logger.debug(f"Set period to: {timer[self.timer]['arr']}")
         self._i2c_write(reg, timer[self.timer]["arr"])
 
     def pulse_width(self, pulse_width=None):
         """
-        Set/get pulse width, leave blank to get pulse width
+        Set or get the pulse width.
 
-        :param pulse_width: pulse width(0-65535)
-        :type pulse_width: float
-        :return: pulse width
-        :rtype: float
+        Args:
+            pulse_width (Optional[float]): Pulse width value (0-65535). Leave blank to get the current pulse width.
+
+        Returns:
+            float: The current pulse width value.
         """
-        if pulse_width == None:
+        if pulse_width is None:
             return self._pulse_width
 
         self._pulse_width = int(pulse_width)
@@ -149,21 +223,20 @@ class PWM(I2C):
 
     def pulse_width_percent(self, pulse_width_percent=None):
         """
-        Set/get pulse width percentage, leave blank to get pulse width percentage
+        Set or get the pulse width percentage.
 
-        :param pulse_width_percent: pulse width percentage(0-100)
-        :type pulse_width_percent: float
-        :return: pulse width percentage
-        :rtype: float
+        Args:
+            pulse_width_percent (Optional[float]): Pulse width percentage (0-100). Leave blank to get the current pulse width percentage.
+
+        Returns:
+            float: The current pulse width percentage.
         """
         global timer
-        if pulse_width_percent == None:
+        if pulse_width_percent is None:
             return self._pulse_width_percent
 
         self._pulse_width_percent = pulse_width_percent
-        temp = self._pulse_width_percent / 100.0
-        # print(temp)
-        pulse_width = temp * timer[self.timer]["arr"]
+        pulse_width = (pulse_width_percent / 100.0) * timer[self.timer]["arr"]
         self.pulse_width(pulse_width)
 
 
