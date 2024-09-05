@@ -1,3 +1,17 @@
+"""
+A module to manage communication between a Raspberry Pi and devices that support the I2C protocol.
+
+I2C stands for Inter-Integrated Circuit and is a type of synchronous communication protocol, that allows multiple integrated circuits (ICs) to communicate with one another using just two lines:
+
+- **SCL (Clock line)**: Synchronizes the data transfer between the devices.
+- **SDA (Data line)**: Carries the data between the devices.
+
+#### How They Work
+- **Master**: The device that initiates and controls the communication.
+- **Slave**: The device that responds to the master's request.
+- Each I2C device has a unique address that allows the master to communicate with specific devices.
+"""
+
 from typing import Any, List, Optional, Union
 
 from app.util.logger import Logger

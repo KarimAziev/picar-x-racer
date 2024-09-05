@@ -1,3 +1,9 @@
+"""
+A module to manage Servo motors using PWM (Pulse Width Modulation) control.
+ - Control the angle of the servo motor.
+ - Set the pulse width for precise control.
+"""
+
 from app.util.logger import Logger
 
 from .pwm import PWM

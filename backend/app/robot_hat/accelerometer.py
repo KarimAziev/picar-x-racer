@@ -1,5 +1,10 @@
+"""
+This module provides a class for interfacing with an ADXL345 accelerometer sensor using I2C.
+"""
+
+from typing import List, Optional, Union
+
 from .i2c import I2C
-from typing import Union, List, Optional
 
 
 class ADXL345(I2C):

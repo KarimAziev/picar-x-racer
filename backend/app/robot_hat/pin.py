@@ -1,3 +1,23 @@
+"""
+A module to manage the pins of a Raspberry Pi and perform various operations like:
+- setting up pin modes
+- reading or writing values to the pin
+- configuring interrupts.
+
+#### What Are Pins?
+Pins are tiny metal sticks or connectors on the board that can be used for different purposes like sending signals (messages), powering up things, sensing things, and more.
+
+#### Types of Pins
+1. **Power Pins**: These are like magic sources that give energy to other parts. They are usually labeled as **3.3V** or **5V** (the amount of energy they provide).
+2. **Ground Pins (GND)**: These are like the ground in your house. They help to complete the electrical circuit safely.
+3. **GPIO Pins (General-Purpose Input/Output)**: Think of these as the magic wands. They can be used for either sending out signals (Output) or receiving signals (Input).
+
+#### How They Work
+- **Power Pins**: If you connect a toy that needs power to these pins, it will turn on!
+- **Ground Pins**: When you connect your toys to these, it helps to complete the magic circuit, making everything safe and working.
+- **GPIO Pins**: You can turn lights on and off, read switches, control motors, and do many other magical things by connecting these.
+"""
+
 from typing import Dict, Optional, Union
 
 from app.util.logger import Logger

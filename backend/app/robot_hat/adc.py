@@ -1,3 +1,11 @@
+"""
+A module to manage the Analog-to-Digital Converter (ADC) on the Raspberry Pi.
+
+An Analog-to-Digital Converter (ADC) converts an analog signal into a digital signal.
+
+This is essential for interpreting analog signals from sensors in digital devices like a Raspberry Pi.
+"""
+
 from .i2c import I2C
 
 

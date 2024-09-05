@@ -1,3 +1,7 @@
+"""
+This module provides an interface for interacting with the HC-SR04 ultrasonic sensor to measure distances.
+"""
+
 import asyncio
 import time
 

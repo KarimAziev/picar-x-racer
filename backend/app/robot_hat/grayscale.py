@@ -1,5 +1,11 @@
-from .adc import ADC
+"""
+Grayscale Module provides 3-channel grayscale sensing, allowing for the
+detection of line status or intensity using three individual ADC channels.
+"""
+
 from typing import Optional
+
+from .adc import ADC
 
 
 class Grayscale_Module(object):
