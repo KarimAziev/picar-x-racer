@@ -29,6 +29,7 @@ def create_app(
     from app.endpoints.audio import audio_management_bp
     from app.endpoints.battery import battery_bp
     from app.endpoints.camera import camera_feed_bp
+    from app.endpoints.distance import distance_bp
     from app.endpoints.file_management import file_management_bp
     from app.endpoints.main import main_bp
     from app.endpoints.settings import settings_bp
@@ -40,6 +41,7 @@ def create_app(
     app.register_blueprint(settings_bp)
     app.register_blueprint(battery_bp)
     app.register_blueprint(audio_management_bp)
+    app.register_blueprint(distance_bp)
     app.register_blueprint(main_bp)
 
     app.config["car_manager"] = car_manager
