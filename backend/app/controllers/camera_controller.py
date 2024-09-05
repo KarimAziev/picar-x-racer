@@ -16,7 +16,7 @@ from app.config.paths import (
 )
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from app.util.video_utils import enhance_frame
+from app.util.video_utils import simulate_robocop_vision
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 640
@@ -582,7 +582,7 @@ class CameraController(metaclass=SingletonMeta):
         """
         return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 95])
 
-    def generate_extra_high_quality_stream_jpg(self) -> Generator[bytes, None, None]:
+    def generate_robocop_vision_stream_jpg(self) -> Generator[bytes, None, None]:
         """
         Generate extra high-quality video stream with target width and height.
 
@@ -590,7 +590,7 @@ class CameraController(metaclass=SingletonMeta):
             Generator[bytes, None, None]: High-quality video stream.
         """
         return self.async_generate_video_stream(
-            ".jpg", [cv2.IMWRITE_JPEG_QUALITY, 100], enhance_frame
+            ".jpg", [cv2.IMWRITE_JPEG_QUALITY, 100], simulate_robocop_vision
         )
 
     def generate_low_quality_stream_jpg(self) -> Generator[bytes, None, None]:

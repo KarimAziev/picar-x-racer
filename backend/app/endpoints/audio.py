@@ -1,12 +1,12 @@
 from os import path
-from typing import TYPE_CHECKING, Dict, Any, Union
-from typing import TYPE_CHECKING
-from flask import Blueprint, current_app, jsonify, request
+from typing import TYPE_CHECKING, Any, Dict, Union
+
 from app.util.logger import Logger
+from flask import Blueprint, current_app, jsonify, request
 
 if TYPE_CHECKING:
-    from app.controllers.files_controller import FilesController
     from app.controllers.audio_controller import AudioController
+    from app.controllers.files_controller import FilesController
 
 audio_management_bp = Blueprint("audio_management", __name__)
 logger = Logger(__name__)

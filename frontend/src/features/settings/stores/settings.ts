@@ -9,7 +9,7 @@ import {
 import { wait } from "@/util/wait";
 import { isNumber } from "@/util/guards";
 import { toggleableSettings } from "@/features/settings/config";
-import { SettingsTab } from "@/features/settings/enums";
+import { SettingsTab, videoFeedEntities } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { omit } from "@/util/obj";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
@@ -156,11 +156,10 @@ export const useStore = defineStore("settings", {
     },
     increaseQuality() {
       const messager = useMessagerStore();
-      const levels = Object.entries(VideoFeedURL);
-      const idx = levels.findIndex(
+      const idx = videoFeedEntities.findIndex(
         ([_key, val]) => val === this.settings.video_feed_url,
       );
-      const nextEntry = levels[idx + 1] || levels[0];
+      const nextEntry = videoFeedEntities[idx + 1] || videoFeedEntities[0];
       if (nextEntry) {
         this.settings.video_feed_url = nextEntry[1];
         messager.info(`Setted ${nextEntry[0]}`);
@@ -168,11 +167,12 @@ export const useStore = defineStore("settings", {
     },
     decreaseQuality() {
       const messager = useMessagerStore();
-      const levels = Object.entries(VideoFeedURL);
-      const idx = levels.findIndex(
+      const idx = videoFeedEntities.findIndex(
         ([_key, val]) => val === this.settings.video_feed_url,
       );
-      const nextEntry = levels[idx - 1] || levels[levels.length - 1];
+      const nextEntry =
+        videoFeedEntities[idx - 1] ||
+        videoFeedEntities[videoFeedEntities.length - 1];
       if (nextEntry) {
         this.settings.video_feed_url = nextEntry[1];
         messager.info(`Setted ${nextEntry[0]}`);

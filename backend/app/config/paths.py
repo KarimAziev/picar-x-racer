@@ -46,3 +46,7 @@ HUMAN_FACE_CASCADE_PATH_EXTENDED = expand_file_in_project_dir(
 CAT_FACE_EXTENDED_CASCADE_PATH = expand_file_in_project_dir(
     "data/haarcascades/haarcascade_frontalcatface_extended.xml"
 )
+
+FONT_PATH = expand_file_in_project_dir(
+    "frontend/src/assets/font/tt-octosquares-regular.ttf"
+)

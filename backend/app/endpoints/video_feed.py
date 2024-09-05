@@ -56,7 +56,7 @@ async def video_feed_xhq() -> Response:
     logger.info("Serving extra high quality JPG stream.")
     await camera_manager.restart()
     response = Response(
-        camera_manager.generate_extra_high_quality_stream_jpg(),
+        camera_manager.generate_robocop_vision_stream_jpg(),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
     response.headers.add("Access-Control-Allow-Origin", "*")
