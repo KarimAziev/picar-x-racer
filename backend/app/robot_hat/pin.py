@@ -5,7 +5,62 @@ from gpiozero import Button, InputDevice, OutputDevice
 
 
 class Pin(object):
-    """Pin manipulation class"""
+    """
+    A class to manage the pins of a Raspberry Pi and perform various operations like setting up pin modes, reading or writing values to the pin, and configuring interrupts.
+
+    ### Pin Modes:
+    - OUT (0x01): Configure the pin as an output pin.
+    - IN (0x02): Configure the pin as an input pin.
+
+    ### Internal Pull-Up/Pull-Down Resistors:
+    - PULL_UP (0x11): Enable internal pull-up resistor.
+    - PULL_DOWN (0x12): Enable internal pull-down resistor.
+    - PULL_NONE (None): No internal pull-up or pull-down resistor.
+
+    ### Interrupt Triggers:
+    - IRQ_FALLING (0x21): Interrupt on falling edge.
+    - IRQ_RISING (0x22): Interrupt on rising edge.
+    - IRQ_RISING_FALLING (0x23): Interrupt on both rising and falling edges.
+
+    ### Attributes:
+        - `_dict` (Dict[str, int]): Dictionary to map board names to GPIO pin numbers.
+
+    ### Methods:
+        - `__init__(self, pin: Union[int, str], mode: Optional[int] = None, pull: Optional[int] = None)`: Initialize the Pin.
+        - `dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]`: Set/get the pin dictionary.
+        - `close(self)`: Close the GPIO pin.
+        - `deinit(self)`: Deinitialize the GPIO pin and its pin factory.
+        - `setup(self, mode, pull=None)`: Set up the GPIO pin mode and pull-up/down resistors.
+        - `__call__(self, value)`: Set/get the pin value.
+        - `value(self, value: Optional[int] = None)`: Set/get the pin value.
+        - `on(self)`: Set the pin value to high (1).
+        - `off(self)`: Set the pin value to low (0).
+        - `high(self)`: Alias for `on()`.
+        - `low(self)`: Alias for `off()`.
+        - `irq(self, handler, trigger, bouncetime=200, pull=None)`: Set the pin interrupt handler.
+        - `name(self)`: Get the pin name.
+
+    #### What Are Pins?
+    Pins are tiny metal sticks or connectors on the board that can be used for different purposes like sending signals (messages), powering up things, sensing things, and more.
+
+    #### Types of Pins
+    1. **Power Pins**: These are like magic sources that give energy to other parts. They are usually labeled as **3.3V** or **5V** (the amount of energy they provide).
+    2. **Ground Pins (GND)**: These are like the ground in your house. They help to complete the electrical circuit safely.
+    3. **GPIO Pins (General-Purpose Input/Output)**: Think of these as the magic wands. They can be used for either sending out signals (Output) or receiving signals (Input).
+
+    #### How They Work
+    - **Power Pins**: If you connect a toy that needs power to these pins, it will turn on!
+    - **Ground Pins**: When you connect your toys to these, it helps to complete the magic circuit, making everything safe and working.
+    - **GPIO Pins**: You can turn lights on and off, read switches, control motors, and do many other magical things by connecting these.
+
+    #### Playing with Pins
+    Let's say you have an LED light, just like a small light bulb.
+    1. You connect one leg of the LED light to a **3.3V Power Pin** (for energy).
+    2. Connect the other leg to a **Ground Pin** (to complete the circuit).
+    3. Now, if you want to control this light using code, you would connect the LED light to one of the **GPIO Pins**.
+
+    By writing some code, you can tell the GPIO Pin to turn the light on or off.
+    """
 
     OUT = 0x01
     """Pin mode output"""
@@ -22,7 +77,7 @@ class Pin(object):
     IRQ_FALLING = 0x21
     """Pin interrupt falling"""
     IRQ_RISING = 0x22
-    """Pin interrupt falling"""
+    """Pin interrupt rising"""
     IRQ_RISING_FALLING = 0x23
     """Pin interrupt both rising and falling"""
 
@@ -64,20 +119,20 @@ class Pin(object):
         **kwargs,
     ):
         """
-        Initialize a pin
+        Initialize a GPIO Pin.
 
-        :param pin: pin number of Raspberry Pi
-        :type pin: int/str
-        :param mode: pin mode(IN/OUT)
-        :type mode: int
-        :param pull: pin pull up/down(PUD_UP/PUD_DOWN/PUD_NONE)
-        :type pull: int
+        Args:
+            pin (Union[int, str]): Pin number or name of the Raspberry Pi.
+            mode (Optional[int]): Mode of the pin, either `Pin.OUT` for output or `Pin.IN` for input. Default is None.
+            pull (Optional[int]): Configure internal pull-up or pull-down resistors. `Pin.PULL_UP`, `Pin.PULL_DOWN`, or `Pin.PULL_NONE`. Default is None.
+
+        Raises:
+            ValueError: If the provided pin is not in the pin dictionary or not a valid type.
         """
         super().__init__(*args, **kwargs)
-
         self.logger = Logger(__name__)
 
-        # parse pin
+        # Parse pin
         pin_dict = self.dict()
         if isinstance(pin, str):
             if pin not in pin_dict.keys():
@@ -97,7 +152,7 @@ class Pin(object):
             msg = f'Pin should be in {pin_dict.keys()}, not "{pin}"'
             self.logger.error(msg)
             raise ValueError(msg)
-        # setup
+
         self._value = 0
         self.gpio = None
         self.setup(mode, pull)
@@ -105,12 +160,16 @@ class Pin(object):
 
     def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
         """
-        Set/get the pin dictionary
+        Set or get the pin dictionary which maps pin names to GPIO numbers.
 
-        :param _dict: pin dictionary, leave it empty to get the dictionary
-        :type _dict: dict
-        :return: pin dictionary
-        :rtype: dict
+        Args:
+            _dict (Optional[Dict[str, int]]): Provide a new pin dictionary. Leave it empty to get the current dictionary.
+
+        Returns:
+            Dict[str, int]: The current pin dictionary.
+
+        Raises:
+            ValueError: If the provided dictionary is not of valid format.
         """
         if _dict is None:
             return self._dict
@@ -123,10 +182,16 @@ class Pin(object):
         return self._dict
 
     def close(self):
+        """
+        Close the GPIO pin.
+        """
         if self.gpio:
             self.gpio.close()
 
     def deinit(self):
+        """
+        Deinitialize the GPIO pin and its factory.
+        """
         if self.gpio:
             self.gpio.close()
             pin_factory = self.gpio.pin_factory
@@ -135,31 +200,31 @@ class Pin(object):
 
     def setup(self, mode, pull=None):
         """
-        Setup the pin
+        Setup the GPIO pin with a specific mode and optional pull-up/down resistor configuration.
 
-        :param mode: pin mode(IN/OUT)
-        :type mode: int
-        :param pull: pin pull up/down(PUD_UP/PUD_DOWN/PUD_NONE)
-        :type pull: int
+        Args:
+            mode (int): Mode of the pin (`Pin.OUT` for output, `Pin.IN` for input). Default is None.
+            pull (Optional[int]): Configure pull-up/down resistors (`Pin.PULL_UP`, `Pin.PULL_DOWN`, `Pin.PULL_NONE`). Default is None.
+
+        Raises:
+            ValueError: If the mode or pull parameters are not valid.
         """
-
-        # check mode
         if mode in [None, self.OUT, self.IN]:
             self._mode = mode
         else:
             raise ValueError(f"mode param error, should be None, Pin.OUT, Pin.IN")
-        # check pull
+
         if pull in [self.PULL_NONE, self.PULL_DOWN, self.PULL_UP]:
             self._pull = pull
         else:
             raise ValueError(
                 f"pull param error, should be None, Pin.PULL_NONE, Pin.PULL_DOWN, Pin.PULL_UP"
             )
-        #
+
         if self.gpio != None:
             if self.gpio.pin != None:
                 self.gpio.close()
-        #
+
         if mode in [None, self.OUT]:
             self.gpio = OutputDevice(self._pin_num)
         else:
@@ -170,23 +235,28 @@ class Pin(object):
 
     def __call__(self, value):
         """
-        Set/get the pin value
+        Set or get the value of the GPIO pin.
 
-        :param value: pin value, leave it empty to get the value(0/1)
-        :type value: int
-        :return: pin value(0/1)
-        :rtype: int
+        Args:
+            value (int): Value to set the pin (high=1, low=0).
+
+        Returns:
+            int: Value of the pin (0 or 1).
         """
         return self.value(value)
 
     def value(self, value: Optional[int] = None):
         """
-        Set/get the pin value
+        Set or get the value of the GPIO pin.
 
-        :param value: pin value, leave it empty to get the value(0/1)
-        :type value: int
-        :return: pin value(0/1)
-        :rtype: int
+        Args:
+            value (Optional[int]): Value to set the pin (high=1, low=0). Leave empty to get the current value.
+
+        Returns:
+            int: Value of the pin (0 or 1) if value is not provided.
+
+        Raises:
+            ValueError: If the mode is not valid or the pin is not properly initialized.
         """
         if value == None:
             if self._mode in [None, self.OUT]:
@@ -211,59 +281,58 @@ class Pin(object):
 
     def on(self):
         """
-        Set pin on(high)
+        Set the pin value to high (1).
 
-        :return: pin value(1)
-        :rtype: int
+        Returns:
+            int: The set pin value (1).
         """
         return self.value(1)
 
     def off(self):
         """
-        Set pin off(low)
+        Set the pin value to low (0).
 
-        :return: pin value(0)
-        :rtype: int
+        Returns:
+            int: The set pin value (0).
         """
         return self.value(0)
 
     def high(self):
         """
-        Set pin high(1)
+        Alias for `on()` - Set the pin value to high (1).
 
-        :return: pin value(1)
-        :rtype: int
+        Returns:
+            int: The set pin value (1).
         """
         return self.on()
 
     def low(self):
         """
-        Set pin low(0)
+        Alias for `off()` - Set the pin value to low (0).
 
-        :return: pin value(0)
-        :rtype: int
+        Returns:
+            int: The set pin value (0).
         """
         return self.off()
 
     def irq(self, handler, trigger, bouncetime=200, pull=None):
         """
-        Set the pin interrupt
+        Set the pin interrupt handler.
 
-        :param handler: interrupt handler callback function
-        :type handler: function
-        :param trigger: interrupt trigger(RISING, FALLING, RISING_FALLING)
-        :type trigger: int
-        :param bouncetime: interrupt bouncetime in miliseconds
-        :type bouncetime: int
+        Args:
+            handler (function): Interrupt handler callback function.
+            trigger (int): Interrupt trigger (`Pin.IRQ_FALLING`, `Pin.IRQ_RISING`, `Pin.IRQ_RISING_FALLING`).
+            bouncetime (int): Interrupt debounce time in milliseconds. Default is 200.
+            pull (Optional[int]): Configure pull-up/down resistors (`Pin.PULL_UP`, `Pin.PULL_DOWN`, `Pin.PULL_NONE`). Default is None.
+
+        Raises:
+            ValueError: If the trigger or pull parameters are not valid.
         """
-
-        # check trigger
         if trigger not in [self.IRQ_FALLING, self.IRQ_RISING, self.IRQ_RISING_FALLING]:
             raise ValueError(
-                f"trigger param error, should be None, Pin.IRQ_FALLING, Pin.IRQ_RISING, Pin.IRQ_RISING_FALLING"
+                f"trigger param error, should be Pin.IRQ_FALLING, Pin.IRQ_RISING, Pin.IRQ_RISING_FALLING"
             )
 
-        # check pull
         if pull in [self.PULL_NONE, self.PULL_DOWN, self.PULL_UP]:
             self._pull = pull
             if pull == self.PULL_UP:
@@ -272,12 +341,12 @@ class Pin(object):
                 _pull_up = False
         else:
             raise ValueError(
-                f"pull param error, should be None, Pin.PULL_NONE, Pin.PULL_DOWN, Pin.PULL_UP"
+                f"pull param error, should be Pin.PULL_NONE, Pin.PULL_DOWN, Pin.PULL_UP"
             )
-        #
+
         pressed_handler = None
         released_handler = None
-        #
+
         if not isinstance(self.gpio, Button):
             if self.gpio != None:
                 self.gpio.close()
@@ -298,7 +367,7 @@ class Pin(object):
                     bounce_time=float(bouncetime / 1000),
                 )
                 self._bouncetime = bouncetime
-        #
+
         if trigger in [None, self.IRQ_FALLING]:
             pressed_handler = handler
         elif trigger in [self.IRQ_RISING]:
@@ -306,7 +375,7 @@ class Pin(object):
         elif trigger in [self.IRQ_RISING_FALLING]:
             pressed_handler = handler
             released_handler = handler
-        #
+
         if pressed_handler is not None:
             self.gpio.when_pressed = pressed_handler
         if released_handler is not None:
@@ -314,9 +383,9 @@ class Pin(object):
 
     def name(self):
         """
-        Get the pin name
+        Get the GPIO pin name.
 
-        :return: pin name
-        :rtype: str
+        Returns:
+            str: The GPIO pin name.
         """
         return f"GPIO{self._pin_num}"
