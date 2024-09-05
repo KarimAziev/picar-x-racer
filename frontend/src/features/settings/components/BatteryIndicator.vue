@@ -82,11 +82,4 @@ onUnmounted(() => {
   overflow: hidden;
   animation: hide-caret 0s steps(30, end) forwards 2s;
 }
-
-.battery-indicator {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  z-index: 11;
-}
 </style>

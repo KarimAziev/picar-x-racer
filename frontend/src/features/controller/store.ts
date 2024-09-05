@@ -5,6 +5,7 @@ import {
   usePopupStore,
   useBatteryStore,
   useCalibrationStore,
+  useDistanceStore,
 } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
@@ -62,10 +63,6 @@ export interface Gauges {
    * Camera tilt angle
    */
   camTilt: number;
-  /**
-   * Last measured distance
-   */
-  distance: number;
 }
 
 export interface StoreState extends Gauges, Modes {
@@ -102,7 +99,6 @@ const defaultGauges: Gauges = {
   maxSpeed: 80,
   camPan: 0,
   camTilt: 0,
-  distance: 0,
 } as const;
 
 const modes: Modes = {
@@ -125,6 +121,7 @@ export const useControllerStore = defineStore("controller", {
   actions: {
     initializeWebSocket(url: string) {
       const messager = useMessagerStore();
+      const distanceStore = useDistanceStore();
       const calibrationStore = useCalibrationStore();
       this.url = url;
 
@@ -154,7 +151,7 @@ export const useControllerStore = defineStore("controller", {
               if (error) {
                 messager.error(error, "distance error");
               } else {
-                this.distance = payload;
+                distanceStore.distance = payload;
               }
 
               break;
@@ -270,7 +267,6 @@ export const useControllerStore = defineStore("controller", {
 
       this.loading = false;
       this.speed = 0;
-      this.websocket = undefined;
       this.messageQueue = [];
     },
     // command workers
@@ -446,8 +442,9 @@ export const useControllerStore = defineStore("controller", {
       }
     },
 
-    getDistance(): void {
-      this.sendMessage({ action: "getDistance" });
+    async getDistance() {
+      const distanceStore = useDistanceStore();
+      await distanceStore.fetchDistance();
     },
 
     async takePhoto() {

@@ -5,6 +5,7 @@ import { useStore as useImageStore } from "@/features/settings/stores/images";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
+import { useStore as useDistanceStore } from "@/features/settings/stores/distance";
 
 export {
   useImageStore,
@@ -14,4 +15,5 @@ export {
   usePopupStore,
   useBatteryStore,
   useCalibrationStore,
+  useDistanceStore,
 };

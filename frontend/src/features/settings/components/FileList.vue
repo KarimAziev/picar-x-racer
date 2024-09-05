@@ -70,8 +70,6 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-@import "/src/assets/scss/variables.scss";
-
 .files {
   display: flex;
   list-style: none;

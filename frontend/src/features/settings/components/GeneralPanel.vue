@@ -100,8 +100,6 @@ const allMusic = computed(() => [
 </script>
 
 <style scoped lang="scss">
-@import "/src/assets/scss/variables.scss";
-
 .wrapper {
   min-width: 620px;
   max-width: 1200px;

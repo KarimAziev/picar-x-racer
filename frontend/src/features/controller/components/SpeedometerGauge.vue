@@ -82,8 +82,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@import "/src/assets/scss/variables.scss";
-
 .speedometer {
   position: relative;
   width: 300px;

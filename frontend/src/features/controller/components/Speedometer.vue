@@ -1,12 +1,10 @@
 <template>
-  <div class="speedometer-wrapper">
-    <SpeedometerGauge
-      :segments="10"
-      :value="speed"
-      :minValue="0"
-      :maxValue="100"
-    />
-  </div>
+  <SpeedometerGauge
+    :segments="10"
+    :value="speed"
+    :minValue="0"
+    :maxValue="100"
+  />
 </template>
 <script setup lang="ts">
 import { useControllerStore } from "@/features/controller/store";

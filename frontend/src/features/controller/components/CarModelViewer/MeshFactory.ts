@@ -3,8 +3,10 @@ import * as THREE from "three";
 export const colors = {
   white: 0xffffff,
   white2: 0xf9f9f9,
-  black: 0x000000,
+  whiteMute: 0xf2f2f2,
+  black: 0x181818,
   grey: 0x404040,
+  indigo: 0x2c3e50,
   silver: 0xc0c0c0,
   red: 0xff0000,
   emerald: 0x10b981,

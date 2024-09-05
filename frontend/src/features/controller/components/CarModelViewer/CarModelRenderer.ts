@@ -13,7 +13,8 @@ import { colors, MeshFactory } from "./MeshFactory";
  */
 export class CarModelRenderer {
   private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
+  public camera: THREE.PerspectiveCamera;
+  public cameraObject: THREE.Object3D;
   private renderer: THREE.WebGLRenderer;
   private pan: number = 0;
   private tilt: number = 0;
@@ -21,7 +22,6 @@ export class CarModelRenderer {
   private servoAngle: number = 0;
   private speed: number = 0;
   private direction: number = 0;
-  private cameraObject: THREE.Object3D;
   private head: THREE.Mesh;
   private neck: THREE.Mesh;
   private body: THREE.Mesh;
@@ -182,6 +182,7 @@ export class CarModelRenderer {
 
   private getColorForDistance(distance: number): THREE.Color {
     const normalizedDistance = Math.min(distance / this.maxDistance, 1);
+
     const color = new THREE.Color();
 
     if (normalizedDistance <= 0.5) {
@@ -197,28 +198,30 @@ export class CarModelRenderer {
   }
 
   private animate() {
-    requestAnimationFrame(this.animate.bind(this));
     this.updateState();
     this.renderer.render(this.scene, this.camera);
+    requestAnimationFrame(this.animate.bind(this));
   }
 
   private initialize() {
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(
-      20,
+      40,
       this.width / this.height,
       0.1,
       1000,
     );
 
-    this.camera.position.set(5, 5, -10);
+    this.camera.zoom = 5;
+
+    this.camera.position.set(5, 5, -40);
     this.camera.lookAt(new THREE.Vector3(0, 2, 0));
 
     const ambientLight = new THREE.AmbientLight(colors.white);
     this.scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(colors.white, 1);
+    const directionalLight = new THREE.DirectionalLight(colors.whiteMute, 1);
     directionalLight.position.set(1, 2, 4).normalize();
     this.scene.add(directionalLight);
 
@@ -227,7 +230,7 @@ export class CarModelRenderer {
     this.rootElement.appendChild(this.renderer.domElement);
 
     this.cameraObject = new THREE.Object3D();
-    this.cameraObject.rotation.y = THREE.MathUtils.degToRad(120);
+    this.cameraObject.rotation.y = THREE.MathUtils.degToRad(25);
 
     this.body = this.createBody();
 
@@ -325,7 +328,7 @@ export class CarModelRenderer {
       this.calcDimension(0.6),
       this.calcDimension(0.1),
       this.calcDimension(0.7),
-      colors.white2,
+      colors.whiteMute,
     );
 
     robotHAT.position.set(0, this.calcDimension(0.1), this.calcDimension(0.1));
@@ -426,7 +429,7 @@ export class CarModelRenderer {
       this.calcDimension(0.05),
       this.calcDimension(0.05),
       height,
-      colors.grey,
+      colors.black,
     );
 
     const wheelA = this.createWheel(wheelSize);
@@ -444,7 +447,7 @@ export class CarModelRenderer {
   private createWheel(size = 0.3) {
     const wheelWidth = this.calcDimension(0.18);
     const smallWheelWidth = this.calcDimension(0.19);
-    const wheelSize = this.calcDimension(size);
+    const wheelSize = size;
 
     const wheel = MeshFactory.createCylinder(
       wheelSize,
@@ -468,7 +471,7 @@ export class CarModelRenderer {
       const spike = MeshFactory.createRectangle(
         spikeWidth,
         wheelSize / 2,
-        colors.white2,
+        colors.whiteMute,
       );
       wheel.add(spike);
       spike.rotation.y = THREE.MathUtils.degToRad(i * 10);

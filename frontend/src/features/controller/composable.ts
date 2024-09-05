@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { renameKeys } from "rename-obj-map";
 import { useControllerStore } from "@/features/controller/store";
 import { useSettingsStore } from "@/features/settings/stores";
@@ -8,7 +8,7 @@ import { groupKeys } from "@/features/settings/util";
 import { usePopupStore } from "@/features/settings/stores";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
 
-export const useCarController = (
+export const useController = (
   controllerStore: ReturnType<typeof useControllerStore>,
   settingsStore: ReturnType<typeof useSettingsStore>,
   popupStore: ReturnType<typeof usePopupStore>,
@@ -71,6 +71,13 @@ export const useCarController = (
     loopTimer.value = setTimeout(() => gameLoop(), 50);
   };
 
+  const cleanupGameLoop = () => {
+    if (loopTimer.value) {
+      clearTimeout(loopTimer.value);
+      loopTimer.value = undefined;
+    }
+  };
+
   const updateCarState = () => {
     const leftKey = findKey(settingsKeybindings.value.left);
     const rightKey = findKey(settingsKeybindings.value?.right);
@@ -100,26 +107,60 @@ export const useCarController = (
     }
   };
 
-  onMounted(() => {
+  const addKeyEventListeners = () => {
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+  };
+
+  const removeKeyEventListeners = () => {
+    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keyup", handleKeyUp);
+  };
+
+  const connectWS = () => {
     controllerStore.reconnectedEnabled = true;
     if (!controllerStore.connected && !controllerStore.loading) {
       controllerStore.initializeWebSocket(
         "ws://" + window.location.hostname + ":8765",
       );
     }
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+  };
 
+  return {
+    cleanupGameLoop,
+    loopTimer,
+    updateCarState,
+    gameLoop,
+    handleKeyDown,
+    handleKeyUp,
+    addKeyEventListeners,
+    removeKeyEventListeners,
+    connectWS,
+  };
+};
+
+export const useCarController = (
+  controllerStore: ReturnType<typeof useControllerStore>,
+  settingsStore: ReturnType<typeof useSettingsStore>,
+  popupStore: ReturnType<typeof usePopupStore>,
+) => {
+  const {
+    gameLoop,
+    addKeyEventListeners,
+    removeKeyEventListeners,
+    cleanupGameLoop,
+    connectWS,
+  } = useController(controllerStore, settingsStore, popupStore);
+
+  onMounted(() => {
+    connectWS();
+    addKeyEventListeners();
     gameLoop();
   });
 
-  onUnmounted(() => {
-    if (loopTimer.value) {
-      clearTimeout(loopTimer.value);
-      loopTimer.value = undefined;
-    }
-    window.removeEventListener("keydown", handleKeyDown);
-    window.removeEventListener("keyup", handleKeyUp);
+  onBeforeUnmount(() => {
+    cleanupGameLoop();
+    removeKeyEventListeners();
     controllerStore.cleanup();
   });
 };

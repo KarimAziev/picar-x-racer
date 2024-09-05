@@ -21,7 +21,6 @@
       :value="servoAngle"
       value-suffix="°"
     />
-    <InfoItem label="Distance" :value="distance.toFixed(2)" value-suffix="cm" />
     <InfoItem label="Max Speed" :value="maxSpeed" />
     <InfoItem
       v-if="calibrationMode"
@@ -63,7 +62,7 @@ const calibrationMode = computed(() => store.calibrationMode);
 const camPan = computed(() => store.camPan);
 const camTilt = computed(() => store.camTilt);
 const servoAngle = computed(() => store.servoAngle);
-const distance = computed(() => store.distance);
+
 const maxSpeed = computed(() => store.maxSpeed);
 </script>
 

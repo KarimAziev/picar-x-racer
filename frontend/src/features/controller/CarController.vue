@@ -1,13 +1,13 @@
 <template>
   <div class="wrapper">
-    <div class="content" v-if="!isSettingsOpened">
-      <VideoBox />
-    </div>
+    <div class="content" v-if="!isSettingsOpened"><VideoBox /></div>
     <div class="right" v-if="loaded">
       <CarModelViewer
-        v-if="isCarModelVisible && !isVirtualMode"
-        :width="300"
-        :height="300"
+        v-if="isCarModelVisible"
+        class="car-model"
+        :zoom="4"
+        :rotationY="20"
+        :rotationX="0"
       />
       <TextInfo v-if="isTextInfoVisible" />
       <Speedometer v-if="isSpeedometerVisible" />
@@ -24,7 +24,6 @@ import { useControllerStore } from "@/features/controller/store";
 const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
 const popupStore = usePopupStore();
-const isVirtualMode = computed(() => settingsStore.settings.virtual_mode);
 const isSettingsOpened = computed(() => popupStore.isOpen);
 const loaded = computed(() => settingsStore.loaded);
 
@@ -82,5 +81,10 @@ useCarController(controllerStore, settingsStore, popupStore);
   padding: 1rem 0;
   justify-content: space-between;
   align-items: center;
+}
+
+.car-model {
+  height: 80vh;
+  position: fixed;
 }
 </style>

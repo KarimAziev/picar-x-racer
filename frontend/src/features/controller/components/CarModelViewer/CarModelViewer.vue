@@ -1,34 +1,70 @@
 <template>
-  <div ref="rootElement" />
+  <div ref="rootElement" class="wrapper" :class="class" />
 </template>
 
 <script setup lang="ts">
+import * as THREE from "three";
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { CarModelRenderer } from "@/features/controller/components/CarModelViewer/CarModelRenderer";
 import { useControllerStore } from "@/features/controller/store";
+import { useElementSize } from "@/composables/useElementSize";
+import { useDistanceStore } from "@/features/settings/stores";
+import { isNumber } from "@/util/guards";
+
+const props = defineProps<{
+  class?: string;
+  zoom?: number;
+  rotationY?: number;
+  rotationX?: number;
+  cameraPosition?: [x: number, y: number, z: number];
+}>();
 
 const store = useControllerStore();
+const distanceStore = useDistanceStore();
 const rootElement = ref<HTMLElement | null>(null);
+const parentSize = useElementSize(rootElement);
 let carVisualization: CarModelRenderer | null = null;
-
-const props = defineProps<{ height?: number; width?: number }>();
 
 onMounted(() => {
   if (rootElement.value) {
     carVisualization = new CarModelRenderer(rootElement.value, {
-      width: props.width || 300,
-      height: props.height || 300,
+      width: parentSize.width,
+      height: parentSize.height,
+      bodyLength: 1.5,
     });
     carVisualization.updatePan(store.camPan);
     carVisualization.updateTilt(store.camTilt);
-    carVisualization.updateDistance(store.distance);
+    carVisualization.updateDistance(distanceStore.distance);
     carVisualization.updateServoDir(store.servoAngle);
     carVisualization.updateSpeed(store.speed);
+    if (props.zoom) {
+      carVisualization.camera.zoom = props.zoom;
+    }
+    if (props.cameraPosition) {
+      carVisualization.camera.position.set(...props.cameraPosition);
+    }
+    if (isNumber(props.rotationY)) {
+      carVisualization.cameraObject.rotation.y = THREE.MathUtils.degToRad(
+        props.rotationY,
+      );
+    }
+    if (isNumber(props.rotationX)) {
+      carVisualization.cameraObject.rotation.x = THREE.MathUtils.degToRad(
+        props.rotationX,
+      );
+    }
   }
 });
 
 watch(
-  () => store.distance,
+  () => ({ ...parentSize }),
+  (newVal) => {
+    carVisualization?.setSize(newVal.width, newVal.height);
+  },
+);
+
+watch(
+  () => distanceStore.distance,
   (newVal) => {
     carVisualization?.updateDistance(newVal);
   },
@@ -73,4 +109,8 @@ onUnmounted(() => {
   carVisualization = null;
 });
 </script>
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.wrapper {
+  width: 100%;
+}
+</style>

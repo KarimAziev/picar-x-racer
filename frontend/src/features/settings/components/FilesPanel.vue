@@ -53,6 +53,4 @@ const onUpload = async (_event: FileUploadUploadEvent) => {
 };
 </script>
 
-<style scoped lang="scss">
-@import "/src/assets/scss/variables.scss";
-</style>
+<style scoped lang="scss"></style>

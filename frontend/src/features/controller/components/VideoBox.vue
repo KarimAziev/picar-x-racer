@@ -6,8 +6,7 @@
     :default-width="defaultWidth"
     :default-height="defaultHeight"
   >
-    <ImageFeed v-if="!isVirtualMode" />
-    <CarModelViewer v-else :width="1400" :height="800" />
+    <ImageFeed />
   </ResizableContainer>
 </template>
 <script setup lang="ts">
@@ -20,21 +19,13 @@ const ImageFeed = defineAsyncComponent({
   loader: () => import("@/ui/ImageFeed.vue"),
 });
 
-const CarModelViewer = defineAsyncComponent({
-  loader: () =>
-    import(
-      "@/features/controller/components/CarModelViewer/CarModelViewer.vue"
-    ),
-});
-
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 
-const isVirtualMode = computed(() => settingsStore.settings.virtual_mode);
 const fullscreen = computed(() => settingsStore.settings.fullscreen);
 const defaultWidth = computed(() => settingsStore.dimensions.width);
 const defaultHeight = computed(() => settingsStore.dimensions.height);
-const isResizable = computed(() => !popupStore.isOpen && !isVirtualMode.value);
+const isResizable = computed(() => !popupStore.isOpen);
 </script>
 
 <style scoped lang="scss"></style>

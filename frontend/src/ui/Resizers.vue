@@ -136,7 +136,7 @@ $base-size: 120px;
 .resizer.bottom {
   left: 50%;
   width: 100%;
-  height: 50%;
+  height: 10%;
   cursor: ns-resize;
   margin-left: -50%;
 }

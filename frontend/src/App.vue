@@ -1,9 +1,33 @@
 <template>
   <RouterView />
+  <LazySettings />
   <Messager />
+  <div class="indicators">
+    <Distance />
+    <BatteryIndicator />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { RouterView } from "vue-router";
+import { defineAsyncComponent } from "vue";
 import Messager from "@/features/messager/Messager.vue";
+import LazySettings from "@/features/settings/LazySettings.vue";
+
+const Distance = defineAsyncComponent({
+  loader: () => import("@/features/controller/components/Distance.vue"),
+});
+
+const BatteryIndicator = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/BatteryIndicator.vue"),
+});
 </script>
+<style scoped lang="scss">
+.indicators {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 11;
+  text-align: left;
+}
+</style>
