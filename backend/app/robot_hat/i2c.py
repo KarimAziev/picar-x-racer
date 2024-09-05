@@ -1,3 +1,5 @@
+from typing import Any, List, Optional, Union
+
 from app.util.logger import Logger
 from smbus2 import SMBus
 
@@ -5,10 +7,10 @@ from .utils import run_command
 
 
 def _retry_wrapper(func):
-    def wrapper(self, *arg, **kwargs):
+    def wrapper(self: "I2C", *args: Any, **kwargs: Any) -> Any:
         for _ in range(self.RETRY):
             try:
-                return func(self, *arg, **kwargs)
+                return func(self, *args, **kwargs)
             except OSError:
                 self.logger.debug(f"OSError: {func.__name__}")
                 continue
@@ -90,7 +92,13 @@ class I2C(object):
     RETRY = 5
     """Number of retry attempts for I2C communication"""
 
-    def __init__(self, address=None, bus=1, *args, **kwargs):
+    def __init__(
+        self,
+        address: Optional[Union[int, List[int]]] = None,
+        bus: int = 1,
+        *args: Any,
+        **kwargs: Any,
+    ):
         """
         Initialize the I2C bus.
 
@@ -116,7 +124,7 @@ class I2C(object):
             self.address = address
 
     @_retry_wrapper
-    def _write_byte(self, data):
+    def _write_byte(self, data: int) -> Optional[int]:
         """
         Write a single byte to the I2C device.
 
@@ -131,7 +139,7 @@ class I2C(object):
         return result
 
     @_retry_wrapper
-    def _write_byte_data(self, reg, data):
+    def _write_byte_data(self, reg: int, data: int) -> Optional[int]:
         """
         Write a byte of data to a specific register.
 
@@ -147,7 +155,7 @@ class I2C(object):
             return self._smbus.write_byte_data(self.address, reg, data)
 
     @_retry_wrapper
-    def _write_word_data(self, reg, data):
+    def _write_word_data(self, reg: int, data: int) -> Optional[int]:
         """
         Write a word of data to a specific register.
 
@@ -163,7 +171,7 @@ class I2C(object):
             return self._smbus.write_word_data(self.address, reg, data)
 
     @_retry_wrapper
-    def _write_i2c_block_data(self, reg: int, data):
+    def _write_i2c_block_data(self, reg: int, data: List[int]) -> Optional[int]:
         """
         Write blocks of data to a specific register.
 
@@ -181,7 +189,7 @@ class I2C(object):
             return self._smbus.write_i2c_block_data(self.address, reg, data)
 
     @_retry_wrapper
-    def _read_byte(self):
+    def _read_byte(self) -> Optional[int]:
         """
         Read a single byte from the I2C device.
 
@@ -194,7 +202,7 @@ class I2C(object):
             return result
 
     @_retry_wrapper
-    def _read_byte_data(self, reg):
+    def _read_byte_data(self, reg: int) -> Optional[int]:
         """
         Read a byte of data from a specific register.
 
@@ -210,7 +218,7 @@ class I2C(object):
             return result
 
     @_retry_wrapper
-    def _read_word_data(self, reg):
+    def _read_word_data(self, reg: int) -> Optional[List[int]]:
         """
         Read a word of data from a specific register.
 
@@ -227,7 +235,7 @@ class I2C(object):
             return result_list
 
     @_retry_wrapper
-    def _read_i2c_block_data(self, reg, num):
+    def _read_i2c_block_data(self, reg: int, num: int) -> Optional[List[int]]:
         """
         Read blocks of data from a specific register.
 
@@ -246,7 +254,7 @@ class I2C(object):
             return result
 
     @_retry_wrapper
-    def is_ready(self):
+    def is_ready(self) -> bool:
         """
         Check if the I2C device is ready.
 
@@ -258,7 +266,7 @@ class I2C(object):
             return True
         return False
 
-    def scan(self):
+    def scan(self) -> List[int]:
         """
         Scan the I2C bus for devices.
 
@@ -285,7 +293,7 @@ class I2C(object):
         self.logger.debug(f"Connected i2c device: {addresses_str}")
         return addresses
 
-    def write(self, data):
+    def write(self, data: Union[int, List[int], bytearray]) -> None:
         """
         Write data to the I2C device.
 
@@ -329,7 +337,7 @@ class I2C(object):
             data = list(data_all[1:])
             self._write_i2c_block_data(reg, data)
 
-    def read(self, length=1):
+    def read(self, length: int = 1):
         """
         Read data from the I2C device.
 
@@ -349,7 +357,7 @@ class I2C(object):
             result.append(self._read_byte())
         return result
 
-    def mem_write(self, data, memaddr):
+    def mem_write(self, data: Union[int, List[int], bytearray], memaddr: int) -> None:
         """
         Write data to a specific register address.
 
@@ -379,7 +387,7 @@ class I2C(object):
 
         self._write_i2c_block_data(memaddr, data_all)
 
-    def mem_read(self, length, memaddr):
+    def mem_read(self, length: int, memaddr: int) -> Optional[List[int]]:
         """
         Read data from a specific register address.
 
@@ -393,7 +401,7 @@ class I2C(object):
         result = self._read_i2c_block_data(memaddr, length)
         return result
 
-    def is_avaliable(self):
+    def is_avaliable(self) -> bool:
         """
         Check if the I2C device is available.
 
