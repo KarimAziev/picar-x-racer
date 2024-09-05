@@ -41,5 +41,10 @@ async def frame_dimensions():
 @camera_feed_bp.route("/api/close-camera", methods=["GET"])
 def close_camera():
     camera_manager: "CameraController" = current_app.config["camera_manager"]
-    camera_manager.shutdown()
+    logger.warning(f"Closing camera {camera_manager.active_clients}")
+    if camera_manager.active_clients <= 1:
+        camera_manager.shutdown()
+        if camera_manager.executor_shutdown:
+            camera_manager.recreate_executor()
+
     return jsonify({"OK": True})

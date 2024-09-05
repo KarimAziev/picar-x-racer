@@ -122,6 +122,7 @@ class CameraController(metaclass=SingletonMeta):
     ):
         self.active_clients += 1
         self.logger.info(f"Active Clients: {self.active_clients}")
+        skip_count = 0
 
         try:
             while True:
@@ -131,6 +132,7 @@ class CameraController(metaclass=SingletonMeta):
                     )
 
                 if img_copy is not None:
+                    skip_count = 0
                     if detection_func:
                         img_copy = detection_func(img_copy)
 
@@ -150,7 +152,9 @@ class CameraController(metaclass=SingletonMeta):
                     encoded_frame = future.result()
                     yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
                 else:
-                    self.logger.debug("Flask image is None, skipping frame.")
+                    if skip_count < 1:
+                        self.logger.debug("Flask image is None, skipping frame.")
+                    skip_count += 1
         finally:
             self.active_clients -= 1
             self.logger.info(f"Active Clients: {self.active_clients}")

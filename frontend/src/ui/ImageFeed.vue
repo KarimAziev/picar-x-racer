@@ -9,7 +9,8 @@
 
 <script setup lang="ts">
 import { useSettingsStore } from "@/features/settings/stores";
-import { computed } from "vue";
+import { computed, onUnmounted } from "vue";
+import { cameraClose } from "@/features/controller/api";
 
 const settingsStore = useSettingsStore();
 const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
@@ -17,15 +18,13 @@ const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
 const handleOnLoad = async () => {
   await settingsStore.fetchDimensions();
 };
-/**
- * onUnmounted(async () => {
- *   try {
- *     await cameraClose();
- *   } catch (error) {
- *     console.error(error);
- *   }
- * });
- */
+onUnmounted(async () => {
+  try {
+    await cameraClose();
+  } catch (error) {
+    console.error(error);
+  }
+});
 </script>
 
 <style scoped lang="scss">
