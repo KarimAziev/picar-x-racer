@@ -18,6 +18,8 @@ const dimensions = [
   [1920, 1200],
 ];
 
+const MAX_FPS = 70;
+
 export interface CameraOpenRequestParams {
   width?: number;
   height?: number;
@@ -52,12 +54,12 @@ export const useStore = defineStore("camera", {
 
       try {
         this.loading = true;
-        await wait(500);
         const { data } = await axios.post<CameraOpenRequestParams>(
           "/api/start-camera",
           payload || this.data,
           { signal: cancelTokenSource.signal },
         );
+        await wait(500);
         const { fps, width, height } = data;
         const size = width && height ? `${width}x${height}` : "";
         this.data = data;
@@ -125,14 +127,14 @@ export const useStore = defineStore("camera", {
       const fps = this.data.fps || 30;
       await this.cameraStart({
         ...this.data,
-        fps: constrain(10, 60, fps + 10),
+        fps: constrain(10, MAX_FPS, fps + 10),
       });
     },
     async decreaseFPS() {
       const fps = this.data.fps || 30;
       await this.cameraStart({
         ...this.data,
-        fps: constrain(10, 60, fps - 10),
+        fps: constrain(5, MAX_FPS, Math.max(5, fps - 10)),
       });
     },
     async increaseDimension() {

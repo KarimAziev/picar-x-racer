@@ -15,6 +15,7 @@ export class CarModelRenderer {
   private scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
   public cameraObject: THREE.Object3D;
+  private detectedWall: THREE.Mesh;
   private renderer: THREE.WebGLRenderer;
   private pan: number = 0;
   private tilt: number = 0;
@@ -89,6 +90,10 @@ export class CarModelRenderer {
     this.direction = direction;
   }
 
+  public updateDistance(value: number) {
+    this.distance = value;
+  }
+
   public rotateWheels() {
     const maxRPM = 200;
     const gearRatio = 48;
@@ -115,92 +120,6 @@ export class CarModelRenderer {
 
   public updateServoDir(angle: number) {
     this.servoAngle = angle;
-  }
-
-  private renderDistance() {
-    const value = this.distance;
-    const distanceInMeters = (value / 100) * this.scaleFactor;
-
-    const positions = this.distanceLine.geometry.attributes.position
-      .array as Float32Array;
-
-    positions[0] = this.calcDimension(-0.1);
-    positions[1] = 0;
-    positions[2] = 0;
-
-    positions[3] = 0;
-    positions[4] = 0;
-    positions[5] = distanceInMeters;
-
-    this.distanceLine.geometry.attributes.position.needsUpdate = true;
-
-    const color = this.getColorForDistance(value);
-    (this.distanceLine.material as THREE.LineBasicMaterial).color = color;
-
-    const conePos = this.distanceCone.geometry.attributes.position.array;
-    conePos[4] = distanceInMeters;
-
-    this.distanceCone.geometry.attributes.position.needsUpdate = true;
-    this.distanceCone.position.set(
-      this.calcDimension(-0.1),
-      0,
-      distanceInMeters,
-    );
-
-    this.distanceCone.visible = value > 0;
-
-    (this.distanceCone.material as THREE.MeshBasicMaterial).opacity = Math.max(
-      0.1,
-      (1 - distanceInMeters) / 1,
-    );
-
-    this.distanceSpheres.forEach((sphere, index) => {
-      const sphereDistance = ((index * 10) / 100) * this.scaleFactor;
-      (sphere.material as THREE.MeshBasicMaterial).color =
-        this.getColorForDistance((sphereDistance / this.scaleFactor) * 100);
-
-      if (sphereDistance <= distanceInMeters && index > 2) {
-        sphere.visible = true;
-      } else {
-        sphere.visible = false;
-      }
-    });
-  }
-
-  private updateState() {
-    this.head.rotation.copy(
-      new THREE.Euler(
-        THREE.MathUtils.degToRad(-this.tilt),
-        THREE.MathUtils.degToRad(-this.pan),
-        Math.PI / 2,
-      ),
-    );
-    this.rotateWheels();
-    this.renderDistance();
-    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
-  }
-
-  private getColorForDistance(distance: number): THREE.Color {
-    const normalizedDistance = Math.min(distance / this.maxDistance, 1);
-
-    const color = new THREE.Color();
-
-    if (normalizedDistance <= 0.5) {
-      color.setHSL((2 / 3) * (normalizedDistance * 2), 1, 0.5);
-    } else {
-      color.setHSL((2 / 3) * (1 - (normalizedDistance - 0.5) * 2), 1, 0.5);
-    }
-    return color;
-  }
-
-  private calcDimension(value: number) {
-    return (value / 1.5) * this.bodyLength;
-  }
-
-  private animate() {
-    this.updateState();
-    this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(this.animate.bind(this));
   }
 
   private initialize() {
@@ -263,6 +182,15 @@ export class CarModelRenderer {
       this.body.add(pair);
     });
 
+    this.detectedWall = MeshFactory.createBox(
+      this.calcDimension(2),
+      this.calcDimension(2),
+      this.calcDimension(0.1),
+      colors.red,
+    );
+    this.detectedWall.visible = false;
+    this.body.add(this.detectedWall);
+
     new OrbitControls(this.camera, this.renderer.domElement);
     this.cameraObject.add(this.body);
     this.scene.add(this.cameraObject);
@@ -271,6 +199,99 @@ export class CarModelRenderer {
     this.updateServoDir(this.servoAngle);
     this.updatePan(this.pan);
 
+    requestAnimationFrame(this.animate.bind(this));
+  }
+
+  private renderDistance() {
+    const value = this.distance;
+    const distanceInMeters = (value / 100) * this.scaleFactor;
+
+    const positions = this.distanceLine.geometry.attributes.position
+      .array as Float32Array;
+
+    positions[0] = this.calcDimension(-0.1);
+    positions[1] = 0;
+    positions[2] = 0;
+
+    positions[3] = 0;
+    positions[4] = 0;
+    positions[5] = distanceInMeters;
+
+    this.distanceLine.geometry.attributes.position.needsUpdate = true;
+
+    const color = this.getColorForDistance(value);
+    (this.distanceLine.material as THREE.LineBasicMaterial).color = color;
+
+    const conePos = this.distanceCone.geometry.attributes.position.array;
+    conePos[4] = distanceInMeters;
+
+    this.distanceCone.geometry.attributes.position.needsUpdate = true;
+    this.distanceCone.position.set(
+      this.calcDimension(-0.1),
+      0,
+      distanceInMeters,
+    );
+
+    this.distanceCone.visible = value > 0;
+
+    (this.distanceCone.material as THREE.MeshBasicMaterial).opacity = Math.max(
+      0.1,
+      (1 - distanceInMeters) / 1,
+    );
+
+    this.distanceSpheres.forEach((sphere, index) => {
+      const sphereDistance = ((index * 10) / 100) * this.scaleFactor;
+      (sphere.material as THREE.MeshBasicMaterial).color =
+        this.getColorForDistance((sphereDistance / this.scaleFactor) * 100);
+
+      if (sphereDistance <= distanceInMeters && index > 2) {
+        sphere.visible = true;
+      } else {
+        sphere.visible = false;
+      }
+    });
+
+    if (value > 0) {
+      this.detectedWall.visible = true;
+      this.detectedWall.position.set(0, 0, distanceInMeters + this.bodyLength);
+    } else {
+      this.detectedWall.visible = false;
+    }
+  }
+
+  private updateState() {
+    this.head.rotation.copy(
+      new THREE.Euler(
+        THREE.MathUtils.degToRad(-this.tilt),
+        THREE.MathUtils.degToRad(-this.pan),
+        Math.PI / 2,
+      ),
+    );
+    this.rotateWheels();
+    this.renderDistance();
+    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
+  }
+
+  private getColorForDistance(distance: number): THREE.Color {
+    const normalizedDistance = Math.min(distance / this.maxDistance, 1);
+
+    const color = new THREE.Color();
+
+    if (normalizedDistance <= 0.5) {
+      color.setHSL((2 / 3) * (normalizedDistance * 2), 1, 0.5);
+    } else {
+      color.setHSL((2 / 3) * (1 - (normalizedDistance - 0.5) * 2), 1, 0.5);
+    }
+    return color;
+  }
+
+  private calcDimension(value: number) {
+    return (value / 1.5) * this.bodyLength;
+  }
+
+  private animate() {
+    this.updateState();
+    this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this.animate.bind(this));
   }
 
@@ -542,9 +563,5 @@ export class CarModelRenderer {
     head.add(leftEar);
     head.add(rightEar);
     return head;
-  }
-
-  public updateDistance(value: number) {
-    this.distance = value;
   }
 }
