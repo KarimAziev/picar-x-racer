@@ -2,27 +2,26 @@ import asyncio
 import os
 import subprocess
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from typing import Callable, Generator, List, Optional, Sequence, Tuple, Union
 
 import cv2
 import numpy as np
-import torch
-import torchvision.transforms as T
-from app.config.paths import (
-    CAT_FACE_CASCADE_PATH,
-    CAT_FACE_EXTENDED_CASCADE_PATH,
-    HUMAN_FACE_CASCADE_PATH,
-    HUMAN_FULL_BODY_CASCADE_PATH,
-)
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from app.util.video_utils import simulate_robocop_vision
+from app.util.video_utils import (
+    detect_cat_extended_faces,
+    detect_cat_faces,
+    detect_full_body_faces,
+    detect_human_faces,
+    encode_and_detect,
+    simulate_robocop_vision,
+)
 from cv2 import VideoCapture
 
 # Constants for target width and height of video streams
-TARGET_WIDTH = 640
-TARGET_HEIGHT = 480
+TARGET_WIDTH = 320
+TARGET_HEIGHT = 240
 
 CameraInfo = Tuple[int, str, Optional[str]]
 
@@ -34,10 +33,10 @@ class CameraController(metaclass=SingletonMeta):
     and streaming video frames to clients.
     """
 
-    def __init__(self, max_workers=4, target_fps=30):
+    def __init__(self, max_workers=4, target_fps=10):
         self.max_workers = max_workers
         self.logger = Logger(name=__name__)
-        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.executor = ProcessPoolExecutor(max_workers=max_workers)
         self.executor_shutdown = False
         self.active_clients = 0
         self.target_fps = target_fps
@@ -49,125 +48,11 @@ class CameraController(metaclass=SingletonMeta):
         self.flask_img: Optional[np.ndarray] = None
         self.video_devices: List[str] = []
         self.failed_camera_indexes: List[int] = []
-        self.lock = threading.Lock()
         self.cap: Union[VideoCapture, None] = None
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.cat_face_cascade = cv2.CascadeClassifier(CAT_FACE_CASCADE_PATH)
-        self.cat_face_extended_cascade = cv2.CascadeClassifier(
-            CAT_FACE_EXTENDED_CASCADE_PATH
-        )
-        self.human_face_cascade = cv2.CascadeClassifier(HUMAN_FACE_CASCADE_PATH)
-        self.human_full_body_cascade = cv2.CascadeClassifier(
-            HUMAN_FULL_BODY_CASCADE_PATH
-        )
-        self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5n")
-
-        self.frame_skip_interval = 2
+        self.frame_skip_interval = 1
         self.frame_counter = 0
         self.frame_width: Optional[int] = None
         self.frame_height: Optional[int] = None
-
-    def detect_cat_extended_faces(self, frame: np.ndarray) -> np.ndarray:
-        if self.frame_counter % self.frame_skip_interval != 0:
-            return frame
-        try:
-            border_color = (191, 255, 0)
-
-            # Resize frame to a square shape, e.g., 320x320
-            resized_frame = cv2.resize(frame, (320, 320))
-
-            # Convert the frame to a torch tensor and move to the appropriate device
-            transform = T.ToTensor()
-            tensor_frame = transform(resized_frame).unsqueeze(0).to(self.device)
-
-            # Perform the detection
-            results = self.yolo_model(tensor_frame)[0]
-
-            # Scale factors to map results back to original frame size
-            scale_x = frame.shape[1] / resized_frame.shape[1]
-            scale_y = frame.shape[0] / resized_frame.shape[0]
-
-            for (
-                result
-            ) in (
-                results.cpu().numpy()
-            ):  # move results back to CPU for further processing
-                x1, y1, x2, y2 = result[:4]
-                conf = result[4]
-                class_scores = result[5:]
-                cls = np.argmax(class_scores)
-                cls_name = self.yolo_model.names[cls]
-
-                if cls_name == "cat" and conf > 0.25:  # confidence threshold
-                    x1, y1, x2, y2 = map(
-                        int, [x1 * scale_x, y1 * scale_y, x2 * scale_x, y2 * scale_y]
-                    )
-                    frame = cv2.rectangle(frame, (x1, y1), (x2, y2), border_color, 2)
-                    frame = cv2.putText(
-                        frame,
-                        f"{cls_name} {conf:.2f}",
-                        (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        border_color,
-                        2,
-                    )
-        except Exception as e:
-            self.logger.error(f"Error in detect_cat_faces: {e}")
-
-        return frame
-
-    def detect_full_body_faces(self, frame: np.ndarray) -> np.ndarray:
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        human_full_bodies = self.human_full_body_cascade.detectMultiScale(
-            gray_frame, scaleFactor=1.1, minNeighbors=5
-        )
-        for x, y, w, h in human_full_bodies:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
-        return frame
-
-    def detect_cat_faces(self, frame: np.ndarray) -> np.ndarray:
-        if self.frame_counter % self.frame_skip_interval != 0:
-            return frame
-
-        if self.yolo_model is None:
-            self.yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5n")
-
-        border_color = (191, 255, 0)
-
-        reduced_frame = cv2.resize(frame, (320, 240))
-        results = self.yolo_model(reduced_frame)
-        scale_x = frame.shape[1] / reduced_frame.shape[1]
-        scale_y = frame.shape[0] / reduced_frame.shape[0]
-
-        for result in results.xyxy[0]:
-            x1, y1, x2, y2, conf, cls = result
-            if self.yolo_model.names[int(cls)] == "cat":
-                x1, y1, x2, y2 = map(
-                    int, [x1 * scale_x, y1 * scale_y, x2 * scale_x, y2 * scale_y]
-                )
-                frame = cv2.rectangle(frame, (x1, y1), (x2, y2), border_color, 2)
-                frame = cv2.putText(
-                    frame,
-                    f"{self.yolo_model.names[int(cls)]} {conf:.2f}",
-                    (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    border_color,
-                    2,
-                )
-        return frame
-
-    def detect_human_faces(self, frame: np.ndarray) -> np.ndarray:
-        if self.frame_counter % self.frame_skip_interval != 0:
-            return frame
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        human_faces = self.human_face_cascade.detectMultiScale(
-            gray_frame, scaleFactor=1.1, minNeighbors=5
-        )
-        for x, y, w, h in human_faces:
-            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (191, 255, 0), 2)
-        return frame
 
     def async_generate_video_stream(
         self,
@@ -182,34 +67,21 @@ class CameraController(metaclass=SingletonMeta):
         skip_count = 0
         try:
             while True:
-                with self.lock:
-                    img_copy = (
-                        self.flask_img.copy() if self.flask_img is not None else None
-                    )
+                img_copy = self.flask_img.copy() if self.flask_img is not None else None
 
                 if img_copy is not None:
                     skip_count = 0
-
-                    # Process frame in a separate thread
-                    if detection_func:
-                        future = self.executor.submit(detection_func, img_copy)
-                        img_copy = future.result()
-
-                    if self.executor_shutdown:
-                        self.logger.warning(
-                            "Executor already shutdown, cannot submit new task."
-                        )
-                        break
                     future = self.executor.submit(
-                        self.encode,
+                        encode_and_detect,
                         img_copy,
                         format,
                         encode_params,
                         frame_enhancer,
-                        height,
+                        detection_func,
                     )
                     encoded_frame = future.result()
                     yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
+
                 else:
                     if skip_count < 1:
                         self.logger.debug("Flask image is None, skipping frame.")
@@ -269,37 +141,35 @@ class CameraController(metaclass=SingletonMeta):
                 self.frame_counter += 1  # Increment frame counter
 
                 self.img = frame
-
-                with self.lock:
-                    self.flask_img = frame.copy()
+                self.flask_img = frame.copy()
 
         except Exception as e:
             self.logger.error(f"Exception occurred in camera loop: {e}")
         finally:
             self.cap.release()
             self.cap = None
-            with self.lock:
-                self.flask_img = None
+            self.flask_img = None
+
             self.logger.info("Camera loop terminated and camera released.")
 
     def generate_high_quality_stream_jpg_cat_recognize(
         self,
     ) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream(
-            ".png",
-            [],
+            ".jpg",
+            [cv2.IMWRITE_JPEG_QUALITY, 50],
             None,
-            detection_func=self.detect_cat_faces,
+            detection_func=detect_cat_faces,
         )
 
     def generate_high_quality_stream_jpg_cat_extended_recognize(
         self,
     ) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream(
-            ".png",
-            [],
+            ".jpg",
+            [cv2.IMWRITE_JPEG_QUALITY, 50],
             None,
-            detection_func=self.detect_cat_extended_faces,
+            detection_func=detect_cat_extended_faces,
         )
 
     def generate_high_quality_stream_jpg_human_recognize(
@@ -309,7 +179,7 @@ class CameraController(metaclass=SingletonMeta):
             ".png",
             [],
             None,
-            detection_func=self.detect_human_faces,
+            detection_func=detect_human_faces,
         )
 
     def generate_high_quality_stream_jpg_human_full_body_recognize(
@@ -319,7 +189,7 @@ class CameraController(metaclass=SingletonMeta):
             ".jpg",
             [cv2.IMWRITE_JPEG_QUALITY, 100],
             None,
-            detection_func=self.detect_full_body_faces,
+            detection_func=detect_full_body_faces,
         )
 
     @staticmethod
@@ -424,7 +294,7 @@ class CameraController(metaclass=SingletonMeta):
         self,
         vflip=False,
         hflip=False,
-        fps=30,
+        fps=10,
         width: Optional[int] = None,
         height: Optional[int] = None,
     ):
@@ -465,8 +335,7 @@ class CameraController(metaclass=SingletonMeta):
         self.camera_run = False
         if hasattr(self, "camera_thread"):
             self.camera_thread.join()
-        with self.lock:
-            self.flask_img = None
+        self.flask_img = None
 
     def shutdown(self):
         """
@@ -489,14 +358,14 @@ class CameraController(metaclass=SingletonMeta):
         Recreate the ThreadPoolExecutor if it has been shut down.
         """
         if self.executor_shutdown:
-            self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
+            self.executor = ProcessPoolExecutor(max_workers=self.max_workers)
             self.executor_shutdown = False
 
     async def start_camera_and_wait_for_flask_img(
         self,
         vflip=False,
         hflip=False,
-        fps=30,
+        fps=10,
         width: Optional[int] = None,
         height: Optional[int] = None,
     ):
@@ -514,11 +383,10 @@ class CameraController(metaclass=SingletonMeta):
         counter = 0
 
         while True:
-            with self.lock:
-                if self.flask_img is not None:
-                    break
-                if counter <= 1:
-                    self.logger.debug("waiting for flask img")
+            if self.flask_img is not None:
+                break
+            if counter <= 1:
+                self.logger.debug("waiting for flask img")
             counter += 1
             await asyncio.sleep(0.1)
 
@@ -540,8 +408,8 @@ class CameraController(metaclass=SingletonMeta):
 
         status = False
         for _ in range(5):
-            with self.lock:
-                img_copy = self.img.copy() if self.img is not None else None
+
+            img_copy = self.img.copy() if self.img is not None else None
 
             if img_copy is not None:
                 status = cv2.imwrite(os.path.join(path, photo_name), img_copy)
@@ -582,8 +450,7 @@ class CameraController(metaclass=SingletonMeta):
         Raises:
             ValueError: If the Flask image is None.
         """
-        with self.lock:
-            frame_array = self.flask_img.copy() if self.flask_img is not None else None
+        frame_array = self.flask_img.copy() if self.flask_img is not None else None
 
         if frame_array is None:
             self.logger.error("get_frame: Flask image is None, cannot get frame.")
@@ -602,8 +469,7 @@ class CameraController(metaclass=SingletonMeta):
         Raises:
             ValueError: If the Flask image is None.
         """
-        with self.lock:
-            frame_array = self.flask_img.copy() if self.flask_img is not None else None
+        frame_array = self.flask_img.copy() if self.flask_img is not None else None
 
         if frame_array is None:
             self.logger.error("get_png_frame: Flask image is None, cannot get frame.")
