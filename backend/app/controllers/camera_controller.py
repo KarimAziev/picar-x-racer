@@ -3,7 +3,7 @@ import os
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, Generator, List, Optional, Sequence, Tuple
+from typing import Callable, Generator, List, Optional, Sequence, Tuple, Union
 
 import cv2
 import numpy as np
@@ -18,6 +18,7 @@ from app.config.paths import (
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import simulate_robocop_vision
+from cv2 import VideoCapture
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 640
@@ -49,6 +50,7 @@ class CameraController(metaclass=SingletonMeta):
         self.video_devices: List[str] = []
         self.failed_camera_indexes: List[int] = []
         self.lock = threading.Lock()
+        self.cap: Union[VideoCapture, None] = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.cat_face_cascade = cv2.CascadeClassifier(CAT_FACE_CASCADE_PATH)
         self.cat_face_extended_cascade = cv2.CascadeClassifier(
@@ -62,6 +64,8 @@ class CameraController(metaclass=SingletonMeta):
 
         self.frame_skip_interval = 2
         self.frame_counter = 0
+        self.frame_width: Optional[int] = None
+        self.frame_height: Optional[int] = None
 
     def detect_cat_extended_faces(self, frame: np.ndarray) -> np.ndarray:
         if self.frame_counter % self.frame_skip_interval != 0:
@@ -220,15 +224,23 @@ class CameraController(metaclass=SingletonMeta):
                 self.camera_close()  # Close the camera when no active clients
 
     def camera_thread_func(self):
+        try:
+            if self.cap and self.cap.isOpened():
+                self.cap.release()
+        except Exception as e:
+            self.logger.error(f"Exception occurred in camera loop: {e}")
+        finally:
+            self.cap = None
+
         self.logger.info(f"Starting camera loop with camera index {self.camera_index}")
-        cap = self.camera_thread_func_setup()
+        self.cap = self.camera_thread_func_setup()
 
         failed_counter = 0
         max_failed_attempt_count = 10
 
         try:
             while self.camera_run:
-                ret, frame = cap.read()
+                ret, frame = self.cap.read()
                 if not ret:
                     if failed_counter < max_failed_attempt_count:
                         failed_counter += 1
@@ -236,14 +248,14 @@ class CameraController(metaclass=SingletonMeta):
                         continue
                     else:
                         self.failed_camera_indexes.append(self.camera_index)
-                        cap.release()
+                        self.cap.release()
                         new_index, _, device_info = self.find_camera_index()
                         if isinstance(new_index, int):
                             self.logger.info(
                                 f"Camera index {self.camera_index} is failed, trying {new_index}: {device_info}"
                             )
                             self.camera_index = new_index
-                            cap = self.camera_thread_func_setup()
+                            self.cap = self.camera_thread_func_setup()
                             failed_counter = 0
                             continue
                 else:
@@ -264,7 +276,8 @@ class CameraController(metaclass=SingletonMeta):
         except Exception as e:
             self.logger.error(f"Exception occurred in camera loop: {e}")
         finally:
-            cap.release()
+            self.cap.release()
+            self.cap = None
             with self.lock:
                 self.flask_img = None
             self.logger.info("Camera loop terminated and camera released.")
@@ -395,13 +408,21 @@ class CameraController(metaclass=SingletonMeta):
                     f"Exiting: Camera {self.camera_index} couldn't be opened."
                 )
 
-        # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1200)
-        # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 800)
+        if self.frame_width and self.frame_height:
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.frame_width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frame_height)
 
         cap.set(cv2.CAP_PROP_FPS, self.target_fps)
         return cap
 
-    def camera_start(self, vflip=False, hflip=False, fps=30):
+    def camera_start(
+        self,
+        vflip=False,
+        hflip=False,
+        fps=30,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ):
         """
         Start the camera capturing loop in a separate thread.
 
@@ -413,9 +434,16 @@ class CameraController(metaclass=SingletonMeta):
         self.logger.info(
             f"Starting camera with vflip={vflip}, hflip={hflip}, fps={fps}"
         )
+        if self.camera_run:
+            self.camera_close()
+
         self.camera_hflip = hflip
         self.camera_vflip = vflip
         self.target_fps = fps
+        self.frame_height = height
+        self.frame_width = (
+            width or CameraController.height_to_width(height) if height else None
+        )
         self.camera_run = True
 
         self.camera_thread = threading.Thread(target=self.camera_thread_func)
@@ -457,7 +485,12 @@ class CameraController(metaclass=SingletonMeta):
             self.executor_shutdown = False
 
     async def start_camera_and_wait_for_flask_img(
-        self, vflip=False, hflip=False, fps=30
+        self,
+        vflip=False,
+        hflip=False,
+        fps=30,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
     ):
         """
         Asynchronously start the camera and wait for the Flask image to be available.
@@ -468,13 +501,17 @@ class CameraController(metaclass=SingletonMeta):
             fps (int): Frames per second for the camera.
         """
         if not self.camera_run:
-            self.camera_start(vflip, hflip, fps)
+            self.camera_start(vflip, hflip, fps, width, height)
+
+        counter = 0
 
         while True:
             with self.lock:
                 if self.flask_img is not None:
                     break
-            self.logger.debug("waiting for flask img")
+                if counter <= 1:
+                    self.logger.debug("waiting for flask img")
+            counter += 1
             await asyncio.sleep(0.1)
 
     async def take_photo(self, photo_name: str, path: str) -> bool:

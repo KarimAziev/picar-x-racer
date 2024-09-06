@@ -1,8 +1,8 @@
 from time import localtime, strftime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Union
 
 from app.util.logger import Logger
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 
 if TYPE_CHECKING:
     from app.controllers.camera_controller import CameraController
@@ -46,3 +46,30 @@ def close_camera():
         camera_manager.camera_close()
 
     return jsonify({"OK": True})
+
+
+@camera_feed_bp.route("/api/start-camera", methods=["POST"])
+def start_camera():
+    camera_manager: "CameraController" = current_app.config["camera_manager"]
+    payload: Union[Dict[str, int], None] = request.json
+    logger.info(
+        f"Opening camera, camera running: {camera_manager.camera_run} executor shutdown: {camera_manager.executor_shutdown}"
+    )
+    if not camera_manager.camera_run:
+        fps = (
+            payload.get("fps", camera_manager.target_fps)
+            if payload
+            else camera_manager.target_fps
+        )
+        height = payload.get("height") if payload else None
+        width = payload.get("width") if payload else None
+        camera_manager.camera_start(fps=fps, width=width, height=height)
+
+    return jsonify(
+        {
+            "width": camera_manager.frame_width,
+            "height": camera_manager.frame_height,
+            "fps": camera_manager.target_fps,
+            "camera_running": camera_manager.camera_run,
+        }
+    )

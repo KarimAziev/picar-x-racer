@@ -1,5 +1,7 @@
 <template>
+  <ScanLines v-if="cameraStore.loading" />
   <img
+    v-else
     :src="videoFeedUrl"
     class="image-feed"
     alt="Video"
@@ -8,23 +10,20 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "@/features/settings/stores";
-import { computed, onUnmounted } from "vue";
-import { cameraClose } from "@/features/controller/api";
+import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
+import { computed, onUnmounted, onMounted } from "vue";
+import ScanLines from "@/ui/ScanLines.vue";
 
 const settingsStore = useSettingsStore();
+const cameraStore = useCameraStore();
 const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
 
 const handleOnLoad = async () => {
   await settingsStore.fetchDimensions();
 };
-onUnmounted(async () => {
-  try {
-    await cameraClose();
-  } catch (error) {
-    console.error(error);
-  }
-});
+
+onUnmounted(cameraStore.cameraClose);
+onMounted(cameraStore.cameraStart);
 </script>
 
 <style scoped lang="scss">
