@@ -55,15 +55,14 @@ def start_camera():
     logger.info(
         f"Opening camera, camera running: {camera_manager.camera_run} executor shutdown: {camera_manager.executor_shutdown}"
     )
-    if not camera_manager.camera_run:
-        fps = (
-            payload.get("fps", camera_manager.target_fps)
-            if payload
-            else camera_manager.target_fps
-        )
-        height = payload.get("height") if payload else None
-        width = payload.get("width") if payload else None
-        camera_manager.camera_start(fps=fps, width=width, height=height)
+    fps = (
+        payload.get("fps", camera_manager.target_fps)
+        if payload
+        else camera_manager.target_fps
+    )
+    height = payload.get("height") if payload else None
+    width = payload.get("width") if payload else None
+    camera_manager.camera_start(fps=fps, width=width, height=height)
 
     return jsonify(
         {

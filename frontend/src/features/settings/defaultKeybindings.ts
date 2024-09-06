@@ -35,6 +35,10 @@ export const defaultKeybindinds: Partial<
   toggleAutoMeasureDistanceMode: ["U"],
   toggleAutoDownloadPhoto: ["P"],
   toggleCalibration: ["C"],
+  increaseFPS: ["F"],
+  decreaseFPS: ["S"],
+  increaseDimension: ["]"],
+  decreaseDimension: ["["],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -63,6 +67,10 @@ export const commandLabels: Record<string, string> = {
   decreaseQuality: "Decrease Video Quality",
   toggleAvoidObstaclesMode: "Toggle Avoid Obstacles Mode",
   toggleCalibration: "Toggle Calibration Mode",
+  increaseFPS: "Increase FPS",
+  decreaseFPS: "Decrease FPS",
+  increaseDimension: "Increase dimension",
+  decreaseDimension: "Decrease dimension",
 };
 
 export const calibrationModeRemap: Partial<

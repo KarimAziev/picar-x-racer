@@ -1,5 +1,5 @@
 <template>
-  <ScanLines v-if="cameraStore.loading" />
+  <ScanLines v-if="cameraStore.loading" class="box" />
   <img
     v-else
     :src="videoFeedUrl"
@@ -18,9 +18,7 @@ const settingsStore = useSettingsStore();
 const cameraStore = useCameraStore();
 const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
 
-const handleOnLoad = async () => {
-  await settingsStore.fetchDimensions();
-};
+const handleOnLoad = async () => {};
 
 onUnmounted(cameraStore.cameraClose);
 onMounted(cameraStore.cameraStart);
@@ -31,6 +29,13 @@ onMounted(cameraStore.cameraStart);
   width: 100%;
   display: block;
   height: 100%;
+  box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
+  user-select: none;
+}
+.box {
+  width: 100%;
+  height: 100%;
+  opacity: 1;
   box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
   user-select: none;
 }

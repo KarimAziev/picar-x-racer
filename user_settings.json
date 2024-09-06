@@ -43,6 +43,10 @@
     "toggleVirtualMode": ["*"],
     "toggleAutoMeasureDistanceMode": ["U"],
     "toggleAutoDownloadPhoto": ["P"],
-    "toggleCalibration": ["C"]
+    "toggleCalibration": ["C"],
+    "increaseFPS": ["F"],
+    "decreaseFPS": ["S"],
+    "increaseDimension": ["]"],
+    "decreaseDimension": ["["]
   }
 }

@@ -6,6 +6,7 @@ import {
   useBatteryStore,
   useCalibrationStore,
   useDistanceStore,
+  useCameraStore,
 } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
@@ -565,6 +566,22 @@ export const useControllerStore = defineStore("controller", {
     toggleVirtualMode() {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("virtual_mode");
+    },
+    async increaseFPS() {
+      const camStore = useCameraStore();
+      await camStore.increaseFPS();
+    },
+    async decreaseFPS() {
+      const camStore = useCameraStore();
+      await camStore.decreaseFPS();
+    },
+    async increaseDimension() {
+      const camStore = useCameraStore();
+      await camStore.increaseDimension();
+    },
+    async decreaseDimension() {
+      const camStore = useCameraStore();
+      await camStore.decreaseDimension();
     },
   },
 });

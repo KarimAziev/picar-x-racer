@@ -11,7 +11,11 @@
 </template>
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from "vue";
-import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
+import {
+  usePopupStore,
+  useSettingsStore,
+  useCameraStore,
+} from "@/features/settings/stores";
 import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
 import ResizableContainer from "@/ui/ResizableContainer.vue";
 
@@ -21,10 +25,11 @@ const ImageFeed = defineAsyncComponent({
 
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
+const cameraStore = useCameraStore();
 
 const fullscreen = computed(() => settingsStore.settings.fullscreen);
-const defaultWidth = computed(() => settingsStore.dimensions.width);
-const defaultHeight = computed(() => settingsStore.dimensions.height);
+const defaultWidth = computed(() => cameraStore.data.width || 640);
+const defaultHeight = computed(() => cameraStore.data.height || 480);
 const isResizable = computed(() => !popupStore.isOpen);
 </script>
 

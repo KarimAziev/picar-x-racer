@@ -409,8 +409,13 @@ class CameraController(metaclass=SingletonMeta):
                 )
 
         if self.frame_width and self.frame_height:
+            self.logger.info(
+                f"Frame_width: {self.frame_width}, frame_height: {self.frame_height}"
+            )
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.frame_width)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frame_height)
+
+        self.logger.info(f"FPS: {self.target_fps}")
 
         cap.set(cv2.CAP_PROP_FPS, self.target_fps)
         return cap
@@ -435,7 +440,10 @@ class CameraController(metaclass=SingletonMeta):
             f"Starting camera with vflip={vflip}, hflip={hflip}, fps={fps}"
         )
         if self.camera_run:
-            self.camera_close()
+            try:
+                self.camera_close()
+            except Exception as e:
+                self.logger.error(f"Camera close error {e}")
 
         self.camera_hflip = hflip
         self.camera_vflip = vflip
