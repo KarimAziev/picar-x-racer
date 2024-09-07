@@ -78,6 +78,7 @@ class CarController(Logger):
         calibrationData = None
         if action in calibration_actions_map:
             calibrationData = calibration_actions_map[action]()
+            self.camera_manager.inhibit_detection = True
             if calibrationData:
                 await websocket.send(
                     json.dumps(
@@ -92,11 +93,13 @@ class CarController(Logger):
                     )
                 )
         elif action == "move":
-            await self.handle_move(payload)
+            self.handle_move(payload)
         elif action == "setServoDirAngle":
+            self.camera_manager.inhibit_detection = payload != 0
             self.px.set_dir_servo_angle(payload or 0)
         elif action == "stop":
             self.px.stop()
+            self.camera_manager.inhibit_detection = False
         elif action == "setCamTiltAngle":
             self.px.set_cam_tilt_angle(payload)
         elif action == "setCamPanAngle":
@@ -110,9 +113,11 @@ class CarController(Logger):
             self.warning(error_msg)
             await websocket.send(json.dumps({"error": error_msg, "type": action}))
 
-    async def handle_move(self, payload):
+    def handle_move(self, payload):
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
+        self.camera_manager.inhibit_detection = speed != 0
+
         self.move(direction, speed)
 
     async def toggle_avoid_obstacles_mode(self, websocket):

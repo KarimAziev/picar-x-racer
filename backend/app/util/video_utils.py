@@ -1,28 +1,25 @@
-from datetime import datetime
 from typing import Callable, Optional, Sequence
-
+from app.util.yolo_model import yolo_model, device, font
+from PIL import Image
 import cv2
 import numpy as np
-import torch
 import torchvision.transforms as T
 from app.config.paths import (
-    FONT_PATH,
     HUMAN_FACE_CASCADE_PATH,
     HUMAN_FULL_BODY_CASCADE_PATH,
 )
 from app.util.logger import Logger
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 logger = Logger(__name__)
 
+
 human_face_cascade = cv2.CascadeClassifier(HUMAN_FACE_CASCADE_PATH)
 human_full_body_cascade = cv2.CascadeClassifier(HUMAN_FULL_BODY_CASCADE_PATH)
-yolo_model = torch.hub.load("ultralytics/yolov5", "yolov5n")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def simulate_robocop_vision(
-    frame: np.ndarray, font_path: Optional[str] = FONT_PATH
+    frame: np.ndarray
 ) -> np.ndarray:
     """
     Simulate RoboCop vision by applying grayscale conversion,
@@ -31,7 +28,6 @@ def simulate_robocop_vision(
 
     Parameters:
         frame (np.ndarray): The input frame to simulate RoboCop vision.
-        font_path (str): Path to the custom font file.
 
     Returns:
         np.ndarray: The frame with RoboCop vision effects.
@@ -83,7 +79,6 @@ def simulate_robocop_vision(
 
     # Prepare font and draw text using PIL
     draw = ImageDraw.Draw(pil_img)
-    font = ImageFont.truetype(font_path, 24)
 
     # Draw the text
     draw.text((10, height - 30), "TARGETING_", font=font, fill=target_color)
@@ -100,10 +95,7 @@ def detect_human_faces(frame: np.ndarray) -> np.ndarray:
     human_faces = human_face_cascade.detectMultiScale(
         gray_frame, scaleFactor=1.1, minNeighbors=5
     )
-    current_time = datetime.now().strftime("%H:%M:%S")
-    cv2.putText(
-        frame, current_time, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, border_color, 2
-    )
+
     for x, y, w, h in human_faces:
         cv2.rectangle(frame, (x, y), (x + w, y + h), border_color, 2)
     return frame

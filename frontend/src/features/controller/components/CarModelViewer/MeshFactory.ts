@@ -19,9 +19,10 @@ export class MeshFactory {
     height: number,
     depth: number,
     color: number,
+    params?: THREE.MeshPhongMaterialParameters,
   ) {
     const geometry = new THREE.BoxGeometry(width, height, depth);
-    const material = new THREE.MeshPhongMaterial({ color });
+    const material = new THREE.MeshPhongMaterial({ color, ...params });
     return new THREE.Mesh(geometry, material);
   }
 

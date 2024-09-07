@@ -523,14 +523,6 @@ export const useControllerStore = defineStore("controller", {
       const batteryStore = useBatteryStore();
       batteryStore.fetchBatteryStatus();
     },
-    increaseQuality() {
-      const settingsStore = useSettingsStore();
-      settingsStore.increaseQuality();
-    },
-    decreaseQuality() {
-      const settingsStore = useSettingsStore();
-      settingsStore.decreaseQuality();
-    },
     openShortcutsSettings() {
       const popupStore = usePopupStore();
       popupStore.tab = SettingsTab.KEYBINDINGS;
@@ -584,6 +576,30 @@ export const useControllerStore = defineStore("controller", {
     async decreaseDimension() {
       const camStore = useCameraStore();
       await camStore.decreaseDimension();
+    },
+    async increaseQuality() {
+      const camStore = useCameraStore();
+      await camStore.increaseQuality();
+    },
+    async decreaseQuality() {
+      const camStore = useCameraStore();
+      await camStore.decreaseQuality();
+    },
+    async nextDetectMode() {
+      const camStore = useCameraStore();
+      await camStore.nextDetectMode();
+    },
+    async nextEnhanceMode() {
+      const camStore = useCameraStore();
+      await camStore.nextEnhanceMode();
+    },
+    async prevDetectMode() {
+      const camStore = useCameraStore();
+      await camStore.prevDetectMode();
+    },
+    async prevEnhanceMode() {
+      const camStore = useCameraStore();
+      await camStore.prevEnhanceMode();
     },
   },
 });

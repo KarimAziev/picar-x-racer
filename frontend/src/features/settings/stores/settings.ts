@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import axios from "axios";
 import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
-import { VideoFeedURL } from "@/features/settings/enums";
 import {
   useMessagerStore,
   ShowMessageTypeProps,
@@ -9,7 +8,7 @@ import {
 import { wait } from "@/util/wait";
 import { isNumber } from "@/util/guards";
 import { toggleableSettings } from "@/features/settings/config";
-import { SettingsTab, videoFeedEntities } from "@/features/settings/enums";
+import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { omit } from "@/util/obj";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
@@ -19,15 +18,25 @@ export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
 };
 
+export interface CameraOpenRequestParams {
+  video_feed_fps?: number;
+  video_feed_format?: string;
+  video_feed_enhance_mode: string | null;
+  video_feed_detect_mode: string | null;
+  video_feed_quality?: number;
+  video_feed_height?: number;
+  video_feed_width?: number;
+}
+
 export interface Settings extends Partial<ToggleableSettings> {
   default_text: string;
   default_sound: string;
   default_language: string;
   default_music: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
-  video_feed_url: VideoFeedURL;
   battery_full_voltage: number;
   auto_measure_distance_delay_ms: number;
+  video_feed_quality: number;
 }
 
 export interface State {
@@ -46,9 +55,9 @@ const defaultState: State = {
     default_sound: "",
     default_language: "en",
     default_music: "",
-    video_feed_url: VideoFeedURL.high_quality_mode,
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
+    video_feed_quality: 100,
   },
   dimensions: { width: 640, height: 480 },
 };
@@ -156,29 +165,31 @@ export const useStore = defineStore("settings", {
         this.loading = false;
       }
     },
-    increaseQuality() {
+    nextFrameEnhancerMode(
+      prop: keyof ToggleableSettings,
+      showMsg?: boolean,
+      msgParams?: ShowMessageTypeProps | string,
+    ) {
       const messager = useMessagerStore();
-      const idx = videoFeedEntities.findIndex(
-        ([_key, val]) => val === this.settings.video_feed_url,
-      );
-      const nextEntry = videoFeedEntities[idx + 1] || videoFeedEntities[0];
-      if (nextEntry) {
-        this.settings.video_feed_url = nextEntry[1];
-        messager.info(`Setted ${nextEntry[0]}`);
+      const nextValue = !this.settings[prop];
+      this.settings[prop] = nextValue;
+      if (showMsg) {
+        messager.info(`${prop}: ${nextValue}`, msgParams);
       }
+      return nextValue;
     },
-    decreaseQuality() {
+    prevFrameEnhancerMode(
+      prop: keyof ToggleableSettings,
+      showMsg?: boolean,
+      msgParams?: ShowMessageTypeProps | string,
+    ) {
       const messager = useMessagerStore();
-      const idx = videoFeedEntities.findIndex(
-        ([_key, val]) => val === this.settings.video_feed_url,
-      );
-      const nextEntry =
-        videoFeedEntities[idx - 1] ||
-        videoFeedEntities[videoFeedEntities.length - 1];
-      if (nextEntry) {
-        this.settings.video_feed_url = nextEntry[1];
-        messager.info(`Setted ${nextEntry[0]}`);
+      const nextValue = !this.settings[prop];
+      this.settings[prop] = nextValue;
+      if (showMsg) {
+        messager.info(`${prop}: ${nextValue}`, msgParams);
       }
+      return nextValue;
     },
     toggleSettingsProp(
       prop: keyof ToggleableSettings,

@@ -1,149 +1,64 @@
-from typing import TYPE_CHECKING
+from typing import Any
+from typing import TYPE_CHECKING, Dict, Union
 
 from app.util.logger import Logger
-from flask import Blueprint, Response, current_app
+from flask import Blueprint, current_app, jsonify, request, Response
 
 if TYPE_CHECKING:
     from app.controllers.camera_controller import CameraController
+    from app.controllers.files_controller import FilesController
 
 video_feed_bp = Blueprint("video_feed", __name__)
 logger = Logger(__name__)
 
 
-@video_feed_bp.route("/mjpg-hq")
+@video_feed_bp.route("/mjpg")
 async def video_feed_hq() -> Response:
     camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving high quality stream.")
+    file_manager: "FilesController" = current_app.config["file_manager"]
+    settings = file_manager.load_settings()
+    camera_manager.video_feed_detect_mode = settings.get("video_feed_detect_mode", camera_manager.video_feed_detect_mode)
+    camera_manager.video_feed_enhance_mode = settings.get("video_feed_enhance_mode", camera_manager.video_feed_enhance_mode)
+    camera_manager.video_feed_format = settings.get("video_feed_format", camera_manager.video_feed_format)
+    camera_manager.video_feed_quality = settings.get("video_feed_quality", camera_manager.video_feed_quality)
+    camera_manager.frame_width = settings.get("video_feed_width", camera_manager.frame_width)
+    camera_manager.frame_height = settings.get("video_feed_height", camera_manager.frame_height)
+    camera_manager.target_fps = settings.get("video_feed_fps", camera_manager.target_fps)
+    logger.info(f"Serving video with quality: {camera_manager.video_feed_quality}, format: {camera_manager.video_feed_format} enhance mode: {camera_manager.video_feed_enhance_mode} detection: {camera_manager.video_feed_detect_mode}")
     await camera_manager.restart()
     response = Response(
-        camera_manager.generate_high_quality_stream_jpg(),
+        camera_manager.generate_video_stream(),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
-
-@video_feed_bp.route("/mjpg-mq")
-async def video_feed_mq() -> Response:
+@video_feed_bp.route("/api/video-feed-settings", methods=["POST"])
+def start_camera():
     camera_manager: "CameraController" = current_app.config["camera_manager"]
-    await camera_manager.restart()
-    logger.info("Serving medium quality stream.")
-
-    response = Response(
-        camera_manager.generate_medium_quality_stream_jpg(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
+    payload: Union[Dict[str, Any], None] = request.json
+    logger.info(
+        f"Updating video feed settings,executor shutdown: {camera_manager.executor_shutdown}"
     )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
+    if payload:
+        camera_manager: "CameraController" = current_app.config["camera_manager"]
+        camera_manager.video_feed_detect_mode = payload.get("video_feed_detect_mode", camera_manager.video_feed_detect_mode)
+        camera_manager.video_feed_enhance_mode = payload.get("video_feed_enhance_mode", camera_manager.video_feed_enhance_mode)
+        camera_manager.video_feed_format = payload.get("video_feed_format", camera_manager.video_feed_format)
+        camera_manager.video_feed_quality = payload.get("video_feed_quality", camera_manager.video_feed_quality)
+        camera_manager.frame_width = payload.get("video_feed_width", camera_manager.frame_width)
+        camera_manager.frame_height = payload.get("video_feed_width", camera_manager.frame_height)
+        camera_manager.target_fps = payload.get("video_feed_fps", camera_manager.target_fps)
 
+    return jsonify(
+        {
+            "width": camera_manager.frame_width,
+            "height": camera_manager.frame_height,
+            "video_feed_fps": camera_manager.target_fps,
+            "video_feed_detect_mode": camera_manager.video_feed_detect_mode,
+            "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
+            "video_feed_quality": camera_manager.video_feed_quality,
+            "video_feed_format": camera_manager.video_feed_format,
 
-@video_feed_bp.route("/mjpg-lq")
-async def video_feed_lq() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving low quality stream.")
-    await camera_manager.restart()
-    response = Response(
-        camera_manager.generate_low_quality_stream_jpg(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
+        }
     )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
-@video_feed_bp.route("/mjpg-xhq")
-async def video_feed_xhq() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving extra high quality JPG stream.")
-    await camera_manager.restart()
-    response = Response(
-        camera_manager.generate_robocop_vision_stream_jpg(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
-@video_feed_bp.route("/mjpg-xlq")
-async def video_feed_xlq() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving extra low quality JPG stream.")
-    await camera_manager.restart()
-    response = Response(
-        camera_manager.generate_extra_low_quality_stream_jpg(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
-@video_feed_bp.route("/mpng-lq")
-async def video_feed_png_lq() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving low quality PNG stream.")
-    await camera_manager.restart()
-
-    if camera_manager.executor_shutdown:
-        camera_manager.recreate_executor()
-
-    response = Response(
-        camera_manager.generate_low_quality_stream_png(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
-@video_feed_bp.route("/mjpg-hq/cat-recognize")
-async def video_feed_cat_recognize() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving cat recognize stream.")
-    await camera_manager.restart()
-
-    response = Response(
-        camera_manager.generate_high_quality_stream_jpg_cat_recognize(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
-@video_feed_bp.route("/mjpg-hq/cat-recognize-extended")
-async def video_feed_cat_extended_recognize() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving cat recognize extended stream.")
-    await camera_manager.restart()
-
-    response = Response(
-        camera_manager.generate_high_quality_stream_jpg_cat_extended_recognize(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
-@video_feed_bp.route("/mjpg-hq/human-face-recognize")
-async def video_feed_human_recognize() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    await camera_manager.restart()
-    logger.info("Serving human face recognization mode.")
-
-    response = Response(
-        camera_manager.generate_high_quality_stream_jpg_human_recognize(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
-@video_feed_bp.route("/mjpg-hq/human-body-recognize")
-async def video_feed_human_body_recognize() -> Response:
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.info("Serving human body recognize stream.")
-    await camera_manager.restart()
-
-    response = Response(
-        camera_manager.generate_high_quality_stream_jpg_human_full_body_recognize(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response

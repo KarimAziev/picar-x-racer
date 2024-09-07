@@ -1,5 +1,5 @@
 <template>
-  <ScanLines v-if="cameraStore.loading" class="box" />
+  <ScanLines v-if="!loaded" class="box" />
   <img
     v-else
     :src="videoFeedUrl"
@@ -10,18 +10,16 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
-import { computed, onUnmounted, onMounted } from "vue";
+import { useSettingsStore } from "@/features/settings/stores";
+import { computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 
 const settingsStore = useSettingsStore();
-const cameraStore = useCameraStore();
-const videoFeedUrl = computed(() => settingsStore.settings.video_feed_url);
+const loaded = computed(() => settingsStore.loaded);
+
+const videoFeedUrl = "/mjpg";
 
 const handleOnLoad = async () => {};
-
-onUnmounted(cameraStore.cameraClose);
-onMounted(cameraStore.cameraStart);
 </script>
 
 <style scoped lang="scss">
@@ -33,9 +31,9 @@ onMounted(cameraStore.cameraStart);
   user-select: none;
 }
 .box {
+  opacity: 1;
   width: 100%;
   height: 100%;
-  opacity: 1;
   box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
   user-select: none;
 }

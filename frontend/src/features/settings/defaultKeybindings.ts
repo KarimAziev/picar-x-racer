@@ -39,6 +39,10 @@ export const defaultKeybindinds: Partial<
   decreaseFPS: ["S"],
   increaseDimension: ["]"],
   decreaseDimension: ["["],
+  nextEnhanceMode: ["e"],
+  prevEnhanceMode: ["E"],
+  nextDetectMode: ["r"],
+  prevDetectMode: ["R"],
 };
 
 export const commandLabels: Record<string, string> = {

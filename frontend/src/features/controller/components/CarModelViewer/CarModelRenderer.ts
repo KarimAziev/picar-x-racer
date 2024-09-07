@@ -211,6 +211,7 @@ export class CarModelRenderer {
       this.calcDimension(2),
       this.calcDimension(0.1),
       colors.red,
+      { transparent: true, opacity: 0.2 },
     );
     this.detectedWall.visible = false;
     this.body.add(this.detectedWall);

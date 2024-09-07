@@ -36,11 +36,11 @@
       </div>
     </Panel>
     <div class="field">
-      <label for="video_feed_url">Video URL</label>
+      <label for="video_feed_url">Video Quality</label>
       <Select
         id="video_feed_url"
         class="select"
-        v-model="store.settings.video_feed_url"
+        v-model="store.settings.video_feed_quality"
         optionLabel="label"
         optionValue="value"
         :options="videoFeedOptions"
@@ -92,13 +92,13 @@ import InputNumber from "primevue/inputnumber";
 import Sounds from "@/features/settings/components/Sounds.vue";
 import Music from "@/features/settings/components/Music.vue";
 import Images from "@/features/settings/components/Images.vue";
-import { VideoFeedURL } from "@/features/settings/enums";
 import SwitchSettings from "@/features/settings/components/SwitchSettings.vue";
 import { ttsLanguages } from "@/features/settings/config";
+import { numberSequence } from "@/util/cycleValue";
 
-const videoFeedOptions = Object.entries(VideoFeedURL).map(([key, value]) => ({
-  value,
-  label: key.toUpperCase(),
+const videoFeedOptions = numberSequence(10, 100, 10).map((value) => ({
+  value: value,
+  label: `${value}`,
 }));
 
 const store = useSettingsStore();

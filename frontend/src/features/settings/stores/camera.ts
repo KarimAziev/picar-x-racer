@@ -3,6 +3,11 @@ import axios from "axios";
 import { useMessagerStore } from "@/features/messager/store";
 import { constrain } from "@/util/constrain";
 import { wait } from "@/util/wait";
+import { cycleValue } from "@/util/cycleValue";
+import {
+  CameraOpenRequestParams,
+  useStore as useSettingsStore,
+} from "@/features/settings/stores/settings";
 
 const dimensions = [
   [640, 480],
@@ -20,21 +25,30 @@ const dimensions = [
 
 const MAX_FPS = 70;
 
-export interface CameraOpenRequestParams {
-  width?: number;
-  height?: number;
-  fps?: number;
-}
+export const enhancers = [null, "robocop_vision"];
+
+export const detectors = [
+  "mobile_net",
+  "cat",
+  "cat_extended",
+  "human_body",
+  "human_face",
+  null,
+];
+
 export interface State {
   data: CameraOpenRequestParams;
-  dimensions: { width: number; height: number } | null;
+  dimensions: { video_feed_width: number; video_feed_height: number } | null;
   loading: boolean;
   cancelTokenSource?: AbortController;
 }
 
 const defaultState: State = {
   loading: false,
-  data: {},
+  data: {
+    video_feed_enhance_mode: null,
+    video_feed_detect_mode: null,
+  },
   dimensions: null,
   cancelTokenSource: undefined,
 };
@@ -42,7 +56,7 @@ const defaultState: State = {
 export const useStore = defineStore("camera", {
   state: () => ({ ...defaultState }),
   actions: {
-    async cameraStart(payload?: CameraOpenRequestParams) {
+    async updateCameraParams(payload?: Partial<CameraOpenRequestParams>) {
       const messager = useMessagerStore();
 
       if (this.cancelTokenSource) {
@@ -55,15 +69,17 @@ export const useStore = defineStore("camera", {
       try {
         this.loading = true;
         const { data } = await axios.post<CameraOpenRequestParams>(
-          "/api/start-camera",
+          "/api/video-feed-settings",
           payload || this.data,
           { signal: cancelTokenSource.signal },
         );
         await wait(500);
-        const { fps, width, height } = data;
-        const size = width && height ? `${width}x${height}` : "";
         this.data = data;
-        messager.info(`Started camera with FPS: ${fps} ${size}`);
+        Object.entries(data).forEach(([key, value]) => {
+          if (payload && key in payload) {
+            messager.info(`${key}: ${value}`, { immediately: true });
+          }
+        });
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
@@ -76,47 +92,17 @@ export const useStore = defineStore("camera", {
       }
       return this.data;
     },
-    async cameraClose() {
-      const messager = useMessagerStore();
 
-      // Cancel any pending request
-      if (this.cancelTokenSource) {
-        this.cancelTokenSource.abort();
-      }
-
-      // Create a new cancel token source for the new request
-      const cancelTokenSource = new AbortController();
-      this.cancelTokenSource = cancelTokenSource;
-
-      try {
-        this.loading = true;
-        const response = await axios.get<CameraOpenRequestParams>(
-          `/api/close-camera`,
-          { signal: cancelTokenSource.signal },
-        );
-
-        this.data = response.data;
-      } catch (error) {
-        if (axios.isCancel(error)) {
-          console.log("Request canceled:", error.message);
-        } else {
-          messager.handleError(error, `Error closing camera`);
-        }
-      } finally {
-        this.loading = false;
-        // Nullify the cancel token source after request completes
-        this.cancelTokenSource = undefined;
-      }
-      return this.data;
-    },
     async fetchDimensions() {
       const messager = useMessagerStore();
       try {
         this.loading = true;
         const { data } = await axios.get("api/frame-dimensions");
-        const { height, width } = data;
+        const { video_feed_height, video_feed_width } = data;
         this.dimensions = data;
-        messager.info(`Dimensions: width ${width}, height ${height}`);
+        messager.info(
+          `Dimensions: video_feed_width ${video_feed_width}, video_feed_height ${video_feed_height}`,
+        );
       } catch (error) {
         messager.handleError(error, "Error fetching settings");
       } finally {
@@ -124,41 +110,103 @@ export const useStore = defineStore("camera", {
       }
     },
     async increaseFPS() {
-      const fps = this.data.fps || 30;
-      await this.cameraStart({
-        ...this.data,
-        fps: constrain(10, MAX_FPS, fps + 10),
+      const video_feed_fps = this.data.video_feed_fps || 30;
+      await this.updateCameraParams({
+        video_feed_fps: constrain(10, MAX_FPS, video_feed_fps + 10),
       });
     },
     async decreaseFPS() {
-      const fps = this.data.fps || 30;
-      await this.cameraStart({
+      const video_feed_fps = this.data.video_feed_fps || 30;
+      await this.updateCameraParams({
+        video_feed_fps: constrain(5, MAX_FPS, Math.max(5, video_feed_fps - 10)),
+      });
+    },
+    async nextDetectMode() {
+      const currentMode = this.data.video_feed_detect_mode;
+      this.data.video_feed_detect_mode = cycleValue(currentMode, detectors, 1);
+
+      await this.updateCameraParams({
+        video_feed_detect_mode: this.data.video_feed_detect_mode,
+      });
+    },
+    async nextEnhanceMode() {
+      const currentMode = this.data.video_feed_enhance_mode;
+      const nextMode = cycleValue(currentMode, enhancers, 1);
+
+      await this.updateCameraParams({
+        video_feed_enhance_mode: nextMode,
+      });
+    },
+    async prevDetectMode() {
+      const currentMode = this.data.video_feed_detect_mode;
+      this.data.video_feed_detect_mode = cycleValue(currentMode, detectors, -1);
+
+      await this.updateCameraParams({
         ...this.data,
-        fps: constrain(5, MAX_FPS, Math.max(5, fps - 10)),
+        video_feed_detect_mode: this.data.video_feed_detect_mode,
+      });
+    },
+    async prevEnhanceMode() {
+      const currentMode = this.data.video_feed_enhance_mode;
+      this.data.video_feed_enhance_mode = cycleValue(
+        currentMode,
+        enhancers,
+        -1,
+      );
+
+      await this.updateCameraParams({
+        video_feed_enhance_mode: this.data.video_feed_enhance_mode,
+      });
+    },
+    async increaseQuality() {
+      const settings = useSettingsStore();
+      const currentValue =
+        this.data.video_feed_quality || settings.settings.video_feed_quality;
+      const newValue = constrain(10, 100, currentValue + 10);
+      await this.updateCameraParams({
+        video_feed_quality: newValue,
+      });
+    },
+    async decreaseQuality() {
+      const settings = useSettingsStore();
+      const currentValue =
+        this.data.video_feed_quality || settings.settings.video_feed_quality;
+      const newValue = constrain(10, 100, currentValue - 10);
+      await this.updateCameraParams({
+        video_feed_quality: newValue,
       });
     },
     async increaseDimension() {
-      const currHeight = this.data?.height;
-      const currWidth = this.data?.width;
-      const fps = this.data.fps || 30;
+      const currHeight = this.data?.video_feed_height;
+      const currWidth = this.data?.video_feed_width;
+
       const idx =
         dimensions.findIndex(
-          ([width, height]) => width === currWidth && height === currHeight,
+          ([video_feed_width, video_feed_height]) =>
+            video_feed_width === currWidth && video_feed_height === currHeight,
         ) || 0;
-      const [width, height] = dimensions[idx + 1] || dimensions[0];
-      await this.cameraStart({ fps, height, width });
+      const [video_feed_width, video_feed_height] =
+        dimensions[idx + 1] || dimensions[0];
+      await this.updateCameraParams({
+        video_feed_height,
+        video_feed_width,
+      });
     },
     async decreaseDimension() {
-      const currHeight = this.data?.height;
-      const currWidth = this.data?.width;
-      const fps = this.data.fps || 30;
+      const currHeight = this.data?.video_feed_height;
+      const currWidth = this.data?.video_feed_width;
+
       const idx =
         dimensions.findIndex(
-          ([width, height]) => width === currWidth && height === currHeight,
+          ([video_feed_width, video_feed_height]) =>
+            video_feed_width === currWidth && video_feed_height === currHeight,
         ) || 0;
-      const [width, height] =
+      const [video_feed_width, video_feed_height] =
         dimensions[idx - 1] || dimensions[dimensions.length - 1];
-      await this.cameraStart({ fps, height, width });
+      await this.updateCameraParams({
+        video_feed_height,
+        video_feed_width,
+      });
     },
   },
 });

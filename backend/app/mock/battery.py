@@ -20,10 +20,11 @@ class Battery:
         :return: The total battery voltage in volts (V), which is a sum of two battery voltages.
         :rtype: float
         """
-        if self.voltage_1 > 3.0:
-            self.voltage_1 -= self.discharge_rate
-        if self.voltage_2 > 3.0:
+        total = self.voltage_1 + self.voltage_2
+
+        if total > 7.15:
             self.voltage_2 -= self.discharge_rate
+            self.voltage_1 -= self.discharge_rate
 
         total_voltage = self.voltage_1 + self.voltage_2
         return total_voltage

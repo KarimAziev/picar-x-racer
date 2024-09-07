@@ -28,8 +28,8 @@ const settingsStore = useSettingsStore();
 const cameraStore = useCameraStore();
 
 const fullscreen = computed(() => settingsStore.settings.fullscreen);
-const defaultWidth = computed(() => cameraStore.data.width || 640);
-const defaultHeight = computed(() => cameraStore.data.height || 480);
+const defaultWidth = computed(() => cameraStore.data.video_feed_width || 640);
+const defaultHeight = computed(() => cameraStore.data.video_feed_height || 480);
 const isResizable = computed(() => !popupStore.isOpen);
 </script>
 

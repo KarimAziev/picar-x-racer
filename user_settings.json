@@ -4,7 +4,11 @@
   "default_text": "Target identified",
   "default_language": "en",
   "fullscreen": true,
-  "video_feed_url": "/mjpg-hq",
+  "video_feed_quality": 100,
+  "video_feed_detect_mode": null,
+  "video_feed_enhance_mode": null,
+  "video_feed_format": ".jpg",
+  "video_feed_fps": 30,
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,
@@ -48,6 +52,10 @@
     "increaseFPS": ["F"],
     "decreaseFPS": ["S"],
     "increaseDimension": ["]"],
-    "decreaseDimension": ["["]
+    "decreaseDimension": ["["],
+    "nextEnhanceMode": ["e"],
+    "prevEnhanceMode": ["E"],
+    "nextDetectMode": ["r"],
+    "prevDetectMode": ["R"]
   }
 }

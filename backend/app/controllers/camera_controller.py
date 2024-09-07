@@ -3,11 +3,12 @@ import os
 import subprocess
 import threading
 from concurrent.futures import ProcessPoolExecutor
-from typing import Callable, Generator, List, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
 from app.util.logger import Logger
+from app.util.mobile_net import detect_objects_with_mobilenet
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import (
     detect_cat_extended_faces,
@@ -24,6 +25,18 @@ TARGET_WIDTH = 320
 TARGET_HEIGHT = 240
 
 CameraInfo = Tuple[int, str, Optional[str]]
+
+frame_enhancers = {
+    "robocop_vision": simulate_robocop_vision
+}
+
+detectors = {
+    "mobile_net": detect_objects_with_mobilenet,
+    "cat": detect_cat_faces,
+    "cat_extended": detect_cat_extended_faces,
+    "human_body": detect_full_body_faces,
+    "human_face": detect_human_faces,
+}
 
 
 class CameraController(metaclass=SingletonMeta):
@@ -53,15 +66,14 @@ class CameraController(metaclass=SingletonMeta):
         self.frame_counter = 0
         self.frame_width: Optional[int] = None
         self.frame_height: Optional[int] = None
-        self.recognize_mode: Optional[str] = None
-        self.recognize_mode: Optional[str] = None
+        self.video_feed_detect_mode: Optional[str] = None
+        self.video_feed_enhance_mode: Optional[str] = None
+        self.video_feed_quality = 100
+        self.video_feed_format = ".jpg"
+        self.inhibit_detection: bool = False
 
-    def async_generate_video_stream(
+    def generate_video_stream(
         self,
-        format=".png",
-        encode_params: Sequence[int] = [],
-        frame_enhancer: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-        detection_func: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     ):
         self.active_clients += 1
         self.logger.info(f"Active Clients: {self.active_clients}")
@@ -72,6 +84,15 @@ class CameraController(metaclass=SingletonMeta):
 
                 if img_copy is not None:
                     skip_count = 0
+                    format = self.video_feed_format
+                    video_feed_enhance_mode = self.video_feed_enhance_mode
+                    video_feed_detect_mode = self.video_feed_detect_mode
+                    inhibit_detection = self.inhibit_detection
+                    video_feed_quality = self.video_feed_quality
+                    frame_enhancer = frame_enhancers.get(video_feed_enhance_mode) if video_feed_enhance_mode else None
+                    detection_func = detectors.get(video_feed_detect_mode) if video_feed_detect_mode and not inhibit_detection else None
+
+                    encode_params = [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality] if format == ".jpg" else []
                     future = self.executor.submit(
                         encode_and_detect,
                         img_copy,
@@ -153,41 +174,6 @@ class CameraController(metaclass=SingletonMeta):
 
             self.logger.info("Camera loop terminated and camera released.")
 
-    def generate_high_quality_stream_jpg_cat_recognize(
-        self,
-    ) -> Generator[bytes, None, None]:
-        return self.async_generate_video_stream(
-            ".jpg",
-            [cv2.IMWRITE_JPEG_QUALITY, 50],
-            detection_func=detect_cat_faces,
-        )
-
-    def generate_high_quality_stream_jpg_cat_extended_recognize(
-        self,
-    ) -> Generator[bytes, None, None]:
-        return self.async_generate_video_stream(
-            format=".jpg",
-            encode_params=[cv2.IMWRITE_JPEG_QUALITY, 50],
-            detection_func=detect_cat_extended_faces,
-        )
-
-    def generate_high_quality_stream_jpg_human_recognize(
-        self,
-    ) -> Generator[bytes, None, None]:
-        return self.async_generate_video_stream(
-            ".png",
-            encode_params=[],
-            detection_func=detect_human_faces,
-        )
-
-    def generate_high_quality_stream_jpg_human_full_body_recognize(
-        self,
-    ) -> Generator[bytes, None, None]:
-        return self.async_generate_video_stream(
-            ".jpg",
-            [cv2.IMWRITE_JPEG_QUALITY, 100],
-            detection_func=detect_full_body_faces,
-        )
 
     @staticmethod
     def height_to_width(height: int):
@@ -364,7 +350,7 @@ class CameraController(metaclass=SingletonMeta):
         self,
         vflip=False,
         hflip=False,
-        fps=10,
+        fps: Optional[int] = None,
         width: Optional[int] = None,
         height: Optional[int] = None,
     ):
@@ -438,133 +424,3 @@ class CameraController(metaclass=SingletonMeta):
             raise ValueError("ListProxy object is None")
         np_array = np.array(listproxy_obj, dtype=np.uint8)
         return np_array
-
-    def get_frame(self) -> bytes:
-        """
-        Get the current frame as a JPEG-encoded byte array.
-
-        Returns:
-            bytes: JPEG-encoded byte array of the current frame.
-
-        Raises:
-            ValueError: If the Flask image is None.
-        """
-        frame_array = self.flask_img.copy() if self.flask_img is not None else None
-
-        if frame_array is None:
-            self.logger.error("get_frame: Flask image is None, cannot get frame.")
-            raise ValueError("Flask image is None")
-
-        _, buffer = cv2.imencode(".jpg", frame_array)
-        return buffer.tobytes()
-
-    def get_png_frame(self) -> bytes:
-        """
-        Get the current frame as a PNG-encoded byte array.
-
-        Returns:
-            bytes: PNG-encoded byte array of the current frame.
-
-        Raises:
-            ValueError: If the Flask image is None.
-        """
-        frame_array = self.flask_img.copy() if self.flask_img is not None else None
-
-        if frame_array is None:
-            self.logger.error("get_png_frame: Flask image is None, cannot get frame.")
-            raise ValueError("Flask image is None")
-
-        _, buffer = cv2.imencode(".png", frame_array)
-        return buffer.tobytes()
-
-    def resize_and_encode(
-        self, frame: np.ndarray, width: int, height: int, format=".jpg", quality=100
-    ):
-        """
-        Resize the frame and encode it to the specified format.
-
-        Args:
-            frame (np.ndarray): Frame to be resized and encoded.
-            width (int): Width to resize the frame.
-            height (int): Height to resize the frame.
-            format (str): Encoding format (default is ".jpg").
-            quality (int): Quality of JPEG encoding (default is 100).
-
-        Returns:
-            bytes: Encoded frame as a byte array.
-        """
-        resized_frame = cv2.resize(
-            frame, (width, height), interpolation=cv2.INTER_CUBIC
-        )
-        encode_params = [cv2.IMWRITE_JPEG_QUALITY, quality] if format == ".jpg" else []
-        _, buffer = cv2.imencode(format, resized_frame, encode_params)
-        return buffer.tobytes()
-
-    def encode(
-        self,
-        frame_array: np.ndarray,
-        format=".jpg",
-        params: Sequence[int] = [],
-        frame_enhancer: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-        height: Optional[int] = None,
-    ):
-        """
-        Encode the frame array to the specified format.
-
-        Args:
-            frame_array (np.ndarray): Frame array to be encoded.
-            format (str): Encoding format (default is ".jpg").
-
-        Returns:
-            bytes: Encoded frame as a byte array.
-        """
-        width = CameraController.height_to_width(height) if height else None
-
-        if frame_enhancer:
-            frame_array = frame_enhancer(frame_array)
-
-        if height and width:
-            frame = cv2.resize(frame_array, (width, height))
-        else:
-            frame = frame_array
-
-        _, buffer = cv2.imencode(format, frame, params)
-        return buffer.tobytes()
-
-    def generate_high_quality_stream_jpg(self) -> Generator[bytes, None, None]:
-        """
-        Generate a high-quality video stream with target width and height.
-
-        Returns:
-            Generator[bytes, None, None]: High-quality video stream.
-        """
-        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 100])
-
-    def generate_medium_quality_stream_jpg(self) -> Generator[bytes, None, None]:
-        """
-        Generate a medium-quality video stream with JPEG format.
-
-        Returns:
-            Generator[bytes, None, None]: Medium-quality video stream.
-        """
-        return self.async_generate_video_stream(format=".jpg", encode_params=[cv2.IMWRITE_JPEG_QUALITY, 95])
-
-    def generate_robocop_vision_stream_jpg(self) -> Generator[bytes, None, None]:
-        """
-        Generate extra high-quality video stream with target width and height.
-
-        Returns:
-            Generator[bytes, None, None]: High-quality video stream.
-        """
-        return self.async_generate_video_stream(
-            format=".jpg", encode_params=[cv2.IMWRITE_JPEG_QUALITY, 100], frame_enhancer=simulate_robocop_vision
-        )
-
-    def generate_low_quality_stream_jpg(self) -> Generator[bytes, None, None]:
-        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 80])
-
-    def generate_extra_low_quality_stream_jpg(self) -> Generator[bytes, None, None]:
-        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 20])
-
-    def generate_low_quality_stream_png(self) -> Generator[bytes, None, None]:
-        return self.async_generate_video_stream(".png", [])

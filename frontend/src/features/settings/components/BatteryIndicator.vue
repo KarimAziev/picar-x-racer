@@ -1,10 +1,19 @@
 <template>
   <div class="battery-indicator">
     <div class="typed">
-      Battery:
+      Nominal battery:
       <span>{{ percentage }}%</span>
       <i class="pi pi-bolt"></i>
       <span>{{ batteryVoltage }}</span>
+    </div>
+    <div :class="className">
+      Battery:
+      <span>{{ percentageAdjusted }} %</span>
+      <i class="pi pi-bolt"></i>
+      <span
+        >{{ batteryVoltageAdjusted.toFixed(2) }}V of
+        {{ batteryTotalVoltageAdjusted.toFixed(2) }}V</span
+      >
     </div>
   </div>
 </template>
@@ -26,15 +35,43 @@ const batteryTotalVoltage = computed(
   () => settingsStore.settings.battery_full_voltage || 8.4,
 );
 
+const batteryTotalVoltageAdjusted = computed(() => batteryTotalVoltage.value);
+
 const batteryVoltage = computed(() =>
   isNumber(batteryStore.voltage)
     ? `${batteryStore.voltage.toFixed(2)}V of ${batteryTotalVoltage.value.toFixed(2)}V`
     : batteryStore.voltage,
 );
 
+const batteryVoltageAdjusted = computed(() =>
+  isNumber(batteryStore.voltage)
+    ? Math.max(0, batteryStore.voltage - 7.15)
+    : batteryStore.voltage,
+);
+
 const percentage = computed(() =>
   ((batteryStore.voltage / batteryTotalVoltage.value) * 100).toFixed(2),
 );
+
+const percentageAdjusted = computed(() =>
+  (
+    Math.max(
+      0,
+      batteryVoltageAdjusted.value / batteryTotalVoltageAdjusted.value,
+    ) * 100
+  ).toFixed(2),
+);
+
+const className = computed(() => {
+  const voltage = batteryStore.voltage;
+  if (voltage > 7.6) {
+    return "typed";
+  } else if (voltage > 7.15 && voltage <= 7.6) {
+    return "warning";
+  } else {
+    return "danger";
+  }
+});
 
 const getPollInterval = (batteryPercentage: number) => {
   // Poll more frequently if battery is below 20%
@@ -48,7 +85,7 @@ const getPollInterval = (batteryPercentage: number) => {
 
 const fetchAndScheduleNext = async () => {
   await batteryStore.fetchBatteryStatus();
-  const interval = getPollInterval(Number(percentage.value));
+  const interval = getPollInterval(Number(percentageAdjusted.value));
   if (intervalId.value) clearInterval(intervalId.value);
   intervalId.value = setInterval(fetchAndScheduleNext, interval);
 };
@@ -67,7 +104,6 @@ onUnmounted(() => {
 <style scoped lang="scss">
 @import "@/assets/animation.scss";
 .typed {
-  display: inline-block;
   overflow: hidden;
   white-space: nowrap;
   animation:
@@ -81,5 +117,11 @@ onUnmounted(() => {
   width: 0;
   overflow: hidden;
   animation: hide-caret 0s steps(30, end) forwards 2s;
+}
+.warning {
+  color: #ffcc00;
+}
+.danger {
+  color: red;
 }
 </style>
