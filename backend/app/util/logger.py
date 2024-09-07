@@ -22,7 +22,7 @@ class Logger(object):
     def __init__(
         self,
         name: str,
-        level: int = DEBUG,
+        level: int = INFO,
         fmt: Optional[str] = None,
         datefmt: Optional[str] = None,
         log_colors: Optional[Dict[str, str]] = None,
