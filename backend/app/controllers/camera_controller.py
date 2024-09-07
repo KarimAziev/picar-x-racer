@@ -62,7 +62,7 @@ class CameraController(metaclass=SingletonMeta):
         self.video_devices: List[str] = []
         self.failed_camera_indexes: List[int] = []
         self.cap: Union[VideoCapture, None] = None
-        self.frame_skip_interval = 1
+        self.frame_skip_interval = 2
         self.frame_counter = 0
         self.frame_width: Optional[int] = None
         self.frame_height: Optional[int] = None
@@ -155,12 +155,13 @@ class CameraController(metaclass=SingletonMeta):
                 else:
                     failed_counter = 0
 
-                if self.camera_vflip:
-                    frame = cv2.flip(frame, 0)
-                if self.camera_hflip:
-                    frame = cv2.flip(frame, 1)
+                if self.frame_counter % self.frame_skip_interval == 0:
+                   if self.camera_vflip:
+                       frame = cv2.flip(frame, 0)
+                   if self.camera_hflip:
+                       frame = cv2.flip(frame, 1)
 
-                self.frame_counter += 1  # Increment frame counter
+                self.frame_counter += 1
 
                 self.img = frame
                 self.flask_img = frame.copy()
