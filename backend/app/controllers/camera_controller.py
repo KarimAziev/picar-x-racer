@@ -33,7 +33,7 @@ class CameraController(metaclass=SingletonMeta):
     and streaming video frames to clients.
     """
 
-    def __init__(self, max_workers=4, target_fps=10):
+    def __init__(self, max_workers=4, target_fps=30):
         self.max_workers = max_workers
         self.logger = Logger(name=__name__)
         self.executor = ProcessPoolExecutor(max_workers=max_workers)
@@ -53,13 +53,14 @@ class CameraController(metaclass=SingletonMeta):
         self.frame_counter = 0
         self.frame_width: Optional[int] = None
         self.frame_height: Optional[int] = None
+        self.recognize_mode: Optional[str] = None
+        self.recognize_mode: Optional[str] = None
 
     def async_generate_video_stream(
         self,
         format=".png",
         encode_params: Sequence[int] = [],
         frame_enhancer: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-        height: Optional[int] = None,
         detection_func: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     ):
         self.active_clients += 1
@@ -158,7 +159,6 @@ class CameraController(metaclass=SingletonMeta):
         return self.async_generate_video_stream(
             ".jpg",
             [cv2.IMWRITE_JPEG_QUALITY, 50],
-            None,
             detection_func=detect_cat_faces,
         )
 
@@ -166,9 +166,8 @@ class CameraController(metaclass=SingletonMeta):
         self,
     ) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream(
-            ".jpg",
-            [cv2.IMWRITE_JPEG_QUALITY, 50],
-            None,
+            format=".jpg",
+            encode_params=[cv2.IMWRITE_JPEG_QUALITY, 50],
             detection_func=detect_cat_extended_faces,
         )
 
@@ -177,8 +176,7 @@ class CameraController(metaclass=SingletonMeta):
     ) -> Generator[bytes, None, None]:
         return self.async_generate_video_stream(
             ".png",
-            [],
-            None,
+            encode_params=[],
             detection_func=detect_human_faces,
         )
 
@@ -188,7 +186,6 @@ class CameraController(metaclass=SingletonMeta):
         return self.async_generate_video_stream(
             ".jpg",
             [cv2.IMWRITE_JPEG_QUALITY, 100],
-            None,
             detection_func=detect_full_body_faces,
         )
 
@@ -294,7 +291,7 @@ class CameraController(metaclass=SingletonMeta):
         self,
         vflip=False,
         hflip=False,
-        fps=10,
+        fps: Optional[int] = None,
         width: Optional[int] = None,
         height: Optional[int] = None,
     ):
@@ -317,7 +314,9 @@ class CameraController(metaclass=SingletonMeta):
 
         self.camera_hflip = hflip
         self.camera_vflip = vflip
-        self.target_fps = fps
+        if fps:
+            self.target_fps = fps
+
         self.frame_height = height
         self.frame_width = (
             width or CameraController.height_to_width(height) if height else None
@@ -548,7 +547,7 @@ class CameraController(metaclass=SingletonMeta):
         Returns:
             Generator[bytes, None, None]: Medium-quality video stream.
         """
-        return self.async_generate_video_stream(".jpg", [cv2.IMWRITE_JPEG_QUALITY, 95])
+        return self.async_generate_video_stream(format=".jpg", encode_params=[cv2.IMWRITE_JPEG_QUALITY, 95])
 
     def generate_robocop_vision_stream_jpg(self) -> Generator[bytes, None, None]:
         """
@@ -558,7 +557,7 @@ class CameraController(metaclass=SingletonMeta):
             Generator[bytes, None, None]: High-quality video stream.
         """
         return self.async_generate_video_stream(
-            ".jpg", [cv2.IMWRITE_JPEG_QUALITY, 100], simulate_robocop_vision
+            format=".jpg", encode_params=[cv2.IMWRITE_JPEG_QUALITY, 100], frame_enhancer=simulate_robocop_vision
         )
 
     def generate_low_quality_stream_jpg(self) -> Generator[bytes, None, None]:
