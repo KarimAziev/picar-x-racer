@@ -1,17 +1,17 @@
 <template>
   <div class="wrapper">
     <div class="content" v-if="!isSettingsOpened"><VideoBox /></div>
-    <div class="right" v-if="loaded">
-      <CarModelViewer
-        v-if="isCarModelVisible"
-        class="car-model"
-        :zoom="4"
-        :rotationY="20"
-        :rotationX="0"
-      />
-      <TextInfo v-if="isTextInfoVisible" />
-      <Speedometer v-if="isSpeedometerVisible" />
-    </div>
+
+    <GaugesBlock class="gauges">
+      <ToggleableView setting="car_model_view">
+        <CarModelViewer
+          class="car-model"
+          :zoom="4"
+          :rotationY="20"
+          :rotationX="0"
+        />
+      </ToggleableView>
+    </GaugesBlock>
   </div>
 </template>
 <script setup lang="ts">
@@ -20,39 +20,19 @@ import { usePopupStore } from "@/features/settings/stores";
 import { useCarController } from "@/features/controller/composable";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useControllerStore } from "@/features/controller/store";
+import ToggleableView from "@/ui/ToggleableView.vue";
+import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 
 const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
 const popupStore = usePopupStore();
 const isSettingsOpened = computed(() => popupStore.isOpen);
-const loaded = computed(() => settingsStore.loaded);
-
-const isTextInfoVisible = computed(
-  () =>
-    !controllerStore.avoidObstacles && settingsStore.settings.text_info_view,
-);
-const isSpeedometerVisible = computed(
-  () =>
-    !controllerStore.avoidObstacles && settingsStore.settings.speedometer_view,
-);
-const isCarModelVisible = computed(
-  () =>
-    !controllerStore.avoidObstacles && settingsStore.settings.car_model_view,
-);
 
 const CarModelViewer = defineAsyncComponent({
   loader: () =>
     import(
       "@/features/controller/components/CarModelViewer/CarModelViewer.vue"
     ),
-});
-
-const TextInfo = defineAsyncComponent({
-  loader: () => import("@/features/controller/components/TextInfo.vue"),
-});
-
-const Speedometer = defineAsyncComponent({
-  loader: () => import("@/features/controller/components/Speedometer.vue"),
 });
 
 const VideoBox = defineAsyncComponent({
@@ -66,25 +46,17 @@ useCarController(controllerStore, settingsStore, popupStore);
 .wrapper {
   width: 100%;
   display: flex;
+  position: relative;
 }
 
 .content {
   flex: auto;
 }
-.right {
-  position: absolute;
-  right: 0;
-  width: 400px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 0;
-  justify-content: space-between;
-  align-items: center;
-}
 
 .car-model {
-  height: 80vh;
+  width: 100%;
   position: fixed;
+  top: -5%;
+  left: 40%;
 }
 </style>

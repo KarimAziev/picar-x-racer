@@ -1,5 +1,5 @@
 <template>
-  <span :class="type">
+  <span :class="type" ref="elem">
     <span class="title" v-if="title">{{ title }} &nbsp;</span>
     <span class="text">{{ msg }}</span>
     <samp v-if="isCaretVisible" class="caret" />
@@ -16,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const msg = ref("");
+const elem = ref<HTMLElement | null>();
 const isCaretVisible = ref(true);
 const title = ref("");
 
@@ -67,7 +68,10 @@ const typeText = () => {
   });
 };
 
-onMounted(typeText);
+onMounted(() => {
+  typeText();
+  elem.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+});
 </script>
 
 <style scoped lang="scss">

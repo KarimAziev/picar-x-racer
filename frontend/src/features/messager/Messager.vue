@@ -21,14 +21,24 @@ const store = useMessagerStore();
 <style scoped lang="scss">
 .message-wrapper {
   position: fixed;
+  max-height: 50%;
   top: 100px;
   left: 0;
   z-index: 1000;
+  overflow-y: scroll;
 }
 
 .message {
   list-style: none;
   padding: 0;
   text-transform: uppercase;
+}
+
+.message-wrapper {
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+.message-wrapper::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
 }
 </style>

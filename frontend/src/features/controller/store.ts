@@ -484,8 +484,10 @@ export const useControllerStore = defineStore("controller", {
         popupStore.isOpen = false;
         messager.info("Starting calibration");
       } else {
-        popupStore.tab = SettingsTab.CALIBRATION;
-        popupStore.isOpen = true;
+        /**
+         * popupStore.tab = SettingsTab.CALIBRATION;
+         * popupStore.isOpen = true;
+         */
         messager.info("Calibration finished");
       }
     },

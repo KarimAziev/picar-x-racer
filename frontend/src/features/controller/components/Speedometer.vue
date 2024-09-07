@@ -6,7 +6,6 @@
     :maxValue="100"
     :disabled-threshold="maxSpeed"
     :extraInfo="extraInfo"
-    class="speedometer"
   />
 </template>
 <script setup lang="ts">
@@ -23,11 +22,3 @@ const speed = computed(() =>
 const extraInfo = computed(() => `${speedToReal(speed.value)} km/h`);
 const maxSpeed = computed(() => store.maxSpeed);
 </script>
-
-<style scoped lang="scss">
-.speedometer {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-}
-</style>

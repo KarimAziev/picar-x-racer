@@ -3,6 +3,7 @@
   <LazySettings />
   <Messager />
   <div class="indicators">
+    <CalibrationModeInfo />
     <Distance />
     <BatteryIndicator />
   </div>
@@ -20,6 +21,10 @@ const Distance = defineAsyncComponent({
 
 const BatteryIndicator = defineAsyncComponent({
   loader: () => import("@/features/settings/components/BatteryIndicator.vue"),
+});
+const CalibrationModeInfo = defineAsyncComponent({
+  loader: () =>
+    import("@/features/controller/components/CalibrationModeInfo.vue"),
 });
 </script>
 <style scoped lang="scss">

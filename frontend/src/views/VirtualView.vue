@@ -6,17 +6,25 @@
       :rotationY="140"
       :rotationX="-5"
     />
+    <GaugesBlock />
   </FullscreenContent>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, defineAsyncComponent, watch } from "vue";
+import {
+  onMounted,
+  onBeforeUnmount,
+  defineAsyncComponent,
+  watch,
+  onBeforeMount,
+} from "vue";
 import { useRouter } from "vue-router";
 import FullscreenContent from "@/ui/FullscreenContent.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 
 import { useController } from "@/features/controller/composable";
 import { useControllerStore } from "@/features/controller/store";
+import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
@@ -47,10 +55,13 @@ watch(
   },
 );
 
-onMounted(() => {
+onBeforeMount(() => {
   if (!settingsStore.settings.virtual_mode) {
     settingsStore.settings.virtual_mode = true;
   }
+});
+
+onMounted(() => {
   connectWS();
   addKeyEventListeners();
   gameLoop();
