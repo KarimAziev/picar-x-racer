@@ -27,6 +27,7 @@ export interface Settings extends Partial<ToggleableSettings> {
   keybindings: Partial<Record<ControllerActionName, string[]>>;
   video_feed_url: VideoFeedURL;
   battery_full_voltage: number;
+  auto_measure_distance_delay_ms: number;
 }
 
 export interface State {
@@ -47,6 +48,7 @@ const defaultState: State = {
     default_music: "",
     video_feed_url: VideoFeedURL.high_quality_mode,
     battery_full_voltage: 8.4,
+    auto_measure_distance_delay_ms: 1000,
   },
   dimensions: { width: 640, height: 480 },
 };

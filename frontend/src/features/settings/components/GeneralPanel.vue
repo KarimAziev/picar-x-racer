@@ -2,6 +2,20 @@
   <ScrollPanel class="wrapper">
     <Panel header="Appearance">
       <SwitchSettings />
+      <div class="field">
+        <label for="auto_measure_distance_delay_ms"
+          >Auto Measure Distance Delay in Milliseconds</label
+        >
+        <InputNumber
+          :min="50"
+          :step="50"
+          showButtons
+          v-tooltip="
+            'Amount of milliseconds to wait between reading distance when auto measure distance mode is on.'
+          "
+          v-model="store.settings.auto_measure_distance_delay_ms"
+        />
+      </div>
     </Panel>
     <Panel header="Text to Speech">
       <div class="field">
@@ -15,6 +29,7 @@
       <div class="field">
         <label for="default_text">Text</label>
         <Textarea
+          id="default_text"
           v-tooltip="'Type the text to speech'"
           v-model="store.settings.default_text"
         />
@@ -72,6 +87,7 @@ import Panel from "primevue/panel";
 import Select from "primevue/select";
 import Textarea from "primevue/textarea";
 import ScrollPanel from "primevue/scrollpanel";
+import InputNumber from "primevue/inputnumber";
 
 import Sounds from "@/features/settings/components/Sounds.vue";
 import Music from "@/features/settings/components/Music.vue";

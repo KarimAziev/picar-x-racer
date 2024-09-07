@@ -1,5 +1,5 @@
 <template>
-  <div class="distance">
+  <div class="distance" v-if="isLoaded">
     <button @click="handleToggle" text class="btn">{{ distanceLabel }}:</button>
     &nbsp;
     <samp>{{ distance }}</samp>
@@ -7,6 +7,7 @@
 </template>
 
 <script setup lang="ts">
+import Settings from "@/features/settings/Settings.vue";
 import {
   useSettingsStore,
   usePopupStore,
@@ -14,26 +15,32 @@ import {
 } from "@/features/settings/stores";
 import { onMounted } from "vue";
 import { computed, ref } from "vue";
-const interval = 1000;
+
 const intervalId = ref<NodeJS.Timeout>();
 const popupStore = usePopupStore();
 
 const settingsStore = useSettingsStore();
 const distanceStore = useDistanceStore();
+
 const distance = computed(() => `${distanceStore.distance.toFixed(2)}cm`);
+const isLoaded = computed(() => settingsStore.loaded);
 const isPopupOpen = computed(() => popupStore.isOpen);
 const isAutoMeasureMode = computed(
-  () => settingsStore.settings.auto_measure_distance_mode,
+  () =>
+    settingsStore.loaded && settingsStore.settings.auto_measure_distance_mode,
 );
 
 const fetchAndScheduleNext = async () => {
   if (intervalId.value) {
     clearTimeout(intervalId.value);
   }
-  if (isAutoMeasureMode.value && !isPopupOpen.value) {
+  if (isAutoMeasureMode.value && !isPopupOpen.value && settingsStore.loaded) {
     await distanceStore.fetchDistance();
   }
-  intervalId.value = setTimeout(fetchAndScheduleNext, interval);
+  intervalId.value = setTimeout(
+    fetchAndScheduleNext,
+    settingsStore.settings.auto_measure_distance_delay_ms || 1000,
+  );
 };
 
 const handleToggle = () => {
