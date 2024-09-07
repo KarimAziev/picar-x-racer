@@ -4,6 +4,7 @@
     :value="speed"
     :minValue="0"
     :maxValue="100"
+    :disabled-threshold="maxSpeed"
   />
 </template>
 <script setup lang="ts">
@@ -15,6 +16,7 @@ const store = useControllerStore();
 const speed = computed(() =>
   store.direction > 0 ? store.speed : -store.speed,
 );
+const maxSpeed = computed(() => store.maxSpeed);
 </script>
 
 <style scoped></style>

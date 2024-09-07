@@ -1,5 +1,5 @@
 <template>
-  <div class="speedometer" ref="speedometerRef">
+  <div class="speedometer" ref="speedometerRef" :class="class">
     <div class="gauge">
       <div class="progress"></div>
       <div class="gauge-center"></div>
@@ -13,6 +13,9 @@
         v-for="label in outerLabels"
         :key="label.value"
         :style="label.style"
+        :class="{
+          disabled: !!label.disabled,
+        }"
       >
         {{ label.value }}
       </samp>
@@ -28,6 +31,8 @@ export interface SpeedometerParams {
   minValue: number;
   maxValue: number;
   segments: number;
+  disabledThreshold?: number;
+  class?: string;
 }
 
 const props = defineProps<SpeedometerParams>();
@@ -38,21 +43,22 @@ const outerLabelsRef = ref<HTMLElement | null>(null);
 
 const adjustedValue = computed(() => props.value);
 
-const renderOuterLabels = () => {
+const outerLabels = computed(() => {
   const labels = [];
   for (let i = 0; i <= props.segments; i++) {
     const step = (props.maxValue - props.minValue) / props.segments;
     const value = step * i;
     const rotation = 180 + i * (180 / props.segments);
+
+    const disabled = props.disabledThreshold && props.disabledThreshold < value;
     labels.push({
       value,
       style: `transform: rotate(${rotation}deg) translateY(-120px) rotate(-${rotation}deg);`,
+      disabled,
     });
   }
   return labels;
-};
-
-const outerLabels = renderOuterLabels();
+});
 
 const updateNeedle = (value: number) => {
   if (needleRef.value && centerLabelRef.value) {
@@ -193,5 +199,9 @@ onMounted(() => {
   text-align: center;
   transform-origin: bottom center;
   color: var(--color-text);
+}
+
+.disabled {
+  opacity: 0.5;
 }
 </style>
