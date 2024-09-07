@@ -312,7 +312,7 @@ class I2C(object):
         cmd = f"i2cdetect -y {self._bus}"
         # Run the i2cdetect command
         _, output = run_command(cmd)
-        self.logger.debug(f"i2cdetect {output}")
+        self.logger.debug(f"i2cdetect\n{output}")
         # Parse the output
         outputs = output.split("\n")[1:]
         addresses = []
