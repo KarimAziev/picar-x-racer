@@ -310,7 +310,6 @@ class Picarx:
         for _ in range(2):
             self.motor_speed_pins[0].pulse_width_percent(0)
             self.motor_speed_pins[1].pulse_width_percent(0)
-            time.sleep(0.002)
 
     def get_distance(self):
         return self.ultrasonic.read()
