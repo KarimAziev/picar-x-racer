@@ -7,7 +7,6 @@
 </template>
 
 <script setup lang="ts">
-import Settings from "@/features/settings/Settings.vue";
 import {
   useSettingsStore,
   usePopupStore,
