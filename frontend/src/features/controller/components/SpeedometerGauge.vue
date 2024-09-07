@@ -6,10 +6,13 @@
       <div class="needle" ref="needleRef"></div>
     </div>
     <div class="labels">
-      <samp class="center-label" ref="centerLabelRef">{{ adjustedValue }}</samp>
+      <span class="center-label" ref="centerLabelRef">
+        {{ adjustedValue }}
+      </span>
+      <span class="extra-info" v-if="extraInfo">{{ extraInfo }}</span>
     </div>
     <div class="outer-labels" ref="outerLabelsRef">
-      <samp
+      <span
         v-for="label in outerLabels"
         :key="label.value"
         :style="label.style"
@@ -18,7 +21,7 @@
         }"
       >
         {{ label.value }}
-      </samp>
+      </span>
     </div>
   </div>
 </template>
@@ -33,6 +36,7 @@ export interface SpeedometerParams {
   segments: number;
   disabledThreshold?: number;
   class?: string;
+  extraInfo?: string | number;
 }
 
 const props = defineProps<SpeedometerParams>();
@@ -69,7 +73,6 @@ const updateNeedle = (value: number) => {
       ((absVal - props.minValue) / step) * (180 / props.segments);
 
     needleRef.value.style.transform = `translateY(-100%) rotate(${rotation + 90}deg)`;
-    centerLabelRef.value.textContent = `${value}`;
   }
 };
 
@@ -92,6 +95,7 @@ onMounted(() => {
   position: relative;
   width: 300px;
   height: 300px;
+  color: var(--color-text);
 }
 
 .gauge {
@@ -121,6 +125,7 @@ onMounted(() => {
   width: 120px;
   height: 120px;
   background: var(--color-text);
+  opacity: 0.2;
   border-radius: 50%;
   position: absolute;
   top: 50%;
@@ -172,11 +177,17 @@ onMounted(() => {
 }
 
 .center-label {
-  color: var(--color-text);
   font-size: 2rem;
   position: absolute;
   bottom: 40%;
   right: 10%;
+}
+
+.extra-info {
+  font-size: 1rem;
+  position: absolute;
+  bottom: 21%;
+  right: 14%;
 }
 
 .outer-labels {
@@ -192,7 +203,7 @@ onMounted(() => {
   z-index: 10;
 }
 
-.outer-labels samp {
+.outer-labels span {
   position: absolute;
   width: 2rem;
   height: 2rem;
