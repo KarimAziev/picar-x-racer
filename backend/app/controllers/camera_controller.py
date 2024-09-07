@@ -46,7 +46,7 @@ class CameraController(metaclass=SingletonMeta):
     and streaming video frames to clients.
     """
 
-    def __init__(self, max_workers=4, target_fps=30):
+    def __init__(self, max_workers=None, target_fps=30):
         self.max_workers = max_workers
         self.logger = Logger(name=__name__)
         self.executor = ProcessPoolExecutor(max_workers=max_workers)
