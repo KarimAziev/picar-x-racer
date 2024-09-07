@@ -4,7 +4,7 @@
   "default_text": "Target identified",
   "default_language": "en",
   "fullscreen": true,
-  "video_feed_url": "/mjpg-hq/human-face-recognize",
+  "video_feed_url": "/mjpg-hq",
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,
