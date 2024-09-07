@@ -10,7 +10,9 @@ import { colors, MeshFactory } from "./MeshFactory";
  * - Width: 16.51 cm / 100 = 0.1651 meters
  * - Height: 10.16 cm / 100 = 0.1016 meters
  * - Length: 25.4 cm / 100 = 0.254 meters
+ * - Diameter of wheels is around 65mm (0.065 meters)
  */
+
 export class CarModelRenderer {
   private scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
@@ -49,9 +51,32 @@ export class CarModelRenderer {
   private distanceSpheres: THREE.Mesh[] = [];
   private maxDistance: number = 400;
   private distanceCone: THREE.Mesh;
+  /**
+   * this.bodyLength / CarModelRenderer.originalLength
+   */
   private bodyLength: number;
   private scaleFactor: number;
+
+  /**
+   * The original Picar-x model has a length of 25.4 cm (0.254 meters),
+   */
   static originalLength = 0.254;
+  /**
+  Diameter of wheels is around 65mm (0.065 meters)
+   */
+  static wheelDiameter = 0.065;
+  /**
+  The wheel circumference using the formula circumference = π * diameter
+   */
+  static wheelCircumference = Math.PI * CarModelRenderer.wheelDiameter;
+  /**
+  Maximum rotations per minute of the motor
+   */
+  static maxRPM = 200;
+  /**
+  DC motors with a `1:48` gear ratio allow the max speed of a PiCar-X to be around 1.8 to 2 km/h.
+   */
+  static gearRatio = 48;
 
   constructor(
     private rootElement: HTMLElement,
@@ -95,17 +120,16 @@ export class CarModelRenderer {
   }
 
   public rotateWheels() {
-    const maxRPM = 200;
-    const gearRatio = 48;
-    const wheelCircumference = 0.204;
-
     const wheelRotationsPerSecond =
-      ((this.speed / 100) * maxRPM) / gearRatio / 60;
-    const distancePerSecond = wheelRotationsPerSecond * wheelCircumference;
+      ((this.speed / 100) * CarModelRenderer.maxRPM) /
+      CarModelRenderer.gearRatio /
+      60;
+    const distancePerSecond =
+      wheelRotationsPerSecond * CarModelRenderer.wheelCircumference;
 
     this.wheels.front.concat(this.wheels.back).forEach((wheel) => {
       const rotationAngle =
-        (distancePerSecond / wheelCircumference) * Math.PI * 2;
+        (distancePerSecond / CarModelRenderer.wheelCircumference) * Math.PI * 2;
 
       const currentRotation = wheel.rotation.y;
       const nextRotation = currentRotation + this.direction * rotationAngle;
