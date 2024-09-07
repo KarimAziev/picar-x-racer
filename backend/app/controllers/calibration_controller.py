@@ -22,7 +22,7 @@ class CalibrationController(Logger):
         self.motors_cali = self.px.cali_dir_value
         self.servos_offset = list.copy(self.servos_cali)
         self.motors_offset = list.copy(self.motors_cali)
-        self.step = 0.4
+        self.step = 0.2
 
         self.motor_run = False
 
