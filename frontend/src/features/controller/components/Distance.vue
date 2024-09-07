@@ -14,7 +14,7 @@ import {
 } from "@/features/settings/stores";
 import { onMounted } from "vue";
 import { computed, ref } from "vue";
-const interval = 100;
+const interval = 1000;
 const intervalId = ref<NodeJS.Timeout>();
 const popupStore = usePopupStore();
 
@@ -28,12 +28,12 @@ const isAutoMeasureMode = computed(
 
 const fetchAndScheduleNext = async () => {
   if (intervalId.value) {
-    clearInterval(intervalId.value);
+    clearTimeout(intervalId.value);
   }
   if (isAutoMeasureMode.value && !isPopupOpen.value) {
     await distanceStore.fetchDistance();
   }
-  intervalId.value = setInterval(fetchAndScheduleNext, interval);
+  intervalId.value = setTimeout(fetchAndScheduleNext, interval);
 };
 
 const handleToggle = () => {
