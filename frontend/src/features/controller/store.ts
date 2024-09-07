@@ -337,7 +337,7 @@ export const useControllerStore = defineStore("controller", {
 
     slowdown() {
       if (this.speed > 0) {
-        this.speed = Math.max(this.speed - 5, 0);
+        this.speed = Math.max(this.speed - 10, 0);
       }
       if (this.speed === 0 && this.direction !== 0) {
         this.stop();
