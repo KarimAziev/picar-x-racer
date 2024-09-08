@@ -412,12 +412,31 @@ export class CarModelRenderer {
       colors.whiteMute,
     );
 
+    for (let i = 0; i < 4; i++) {
+      const isOdd = i % 2;
+      const isTop = i < 2;
+      const robotHatPillar = MeshFactory.createBox(
+        this.calcDimension(0.05),
+        this.calcDimension(0.3),
+        this.calcDimension(0.05),
+        colors.black,
+      );
+
+      robotHatPillar.position.set(
+        this.calcDimension(isOdd ? 0.25 : -0.25),
+        this.calcDimension(-0.18),
+        this.calcDimension(isTop ? -0.3 : 0.3),
+      );
+      robotHAT.add(robotHatPillar);
+    }
+
     const robotHATWall = MeshFactory.createBox(
       this.calcDimension(0.1),
       this.calcDimension(0.1),
       this.calcDimension(0.7),
       colors.black,
     );
+
     robotHATWall.position.set(
       this.calcDimension(-0.26),
       this.calcDimension(-0.04),
