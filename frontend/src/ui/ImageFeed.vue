@@ -13,7 +13,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 
 const ws = ref<WebSocket>();
-const WS_URL: string = `ws://localhost:${8050}`;
+const WS_URL: string = `ws://${window.location.hostname}:${8050}`;
 const imgRef = ref();
 const imgLoading = ref(true);
 
