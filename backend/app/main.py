@@ -1,3 +1,4 @@
+import asyncio
 import threading
 
 from app.config.paths import PICARX_CONFIG_FILE, PICARX_OLD_CONFIG_FILE
@@ -15,25 +16,19 @@ Logger.set_global_log_level(Logger.WARNING)
 
 
 def main():
-    try:
-        copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
-        file_manager = FilesController()
-        audio_manager = AudioController()
-        camera_manager = CameraController()
-        car_manager = CarController(
+    camera_manager = CameraController()
+    copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
+    file_manager = FilesController()
+    audio_manager = AudioController()
+    car_manager = CarController(
             camera_manager=camera_manager,
             file_manager=file_manager,
             audio_manager=audio_manager,
         )
-        flask_thread = threading.Thread(
-            target=run_flask,
-            args=(car_manager, camera_manager, file_manager, audio_manager),
+    flask_thread = threading.Thread(
+        target=run_flask,
+        args=(car_manager, camera_manager, file_manager, audio_manager),
         )
-        flask_thread.daemon = True
-        flask_thread.start()
-        car_manager.main()
-    except KeyboardInterrupt as e:
-        logger.info("Stopping application")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
-        logger.log_exception("Cancelled", e)
+    flask_thread.daemon = True
+    flask_thread.start()
+    asyncio.run(car_manager.run_servers())

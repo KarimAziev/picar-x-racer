@@ -2,7 +2,7 @@
 import numpy as np
 import torch
 from torchvision import models, transforms
-from app.util.mobile_net_labels import labels
+from app.config.mobile_net_labels import labels
 from app.util.yolo_model import yolo_model, device, font
 from app.util.logger import Logger
 from PIL import Image, ImageFont, ImageDraw

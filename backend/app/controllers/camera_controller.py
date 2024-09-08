@@ -8,17 +8,20 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import numpy as np
 from app.util.logger import Logger
-from app.util.mobile_net import detect_objects_with_mobilenet
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import (
-    detect_cat_extended_faces,
-    detect_cat_faces,
     detect_full_body_faces,
     detect_human_faces,
     encode_and_detect,
     simulate_robocop_vision,
+    detect_cat_extended_faces,
+    detect_cat_faces,
+)
+from app.util.mobile_net import (
+    detect_objects_with_mobilenet,
 )
 from cv2 import VideoCapture
+from websockets.server import WebSocketServerProtocol
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 320
@@ -26,9 +29,7 @@ TARGET_HEIGHT = 240
 
 CameraInfo = Tuple[int, str, Optional[str]]
 
-frame_enhancers = {
-    "robocop_vision": simulate_robocop_vision
-}
+frame_enhancers = {"robocop_vision": simulate_robocop_vision}
 
 detectors = {
     "mobile_net": detect_objects_with_mobilenet,
@@ -72,45 +73,85 @@ class CameraController(metaclass=SingletonMeta):
         self.video_feed_format = ".jpg"
         self.inhibit_detection: bool = False
 
+    def generate_frame(self):
+        img_copy = self.flask_img.copy() if self.flask_img is not None else None
+
+        if img_copy is not None:
+            format = self.video_feed_format
+            video_feed_enhance_mode = self.video_feed_enhance_mode
+            video_feed_detect_mode = self.video_feed_detect_mode
+            inhibit_detection = self.inhibit_detection
+            video_feed_quality = self.video_feed_quality
+            frame_enhancer = (
+                frame_enhancers.get(video_feed_enhance_mode)
+                if video_feed_enhance_mode
+                else None
+            )
+            detection_func = (
+                detectors.get(video_feed_detect_mode)
+                if video_feed_detect_mode and not inhibit_detection
+                else None
+            )
+
+            encode_params = (
+                [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality]
+                if format == ".jpg"
+                else []
+            )
+            encoded_frame = encode_and_detect(
+                img_copy,
+                format,
+                encode_params,
+                frame_enhancer,
+                detection_func,
+            )
+
+            return encoded_frame
+
+    async def generate_video_stream_for_websocket(
+        self, websocket: WebSocketServerProtocol
+    ):
+        await self.restart()
+        self.active_clients += 1
+        self.logger.info(f"Active websocket clients: {self.active_clients}")
+        skip_count = 0
+        try:
+            while True:
+                encoded_frame = self.generate_frame()
+                if encoded_frame:
+                    await websocket.send(encoded_frame)
+                else:
+                    if skip_count < 1:
+                        self.logger.debug("Flask image is None, skipping frame.")
+                        skip_count += 1
+                await asyncio.sleep(0)
+        finally:
+            self.active_clients -= 1
+            self.logger.info(f"generate_video_stream: Active Clients: {self.active_clients}")
+            # if self.active_clients == 0 and not self.executor_shutdown:
+                # self.executor.shutdown(wait=True, cancel_futures=True)
+                # self.executor_shutdown = True
+                # self.logger.info("Executor shut down due to no active clients.")
+                # self.camera_close()  # Close the camera when no active clients
+
     def generate_video_stream(
         self,
     ):
         self.active_clients += 1
-        self.logger.info(f"Active Clients: {self.active_clients}")
+        self.logger.info(f"generate_video_stream: Active Clients: {self.active_clients}")
         skip_count = 0
         try:
             while True:
-                img_copy = self.flask_img.copy() if self.flask_img is not None else None
-
-                if img_copy is not None:
-                    skip_count = 0
-                    format = self.video_feed_format
-                    video_feed_enhance_mode = self.video_feed_enhance_mode
-                    video_feed_detect_mode = self.video_feed_detect_mode
-                    inhibit_detection = self.inhibit_detection
-                    video_feed_quality = self.video_feed_quality
-                    frame_enhancer = frame_enhancers.get(video_feed_enhance_mode) if video_feed_enhance_mode else None
-                    detection_func = detectors.get(video_feed_detect_mode) if video_feed_detect_mode and not inhibit_detection else None
-
-                    encode_params = [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality] if format == ".jpg" else []
-                    future = self.executor.submit(
-                        encode_and_detect,
-                        img_copy,
-                        format,
-                        encode_params,
-                        frame_enhancer,
-                        detection_func,
-                    )
-                    encoded_frame = future.result()
+                encoded_frame = self.generate_frame()
+                if encoded_frame:
                     yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + encoded_frame + b"\r\n"
-
                 else:
                     if skip_count < 1:
                         self.logger.debug("Flask image is None, skipping frame.")
-                    skip_count += 1
+                        skip_count += 1
         finally:
             self.active_clients -= 1
-            self.logger.info(f"Active Clients: {self.active_clients}")
+            self.logger.info(f"generate_video_stream: Active Clients: {self.active_clients}")
             if self.active_clients == 0 and not self.executor_shutdown:
                 self.executor.shutdown(wait=True, cancel_futures=True)
                 self.executor_shutdown = True
@@ -156,10 +197,10 @@ class CameraController(metaclass=SingletonMeta):
                     failed_counter = 0
 
                 if self.frame_counter % self.frame_skip_interval == 0:
-                   if self.camera_vflip:
-                       frame = cv2.flip(frame, 0)
-                   if self.camera_hflip:
-                       frame = cv2.flip(frame, 1)
+                    if self.camera_vflip:
+                        frame = cv2.flip(frame, 0)
+                    if self.camera_hflip:
+                        frame = cv2.flip(frame, 1)
 
                 self.frame_counter += 1
 
@@ -174,7 +215,6 @@ class CameraController(metaclass=SingletonMeta):
             self.flask_img = None
 
             self.logger.info("Camera loop terminated and camera released.")
-
 
     @staticmethod
     def height_to_width(height: int):
@@ -394,7 +434,6 @@ class CameraController(metaclass=SingletonMeta):
 
         status = False
         for _ in range(5):
-
             img_copy = self.img.copy() if self.img is not None else None
 
             if img_copy is not None:

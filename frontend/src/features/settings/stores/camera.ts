@@ -142,7 +142,6 @@ export const useStore = defineStore("camera", {
       this.data.video_feed_detect_mode = cycleValue(currentMode, detectors, -1);
 
       await this.updateCameraParams({
-        ...this.data,
         video_feed_detect_mode: this.data.video_feed_detect_mode,
       });
     },

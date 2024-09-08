@@ -9,6 +9,7 @@ from app.controllers.audio_controller import AudioController
 from app.controllers.calibration_controller import CalibrationController
 from app.controllers.camera_controller import CameraController
 from app.controllers.files_controller import FilesController
+from app.controllers.stream_controller import StreamController
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 from app.util.platform_adapters import Picarx, reset_mcu
@@ -29,18 +30,21 @@ class CarController(Logger):
         self.camera_manager = camera_manager
         self.audio_manager = audio_manager
         self.file_manager = file_manager
+        self.stream_controller = StreamController(camera_controller=self.camera_manager)
 
         reset_mcu()
         time.sleep(0.2)
 
         self.px = Picarx()
         self.calibration = CalibrationController(self.px)
-
         self.last_toggle_time = None
         self.avoid_obstacles_mode = False
+        self.is_moving = False
+        self.move_track_task = None
         self.avoid_obstacles_task = None
 
         self.loop = asyncio.get_event_loop()
+
 
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
         async for message in websocket:
@@ -95,7 +99,6 @@ class CarController(Logger):
         elif action == "move":
             self.handle_move(payload)
         elif action == "setServoDirAngle":
-            self.camera_manager.inhibit_detection = payload != 0
             self.px.set_dir_servo_angle(payload or 0)
         elif action == "stop":
             self.px.stop()
@@ -216,7 +219,6 @@ class CarController(Logger):
             -2: "Failed to detect pulse start or end",
         }
         try:
-
             distance = await self.px.get_distance()
             if distance < 0 and distance in errors:
                 raise ValueError(errors.get(distance, "Unexpected distance error"))
@@ -226,13 +228,22 @@ class CarController(Logger):
             raise
 
     async def start_server(self):
+        ip_address = get_ip_address()
         self.server = await websockets.serve(self.handle_message, "0.0.0.0", 8765)
+        self.info(
+            f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
+        )
         await self.server.wait_closed()
 
     async def stop_server(self):
         if self.server:
             self.server.close()
             await self.server.wait_closed()
+
+    async def run_servers(self):
+        server_task1 = self.start_server()
+        server_task2 = self.stream_controller.start_server()
+        await asyncio.gather(server_task1, server_task2)
 
     def main(self):
         ip_address = get_ip_address()
