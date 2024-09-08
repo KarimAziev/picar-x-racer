@@ -24,6 +24,9 @@ import { computed, ref, onUnmounted, onMounted } from "vue";
 import { isNumber } from "@/util/guards";
 import { useSettingsStore, useBatteryStore } from "@/features/settings/stores";
 
+const BATTERY_DANGER_LEVEL = 6.7;
+const BATTERY_GOOD_LEVEL = 7.8;
+
 const POLL_SHORT_INTERVAL_MS = 60000; // 1 minute
 const POLL_LONG_INTERVAL_MS = 60000 * 10; // 10 minutes
 
@@ -45,7 +48,7 @@ const batteryVoltage = computed(() =>
 
 const batteryVoltageAdjusted = computed(() =>
   isNumber(batteryStore.voltage)
-    ? Math.max(0, batteryStore.voltage - 7.15)
+    ? Math.max(0, batteryStore.voltage - BATTERY_DANGER_LEVEL)
     : batteryStore.voltage,
 );
 
@@ -64,9 +67,10 @@ const percentageAdjusted = computed(() =>
 
 const className = computed(() => {
   const voltage = batteryStore.voltage;
-  if (voltage > 7.6) {
+
+  if (voltage > BATTERY_GOOD_LEVEL) {
     return "typed";
-  } else if (voltage > 7.15 && voltage <= 7.6) {
+  } else if (voltage > BATTERY_DANGER_LEVEL && voltage <= BATTERY_GOOD_LEVEL) {
     return "warning";
   } else {
     return "danger";
