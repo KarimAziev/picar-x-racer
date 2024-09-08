@@ -196,7 +196,7 @@ export class CarModelRenderer {
     this.controlBoard = this.createControlBoard();
     this.controlBoard.position.set(
       0,
-      this.calcDimension(0.2),
+      this.calcDimension(0.29),
       this.calcDimension(-0.3),
     );
     this.body.add(this.controlBoard);
@@ -334,7 +334,7 @@ export class CarModelRenderer {
       this.calcDimension(0.1),
       this.calcDimension(0.1),
       this.calcDimension(0.6),
-      colors.grey,
+      colors.whiteMute,
     );
   }
 
@@ -363,19 +363,67 @@ export class CarModelRenderer {
   }
 
   private createControlBoard() {
+    const controlBoardWidth = 0.6;
     const controlBoard = MeshFactory.createBox(
-      this.calcDimension(0.6),
-      this.calcDimension(0.1),
+      this.calcDimension(controlBoardWidth),
+      this.calcDimension(0.005),
       this.calcDimension(0.9),
-      colors.grey,
+      colors.forestGreen2,
     );
+    const portsCols = 3;
+    const portWidth = controlBoardWidth / portsCols - 0.01;
+
+    let leftOffset = (portWidth * 100 + 0.08) / 100;
+
+    for (let i = 0; i < portsCols; i++) {
+      const len = i + 1 === portsCols ? portWidth - 0.01 : portWidth - 0.05;
+      const port = MeshFactory.createBox(
+        this.calcDimension(portWidth - 0.01),
+        this.calcDimension(0.1),
+        this.calcDimension(
+          i + 1 === portsCols ? portWidth - 0.01 : portWidth - 0.05,
+        ),
+        colors.silver,
+      );
+
+      const hole = MeshFactory.createBox(
+        this.calcDimension(portWidth - 0.03),
+        this.calcDimension(0.09),
+        this.calcDimension(len),
+        colors.black,
+      );
+
+      port.add(hole);
+      hole.position.set(0, this.calcDimension(0), this.calcDimension(-0.01));
+      controlBoard.add(port);
+
+      port.position.set(
+        this.calcDimension(leftOffset + 0.02),
+        this.calcDimension(0.05),
+        this.calcDimension(-0.35),
+      );
+      leftOffset -= portWidth + 0.02;
+    }
 
     const robotHAT = MeshFactory.createBox(
-      this.calcDimension(0.6),
-      this.calcDimension(0.1),
+      this.calcDimension(controlBoardWidth),
+      this.calcDimension(0.05),
       this.calcDimension(0.7),
       colors.whiteMute,
     );
+
+    const robotHATWall = MeshFactory.createBox(
+      this.calcDimension(0.1),
+      this.calcDimension(0.1),
+      this.calcDimension(0.7),
+      colors.black,
+    );
+    robotHATWall.position.set(
+      this.calcDimension(-0.26),
+      this.calcDimension(-0.04),
+      this.calcDimension(0),
+    );
+    robotHAT.add(robotHATWall);
 
     robotHAT.position.set(0, this.calcDimension(0.1), this.calcDimension(0.1));
     controlBoard.add(robotHAT);

@@ -11,6 +11,8 @@ export const colors = {
   red: 0xff0000,
   emerald: 0x10b981,
   lime: 0x00ff00,
+  forestGreen1: 0x228b22,
+  forestGreen2: 0x008000,
 };
 
 export class MeshFactory {
