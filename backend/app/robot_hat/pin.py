@@ -176,7 +176,19 @@ class Pin(object):
         self._value = 0
         self.gpio = None
         self.setup(mode, pull)
-        self.logger.info("Pin init finished.")
+        mode_str = (
+            "NONE PIN"
+            if mode is None
+            else "OUT PIN" if mode == self.OUT else "INPUT PIN"
+        )
+        pull_str = (
+            "No internal resistor"
+            if pull is None
+            else "PULL-UP resistor" if pull == self.PULL_UP else "PULL-DOWN resistor"
+        )
+        self.logger.info(
+            f"Initted {mode_str} {self._board_name} (0x{self._pin_num:02X}) with {pull_str} (0x{pull:02X})"
+        )
 
     def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
         """
@@ -232,14 +244,16 @@ class Pin(object):
         if mode in [None, self.OUT, self.IN]:
             self._mode = mode
         else:
-            raise ValueError(f"mode param error, should be None, Pin.OUT, Pin.IN")
+            msg = f"mode param error, should be None, Pin.OUT, Pin.IN"
+            self.logger.error(msg)
+            raise ValueError(msg)
 
         if pull in [self.PULL_NONE, self.PULL_DOWN, self.PULL_UP]:
             self._pull = pull
         else:
-            raise ValueError(
-                f"pull param error, should be None, Pin.PULL_NONE, Pin.PULL_DOWN, Pin.PULL_UP"
-            )
+            msg = f"pull param error, should be None, Pin.PULL_NONE, Pin.PULL_DOWN, Pin.PULL_UP"
+            self.logger.error(msg)
+            raise ValueError(msg)
 
         if self.gpio != None:
             if self.gpio.pin != None:
