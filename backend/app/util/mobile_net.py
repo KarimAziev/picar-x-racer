@@ -3,12 +3,10 @@ import numpy as np
 import torch
 from torchvision import models, transforms
 from app.config.mobile_net_labels import labels
-from app.util.yolo_model import yolo_model, device, font
+from app.config.yolo_model import device
+from app.config.font import font
 from app.util.logger import Logger
-from PIL import Image, ImageFont, ImageDraw
-from app.config.paths import (
-    FONT_PATH,
-)
+from PIL import Image, ImageDraw
 
 logger = Logger(__name__)
 
@@ -16,8 +14,6 @@ torch.backends.quantized.engine = 'qnnpack'
 
 net = models.quantization.mobilenet_v2(weights=models.quantization.MobileNet_V2_QuantizedWeights.IMAGENET1K_QNNPACK_V1, quantize=True)
 net = torch.jit.script(net)
-
-font = ImageFont.truetype(FONT_PATH, 24)
 
 net.eval() # type: ignore
 

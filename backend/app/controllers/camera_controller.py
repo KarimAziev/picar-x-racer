@@ -10,18 +10,13 @@ import numpy as np
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import (
-    detect_full_body_faces,
-    detect_human_faces,
     encode_and_detect,
-    simulate_robocop_vision,
-    detect_cat_extended_faces,
-    detect_cat_faces,
 )
-from app.util.mobile_net import (
-    detect_objects_with_mobilenet,
-)
+
 from cv2 import VideoCapture
 from websockets.server import WebSocketServerProtocol
+from app.config.detectors import detectors
+from app.config.video_enhancers import frame_enhancers
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 320
@@ -29,15 +24,6 @@ TARGET_HEIGHT = 240
 
 CameraInfo = Tuple[int, str, Optional[str]]
 
-frame_enhancers = {"robocop_vision": simulate_robocop_vision}
-
-detectors = {
-    "mobile_net": detect_objects_with_mobilenet,
-    "cat": detect_cat_faces,
-    "cat_extended": detect_cat_extended_faces,
-    "human_body": detect_full_body_faces,
-    "human_face": detect_human_faces,
-}
 
 
 class CameraController(metaclass=SingletonMeta):
@@ -128,11 +114,11 @@ class CameraController(metaclass=SingletonMeta):
         finally:
             self.active_clients -= 1
             self.logger.info(f"generate_video_stream: Active Clients: {self.active_clients}")
-            # if self.active_clients == 0 and not self.executor_shutdown:
-                # self.executor.shutdown(wait=True, cancel_futures=True)
-                # self.executor_shutdown = True
-                # self.logger.info("Executor shut down due to no active clients.")
-                # self.camera_close()  # Close the camera when no active clients
+            if self.active_clients == 0 and not self.executor_shutdown:
+                self.executor.shutdown(wait=True, cancel_futures=True)
+                self.executor_shutdown = True
+                self.logger.info("Executor shut down due to no active clients.")
+                self.camera_close()  # Close the camera when no active clients
 
     def generate_video_stream(
         self,

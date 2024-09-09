@@ -22,7 +22,7 @@ class Battery:
         """
         total = self.voltage_1 + self.voltage_2
 
-        if total > 7.15:
+        if total > 6:
             self.voltage_2 -= self.discharge_rate
             self.voltage_1 -= self.discharge_rate
 
