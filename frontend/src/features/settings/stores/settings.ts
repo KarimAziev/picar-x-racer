@@ -10,8 +10,8 @@ import { isNumber } from "@/util/guards";
 import { toggleableSettings } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
-import { omit } from "@/util/obj";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
+import { omit } from "@/util/obj";
 import type { ControllerActionName } from "@/features/controller/store";
 
 export type ToggleableSettings = {

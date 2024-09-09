@@ -25,22 +25,13 @@ const dimensions = [
 
 const MAX_FPS = 70;
 
-export const enhancers = [null, "robocop_vision"];
-
-export const detectors = [
-  "mobile_net",
-  "cat",
-  "cat_extended",
-  "human_body",
-  "human_face",
-  null,
-];
-
 export interface State {
   data: CameraOpenRequestParams;
   dimensions: { video_feed_width: number; video_feed_height: number } | null;
   loading: boolean;
   cancelTokenSource?: AbortController;
+  detectors: string[];
+  enhancers: string[];
 }
 
 const defaultState: State = {
@@ -49,6 +40,8 @@ const defaultState: State = {
     video_feed_enhance_mode: null,
     video_feed_detect_mode: null,
   },
+  detectors: [],
+  enhancers: [],
   dimensions: null,
   cancelTokenSource: undefined,
 };
@@ -93,6 +86,26 @@ export const useStore = defineStore("camera", {
       return this.data;
     },
 
+    async fetchConfig() {
+      try {
+        this.loading = true;
+        const response = await axios.get("/api/video-modes");
+        const data = response.data;
+        this.detectors = data.detectors;
+        this.enhancers = data.enhancers;
+      } catch (error) {
+        console.error("Error fetching video modes:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async ensureConfig() {
+      if (!this.loading && !this.detectors.length && !this.enhancers.length) {
+        await this.fetchConfig();
+      }
+    },
+
     async fetchDimensions() {
       const messager = useMessagerStore();
       try {
@@ -122,34 +135,46 @@ export const useStore = defineStore("camera", {
       });
     },
     async nextDetectMode() {
+      await this.ensureConfig();
       const currentMode = this.data.video_feed_detect_mode;
-      this.data.video_feed_detect_mode = cycleValue(currentMode, detectors, 1);
+      this.data.video_feed_detect_mode = cycleValue(
+        currentMode,
+        [...this.detectors, null],
+        1,
+      );
 
       await this.updateCameraParams({
         video_feed_detect_mode: this.data.video_feed_detect_mode,
       });
     },
     async nextEnhanceMode() {
+      await this.ensureConfig();
       const currentMode = this.data.video_feed_enhance_mode;
-      const nextMode = cycleValue(currentMode, enhancers, 1);
+      const nextMode = cycleValue(currentMode, [...this.enhancers, null], 1);
 
       await this.updateCameraParams({
         video_feed_enhance_mode: nextMode,
       });
     },
     async prevDetectMode() {
+      await this.ensureConfig();
       const currentMode = this.data.video_feed_detect_mode;
-      this.data.video_feed_detect_mode = cycleValue(currentMode, detectors, -1);
+      this.data.video_feed_detect_mode = cycleValue(
+        currentMode,
+        [...this.detectors, null],
+        -1,
+      );
 
       await this.updateCameraParams({
         video_feed_detect_mode: this.data.video_feed_detect_mode,
       });
     },
     async prevEnhanceMode() {
+      await this.ensureConfig();
       const currentMode = this.data.video_feed_enhance_mode;
       this.data.video_feed_enhance_mode = cycleValue(
         currentMode,
-        enhancers,
+        [...this.enhancers, null],
         -1,
       );
 

@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 from typing import TYPE_CHECKING, Dict, Any, Union
-
+from app.config.detectors import detectors
+from app.config.video_enhancers import frame_enhancers
 
 if TYPE_CHECKING:
     from app.controllers.files_controller import FilesController
@@ -31,3 +32,15 @@ def update_settings():
 def get_calibration_settings():
     vc: "FilesController" = current_app.config["file_manager"]
     return jsonify(vc.get_calibration_config())
+
+@settings_bp.route("/api/detectors", methods=["GET"])
+def get_detectors():
+    return jsonify({ "detectors": list(detectors.keys())})
+
+@settings_bp.route("/api/enhancers", methods=["GET"])
+def get_frame_enhancers():
+    return jsonify({ "enhancers": list(frame_enhancers.keys()) })
+
+@settings_bp.route("/api/video-modes", methods=["GET"])
+def get_video_modes():
+    return jsonify({ "detectors": list(detectors.keys()), "enhancers": list(frame_enhancers.keys()) })
