@@ -45,7 +45,6 @@ class CarController(Logger):
 
         self.loop = asyncio.get_event_loop()
 
-
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
         async for message in websocket:
             try:
@@ -240,21 +239,9 @@ class CarController(Logger):
             self.server.close()
             await self.server.wait_closed()
 
-    async def run_servers(self):
-        server_task1 = self.start_server()
-        server_task2 = self.stream_controller.start_server()
-        await asyncio.gather(server_task1, server_task2)
+    def run_server(self):
+        asyncio.run(self.start_server())
 
-    def main(self):
-        ip_address = get_ip_address()
-        server_task = self.loop.create_task(self.start_server())
-        self.info(
-            f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
-        )
-        try:
-            self.loop.run_until_complete(server_task)
-        except KeyboardInterrupt:
-            self.loop.run_until_complete(self.cancel_avoid_obstacles_task())
-            self.loop.run_until_complete(self.stop_server())
-            self.camera_manager.shutdown()
-            self.loop.close()
+    async def run_streaming_servers(self):
+        server_task1 = self.stream_controller.start_server()
+        await asyncio.gather(server_task1)

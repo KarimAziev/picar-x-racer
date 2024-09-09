@@ -1,5 +1,6 @@
 import asyncio
 import threading
+from multiprocessing import Process
 
 from app.config.paths import PICARX_CONFIG_FILE, PICARX_OLD_CONFIG_FILE
 from app.controllers.audio_controller import AudioController
@@ -21,14 +22,29 @@ def main():
     file_manager = FilesController()
     audio_manager = AudioController()
     car_manager = CarController(
-            camera_manager=camera_manager,
-            file_manager=file_manager,
-            audio_manager=audio_manager,
-        )
+        camera_manager=camera_manager,
+        file_manager=file_manager,
+        audio_manager=audio_manager,
+    )
+
+    # Start the Flask server in a separate thread
     flask_thread = threading.Thread(
         target=run_flask,
         args=(car_manager, camera_manager, file_manager, audio_manager),
-        )
+    )
     flask_thread.daemon = True
     flask_thread.start()
-    asyncio.run(car_manager.run_servers())
+
+    # Start the StreamController in a separate process
+    streaming_process = Process(target=car_manager.run_server)
+    streaming_process.start()
+
+    try:
+        asyncio.run(car_manager.run_streaming_servers())
+    except KeyboardInterrupt:
+        logger.info("Shutting down servers...")
+    finally:
+        # Ensure proper cleanup
+        streaming_process.terminate()
+        streaming_process.join()
+        flask_thread.join()
