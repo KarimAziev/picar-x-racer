@@ -50,7 +50,7 @@ const batteryVoltage = computed(() =>
 
 const batteryVoltageAdjusted = computed(() =>
   isNumber(batteryStore.voltage)
-    ? Math.max(0, batteryTotalVoltageAdjusted.value - BATTERY_DANGER_LEVEL)
+    ? Math.max(0, batteryStore.voltage - BATTERY_DANGER_LEVEL)
     : batteryStore.voltage,
 );
 
