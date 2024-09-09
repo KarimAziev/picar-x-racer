@@ -77,3 +77,49 @@ def simulate_robocop_vision(
     combined = np.array(pil_img)
 
     return combined
+
+def simulate_predator_vision(frame: np.ndarray) -> np.ndarray:
+    """
+    Simulate Predator vision by applying thermal effect.
+
+    Parameters:
+        frame (np.ndarray): The input frame to simulate Predator vision.
+
+    Returns:
+        np.ndarray: The frame with Predator vision effects.
+    """
+    thermal_effect = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
+    return thermal_effect
+
+def simulate_infrared_vision(frame: np.ndarray) -> np.ndarray:
+    """
+    Simulate Infrared vision by highlighting warmer areas.
+
+    Parameters:
+        frame (np.ndarray): The input frame to simulate Infrared vision.
+
+    Returns:
+        np.ndarray: The frame with Infrared vision effects.
+    """
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    hot_threshold = 150
+    _, hot_mask = cv2.threshold(gray_frame, hot_threshold, 255, cv2.THRESH_BINARY)
+    hot_mask_colored = cv2.merge([hot_mask, hot_mask, np.zeros_like(hot_mask)])
+    infrared_effect = cv2.addWeighted(frame, 0.7, hot_mask_colored, 0.3, 0)
+    return infrared_effect
+
+def simulate_ultrasonic_vision(frame: np.ndarray) -> np.ndarray:
+    """
+    Simulate Ultrasonic vision by creating a monochromatic sonar effect.
+
+    Parameters:
+        frame (np.ndarray): The input frame to simulate Ultrasonic vision.
+
+    Returns:
+        np.ndarray: The frame with Ultrasonic vision effects.
+    """
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray_frame, threshold1=50, threshold2=150)
+    edges_colored = cv2.merge([edges, edges, edges])
+    ultrasonic_effect = cv2.applyColorMap(edges_colored, cv2.COLORMAP_BONE)
+    return ultrasonic_effect
