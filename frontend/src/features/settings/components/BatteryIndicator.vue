@@ -38,7 +38,9 @@ const batteryTotalVoltage = computed(
   () => settingsStore.settings.battery_full_voltage || 8.4,
 );
 
-const batteryTotalVoltageAdjusted = computed(() => batteryTotalVoltage.value);
+const batteryTotalVoltageAdjusted = computed(
+  () => batteryTotalVoltage.value - BATTERY_DANGER_LEVEL,
+);
 
 const batteryVoltage = computed(() =>
   isNumber(batteryStore.voltage)
@@ -48,7 +50,7 @@ const batteryVoltage = computed(() =>
 
 const batteryVoltageAdjusted = computed(() =>
   isNumber(batteryStore.voltage)
-    ? Math.max(0, batteryStore.voltage - BATTERY_DANGER_LEVEL)
+    ? Math.max(0, batteryTotalVoltageAdjusted.value - BATTERY_DANGER_LEVEL)
     : batteryStore.voltage,
 );
 
