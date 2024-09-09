@@ -186,8 +186,9 @@ class Pin(object):
             if pull is None
             else "PULL-UP resistor" if pull == self.PULL_UP else "PULL-DOWN resistor"
         )
+        pull_hex = "None" if pull is None else f"0x{pull:02X}"
         self.logger.info(
-            f"Initted {mode_str} {self._board_name} (0x{self._pin_num:02X}) with {pull_str} (0x{pull:02X})"
+            f"Initted {mode_str} {self._board_name} (0x{self._pin_num:02X}) with {pull_str} ({pull_hex})"
         )
 
     def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
