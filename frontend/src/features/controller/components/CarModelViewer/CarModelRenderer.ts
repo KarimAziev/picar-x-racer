@@ -181,7 +181,7 @@ export class CarModelRenderer {
     this.ultrasonic.position.set(
       0,
       this.calcDimension(-0.05),
-      this.calcDimension(0.8),
+      this.calcDimension(0.7),
     );
     this.body.add(this.ultrasonic);
 
@@ -196,7 +196,7 @@ export class CarModelRenderer {
     this.controlBoard = this.createControlBoard();
     this.controlBoard.position.set(
       0,
-      this.calcDimension(0.29),
+      this.calcDimension(0.23),
       this.calcDimension(-0.3),
     );
     this.body.add(this.controlBoard);
@@ -321,12 +321,63 @@ export class CarModelRenderer {
   }
 
   private createBody() {
-    return MeshFactory.createBox(
-      (0.5 / 1.5) * this.bodyLength,
-      (0.1 / 1.5) * this.bodyLength,
-      this.bodyLength,
+    const backRightWall = MeshFactory.createBox(
+      this.calcDimension(0.2),
+      this.calcDimension(0.09),
+      this.calcDimension(0.3),
       colors.white,
     );
+
+    const bodyTop = MeshFactory.createBox(
+      this.calcDimension(0.7),
+      this.calcDimension(0.1),
+      this.calcDimension(0.2),
+      colors.white,
+    );
+
+    bodyTop.position.set(0, 0, this.calcDimension(0.4));
+
+    const backLeftWall = MeshFactory.createBox(
+      this.calcDimension(0.3),
+      this.calcDimension(0.09),
+      this.calcDimension(0.22),
+      colors.white,
+    );
+    const bodyEnd = MeshFactory.createBox(
+      (0.5 / 1) * this.bodyLength,
+      0.09,
+      this.bodyLength / 3,
+      colors.white,
+    );
+    const body = MeshFactory.createBox(
+      (0.5 / 1.9) * this.bodyLength,
+      (0.1 / 1.7) * this.bodyLength,
+      this.bodyLength - 0.1,
+      colors.white,
+    );
+    bodyEnd.position.set(
+      this.calcDimension(0),
+      this.calcDimension(0),
+      this.calcDimension(-0.3),
+    );
+
+    bodyEnd.add(backRightWall);
+    bodyEnd.add(backLeftWall);
+    backRightWall.position.set(
+      this.calcDimension(-0.2),
+      this.calcDimension(0),
+      this.calcDimension(0.28),
+    );
+    backLeftWall.position.set(
+      this.calcDimension(0.19),
+      this.calcDimension(0),
+      this.calcDimension(0.27),
+    );
+    backRightWall.rotation.y = THREE.MathUtils.degToRad(45);
+    backLeftWall.rotation.y = THREE.MathUtils.degToRad(45);
+    body.add(bodyEnd);
+    body.add(bodyTop);
+    return body;
   }
 
   private createNeck() {
@@ -363,12 +414,15 @@ export class CarModelRenderer {
   }
 
   private createControlBoard() {
-    const controlBoardWidth = 0.6;
+    const controlBoardWidth = 0.45;
+    const controlBoardLen = 0.65;
+    const robotHatLen = controlBoardLen - 0.1;
     const controlBoard = MeshFactory.createBox(
       this.calcDimension(controlBoardWidth),
       this.calcDimension(0.005),
-      this.calcDimension(0.9),
+      this.calcDimension(controlBoardLen),
       colors.forestGreen2,
+      { opacity: 0.8, transparent: true },
     );
     const portsCols = 3;
     const portWidth = controlBoardWidth / portsCols - 0.01;
@@ -400,7 +454,7 @@ export class CarModelRenderer {
       port.position.set(
         this.calcDimension(leftOffset + 0.02),
         this.calcDimension(0.05),
-        this.calcDimension(-0.35),
+        this.calcDimension(-(controlBoardLen / 2.3)),
       );
       leftOffset -= portWidth + 0.02;
     }
@@ -408,9 +462,12 @@ export class CarModelRenderer {
     const robotHAT = MeshFactory.createBox(
       this.calcDimension(controlBoardWidth),
       this.calcDimension(0.05),
-      this.calcDimension(0.7),
+      this.calcDimension(robotHatLen),
       colors.whiteMute,
     );
+
+    const pillBaseW = controlBoardWidth / 2.3;
+    const pillBaseH = robotHatLen / 2.7;
 
     for (let i = 0; i < 4; i++) {
       const isOdd = i % 2;
@@ -423,9 +480,9 @@ export class CarModelRenderer {
       );
 
       robotHatPillar.position.set(
-        this.calcDimension(isOdd ? 0.25 : -0.25),
+        this.calcDimension(isOdd ? pillBaseW : -pillBaseW),
         this.calcDimension(-0.18),
-        this.calcDimension(isTop ? -0.3 : 0.3),
+        this.calcDimension(isTop ? -pillBaseH : pillBaseH),
       );
       robotHAT.add(robotHatPillar);
     }
@@ -433,20 +490,123 @@ export class CarModelRenderer {
     const robotHATWall = MeshFactory.createBox(
       this.calcDimension(0.1),
       this.calcDimension(0.1),
-      this.calcDimension(0.7),
+      this.calcDimension(robotHatLen),
       colors.black,
     );
 
     robotHATWall.position.set(
-      this.calcDimension(-0.26),
+      this.calcDimension(-(controlBoardWidth / 3)),
       this.calcDimension(-0.04),
       this.calcDimension(0),
     );
     robotHAT.add(robotHATWall);
 
-    robotHAT.position.set(0, this.calcDimension(0.1), this.calcDimension(0.1));
+    let offset = controlBoardWidth / 2.5;
+    for (let i = 0; i < 5; i++) {
+      const pwm = this.createPWM();
+      const isSecondRow = i > 2;
+
+      robotHAT.add(pwm);
+
+      if (i === 3) {
+        offset = controlBoardWidth / 2.5;
+      }
+
+      pwm.position.set(
+        this.calcDimension(offset),
+        this.calcDimension(0),
+        this.calcDimension(isSecondRow ? -0.08 : -0.15),
+      );
+
+      offset -= 0.1;
+
+      if (i === 2) {
+        const pinRight = MeshFactory.createBox(
+          this.calcDimension(0.05),
+          this.calcDimension(0.08),
+          this.calcDimension(0.1),
+          colors.grey,
+        );
+        robotHAT.add(pinRight);
+
+        pinRight.position.set(
+          this.calcDimension(offset),
+          this.calcDimension(0),
+          this.calcDimension(isSecondRow ? -0.08 : -0.15),
+        );
+      }
+    }
+
+    const powerButton = MeshFactory.createBox(
+      this.calcDimension(0.08),
+      this.calcDimension(0.08),
+      this.calcDimension(0.04),
+      colors.black,
+    );
+
+    const ledButton = MeshFactory.createBox(
+      this.calcDimension(0.04),
+      this.calcDimension(0.08),
+      this.calcDimension(0.08),
+      colors.lime,
+      { transparent: true, opacity: 0.3 },
+    );
+    robotHAT.add(ledButton);
+    ledButton.position.set(
+      this.calcDimension(-0.1),
+      this.calcDimension(0),
+      this.calcDimension(0.15),
+    );
+    robotHAT.add(powerButton);
+
+    powerButton.position.set(
+      this.calcDimension(0.15),
+      this.calcDimension(0),
+      this.calcDimension(0.15),
+    );
+
+    robotHAT.position.set(
+      0,
+      this.calcDimension(0.08),
+      this.calcDimension(0.05),
+    );
     controlBoard.add(robotHAT);
     return controlBoard;
+  }
+
+  private createPIN(color: number) {
+    return MeshFactory.createBox(
+      this.calcDimension(0.08),
+      this.calcDimension(0.02),
+      this.calcDimension(0.02),
+      color,
+    );
+  }
+
+  private createPWM() {
+    const pwm = MeshFactory.createBox(
+      this.calcDimension(0.08),
+      this.calcDimension(0.04),
+      this.calcDimension(0.1),
+      colors.black,
+      { opacity: 0.2, transparent: true },
+    );
+
+    const pins = [colors.grey, colors.red, colors.yellow];
+    let offset = -0.04;
+    for (let i = 0; i < pins.length; i++) {
+      const col = pins[i];
+      const pin = this.createPIN(col);
+      pwm.add(pin);
+      pin.position.set(
+        this.calcDimension(0),
+        this.calcDimension(0.02),
+        this.calcDimension(offset),
+      );
+      offset += 0.02;
+    }
+
+    return pwm;
   }
 
   private createUltrasonic() {
@@ -539,8 +699,8 @@ export class CarModelRenderer {
 
   private createWheelPair(height = 1.2, wheelSize = 0.3) {
     const axle = MeshFactory.createCylinder(
-      this.calcDimension(0.05),
-      this.calcDimension(0.05),
+      this.calcDimension(0.04),
+      this.calcDimension(0.04),
       height,
       colors.black,
     );

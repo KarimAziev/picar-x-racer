@@ -13,6 +13,7 @@ export const colors = {
   lime: 0x00ff00,
   forestGreen1: 0x228b22,
   forestGreen2: 0x008000,
+  yellow: 0xffff00,
 };
 
 export class MeshFactory {
