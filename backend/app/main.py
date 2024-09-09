@@ -13,7 +13,7 @@ from app.util.logger import Logger
 
 logger = Logger(__name__)
 
-Logger.set_global_log_level(Logger.WARNING)
+Logger.set_global_log_level(Logger.DEBUG)
 
 
 def main():
