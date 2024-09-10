@@ -145,9 +145,6 @@ export const useCarController = (
   settingsStore: ReturnType<typeof useSettingsStore>,
   popupStore: ReturnType<typeof usePopupStore>,
 ) => {
-  if (isMobileDevice()) {
-    return;
-  }
   const {
     gameLoop,
     addKeyEventListeners,
@@ -159,7 +156,9 @@ export const useCarController = (
   onMounted(() => {
     connectWS();
     addKeyEventListeners();
-    gameLoop();
+    if (!isMobileDevice()) {
+      gameLoop();
+    }
   });
 
   onBeforeUnmount(() => {
