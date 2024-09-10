@@ -1,77 +1,76 @@
 <template>
-  <ScrollPanel class="wrapper">
-    <Panel header="Appearance">
-      <SwitchSettings />
-      <div class="field">
-        <label for="auto_measure_distance_delay_ms"
-          >Auto Measure Distance Delay in Milliseconds</label
-        >
-        <InputNumber
-          :min="50"
-          :step="50"
-          showButtons
-          v-tooltip="
-            'Amount of milliseconds to wait between reading distance when auto measure distance mode is on.'
-          "
-          v-model="store.settings.auto_measure_distance_delay_ms"
-        />
-      </div>
-    </Panel>
-    <Panel header="Text to Speech">
-      <div class="field">
-        <label for="default_language">Language</label>
-        <Select
-          id="languages"
-          v-model="store.settings.default_language"
-          :options="ttsLanguages"
-        />
-      </div>
-      <div class="field">
-        <label for="default_text">Text</label>
-        <Textarea
-          id="default_text"
-          v-tooltip="'Type the text to speech'"
-          v-model="store.settings.default_text"
-        />
-      </div>
-    </Panel>
+  <Panel header="Appearance">
+    <SwitchSettings />
     <div class="field">
-      <label for="video_feed_url">Video Quality</label>
-      <Select
-        id="video_feed_url"
-        class="select"
-        v-model="store.settings.video_feed_quality"
-        optionLabel="label"
-        optionValue="value"
-        :options="videoFeedOptions"
+      <label for="auto_measure_distance_delay_ms"
+        >Auto Measure Distance Delay in Milliseconds</label
+      >
+      <InputNumber
+        class="input-number"
+        :min="50"
+        :step="50"
+        showButtons
+        v-tooltip="
+          'Amount of milliseconds to wait between reading distance when auto measure distance mode is on.'
+        "
+        v-model="store.settings.auto_measure_distance_delay_ms"
       />
     </div>
-    <Divider />
+  </Panel>
+  <Panel header="Text to Speech">
     <div class="field">
-      <label for="default_sound">Default Sound</label>
+      <label for="default_language">Language</label>
       <Select
-        id="default_sound"
-        class="select"
-        v-model="store.settings.default_sound"
-        :options="allSounds"
+        id="languages"
+        v-model="store.settings.default_language"
+        :options="ttsLanguages"
       />
     </div>
-    <Sounds />
-    <Divider />
     <div class="field">
-      <label for="default_music">Default Music</label>
-      <Select
-        id="default_music"
-        class="select"
-        v-model="store.settings.default_music"
-        :options="allMusic"
+      <label for="default_text">Text</label>
+      <Textarea
+        id="default_text"
+        v-tooltip="'Type the text to speech'"
+        v-model="store.settings.default_text"
       />
     </div>
-    <Music />
-    <Panel header="Photos" toggleable>
-      <Images />
-    </Panel>
-  </ScrollPanel>
+  </Panel>
+  <div class="field">
+    <label for="video_feed_url">Video Quality</label>
+    <Select
+      id="video_feed_url"
+      class="select"
+      v-model="store.settings.video_feed_quality"
+      optionLabel="label"
+      optionValue="value"
+      :options="videoFeedOptions"
+    />
+  </div>
+  <Divider />
+  <div class="field">
+    <label for="default_sound">Default Sound</label>
+    <Select
+      id="default_sound"
+      class="select"
+      v-model="store.settings.default_sound"
+      :options="allSounds"
+    />
+  </div>
+  <Sounds />
+  <Divider />
+  <div class="field">
+    <label for="default_music">Default Music</label>
+    <Select
+      id="default_music"
+      class="select"
+      v-model="store.settings.default_music"
+      :options="allMusic"
+    />
+  </div>
+  <Music />
+  <Panel header="Photos" toggleable>
+    <Images />
+  </Panel>
 </template>
 
 <script setup lang="ts">
@@ -86,7 +85,7 @@ import {
 import Panel from "primevue/panel";
 import Select from "primevue/select";
 import Textarea from "primevue/textarea";
-import ScrollPanel from "primevue/scrollpanel";
+
 import InputNumber from "primevue/inputnumber";
 
 import Sounds from "@/features/settings/components/Sounds.vue";
@@ -116,18 +115,29 @@ const allMusic = computed(() => [
 </script>
 
 <style scoped lang="scss">
-.wrapper {
-  min-width: 620px;
-  max-width: 1200px;
-  height: 800px;
-}
-
 .field {
   display: flex;
   flex-direction: column;
   margin: 1rem 0;
+  .input-number,
+  textarea,
+  input {
+    font-size: 10px;
+  }
+  @media (min-width: 640px) {
+    .input-number,
+    textarea,
+    input {
+      font-size: 1rem;
+    }
+  }
 }
-.select {
-  width: 200px;
+:deep(.p-inputnumber-input) {
+  font-size: 10px;
+  @media (min-width: 640px) {
+    & {
+      font-size: 1rem;
+    }
+  }
 }
 </style>

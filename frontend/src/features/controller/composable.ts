@@ -7,6 +7,7 @@ import { formatKeyEventItem, formatKeyboardEvents } from "@/util/keyboard-util";
 import { groupKeys } from "@/features/settings/util";
 import { usePopupStore } from "@/features/settings/stores";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
+import { isMobileDevice } from "@/util/device";
 
 export const useController = (
   controllerStore: ReturnType<typeof useControllerStore>,
@@ -144,6 +145,9 @@ export const useCarController = (
   settingsStore: ReturnType<typeof useSettingsStore>,
   popupStore: ReturnType<typeof usePopupStore>,
 ) => {
+  if (isMobileDevice()) {
+    return;
+  }
   const {
     gameLoop,
     addKeyEventListeners,

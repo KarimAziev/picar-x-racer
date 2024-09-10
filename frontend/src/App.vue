@@ -2,7 +2,7 @@
   <RouterView />
   <LazySettings />
   <Messager />
-  <div class="indicators">
+  <div class="indicators" v-if="!isMobile">
     <CalibrationModeInfo />
     <Distance />
     <BatteryIndicator />
@@ -11,10 +11,12 @@
 
 <script setup lang="ts">
 import { RouterView } from "vue-router";
-import { defineAsyncComponent } from "vue";
+import { defineAsyncComponent, computed } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
+import { isMobileDevice } from "@/util/device";
 
+const isMobile = computed(() => isMobileDevice());
 const Distance = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Distance.vue"),
 });

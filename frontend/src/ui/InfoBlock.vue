@@ -12,8 +12,14 @@ defineProps<{ class?: string }>();
 .info {
   text-transform: uppercase;
   display: flex;
-  width: 350px;
   flex-direction: column;
   padding: 1rem;
+  width: 200px;
+}
+
+@media (min-width: 880px) {
+  .info {
+    width: 350px;
+  }
 }
 </style>

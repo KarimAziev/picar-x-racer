@@ -14,6 +14,7 @@
     "@primevue/themes": "^4.0.4",
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.4",
+    "nipplejs": "^0.10.2",
     "pinia": "^2.1.7",
     "postcss": "^8.4.41",
     "primeicons": "^7.0.0",

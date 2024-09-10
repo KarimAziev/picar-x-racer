@@ -5,40 +5,51 @@
       @reset.prevent="handleReset"
       class="keybindings-form"
     >
-      <div class="rows">
-        <div v-for="(fieldPair, index) in fields" :key="index" class="form-row">
-          <div class="field">
-            <Select
-              v-model="fieldPair[0].value"
-              optionLabel="label"
-              optionValue="value"
-              :options="fieldPair[0].options"
-              :disabled="fieldPair[0].props?.disabled"
-              class="select"
-            />
-            <div class="error-box"></div>
-          </div>
-          <div class="field">
-            <InputText
-              v-model="fieldPair[1].value"
-              readonly
-              @beforeinput="(event) => startRecording(event, index)"
-              @focus="(event) => startRecording(event, index)"
-              name="keybinding"
-              class="input-text"
-            />
-            <div class="error-box"></div>
-          </div>
-          <Button
-            icon="pi pi-times"
-            class="p-button-rounded p-button-danger p-button-text"
-            @click="removeField(index)"
-          />
-        </div>
-      </div>
+      <table>
+        <tbody>
+          <tr v-for="(fieldPair, index) in fields" :key="index">
+            <td class="field">
+              <Select
+                v-model="fieldPair[0].value"
+                optionLabel="label"
+                size="small"
+                optionValue="value"
+                :options="fieldPair[0].options"
+                :disabled="fieldPair[0].props?.disabled"
+                class="select"
+              />
+              <div class="error-box"></div>
+            </td>
+            <td class="field">
+              <InputText
+                v-model="fieldPair[1].value"
+                readonly
+                @beforeinput="(event) => startRecording(event, index)"
+                @focus="(event) => startRecording(event, index)"
+                name="keybinding"
+                class="input-text"
+              />
+              <div class="error-box"></div>
+            </td>
+            <td>
+              <Button
+                icon="pi pi-times"
+                class="p-button-rounded p-button-danger p-button-text"
+                @click="removeField(index)"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
       <div class="form-footer">
-        <Button label="Add Key" @click="addField" class="p-button-sm" />
         <Button
+          size="small"
+          label="Add Key"
+          @click="addField"
+          class="p-button-sm"
+        />
+        <Button
+          size="small"
           label="Save"
           type="submit"
           :disabled="isSubmitDisabled"
@@ -47,6 +58,7 @@
         <Button
           label="Reset to defaults"
           type="reset"
+          size="small"
           class="p-button-sm p-button-secondary"
         />
       </div>
@@ -274,33 +286,35 @@ const isSubmitDisabled = ref(false);
 
 <style scoped lang="scss">
 .keybindings-form {
-  min-width: 820px;
-  max-width: 1200px;
   margin: auto;
   justify-content: center;
   align-items: center;
   flex-direction: column;
   justify-items: center;
 }
-.select,
-.input-text {
-  width: 70%;
+
+.select {
+  font-size: 10px;
+  width: 120px;
 }
-.rows {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+@media (min-width: 840px) {
+  .select {
+    font-size: 14px;
+    width: 100%;
+  }
+}
+.input-text,
+.p-button-sm {
+  font-size: 10px;
+  width: 100px;
 }
 
-.form-row {
-  display: flex;
-  align-items: center;
-  justify-items: flex-end;
-  margin-bottom: 1rem;
-}
-
-.field {
-  width: 50%;
+@media (min-width: 840px) {
+  .input-text,
+  .p-button-sm {
+    font-size: 14px;
+    width: 100%;
+  }
 }
 
 .error-box {

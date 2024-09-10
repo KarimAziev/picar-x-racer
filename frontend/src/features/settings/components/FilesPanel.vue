@@ -11,6 +11,7 @@
       :auto="true"
       :disabled="loading"
       mode="basic"
+      size="small"
       name="file"
       @upload="onUpload($event)"
       chooseLabel="Add"

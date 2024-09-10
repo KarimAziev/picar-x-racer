@@ -7,13 +7,19 @@
     </TabList>
     <TabPanels>
       <TabPanel :value="SettingsTab.GENERAL">
-        <GeneralPanel />
+        <ScrollPanel class="wrapper">
+          <GeneralPanel />
+        </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.KEYBINDINGS">
-        <KeybindingsPanel />
+        <ScrollPanel class="wrapper">
+          <KeybindingsPanel />
+        </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.CALIBRATION">
-        <Calibration />
+        <ScrollPanel class="wrapper">
+          <Calibration />
+        </ScrollPanel>
       </TabPanel>
     </TabPanels>
   </Tabs>
@@ -34,6 +40,19 @@ import Calibration from "@/features/settings/components/Calibration.vue";
 const popupStore = usePopupStore();
 </script>
 <style scoped lang="scss">
+.wrapper {
+  width: 300px;
+}
+@media (min-width: 500px) {
+  .wrapper {
+    width: 400px;
+  }
+}
+@media (min-width: 840px) {
+  .wrapper {
+    width: 740px;
+  }
+}
 .robo-tabs {
   font-family: var(--font-family-settings);
 }

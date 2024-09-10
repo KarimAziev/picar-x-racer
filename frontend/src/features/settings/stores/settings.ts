@@ -71,6 +71,7 @@ export const useStore = defineStore("settings", {
       try {
         this.loading = true;
         const response = await axios.get("/api/settings");
+
         const data = {
           ...this.settings,
           keybindings: { ...defaultKeybindinds },

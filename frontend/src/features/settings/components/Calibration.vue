@@ -3,17 +3,23 @@
     <div class="fields">
       <div v-for="(_value, field) in store.data" :key="field" class="field">
         <label :for="`${field}`">{{ field }}</label>
-        <InputText :id="field" v-model="store.data[field]" disabled />
+        <InputText
+          class="text-input"
+          size="small"
+          :id="field"
+          v-model="store.data[field]"
+          disabled
+        />
       </div>
       <div class="field">
-        <Button @click="controllerStore.toggleCalibration">
+        <Button size="small" @click="controllerStore.toggleCalibration">
           {{
             controllerStore.calibrationMode
               ? "Stop calibration"
               : "Start calibration"
           }}</Button
         >
-        <Button @click="controllerStore.saveCalibration" outlined>
+        <Button size="small" @click="controllerStore.saveCalibration" outlined>
           Save calibration
         </Button>
       </div>
@@ -37,10 +43,14 @@ const controllerStore = useControllerStore();
   display: flex;
   flex-direction: column;
 }
+
 .field {
   display: flex;
   gap: 10px;
   margin: 10px 0;
+  .text-input {
+    width: 50%;
+  }
   label {
     width: 50%;
   }
