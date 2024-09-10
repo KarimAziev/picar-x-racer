@@ -23,7 +23,7 @@ export const useJoystickCameraControl = (
         controllerStore.increaseCamPan();
       }
     } else {
-      controllerStore.resetCamPan();
+      controllerStore.resetCameraRotate();
     }
   };
 
