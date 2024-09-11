@@ -2,6 +2,7 @@ import time
 from os import path
 
 from app.robot_hat.music import Music
+from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 
@@ -16,11 +17,18 @@ except ImportError:
 class AudioController(metaclass=SingletonMeta):
     def __init__(self):
         self.music = Music()
-        self.logger = Logger("AudioController")
+        self.logger = Logger(__name__)
         self.google_speech_available = google_speech_available
         self.music.music_set_volume(100)
         self.sound_playing = False
         self.sound_end_time = None
+
+    def set_volume(self, volume: int):
+        self.music.music_set_volume(constrain(volume, 0, 100))
+
+    def get_volume(self):
+        value = round(self.music.pygame.mixer.music.get_volume() * 100.0, 2)
+        return value
 
     def text_to_speech(self, words: str, lang="en"):
         if google_speech_available:

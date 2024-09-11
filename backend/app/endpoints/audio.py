@@ -83,3 +83,33 @@ def text_to_speech():
         return jsonify({"status": True})
     else:
         return jsonify({"error": "Invalid settings format"}), 400
+
+
+@audio_management_bp.route("/api/volume", methods=["POST"])
+def set_volume():
+    audio_manager: "AudioController" = current_app.config["audio_manager"]
+    payload: Union[Dict[str, int], None] = request.json
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Invalid format"}), 400
+    volume = payload.get("volume")
+    if volume is None:
+        return jsonify({"error": "Invalid format"}), 400
+
+    logger.info(f"request to set volume to {payload.get('volume')}")
+    try:
+        logger.debug(f"setting volume to {volume}")
+        audio_manager.set_volume(volume)
+
+        return jsonify({"volume": audio_manager.get_volume()})
+    except Exception as err:
+        return jsonify({"error": str(err)}), 404
+
+
+@audio_management_bp.route("/api/volume", methods=["GET"])
+def get_volume():
+    audio_manager: "AudioController" = current_app.config["audio_manager"]
+
+    try:
+        return jsonify({"volume": audio_manager.get_volume()})
+    except Exception as err:
+        return jsonify({"error": str(err)}), 404

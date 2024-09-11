@@ -43,6 +43,8 @@ export const defaultKeybindinds: Partial<
   prevEnhanceMode: ["E"],
   nextDetectMode: ["r"],
   prevDetectMode: ["R"],
+  increaseVolume: ["PageUp"],
+  decreaseVolume: ["PageDown"],
 };
 
 export const commandLabels: Record<string, string> = {

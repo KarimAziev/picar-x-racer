@@ -7,6 +7,7 @@ import {
   useCalibrationStore,
   useDistanceStore,
   useCameraStore,
+  useMusicStore,
 } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
@@ -600,6 +601,14 @@ export const useControllerStore = defineStore("controller", {
     async prevEnhanceMode() {
       const camStore = useCameraStore();
       await camStore.prevEnhanceMode();
+    },
+    async increaseVolume() {
+      const musicStore = useMusicStore();
+      await musicStore.increaseVolume();
+    },
+    async decreaseVolume() {
+      const musicStore = useMusicStore();
+      await musicStore.decreaseVolume();
     },
   },
 });

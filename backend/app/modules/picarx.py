@@ -9,14 +9,8 @@ from app.robot_hat.pwm import PWM
 from app.robot_hat.servo import Servo
 from app.robot_hat.ultrasonic import Ultrasonic
 from app.robot_hat.utils import reset_mcu
+from app.util.constrain import constrain
 from app.util.logger import Logger
-
-
-def constrain(x: int, min_val: int, max_val: int):
-    """
-    Constrains value to be within a range.
-    """
-    return max(min_val, min(max_val, x))
 
 
 class Picarx:

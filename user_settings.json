@@ -29,7 +29,7 @@
     "increaseCamPan": ["ArrowRight"],
     "increaseCamTilt": ["ArrowUp"],
     "increaseMaxSpeed": ["="],
-    "increaseQuality": [".", "PageUp"],
+    "increaseQuality": ["."],
     "left": ["a"],
     "openGeneralSettings": ["h"],
     "openShortcutsSettings": ["?"],
@@ -56,6 +56,8 @@
     "nextEnhanceMode": ["e"],
     "prevEnhanceMode": ["E"],
     "nextDetectMode": ["r"],
-    "prevDetectMode": ["R"]
+    "prevDetectMode": ["R"],
+    "increaseVolume": ["PageUp"],
+    "decreaseVolume": ["PageDown"]
   }
 }
