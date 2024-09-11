@@ -2,18 +2,18 @@ import json
 import os
 from os import environ, path
 from typing import List
-from app.util.logger import Logger
-from app.config.paths import PICARX_CONFIG_FILE
-from app.robot_hat.filedb import fileDB
-from app.util.file_util import load_json_file, ensure_parent_dir_exists
-from app.exceptions.file_controller import DefaultFileRemoveAttempt
+
 from app.config.paths import (
-    DEFAULT_MUSIC_DIR,
     CONFIG_USER_DIR,
+    DEFAULT_MUSIC_DIR,
     DEFAULT_SOUND_DIR,
     DEFAULT_USER_SETTINGS,
+    PICARX_CONFIG_FILE,
 )
-
+from app.exceptions.file_controller import DefaultFileRemoveAttempt
+from app.robot_hat.filedb import fileDB
+from app.util.file_util import ensure_parent_dir_exists, load_json_file
+from app.util.logger import Logger
 from werkzeug.datastructures import FileStorage
 
 
@@ -23,7 +23,7 @@ class FilesController(Logger):
     default_user_sounds_dir = DEFAULT_SOUND_DIR
 
     def __init__(self, *args, **kwargs):
-        super().__init__(name="FilesController", *args, **kwargs)
+        super().__init__(name=__name__, *args, **kwargs)
         self.user = os.getlogin()
         self.user_home = path.expanduser(f"~{self.user}")
         self.user_settings_file = path.join(
@@ -101,7 +101,7 @@ class FilesController(Logger):
         """
         Remove file if in directory.
         """
-
+        self.logger.info(f"Request to remove {file} in directory {directory}")
         full_name = os.path.join(directory, file)
 
         os.remove(full_name)
@@ -129,8 +129,9 @@ class FilesController(Logger):
         return self.remove_file(filename, self.user_photos_dir)
 
     def remove_music(self, filename: str):
+        self.logger.info(f"removing music file {filename}")
         if path.exists(path.join(self.user_music_dir, filename)):
-            return self.remove_file(self.user_music_dir, filename)
+            return self.remove_file(filename, self.user_music_dir)
         elif path.exists(path.join(self.default_user_music_dir, filename)):
             raise DefaultFileRemoveAttempt(
                 f"{filename} is default music and cannot be removed!"
@@ -139,7 +140,14 @@ class FilesController(Logger):
             raise FileNotFoundError
 
     def remove_sound(self, filename: str):
-        return self.remove_file(filename, self.user_sounds_dir)
+        if path.exists(path.join(self.user_sounds_dir, filename)):
+            return self.remove_file(filename, self.user_sounds_dir)
+        elif path.exists(path.join(self.default_user_sounds_dir, filename)):
+            raise DefaultFileRemoveAttempt(
+                f"{filename} is default sound and cannot be removed!"
+            )
+        else:
+            raise FileNotFoundError
 
     def get_photo_directory(self, filename: str):
         user_file = path.join(self.user_photos_dir, filename)
@@ -160,7 +168,7 @@ class FilesController(Logger):
     def get_music_directory(self, filename: str):
         user_file = path.join(self.user_music_dir, filename)
         if path.exists(user_file):
-            return user_file
+            return self.user_music_dir
         elif path.exists(path.join(self.default_user_music_dir, filename)):
             return self.default_user_music_dir
         else:

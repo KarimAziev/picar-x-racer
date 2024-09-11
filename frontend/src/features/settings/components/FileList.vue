@@ -49,7 +49,6 @@ const handleRemove = async (track: string) => {
       if (props.fetchData) {
         await props.fetchData();
       }
-      messager.info("File Removed");
     } catch (err) {
       messager.error("Error: File is not removed ");
     }

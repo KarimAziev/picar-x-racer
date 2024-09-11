@@ -1,9 +1,9 @@
-from app.robot_hat.music import Music
-from app.util.logger import Logger
 import time
 from os import path
-from app.util.singleton_meta import SingletonMeta
 
+from app.robot_hat.music import Music
+from app.util.logger import Logger
+from app.util.singleton_meta import SingletonMeta
 
 try:
     from google_speech import Speech
@@ -43,7 +43,8 @@ class AudioController(metaclass=SingletonMeta):
                 self.music.music_play(track_path)
         else:
             text = f"The music file {track_path} is missing."
-            self.logger.info(text)
+            self.logger.error(text)
+            raise FileNotFoundError(f"No such file or directory: '{text}'")
 
     def stop_music(self):
         self.music.music_stop()
@@ -64,7 +65,8 @@ class AudioController(metaclass=SingletonMeta):
                 self.sound_end_time = time.time() + sound_length
         else:
             text = f"The sound file {sound_path} is missing."
-            self.logger.info(text)
+            self.logger.error(text)
+            raise FileNotFoundError(f"No such file or directory: '{text}'")
 
     def is_sound_playing(self):
         if (

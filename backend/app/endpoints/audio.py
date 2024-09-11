@@ -35,8 +35,8 @@ def play_sound():
                 "sound_end_time": audio_manager.sound_end_time,
             }
         )
-    except FileNotFoundError:
-        return jsonify({"error": "File not found"}), 404
+    except FileNotFoundError as err:
+        return jsonify({"error": str(err)}), 404
 
 
 @audio_management_bp.route("/api/play-music", methods=["POST"])
@@ -48,15 +48,15 @@ def play_music():
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid settings format"}), 400
     filename = payload["filename"]
-
+    logger.info(f"request to play {filename}")
     try:
         dir = file_manager.get_music_directory(filename)
         file = path.join(dir, filename)
         logger.debug(f"playing {file}")
         audio_manager.play_music(file)
         return jsonify({"playing": audio_manager.is_music_playing()})
-    except FileNotFoundError:
-        return jsonify({"error": "File not found"}), 404
+    except Exception as err:
+        return jsonify({"error": str(err)}), 404
 
 
 @audio_management_bp.route("/api/play-tts", methods=["POST"])
