@@ -30,6 +30,7 @@ class CarController(Logger):
         self.camera_manager = camera_manager
         self.audio_manager = audio_manager
         self.file_manager = file_manager
+
         self.stream_controller = StreamController(camera_controller=self.camera_manager)
 
         reset_mcu()
@@ -240,7 +241,7 @@ class CarController(Logger):
             await self.server.wait_closed()
 
     def run_server(self):
-        asyncio.run(self.start_server())
+        return asyncio.run(self.start_server())
 
     async def run_streaming_servers(self):
         server_task1 = self.stream_controller.start_server()

@@ -186,6 +186,12 @@ Activates a mode where the car automatically adjusts its movements to avoid obst
 
 ## Development on Non-Raspberry OS
 
+For running the server in watch mode (reload on file save), we use `nodemon`, which can be installed globally with `npm`:
+
+```bash
+npm i -g nodemon
+```
+
 ### Backend
 
 To install dependencies and run the project in development mode:
