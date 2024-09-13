@@ -115,8 +115,8 @@ export const useStore = defineStore("settings", {
         await Promise.all([
           calibrationStore.fetchData(),
           musicStore.fetchDefaultData(),
-          musicStore.getCurrentStatus(),
           musicStore.fetchData(),
+          musicStore.getCurrentStatus(),
           soundStore.fetchDefaultData(),
           soundStore.fetchData(),
         ]);

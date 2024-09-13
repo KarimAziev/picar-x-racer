@@ -164,6 +164,7 @@ export const useStore = defineStore("music", {
       this.duration = duration;
       this.track = track;
     },
+
     async stopMusic() {
       this.playing = false;
       const track = this.track;

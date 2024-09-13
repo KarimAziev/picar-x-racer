@@ -100,7 +100,7 @@ const durationLabel = computed(() =>
         secondsToReadableString(musicStore.start),
         secondsToReadableString(musicStore.duration),
       ].join(" / ")
-    : "0.00:00 / 0.00:00",
+    : "00:00 / 00:00",
 );
 
 const playCurrentTrack = () => {

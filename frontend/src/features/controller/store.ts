@@ -594,18 +594,35 @@ export const useControllerStore = defineStore("controller", {
     async playMusic() {
       const settingsStore = useSettingsStore();
       const musicStore = useMusicStore();
-      await musicStore.playMusic(
-        musicStore.track || settingsStore.settings.default_music,
-      );
+
+      if (musicStore.trackLoading) {
+        return;
+      }
+      if (musicStore.playing) {
+        musicStore.start = 0.0;
+        await musicStore.stopMusic();
+      } else {
+        await musicStore.playMusic(
+          musicStore.track || settingsStore.settings.default_music,
+          false,
+          0.0,
+        );
+      }
     },
 
     async playNextMusicTrack() {
       const musicStore = useMusicStore();
+      if (musicStore.trackLoading) {
+        return;
+      }
       await musicStore.nextTrack();
     },
 
     async playPrevMusicTrack() {
       const musicStore = useMusicStore();
+      if (musicStore.trackLoading) {
+        return;
+      }
       await musicStore.prevTrack();
     },
   },

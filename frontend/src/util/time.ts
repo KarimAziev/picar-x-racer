@@ -7,9 +7,10 @@ export function secondsToReadableString(seconds: number): string {
 
   const remainingSeconds = seconds % 60;
 
-  const formattedSeconds = remainingSeconds.toFixed(2);
+  const formattedMinutes = minutes.toString().padStart(2, "0");
+  const formattedSeconds = remainingSeconds.toFixed().padStart(2, "0");
 
-  return `${minutes}:${formattedSeconds}`;
+  return `${formattedMinutes}:${formattedSeconds}`;
 }
 
 export function secondsToMiliseconds(seconds: number): number {
