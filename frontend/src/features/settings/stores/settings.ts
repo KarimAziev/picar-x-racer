@@ -13,6 +13,9 @@ import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
 import { omit } from "@/util/obj";
 import type { ControllerActionName } from "@/features/controller/store";
+import { retrieveError } from "@/util/error";
+import { useStore as useMusicStore } from "@/features/settings/stores/music";
+import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
 
 export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
@@ -45,6 +48,9 @@ export interface State {
   saving?: boolean;
   settings: Settings;
   dimensions: { width: number; height: number };
+  error?: string;
+  retryTimer?: NodeJS.Timeout;
+  retryCounter: number;
 }
 
 const defaultState: State = {
@@ -60,6 +66,7 @@ const defaultState: State = {
     video_feed_quality: 100,
   },
   dimensions: { width: 640, height: 480 },
+  retryCounter: 0,
 };
 
 export const useStore = defineStore("settings", {
@@ -78,28 +85,64 @@ export const useStore = defineStore("settings", {
           ...response.data,
         };
         this.settings = data;
+        this.error = undefined;
+        messager.info("System status: OK");
       } catch (error) {
+        this.error = retrieveError(error).text;
         messager.handleError(error, "Error fetching settings");
       } finally {
         this.loading = false;
       }
     },
     async fetchSettingsInitial() {
+      const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
       const calibrationStore = useCalibrationStore();
-      messager.info("loading...");
+      const musicStore = useMusicStore();
+      const soundStore = useSoundStore();
+      if (this.retryTimer) {
+        clearTimeout(this.retryTimer);
+      }
       try {
         this.loading = true;
-        await calibrationStore.fetchData();
-        await this.fetchSettings();
-        messager.info("Memory set: OK");
-        messager.info("System status: OK");
+        const response = await axios.get("/api/settings");
+
+        const data = {
+          ...this.settings,
+          keybindings: { ...defaultKeybindinds },
+          ...response.data,
+        };
+        this.settings = data;
+        await Promise.all([
+          calibrationStore.fetchData(),
+          musicStore.fetchDefaultData,
+          musicStore.fetchData,
+          soundStore.fetchDefaultData,
+          soundStore.fetchData,
+        ]);
+        this.error = undefined;
       } catch (error) {
+        this.error = retrieveError(error).text;
         console.error("Error fetching settings:", error);
-        messager.handleError(error, "Error fetching settings");
       } finally {
         this.loading = false;
         this.loaded = true;
+      }
+      if (this.error) {
+        this.retryCounter += 1;
+        this.loading = true;
+        this.loaded = false;
+        if (this.retryCounter % 2 === 0) {
+          messager.remove((m) => m.text === errText);
+          messager.error(errText);
+        }
+
+        this.retryTimer = setTimeout(async () => {
+          await this.fetchSettingsInitial();
+        }, 4000);
+      } else {
+        this.retryCounter = 0;
+        messager.remove((m) => m.text === errText);
       }
     },
     async saveSettings() {
