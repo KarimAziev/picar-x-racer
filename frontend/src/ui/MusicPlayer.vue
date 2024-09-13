@@ -3,7 +3,6 @@
     <div>
       <div class="title">{{ song }}</div>
       <Slider
-        :class="slider"
         @update:model-value="debounceHandleStartUpdate"
         :disabled="disabled"
         v-model="musicStore.start"
