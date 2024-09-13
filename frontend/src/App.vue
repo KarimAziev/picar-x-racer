@@ -2,7 +2,8 @@
   <RouterView />
   <LazySettings />
   <Messager />
-  <div class="indicators" v-if="!isMobile">
+  <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+    <MusicPlayer />
     <CalibrationModeInfo />
     <Distance />
     <BatteryIndicator />
@@ -15,10 +16,18 @@ import { defineAsyncComponent, computed } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { isMobileDevice } from "@/util/device";
+import { useSettingsStore } from "@/features/settings/stores";
 
 const isMobile = computed(() => isMobileDevice());
+const settingsStore = useSettingsStore();
+const isSettingsLoaded = computed(() => settingsStore.loaded);
+
 const Distance = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Distance.vue"),
+});
+
+const MusicPlayer = defineAsyncComponent({
+  loader: () => import("@/ui/MusicPlayer.vue"),
 });
 
 const BatteryIndicator = defineAsyncComponent({

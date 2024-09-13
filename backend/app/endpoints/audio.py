@@ -21,22 +21,27 @@ def play_sound():
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid settings format"}), 400
     filename = payload["filename"]
+    force = payload["force"]
 
-    logger.info(f"request to play {filename}")
+    logger.info(f"request to play sound {filename}")
     try:
         dir = file_manager.get_sound_directory(filename)
-        logger.debug(f"filename {filename} directory {dir}")
         file = path.join(dir, filename)
-        logger.debug(f"playing {file}")
-        audio_manager.play_sound(file)
-        return jsonify(
-            {
-                "playing": audio_manager.sound_playing,
-                "sound_end_time": audio_manager.sound_end_time,
-            }
-        )
+        result = audio_manager.play_sound(file, force)
+        return jsonify(result)
     except FileNotFoundError as err:
         return jsonify({"error": str(err)}), 404
+
+
+@audio_management_bp.route("/api/play-status", methods=["GET"])
+def get_play_status():
+    audio_manager: "AudioController" = current_app.config["audio_manager"]
+    result = audio_manager.get_music_play_status()
+
+    if result is None:
+        return jsonify({"playing": False})
+    else:
+        return jsonify(result)
 
 
 @audio_management_bp.route("/api/play-music", methods=["POST"])
@@ -48,13 +53,18 @@ def play_music():
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid settings format"}), 400
     filename = payload["filename"]
-    logger.info(f"request to play {filename}")
+    force = payload.get("force", False)
+    start = payload.get("start", 0.0)
+    logger.info(f"request to play music {filename}")
+    if filename is None:
+        result = audio_manager.stop_music()
+        return jsonify({"playing": audio_manager.is_music_playing()})
     try:
         dir = file_manager.get_music_directory(filename)
         file = path.join(dir, filename)
         logger.debug(f"playing {file}")
-        audio_manager.play_music(file)
-        return jsonify({"playing": audio_manager.is_music_playing()})
+        result = audio_manager.play_music(track_path=file, force=force, start=start)
+        return jsonify(result)
     except Exception as err:
         return jsonify({"error": str(err)}), 404
 

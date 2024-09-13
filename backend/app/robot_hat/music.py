@@ -380,7 +380,7 @@ class Music:
         )
         obj.start()
 
-    def music_play(self, filename, loops=1, start=0.0, volume=None):
+    def music_play(self, filename: str, loops=1, start=0.0, volume=None):
         """
         Play a music file.
 

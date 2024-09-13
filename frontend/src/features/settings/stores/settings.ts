@@ -115,10 +115,11 @@ export const useStore = defineStore("settings", {
         this.settings = data;
         await Promise.all([
           calibrationStore.fetchData(),
-          musicStore.fetchDefaultData,
-          musicStore.fetchData,
-          soundStore.fetchDefaultData,
-          soundStore.fetchData,
+          musicStore.fetchDefaultData(),
+          musicStore.getCurrentStatus(),
+          musicStore.fetchData(),
+          soundStore.fetchDefaultData(),
+          soundStore.fetchData(),
         ]);
         this.error = undefined;
       } catch (error) {
@@ -154,7 +155,6 @@ export const useStore = defineStore("settings", {
           : { keybindings: this.settings.keybindings };
       this.saving = true;
       try {
-        await wait(2000);
         await axios.post("/api/settings", data);
         messager.success("Settings saved");
       } catch (error) {
@@ -167,7 +167,6 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       this.saving = true;
       try {
-        await wait(2000);
         await axios.post("/api/settings", this.settings);
         messager.success("Settings saved");
       } catch (error) {

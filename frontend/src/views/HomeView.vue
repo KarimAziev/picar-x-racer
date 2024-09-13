@@ -28,10 +28,10 @@ watch(
   },
 );
 
-onMounted(() => {
+onMounted(async () => {
   if (!loaded.value) {
-    settingsStore.fetchSettingsInitial();
-    cameraStore.fetchConfig();
+    await settingsStore.fetchSettingsInitial();
+    await cameraStore.fetchConfig();
   }
 });
 </script>

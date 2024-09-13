@@ -14,12 +14,7 @@ import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
 import { constrain } from "@/util/constrain";
-import {
-  playMusic,
-  playSound,
-  playTTS,
-  takePhoto,
-} from "@/features/controller/api";
+import { playSound, playTTS, takePhoto } from "@/features/controller/api";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -394,23 +389,6 @@ export const useControllerStore = defineStore("controller", {
     resetDirServoAngle(): void {
       this.setDirServoAngle(0);
     },
-
-    async playMusic() {
-      const messager = useMessagerStore();
-      const settingsStore = useSettingsStore();
-      const name = settingsStore.settings.default_music;
-      if (name) {
-        try {
-          const response = await playMusic(name);
-          const data = response.data;
-          const msg = data.playing ? `Playing ${name}` : "Stoped playing";
-          messager.info(msg);
-        } catch (error) {
-          messager.handleError(error);
-        }
-      }
-    },
-
     async playSound() {
       const messager = useMessagerStore();
       const settingsStore = useSettingsStore();
@@ -609,6 +587,23 @@ export const useControllerStore = defineStore("controller", {
     async decreaseVolume() {
       const musicStore = useMusicStore();
       await musicStore.decreaseVolume();
+    },
+    async playMusic() {
+      const settingsStore = useSettingsStore();
+      const musicStore = useMusicStore();
+      await musicStore.playMusic(
+        musicStore.track || settingsStore.settings.default_music,
+      );
+    },
+
+    async playNextMusicTrack() {
+      const musicStore = useMusicStore();
+      await musicStore.nextTrack();
+    },
+
+    async playPrevMusicTrack() {
+      const musicStore = useMusicStore();
+      await musicStore.prevTrack();
     },
   },
 });

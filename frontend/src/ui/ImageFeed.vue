@@ -17,7 +17,7 @@ import ScanLines from "@/ui/ScanLines.vue";
 
 const ws = ref<WebSocket>();
 const WS_URL: string = `ws://${window.location.hostname}:${8050}`;
-const imgRef = ref();
+const imgRef = ref<HTMLImageElement>();
 const imgLoading = ref(true);
 const connected = ref(false);
 const reconnectedEnabled = ref(true);
@@ -37,7 +37,9 @@ const initWS = () => {
     const blob = new Blob([arrayBufferView], { type: "image/jpeg" });
     const urlCreator = window.URL || window.webkitURL;
     const imageUrl = urlCreator.createObjectURL(blob);
-    (imgRef.value as HTMLImageElement).src = imageUrl;
+    if (imgRef.value) {
+      imgRef.value.src = imageUrl;
+    }
   };
 
   ws.value.onclose = (_: CloseEvent) => {

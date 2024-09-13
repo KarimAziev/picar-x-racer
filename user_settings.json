@@ -58,6 +58,8 @@
     "nextDetectMode": ["r"],
     "prevDetectMode": ["R"],
     "increaseVolume": ["PageUp"],
-    "decreaseVolume": ["PageDown"]
+    "decreaseVolume": ["PageDown"],
+    "playNextMusicTrack": ["1"],
+    "playPrevMusicTrack": ["2"]
   }
 }
