@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from app.config.paths import STATIC_FOLDER, TEMPLATE_FOLDER
 from app.util.os_checks import is_raspberry_pi
-from flask import Flask
+from flask import Flask, Response, request
 from flask_cors import CORS
 
 if TYPE_CHECKING:
@@ -48,6 +48,16 @@ def create_app(
     app.config["file_manager"] = file_manager
     app.config["camera_manager"] = camera_manager
     app.config["audio_manager"] = audio_manager
+
+    @app.route("/shutdown", methods=["POST"])
+    def shutdown() -> Response:
+        shutdown_func = request.environ.get("werkzeug.server.shutdown")
+        if not shutdown_func:
+            import os
+
+            os._exit(0)
+        shutdown_func()
+        return Response("Server shutting down...", mimetype="text/plain")
 
     return app
 
