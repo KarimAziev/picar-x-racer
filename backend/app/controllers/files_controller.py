@@ -47,12 +47,12 @@ class FilesController(Logger):
             if os.path.exists(self.user_settings_file)
             else FilesController.default_user_settings_file
         )
-        self.info(f"loading_settings {settings_file}")
+        self.info(f"Loading_settings {settings_file}")
         return load_json_file(settings_file)
 
     def save_settings(self, new_settings):
         existing_settings = self.load_settings()
-        self.info(f"saving settings to {self.user_settings_file}")
+        self.info(f"Saving settings to {self.user_settings_file}")
         merged_settings = {
             **existing_settings,
             **new_settings,
@@ -92,6 +92,9 @@ class FilesController(Logger):
         return self.list_files(self.user_photos_dir)
 
     def list_user_music(self) -> List[str]:
+        """
+        Lists uploaded by user music files.
+        """
         return self.list_files(self.user_music_dir)
 
     def list_user_sounds(self) -> List[str]:

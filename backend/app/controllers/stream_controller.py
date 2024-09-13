@@ -23,7 +23,7 @@ class StreamController(Logger):
                 self.camera_controller.camera_close()
 
     async def start_server(self):
-        self.logger.info("STARTING CAMERA STREAMING")
+        self.logger.info("Starting camera stream server")
         self.server = await websockets.serve(self.video_stream, "0.0.0.0", 8050)
         await self.server.wait_closed()
 
