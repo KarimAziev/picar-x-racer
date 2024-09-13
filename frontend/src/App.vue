@@ -45,5 +45,6 @@ const CalibrationModeInfo = defineAsyncComponent({
   bottom: 0;
   z-index: 11;
   text-align: left;
+  user-select: none;
 }
 </style>

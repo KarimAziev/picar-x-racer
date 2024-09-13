@@ -46,7 +46,7 @@ export const useMessagerStore = defineStore("messager", {
     },
 
     remove(pred: (m: MessageItem) => boolean) {
-      this.messages = this.messages.filter(pred);
+      this.messages = this.messages.filter((v) => !pred(v));
     },
 
     async processQueue() {

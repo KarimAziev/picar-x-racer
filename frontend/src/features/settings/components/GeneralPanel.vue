@@ -68,7 +68,7 @@
     />
   </div>
   <Music />
-  <Panel header="Photos" toggleable>
+  <Panel header="Photos" toggleable collapsed>
     <Images />
   </Panel>
 </template>

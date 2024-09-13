@@ -126,6 +126,9 @@ export const useControllerStore = defineStore("controller", {
       this.loading = true;
       this.websocket!.onopen = () => {
         this.loading = false;
+        messager.remove((m) =>
+          ["Retrying connection...", "WebSocket error"].includes(m.text),
+        );
         console.log(`WebSocket connection established with URL: ${url}`);
         messager.info("Connection status: Open");
         this.connected = true;

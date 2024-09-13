@@ -3,6 +3,7 @@
     <div>
       <div class="title">{{ song }}</div>
       <Slider
+        :class="slider"
         @update:model-value="debounceHandleStartUpdate"
         :disabled="disabled"
         v-model="musicStore.start"
@@ -100,7 +101,7 @@ const durationLabel = computed(() =>
         secondsToReadableString(musicStore.start),
         secondsToReadableString(musicStore.duration),
       ].join(" / ")
-    : musicStore.duration,
+    : "0.00:00 / 0.00:00",
 );
 
 const playCurrentTrack = () => {
@@ -134,6 +135,7 @@ const isPlaying = computed(() => musicStore.playing);
   position: relative;
   font-size: 0.8rem;
   width: 300px;
+  user-select: none;
 }
 .buttons {
   width: 100%;
@@ -146,5 +148,11 @@ const isPlaying = computed(() => musicStore.playing);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+:deep(.p-slider) {
+  .p-slider-handle {
+    transform: scale(0.5);
+  }
 }
 </style>

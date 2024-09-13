@@ -21,7 +21,7 @@ def play_sound():
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid settings format"}), 400
     filename = payload["filename"]
-    force = payload["force"]
+    force = payload.get("force", False)
 
     logger.info(f"request to play sound {filename}")
     try:
@@ -35,11 +35,17 @@ def play_sound():
 
 @audio_management_bp.route("/api/play-status", methods=["GET"])
 def get_play_status():
+    file_manager: "FilesController" = current_app.config["file_manager"]
     audio_manager: "AudioController" = current_app.config["audio_manager"]
     result = audio_manager.get_music_play_status()
 
     if result is None:
-        return jsonify({"playing": False})
+        default_track = file_manager.load_settings()
+        track = default_track.get("default_music")
+        dir = file_manager.get_music_directory(track)
+        file = path.join(dir, track)
+        duration = audio_manager.music.music_get_duration(file)
+        return jsonify({"playing": False, "track": track, "duration": duration})
     else:
         return jsonify(result)
 

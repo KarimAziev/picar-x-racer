@@ -5,7 +5,6 @@ import {
   useMessagerStore,
   ShowMessageTypeProps,
 } from "@/features/messager/store";
-import { wait } from "@/util/wait";
 import { isNumber } from "@/util/guards";
 import { toggleableSettings } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
