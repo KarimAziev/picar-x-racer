@@ -15,6 +15,7 @@ import time
 from typing import Optional
 
 import pyaudio
+from pydub import AudioSegment
 
 
 class Music:
@@ -43,10 +44,12 @@ class Music:
         - `sound_play_threading(self, filename, volume=None)`: Play a sound effect in a separate thread.
         - `music_play(self, filename, loops=1, start=0.0, volume=None)`: Play a music file.
         - `music_set_volume(self, value)`: Set the music volume.
+        - `music_get_volume(self)`: Get the music volume.
         - `music_stop(self)`: Stop the music.
         - `music_pause(self)`: Pause the music.
         - `music_resume(self)`: Resume the music.
         - `music_unpause(self)`: Unpause the music (resume playing).
+        - `music_get_duration(self, filename)`: Get the duration of music filename.
         - `sound_length(self, filename)`: Get the length of a sound effect file.
         - `get_tone_data(self, freq: float, duration: float)`: Generate tone data for a given frequency and duration.
         - `play_tone_for(self, freq, duration)`: Play a tone for a specified duration.
@@ -450,6 +453,14 @@ class Music:
             None
         """
         self.pygame.mixer.music.unpause()
+
+    def music_get_duration(self, filename: str):
+        """
+        Get the duration of an audio file in seconds.
+        """
+        audio = AudioSegment.from_file(filename)
+        secs = len(audio) / 1000.0
+        return secs
 
     def sound_length(self, filename):
         """
