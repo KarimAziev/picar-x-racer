@@ -24,11 +24,22 @@ class AudioController(metaclass=SingletonMeta):
         self.sound_end_time = None
 
     def set_volume(self, volume: int):
+        """
+        Set the music volume.
+
+        Args:
+            value (int): The volume level (0-100).
+
+        Returns:
+            None
+        """
         self.music.music_set_volume(constrain(volume, 0, 100))
 
     def get_volume(self):
-        value = round(self.music.pygame.mixer.music.get_volume() * 100.0, 2)
-        return value
+        """
+        Get the music volume level (0-100).
+        """
+        return self.music.music_get_volume()
 
     def text_to_speech(self, words: str, lang="en"):
         if google_speech_available:

@@ -395,6 +395,13 @@ class Music:
         self.pygame.mixer.music.load(filename)
         self.pygame.mixer.music.play(loops, start)
 
+    def music_get_volume(self):
+        """
+        Get the music volume level (0-100).
+        """
+        value = round(self.pygame.mixer.music.get_volume() * 100.0, 2)
+        return value
+
     def music_set_volume(self, value):
         """
         Set the music volume.
