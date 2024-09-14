@@ -1,8 +1,7 @@
 {
   "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
   "default_sound": "directives.wav",
-  "default_text": "Target identified",
-  "default_language": "en",
+  "texts": [{ "text": "Target identified", "language": "en", "default": true }],
   "fullscreen": true,
   "video_feed_quality": 100,
   "video_feed_detect_mode": null,
@@ -60,7 +59,9 @@
     "prevDetectMode": ["R"],
     "increaseVolume": ["PageUp"],
     "decreaseVolume": ["PageDown"],
-    "playNextMusicTrack": ["1"],
-    "playPrevMusicTrack": ["2"]
+    "playNextMusicTrack": ["2"],
+    "playPrevMusicTrack": ["1"],
+    "nextText": ["4"],
+    "prevText": ["3"]
   }
 }

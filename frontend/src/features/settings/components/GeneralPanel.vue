@@ -18,8 +18,6 @@
       <VideoSettings />
     </div>
   </Panel>
-  <TTSSettings />
-
   <Music toggleable header="Music" />
   <Panel header="Photos" toggleable collapsed>
     <Images />
@@ -36,7 +34,6 @@ import Music from "@/features/settings/components/Music.vue";
 import Images from "@/features/settings/components/Images.vue";
 import SwitchSettings from "@/features/settings/components/SwitchSettings.vue";
 import VideoSettings from "@/features/settings/components/VideoSettings.vue";
-import TTSSettings from "@/features/settings/components/TTSSettings.vue";
 
 const store = useSettingsStore();
 </script>

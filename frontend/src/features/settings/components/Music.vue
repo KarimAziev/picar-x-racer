@@ -1,75 +1,73 @@
 <template>
-  <Panel :toggleable="toggleable" :header="header">
-    <div class="files-wrapper">
-      <DataTable :value="files" :loading="loading">
-        <template #header>
-          <div class="flex justify-content-between align-items-center">
-            <div class="flex gap-4">
-              <SelectField
-                field="default_music"
-                label="Default Track"
-                :options="files"
-                optionLabel="track"
-                optionValue="track"
-                v-model="settingsStore.settings.default_music"
-              />
-            </div>
+  <Panel :toggleable="toggleable" :header="header" :collapsed="collapsed">
+    <DataTable :value="files" :loading="loading">
+      <template #header>
+        <div class="flex justify-content-between align-items-center">
+          <div class="flex gap-4">
+            <SelectField
+              field="default_music"
+              label="Default Track"
+              :options="files"
+              optionLabel="track"
+              optionValue="track"
+              v-model="settingsStore.settings.default_music"
+            />
           </div>
+        </div>
+      </template>
+
+      <Column field="track" header="Track"></Column>
+      <Column field="duration" header="Duration">
+        <template #body="slotProps">
+          {{ secondsToReadableString(slotProps.data.duration) }}
         </template>
+      </Column>
 
-        <Column field="track" header="Track"></Column>
-        <Column field="duration" header="Duration">
-          <template #body="slotProps">
-            {{ secondsToReadableString(slotProps.data.duration) }}
-          </template>
-        </Column>
-
-        <Column :exportable="false" header="Actions">
-          <template #body="slotProps">
-            <ButtonGroup>
-              <Button
-                v-if="isPlaying(slotProps.data.track)"
-                @click="pauseTrack"
-                icon="pi pi-pause"
-                text
-                raised
-                rounded
-                aria-label="Pause"
-              />
-              <Button
-                @click="playTrack(slotProps.data.track)"
-                v-else
-                icon="pi pi-play-circle"
-                text
-                raised
-                rounded
-                aria-label="Play"
-              />
-              <Button
-                rounded
-                v-tooltip="'Download file'"
-                severity="secondary"
-                text
-                raised
-                icon="pi pi-download"
-                @click="handleDownloadFile(slotProps.data.track)"
-              >
-              </Button>
-              <Button
-                v-if="slotProps.data.removable"
-                icon="pi pi-trash"
-                outlined
-                rounded
-                severity="danger"
-                text
-                raised
-                @click="handleRemove(slotProps.data.track)"
-              />
-            </ButtonGroup>
-          </template>
-        </Column>
-      </DataTable>
-    </div>
+      <Column :exportable="false" header="Actions">
+        <template #body="slotProps">
+          <ButtonGroup>
+            <Button
+              v-if="isPlaying(slotProps.data.track)"
+              @click="pauseTrack"
+              icon="pi pi-pause"
+              text
+              raised
+              rounded
+              aria-label="Pause"
+            />
+            <Button
+              @click="playTrack(slotProps.data.track)"
+              v-else
+              icon="pi pi-play-circle"
+              text
+              raised
+              rounded
+              aria-label="Play"
+            />
+            <Button
+              rounded
+              v-tooltip="'Download file'"
+              severity="secondary"
+              text
+              raised
+              icon="pi pi-download"
+              @click="handleDownloadFile(slotProps.data.track)"
+            >
+            </Button>
+            <Button
+              v-if="slotProps.data.removable"
+              icon="pi pi-trash"
+              outlined
+              rounded
+              severity="danger"
+              text
+              raised
+              @click="handleRemove(slotProps.data.track)"
+            />
+          </ButtonGroup>
+        </template>
+      </Column>
+    </DataTable>
     <FileUpload
       :auto="true"
       :disabled="loading"
@@ -133,6 +131,7 @@ const handleDownloadFile = (track: string) => {
 defineProps<{
   header?: string;
   toggleable?: boolean;
+  collapsed?: boolean;
 }>();
 
 const onUpload = async (_event: FileUploadUploadEvent) => {

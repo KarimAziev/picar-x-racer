@@ -36,8 +36,8 @@ def main():
     flask_thread.start()
 
     # Start the StreamController in a separate process
-    streaming_process = Process(target=car_manager.run_server)
-    streaming_process.start()
+    car_manager_process = Process(target=car_manager.run_server)
+    car_manager_process.start()
 
     try:
         asyncio.run(car_manager.run_streaming_servers())
@@ -45,6 +45,6 @@ def main():
         logger.info("Shutting down servers...")
     finally:
         # Ensure proper cleanup
-        streaming_process.terminate()
-        streaming_process.join()
+        car_manager_process.terminate()
+        car_manager_process.join()
         flask_thread.join()

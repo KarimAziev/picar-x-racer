@@ -45,6 +45,10 @@ export const defaultKeybindinds: Partial<
   prevDetectMode: ["R"],
   increaseVolume: ["PageUp"],
   decreaseVolume: ["PageDown"],
+  playNextMusicTrack: ["2"],
+  playPrevMusicTrack: ["1"],
+  nextText: ["4"],
+  prevText: ["3"],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -77,6 +81,10 @@ export const commandLabels: Record<string, string> = {
   decreaseFPS: "Decrease FPS",
   increaseDimension: "Increase dimension",
   decreaseDimension: "Decrease dimension",
+  playNextMusicTrack: "Next music track",
+  playPrevMusicTrack: "Previous music track",
+  nextText: "Next text to speech",
+  prevText: "Previous text to speech",
 };
 
 export const calibrationModeRemap: Partial<

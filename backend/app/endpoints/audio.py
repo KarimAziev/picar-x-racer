@@ -88,10 +88,10 @@ def text_to_speech():
 
     if not payload.get("text"):
         settings = file_manager.load_settings()
-        text = settings["default_text"]
+        text = settings.get("default_text")
         lang = settings.get("default_language", "en")
     else:
-        text = payload.get("text", file_manager.load_settings())
+        text = payload.get("text")
         lang = payload.get("lang", "en")
 
     if text and lang:

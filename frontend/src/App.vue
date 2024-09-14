@@ -3,6 +3,7 @@
   <LazySettings />
   <Messager />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+    <TextToSpeechButton />
     <MusicPlayer />
     <CalibrationModeInfo />
     <Distance />
@@ -24,6 +25,10 @@ const isSettingsLoaded = computed(() => settingsStore.loaded);
 
 const Distance = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Distance.vue"),
+});
+
+const TextToSpeechButton = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/TextToSpeechButton.vue"),
 });
 
 const MusicPlayer = defineAsyncComponent({

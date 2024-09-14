@@ -56,19 +56,6 @@ const optionLabel = computed(() =>
 const optionValue = computed(() =>
   props.simpleOptions ? undefined : props.optionValue || "value",
 );
-if (props.field === "default_music") {
-  console.log(
-    "%c<SelectField.vue 55>   optionLabel: %o :\n",
-    "background-color: #f5f5dc; color: black",
-    props.field,
-    optionLabel.value,
-    "prop",
-    props.optionLabel,
-    props.options,
-    "currentValue",
-    currentValue,
-  );
-}
 
 watch(
   () => props.modelValue,

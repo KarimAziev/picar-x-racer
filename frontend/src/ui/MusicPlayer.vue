@@ -107,7 +107,7 @@ const playCurrentTrack = () => {
   if (musicStore.track) {
     musicStore.resumeMusic();
   } else {
-    musicStore.playMusic(settingsStore.settings.default_music);
+    musicStore.playMusic(settingsStore.settings.default_music || null);
   }
 };
 

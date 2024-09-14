@@ -14,7 +14,7 @@ import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
 import { constrain } from "@/util/constrain";
-import { playSound, playTTS, takePhoto } from "@/features/controller/api";
+import { playSound, takePhoto } from "@/features/controller/api";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -409,20 +409,30 @@ export const useControllerStore = defineStore("controller", {
     },
 
     async sayText() {
-      const messager = useMessagerStore();
       const settingsStore = useSettingsStore();
-      const text = settingsStore.settings.default_text;
-      const lang = settingsStore.settings.default_language;
-      if (text) {
-        try {
-          const response = await playTTS(text, lang);
-          const data = response.data;
-          const msg = data.status ? `Speaking: ${text}` : "Not speaking";
-          messager.info(msg);
-        } catch (error) {
-          messager.handleError(error);
-        }
+      if (!settingsStore.text) {
+        const item =
+          settingsStore.settings.texts.find((item) => item.default) ||
+          settingsStore.settings.texts[0];
+        settingsStore.text = item.text;
+        settingsStore.language = item.language;
       }
+
+      if (settingsStore.text && settingsStore.language) {
+        await settingsStore.speakText(
+          settingsStore.text,
+          settingsStore.language,
+        );
+      }
+    },
+
+    nextText() {
+      const settingsStore = useSettingsStore();
+      settingsStore.prevText();
+    },
+    prevText() {
+      const settingsStore = useSettingsStore();
+      settingsStore.nextText();
     },
 
     async getDistance() {
@@ -603,7 +613,7 @@ export const useControllerStore = defineStore("controller", {
         await musicStore.stopMusic();
       } else {
         await musicStore.playMusic(
-          musicStore.track || settingsStore.settings.default_music,
+          musicStore.track || settingsStore.settings.default_music || null,
           false,
           0.0,
         );

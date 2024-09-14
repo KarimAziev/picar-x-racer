@@ -15,10 +15,17 @@ import type { ControllerActionName } from "@/features/controller/store";
 import { retrieveError } from "@/util/error";
 import { useStore as useMusicStore } from "@/features/settings/stores/music";
 import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
+import { cycleValue } from "@/util/cycleValue";
 
 export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
 };
+
+export interface TextItem {
+  text: string;
+  language: string;
+  default?: boolean;
+}
 
 export interface CameraOpenRequestParams {
   video_feed_fps?: number;
@@ -31,14 +38,13 @@ export interface CameraOpenRequestParams {
 }
 
 export interface Settings extends Partial<ToggleableSettings> {
-  default_text: string;
   default_sound: string;
-  default_language: string;
   default_music?: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
   battery_full_voltage: number;
   auto_measure_distance_delay_ms: number;
   video_feed_quality: number;
+  texts: TextItem[];
 }
 
 export interface State {
@@ -50,21 +56,24 @@ export interface State {
   error?: string;
   retryTimer?: NodeJS.Timeout;
   retryCounter: number;
+  text?: null | string;
+  language?: null | string;
 }
 
 const defaultState: State = {
   settings: {
     fullscreen: true,
     keybindings: {},
-    default_text: "",
     default_sound: "",
-    default_language: "en",
+    texts: [],
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
     video_feed_quality: 100,
   },
   dimensions: { width: 640, height: 480 },
   retryCounter: 0,
+  text: null,
+  language: null,
 };
 
 export const useStore = defineStore("settings", {
@@ -150,6 +159,9 @@ export const useStore = defineStore("settings", {
     async saveSettings() {
       const messager = useMessagerStore();
       const popupStore = usePopupStore();
+      if (popupStore.tab === SettingsTab.TTS) {
+        return await this.saveTexts();
+      }
       const data =
         popupStore.tab === SettingsTab.GENERAL
           ? omit(["keybindings"], this.settings)
@@ -157,6 +169,22 @@ export const useStore = defineStore("settings", {
       this.saving = true;
       try {
         await axios.post("/api/settings", data);
+        messager.success("Settings saved");
+      } catch (error) {
+        messager.handleError(error, "Error saving settings");
+      } finally {
+        this.saving = false;
+      }
+    },
+    async saveTexts() {
+      const messager = useMessagerStore();
+
+      this.saving = true;
+      try {
+        await axios.post("/api/settings", {
+          texts: this.settings.texts.filter((item) => !!item.text.length),
+        });
+
         messager.success("Settings saved");
       } catch (error) {
         messager.handleError(error, "Error saving settings");
@@ -247,6 +275,53 @@ export const useStore = defineStore("settings", {
         messager.info(`${prop}: ${nextValue}`, msgParams);
       }
       return nextValue;
+    },
+    async speakText(text: string, language?: string) {
+      const messager = useMessagerStore();
+      try {
+        const response = await axios.post(`/api/play-tts`, {
+          text: text,
+          lang: language,
+        });
+        const data = response.data;
+        const msg = data.status ? `Speaking: ${text}` : "Not speaking";
+        messager.info(msg);
+      } catch (error) {
+        messager.handleError(error);
+      }
+    },
+    cycleText(direction: number) {
+      const messager = useMessagerStore();
+      if (!this.text) {
+        const item =
+          this.settings.texts.find((item) => item.default) ||
+          this.settings.texts[0];
+        this.text = item.text;
+        this.language = item.language;
+        messager.info(
+          `Text to speech: ${this.text}, language: ${this.language}`,
+        );
+        return;
+      }
+      const nextTrack = cycleValue(
+        (v) => v.text === this.text,
+        this.settings.texts,
+        direction,
+      );
+      if (!nextTrack) {
+        messager.error("No text");
+        return;
+      }
+
+      this.text = nextTrack.text;
+      this.language = nextTrack.language;
+      messager.info(`Text to speech: ${this.text}, language: ${this.language}`);
+    },
+    nextText() {
+      this.cycleText(1);
+    },
+    prevText() {
+      this.cycleText(-1);
     },
   },
 });
