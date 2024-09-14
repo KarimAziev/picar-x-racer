@@ -1,3 +1,5 @@
+import re
+import subprocess
 import time
 from os import path
 from typing import Any, Optional
@@ -41,6 +43,22 @@ class AudioController(metaclass=SingletonMeta):
         self.sound_playing = False
         self.sound_end_time = None
         self.last_response: Optional[dict[str, Any]] = None
+        self.last_track: Optional[str] = None
+
+    def get_amixer_volume(self):
+        try:
+            result = subprocess.run(["amixer", "get", "Master"], stdout=subprocess.PIPE)
+
+            output = result.stdout.decode("utf-8")
+
+            match = re.search(r"\[(\d+%)\]", output)
+
+            if match:
+                return match.group(1)
+            else:
+                return "Volume information not found"
+        except Exception as e:
+            return f"An error occurred: {e}"
 
     def set_volume(self, volume: int):
         """
@@ -103,7 +121,6 @@ class AudioController(metaclass=SingletonMeta):
         """
 
         if path.exists(track_path):
-            duration = self.music.music_get_duration(track_path)
             track = path.basename(track_path)
             is_playing = self.is_sound_playing()
             if is_playing and not force:
@@ -111,7 +128,6 @@ class AudioController(metaclass=SingletonMeta):
                 self.stop_music()
                 self.last_response = {
                     "playing": self.is_music_playing(),
-                    "duration": duration,
                     "track": track,
                     "start": start,
                 }
@@ -126,7 +142,6 @@ class AudioController(metaclass=SingletonMeta):
                 self.music.music_play(filename=track_path, start=start, volume=volume)
                 self.last_response = {
                     "playing": self.is_music_playing(),
-                    "duration": duration,
                     "track": track,
                     "start": start,
                 }

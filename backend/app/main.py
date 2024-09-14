@@ -17,10 +17,10 @@ Logger.set_global_log_level(Logger.DEBUG)
 
 
 def main():
-    camera_manager = CameraController()
     copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
-    file_manager = FilesController()
+    camera_manager = CameraController()
     audio_manager = AudioController()
+    file_manager = FilesController(audio_manager=audio_manager)
     car_manager = CarController(
         camera_manager=camera_manager,
         file_manager=file_manager,

@@ -1,3 +1,5 @@
+import { isFunction } from "@/util/guards";
+
 /**
  * @example
  * ```ts
@@ -10,12 +12,14 @@
  * ```
  */
 
-export const cycleValue = (
-  value: string | null,
-  items: (string | null)[],
+export const cycleValue = <T>(
+  value: (value: T) => boolean | T,
+  items: T[],
   direction: number,
-): string | null => {
-  const currentIndex = items.indexOf(value);
+): T => {
+  const currentIndex = isFunction(value)
+    ? items.findIndex(value)
+    : items.indexOf(value);
 
   let newIndex = currentIndex + direction;
 

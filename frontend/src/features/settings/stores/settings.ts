@@ -34,7 +34,7 @@ export interface Settings extends Partial<ToggleableSettings> {
   default_text: string;
   default_sound: string;
   default_language: string;
-  default_music: string;
+  default_music?: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
   battery_full_voltage: number;
   auto_measure_distance_delay_ms: number;
@@ -59,7 +59,6 @@ const defaultState: State = {
     default_text: "",
     default_sound: "",
     default_language: "en",
-    default_music: "",
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
     video_feed_quality: 100,
@@ -74,16 +73,19 @@ export const useStore = defineStore("settings", {
   actions: {
     async fetchSettings() {
       const messager = useMessagerStore();
+      const musicStore = useMusicStore();
       try {
         this.loading = true;
         const response = await axios.get("/api/settings");
+        const resData = response.data;
 
         const data = {
           ...this.settings,
           keybindings: { ...defaultKeybindinds },
-          ...response.data,
+          ...resData,
         };
         this.settings = data;
+        musicStore.autoplay = this.settings.autoplay_music || false;
         this.error = undefined;
         messager.info("System status: OK");
       } catch (error) {
@@ -114,12 +116,12 @@ export const useStore = defineStore("settings", {
         this.settings = data;
         await Promise.all([
           calibrationStore.fetchData(),
-          musicStore.fetchDefaultData(),
           musicStore.fetchData(),
           musicStore.getCurrentStatus(),
           soundStore.fetchDefaultData(),
           soundStore.fetchData(),
         ]);
+        musicStore.autoplay = this.settings.autoplay_music || false;
         this.error = undefined;
       } catch (error) {
         this.error = retrieveError(error).text;

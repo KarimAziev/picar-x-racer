@@ -129,3 +129,18 @@ def get_volume():
         return jsonify({"volume": audio_manager.get_volume()})
     except Exception as err:
         return jsonify({"error": str(err)}), 404
+
+
+@audio_management_bp.route("/api/music", methods=["GET"])
+def get_music_tracks():
+    file_manager: "FilesController" = current_app.config["file_manager"]
+    audio_manager: "AudioController" = current_app.config["audio_manager"]
+    amixer_volume = audio_manager.get_amixer_volume()
+    music_volume = audio_manager.get_volume()
+    try:
+        files = file_manager.list_all_music_with_details()
+        return jsonify(
+            {"files": files, "system_volume": amixer_volume, "volume": music_volume}
+        )
+    except Exception as err:
+        return jsonify({"error": str(err)}), 404

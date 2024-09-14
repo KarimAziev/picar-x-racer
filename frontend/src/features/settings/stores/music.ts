@@ -7,6 +7,12 @@ import { useMessagerStore } from "@/features/messager/store";
 import { isNumber } from "@/util/guards";
 import { cycleValue } from "@/util/cycleValue";
 
+export interface FileDetail {
+  track: string;
+  duration: number;
+  removable: boolean;
+}
+
 export interface PlayMusicResponse {
   playing: boolean;
   track?: string;
@@ -15,9 +21,9 @@ export interface PlayMusicResponse {
 }
 
 export interface State {
-  data: string[];
+  data: FileDetail[];
   loading: boolean;
-  defaultData: [];
+  autoplay: boolean;
   volume?: number;
   playing?: boolean;
   duration?: number;
@@ -29,8 +35,8 @@ export interface State {
 
 const defaultState: State = {
   loading: false,
+  autoplay: false,
   data: [],
-  defaultData: [],
   track: null,
   trackLoading: false,
   start: 0.0,
@@ -45,21 +51,13 @@ export const useStore = defineStore("music", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const response = await axios.get(`/api/list_files/${mediaType}`);
-        this.data = response.data.files;
-      } catch (error) {
-        messager.handleError(error, `Error fetching ${mediaType}`);
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    async fetchDefaultData() {
-      const messager = useMessagerStore();
-      try {
-        this.loading = true;
-        const response = await axios.get(`/api/list_files/default_music`);
-        this.defaultData = response.data.files;
+        const response = await axios.get<{
+          volume: number;
+          files: FileDetail[];
+        }>(`/api/music`);
+        const respData = response.data;
+        this.data = respData.files;
+        this.volume = respData.volume;
       } catch (error) {
         messager.handleError(error, `Error fetching ${mediaType}`);
       } finally {
@@ -120,20 +118,19 @@ export const useStore = defineStore("music", {
       }
     },
     async cycleTrack(direction: number, force?: boolean, start?: number) {
-      const songs = [...this.data, ...this.defaultData];
-      if (!songs.length) {
+      if (!this.data.length) {
         await this.fetchData();
       }
 
       const messager = useMessagerStore();
       const nextTrack = cycleValue(
-        this.track,
-        [...this.data, ...this.defaultData],
+        (v) => v.track === this.track,
+        this.data,
         direction,
       );
 
-      if (nextTrack !== this.track) {
-        await this.playMusic(nextTrack, force, start);
+      if (nextTrack.track !== this.track) {
+        await this.playMusic(nextTrack.track, force, start);
       } else {
         messager.info("No next track");
       }
@@ -184,18 +181,46 @@ export const useStore = defineStore("music", {
       }
       if (this.playing && isNumber(this.duration) && isNumber(this.start)) {
         this.timer = setInterval(() => {
-          if (!this.playing || !this.duration || this.start >= this.duration) {
+          if (!this.playing || !this.duration) {
             clearTimeout(this.timer);
+          } else if (this.start >= this.duration) {
+            clearTimeout(this.timer);
+            if (this.autoplay) {
+              return this.nextTrack();
+            }
           } else {
             this.start = (this.start || 0.0) + 1.0;
           }
         }, 1000);
       }
     },
+    getItemData(file: string) {
+      const itemData = this.data.find((item) => item.track === file);
+      return itemData;
+    },
     async playMusic(track: string | null, force?: boolean, start?: number) {
       const messager = useMessagerStore();
+      let item = track ? this.getItemData(track) : null;
+      if (this.timer) {
+        clearInterval(this.timer);
+      }
+      if (track && !item) {
+        await this.fetchData();
+        item = this.getItemData(track);
+        if (!item) {
+          return;
+        }
+      }
+      if (this.track !== track) {
+        this.start = 0.0;
+      }
+      this.duration = item?.duration || this.duration;
+
+      this.track = track;
+
       try {
         this.trackLoading = true;
+
         const response = await axios.post<PlayMusicResponse>(
           `/api/play-music`,
           { filename: track, start: start || 0.0, force: force || false },
@@ -206,9 +231,6 @@ export const useStore = defineStore("music", {
 
         if (data.track) {
           this.track = data.track;
-        }
-        if (isNumber(data.duration)) {
-          this.duration = data.duration;
         }
 
         if (isNumber(data.start)) {

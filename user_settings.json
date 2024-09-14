@@ -16,6 +16,7 @@
   "auto_download_photo": true,
   "auto_measure_distance_mode": false,
   "auto_measure_distance_delay_ms": 1000,
+  "autoplay_music": true,
   "virtual_mode": false,
   "keybindings": {
     "accelerate": ["w"],

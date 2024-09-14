@@ -10,6 +10,7 @@ from app.config.paths import (
     DEFAULT_USER_SETTINGS,
     PICARX_CONFIG_FILE,
 )
+from app.controllers.audio_controller import AudioController
 from app.exceptions.file_controller import DefaultFileRemoveAttempt
 from app.robot_hat.filedb import fileDB
 from app.util.file_util import ensure_parent_dir_exists, load_json_file
@@ -22,7 +23,7 @@ class FilesController(Logger):
     default_user_music_dir = DEFAULT_MUSIC_DIR
     default_user_sounds_dir = DEFAULT_SOUND_DIR
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, audio_manager: AudioController, *args, **kwargs):
         super().__init__(name=__name__, *args, **kwargs)
         self.user = os.getlogin()
         self.user_home = path.expanduser(f"~{self.user}")
@@ -38,6 +39,7 @@ class FilesController(Logger):
         self.user_music_dir = environ.get(
             "MUSIC_PATH", "%s/Music/picar-x-racer/music/" % self.user_home
         )
+        self.audio_manager = audio_manager
 
         self.settings = self.load_settings()
 
@@ -66,7 +68,7 @@ class FilesController(Logger):
         self.debug(f"settings saved to {self.user_settings_file}")
         return self.settings
 
-    def list_files(self, directory: str) -> List[str]:
+    def list_files(self, directory: str, full=False) -> List[str]:
         """
         Lists all files in the specified directory.
         """
@@ -75,30 +77,60 @@ class FilesController(Logger):
 
         files = []
         for file in os.listdir(directory):
-            if os.path.isfile(os.path.join(directory, file)):
-                files.append(file)
+            file_path = os.path.join(directory, file)
+            if os.path.isfile(file_path):
+                files.append(file if not full else file_path)
         return files
 
-    def list_default_music(self):
-        return self.list_files(self.default_user_music_dir)
+    def list_all_music_with_details(self):
+        defaults = self.list_default_music(full=True)
+        user_music = self.list_user_music(full=True)
+        result = []
 
-    def list_default_sounds(self):
-        return self.list_files(self.default_user_sounds_dir)
+        for file in defaults:
+            details = self.get_file_details(file)
+            if details:
+                details["removable"] = False
+                result.append(details)
 
-    def list_user_photos(self) -> List[str]:
+        for file in user_music:
+            details = self.get_file_details(file)
+            if details:
+                details["removable"] = True
+                result.append(details)
+
+        return result
+
+    def get_file_details(self, file):
+        try:
+            duration = self.audio_manager.music.music_get_duration(file)
+            track: str = path.basename(file)
+            result = {"track": track, "duration": duration}
+            return result
+        except Exception as err:
+            self.logger.error(f"Failed to read details for {file}: ${err}")
+            print(f"err {err}")
+
+    def list_default_music(self, full=False):
+        return self.list_files(self.default_user_music_dir, full)
+
+    def list_default_sounds(self, full=False):
+        return self.list_files(self.default_user_sounds_dir, full)
+
+    def list_user_photos(self, full=False) -> List[str]:
         """
         Lists user photos.
         """
-        return self.list_files(self.user_photos_dir)
+        return self.list_files(self.user_photos_dir, full)
 
-    def list_user_music(self) -> List[str]:
+    def list_user_music(self, full=False) -> List[str]:
         """
         Lists uploaded by user music files.
         """
-        return self.list_files(self.user_music_dir)
+        return self.list_files(self.user_music_dir, full)
 
-    def list_user_sounds(self) -> List[str]:
-        return self.list_files(self.user_sounds_dir)
+    def list_user_sounds(self, full=False) -> List[str]:
+        return self.list_files(self.user_sounds_dir, full)
 
     def remove_file(self, file: str, directory: str):
         """
@@ -195,3 +227,8 @@ class FilesController(Logger):
             calibration_settings = fileDB(PICARX_CONFIG_FILE).get_all_as_json()
             return calibration_settings
         return {}
+
+
+audio_manager = AudioController()
+file_manager = FilesController(audio_manager=audio_manager)
+print(f"Volume {audio_manager.get_amixer_volume()}")

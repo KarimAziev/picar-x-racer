@@ -27,6 +27,10 @@ export const toggleableSettings = {
     description: "Toggle auto-measure distance mode",
     label: "Auto-measure distance mode",
   },
+  autoplay_music: {
+    description: "Toggle auto playing music",
+    label: "Autoplay music",
+  },
 };
 
 export const ttsLanguages = [
