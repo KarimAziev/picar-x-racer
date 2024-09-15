@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from app.util.logger import Logger
+from app.util.photo import capture_photo
 from flask import Blueprint, current_app, jsonify
 
 if TYPE_CHECKING:
@@ -20,8 +21,15 @@ async def take_photo():
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"
 
-    await camera_manager.start_camera_and_wait_for_flask_img()
-    status = await camera_manager.take_photo(name, path=file_manager.user_photos_dir)
+    await camera_manager.start_camera_and_wait_for_stream_img()
+
+    status = (
+        await capture_photo(
+            img=camera_manager.img, photo_name=name, path=file_manager.user_photos_dir
+        )
+        if camera_manager.img
+        else False
+    )
     if status:
         return jsonify({"file": name})
     return jsonify({"error": "Couldn't take photo"})
@@ -33,8 +41,8 @@ async def frame_dimensions():
     if camera_manager.executor_shutdown:
         camera_manager.recreate_executor()
 
-    await camera_manager.start_camera_and_wait_for_flask_img()
-    frame_array = np.array(camera_manager.flask_img, dtype=np.uint8)
+    await camera_manager.start_camera_and_wait_for_stream_img()
+    frame_array = np.array(camera_manager.stream_img, dtype=np.uint8)
     height, width = frame_array.shape[:2]
     return jsonify({"width": width, "height": height})
 
