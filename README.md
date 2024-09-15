@@ -7,6 +7,8 @@
 ## Features
 
 - **Real-time Control with Video Game-like Precision**: Experience smooth and responsive control over your Picar-X car, similar to a video game interface.
+- **Advanced Object Detection with AI**: Integrate AI-powered object detection modes to recognize and track objects like cats, persons, and more in real-time. [See details](#object-detection)
+- **Dynamic Video Enhancements**: Apply various video enhancements to your live camera feed, such as histogram equalization, adaptive thresholding, and more for better visibility. [See details](#video-enhancers)
 - **Smooth Calibration**: Quickly switch to the calibration mode and adjust the settings.
 - **Acceleration and Speed Indicators**: Realistic acceleration, speed indicators, and smooth driving experience make navigating through tight spaces easy.
 - **3D Car Visualization**: A real-time 3D model of the Picar-X that reflects and displays the car's angles, providing an enhanced visual control experience.
@@ -25,7 +27,15 @@
 >     - [Usage](#usage)
 >   - [Settings](#settings)
 >     - [Default Keybindings](#default-keybindings)
->     - [Avoid Obstacles Mode](#avoid-obstacles-mode)
+>   - [Object Detection](#object-detection)
+>     - [Available Detection Modes](#available-detection-modes)
+>     - [How to Use](#how-to-use)
+>     - [Technical Details](#technical-details)
+>   - [Video Enhancers](#video-enhancers)
+>     - [Available Enhancement Modes](#available-enhancement-modes)
+>     - [How to Use](#how-to-use-1)
+>     - [Applications](#applications)
+>   - [Avoid Obstacles Mode](#avoid-obstacles-mode)
 >   - [Development on Non-Raspberry OS](#development-on-non-raspberry-os)
 >     - [Backend](#backend)
 >     - [Makefile Usage](#makefile-usage)
@@ -36,7 +46,7 @@
 
 ## Prerequisites
 
-- Python 3.10
+- Python 3.11
 - Node.js and npm
 - make
 
@@ -45,13 +55,13 @@
 The `bullseye` version of Raspberry Pi OS has Python 3.9 preinstalled. However, since we need Python 3.10, the easiest way to install it is with [Pyenv](https://github.com/pyenv/pyenv).
 
 ```
-pyenv install 3.10
+pyenv install 3.11
 ```
 
 You can optionally make it the default:
 
 ```
-pyenv global 3.10
+pyenv global 3.11
 ```
 
 This project uses neither `Picamera` nor `Picamera 2`; instead, it uses `cv2`. To access the camera, you need to edit a configuration file in the boot partition of the Raspberry Pi. If you are using the `bullseye` version of Raspberry Pi OS, it is located at `/boot/config.txt`. If you are using the `bookworm` version, it is at `/boot/firmware/config.txt`.
@@ -145,42 +155,104 @@ To access settings, press the icon in the top right corner, or press `h` to open
 ### Default Keybindings
 
 In the browser, you can control your Picar-X with the following keys (all the keys can be changed in the settings).
+| Label                             | Default Key | Description                                                                    |
+|-----------------------------------|-------------|--------------------------------------------------------------------------------|
+| Move Forward                      | w           | Accelerates the car forward.                                                   |
+| Move Backward                     | s           | Accelerates the car backward.                                                  |
+| Move Left                         | a           | Turns the car left.                                                            |
+| Move Right                        | d           | Turns the car right.                                                           |
+| Stop                              | Space       | Stops the car.                                                                 |
+| Camera Left                       | ArrowLeft   | Pans the camera to the left.                                                   |
+| Camera Down                       | ArrowDown   | Tilts the camera downward.                                                     |
+| Camera Right                      | ArrowRight  | Pans the camera to the right.                                                  |
+| Camera Up                         | ArrowUp     | Tilts the camera upward.                                                       |
+| Decrease Max Speed                | -           | Decreases the car's maximum speed.                                             |
+| Increase Max Speed                | =           | Increases the car's maximum speed.                                             |
+| Measure Distance                  | u           | Measures the distance to obstacles.                                            |
+| Play Music                        | m           | Plays music.                                                                   |
+| Play Next Music Track             | 2           | Plays the next music track.                                                    |
+| Play Previous Music Track         | 1           | Plays the previous music track.                                                |
+| Play Sound                        | o           | Plays a sound.                                                                 |
+| Reset Camera Orientation          | 0           | Resets the camera's pan and tilt to the default orientation.                   |
+| Say Text                          | k           | Speaks a predefined text.                                                      |
+| Next Text                         | 4           | Selects the next saved text for speech without speaking.                       |
+| Previous Text                     | 3           | Selects the previous saved text for speech without speaking.                   |
+| Take Photo                        | t           | Captures a photo using the camera.                                             |
+| Next Enhance Mode                 | e           | Cycles to the next video enhancement mode. [See details](#video-enhancers)     |
+| Previous Enhance Mode             | E           | Cycles to the previous video enhancement mode. [See details](#video-enhancers) |
+| Next Detect Mode                  | r           | Cycles to the next AI detection mode. [See details](#object-detection)         |
+| Previous Detect Mode              | R           | Cycles to the previous AI detection mode. [See details](#object-detection)     |
+| Show Battery Voltage              | b           | Displays the current battery voltage.                                          |
+| Toggle Fullscreen                 | f           | Enters or exits full-screen mode.                                              |
+| Open Shortcuts Settings           | ?           | Opens the settings menu for keyboard shortcuts.                                |
+| Open General Settings             | h           | Opens the general settings menu.                                               |
+| Increase Video Quality            | .           | Increases the video quality.                                                   |
+| Decrease Video Quality            | ,           | Decreases the video quality.                                                   |
+| Increase Video Quality            | PageUp      | Increases the video quality.                                                   |
+| Decrease Video Quality            | PageDown    | Decreases the video quality.                                                   |
+| Toggle Speedometer View           | N           | Toggles the speedometer display on or off.                                     |
+| Toggle 3D Car View                | M           | Toggles the 3D view of the car on or off.                                      |
+| Toggle Text Info                  | I           | Toggles text information on or off.                                            |
+| Toggle Calibration Mode           | C           | Activates calibration mode.                                                    |
+| Toggle Auto Downloading Photo     | P           | Toggles automatic downloading of captured photos.                              |
+| Toggle Virtual Mode               | \*          | Activates virtual mode.                                                        |
+| Toggle Auto Measure Distance Mode | U           | Toggles automatic distance measurement.                                        |
+| Increase FPS                      | F           | Increases the frames per second.                                               |
+| Decrease FPS                      | S           | Decreases the frames per second.                                               |
+| Increase Dimension                | ]           | Increases the display dimensions.                                              |
+| Decrease Dimension                | [           | Decreases the display dimensions.                                              |
+| Increase Volume                   | PageUp      | Increases the audio volume.                                                    |
+| Decrease Volume                   | PageDown    | Decreases the audio volume.                                                    |
+| Toggle Avoid Obstacles Mode       | O           | Activates a special mode. [See details](#avoid-obstacles-mode).                |
 
-| Label                         | Default Key | Description                                                     |
-| ----------------------------- | ----------- | --------------------------------------------------------------- |
-| Move Forward                  | w           | Accelerates the car forward.                                    |
-| Move Backward                 | s           | Accelerates the car backward.                                   |
-| Move Left                     | a           | Turns the car left.                                             |
-| Move Right                    | d           | Turns the car right.                                            |
-| Stop                          | Space       | Stops the car.                                                  |
-| Camera Left                   | ArrowLeft   | Pans the camera to the left.                                    |
-| Camera Down                   | ArrowDown   | Tilts the camera downward.                                      |
-| Camera Right                  | ArrowRight  | Pans the camera to the right.                                   |
-| Camera Up                     | ArrowUp     | Tilts the camera upward.                                        |
-| Decrease Max Speed            | -           | Decreases the car's maximum speed.                              |
-| Increase Max Speed            | =           | Increases the car's maximum speed.                              |
-| Measure Distance              | u           | Measures the distance to obstacles.                             |
-| Play Music                    | m           | Plays music.                                                    |
-| Play Sound                    | o           | Plays a sound.                                                  |
-| Reset Camera Orientation      | 0           | Resets the camera's pan and tilt to the default orientation.    |
-| Say Text                      | k           | Speaks a predefined text.                                       |
-| Take Photo                    | t           | Captures a photo using the camera.                              |
-| Show Battery Voltage          | b           | Displays the current battery voltage.                           |
-| Toggle Fullscreen             | f           | Enters or exits full-screen mode.                               |
-| Open Shortcuts Settings       | ?           | Opens the settings menu for keyboard shortcuts.                 |
-| Open General Settings         | h           | Opens the general settings menu.                                |
-| Increase Video Quality        | .           | Increases the video quality.                                    |
-| Decrease Video Quality        | ,           | Decreases the video quality.                                    |
-| Increase Video Quality        | PageUp      | Increases the video quality.                                    |
-| Decrease Video Quality        | PageDown    | Decreases the video quality.                                    |
-| Toggle Speedometer View       | N           | Toggles the speedometer display on or off.                      |
-| Toggle 3D Car View            | M           | Toggles the 3D view of the car on or off.                       |
-| Toggle Text Info              | I           | Toggles text information on or off.                             |
-| Toggle Calibration Mode       | C           | Activates calibration mode.                                     |
-| Toggle Auto Downloading Photo | P           | Toggles automatic downloading of captured photos.               |
-| Toggle Avoid Obstacles Mode   | O           | Activates a special mode. [See details](#avoid-obstacles-mode). |
+## Object Detection
 
-### Avoid Obstacles Mode
+Leverage AI-powered object detection modes to enhance your driving and monitoring experience. The Picar-X Racer integrates object detection capabilities using machine learning models to identify and track specific objects in real-time.
+
+### Available Detection Modes
+
+- **None**: Detection is disabled. The car streams the standard video feed without any overlays.
+- **All**: Detects all objects recognized by the AI model and overlays bounding boxes with labels.
+- **Person**: Specifically detects human figures and tracks them.
+- **Cat**: Specifically detects cats and tracks them.
+
+### How to Use
+
+- **Switch Detection Modes**: Use the keybindings `r` (Next Detect Mode) and `R` (Previous Detect Mode) to cycle through the available detection modes.
+- **Overlay Information**: When a detection mode is active, the live video feed will display bounding boxes and labels around the detected objects.
+- **Applications**: Use object detection to avoid obstacles, follow subjects, or gather data about the environment.
+
+### Technical Details
+
+- **AI Model**: The object detection feature utilizes the YOLOv5n model, optimized for real-time processing on devices like the Raspberry Pi.
+- **Customization**: You can adjust the detection confidence threshold and customize detection parameters in the settings.
+
+## Video Enhancers
+
+Enhance your video streaming experience with real-time video enhancement modes. These modes improve the visibility and quality of the live camera feed under various lighting conditions and environments.
+
+### Available Enhancement Modes
+
+- **None**: No enhancement is applied. The standard video feed is displayed.
+- **RoboCop Vision**: Simulates the visual effects seen in the RoboCop movies, including grayscale conversion, edge detection, scan lines, targeting reticles, and a heads-up display (HUD) overlay.
+- **Predator Vision**: Simulates the thermal vision effect from the Predator movies, applying a thermal color map to highlight heat signatures.
+- **Infrared Vision**: Highlights warmer areas in the image to simulate infrared imaging, useful for detecting heat sources.
+- **Ultrasonic Vision**: Creates a monochromatic sonar effect by applying edge detection and a bone color map, simulating ultrasonic imaging.
+
+### How to Use
+
+- **Switch Enhancement Modes**: Use the keybindings `e` (Next Enhance Mode) and `E` (Previous Enhance Mode) to cycle through the available video enhancer modes.
+- **Real-time Application**: Enhancements are applied in real-time to the live video feed, providing immediate visual feedback.
+- **Customization**: Some enhancement modes may have adjustable parameters for finer control, which can be configured in the settings panel.
+
+### Applications
+
+- **Improved Visibility**: Enhance video feed visibility in low-light conditions or high-contrast environments.
+- **Edge Detection for Navigation**: Use edge detection modes to assist with navigation and obstacle avoidance.
+- **Educational and Research**: Experiment with different image processing techniques for educational purposes or computer vision research.
+
+
+## Avoid Obstacles Mode
 
 Activates a mode where the car automatically adjusts its movements to avoid obstacles based on distance measurements from a sensor.
 
