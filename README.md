@@ -2,7 +2,7 @@
 
 `Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games. It integrates both frontend and backend components to manage the car's movement, camera, and other functionalities. The new interface includes a speedometer, live camera feed, and multimedia controls.
 
-![Alt text](./demo/picar-x-racer.gif)
+![Alt text](./demo/picar-x-racer-demo.gif)
 
 ## Features
 
