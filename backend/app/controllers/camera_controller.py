@@ -7,23 +7,19 @@ from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
-from app.util.video_utils import (
-    encode_and_detect,
-)
-
-from cv2 import VideoCapture
-from websockets.server import WebSocketServerProtocol
 from app.config.detectors import detectors
 from app.config.video_enhancers import frame_enhancers
+from app.util.logger import Logger
+from app.util.singleton_meta import SingletonMeta
+from app.util.video_utils import encode_and_detect
+from cv2 import VideoCapture
+from websockets.server import WebSocketServerProtocol
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 320
 TARGET_HEIGHT = 240
 
 CameraInfo = Tuple[int, str, Optional[str]]
-
 
 
 class CameraController(metaclass=SingletonMeta):
@@ -113,7 +109,9 @@ class CameraController(metaclass=SingletonMeta):
                 await asyncio.sleep(0)
         finally:
             self.active_clients -= 1
-            self.logger.info(f"generate_video_stream: Active Clients: {self.active_clients}")
+            self.logger.info(
+                f"generate_video_stream: Active Clients: {self.active_clients}"
+            )
             if self.active_clients == 0 and not self.executor_shutdown:
                 self.executor.shutdown(wait=True, cancel_futures=True)
                 self.executor_shutdown = True
@@ -124,7 +122,9 @@ class CameraController(metaclass=SingletonMeta):
         self,
     ):
         self.active_clients += 1
-        self.logger.info(f"generate_video_stream: Active Clients: {self.active_clients}")
+        self.logger.info(
+            f"generate_video_stream: Active Clients: {self.active_clients}"
+        )
         skip_count = 0
         try:
             while True:
@@ -137,7 +137,9 @@ class CameraController(metaclass=SingletonMeta):
                         skip_count += 1
         finally:
             self.active_clients -= 1
-            self.logger.info(f"generate_video_stream: Active Clients: {self.active_clients}")
+            self.logger.info(
+                f"generate_video_stream: Active Clients: {self.active_clients}"
+            )
             if self.active_clients == 0 and not self.executor_shutdown:
                 self.executor.shutdown(wait=True, cancel_futures=True)
                 self.executor_shutdown = True
@@ -431,22 +433,3 @@ class CameraController(metaclass=SingletonMeta):
             status = False
 
         return status
-
-    def convert_listproxy_to_array(self, listproxy_obj):
-        """
-        Convert a ListProxy object to a numpy array.
-
-        Args:
-            listproxy_obj: A ListProxy object to be converted.
-
-        Returns:
-            np.ndarray: Converted numpy array.
-
-        Raises:
-            ValueError: If the ListProxy object is None.
-        """
-        if listproxy_obj is None:
-            self.logger.error("ListProxy object is None")
-            raise ValueError("ListProxy object is None")
-        np_array = np.array(listproxy_obj, dtype=np.uint8)
-        return np_array

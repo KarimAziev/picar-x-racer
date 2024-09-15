@@ -1,6 +1,7 @@
 from time import localtime, strftime
 from typing import TYPE_CHECKING
 
+import numpy as np
 from app.util.logger import Logger
 from flask import Blueprint, current_app, jsonify
 
@@ -33,7 +34,7 @@ async def frame_dimensions():
         camera_manager.recreate_executor()
 
     await camera_manager.start_camera_and_wait_for_flask_img()
-    frame_array = camera_manager.convert_listproxy_to_array(camera_manager.flask_img)
+    frame_array = np.array(camera_manager.flask_img, dtype=np.uint8)
     height, width = frame_array.shape[:2]
     return jsonify({"width": width, "height": height})
 
