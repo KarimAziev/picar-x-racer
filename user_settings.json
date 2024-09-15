@@ -23,7 +23,7 @@
     "decreaseCamPan": ["ArrowLeft"],
     "decreaseCamTilt": ["ArrowDown"],
     "decreaseMaxSpeed": ["-"],
-    "decreaseQuality": [",", "PageDown"],
+    "decreaseQuality": [","],
     "getBatteryVoltage": ["b"],
     "getDistance": ["u"],
     "increaseCamPan": ["ArrowRight"],
