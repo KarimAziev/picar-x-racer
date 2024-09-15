@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Installing portaudio19-dev, sox and libsox-fmt-mp3"
-sudo apt-get install portaudio19-dev sox libsox-fmt-mp3 -y
+sudo apt-get install portaudio19-dev sox libsox-fmt-mp3 ffmpeg -y
 echo "Creating venv"
 python3 -m venv .venv
 source .venv/bin/activate
