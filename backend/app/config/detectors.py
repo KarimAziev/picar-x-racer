@@ -5,7 +5,7 @@ from app.util.object_detection import (
 )
 
 detectors = {
+    "all": perform_detection,
     "cat": perform_cat_detection,
     "person": perform_person_detection,
-    "all": perform_detection,
 }
