@@ -78,7 +78,7 @@ class VideoDeviceController(metaclass=SingletonMeta):
 
     def setup_video_capture(
         self, fps: int, width: Optional[int] = None, height: Optional[int] = None
-    ):
+    ) -> cv2.VideoCapture:
         """
         Sets up the video capture device with specified FPS, width, and height.
 
@@ -129,3 +129,47 @@ class VideoDeviceController(metaclass=SingletonMeta):
 
         cap.set(cv2.CAP_PROP_FPS, fps)
         return cap
+
+    def find_and_setup_alternative_camera(
+        self, fps: int, width: Optional[int] = None, height: Optional[int] = None
+    ):
+        """
+        Attempts to find and set up an alternative video capture device if the current one fails.
+
+        This method tries to find an alternative video capture device by checking
+        other available video devices when the current device fails to open or operate correctly.
+        It then sets up the video capture with the specified FPS, width, and height.
+
+        Parameters:
+        -----------
+        fps : int
+            Frames per second for the video capture.
+        width : Optional[int], optional
+            Width of the video frame. Defaults to None.
+        height : Optional[int], optional
+            Height of the video frame. Defaults to None.
+
+        Returns:
+        --------
+        cv2.VideoCapture
+            The video capture object for the newly found camera.
+
+        Raises:
+        -------
+        SystemExit
+            If no alternative video capture device can be successfully set up.
+        """
+        if isinstance(self.camera_index, int):
+            self.failed_camera_indexes.append(self.camera_index)
+
+        new_index, _, device_info = self.find_camera_index()
+        if isinstance(new_index, int):
+            self.logger.info(
+                f"Camera index {self.camera_index} is failed, trying {new_index}:\n{device_info}"
+            )
+            self.camera_index = new_index
+            return self.setup_video_capture(
+                fps=fps,
+                width=width,
+                height=height,
+            )

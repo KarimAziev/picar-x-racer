@@ -38,9 +38,6 @@ async def take_photo():
 @camera_feed_bp.route("/api/frame-dimensions", methods=["GET"])
 async def frame_dimensions():
     camera_manager: "CameraController" = current_app.config["camera_manager"]
-    if camera_manager.executor_shutdown:
-        camera_manager.recreate_executor()
-
     await camera_manager.start_camera_and_wait_for_stream_img()
     frame_array = np.array(camera_manager.stream_img, dtype=np.uint8)
     height, width = frame_array.shape[:2]
@@ -52,6 +49,6 @@ def close_camera():
     camera_manager: "CameraController" = current_app.config["camera_manager"]
     logger.warning(f"Closing camera {camera_manager.active_clients}")
     if camera_manager.active_clients <= 1:
-        camera_manager.camera_close()
+        camera_manager.stop_camera()
 
     return jsonify({"OK": True})

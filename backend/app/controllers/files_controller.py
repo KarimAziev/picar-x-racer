@@ -1,7 +1,41 @@
+"""
+FilesController Class
+
+This module handles file operations such as listing, saving, and removing photos, music, and sound files for a user within the application. It also manages user settings and loads audio details using the `AudioController`.
+
+Classes:
+    - FilesController: Handles file-related operations including saving, removing, and listing files from specified directories.
+
+Methods:
+    - __init__: Initializes the FilesController with user-specific directories and audio manager.
+    - load_settings: Loads user settings from a JSON file.
+    - save_settings: Saves user settings to a JSON file.
+    - list_files: Lists all files in a specified directory.
+    - list_all_music_with_details: Lists all music files with details (duration).
+    - get_file_details: Retrieves details (track name and duration) of a specific audio file.
+    - list_default_music: Lists default music files.
+    - list_default_sounds: Lists default sound files.
+    - list_user_photos: Lists user-uploaded photo files.
+    - list_user_music: Lists user-uploaded music files.
+    - list_user_sounds: Lists user-uploaded sound files.
+    - remove_file: Removes a file from a specified directory.
+    - save_sound: Saves an uploaded sound file to the user’s sound directory.
+    - save_music: Saves an uploaded music file to the user’s music directory.
+    - save_photo: Saves an uploaded photo file to the user’s photos directory.
+    - remove_photo: Removes a photo file from the user’s photo directory.
+    - remove_music: Removes a music file from the user’s music directory, preventing default music files from being removed.
+    - remove_sound: Removes a sound file from the user’s sound directory, preventing default sound files from being removed.
+    - get_photo_directory: Retrieves the directory of a specified photo file.
+    - get_sound_directory: Retrieves the directory of a specified sound file.
+    - get_music_directory: Retrieves the directory of a specified music file.
+    - save_uploaded_file: Saves an uploaded file to a specified directory.
+    - get_calibration_config: Loads calibration settings from a configuration file.
+"""
+
 import json
 import os
 from os import environ, path
-from typing import List
+from typing import Any, Dict, List
 
 from app.config.paths import (
     CONFIG_USER_DIR,
@@ -19,6 +53,13 @@ from werkzeug.datastructures import FileStorage
 
 
 class FilesController(Logger):
+    """
+    Controller for managing file operations related to user settings, photos, sounds, and music.
+
+    Args:
+        audio_manager (AudioController): An instance of AudioController to handle audio operations.
+    """
+
     default_user_settings_file = DEFAULT_USER_SETTINGS
     default_user_music_dir = DEFAULT_MUSIC_DIR
     default_user_sounds_dir = DEFAULT_SOUND_DIR
@@ -44,6 +85,7 @@ class FilesController(Logger):
         self.settings = self.load_settings()
 
     def load_settings(self):
+        """Loads user settings from a JSON file."""
         settings_file = (
             self.user_settings_file
             if os.path.exists(self.user_settings_file)
@@ -52,7 +94,8 @@ class FilesController(Logger):
         self.info(f"Loading_settings {settings_file}")
         return load_json_file(settings_file)
 
-    def save_settings(self, new_settings):
+    def save_settings(self, new_settings: Dict[str, Any]):
+        """Saves new settings to the user settings file."""
         existing_settings = self.load_settings()
         self.info(f"Saving settings to {self.user_settings_file}")
         merged_settings = {
@@ -71,6 +114,13 @@ class FilesController(Logger):
     def list_files(self, directory: str, full=False) -> List[str]:
         """
         Lists all files in the specified directory.
+
+        Args:
+            directory (str): The directory to list files from.
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of files in the directory.
         """
         if not os.path.exists(directory):
             return []
@@ -83,6 +133,7 @@ class FilesController(Logger):
         return files
 
     def list_all_music_with_details(self):
+        """Lists all music files with details including whether they are removable."""
         defaults = self.list_default_music(full=True)
         user_music = self.list_user_music(full=True)
         result = []
@@ -102,6 +153,15 @@ class FilesController(Logger):
         return result
 
     def get_file_details(self, file):
+        """
+        Gets details of a file such as track name and duration.
+
+        Args:
+            file (str): File path of the audio file.
+
+        Returns:
+            dict: A dictionary with track name and duration.
+        """
         try:
             duration = self.audio_manager.music.music_get_duration(file)
             track: str = path.basename(file)
@@ -112,29 +172,78 @@ class FilesController(Logger):
             print(f"err {err}")
 
     def list_default_music(self, full=False):
+        """
+        Lists default music files.
+
+        Args:
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of default music files.
+        """
+
         return self.list_files(self.default_user_music_dir, full)
 
     def list_default_sounds(self, full=False):
+        """
+        Lists default sound files.
+
+        Args:
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of default sound files.
+        """
+
         return self.list_files(self.default_user_sounds_dir, full)
 
     def list_user_photos(self, full=False) -> List[str]:
         """
-        Lists user photos.
+        Lists captured by user photo files.
+
+        Args:
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of user-uploaded photo files.
         """
         return self.list_files(self.user_photos_dir, full)
 
     def list_user_music(self, full=False) -> List[str]:
         """
-        Lists uploaded by user music files.
+        Lists user-uploaded music files.
+
+        Args:
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of user-uploaded music files.
         """
         return self.list_files(self.user_music_dir, full)
 
     def list_user_sounds(self, full=False) -> List[str]:
+        """
+        Lists user-uploaded sound files.
+
+        Args:
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of user-uploaded sound files.
+        """
+
         return self.list_files(self.user_sounds_dir, full)
 
     def remove_file(self, file: str, directory: str):
         """
-        Remove file if in directory.
+        Removes a file from a specified directory.
+
+        Args:
+            file (str): Name of the file to be removed.
+            directory (str): Directory from which the file should be removed.
+
+        Returns:
+            bool: True if the file was successfully removed.
         """
         self.logger.info(f"Request to remove {file} in directory {directory}")
         full_name = os.path.join(directory, file)
@@ -144,7 +253,13 @@ class FilesController(Logger):
 
     def save_sound(self, file: FileStorage) -> str:
         """
-        Saves the uploaded file to the user's sound directory.
+        Saves an uploaded sound file to the user's sound directory.
+
+        Args:
+            file (FileStorage): Uploaded sound file.
+
+        Returns:
+            str: File path of the saved sound file.
         """
         return self.save_uploaded_file(file, self.user_sounds_dir)
 
@@ -161,9 +276,33 @@ class FilesController(Logger):
         return self.save_uploaded_file(file, self.user_photos_dir)
 
     def remove_photo(self, filename: str):
+        """
+        Removes a photo file from the user's photo directory.
+
+        Args:
+            filename (str): Name of the photo file to be removed.
+
+        Returns:
+            bool: True if the file was successfully removed.
+        """
+
         return self.remove_file(filename, self.user_photos_dir)
 
     def remove_music(self, filename: str):
+        """
+        Removes a music file from the user's music directory or prevents default music files from being removed.
+
+        Args:
+            filename (str): Name of the music file to be removed.
+
+        Raises:
+            DefaultFileRemoveAttempt: If attempting to remove a default music file.
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            bool: True if the file was successfully removed.
+        """
+
         self.logger.info(f"removing music file {filename}")
         if path.exists(path.join(self.user_music_dir, filename)):
             return self.remove_file(filename, self.user_music_dir)
@@ -175,6 +314,20 @@ class FilesController(Logger):
             raise FileNotFoundError
 
     def remove_sound(self, filename: str):
+        """
+        Removes a sound file from the user's sound directory or prevents default sound files from being removed.
+
+        Args:
+            filename (str): Name of the sound file to be removed.
+
+        Raises:
+            DefaultFileRemoveAttempt: If attempting to remove a default sound file.
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            bool: True if the file was successfully removed.
+        """
+
         if path.exists(path.join(self.user_sounds_dir, filename)):
             return self.remove_file(filename, self.user_sounds_dir)
         elif path.exists(path.join(self.default_user_sounds_dir, filename)):
@@ -185,6 +338,19 @@ class FilesController(Logger):
             raise FileNotFoundError
 
     def get_photo_directory(self, filename: str):
+        """
+        Retrieves the directory of a specified photo file.
+
+        Args:
+            filename (str): Name of the photo file.
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            str: Directory path of the photo file.
+        """
+
         user_file = path.join(self.user_photos_dir, filename)
         if path.exists(user_file):
             return self.user_photos_dir
@@ -192,6 +358,19 @@ class FilesController(Logger):
             raise FileNotFoundError
 
     def get_sound_directory(self, filename: str):
+        """
+        Retrieves the directory of a specified sound file.
+
+        Args:
+            filename (str): Name of the sound file.
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            str: Directory path of the sound file.
+        """
+
         user_file = path.join(self.user_sounds_dir, filename)
         if path.exists(user_file):
             return self.user_sounds_dir
@@ -201,6 +380,19 @@ class FilesController(Logger):
             raise FileNotFoundError
 
     def get_music_directory(self, filename: str):
+        """
+        Retrieves the directory of a specified music file.
+
+        Args:
+            filename (str): Name of the music file.
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            str: Directory path of the music file.
+        """
+
         user_file = path.join(self.user_music_dir, filename)
         if path.exists(user_file):
             return self.user_music_dir
@@ -211,7 +403,17 @@ class FilesController(Logger):
 
     def save_uploaded_file(self, file: FileStorage, directory: str) -> str:
         """
-        Saves uploaded file to the specified directory.
+        Saves an uploaded file to the specified directory.
+
+        Args:
+            file (FileStorage): The uploaded file.
+            directory (str): The directory where the file should be saved.
+
+        Raises:
+            ValueError: If the filename is invalid.
+
+        Returns:
+            str: The path of the saved file.
         """
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -223,12 +425,14 @@ class FilesController(Logger):
         return file_path
 
     def get_calibration_config(self):
+        """
+        Loads calibration settings from a configuration file.
+
+        Returns:
+            dict: Calibration settings in JSON format.
+        """
+
         if path.exists(PICARX_CONFIG_FILE):
             calibration_settings = fileDB(PICARX_CONFIG_FILE).get_all_as_json()
             return calibration_settings
         return {}
-
-
-audio_manager = AudioController()
-file_manager = FilesController(audio_manager=audio_manager)
-print(f"Volume {audio_manager.get_amixer_volume()}")
