@@ -126,7 +126,10 @@ class CameraController(metaclass=SingletonMeta):
             video_feed_enhance_mode = self.video_feed_enhance_mode
             video_feed_quality = self.video_feed_quality
             frame = self.stream_img.copy()
-            if self.last_detection_result is not None:
+            if (
+                self.last_detection_result is not None
+                and self.video_feed_detect_mode is not None
+            ):
                 frame = overlay_detection(frame, self.last_detection_result)
             frame_enhancer = (
                 frame_enhancers.get(video_feed_enhance_mode)
