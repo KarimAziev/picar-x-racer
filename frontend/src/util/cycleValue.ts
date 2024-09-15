@@ -13,7 +13,7 @@ import { isFunction } from "@/util/guards";
  */
 
 export const cycleValue = <T>(
-  value: (value: T) => boolean | T,
+  value: ((value: T) => boolean) | T,
   items: T[],
   direction: number,
 ): T => {
