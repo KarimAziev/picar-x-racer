@@ -3,50 +3,39 @@ import json
 import time
 import traceback
 from datetime import datetime, timedelta
+from typing import Optional
 
 import websockets
-from app.controllers.audio_controller import AudioController
 from app.controllers.calibration_controller import CalibrationController
-from app.controllers.camera_controller import CameraController
-from app.controllers.files_controller import FilesController
-from app.controllers.stream_controller import StreamController
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 from app.util.platform_adapters import Picarx, reset_mcu
 from websockets import WebSocketServerProtocol
 
 
-class CarController(Logger):
+class CarController:
     DEBOUNCE_INTERVAL = timedelta(seconds=1)
 
-    def __init__(
-        self,
-        camera_manager: CameraController,
-        file_manager: FilesController,
-        audio_manager: AudioController,
-        **kwargs,
-    ):
-        super().__init__(name=__name__, **kwargs)
-        self.camera_manager = camera_manager
-        self.audio_manager = audio_manager
-        self.file_manager = file_manager
-
-        self.stream_controller = StreamController(camera_controller=self.camera_manager)
+    def __init__(self, port: Optional[int] = 8765):
 
         reset_mcu()
         time.sleep(0.2)
-
+        self.port = port or 8765
         self.px = Picarx()
+        self.logger = Logger(name=__name__)
         self.calibration = CalibrationController(self.px)
         self.last_toggle_time = None
         self.avoid_obstacles_mode = False
-        self.is_moving = False
-        self.move_track_task = None
         self.avoid_obstacles_task = None
 
-        self.loop = asyncio.get_event_loop()
-
     async def handle_message(self, websocket: WebSocketServerProtocol, _):
+        """
+        Handles incoming WebSocket messages and delegates them to the appropriate action handlers.
+
+        Args:
+            websocket (WebSocketServerProtocol): WebSocket connection instance.
+            _ (str): Placeholder for compatibility with WebSocket handler signature.
+        """
         async for message in websocket:
             try:
                 data = json.loads(message)
@@ -55,18 +44,27 @@ class CarController(Logger):
                 if action:
                     await self.process_action(action, payload, websocket)
                 else:
-                    self.info(f"received invalid message {data}")
+                    self.logger.info(f"received invalid message {data}")
 
             except KeyboardInterrupt as e:
-                self.error(f"KeyboardInterrupt")
+                self.logger.error(f"KeyboardInterrupt")
             except Exception as e:
-                self.error(f"Error handling message: {message}: {e}")
-                self.error(traceback.format_exc())
+                self.logger.error(f"Error handling message: {message}: {e}")
+                self.logger.error(traceback.format_exc())
                 error_response = json.dumps({"error": str(e)})
                 await websocket.send(error_response)
 
     async def process_action(self, action: str, payload, websocket):
-        self.info(f"Action: '{action}' with payload {payload}")
+        """
+        Processes specific actions received from WebSocket messages and performs the corresponding operations.
+
+        Args:
+            action (str): The action to be performed.
+            payload: The payload data associated with the action.
+            websocket (WebSocketServerProtocol): WebSocket connection instance.
+        """
+
+        self.logger.info(f"Action: '{action}' with payload {payload}")
         calibration_actions_map = {
             "increaseCamPanCali": self.calibration.increase_cam_pan_angle,
             "decreaseCamPanCali": self.calibration.decrease_cam_pan_angle,
@@ -82,7 +80,6 @@ class CarController(Logger):
         calibrationData = None
         if action in calibration_actions_map:
             calibrationData = calibration_actions_map[action]()
-            self.camera_manager.inhibit_detection = True
             if calibrationData:
                 await websocket.send(
                     json.dumps(
@@ -102,7 +99,6 @@ class CarController(Logger):
             self.px.set_dir_servo_angle(payload or 0)
         elif action == "stop":
             self.px.stop()
-            self.camera_manager.inhibit_detection = False
         elif action == "setCamTiltAngle":
             self.px.set_cam_tilt_angle(payload)
         elif action == "setCamPanAngle":
@@ -113,23 +109,36 @@ class CarController(Logger):
             await self.respond_with_distance(action, websocket)
         else:
             error_msg = f"Unknown action: {action}"
-            self.warning(error_msg)
+            self.logger.warning(error_msg)
             await websocket.send(json.dumps({"error": error_msg, "type": action}))
 
     def handle_move(self, payload):
+        """
+        Handles move actions to control the car's direction and speed.
+
+        Args:
+            payload (dict): Payload containing direction and speed data.
+        """
+
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
-        self.camera_manager.inhibit_detection = speed != 0
 
         self.move(direction, speed)
 
     async def toggle_avoid_obstacles_mode(self, websocket):
+        """
+        Toggles the mode for avoiding obstacles.
+
+        Args:
+            websocket (WebSocketServerProtocol): WebSocket connection instance.
+        """
+
         now = datetime.utcnow()
         if (
             self.last_toggle_time
             and (now - self.last_toggle_time) < self.DEBOUNCE_INTERVAL
         ):
-            self.info("Debounce: Too quick toggle of avoidObstacles detected.")
+            self.logger.info("Debounce: Too quick toggle of avoidObstacles detected.")
             return
         await self.cancel_avoid_obstacles_task()
         await self.handle_px_reset(websocket)
@@ -145,6 +154,14 @@ class CarController(Logger):
             self.avoid_obstacles_task = asyncio.create_task(self.avoid_obstacles())
 
     async def respond_with_distance(self, action, websocket):
+        """
+        Responds with the distance measured by the car's ultrasonic sensor.
+
+        Args:
+            action (str): Action type for the distance request.
+            websocket (WebSocketServerProtocol): WebSocket connection instance.
+        """
+
         try:
             distance = await self.get_distance()
             response = json.dumps({"payload": distance, "type": action})
@@ -154,6 +171,13 @@ class CarController(Logger):
             await websocket.send(error_response)
 
     async def handle_px_reset(self, websocket: WebSocketServerProtocol):
+        """
+        Resets the car's servo and camera to default angles.
+
+        Args:
+            websocket (WebSocketServerProtocol): WebSocket connection instance.
+        """
+
         self.px.stop()
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
@@ -175,15 +199,23 @@ class CarController(Logger):
         )
 
     async def cancel_avoid_obstacles_task(self):
+        """
+        Cancels the background task for avoiding obstacles, if running.
+        """
+
         if self.avoid_obstacles_task:
             try:
                 self.avoid_obstacles_task.cancel()
                 await self.avoid_obstacles_task
             except asyncio.CancelledError:
-                self.info("Avoid obstacles task was cancelled")
+                self.logger.info("Avoid obstacles task was cancelled")
                 self.avoid_obstacles_task = None
 
     async def avoid_obstacles(self):
+        """
+        Background task that continuously checks for obstacles and navigates around them.
+        """
+
         POWER = 50
         SafeDistance = 40
         DangerDistance = 20
@@ -191,7 +223,7 @@ class CarController(Logger):
             while True:
                 value = await self.px.ultrasonic.read()
                 distance = round(value, 2)
-                self.info(f"distance: {distance}")
+                self.logger.info(f"distance: {distance}")
                 if distance >= SafeDistance:
                     self.px.set_dir_servo_angle(0)
                     self.px.forward(POWER)
@@ -207,13 +239,31 @@ class CarController(Logger):
             self.px.forward(0)
 
     def move(self, direction: int, speed: int):
-        self.info(f"Moving {direction} with speed {speed}")
+        """
+        Moves the car in the specified direction at the given speed.
+
+        Args:
+            direction (int): The direction to move the car (1 for forward, -1 for backward).
+            speed (int): The speed at which to move the car.
+        """
+
+        self.logger.info(f"Moving {direction} with speed {speed}")
         if direction == 1:
             self.px.forward(speed)
         elif direction == -1:
             self.px.backward(speed)
 
     async def get_distance(self):
+        """
+        Measures and returns the distance using the car's ultrasonic sensor.
+
+        Returns:
+            float: The measured distance.
+
+        Raises:
+            ValueError: If an error occurs while measuring the distance.
+        """
+
         errors = {
             -1: "Timeout waiting for echo response",
             -2: "Failed to detect pulse start or end",
@@ -224,25 +274,36 @@ class CarController(Logger):
                 raise ValueError(errors.get(distance, "Unexpected distance error"))
             return distance
         except Exception as e:
-            self.error(f"Failed to get distance: {e}")
+            self.logger.error(f"Failed to get distance: {e}")
             raise
 
     async def start_server(self):
+        """
+        Starts the WebSocket server for handling external connections.
+        """
+
         ip_address = get_ip_address()
-        self.server = await websockets.serve(self.handle_message, "0.0.0.0", 8765)
-        self.info(
+        self.logger.info(
+            f"Starting websockets for controlling the car on the port {self.port}"
+        )
+        self.server = await websockets.serve(self.handle_message, "0.0.0.0", self.port)
+        self.logger.info(
             f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
         )
         await self.server.wait_closed()
 
     async def stop_server(self):
+        """
+        Stops the WebSocket server, if running.
+        """
+
         if self.server:
             self.server.close()
             await self.server.wait_closed()
 
     def run_server(self):
-        return asyncio.run(self.start_server())
+        """
+        Initiates the server startup process.
+        """
 
-    async def run_streaming_servers(self):
-        server_task1 = self.stream_controller.start_server()
-        await asyncio.gather(server_task1)
+        return asyncio.run(self.start_server())

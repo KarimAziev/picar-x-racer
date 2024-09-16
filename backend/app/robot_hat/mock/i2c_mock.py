@@ -1,5 +1,9 @@
 import random
 
+from app.robot_hat.address_descriptions import (
+    get_address_description,
+    get_value_description,
+)
 from app.util.logger import Logger
 
 
@@ -55,23 +59,34 @@ class I2C(object):
 
     @_retry_wrapper
     def _write_byte(self, data):
-        self.logger.debug(f"_write_byte: [0x{data:02X}]")
+        description = get_value_description(data)
+        self.logger.debug(f"_write_byte: [0x{data:02X}] {description}")
         return 0  # Simulate successful write
 
     @_retry_wrapper
     def _write_byte_data(self, reg, data):
-        self.logger.debug(f"_write_byte_data: [0x{reg:02X}] [0x{data:02X}]")
+        reg_description = get_address_description(reg)
+        data_description = get_value_description(data)
+        self.logger.debug(
+            f"_write_byte_data: [0x{reg:02X}] {reg_description} [0x{data:02X}] {data_description}"
+        )
         return 0  # Simulate successful write
 
     @_retry_wrapper
     def _write_word_data(self, reg, data):
-        self.logger.debug(f"_write_word_data: [0x{reg:02X}] [0x{data:04X}]")
+        reg_description = get_address_description(reg)
+        data_description = get_value_description(data)
+        self.logger.debug(
+            f"_write_word_data: [0x{reg:02X}] {reg_description} [0x{data:04X}] {data_description}"
+        )
         return 0  # Simulate successful write
 
     @_retry_wrapper
     def _write_i2c_block_data(self, reg, data):
+        reg_description = get_address_description(reg)
+        data_descriptions = [get_value_description(d) for d in data]
         self.logger.debug(
-            f"_write_i2c_block_data: [0x{reg:02X}] {[f'0x{i:02X}' for i in data]}"
+            f"_write_i2c_block_data: [0x{reg:02X}] {reg_description} {[f'0x{i:02X} {descr}' for i, descr in zip(data, data_descriptions)]}"
         )
         return 0  # Simulate successful write
 
@@ -84,22 +99,34 @@ class I2C(object):
     @_retry_wrapper
     def _read_byte_data(self, reg):
         result = random.randint(0, 255)  # Simulate a random byte read
-        self.logger.debug(f"_read_byte_data: [0x{reg:02X}] [0x{result:02X}]")
+        reg_description = get_address_description(reg)
+        result_description = get_value_description(result)
+        self.logger.debug(
+            f"_read_byte_data: [0x{reg:02X}] {reg_description} [0x{result:02X}] {result_description}"
+        )
+
         return result
 
     @_retry_wrapper
     def _read_word_data(self, reg):
         result = random.randint(0, 65535)  # Simulate a random word read
         result_list = [result & 0xFF, (result >> 8) & 0xFF]
-        self.logger.debug(f"_read_word_data: [0x{reg:02X}] [0x{result:04X}]")
+        reg_description = get_address_description(reg)
+        result_description = get_value_description(result)
+        self.logger.debug(
+            f"_read_word_data: [0x{reg:02X}] {reg_description} [0x{result:04X}] {result_description}"
+        )
         return result_list
 
     @_retry_wrapper
     def _read_i2c_block_data(self, reg, num):
         result = [random.randint(0, 255) for _ in range(num)]  # Simulate a block read
+        reg_description = get_address_description(reg)
+        result_descriptions = [get_value_description(r) for r in result]
         self.logger.debug(
-            f"_read_i2c_block_data: [0x{reg:02X}] {[f'0x{i:02X}' for i in result]}"
+            f"_read_i2c_block_data: [0x{reg:02X}] {reg_description} {[f'0x{i:02X} {descr}' for i, descr in zip(result, result_descriptions)]}"
         )
+
         return result
 
     @_retry_wrapper
@@ -169,10 +196,20 @@ class I2C(object):
             raise ValueError(
                 "memery write require arguement of bytearray, list, int less than 0xFF"
             )
+        reg_description = get_address_description(memaddr)
+        data_descriptions = [get_value_description(d) for d in data_all]
+        self.logger.debug(
+            f"mem_write: register [0x{memaddr:02X}] {reg_description} data {[f'0x{i:02X} {descr}' for i, descr in zip(data_all, data_descriptions)]}"
+        )
         self._write_i2c_block_data(memaddr, data_all)
 
     def mem_read(self, length, memaddr):
         result = self._read_i2c_block_data(memaddr, length)
+        reg_description = get_address_description(memaddr)
+        result_descriptions = [get_value_description(r) for r in result]
+        self.logger.debug(
+            f"mem_read: register [0x{memaddr:02X}] {reg_description} data {[f'0x{i:02X} {descr}' for i, descr in zip(result, result_descriptions)]}"
+        )
         return result
 
     def is_avaliable(self):

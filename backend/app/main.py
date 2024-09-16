@@ -7,6 +7,7 @@ from app.controllers.audio_controller import AudioController
 from app.controllers.camera_controller import CameraController
 from app.controllers.car_controller import CarController
 from app.controllers.files_controller import FilesController
+from app.controllers.stream_controller import StreamController
 from app.endpoints.flask_setup import run_flask
 from app.util.file_util import copy_file_if_not_exists
 from app.util.logger import Logger
@@ -19,18 +20,24 @@ Logger.set_global_log_level(Logger.DEBUG)
 def main():
     copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
     camera_manager = CameraController()
+    stream_controller = StreamController(camera_controller=camera_manager, port=8050)
     audio_manager = AudioController()
     file_manager = FilesController(audio_manager=audio_manager)
-    car_manager = CarController(
-        camera_manager=camera_manager,
-        file_manager=file_manager,
-        audio_manager=audio_manager,
-    )
+
+    car_manager = CarController()
 
     # Start the Flask server in a separate thread
     flask_thread = threading.Thread(
         target=run_flask,
-        args=(car_manager, camera_manager, file_manager, audio_manager),
+        args=(
+            car_manager,
+            camera_manager,
+            file_manager,
+            audio_manager,
+            9000,
+            True,
+            False,
+        ),
     )
     flask_thread.daemon = True
     flask_thread.start()
@@ -40,11 +47,10 @@ def main():
     car_manager_process.start()
 
     try:
-        asyncio.run(car_manager.run_streaming_servers())
+        asyncio.run(stream_controller.run_streaming_server())
     except KeyboardInterrupt:
         logger.info("Shutting down servers...")
     finally:
-        # Ensure proper cleanup
         car_manager_process.terminate()
         car_manager_process.join()
         flask_thread.join()

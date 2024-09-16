@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from app.config.paths import STATIC_FOLDER, TEMPLATE_FOLDER
 from app.util.os_checks import is_raspberry_pi
@@ -67,6 +67,9 @@ def run_flask(
     camera_manager: "CameraController",
     file_manager: "FilesController",
     audio_manager: "AudioController",
+    port: Optional[int] = 9000,
+    threaded: bool = True,
+    debug: Optional[bool] = False,
 ):
     app = create_app(
         car_manager=car_manager,
@@ -74,4 +77,9 @@ def run_flask(
         file_manager=file_manager,
         audio_manager=audio_manager,
     )
-    app.run(host="0.0.0.0", port=9000, threaded=True, debug=False)
+    app.run(
+        host="0.0.0.0",
+        port=port or 9000,
+        threaded=threaded,
+        debug=debug if debug is not None else False,
+    )

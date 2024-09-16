@@ -1,6 +1,8 @@
 import math
 import time
 
+from app.util.logger import Logger
+
 from .i2c_mock import I2C
 
 timer = [{"arr": 1}] * 4
@@ -28,6 +30,7 @@ class PWM(I2C):
         :param channel: PWM channel number(0-13/P0-P13)
         :type channel: int/str
         """
+        self.logger = Logger(__name__)
         if address is None:
             super().__init__(self.ADDR, *args, **kwargs)
         else:
