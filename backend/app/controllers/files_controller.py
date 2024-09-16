@@ -12,7 +12,7 @@ Methods:
     - save_settings: Saves user settings to a JSON file.
     - list_files: Lists all files in a specified directory.
     - list_all_music_with_details: Lists all music files with details (duration).
-    - get_file_details: Retrieves details (track name and duration) of a specific audio file.
+    - get_audio_file_details: Retrieves details (track name and duration) of a specific audio file.
     - list_default_music: Lists default music files.
     - list_default_sounds: Lists default sound files.
     - list_user_photos: Lists user-uploaded photo files.
@@ -140,22 +140,22 @@ class FilesController(Logger):
         result = []
 
         for file in defaults:
-            details = self.get_file_details_cached(file)
+            details = self.get_audio_file_details_cached(file)
             if details:
                 details["removable"] = False
                 result.append(details)
 
         for file in user_music:
-            details = self.get_file_details_cached(file)
+            details = self.get_audio_file_details_cached(file)
             if details:
                 details["removable"] = True
                 result.append(details)
 
         return result
 
-    def get_file_details_cached(self, file):
+    def get_audio_file_details_cached(self, file):
         """
-        Gets cached details of a file such as track name and duration.
+        Gets cached details of an audio file such as track name and duration.
 
         Args:
             file (str): File path of the audio file.
@@ -171,14 +171,14 @@ class FilesController(Logger):
             self.logger.info(f"Using cached details for {file}")
             return self.cache[cache_key]
         else:
-            details = self.get_file_details(file)
+            details = self.get_audio_file_details(file)
             if details:
                 self.cache[cache_key] = details
             return details
 
-    def get_file_details(self, file):
+    def get_audio_file_details(self, file):
         """
-        Gets details of a file such as track name and duration.
+        Gets details of an audio file such as track name and duration.
 
         Args:
             file (str): File path of the audio file.
