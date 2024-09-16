@@ -2,6 +2,7 @@
   <Button
     severity="secondary"
     icon="pi pi-bars"
+    v-tooltip="'Open settings'"
     @click="popupStore.isOpen = true"
     class="drawer-button"
   />

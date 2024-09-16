@@ -3,9 +3,9 @@
   <LazySettings />
   <Messager />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
-    <TextToSpeechButton />
-    <MusicPlayer />
     <CalibrationModeInfo />
+    <TextToSpeechInput v-if="isTextToSpeechInputEnabled" />
+    <MusicPlayer v-if="isPlayerEnabled" />
     <Distance />
     <BatteryIndicator />
   </div>
@@ -22,13 +22,17 @@ import { useSettingsStore } from "@/features/settings/stores";
 const isMobile = computed(() => isMobileDevice());
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
+const isTextToSpeechInputEnabled = computed(
+  () => settingsStore.settings.text_to_speech_input,
+);
+const isPlayerEnabled = computed(() => settingsStore.settings.show_player);
 
 const Distance = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Distance.vue"),
 });
 
-const TextToSpeechButton = defineAsyncComponent({
-  loader: () => import("@/features/settings/components/TextToSpeechButton.vue"),
+const TextToSpeechInput = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/TextToSpeechInput.vue"),
 });
 
 const MusicPlayer = defineAsyncComponent({

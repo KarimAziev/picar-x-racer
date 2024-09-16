@@ -31,6 +31,14 @@ export const toggleableSettings = {
     description: "Toggle auto playing music",
     label: "Autoplay music",
   },
+  text_to_speech_input: {
+    description: "Toggle showing input for text to speech",
+    label: "Show text to speech input",
+  },
+  show_player: {
+    description: "Toggle showing music player",
+    label: "Show music player",
+  },
 };
 
 export const ttsLanguages = [

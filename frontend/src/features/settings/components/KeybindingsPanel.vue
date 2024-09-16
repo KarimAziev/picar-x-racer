@@ -135,7 +135,6 @@ const invalidKeys = computed(() =>
   fields.value.reduce(
     (acc, field, idx) => {
       const key = field[1].value;
-      console.log("key", key);
 
       const error = validateKey(key, idx);
 

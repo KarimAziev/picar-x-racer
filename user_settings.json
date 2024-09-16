@@ -17,6 +17,8 @@
   "auto_measure_distance_delay_ms": 1000,
   "autoplay_music": true,
   "virtual_mode": false,
+  "show_player": true,
+  "text_to_speech_input": true,
   "keybindings": {
     "accelerate": ["w"],
     "decelerate": ["s"],

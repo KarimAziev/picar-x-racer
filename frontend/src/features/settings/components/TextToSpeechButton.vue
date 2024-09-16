@@ -1,7 +1,8 @@
 <template>
   <Button
-    icon="pi pi-microphone"
+    icon="pi pi-cog"
     rounded
+    v-tooltip="'Open Text to Speech settings'"
     @click="handlePopupOpen"
     :disabled="popupStore.isOpen"
     text

@@ -20,6 +20,7 @@
         raised
         rounded
         :disabled="disabled"
+        v-tooltip="'Previous track'"
       />
 
       <Button
@@ -31,6 +32,7 @@
         rounded
         :disabled="disabled"
         aria-label="Pause"
+        v-tooltip="'Pause playing track'"
       />
       <Button
         @click="playCurrentTrack"
@@ -41,6 +43,7 @@
         rounded
         aria-label="Play"
         :disabled="disabled"
+        v-tooltip="'Play track'"
       />
       <Button
         @click="stopTrack"
@@ -50,6 +53,7 @@
         raised
         rounded
         aria-label="Stop"
+        v-tooltip="'Stop playing'"
       />
       {{ durationLabel }}
 
@@ -58,6 +62,7 @@
         :disabled="disabled"
         icon="pi pi-forward"
         aria-label="Next track"
+        v-tooltip="'Play next track'"
         text
         raised
         rounded
