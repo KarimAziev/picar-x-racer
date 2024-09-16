@@ -1,4 +1,4 @@
-import { KeyboardMapper } from "@/util/keyboard-mapper";
+import { KeyboardMapper } from "../util/keyboard-mapper";
 
 export interface KeyEventItem {
   key: string;
@@ -6,6 +6,7 @@ export interface KeyEventItem {
   shiftKey: boolean;
   metaKey: boolean;
   altKey: boolean;
+  code?: string;
 }
 
 /**
@@ -83,18 +84,18 @@ export function parseKeySequence(sequence: string): KeyEventItem[] {
   const chars = splitKeySequence(sequence).reverse();
 
   const result: KeyEventItem[] = [];
-  let curr: string;
+  let currKey: string;
   let lastMods: ("ctrl" | "shift" | "meta" | "alt")[] = [];
   while (chars.length > 0) {
-    curr = chars.pop() as string;
-    if (KeyboardMapper.isModifier(curr)) {
-      const alias = KeyboardMapper.isCtrlKey(curr)
+    currKey = chars.pop() as string;
+    if (KeyboardMapper.isModifier(currKey)) {
+      const alias = KeyboardMapper.isCtrlKey(currKey)
         ? "ctrl"
-        : KeyboardMapper.isShiftKey(curr)
+        : KeyboardMapper.isShiftKey(currKey)
           ? "shift"
-          : KeyboardMapper.isMetaKey(curr)
+          : KeyboardMapper.isMetaKey(currKey)
             ? "meta"
-            : KeyboardMapper.isAltKey(curr)
+            : KeyboardMapper.isAltKey(currKey)
               ? "alt"
               : null;
       if (!alias || lastMods.includes(alias)) {
@@ -104,13 +105,13 @@ export function parseKeySequence(sequence: string): KeyEventItem[] {
       }
     } else {
       const evData = {
-        key: curr,
+        key: currKey,
         ctrlKey: lastMods.includes("ctrl"),
         metaKey: lastMods.includes("meta"),
         altKey: lastMods.includes("alt"),
         shiftKey:
           lastMods.includes("shift") ||
-          (curr.length === 1 && /^[A-Z]$/.test(curr)),
+          (currKey.length === 1 && /^[A-Z]$/.test(currKey)),
       };
 
       lastMods = [];
@@ -131,7 +132,8 @@ export function formatKeyEventItem(
   curr: KeyEventItem,
   separator = "-",
 ): string {
-  const isUpcased = curr.key.length === 1 && /^[A-Z]$/.test(curr.key);
+  const realKey = translateKeyboardEventToKey(curr);
+  const isUpcased = realKey.length === 1 && /^[A-Z]$/.test(realKey);
 
   const keyReplacementMap: { [k: KeyEventItem["key"]]: string } = {
     " ": "Space",
@@ -149,7 +151,7 @@ export function formatKeyEventItem(
   );
 
   const label = metaKeys
-    .concat([keyReplacementMap[curr.key] || curr.key])
+    .concat([keyReplacementMap[realKey] || realKey])
     .join(separator);
   return label;
 }
@@ -186,3 +188,15 @@ export function validateKeyString(keystr: string): boolean {
 
   return !!lastKey?.key;
 }
+
+export const translateKeyboardEventToKey = (
+  event: Pick<KeyEventItem, "code" | "key">,
+) => {
+  const { key, code } = event;
+  if (key && KeyboardMapper.nonModifiersConfig[key]) {
+    return key;
+  }
+  const props = code && KeyboardMapper.nonModifiersConfig[code];
+  return props ? props.key : key;
+};
+splitKeySequence("ff");

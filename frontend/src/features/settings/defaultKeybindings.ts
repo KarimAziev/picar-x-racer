@@ -24,7 +24,7 @@ export const defaultKeybindinds: Partial<
   getBatteryVoltage: ["b"],
   toggleFullscreen: ["f"],
   openShortcutsSettings: ["?"],
-  openGeneralSettings: ["g"],
+  openGeneralSettings: ["h"],
   increaseQuality: ["."],
   decreaseQuality: [","],
   toggleSpeedometerView: ["N"],
