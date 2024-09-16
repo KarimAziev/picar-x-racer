@@ -83,6 +83,7 @@ class FilesController(Logger):
         self.audio_manager = audio_manager
 
         self.settings = self.load_settings()
+        self.cache = {}
 
     def load_settings(self):
         """Loads user settings from a JSON file."""
@@ -139,18 +140,41 @@ class FilesController(Logger):
         result = []
 
         for file in defaults:
-            details = self.get_file_details(file)
+            details = self.get_file_details_cached(file)
             if details:
                 details["removable"] = False
                 result.append(details)
 
         for file in user_music:
-            details = self.get_file_details(file)
+            details = self.get_file_details_cached(file)
             if details:
                 details["removable"] = True
                 result.append(details)
 
         return result
+
+    def get_file_details_cached(self, file):
+        """
+        Gets cached details of a file such as track name and duration.
+
+        Args:
+            file (str): File path of the audio file.
+
+        Returns:
+            dict: A dictionary with track name and duration.
+        """
+        file_mod_time = os.path.getmtime(file)
+
+        cache_key = (file, file_mod_time)
+
+        if cache_key in self.cache:
+            self.logger.info(f"Using cached details for {file}")
+            return self.cache[cache_key]
+        else:
+            details = self.get_file_details(file)
+            if details:
+                self.cache[cache_key] = details
+            return details
 
     def get_file_details(self, file):
         """
