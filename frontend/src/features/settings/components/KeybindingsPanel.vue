@@ -5,42 +5,46 @@
       @reset.prevent="handleReset"
       class="keybindings-form"
     >
-      <table>
-        <tbody>
-          <tr v-for="(fieldPair, index) in fields" :key="index">
-            <td class="field">
-              <Select
-                v-model="fieldPair[0].value"
-                optionLabel="label"
-                size="small"
-                optionValue="value"
-                :options="fieldPair[0].options"
-                :disabled="fieldPair[0].props?.disabled"
-                class="select"
-              />
-              <div class="error-box"></div>
-            </td>
-            <td class="field">
-              <InputText
-                v-model="fieldPair[1].value"
-                readonly
-                @beforeinput="(event) => startRecording(event, index)"
-                @focus="(event) => startRecording(event, index)"
-                name="keybinding"
-                class="input-text"
-              />
-              <div class="error-box"></div>
-            </td>
-            <td>
-              <Button
-                icon="pi pi-times"
-                class="p-button-rounded p-button-danger p-button-text"
-                @click="removeField(index)"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div>
+        <div v-for="(fieldPair, index) in fields" :key="index" class="row">
+          <div class="field cmd-field">
+            <Select
+              filter
+              :v-tooltip="fieldPair[0].label"
+              v-model="fieldPair[0].value"
+              optionLabel="label"
+              size="small"
+              optionValue="value"
+              :options="fieldPair[0].options"
+              :disabled="fieldPair[0].props?.disabled"
+              class="select"
+            />
+            <div class="error-box"></div>
+          </div>
+          <div class="field key-field">
+            <InputText
+              v-model="fieldPair[1].value"
+              :invalid="!!invalidKeys[fieldPair[1].value]"
+              readonly
+              @beforeinput="(event) => startRecording(event, index)"
+              @focus="(event) => startRecording(event, index)"
+              name="keybinding"
+              class="input-text"
+            />
+            <div class="error-box">
+              {{ invalidKeys[fieldPair[1].value] }}
+            </div>
+          </div>
+          <div>
+            <Button
+              icon="pi pi-times"
+              class="p-button-rounded p-button-danger p-button-text"
+              @click="removeField(index)"
+            />
+          </div>
+        </div>
+      </div>
+
       <div class="form-footer">
         <Button
           size="small"
@@ -80,14 +84,13 @@ import Select from "primevue/select";
 import Button from "primevue/button";
 import KeyRecorder from "./KeyRecorder.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
-import {
-  defaultKeybindinds,
-  allCommandOptions,
-} from "@/features/settings/defaultKeybindings";
+import { allCommandOptions } from "@/features/settings/defaultKeybindings";
+import { splitKeySequence } from "@/util/keyboard-util";
 
 const popupStore = usePopupStore();
 
 const store = useSettingsStore();
+const originalKeys = computed(() => store.settings.keybindings);
 const keyRecorderOpen = computed(() => popupStore.isKeyRecording);
 
 const commandsToOptions = (obj: Record<string, string[]>): Fields => {
@@ -126,6 +129,23 @@ const commandsToOptions = (obj: Record<string, string[]>): Fields => {
 };
 const fields = computed(() =>
   reactive(commandsToOptions(store.settings.keybindings)),
+);
+
+const invalidKeys = computed(() =>
+  fields.value.reduce(
+    (acc, field, idx) => {
+      const key = field[1].value;
+      console.log("key", key);
+
+      const error = validateKey(key, idx);
+
+      if (error) {
+        acc[key] = error;
+      }
+      return acc;
+    },
+    {} as Record<string, string>,
+  ),
 );
 
 export interface Option {
@@ -201,27 +221,36 @@ const validateKey = (key: string, idx: number) => {
   }
 
   const allKeys = fields.value.reduce(
-    (acc, [_, keybindingField], index) => {
+    (acc, [cmd, keybindingField], index) => {
       if (
         idx !== index &&
         keybindingField.value &&
         keybindingField.value.length > 0
       ) {
-        acc[keybindingField.value] = true;
+        const found = allCommandOptions.find((c) => c.value === cmd.value);
+        if (found) {
+          acc[keybindingField.value] = found.label;
+        }
       }
       return acc;
     },
-    {} as Record<string, boolean>,
+    {} as Record<string, string>,
   );
 
   if (allKeys[key]) {
-    return `<b>${key}</b> is already used`;
+    return `${key} is already used in ${allKeys[key]}`;
   }
+  const splittedKey = splitKeySequence(key);
+  const splittedKeyLen = splittedKey.length;
 
-  const commonPrefix = Object.keys(allKeys).find((v) => key.startsWith(v));
+  const commonPrefix = Object.keys(allKeys).find((v) => {
+    const splitted = splitKeySequence(v);
+    const len = Math.min(splitted.length, splittedKeyLen);
+    return splitted.slice(0, len).every((k, i) => k === splittedKey[i]);
+  });
 
   if (commonPrefix) {
-    return `The prefix <b>${commonPrefix}</b> conflicts with an existing key`;
+    return `The prefix ${commonPrefix} conflicts with an existing key`;
   }
 
   return false;
@@ -257,24 +286,24 @@ const handleSubmit = async () => {
   }
 };
 
-const handleReset = async () => {
-  store.settings.keybindings = { ...defaultKeybindinds };
-  await store.saveSettings();
+const handleReset = () => {
+  store.settings.keybindings = originalKeys.value;
 };
 
 const validateAll = () => {
   const errors = validateRowsFields();
+  console.log("errors", errors);
   isSubmitDisabled.value = !!errors.length;
   return errors;
 };
 
 const validateRowsFields = () => {
-  const errors: string[] = [];
+  const errors: [string, string][] = [];
 
   fields.value.forEach((_, idx) => {
     const err = validateKey(fields.value[idx][1].value, idx);
     if (err) {
-      errors.push(err);
+      errors.push([fields.value[idx][1].value, err]);
     }
   });
 
@@ -293,32 +322,40 @@ const isSubmitDisabled = ref(false);
   justify-items: center;
 }
 
-.select {
-  font-size: 10px;
-  width: 120px;
-}
-@media (min-width: 840px) {
-  .select {
-    font-size: 14px;
-    width: 100%;
-  }
-}
+.select,
 .input-text,
 .p-button-sm {
   font-size: 10px;
-  width: 100px;
+  height: 30px;
+  max-width: 100%;
+  width: 100%;
 }
 
 @media (min-width: 840px) {
+  .select,
   .input-text,
   .p-button-sm {
+    height: 45px;
     font-size: 14px;
-    width: 100%;
   }
 }
 
+.row {
+  display: flex;
+  gap: 2px;
+}
+
+.cmd-field {
+  width: 60%;
+}
+
+.key-field {
+  width: 30%;
+}
+
 .error-box {
-  color: red;
+  color: var(--color-red);
+  width: 10%;
 }
 
 .form-footer {

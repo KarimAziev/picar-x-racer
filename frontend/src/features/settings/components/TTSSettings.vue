@@ -128,12 +128,35 @@ const markDefault = (item: TextItem) => {
 };
 
 const handleAddItem = () => {
-  store.settings.texts.push({ text: "", language: "en" });
+  store.settings.texts.push({
+    text: "",
+    language: items.value[items.value.length - 1]?.language,
+  });
 };
 </script>
 
 <style scoped lang="scss">
 .tag {
   cursor: pointer;
+}
+.language {
+  width: 60px;
+}
+textarea {
+  width: 100px;
+}
+@media (min-width: 768px) {
+  textarea {
+    width: 350px;
+  }
+  .language {
+    width: 100px;
+  }
+}
+
+@media (min-width: 1200px) {
+  textarea {
+    width: 350px;
+  }
 }
 </style>

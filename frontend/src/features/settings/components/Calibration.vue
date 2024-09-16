@@ -12,14 +12,14 @@
         />
       </div>
       <div class="field">
-        <Button size="small" @click="controllerStore.toggleCalibration">
+        <Button @click="controllerStore.toggleCalibration">
           {{
             controllerStore.calibrationMode
               ? "Stop calibration"
               : "Start calibration"
           }}</Button
         >
-        <Button size="small" @click="controllerStore.saveCalibration" outlined>
+        <Button @click="controllerStore.saveCalibration" outlined>
           Save calibration
         </Button>
       </div>
@@ -48,6 +48,10 @@ const controllerStore = useControllerStore();
   display: flex;
   gap: 10px;
   margin: 10px 0;
+  button {
+    white-space: nowrap;
+    max-width: 150px;
+  }
   .text-input {
     width: 50%;
   }

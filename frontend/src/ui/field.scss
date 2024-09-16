@@ -1,16 +1,19 @@
-.field {
+.p-field {
   display: flex;
   flex-direction: column;
   margin: 1rem 0;
+  max-width: 250px;
   .input-number,
   textarea,
-  input {
+  input,
+  select {
     font-size: 10px;
   }
   @media (min-width: 640px) {
     .input-number,
     textarea,
-    input {
+    input,
+    select {
       font-size: 1rem;
     }
   }

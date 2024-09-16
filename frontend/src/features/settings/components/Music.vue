@@ -16,7 +16,7 @@
         </div>
       </template>
 
-      <Column field="track" header="Track"></Column>
+      <Column class="track-col" field="track" header="Track"></Column>
       <Column field="duration" header="Duration">
         <template #body="slotProps">
           {{ secondsToReadableString(slotProps.data.duration) }}
@@ -138,3 +138,33 @@ const onUpload = async (_event: FileUploadUploadEvent) => {
   await musicStore.fetchData();
 };
 </script>
+<style scoped lang="scss">
+.flex {
+  display: flex;
+}
+.justify-content-between {
+  justify-content: space-between;
+}
+.align-items-center {
+  align-items: center;
+}
+.gap-4 {
+  gap: 1rem;
+}
+:deep(.track-col) {
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  @media (min-width: 768px) {
+    & {
+      max-width: 120px;
+    }
+  }
+  @media (min-width: 1200px) {
+    & {
+      max-width: 400px;
+    }
+  }
+}
+</style>

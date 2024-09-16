@@ -66,18 +66,17 @@ const popupStore = usePopupStore();
 
 :deep(.p-button) {
   font-size: 10px;
-  max-width: 100px;
+  max-width: 150px;
   @media (min-width: 640px) {
     & {
       font-size: 1rem;
     }
   }
 }
-:deep(td) {
+:deep(.p-datatable-tbody > tr > td) {
   @media (max-width: 640px) {
     & {
-      padding: 0;
-      max-width: 30%;
+      padding: 0.1rem;
     }
   }
 }
@@ -85,7 +84,7 @@ const popupStore = usePopupStore();
 :deep(textarea),
 :deep(.p-input) {
   font-size: 10px;
-  max-width: 200px;
+
   @media (min-width: 640px) {
     & {
       font-size: 1rem;
@@ -95,16 +94,16 @@ const popupStore = usePopupStore();
 
 :deep(.pi),
 :deep(.p-tag) {
-  font-size: 10px;
+  font-size: 14px;
   @media (min-width: 640px) {
     & {
       font-size: 1rem;
     }
   }
 }
-:deep(.p-button-icon-only) {
-  width: 1rem;
-  height: 1rem;
+:deep(.p-button-icon-only.p-button-rounded) {
+  width: 1.5rem;
+  height: 1.5rem;
   @media (min-width: 640px) {
     & {
       width: 2.5rem;

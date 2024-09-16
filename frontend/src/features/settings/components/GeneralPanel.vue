@@ -18,7 +18,7 @@
       <VideoSettings />
     </div>
   </Panel>
-  <Music toggleable header="Music" />
+  <Music collapsed toggleable header="Music" />
   <Panel header="Photos" toggleable collapsed>
     <Images />
   </Panel>
@@ -54,11 +54,13 @@ const store = useSettingsStore();
     input {
       font-size: 1rem;
     }
+    .input-number {
+      max-width: unset;
+    }
   }
 }
 :deep(.p-inputnumber-input) {
   font-size: 10px;
-  max-width: 100px;
   @media (min-width: 640px) {
     & {
       font-size: 1rem;
