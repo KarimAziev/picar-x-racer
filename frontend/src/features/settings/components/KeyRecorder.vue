@@ -11,11 +11,7 @@
       <b>Enter</b> to confirm or <b>Escape</b> to reset
     </div>
     <div class="field">
-      <InputText
-        v-model="keyInput"
-        :readonly="!recording"
-        @focus="toggleRecording"
-      />
+      <InputText v-model="keyInput" :readonly="!recording" />
     </div>
     <div class="error" v-if="errorMsg">{{ errorMsg }}</div>
     <ButtonGroup class="button-group">
