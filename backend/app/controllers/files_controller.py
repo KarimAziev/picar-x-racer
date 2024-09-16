@@ -8,7 +8,8 @@ Classes:
 
 Methods:
     - __init__: Initializes the FilesController with user-specific directories and audio manager.
-    - load_settings: Loads user settings from a JSON file.
+    - get_settings_file: Determines the current settings file to use
+    - load_settings: Loads user settings from a cache or JSON file.
     - save_settings: Saves user settings to a JSON file.
     - list_files: Lists all files in a specified directory.
     - list_all_music_with_details: Lists all music files with details (duration).
@@ -82,18 +83,42 @@ class FilesController(Logger):
         )
         self.audio_manager = audio_manager
 
-        self.settings = self.load_settings()
         self.cache = {}
+        self.cached_settings = None
+        self.last_modified_time = None
+        self.current_settings_file = None
+        self.settings = self.load_settings()
 
-    def load_settings(self):
-        """Loads user settings from a JSON file."""
-        settings_file = (
+    def get_settings_file(self):
+        """Determines the current settings file to use"""
+        return (
             self.user_settings_file
             if os.path.exists(self.user_settings_file)
             else FilesController.default_user_settings_file
         )
-        self.info(f"Loading_settings {settings_file}")
-        return load_json_file(settings_file)
+
+    def load_settings(self):
+        """Loads user settings from a JSON file, using cache if file is not modified."""
+        settings_file = self.get_settings_file()
+
+        try:
+            current_modified_time = os.path.getmtime(settings_file)
+        except OSError:
+            current_modified_time = None
+
+        if (
+            self.cached_settings is None
+            or self.last_modified_time != current_modified_time
+            or self.current_settings_file != settings_file
+        ):
+            self.info(f"Loading settings from {settings_file}")
+            self.cached_settings = load_json_file(settings_file)
+            self.last_modified_time = current_modified_time
+            self.current_settings_file = settings_file
+        else:
+            self.info(f"Using cached settings from {self.current_settings_file}")
+
+        return self.cached_settings
 
     def save_settings(self, new_settings: Dict[str, Any]):
         """Saves new settings to the user settings file."""
