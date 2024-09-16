@@ -20,7 +20,6 @@ class MockGPIO(Logger):
         self.logger.info(f"[MOCK] GPIO{self.pin} set to LOW")
 
     def close(self):
-        print(f"[MOCK] GPIO{self.pin} closed")
         self.logger.info(f"[MOCK] GPIO{self.pin} closed")
 
 
@@ -113,7 +112,20 @@ class Pin(Logger):
         self._value = 0
         self.gpio = None
         self.setup(mode, pull)
-        self.logger.info("Pin init finished.")
+        mode_str = (
+            "NONE PIN"
+            if mode is None
+            else "OUT PIN" if mode == self.OUT else "INPUT PIN"
+        )
+        pull_str = (
+            "No internal resistor"
+            if pull is None
+            else "PULL-UP resistor" if pull == self.PULL_UP else "PULL-DOWN resistor"
+        )
+        pull_hex = "None" if pull is None else f"0x{pull:02X}"
+        self.logger.info(
+            f"Initted {mode_str} {self._board_name} (0x{self._pin_num:02X}) with {pull_str} ({pull_hex})"
+        )
 
     def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
         """
