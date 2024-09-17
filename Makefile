@@ -3,7 +3,7 @@ BACKEND_DIR := backend
 VENV_DIR := $(BACKEND_DIR)/.venv
 
 # Phony targets
-.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build backend-venv-install clean clean-pyc help
+.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build backend-venv-install clean clean-pyc help backend-venv-run-debug backend-venv-run-warning
 
 # Default target
 all: build-all-no-sudo
@@ -13,7 +13,7 @@ dev: dev-without-install
 
 dev-without-install:
 	cd $(FRONTEND_DIR) && npx concurrently -k \
-		"bash -c 'cd .. && source $(VENV_DIR)/bin/activate && npx nodemon --exec \"clear;python3\" $(BACKEND_DIR)/run.py'" \
+		"bash -c 'cd .. && source $(VENV_DIR)/bin/activate && npx nodemon --exec \"clear;python3\" $(BACKEND_DIR)/run.py --debug'" \
 		"bash -c 'sleep 4 && npm run dev'"
 
 dev-with-install: frontend-install backend-venv-install dev-without-install
@@ -43,6 +43,12 @@ backend-venv-install:
 # Launch server in virtual environment
 backend-venv-run:
 	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py"
+
+backend-venv-run-debug:
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --log-level=DEBUG"
+
+backend-venv-run-warning:
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --log-level=WARNING"
 
 
 # Launch backend in sudo
@@ -81,6 +87,8 @@ help:
 	@echo "frontend-build           - Build frontend for production."
 	@echo "backend-venv-install     - Setup backend virtual environment and install dependencies."
 	@echo "backend-venv-run         - Run backend server in virtual environment."
+	@echo "backend-venv-run-debug   - Run backend server in virtual environment with DEBUG logging level."
+	@echo "backend-venv-run-warning - Run backend server in virtual environment with WARNING logging level."
 	@echo "backend-sudo-run         - Run backend server with sudo privileges."
 	@echo "sudo-build-all           - Install dependencies and build the project with sudo privileges."
 	@echo "backend-sudo-install     - Install backend dependencies with sudo privileges."

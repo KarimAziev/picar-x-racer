@@ -14,18 +14,26 @@ from app.util.logger import Logger
 
 logger = Logger(__name__)
 
-Logger.set_global_log_level(Logger.DEBUG)
 
+def main(log_level="INFO"):
+    log_level = log_level.upper()
+    valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    if log_level not in valid_log_levels:
+        print(f"Invalid log level: {log_level}. Using DEBUG.")
+        log_level = "DEBUG"
 
-def main():
+    log_level_constant = getattr(Logger, log_level, Logger.DEBUG)
+    Logger.set_global_log_level(log_level_constant)
+
     copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
+
     camera_manager = CameraController()
     stream_controller = StreamController(camera_controller=camera_manager, port=8050)
     audio_manager = AudioController()
     file_manager = FilesController(audio_manager=audio_manager)
 
     car_manager = CarController()
-
+    logger.info(f"log_level={log_level}")
     # Start the Flask server in a separate thread
     flask_thread = threading.Thread(
         target=run_flask,
@@ -36,7 +44,7 @@ def main():
             audio_manager,
             9000,
             True,
-            False,
+            log_level == "DEBUG",
         ),
     )
     flask_thread.daemon = True
