@@ -1,9 +1,10 @@
 <template>
-  <ScanLines v-if="imgLoading || !connected" class="scan" />
+  <ScanLines v-if="!connected" class="scan" />
   <img
     v-else
     ref="imgRef"
     class="image-feed"
+    @load="handleOnLoad"
     :class="{
       loading: imgLoading,
     }"
@@ -18,10 +19,16 @@ import ScanLines from "@/ui/ScanLines.vue";
 const ws = ref<WebSocket>();
 const WS_URL: string = `ws://${window.location.hostname}:${8050}`;
 const imgRef = ref<HTMLImageElement>();
+const imgInitted = ref(false);
 const imgLoading = ref(true);
 const connected = ref(false);
 const reconnectedEnabled = ref(true);
 const retryTimer = ref<NodeJS.Timeout | null>(null);
+
+const handleOnLoad = () => {
+  imgLoading.value = false;
+  imgInitted.value = true;
+};
 
 const initWS = () => {
   ws.value = new WebSocket(WS_URL);
@@ -32,18 +39,19 @@ const initWS = () => {
 
   ws.value.onmessage = (wsMsg: MessageEvent) => {
     connected.value = true;
-    imgLoading.value = false;
     const arrayBufferView = new Uint8Array(wsMsg.data);
     const blob = new Blob([arrayBufferView], { type: "image/jpeg" });
     const urlCreator = window.URL || window.webkitURL;
     const imageUrl = urlCreator.createObjectURL(blob);
     if (imgRef.value) {
       imgRef.value.src = imageUrl;
+      if (imgInitted.value && imgLoading.value) {
+        imgLoading.value = false;
+      }
     }
   };
 
   ws.value.onclose = (_: CloseEvent) => {
-    console.log("closed");
     connected.value = false;
     imgLoading.value = true;
     retryConnection();
