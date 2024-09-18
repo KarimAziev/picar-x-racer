@@ -17,7 +17,6 @@
 
 ![Alt text](./demo/3d-picar-x.gif)
 
-
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 
 **Table of Contents**
@@ -162,58 +161,58 @@ To access settings, press the icon in the top right corner, or press `h` to open
 
 In the browser, you can control your Picar-X with the following keys (all the keys can be changed in the settings).
 
-| Label                             | Default Key | Description                                                                            |   |
-|-----------------------------------|-------------|----------------------------------------------------------------------------------------|---|
-| Move Forward                      | w           | Accelerates the car forward.                                                           |   |
-| Move Backward                     | s           | Accelerates the car backward.                                                          |   |
-| Move Left                         | a           | Turns the car left.                                                                    |   |
-| Move Right                        | d           | Turns the car right.                                                                   |   |
-| Stop                              | Space       | Stops the car.                                                                         |   |
-| Camera Left                       | ArrowLeft   | Pans the camera to the left.                                                           |   |
-| Camera Down                       | ArrowDown   | Tilts the camera downward.                                                             |   |
-| Camera Right                      | ArrowRight  | Pans the camera to the right.                                                          |   |
-| Camera Up                         | ArrowUp     | Tilts the camera upward.                                                               |   |
-| Decrease Max Speed                | -           | Decreases the car's maximum speed.                                                     |   |
-| Increase Max Speed                | =           | Increases the car's maximum speed.                                                     |   |
-| Measure Distance                  | u           | Measures the distance to obstacles.                                                    |   |
-| Play Music                        | m           | Plays music.                                                                           |   |
-| Play Next Music Track             | 2           | Plays the next music track.                                                            |   |
-| Play Previous Music Track         | 1           | Plays the previous music track.                                                        |   |
-| Play Sound                        | o           | Plays a sound.                                                                         |   |
-| Reset Camera Orientation          | 0           | Resets the camera's pan and tilt to the default orientation.                           |   |
-| Say Text                          | k           | Speaks a predefined text.                                                              |   |
-| Next Text                         | 4           | Selects the next saved text for speech without speaking.                               |   |
-| Previous Text                     | 3           | Selects the previous saved text for speech without speaking.                           |   |
-| Take Photo                        | t           | Captures a photo using the camera.                                                     |   |
-| Next Enhance Mode                 | e           | Cycles to the next video enhancement mode. [See details](#video-enhancers)             |   |
-| Previous Enhance Mode             | E           | Cycles to the previous video enhancement mode. [See details](#video-enhancers)         |   |
-| Next Detect Mode                  | r           | Cycles to the next AI detection mode. [See details](#object-detection)                 |   |
-| Previous Detect Mode              | R           | Cycles to the previous AI detection mode. [See details](#object-detection)             |   |
-| Show Battery Voltage              | b           | Displays the current battery voltage.                                                  |   |
-| Toggle Fullscreen                 | f           | Enters or exits full-screen mode.                                                      |   |
-| Open Shortcuts Settings           | ?           | Opens the settings menu for keyboard shortcuts.                                        |   |
-| Open General Settings             | h           | Opens the general settings menu.                                                       |   |
-| Increase Video Quality            | .           | Increases the video quality.                                                           |   |
-| Decrease Video Quality            | ,           | Decreases the video quality.                                                           |   |
-| Increase Video Quality            | PageUp      | Increases the video quality.                                                           |   |
-| Decrease Video Quality            | PageDown    | Decreases the video quality.                                                           |   |
-| Toggle Speedometer View           | N           | Toggles the speedometer display on or off.                                             |   |
-| Toggle 3D Car View                | M           | Toggles the 3D view of the car on or off.                                              |   |
-| Toggle Text Info                  | I           | Toggles text information on or off.                                                    |   |
-| Toggle Calibration Mode           | C           | Toggles calibration mode. [See details](#calibration-mode)                             |   |
-| Toggle Auto Downloading Photo     | P           | Toggles automatic downloading of captured photos.                                      |   |
-| Toggle 3D Virtual Mode            | \*          | Activates virtual mode. [See details](#3d-virtual-mode)                                 |   |
-| Toggle Auto Measure Distance Mode | U           | Toggles automatic distance measurement.                                                |   |
-| Increase FPS                      | F           | Increases the frames per second.                                                       |   |
-| Decrease FPS                      | S           | Decreases the frames per second.                                                       |   |
-| Increase Dimension                | ]           | Increases the display dimensions.                                                      |   |
-| Decrease Dimension                | [           | Decreases the display dimensions.                                                      |   |
-| Increase Volume                   | PageUp      | Increases the audio volume.                                                            |   |
-| Decrease Volume                   | PageDown    | Decreases the audio volume.                                                            |   |
-| Toggle Avoid Obstacles Mode       | O           | Toggles a mode to automatically avoid obstacles. [See details](#avoid-obstacles-mode). |   |
-
+| Label                             | Default Key | Description                                                                            |     |
+| --------------------------------- | ----------- | -------------------------------------------------------------------------------------- | --- |
+| Move Forward                      | w           | Accelerates the car forward.                                                           |     |
+| Move Backward                     | s           | Accelerates the car backward.                                                          |     |
+| Move Left                         | a           | Turns the car left.                                                                    |     |
+| Move Right                        | d           | Turns the car right.                                                                   |     |
+| Stop                              | Space       | Stops the car.                                                                         |     |
+| Camera Left                       | ArrowLeft   | Pans the camera to the left.                                                           |     |
+| Camera Down                       | ArrowDown   | Tilts the camera downward.                                                             |     |
+| Camera Right                      | ArrowRight  | Pans the camera to the right.                                                          |     |
+| Camera Up                         | ArrowUp     | Tilts the camera upward.                                                               |     |
+| Decrease Max Speed                | -           | Decreases the car's maximum speed.                                                     |     |
+| Increase Max Speed                | =           | Increases the car's maximum speed.                                                     |     |
+| Measure Distance                  | u           | Measures the distance to obstacles.                                                    |     |
+| Play Music                        | m           | Plays music.                                                                           |     |
+| Play Next Music Track             | 2           | Plays the next music track.                                                            |     |
+| Play Previous Music Track         | 1           | Plays the previous music track.                                                        |     |
+| Play Sound                        | o           | Plays a sound.                                                                         |     |
+| Reset Camera Orientation          | 0           | Resets the camera's pan and tilt to the default orientation.                           |     |
+| Say Text                          | k           | Speaks a predefined text.                                                              |     |
+| Next Text                         | 4           | Selects the next saved text for speech without speaking.                               |     |
+| Previous Text                     | 3           | Selects the previous saved text for speech without speaking.                           |     |
+| Take Photo                        | t           | Captures a photo using the camera.                                                     |     |
+| Next Enhance Mode                 | e           | Cycles to the next video enhancement mode. [See details](#video-enhancers)             |     |
+| Previous Enhance Mode             | E           | Cycles to the previous video enhancement mode. [See details](#video-enhancers)         |     |
+| Next Detect Mode                  | r           | Cycles to the next AI detection mode. [See details](#object-detection)                 |     |
+| Previous Detect Mode              | R           | Cycles to the previous AI detection mode. [See details](#object-detection)             |     |
+| Show Battery Voltage              | b           | Displays the current battery voltage.                                                  |     |
+| Toggle Fullscreen                 | f           | Enters or exits full-screen mode.                                                      |     |
+| Open Shortcuts Settings           | ?           | Opens the settings menu for keyboard shortcuts.                                        |     |
+| Open General Settings             | h           | Opens the general settings menu.                                                       |     |
+| Increase Video Quality            | .           | Increases the video quality.                                                           |     |
+| Decrease Video Quality            | ,           | Decreases the video quality.                                                           |     |
+| Increase Video Quality            | PageUp      | Increases the video quality.                                                           |     |
+| Decrease Video Quality            | PageDown    | Decreases the video quality.                                                           |     |
+| Toggle Speedometer View           | N           | Toggles the speedometer display on or off.                                             |     |
+| Toggle 3D Car View                | M           | Toggles the 3D view of the car on or off.                                              |     |
+| Toggle Text Info                  | I           | Toggles text information on or off.                                                    |     |
+| Toggle Calibration Mode           | C           | Toggles calibration mode. [See details](#calibration-mode)                             |     |
+| Toggle Auto Downloading Photo     | P           | Toggles automatic downloading of captured photos.                                      |     |
+| Toggle 3D Virtual Mode            | \*          | Activates virtual mode. [See details](#3d-virtual-mode)                                |     |
+| Toggle Auto Measure Distance Mode | U           | Toggles automatic distance measurement.                                                |     |
+| Increase FPS                      | F           | Increases the frames per second.                                                       |     |
+| Decrease FPS                      | S           | Decreases the frames per second.                                                       |     |
+| Increase Dimension                | ]           | Increases the display dimensions.                                                      |     |
+| Decrease Dimension                | [           | Decreases the display dimensions.                                                      |     |
+| Increase Volume                   | PageUp      | Increases the audio volume.                                                            |     |
+| Decrease Volume                   | PageDown    | Decreases the audio volume.                                                            |     |
+| Toggle Avoid Obstacles Mode       | O           | Toggles a mode to automatically avoid obstacles. [See details](#avoid-obstacles-mode). |     |
 
 ## Modes
+
 ### Object Detection
 
 ![Alt text](./demo/object-detection.png)
@@ -262,7 +261,6 @@ Enhance your video streaming experience with real-time video enhancement modes.
 - **Edge Detection for Navigation**: Use edge detection modes to assist with navigation and obstacle avoidance.
 - **Educational and Research**: Experiment with different image processing techniques for educational purposes or computer vision research.
 
-
 ### Avoid Obstacles Mode
 
 Activates a mode where the car automatically adjusts its movements to avoid obstacles based on distance measurements from a sensor.
@@ -271,17 +269,15 @@ Activates a mode where the car automatically adjusts its movements to avoid obst
 
 Activates a mode for calibration. In this mode, you can adjust the angle for servo direction, camera pan, and camera tilt. Some commands are remapped:
 
-| Original Command Label | Original Key | New Command Label           | New Command Description                                   |
-|------------------------|--------------|-----------------------------|-----------------------------------------------------------|
-| Move Left              | a            | Decrease Servo Direction    | Decreases the calibration angle for the servo direction.  |
-| Move Right             | d            | Increase Servo Direction    | Increases the calibration angle for the servo direction.  |
-| Camera Down            | ArrowDown    | Decrease Camera Tilt Cali   | Decreases the calibration angle for the camera's tilt.    |
-| Camera Up              | ArrowUp      | Increase Camera Tilt Cali   | Increases the calibration angle for the camera's tilt.    |
-| Camera Left            | ArrowLeft    | Decrease Camera Pan Cali    | Decreases the calibration angle for the camera's pan.     |
-| Camera Right           | ArrowRight   | Increase Camera Pan Cali    | Increases the calibration angle for the camera's pan.     |
-| Reset Camera Orientation| 0           | Reset Calibration           | Resets all calibration settings.                          |
-
-
+| Original Command Label   | Original Key | New Command Label         | New Command Description                                  |
+| ------------------------ | ------------ | ------------------------- | -------------------------------------------------------- |
+| Move Left                | a            | Decrease Servo Direction  | Decreases the calibration angle for the servo direction. |
+| Move Right               | d            | Increase Servo Direction  | Increases the calibration angle for the servo direction. |
+| Camera Down              | ArrowDown    | Decrease Camera Tilt Cali | Decreases the calibration angle for the camera's tilt.   |
+| Camera Up                | ArrowUp      | Increase Camera Tilt Cali | Increases the calibration angle for the camera's tilt.   |
+| Camera Left              | ArrowLeft    | Decrease Camera Pan Cali  | Decreases the calibration angle for the camera's pan.    |
+| Camera Right             | ArrowRight   | Increase Camera Pan Cali  | Increases the calibration angle for the camera's pan.    |
+| Reset Camera Orientation | 0            | Reset Calibration         | Resets all calibration settings.                         |
 
 ### 3D Virtual Mode
 
@@ -289,7 +285,6 @@ Activates a mode for calibration. In this mode, you can adjust the angle for ser
 
 Hides a video stream view and focuses on controlling the car using just a 3D model visualization.
 The mode is supposed to be used with active Auto Measure Distance Mode, which activates the ultrasonic measurement, and the 3D visualization will visualize the ultrasonic distance.
-
 
 ## Development on Non-Raspberry OS
 
