@@ -1,6 +1,7 @@
 <template>
   <div class="p-field" :class="props.fieldClassName">
     <LabelBox
+      v-if="label"
       :label="label"
       :class="labelClassName"
       :for="field"
@@ -72,4 +73,23 @@ const onUpdate: SelectEmitsOptions["update:modelValue"] = (newValue) => {
 </script>
 <style scoped lang="scss">
 @import "./field.scss";
+:deep(.p-select-dropdown) {
+  width: 0.8rem;
+  .p-icon {
+    width: 0.7rem;
+    position: relative;
+    right: 50%;
+    @media (max-width: 640px) {
+      width: 0.5rem;
+      right: 30%;
+    }
+  }
+}
+
+:deep(.p-select-label) {
+  padding: 0.4rem 0.4rem;
+  @media (min-width: 992px) {
+    padding: 0.4rem 0.7rem;
+  }
+}
 </style>

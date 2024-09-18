@@ -4,9 +4,11 @@
       fieldClassName="language"
       field="language"
       filter
+      inputClassName="languages-dropdown"
       v-model="language"
       :options="ttsLanguages"
-      :simpleOptions="true"
+      optionLabel="label"
+      optionValue="value"
       v-tooltip="'The language of Text to Speech'"
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
@@ -88,8 +90,9 @@ const handleKeyEnter = async () => {
   width: 40px;
 }
 input {
-  min-width: 80px;
+  min-width: 50px;
 }
+
 @media (min-width: 768px) {
   input {
     min-width: 120px;

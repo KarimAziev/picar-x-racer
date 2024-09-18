@@ -43,9 +43,10 @@
           fieldClassName="language"
           field="language"
           filter
+          optionLabel="label"
+          optionValue="value"
           v-model="slotProps.data.language"
           :options="ttsLanguages"
-          :simpleOptions="true"
       /></template>
     </Column>
 
