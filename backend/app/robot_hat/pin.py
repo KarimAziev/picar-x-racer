@@ -21,7 +21,6 @@ Pins are tiny metal sticks or connectors on the board that can be used for diffe
 from typing import Dict, Optional, Union
 
 from app.util.logger import Logger
-from gpiozero import Button, InputDevice, OutputDevice
 
 
 class Pin(object):
@@ -261,8 +260,12 @@ class Pin(object):
                 self.gpio.close()
 
         if mode in [None, self.OUT]:
+            from gpiozero import OutputDevice
+
             self.gpio = OutputDevice(self._pin_num)
         else:
+            from gpiozero import InputDevice
+
             if pull in [self.PULL_UP]:
                 self.gpio = InputDevice(self._pin_num, pull_up=True)
             else:
@@ -306,10 +309,14 @@ class Pin(object):
                 self.setup(self.OUT)
             if bool(value):
                 res = 1
+                from gpiozero import OutputDevice
+
                 if isinstance(self.gpio, OutputDevice):
                     self.gpio.on()
             else:
                 res = 0
+                from gpiozero import OutputDevice
+
                 if isinstance(self.gpio, OutputDevice):
                     self.gpio.off()
             return res
@@ -363,6 +370,8 @@ class Pin(object):
         Raises:
             ValueError: If the trigger or pull parameters are not valid.
         """
+        from gpiozero import Button
+
         if trigger not in [self.IRQ_FALLING, self.IRQ_RISING, self.IRQ_RISING_FALLING]:
             raise ValueError(
                 f"trigger param error, should be Pin.IRQ_FALLING, Pin.IRQ_RISING, Pin.IRQ_RISING_FALLING"
