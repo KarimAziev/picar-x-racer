@@ -58,7 +58,7 @@
 
 ## Raspberry OS Setup
 
-The `bullseye` version of Raspberry Pi OS has Python 3.9 preinstalled. However, since we need Python 3.10, the easiest way to install it is with [Pyenv](https://github.com/pyenv/pyenv).
+The `bullseye` version of Raspberry Pi OS has Python 3.9 preinstalled. However, since we need Python 3.11, the easiest way to install it is with [Pyenv](https://github.com/pyenv/pyenv).
 
 ```
 pyenv install 3.11
