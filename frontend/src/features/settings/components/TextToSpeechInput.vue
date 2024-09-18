@@ -8,6 +8,8 @@
       :options="ttsLanguages"
       :simpleOptions="true"
       v-tooltip="'The language of Text to Speech'"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
     />
     <TextInput
       placeholder="Text to Speech"
@@ -50,6 +52,13 @@ const language = ref("en");
 const text = ref("");
 
 const doThis = () => {};
+const handleSelectBeforeShow = () => {
+  store.inhibitKeyHandling = true;
+};
+
+const handleSelectBeforeHide = () => {
+  store.inhibitKeyHandling = false;
+};
 
 const sayText = async () => {
   const value = text.value;

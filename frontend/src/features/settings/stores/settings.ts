@@ -58,6 +58,7 @@ export interface State {
   retryCounter: number;
   text?: null | string;
   language?: null | string;
+  inhibitKeyHandling: boolean;
 }
 
 const defaultState: State = {
@@ -74,6 +75,7 @@ const defaultState: State = {
   retryCounter: 0,
   text: null,
   language: null,
+  inhibitKeyHandling: false,
 };
 
 export const useStore = defineStore("settings", {

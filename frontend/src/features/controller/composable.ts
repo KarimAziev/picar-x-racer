@@ -49,7 +49,7 @@ export const useController = (
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (popupStore.isOpen) {
+    if (popupStore.isOpen || settingsStore.inhibitKeyHandling) {
       return;
     }
 
