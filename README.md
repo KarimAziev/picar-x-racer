@@ -69,7 +69,10 @@ You can optionally make it the default:
 pyenv global 3.11
 ```
 
-This project uses neither `Picamera` nor `Picamera 2`; instead, it uses `cv2`. To access the camera, you need to edit a configuration file in the boot partition of the Raspberry Pi. If you are using the `bullseye` version of Raspberry Pi OS, it is located at `/boot/config.txt`. If you are using the `bookworm` version, it is at `/boot/firmware/config.txt`.
+This project uses neither `Picamera` nor `Picamera 2`; instead, it uses `OpenCV`. `Picamera` is much slower than `OpenCV`, which directly accesses the `/dev/video0` device to grab frames. To access the camera, you need to edit a configuration file in the boot partition of the Raspberry Pi:
+
+- If you are using the `bullseye` version of Raspberry Pi OS, the configuration file is located at `/boot/config.txt`.
+- If you are using the `bookworm` version, it is located at `/boot/firmware/config.txt`.
 
 In this file, you need to add the following lines:
 
