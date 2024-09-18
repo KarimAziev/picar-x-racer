@@ -8,13 +8,14 @@ import {
   useDistanceStore,
   useCameraStore,
   useMusicStore,
+  useSoundStore,
 } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
 import { constrain } from "@/util/constrain";
-import { playSound, takePhoto } from "@/features/controller/api";
+import { takePhoto } from "@/features/controller/api";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -393,18 +394,12 @@ export const useControllerStore = defineStore("controller", {
       this.setDirServoAngle(0);
     },
     async playSound() {
-      const messager = useMessagerStore();
+      const soundStore = useSoundStore();
       const settingsStore = useSettingsStore();
       const name = settingsStore.settings.default_sound;
+
       if (name) {
-        try {
-          const response = await playSound(name);
-          const data = response.data;
-          const msg = data.playing ? `Playing ${name}` : "Stoped playing";
-          messager.info(msg);
-        } catch (error) {
-          messager.handleError(error);
-        }
+        await soundStore.playSound(name);
       }
     },
 

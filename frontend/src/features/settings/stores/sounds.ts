@@ -63,5 +63,37 @@ export const useStore = defineStore("sounds", {
         messager.handleError(error);
       }
     },
+    async playSound(name: string) {
+      const messager = useMessagerStore();
+      try {
+        const response = await axios.post(`/api/play-sound`, {
+          filename: name,
+        });
+        const data = response.data;
+        const msg = data.playing ? `Playing ${name}` : "Stoped playing";
+        messager.info(msg);
+      } catch (error) {
+        messager.handleError(error);
+      }
+    },
+    async handleFileUpload(fileBlob: Blob) {
+      const messager = useMessagerStore();
+      const formData = new FormData();
+      formData.append("file", fileBlob);
+
+      try {
+        const response = await axios.post<{
+          filename: string;
+          success: boolean;
+        }>(`/api/upload/${mediaType}`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response.data;
+      } catch (error) {
+        messager.handleError(error);
+      }
+    },
   },
 });
