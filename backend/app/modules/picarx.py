@@ -86,7 +86,7 @@ class Picarx:
             if temp
             else [1, 1]
         )
-        self.logger.debug(f"init cali_dir_value with {self.cali_dir_value}")
+        self.logger.debug(f"Initted cali_dir_value with {self.cali_dir_value}")
         self.cali_speed_value = [0, 0]
         self.dir_current_angle = 0
         # Init pwm

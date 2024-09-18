@@ -1,6 +1,6 @@
 import asyncio
+import inspect
 import json
-import time
 import traceback
 from datetime import datetime, timedelta
 from typing import Optional
@@ -9,7 +9,7 @@ import websockets
 from app.controllers.calibration_controller import CalibrationController
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
-from app.util.platform_adapters import Picarx, reset_mcu
+from app.util.platform_adapters import Picarx
 from websockets import WebSocketServerProtocol
 
 
@@ -17,9 +17,6 @@ class CarController:
     DEBOUNCE_INTERVAL = timedelta(seconds=1)
 
     def __init__(self, port: Optional[int] = 8765):
-
-        reset_mcu()
-        time.sleep(0.2)
         self.port = port or 8765
         self.px = Picarx()
         self.logger = Logger(name=__name__)
@@ -77,6 +74,22 @@ class CarController:
             "servoTest": self.calibration.servos_test,
         }
 
+        actions_map = {
+            "move": lambda payload=payload: self.handle_move(payload),
+            "setServoDirAngle": lambda payload=payload: self.px.set_dir_servo_angle(
+                payload or 0
+            ),
+            "stop": self.px.stop,
+            "setCamTiltAngle": lambda payload=payload: self.px.set_cam_tilt_angle(
+                payload
+            ),
+            "setCamPanAngle": lambda payload=payload: self.px.set_cam_pan_angle(
+                payload
+            ),
+            "avoidObstacles": lambda: self.toggle_avoid_obstacles_mode(websocket),
+            "getDistance": lambda: self.respond_with_distance(action, websocket),
+        }
+
         calibrationData = None
         if action in calibration_actions_map:
             calibrationData = calibration_actions_map[action]()
@@ -93,20 +106,10 @@ class CarController:
                         }
                     )
                 )
-        elif action == "move":
-            self.handle_move(payload)
-        elif action == "setServoDirAngle":
-            self.px.set_dir_servo_angle(payload or 0)
-        elif action == "stop":
-            self.px.stop()
-        elif action == "setCamTiltAngle":
-            self.px.set_cam_tilt_angle(payload)
-        elif action == "setCamPanAngle":
-            self.px.set_cam_pan_angle(payload)
-        elif action == "avoidObstacles":
-            await self.toggle_avoid_obstacles_mode(websocket)
-        elif action == "getDistance":
-            await self.respond_with_distance(action, websocket)
+        elif action in actions_map:
+            result = actions_map[action]()
+            if inspect.isawaitable(result):
+                await result
         else:
             error_msg = f"Unknown action: {action}"
             self.logger.warning(error_msg)
