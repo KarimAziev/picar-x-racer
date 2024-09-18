@@ -27,11 +27,11 @@ def main(log_level="INFO"):
 
     copy_file_if_not_exists(PICARX_OLD_CONFIG_FILE, PICARX_CONFIG_FILE)
 
-    car_manager = CarController(port=8765)
     camera_manager = CameraController()
     stream_controller = StreamController(camera_controller=camera_manager, port=8050)
     audio_manager = AudioController()
     file_manager = FilesController(audio_manager=audio_manager)
+    car_manager = CarController(port=8765)
 
     # Start the Flask server in a separate thread
     flask_thread = threading.Thread(
