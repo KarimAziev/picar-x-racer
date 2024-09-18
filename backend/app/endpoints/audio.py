@@ -23,7 +23,7 @@ def play_sound():
     filename = payload["filename"]
     force = payload.get("force", False)
 
-    logger.info(f"request to play sound {filename}")
+    logger.info(f"Request to play sound {filename}")
     try:
         dir = file_manager.get_sound_directory(filename)
         file = path.join(dir, filename)
