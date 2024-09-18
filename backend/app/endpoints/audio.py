@@ -31,6 +31,8 @@ def play_sound():
         return jsonify(result)
     except FileNotFoundError as err:
         return jsonify({"error": str(err)}), 404
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500
 
 
 @audio_management_bp.route("/api/play-status", methods=["GET"])
@@ -72,7 +74,7 @@ def play_music():
         result = audio_manager.play_music(track_path=file, force=force, start=start)
         return jsonify(result)
     except Exception as err:
-        return jsonify({"error": str(err)}), 404
+        return jsonify({"error": str(err)}), 500
 
 
 @audio_management_bp.route("/api/play-tts", methods=["POST"])
