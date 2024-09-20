@@ -111,7 +111,7 @@ const defaultState: StoreState = {
   reconnectedEnabled: true,
   messageQueue: [],
   loading: false,
-  url: "ws://" + window.location.hostname + ":8765",
+  url: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws/car-control`,
 } as const;
 
 export const useControllerStore = defineStore("controller", {

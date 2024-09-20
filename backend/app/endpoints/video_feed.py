@@ -1,19 +1,20 @@
 from typing import TYPE_CHECKING, Any, Dict, Union
 
 from app.util.logger import Logger
-from flask import Blueprint, current_app, jsonify, request
+from quart import Blueprint, current_app, jsonify, request, websocket
 
 if TYPE_CHECKING:
     from app.controllers.camera_controller import CameraController
+    from app.controllers.stream_controller import StreamController
 
 video_feed_bp = Blueprint("video_feed", __name__)
 logger = Logger(__name__)
 
 
 @video_feed_bp.route("/api/video-feed-settings", methods=["POST"])
-def start_camera():
+async def update_video_feed_settings():
     camera_manager: "CameraController" = current_app.config["camera_manager"]
-    payload: Union[Dict[str, Any], None] = request.json
+    payload: Union[Dict[str, Any], None] = await request.json
     logger.info(f"Updating video feed settings: {payload}")
     if payload:
         camera_manager: "CameraController" = current_app.config["camera_manager"]
@@ -53,7 +54,7 @@ def start_camera():
 
 
 @video_feed_bp.route("/api/video-feed-settings", methods=["GET"])
-def get_camera_settings():
+async def get_camera_settings():
     camera_manager: "CameraController" = current_app.config["camera_manager"]
 
     return jsonify(
@@ -67,3 +68,10 @@ def get_camera_settings():
             "video_feed_format": camera_manager.video_feed_format,
         }
     )
+
+
+@video_feed_bp.websocket("/ws/video-stream")
+async def ws():
+    stream_controller: "StreamController" = current_app.config["stream_controller"]
+    while True:
+        await stream_controller.video_stream(websocket)

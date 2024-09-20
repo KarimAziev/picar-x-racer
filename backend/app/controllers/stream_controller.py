@@ -1,10 +1,8 @@
 import asyncio
-from typing import Optional
 
-import websockets
 from app.controllers.camera_controller import CameraController
 from app.util.logger import Logger
-from websockets.server import WebSocketServerProtocol
+from quart.wrappers import Websocket
 
 
 class StreamController:
@@ -18,7 +16,7 @@ class StreamController:
         server (Optional[websockets.server.Serve]): The WebSocket server instance.
     """
 
-    def __init__(self, camera_controller: CameraController, port: Optional[int] = 8050):
+    def __init__(self, camera_controller: CameraController):
         """
         Initializes the `StreamController` instance.
 
@@ -27,12 +25,46 @@ class StreamController:
             **kwargs: Additional keyword arguments passed to the base `Logger` class.
         """
         self.logger = Logger(name=__name__)
-        self.port = port or 8050
 
         self.camera_controller = camera_controller
         self.server = None
+        self.active_clients = 0
+        self.lock = asyncio.Lock()
 
-    async def video_stream(self, websocket: WebSocketServerProtocol):
+    async def generate_video_stream_for_websocket(self, websocket: Websocket):
+        """
+        Generates a video frame for streaming.
+
+        Retrieves the latest detection results, overlays detection annotations onto the frame,
+        applies any video enhancements, encodes the frame in the specified format, and returns
+        it as a byte array ready for streaming.
+
+        Returns:
+            Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
+        """
+
+        await self.camera_controller.start_camera_and_wait_for_stream_img()
+        skip_count = 0
+        try:
+            while True:
+                encoded_frame = await self.camera_controller.generate_frame()
+                if encoded_frame:
+                    try:
+                        await websocket.send(encoded_frame)
+                    except (ConnectionResetError, asyncio.CancelledError):
+                        self.logger.info(
+                            f"WebSocket connection lost: {websocket.remote_addr}"
+                        )
+                        break
+                else:
+                    if skip_count < 1:
+                        self.logger.debug("Stream image is None, skipping frame.")
+                        skip_count += 1
+                await asyncio.sleep(0)
+        except Exception as e:
+            self.logger.error(f"Error in srteam {e}")
+
+    async def video_stream(self, websocket: Websocket):
         """
         Handles an incoming WebSocket connection for video streaming.
 
@@ -47,51 +79,17 @@ class StreamController:
         Exceptions are logged appropriately, and if there are no more active clients after the
         connection is closed, the camera is stopped to conserve resources.
         """
+        self.logger.info(f"WebSocket connection established: {websocket.remote_addr}")
+        self.active_clients += 1
 
         try:
-            await self.camera_controller.generate_video_stream_for_websocket(websocket)
-        except websockets.exceptions.ConnectionClosedError as e:
-            self.logger.info("Connection closed")
+            await self.generate_video_stream_for_websocket(websocket)
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
         finally:
-            self.logger.info("Video stream ended")
-            if self.camera_controller.active_clients == 0:
-                self.camera_controller.stop_camera()
-
-    async def start_server(self):
-        """
-        Starts the WebSocket server to handle video streaming connections.
-
-        The server listens on all network interfaces (`0.0.0.0`) at port `8050` and uses
-        the `video_stream` method as the handler for incoming connections. It waits
-        indefinitely for the server to close, allowing it to serve clients continuously
-        until stopped.
-
-        Raises:
-            OSError: If the server fails to start due to issues like the port being already in use.
-        """
-
-        self.logger.info(f"Starting camera stream server on the port {self.port}")
-        self.server = await websockets.serve(self.video_stream, "0.0.0.0", self.port)
-        await self.server.wait_closed()
-
-    async def stop_server(self):
-        """
-        Stops the WebSocket server gracefully.
-
-        If the server is running, this method initiates a shutdown by closing the server
-        and waiting for it to finish processing any ongoing connections.
-        """
-
-        if self.server:
-            self.server.close()
-            await self.server.wait_closed()
-
-    async def run_streaming_server(self):
-        """
-        Starts the video streaming servers.
-        """
-
-        server_task = self.start_server()
-        await asyncio.gather(server_task)
+            self.active_clients -= 1
+            self.logger.info(
+                f"WebSocket connection closed: {websocket.remote_addr}, Active clients: {self.active_clients}"
+            )
+            if self.active_clients == 0:
+                await self.camera_controller.stop_camera()

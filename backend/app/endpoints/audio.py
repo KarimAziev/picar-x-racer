@@ -2,7 +2,7 @@ from os import path
 from typing import TYPE_CHECKING, Any, Dict, Union
 
 from app.util.logger import Logger
-from flask import Blueprint, current_app, jsonify, request
+from quart import Blueprint, current_app, jsonify, request
 
 if TYPE_CHECKING:
     from app.controllers.audio_controller import AudioController
@@ -13,10 +13,10 @@ logger = Logger(__name__)
 
 
 @audio_management_bp.route("/api/play-sound", methods=["POST"])
-def play_sound():
+async def play_sound():
     file_manager: "FilesController" = current_app.config["file_manager"]
     audio_manager: "AudioController" = current_app.config["audio_manager"]
-    payload: Union[Dict[str, Any], None] = request.json
+    payload: Union[Dict[str, Any], None] = await request.json
 
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid settings format"}), 400
@@ -36,7 +36,7 @@ def play_sound():
 
 
 @audio_management_bp.route("/api/play-status", methods=["GET"])
-def get_play_status():
+async def get_play_status():
     file_manager: "FilesController" = current_app.config["file_manager"]
     audio_manager: "AudioController" = current_app.config["audio_manager"]
     result = audio_manager.get_music_play_status()
@@ -53,10 +53,10 @@ def get_play_status():
 
 
 @audio_management_bp.route("/api/play-music", methods=["POST"])
-def play_music():
+async def play_music():
     file_manager: "FilesController" = current_app.config["file_manager"]
     audio_manager: "AudioController" = current_app.config["audio_manager"]
-    payload: Union[Dict[str, Any], None] = request.json
+    payload: Union[Dict[str, Any], None] = await request.json
 
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid settings format"}), 400
@@ -78,10 +78,10 @@ def play_music():
 
 
 @audio_management_bp.route("/api/play-tts", methods=["POST"])
-def text_to_speech():
+async def text_to_speech():
     file_manager: "FilesController" = current_app.config["file_manager"]
     audio_manager: "AudioController" = current_app.config["audio_manager"]
-    payload: Union[Dict[str, str], None] = request.json
+    payload: Union[Dict[str, str], None] = await request.json
 
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid settings format"}), 400
@@ -104,9 +104,9 @@ def text_to_speech():
 
 
 @audio_management_bp.route("/api/volume", methods=["POST"])
-def set_volume():
+async def set_volume():
     audio_manager: "AudioController" = current_app.config["audio_manager"]
-    payload: Union[Dict[str, int], None] = request.json
+    payload: Union[Dict[str, int], None] = await request.json
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid format"}), 400
     volume = payload.get("volume")
@@ -124,7 +124,7 @@ def set_volume():
 
 
 @audio_management_bp.route("/api/volume", methods=["GET"])
-def get_volume():
+async def get_volume():
     audio_manager: "AudioController" = current_app.config["audio_manager"]
 
     try:
@@ -134,7 +134,7 @@ def get_volume():
 
 
 @audio_management_bp.route("/api/music", methods=["GET"])
-def get_music_tracks():
+async def get_music_tracks():
     file_manager: "FilesController" = current_app.config["file_manager"]
     audio_manager: "AudioController" = current_app.config["audio_manager"]
     amixer_volume = audio_manager.get_amixer_volume()

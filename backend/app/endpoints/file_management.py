@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from app.exceptions.file_controller import DefaultFileRemoveAttempt
 from app.util.logger import Logger
-from flask import Blueprint, current_app, jsonify, request, send_from_directory
+from quart import Blueprint, current_app, jsonify, request, send_from_directory
 
 if TYPE_CHECKING:
     from app.controllers.files_controller import FilesController
@@ -12,7 +12,7 @@ logger = Logger(__name__)
 
 
 @file_management_bp.route("/api/list_files/<media_type>", methods=["GET"])
-def list_files(media_type):
+async def list_files(media_type):
     file_manager: "FilesController" = current_app.config["file_manager"]
 
     if media_type == "music":
@@ -33,13 +33,14 @@ def list_files(media_type):
 
 
 @file_management_bp.route("/api/upload/<media_type>", methods=["POST"])
-def upload_file(media_type):
+async def upload_file(media_type):
     file_manager: "FilesController" = current_app.config["file_manager"]
+    files = await request.files
 
-    if "file" not in request.files:
+    if "file" not in files:
         return jsonify({"error": "No file part"}), 400
 
-    file = request.files["file"]
+    file = files["file"]
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
@@ -56,10 +57,10 @@ def upload_file(media_type):
 
 
 @file_management_bp.route("/api/remove_file/<media_type>", methods=["DELETE"])
-def remove_file(media_type):
+async def remove_file(media_type):
     file_manager: "FilesController" = current_app.config["file_manager"]
 
-    data = request.get_json()
+    data = await request.get_json()
     if not data or "filename" not in data:
         return jsonify({"error": "No filename provided"}), 400
 
@@ -86,19 +87,19 @@ def remove_file(media_type):
 
 
 @file_management_bp.route("/api/download/<media_type>/<filename>", methods=["GET"])
-def download_file(media_type, filename):
+async def download_file(media_type: str, filename: str):
     file_manager: "FilesController" = current_app.config["file_manager"]
 
     try:
         if media_type == "music":
             directory = file_manager.get_music_directory(filename)
-            return send_from_directory(directory, filename, as_attachment=True)
+            return await send_from_directory(directory, filename, as_attachment=True)
         elif media_type == "sound":
             directory = file_manager.get_sound_directory(filename)
-            return send_from_directory(directory, filename, as_attachment=True)
+            return await send_from_directory(directory, filename, as_attachment=True)
         elif media_type == "image":
             directory = file_manager.get_photo_directory(filename)
-            return send_from_directory(directory, filename, as_attachment=True)
+            return await send_from_directory(directory, filename, as_attachment=True)
         else:
             return jsonify({"error": "Invalid media type"}), 400
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from app.util.logger import Logger
 from app.util.photo import capture_photo
-from flask import Blueprint, current_app, jsonify
+from quart import Blueprint, current_app, jsonify
 
 if TYPE_CHECKING:
     from app.controllers.camera_controller import CameraController
@@ -42,13 +42,3 @@ async def frame_dimensions():
     frame_array = np.array(camera_manager.stream_img, dtype=np.uint8)
     height, width = frame_array.shape[:2]
     return jsonify({"width": width, "height": height})
-
-
-@camera_feed_bp.route("/api/close-camera", methods=["GET"])
-def close_camera():
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    logger.warning(f"Closing camera {camera_manager.active_clients}")
-    if camera_manager.active_clients <= 1:
-        camera_manager.stop_camera()
-
-    return jsonify({"OK": True})

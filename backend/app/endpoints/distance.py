@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from flask import Blueprint, current_app, jsonify
+from quart import Blueprint, current_app, jsonify
 
 distance_bp = Blueprint("distance", __name__)
 

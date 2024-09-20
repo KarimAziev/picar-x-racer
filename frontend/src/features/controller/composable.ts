@@ -122,7 +122,7 @@ export const useController = (
     controllerStore.reconnectedEnabled = true;
     if (!controllerStore.connected && !controllerStore.loading) {
       controllerStore.initializeWebSocket(
-        "ws://" + window.location.hostname + ":8765",
+        `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws/car-control`,
       );
     }
   };

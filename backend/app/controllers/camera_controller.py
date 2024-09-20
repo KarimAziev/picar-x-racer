@@ -1,20 +1,23 @@
 import asyncio
+
+# import json
 import multiprocessing as mp
 import queue
-import threading
 from typing import Optional, Union
 
 import cv2
 import numpy as np
+
+# import redis
 from app.config.video_enhancers import frame_enhancers
 from app.controllers.video_device_controller import VideoDeviceController
+from app.util.detection_process import detection_process_func
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_detection
 from app.util.photo import height_to_width
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import encode
 from cv2 import VideoCapture
-from websockets.server import WebSocketServerProtocol
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 320
@@ -31,9 +34,8 @@ class CameraController(metaclass=SingletonMeta):
     Attributes:
         logger (Logger): Logger instance for logging messages.
         video_device_manager (VideoDeviceController): Manages video capture devices.
-        active_clients (int): Number of active clients connected to the video stream.
         target_fps (int): Target frames per second for video capture.
-        camera_run (bool): Flag indicating whether the camera is running.
+        camera_run (bool): Flag indicating whether the camera is camera_run.
         stream_img (Optional[np.ndarray]): Latest frame captured from the camera for streaming.
         frame_width (Optional[int]): Width of the video frames.
         frame_height (Optional[int]): Height of the video frames.
@@ -58,7 +60,6 @@ class CameraController(metaclass=SingletonMeta):
         """
         self.logger = Logger(name=__name__)
         self.video_device_manager = VideoDeviceController()
-        self.active_clients = 0
         self.target_fps = target_fps
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
@@ -76,6 +77,11 @@ class CameraController(metaclass=SingletonMeta):
         self.detection_queue = mp.Queue(maxsize=5)
         self.control_queue = mp.Queue()
         self.last_detection_result = None
+        self.cap_task = None
+        self.detection_process = None
+        self.stop_event = mp.Event()
+        # self.redis_client = redis.StrictRedis(host="localhost", port=6379, db=0)
+        # self.redis_channel = "detection_channel"
 
     @property
     def video_feed_detect_mode(self):
@@ -104,7 +110,7 @@ class CameraController(metaclass=SingletonMeta):
             command = {"command": "set_detect_mode", "mode": new_mode}
             self.control_queue.put(command)
 
-    def generate_frame(self):
+    async def generate_frame(self):
         """
         Generates a video frame for streaming.
 
@@ -151,7 +157,7 @@ class CameraController(metaclass=SingletonMeta):
 
             return encoded_frame
 
-    def start_camera(
+    async def start_camera(
         self,
         fps: Optional[int] = None,
         width: Optional[int] = None,
@@ -171,33 +177,41 @@ class CameraController(metaclass=SingletonMeta):
             height (Optional[int], optional): Desired height of the video frames.
                 If None, uses default or calculates based on `width`.
         """
-        self.logger.info(f"Starting camera with  fps={fps}")
-        if self.camera_run:
-            try:
-                self.stop_camera()
-            except Exception as e:
-                self.logger.error(f"Camera close error {e}")
 
         if fps:
             self.target_fps = fps
 
-        self.frame_height = height
-        self.frame_width = (
-            width
-            or height_to_width(
-                height=height, target_width=TARGET_WIDTH, target_height=TARGET_HEIGHT
-            )
-            if height
-            else None
-        )
-        self.camera_run = True
-        # Start the camera capture in a thread
-        self.capture_thread = threading.Thread(target=self.camera_thread_func)
-        self.capture_thread.start()
+        if self.camera_run:
+            try:
+                await self.stop_camera()
+            except Exception as e:
+                self.logger.error(f"Camera close error {e}")
 
-        # Start the detection process
-        self.detection_process = mp.Process(target=self.detection_process_func)
-        self.detection_process.start()
+        self.logger.info(f"Starting camera with FPS={self.target_fps}")
+        self.frame_height = height
+        self.frame_width = width or (
+            height_to_width(height, TARGET_WIDTH, TARGET_HEIGHT) if height else None
+        )
+
+        self.camera_run = True
+        await self.cancel_cap_task()
+
+        self.cap_task = asyncio.create_task(self.camera_capture_func())
+        if not self.detection_process or not self.detection_process.is_alive():
+            self.detection_process = mp.Process(
+                target=detection_process_func,
+                args=(
+                    self.stop_event,
+                    self.frame_queue,
+                    self.detection_queue,
+                    self.control_queue,
+                ),
+            )
+            self.detection_process.start()
+
+        if not self.detection_process or not self.detection_process.is_alive():
+            self.detection_process = mp.Process(target=self.detection_process_func)
+            self.detection_process.start()
 
         if self.video_feed_detect_mode:
             command = {
@@ -228,7 +242,7 @@ class CameraController(metaclass=SingletonMeta):
         """
 
         if not self.camera_run:
-            self.start_camera(fps, width, height)
+            await self.start_camera(fps, width, height)
 
         counter = 0
 
@@ -263,9 +277,9 @@ class CameraController(metaclass=SingletonMeta):
             detectors.get(current_detect_mode) if current_detect_mode else None
         )
 
-        while self.camera_run:
+        while not self.stop_event.is_set():
             try:
-                while True:
+                while not self.control_queue.empty():
                     control_message = self.control_queue.get_nowait()
                     if control_message.get("command") == "set_detect_mode":
                         current_detect_mode = control_message.get("mode")
@@ -277,68 +291,31 @@ class CameraController(metaclass=SingletonMeta):
                             if current_detect_mode
                             else None
                         )
-            except queue.Empty:
-                pass
 
-            if detection_function is None:
-                continue
+                if detection_function is None:
+                    continue
 
-            try:
-                frame = self.frame_queue.get(timeout=1)
+                try:
+                    frame = self.frame_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
+
                 detection_result = detection_function(frame)
+                if detection_result:
+                    self.logger.debug(f"Detection result: {detection_result}")
+
                 try:
                     self.detection_queue.put_nowait(detection_result)
                 except queue.Full:
                     pass
-            except queue.Empty:
-                pass
+
             except Exception as e:
                 self.logger.error(f"Error in detection_process_func: {e}")
-
-            if not self.camera_run:
-                break
-
         self.logger.info("Detection process exiting")
 
-    async def generate_video_stream_for_websocket(
-        self, websocket: WebSocketServerProtocol
-    ):
+    async def camera_capture_func(self):
         """
-        Generates a video frame for streaming.
-
-        Retrieves the latest detection results, overlays detection annotations onto the frame,
-        applies any video enhancements, encodes the frame in the specified format, and returns
-        it as a byte array ready for streaming.
-
-        Returns:
-            Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
-        """
-
-        await self.start_camera_and_wait_for_stream_img()
-        self.active_clients += 1
-        self.logger.info(f"Active websocket clients: {self.active_clients}")
-        skip_count = 0
-        try:
-            while True:
-                encoded_frame = self.generate_frame()
-                if encoded_frame:
-                    await websocket.send(encoded_frame)
-                else:
-                    if skip_count < 1:
-                        self.logger.debug("Stream image is None, skipping frame.")
-                        skip_count += 1
-                await asyncio.sleep(0)
-        finally:
-            self.active_clients -= 1
-            self.logger.info(
-                f"generate_video_stream: Active Clients: {self.active_clients}"
-            )
-            if self.active_clients == 0:
-                self.stop_camera()
-
-    def camera_thread_func(self):
-        """
-        Starts the camera capture thread and the detection process.
+        Starts the camera capture.
 
         Configures the camera settings, initializes queues, and starts the threads and processes
         necessary for capturing and processing video frames.
@@ -351,7 +328,6 @@ class CameraController(metaclass=SingletonMeta):
             height (Optional[int], optional): Desired height of the video frames.
                 If None, uses default or calculates based on `width`.
         """
-
         try:
             if self.cap and self.cap.isOpened():
                 self.cap.release()
@@ -398,6 +374,7 @@ class CameraController(metaclass=SingletonMeta):
                         self.cap = cap
 
                         failed_counter = 0
+                        await asyncio.sleep(0.5)
                         continue
                 else:
                     failed_counter = 0
@@ -411,27 +388,48 @@ class CameraController(metaclass=SingletonMeta):
                 except queue.Full:
                     pass
 
+                await asyncio.sleep(1 / self.target_fps)
+
         except Exception as e:
-            self.logger.error(f"Exception occurred in camera loop: {e}")
+            self.logger.error(f"Exception in camera_capture_func: {e}")
         finally:
-            self.cap.release()
-            self.cap = None
+            if self.cap:
+                self.cap.release()
             self.stream_img = None
+            self.logger.info("Camera capture stopped.")
 
-            self.logger.info("Camera loop terminated and camera released.")
-
-    def stop_camera(self):
+    async def cancel_cap_task(self):
         """
-        Stops the camera capture and detection processes.
-
-        Sets `camera_run` to False, waits for the capture thread and detection process
-        to terminate, and performs any necessary cleanup of resources.
+        Cancels the camera capture task, if running.
         """
-        self.logger.info("Closing camera")
-        self.camera_run = False
-        if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
-            self.capture_thread.join()
 
-        if hasattr(self, "detection_process") and self.detection_process.is_alive():
-            self.detection_process.terminate()
-            self.detection_process.join()
+        if self.cap_task:
+            try:
+                self.cap_task.cancel()
+                await self.cap_task
+            except asyncio.CancelledError:
+                self.logger.info("Camera task cancelled")
+                self.capt_task = None
+
+    async def stop_camera(self):
+        if self.camera_run:
+            self.logger.info("Stopping camera...")
+            self.camera_run = False
+
+        await self.cancel_cap_task()
+        if self.detection_process:
+            self.stop_event.set()
+            self.logger.info("Waiting for detection process to finish...")
+            self.detection_process.join(timeout=2)
+            if self.detection_process.is_alive():
+                self.logger.info("Terminating detection process...")
+                self.detection_process.terminate()
+                self.detection_process.join()
+            self.detection_process = None
+            self.stop_event.clear()
+
+        if self.cap:
+            self.cap.release()
+
+        self.cap = None
+        self.logger.info("Camera stopped.")

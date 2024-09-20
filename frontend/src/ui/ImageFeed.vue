@@ -17,7 +17,9 @@ import { ref, onMounted, onUnmounted } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 
 const ws = ref<WebSocket>();
-const WS_URL: string = `ws://${window.location.hostname}:${8050}`;
+const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+const host = window.location.host;
+const WS_URL: string = `${protocol}://${host}/ws/video-stream`;
 const imgRef = ref<HTMLImageElement>();
 const imgInitted = ref(false);
 const imgLoading = ref(true);
@@ -70,14 +72,20 @@ const retryConnection = () => {
   }
 };
 
-onMounted(() => {
-  initWS();
-});
-onUnmounted(() => {
+const unloadHandler = () => {
   reconnectedEnabled.value = false;
   if (ws.value) {
     ws.value.close();
   }
+};
+
+onMounted(() => {
+  initWS();
+  window.addEventListener("beforeunload", unloadHandler);
+});
+onUnmounted(() => {
+  unloadHandler();
+  window.removeEventListener("beforeunload", unloadHandler);
 });
 </script>
 

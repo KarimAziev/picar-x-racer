@@ -2,8 +2,6 @@ numpy==1.26.4
 torch
 torchvision
 gpiozero
-flask[async]
-Flask-Cors
 pandas
 pyaudio
 pygame
@@ -23,3 +21,5 @@ pygame
 platformdirs
 Werkzeug
 pydub
+quart
+quart_cors

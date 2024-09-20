@@ -1,55 +1,24 @@
 import asyncio
 import inspect
 import json
-import traceback
 from datetime import datetime, timedelta
-from typing import Optional
 
-import websockets
 from app.controllers.calibration_controller import CalibrationController
-from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 from app.util.platform_adapters import Picarx
-from websockets import WebSocketServerProtocol
+from quart.wrappers import Websocket
 
 
 class CarController:
     DEBOUNCE_INTERVAL = timedelta(seconds=1)
 
-    def __init__(self, port: Optional[int] = 8765):
-        self.port = port or 8765
+    def __init__(self):
         self.px = Picarx()
         self.logger = Logger(name=__name__)
         self.calibration = CalibrationController(self.px)
         self.last_toggle_time = None
         self.avoid_obstacles_mode = False
         self.avoid_obstacles_task = None
-
-    async def handle_message(self, websocket: WebSocketServerProtocol, _):
-        """
-        Handles incoming WebSocket messages and delegates them to the appropriate action handlers.
-
-        Args:
-            websocket (WebSocketServerProtocol): WebSocket connection instance.
-            _ (str): Placeholder for compatibility with WebSocket handler signature.
-        """
-        async for message in websocket:
-            try:
-                data = json.loads(message)
-                action = data.get("action")
-                payload = data.get("payload")
-                if action:
-                    await self.process_action(action, payload, websocket)
-                else:
-                    self.logger.info(f"received invalid message {data}")
-
-            except KeyboardInterrupt as e:
-                self.logger.error(f"KeyboardInterrupt")
-            except Exception as e:
-                self.logger.error(f"Error handling message: {message}: {e}")
-                self.logger.error(traceback.format_exc())
-                error_response = json.dumps({"error": str(e)})
-                await websocket.send(error_response)
 
     async def process_action(self, action: str, payload, websocket):
         """
@@ -58,7 +27,7 @@ class CarController:
         Args:
             action (str): The action to be performed.
             payload: The payload data associated with the action.
-            websocket (WebSocketServerProtocol): WebSocket connection instance.
+            websocket (Websocket): WebSocket connection instance.
         """
 
         self.logger.info(f"Action: '{action}' with payload {payload}")
@@ -133,7 +102,7 @@ class CarController:
         Toggles the mode for avoiding obstacles.
 
         Args:
-            websocket (WebSocketServerProtocol): WebSocket connection instance.
+            websocket (Websocket): WebSocket connection instance.
         """
 
         now = datetime.utcnow()
@@ -162,7 +131,7 @@ class CarController:
 
         Args:
             action (str): Action type for the distance request.
-            websocket (WebSocketServerProtocol): WebSocket connection instance.
+            websocket (Websocket): WebSocket connection instance.
         """
 
         try:
@@ -173,12 +142,12 @@ class CarController:
             error_response = json.dumps({"type": action, "error": str(e)})
             await websocket.send(error_response)
 
-    async def handle_px_reset(self, websocket: WebSocketServerProtocol):
+    async def handle_px_reset(self, websocket: Websocket):
         """
         Resets the car's servo and camera to default angles.
 
         Args:
-            websocket (WebSocketServerProtocol): WebSocket connection instance.
+            websocket (Websocket): WebSocket connection instance.
         """
 
         self.px.stop()
@@ -279,34 +248,3 @@ class CarController:
         except Exception as e:
             self.logger.error(f"Failed to get distance: {e}")
             raise
-
-    async def start_server(self):
-        """
-        Starts the WebSocket server for handling external connections.
-        """
-
-        ip_address = get_ip_address()
-        self.logger.info(
-            f"Starting websockets for controlling the car on the port {self.port}"
-        )
-        self.server = await websockets.serve(self.handle_message, "0.0.0.0", self.port)
-        self.logger.info(
-            f"\nTo access the frontend, open your browser and navigate to http://{ip_address}:9000\n"
-        )
-        await self.server.wait_closed()
-
-    async def stop_server(self):
-        """
-        Stops the WebSocket server, if running.
-        """
-
-        if self.server:
-            self.server.close()
-            await self.server.wait_closed()
-
-    def run_server(self):
-        """
-        Initiates the server startup process.
-        """
-
-        return asyncio.run(self.start_server())
