@@ -60,10 +60,8 @@ def main(debug: bool = False, log_level="INFO"):
         asyncio.run(serve(app, config))
     except (KeyboardInterrupt, SystemExit):
         logger.info("Received shutdown signal, shutting down.")
-        # Clean up resources
         try:
             asyncio.run(camera_manager.stop_camera())
-            # Stop other managers if necessary
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
     finally:
