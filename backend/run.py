@@ -3,12 +3,10 @@ import os
 
 import uvicorn
 
-from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 
 logger = Logger(__name__)
 
-# current_dir = os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the application.")
@@ -50,9 +48,6 @@ if __name__ == "__main__":
 
     Logger.set_global_log_level(log_level_constant)
 
-    logger.info(
-        f"\nTo access the frontend, open your browser and navigate to http://{get_ip_address()}:{port}\n"
-    )
     app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
     uvicorn_config = {
         "app": "app.main:app",
