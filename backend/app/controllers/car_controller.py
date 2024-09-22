@@ -24,6 +24,32 @@ class CarController(metaclass=SingletonMeta):
     async def stop(self):
         await asyncio.to_thread(self.px.stop)
 
+    async def handle_move(self, payload, websocket):
+        direction = payload.get("direction", 0)
+        speed = payload.get("speed", 0)
+        await self.move(direction, speed)
+
+    async def handle_set_servo_dir_angle(self, payload, websocket):
+        angle = payload or 0
+        await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
+
+    async def handle_stop(self, payload, websocket):
+        await self.stop()
+
+    async def handle_set_cam_tilt_angle(self, payload, websocket):
+        angle = payload
+        await asyncio.to_thread(self.px.set_cam_tilt_angle, angle)
+
+    async def handle_set_cam_pan_angle(self, payload, websocket):
+        angle = payload
+        await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
+
+    async def handle_avoid_obstacles(self, payload, websocket):
+        await self.toggle_avoid_obstacles_mode(websocket)
+
+    async def handle_get_distance(self, payload, websocket):
+        await self.respond_with_distance("getDistance", websocket)
+
     async def process_action(self, action: str, payload, websocket: WebSocket):
         """
         Processes specific actions received from WebSocket messages and performs the corresponding operations.
@@ -48,19 +74,13 @@ class CarController(metaclass=SingletonMeta):
         }
 
         actions_map = {
-            "move": lambda payload=payload: self.handle_move(payload),
-            "setServoDirAngle": lambda payload=payload: self.px.set_dir_servo_angle(
-                payload or 0
-            ),
-            "stop": self.stop,
-            "setCamTiltAngle": lambda payload=payload: self.px.set_cam_tilt_angle(
-                payload
-            ),
-            "setCamPanAngle": lambda payload=payload: self.px.set_cam_pan_angle(
-                payload
-            ),
-            "avoidObstacles": lambda: self.toggle_avoid_obstacles_mode(websocket),
-            "getDistance": lambda: self.respond_with_distance(action, websocket),
+            "move": self.handle_move,
+            "setServoDirAngle": self.handle_set_servo_dir_angle,
+            "stop": self.handle_stop,
+            "setCamTiltAngle": self.handle_set_cam_tilt_angle,
+            "setCamPanAngle": self.handle_set_cam_pan_angle,
+            "avoidObstacles": self.handle_avoid_obstacles,
+            "getDistance": self.handle_get_distance,
         }
 
         calibrationData = None
@@ -81,10 +101,7 @@ class CarController(metaclass=SingletonMeta):
                 )
         elif action in actions_map:
             func = actions_map[action]
-            if inspect.iscoroutinefunction(func):
-                await func()
-            else:
-                await asyncio.to_thread(func)
+            await func(payload, websocket)
 
         else:
             error_msg = f"Unknown action: {action}"
