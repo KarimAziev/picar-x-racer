@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+from app.config.yolo_model import yolo_model
 
 
 def perform_detection(
@@ -19,24 +20,27 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-    from app.config.yolo_model import yolo_model
-
-    results = yolo_model(frame)
+    results = yolo_model(frame)[0]
     detection_results = []
 
-    for detection in results.xyxy[0]:
-        x1, y1, x2, y2, conf, cls = detection
+    for detection in results.boxes:
+        x1, y1, x2, y2 = detection.xyxy[0].tolist()
+        conf = detection.conf.item()
+        cls = detection.cls.item()
         label = yolo_model.names[int(cls)]
+
         if conf < confidence_threshold:
             continue
+
         if labels_to_detect is None or label in labels_to_detect:
             detection_results.append(
                 {
                     "bbox": [int(x1), int(y1), int(x2), int(y2)],
                     "label": label,
-                    "confidence": float(conf),
+                    "confidence": conf,
                 }
             )
+
     return detection_results
 
 

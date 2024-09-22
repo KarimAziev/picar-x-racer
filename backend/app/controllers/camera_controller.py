@@ -1,14 +1,11 @@
 import asyncio
-
-# import json
 import multiprocessing as mp
 import queue
+import threading
 from typing import Optional, Union
 
 import cv2
 import numpy as np
-
-# import redis
 from app.config.video_enhancers import frame_enhancers
 from app.controllers.video_device_controller import VideoDeviceController
 from app.util.detection_process import detection_process_func
@@ -80,8 +77,6 @@ class CameraController(metaclass=SingletonMeta):
         self.cap_task = None
         self.detection_process = None
         self.stop_event = mp.Event()
-        # self.redis_client = redis.StrictRedis(host="localhost", port=6379, db=0)
-        # self.redis_channel = "detection_channel"
 
     @property
     def video_feed_detect_mode(self):
@@ -148,21 +143,13 @@ class CameraController(metaclass=SingletonMeta):
                 if format == ".jpg"
                 else []
             )
-            encoded_frame = encode(
-                frame,
-                format,
-                encode_params,
-                frame_enhancer,
+            encoded_frame = await asyncio.to_thread(
+                encode, frame, format, encode_params, frame_enhancer
             )
 
             return encoded_frame
 
-    async def start_camera(
-        self,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-    ):
+    def camera_thread_func(self):
         """
         Starts the camera capture thread and the detection process.
 
@@ -178,156 +165,6 @@ class CameraController(metaclass=SingletonMeta):
                 If None, uses default or calculates based on `width`.
         """
 
-        if fps:
-            self.target_fps = fps
-
-        if self.camera_run:
-            try:
-                await self.stop_camera()
-            except Exception as e:
-                self.logger.error(f"Camera close error {e}")
-
-        self.logger.info(f"Starting camera with FPS={self.target_fps}")
-        self.frame_height = height
-        self.frame_width = width or (
-            height_to_width(height, TARGET_WIDTH, TARGET_HEIGHT) if height else None
-        )
-
-        self.camera_run = True
-        await self.cancel_cap_task()
-
-        self.cap_task = asyncio.create_task(self.camera_capture_func())
-        if not self.detection_process or not self.detection_process.is_alive():
-            self.detection_process = mp.Process(
-                target=detection_process_func,
-                args=(
-                    self.stop_event,
-                    self.frame_queue,
-                    self.detection_queue,
-                    self.control_queue,
-                ),
-            )
-            self.detection_process.start()
-
-        if not self.detection_process or not self.detection_process.is_alive():
-            self.detection_process = mp.Process(target=self.detection_process_func)
-            self.detection_process.start()
-
-        if self.video_feed_detect_mode:
-            command = {
-                "command": "set_detect_mode",
-                "mode": self.video_feed_detect_mode,
-            }
-            self.control_queue.put(command)
-
-    async def start_camera_and_wait_for_stream_img(
-        self,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-    ):
-        """
-        Asynchronously starts the camera and waits until the first frame is available.
-
-        Useful for ensuring that the camera is ready and frames are available before
-        starting operations that depend on the video stream.
-
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `target_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
-        """
-
-        if not self.camera_run:
-            await self.start_camera(fps, width, height)
-
-        counter = 0
-
-        while True:
-            if self.stream_img is not None:
-                break
-            if counter <= 1:
-                self.logger.debug("waiting for stream img")
-            counter += 1
-            await asyncio.sleep(0.1)
-
-    def detection_process_func(self):
-        """
-        Function run in a separate process to perform object detection on video frames.
-
-        Continuously retrieves frames from `frame_queue`, processes them using the current
-        detection function, and puts the detection results into `detection_queue`.
-        Listens for control messages on `control_queue` to update the detection mode or
-        perform other control actions.
-
-        The detection function depends on `video_feed_detect_mode` and is dynamically updated
-        when control messages are received.
-
-        Note:
-            This function runs indefinitely until `camera_run` is set to False or the process
-            is terminated.
-        """
-        from app.config.detectors import detectors
-
-        current_detect_mode = self.video_feed_detect_mode
-        detection_function = (
-            detectors.get(current_detect_mode) if current_detect_mode else None
-        )
-
-        while not self.stop_event.is_set():
-            try:
-                while not self.control_queue.empty():
-                    control_message = self.control_queue.get_nowait()
-                    if control_message.get("command") == "set_detect_mode":
-                        current_detect_mode = control_message.get("mode")
-                        self.logger.info(
-                            f"Detection mode changed to {current_detect_mode}"
-                        )
-                        detection_function = (
-                            detectors.get(current_detect_mode)
-                            if current_detect_mode
-                            else None
-                        )
-
-                if detection_function is None:
-                    continue
-
-                try:
-                    frame = self.frame_queue.get(timeout=1)
-                except queue.Empty:
-                    continue
-
-                detection_result = detection_function(frame)
-                if detection_result:
-                    self.logger.debug(f"Detection result: {detection_result}")
-
-                try:
-                    self.detection_queue.put_nowait(detection_result)
-                except queue.Full:
-                    pass
-
-            except Exception as e:
-                self.logger.error(f"Error in detection_process_func: {e}")
-        self.logger.info("Detection process exiting")
-
-    async def camera_capture_func(self):
-        """
-        Starts the camera capture.
-
-        Configures the camera settings, initializes queues, and starts the threads and processes
-        necessary for capturing and processing video frames.
-
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `target_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
-        """
         try:
             if self.cap and self.cap.isOpened():
                 self.cap.release()
@@ -374,7 +211,6 @@ class CameraController(metaclass=SingletonMeta):
                         self.cap = cap
 
                         failed_counter = 0
-                        await asyncio.sleep(0.5)
                         continue
                 else:
                     failed_counter = 0
@@ -388,48 +224,120 @@ class CameraController(metaclass=SingletonMeta):
                 except queue.Full:
                     pass
 
-                await asyncio.sleep(1 / self.target_fps)
-
         except Exception as e:
-            self.logger.error(f"Exception in camera_capture_func: {e}")
+            self.logger.error(f"Exception occurred in camera loop: {e}")
         finally:
-            if self.cap:
-                self.cap.release()
-            self.stream_img = None
-            self.logger.info("Camera capture stopped.")
-
-    async def cancel_cap_task(self):
-        """
-        Cancels the camera capture task, if running.
-        """
-
-        if self.cap_task:
-            try:
-                self.cap_task.cancel()
-                await self.cap_task
-            except asyncio.CancelledError:
-                self.logger.info("Camera task cancelled")
-                self.capt_task = None
-
-    async def stop_camera(self):
-        if self.camera_run:
-            self.logger.info("Stopping camera...")
-            self.camera_run = False
-
-        await self.cancel_cap_task()
-        if self.detection_process:
-            self.stop_event.set()
-            self.logger.info("Waiting for detection process to finish...")
-            self.detection_process.join(timeout=2)
-            if self.detection_process.is_alive():
-                self.logger.info("Terminating detection process...")
-                self.detection_process.terminate()
-                self.detection_process.join()
-            self.detection_process = None
-            self.stop_event.clear()
-
-        if self.cap:
             self.cap.release()
+            self.cap = None
+            self.stream_img = None
 
-        self.cap = None
-        self.logger.info("Camera stopped.")
+            self.logger.info("Camera loop terminated and camera released.")
+
+    def start_camera(
+        self,
+        fps: Optional[int] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ):
+        """
+        Starts the camera capture thread and the detection process.
+
+        Configures the camera settings, initializes queues, and starts the threads and processes
+        necessary for capturing and processing video frames.
+
+        Args:
+            fps (Optional[int], optional): Target frames per second for video capture.
+                If None, uses the existing `target_fps` value.
+            width (Optional[int], optional): Desired width of the video frames.
+                If None, calculates based on `height` and target aspect ratio.
+            height (Optional[int], optional): Desired height of the video frames.
+                If None, uses default or calculates based on `width`.
+        """
+
+        if fps:
+            self.target_fps = fps
+
+        if self.camera_run:
+            try:
+                self.stop_camera()
+            except Exception as e:
+                self.logger.error(f"Camera close error {e}")
+
+        self.logger.info(f"Starting camera with FPS={self.target_fps}")
+        self.frame_height = height
+        self.frame_width = width or (
+            height_to_width(height, TARGET_WIDTH, TARGET_HEIGHT) if height else None
+        )
+
+        self.camera_run = True
+        self.capture_thread = threading.Thread(target=self.camera_thread_func)
+        self.capture_thread.start()
+
+        if not self.detection_process or not self.detection_process.is_alive():
+            self.detection_process = mp.Process(
+                target=detection_process_func,
+                args=(
+                    self.stop_event,
+                    self.frame_queue,
+                    self.detection_queue,
+                    self.control_queue,
+                ),
+            )
+            self.detection_process.start()
+
+        if self.video_feed_detect_mode:
+            command = {
+                "command": "set_detect_mode",
+                "mode": self.video_feed_detect_mode,
+            }
+            self.control_queue.put(command)
+
+    async def start_camera_and_wait_for_stream_img(
+        self,
+        fps: Optional[int] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ):
+        """
+        Asynchronously starts the camera and waits until the first frame is available.
+
+        Useful for ensuring that the camera is ready and frames are available before
+        starting operations that depend on the video stream.
+
+        Args:
+            fps (Optional[int], optional): Target frames per second for video capture.
+                If None, uses the existing `target_fps` value.
+            width (Optional[int], optional): Desired width of the video frames.
+                If None, calculates based on `height` and target aspect ratio.
+            height (Optional[int], optional): Desired height of the video frames.
+                If None, uses default or calculates based on `width`.
+        """
+
+        if not self.camera_run:
+            self.start_camera(fps, width, height)
+
+        counter = 0
+
+        while True:
+            if self.stream_img is not None:
+                break
+            if counter <= 1:
+                self.logger.debug("waiting for stream img")
+            counter += 1
+            await asyncio.sleep(0.1)
+
+    def stop_camera(self):
+        """
+        Stops the camera capture and detection processes.
+
+        Sets `camera_run` to False, waits for the capture thread and detection process
+        to terminate, and performs any necessary cleanup of resources.
+        """
+        self.logger.info("Closing camera")
+        self.camera_run = False
+        if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
+            self.capture_thread.join()
+
+        if self.detection_process and self.detection_process.is_alive():
+            self.stop_event.set()
+            self.stop_event.clear()

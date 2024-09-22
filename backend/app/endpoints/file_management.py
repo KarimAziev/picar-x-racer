@@ -1,20 +1,23 @@
 from typing import TYPE_CHECKING
 
+from app.deps import get_file_manager
 from app.exceptions.file_controller import DefaultFileRemoveAttempt
 from app.util.logger import Logger
-from quart import Blueprint, current_app, jsonify, request, send_from_directory
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
+from starlette.responses import FileResponse
 
 if TYPE_CHECKING:
     from app.controllers.files_controller import FilesController
 
-file_management_bp = Blueprint("file_management", __name__)
+router = APIRouter()
 logger = Logger(__name__)
 
 
-@file_management_bp.route("/api/list_files/<media_type>", methods=["GET"])
-async def list_files(media_type):
-    file_manager: "FilesController" = current_app.config["file_manager"]
-
+@router.get("/api/list_files/{media_type}/")
+async def list_files(
+    media_type: str, file_manager: "FilesController" = Depends(get_file_manager)
+):
     if media_type == "music":
         files = file_manager.list_user_music()
         logger.debug(f"music files {files}")
@@ -27,22 +30,19 @@ async def list_files(media_type):
     elif media_type == "image":
         files = file_manager.list_user_photos()
     else:
-        return jsonify({"error": "Invalid media type"}), 400
+        raise HTTPException(status_code=400, detail="Invalid media type")
 
-    return jsonify({"files": files})
+    return JSONResponse(content={"files": files})
 
 
-@file_management_bp.route("/api/upload/<media_type>", methods=["POST"])
-async def upload_file(media_type):
-    file_manager: "FilesController" = current_app.config["file_manager"]
-    files = await request.files
-
-    if "file" not in files:
-        return jsonify({"error": "No file part"}), 400
-
-    file = files["file"]
+@router.post("/api/upload/{media_type}/")
+async def upload_file(
+    media_type: str,
+    file: UploadFile = File(...),
+    file_manager: "FilesController" = Depends(get_file_manager),
+):
     if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+        raise HTTPException(status_code=400, detail="No selected file")
 
     if media_type == "music":
         file_manager.save_music(file)
@@ -51,57 +51,53 @@ async def upload_file(media_type):
     elif media_type == "image":
         file_manager.save_photo(file)
     else:
-        return jsonify({"error": "Invalid media type"}), 400
+        raise HTTPException(status_code=400, detail="Invalid media type")
 
-    return jsonify({"success": True, "filename": file.filename})
+    return JSONResponse(content={"success": True, "filename": file.filename})
 
 
-@file_management_bp.route("/api/remove_file/<media_type>", methods=["DELETE"])
-async def remove_file(media_type):
-    file_manager: "FilesController" = current_app.config["file_manager"]
-
-    data = await request.get_json()
-    if not data or "filename" not in data:
-        return jsonify({"error": "No filename provided"}), 400
-
-    filename = data["filename"]
-
+@router.delete("/api/remove_file/{media_type}/")
+async def remove_file(
+    media_type: str,
+    filename: str,
+    file_manager: "FilesController" = Depends(get_file_manager),
+):
     try:
         if media_type == "music":
             file_manager.remove_music(filename)
-            return jsonify({"success": True, "filename": filename})
         elif media_type == "sound":
             file_manager.remove_sound(filename)
-            return jsonify({"success": True, "filename": filename})
         elif media_type == "image":
             file_manager.remove_photo(filename)
-            return jsonify({"success": True, "filename": filename})
         else:
-            return jsonify({"error": "Invalid media type"}), 400
-
+            raise HTTPException(status_code=400, detail="Invalid media type")
+        return JSONResponse(content={"success": True, "filename": filename})
     except DefaultFileRemoveAttempt as e:
         logger.warning(f"Duplicate notification attempted: {e}")
-        return jsonify({"error": str(e)}), 400
+        raise HTTPException(status_code=400, detail=str(e))
     except FileNotFoundError:
-        return jsonify({"error": "File not found"}), 404
+        raise HTTPException(status_code=404, detail="File not found")
 
 
-@file_management_bp.route("/api/download/<media_type>/<filename>", methods=["GET"])
-async def download_file(media_type: str, filename: str):
-    file_manager: "FilesController" = current_app.config["file_manager"]
-
+@router.get("/api/download/{media_type}/{filename}/")
+async def download_file(
+    media_type: str,
+    filename: str,
+    file_manager: "FilesController" = Depends(get_file_manager),
+):
     try:
         if media_type == "music":
             directory = file_manager.get_music_directory(filename)
-            return await send_from_directory(directory, filename, as_attachment=True)
         elif media_type == "sound":
             directory = file_manager.get_sound_directory(filename)
-            return await send_from_directory(directory, filename, as_attachment=True)
         elif media_type == "image":
             directory = file_manager.get_photo_directory(filename)
-            return await send_from_directory(directory, filename, as_attachment=True)
         else:
-            return jsonify({"error": "Invalid media type"}), 400
-
+            raise HTTPException(status_code=400, detail="Invalid media type")
+        return FileResponse(
+            path=f"{directory}/{filename}",
+            media_type="application/octet-stream",
+            filename=filename,
+        )
     except FileNotFoundError:
-        return jsonify({"error": "File not found"}), 404
+        raise HTTPException(status_code=404, detail="File not found")

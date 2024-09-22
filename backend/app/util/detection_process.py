@@ -1,14 +1,13 @@
 import multiprocessing as mp
 import queue
-from typing import Optional
+from multiprocessing.synchronize import Event
 
 from app.config.detectors import detectors
 from app.util.logger import Logger
-from app.util.overlay_detecton import overlay_detection
 
 
 def detection_process_func(
-    stop_event: mp.Event,
+    stop_event: Event,
     frame_queue: mp.Queue,
     detection_queue: mp.Queue,
     control_queue: mp.Queue,

@@ -2,22 +2,25 @@ from time import localtime, strftime
 from typing import TYPE_CHECKING
 
 import numpy as np
+from app.deps import get_camera_manager, get_file_manager
 from app.util.logger import Logger
 from app.util.photo import capture_photo
-from quart import Blueprint, current_app, jsonify
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 if TYPE_CHECKING:
     from app.controllers.camera_controller import CameraController
     from app.controllers.files_controller import FilesController
 
-camera_feed_bp = Blueprint("camera_feed", __name__)
+router = APIRouter()
 logger = Logger(__name__)
 
 
-@camera_feed_bp.route("/api/take-photo", methods=["GET"])
-async def take_photo():
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
-    file_manager: "FilesController" = current_app.config["file_manager"]
+@router.get("/api/take-photo")
+async def take_photo(
+    camera_manager: "CameraController" = Depends(get_camera_manager),
+    file_manager: "FilesController" = Depends(get_file_manager),
+):
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"
 
@@ -31,14 +34,15 @@ async def take_photo():
         else False
     )
     if status:
-        return jsonify({"file": name})
-    return jsonify({"error": "Couldn't take photo"})
+        return JSONResponse(content={"file": name})
+    raise HTTPException(status_code=400, detail="Couldn't take photo")
 
 
-@camera_feed_bp.route("/api/frame-dimensions", methods=["GET"])
-async def frame_dimensions():
-    camera_manager: "CameraController" = current_app.config["camera_manager"]
+@router.get("/api/frame-dimensions")
+async def frame_dimensions(
+    camera_manager: "CameraController" = Depends(get_camera_manager),
+):
     await camera_manager.start_camera_and_wait_for_stream_img()
     frame_array = np.array(camera_manager.stream_img, dtype=np.uint8)
     height, width = frame_array.shape[:2]
-    return jsonify({"width": width, "height": height})
+    return JSONResponse(content={"width": width, "height": height})

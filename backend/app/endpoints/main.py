@@ -1,20 +1,32 @@
-from app.util.logger import Logger
-from quart import Blueprint, current_app, send_from_directory
+import os
 
-main_bp = Blueprint("main", __name__)
+from fastapi import APIRouter, Request
+from fastapi.responses import FileResponse
 
-logger = Logger(__name__)
-
-
-async def index():
-    template_folder = current_app.template_folder
-    if isinstance(template_folder, str):
-        return await send_from_directory(template_folder, "index.html")
-    raise ValueError("Template folder is not a valid path.")
+main_router = APIRouter()
 
 
-@main_bp.route("/", defaults={"path": ""})
-@main_bp.route("/<path:path>")
-async def catch_all(path):
-    logger.info(f"catched path {path}")
-    return await index()
+@main_router.get("/", response_class=FileResponse)
+async def root(request: Request):
+    template_folder = request.app.state.template_folder
+
+    if not isinstance(template_folder, str) or not os.path.isdir(template_folder):
+        raise ValueError("Template folder is not a valid path.")
+
+    file_path = os.path.join(template_folder, "index.html")
+
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError("index.html not found in the template folder.")
+
+    return file_path
+
+
+@main_router.get("/{path:path}")
+async def catch_all(request: Request, path: str):
+    template_folder = request.app.state.template_folder
+    file_path = os.path.join(template_folder, path)
+
+    if not os.path.isfile(file_path):
+        file_path = os.path.join(template_folder, "index.html")
+
+    return FileResponse(file_path)

@@ -1,10 +1,11 @@
+from fastapi import APIRouter
 from app.util.platform_adapters import get_battery_voltage as read_battery_voltage
-from quart import Blueprint, jsonify
+from fastapi.responses import JSONResponse
 
-battery_bp = Blueprint("battery_voltage", __name__)
+router = APIRouter()
 
 
-@battery_bp.route("/api/battery-status", methods=["GET"])
+@router.get("/api/battery-status")
 async def get_battery_voltage():
     value: float = read_battery_voltage()
-    return jsonify({"voltage": value})
+    return JSONResponse(content={"voltage": value})

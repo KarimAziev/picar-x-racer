@@ -15,7 +15,7 @@ from app.util.logger import Logger
 
 from .i2c import I2C
 
-timer = [{"arr": 1}] * 4
+timer: list[dict[str, int]] = [{"arr": 1}] * 4
 
 
 class PWM(I2C):

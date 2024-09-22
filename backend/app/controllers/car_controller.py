@@ -1,15 +1,15 @@
 import asyncio
 import inspect
-import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.controllers.calibration_controller import CalibrationController
 from app.util.logger import Logger
 from app.util.platform_adapters import Picarx
-from quart.wrappers import Websocket
+from app.util.singleton_meta import SingletonMeta
+from fastapi import WebSocket
 
 
-class CarController:
+class CarController(metaclass=SingletonMeta):
     DEBOUNCE_INTERVAL = timedelta(seconds=1)
 
     def __init__(self):
@@ -20,14 +20,14 @@ class CarController:
         self.avoid_obstacles_mode = False
         self.avoid_obstacles_task = None
 
-    async def process_action(self, action: str, payload, websocket):
+    async def process_action(self, action: str, payload, websocket: WebSocket):
         """
         Processes specific actions received from WebSocket messages and performs the corresponding operations.
 
         Args:
             action (str): The action to be performed.
             payload: The payload data associated with the action.
-            websocket (Websocket): WebSocket connection instance.
+            websocket (WebSocket): WebSocket connection instance.
         """
 
         self.logger.info(f"Action: '{action}' with payload {payload}")
@@ -64,16 +64,14 @@ class CarController:
             calibrationData = calibration_actions_map[action]()
             if calibrationData:
                 await websocket.send(
-                    json.dumps(
-                        {
-                            "type": (
-                                "saveCalibration"
-                                if action == "saveCalibration"
-                                else "updateCalibration"
-                            ),
-                            "payload": calibrationData,
-                        }
-                    )
+                    {
+                        "type": (
+                            "saveCalibration"
+                            if action == "saveCalibration"
+                            else "updateCalibration"
+                        ),
+                        "payload": calibrationData,
+                    }
                 )
         elif action in actions_map:
             result = actions_map[action]()
@@ -82,7 +80,7 @@ class CarController:
         else:
             error_msg = f"Unknown action: {action}"
             self.logger.warning(error_msg)
-            await websocket.send(json.dumps({"error": error_msg, "type": action}))
+            await websocket.send({"error": error_msg, "type": action})
 
     def handle_move(self, payload):
         """
@@ -97,15 +95,15 @@ class CarController:
 
         self.move(direction, speed)
 
-    async def toggle_avoid_obstacles_mode(self, websocket):
+    async def toggle_avoid_obstacles_mode(self, websocket: WebSocket):
         """
         Toggles the mode for avoiding obstacles.
 
         Args:
-            websocket (Websocket): WebSocket connection instance.
+            websocket (WebSocket): WebSocket connection instance.
         """
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if (
             self.last_toggle_time
             and (now - self.last_toggle_time) < self.DEBOUNCE_INTERVAL
@@ -117,37 +115,35 @@ class CarController:
         self.last_toggle_time = now
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
 
-        response = json.dumps(
-            {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
-        )
+        response = {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
         await websocket.send(response)
 
         if self.avoid_obstacles_mode:
             self.avoid_obstacles_task = asyncio.create_task(self.avoid_obstacles())
 
-    async def respond_with_distance(self, action, websocket):
+    async def respond_with_distance(self, action, websocket: WebSocket):
         """
         Responds with the distance measured by the car's ultrasonic sensor.
 
         Args:
             action (str): Action type for the distance request.
-            websocket (Websocket): WebSocket connection instance.
+            websocket (WebSocket): WebSocket connection instance.
         """
 
         try:
             distance = await self.get_distance()
-            response = json.dumps({"payload": distance, "type": action})
+            response = {"payload": distance, "type": action}
             await websocket.send(response)
         except Exception as e:
-            error_response = json.dumps({"type": action, "error": str(e)})
+            error_response = {"type": action, "error": str(e)}
             await websocket.send(error_response)
 
-    async def handle_px_reset(self, websocket: Websocket):
+    async def handle_px_reset(self, websocket: WebSocket):
         """
         Resets the car's servo and camera to default angles.
 
         Args:
-            websocket (Websocket): WebSocket connection instance.
+            websocket (WebSocket): WebSocket connection instance.
         """
 
         self.px.stop()
@@ -155,19 +151,17 @@ class CarController:
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)
         await websocket.send(
-            json.dumps(
-                {
-                    "payload": {
-                        "direction": 0,
-                        "servoAngle": 0,
-                        "camPan": 0,
-                        "camTilt": 0,
-                        "speed": 0,
-                        "maxSpeed": 30,
-                    },
-                    "type": "update",
-                }
-            )
+            {
+                "payload": {
+                    "direction": 0,
+                    "servoAngle": 0,
+                    "camPan": 0,
+                    "camTilt": 0,
+                    "speed": 0,
+                    "maxSpeed": 30,
+                },
+                "type": "update",
+            }
         )
 
     async def cancel_avoid_obstacles_task(self):

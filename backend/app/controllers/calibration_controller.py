@@ -2,16 +2,18 @@ from time import sleep
 
 from app.modules.picarx import Picarx
 from app.util.logger import Logger
+from app.util.singleton_meta import SingletonMeta
 
 
-class CalibrationController(Logger):
+class CalibrationController(metaclass=SingletonMeta):
     def __init__(
         self,
         picarx: Picarx,
         **kwargs,
     ):
-        super().__init__(name=__name__, **kwargs)
+        super().__init__(**kwargs)
         self.px = picarx
+        self.logger = Logger(__name__)
 
         self.motor_num = 0
         self.servos_cali = [
@@ -47,28 +49,28 @@ class CalibrationController(Logger):
         sleep(0.5)
 
     def servos_move(self, servo_num, value):
-        self.info(f"SERVOS_MOVE servo_num {servo_num} value {value}")
+        self.logger.info(f"SERVOS_MOVE servo_num {servo_num} value {value}")
         if servo_num == 0:
-            self.debug(f"SERVOS_MOVE set_dir_servo_angle {value}")
+            self.logger.debug(f"SERVOS_MOVE set_dir_servo_angle {value}")
             self.px.set_dir_servo_angle(value)
         elif servo_num == 1:
-            self.debug(f"SERVOS_MOVE set_cam_pan_angle {value}")
+            self.logger.debug(f"SERVOS_MOVE set_cam_pan_angle {value}")
             self.px.set_cam_pan_angle(value)
         elif servo_num == 2:
-            self.debug(f"SERVOS_MOVE set_cam_tilt_angle {value}")
+            self.logger.debug(f"SERVOS_MOVE set_cam_tilt_angle {value}")
             self.px.set_cam_tilt_angle(value)
 
     def set_servos_offset(self, servo_num, value):
-        self.debug(f"Setting servos offset {servo_num} to {value}")
+        self.logger.debug(f"Setting servos offset {servo_num} to {value}")
         if servo_num == 0:
             self.px.dir_cali_val = value
-            self.debug(f"px.dir_cali_val {self.px.dir_cali_val}")
+            self.logger.debug(f"px.dir_cali_val {self.px.dir_cali_val}")
         elif servo_num == 1:
             self.px.cam_pan_cali_val = value
-            self.debug(f"px.cam_pan_cali_val {self.px.cam_pan_cali_val}")
+            self.logger.debug(f"px.cam_pan_cali_val {self.px.cam_pan_cali_val}")
         elif servo_num == 2:
             self.px.cam_tilt_cali_val = value
-            self.debug(f"px.cam_tilt_cali_val {self.px.cam_tilt_cali_val}")
+            self.logger.debug(f"px.cam_tilt_cali_val {self.px.cam_tilt_cali_val}")
 
     def servos_reset(self):
         for i in range(3):

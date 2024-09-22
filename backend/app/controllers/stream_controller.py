@@ -2,10 +2,12 @@ import asyncio
 
 from app.controllers.camera_controller import CameraController
 from app.util.logger import Logger
-from quart.wrappers import Websocket
+from app.util.singleton_meta import SingletonMeta
+from fastapi import WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 
 
-class StreamController:
+class StreamController(metaclass=SingletonMeta):
     """
     The `StreamController` class manages the WebSocket server responsible for streaming video frames
     to connected clients. It handles starting and stopping the server and provides the handler for
@@ -29,9 +31,8 @@ class StreamController:
         self.camera_controller = camera_controller
         self.server = None
         self.active_clients = 0
-        self.lock = asyncio.Lock()
 
-    async def generate_video_stream_for_websocket(self, websocket: Websocket):
+    async def generate_video_stream_for_websocket(self, websocket: WebSocket):
         """
         Generates a video frame for streaming.
 
@@ -50,10 +51,19 @@ class StreamController:
                 encoded_frame = await self.camera_controller.generate_frame()
                 if encoded_frame:
                     try:
-                        await websocket.send(encoded_frame)
-                    except (ConnectionResetError, asyncio.CancelledError):
+                        if websocket.application_state == WebSocketState.CONNECTED:
+                            await websocket.send_bytes(encoded_frame)
+                        else:
+                            self.logger.info(
+                                f"WebSocket connection state is no longer connected: {websocket.client}"
+                            )
+                            break
+                    except (
+                        WebSocketDisconnect,
+                        ConnectionResetError,
+                    ):
                         self.logger.info(
-                            f"WebSocket connection lost: {websocket.remote_addr}"
+                            f"WebSocket connection lost: {websocket.client}"
                         )
                         break
                 else:
@@ -62,9 +72,9 @@ class StreamController:
                         skip_count += 1
                 await asyncio.sleep(0)
         except Exception as e:
-            self.logger.error(f"Error in srteam {e}")
+            self.logger.error(f"Error in stream: {e}")
 
-    async def video_stream(self, websocket: Websocket):
+    async def video_stream(self, websocket: WebSocket):
         """
         Handles an incoming WebSocket connection for video streaming.
 
@@ -79,7 +89,7 @@ class StreamController:
         Exceptions are logged appropriately, and if there are no more active clients after the
         connection is closed, the camera is stopped to conserve resources.
         """
-        self.logger.info(f"WebSocket connection established: {websocket.remote_addr}")
+        self.logger.info(f"WebSocket connection established: {websocket.client}")
         self.active_clients += 1
 
         try:
@@ -89,7 +99,7 @@ class StreamController:
         finally:
             self.active_clients -= 1
             self.logger.info(
-                f"WebSocket connection closed: {websocket.remote_addr}, Active clients: {self.active_clients}"
+                f"WebSocket connection closed: {websocket.client}, Active clients: {self.active_clients}"
             )
             if self.active_clients == 0:
-                await self.camera_controller.stop_camera()
+                self.camera_controller.stop_camera()

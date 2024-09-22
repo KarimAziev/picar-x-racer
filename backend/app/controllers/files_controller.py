@@ -50,7 +50,7 @@ from app.exceptions.file_controller import DefaultFileRemoveAttempt
 from app.robot_hat.filedb import fileDB
 from app.util.file_util import ensure_parent_dir_exists, load_json_file
 from app.util.logger import Logger
-from werkzeug.datastructures import FileStorage
+from fastapi import UploadFile
 
 
 class FilesController(Logger):
@@ -300,25 +300,25 @@ class FilesController(Logger):
         os.remove(full_name)
         return True
 
-    def save_sound(self, file: FileStorage) -> str:
+    def save_sound(self, file: UploadFile) -> str:
         """
         Saves an uploaded sound file to the user's sound directory.
 
         Args:
-            file (FileStorage): Uploaded sound file.
+            file (UploadFile): Uploaded sound file.
 
         Returns:
             str: File path of the saved sound file.
         """
         return self.save_uploaded_file(file, self.user_sounds_dir)
 
-    def save_music(self, file: FileStorage) -> str:
+    def save_music(self, file: UploadFile) -> str:
         """
         Saves the uploaded file to the user's music directory.
         """
         return self.save_uploaded_file(file, self.user_music_dir)
 
-    def save_photo(self, file: FileStorage) -> str:
+    def save_photo(self, file: UploadFile) -> str:
         """
         Saves the uploaded file to the user's photos directory.
         """
@@ -450,12 +450,12 @@ class FilesController(Logger):
         else:
             raise FileNotFoundError
 
-    def save_uploaded_file(self, file: FileStorage, directory: str) -> str:
+    def save_uploaded_file(self, file: UploadFile, directory: str) -> str:
         """
         Saves an uploaded file to the specified directory.
 
         Args:
-            file (FileStorage): The uploaded file.
+            file (UploadFile): The uploaded file.
             directory (str): The directory where the file should be saved.
 
         Raises:
@@ -470,7 +470,8 @@ class FilesController(Logger):
         if not isinstance(filename, str):
             raise ValueError("Invalid filename.")
         file_path = os.path.join(directory, filename)
-        file.save(file_path)
+        with open(file_path, "wb") as buffer:
+            buffer.write(file.file.read())
         return file_path
 
     def get_calibration_config(self):
