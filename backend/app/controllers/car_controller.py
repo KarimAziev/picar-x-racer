@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import json
 from datetime import datetime, timedelta, timezone
 
 from app.controllers.calibration_controller import CalibrationController
@@ -63,15 +64,17 @@ class CarController(metaclass=SingletonMeta):
         if action in calibration_actions_map:
             calibrationData = calibration_actions_map[action]()
             if calibrationData:
-                await websocket.send(
-                    {
-                        "type": (
-                            "saveCalibration"
-                            if action == "saveCalibration"
-                            else "updateCalibration"
-                        ),
-                        "payload": calibrationData,
-                    }
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": (
+                                "saveCalibration"
+                                if action == "saveCalibration"
+                                else "updateCalibration"
+                            ),
+                            "payload": calibrationData,
+                        }
+                    )
                 )
         elif action in actions_map:
             result = actions_map[action]()
@@ -80,7 +83,7 @@ class CarController(metaclass=SingletonMeta):
         else:
             error_msg = f"Unknown action: {action}"
             self.logger.warning(error_msg)
-            await websocket.send({"error": error_msg, "type": action})
+            await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
     def handle_move(self, payload):
         """
@@ -116,7 +119,7 @@ class CarController(metaclass=SingletonMeta):
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
 
         response = {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
-        await websocket.send(response)
+        await websocket.send_text(json.dumps(response))
 
         if self.avoid_obstacles_mode:
             self.avoid_obstacles_task = asyncio.create_task(self.avoid_obstacles())
@@ -133,10 +136,10 @@ class CarController(metaclass=SingletonMeta):
         try:
             distance = await self.get_distance()
             response = {"payload": distance, "type": action}
-            await websocket.send(response)
+            await websocket.send_text(json.dumps(response))
         except Exception as e:
             error_response = {"type": action, "error": str(e)}
-            await websocket.send(error_response)
+            await websocket.send_text(json.dumps(error_response))
 
     async def handle_px_reset(self, websocket: WebSocket):
         """
@@ -150,18 +153,20 @@ class CarController(metaclass=SingletonMeta):
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)
-        await websocket.send(
-            {
-                "payload": {
-                    "direction": 0,
-                    "servoAngle": 0,
-                    "camPan": 0,
-                    "camTilt": 0,
-                    "speed": 0,
-                    "maxSpeed": 30,
-                },
-                "type": "update",
-            }
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "payload": {
+                        "direction": 0,
+                        "servoAngle": 0,
+                        "camPan": 0,
+                        "camTilt": 0,
+                        "speed": 0,
+                        "maxSpeed": 30,
+                    },
+                    "type": "update",
+                }
+            )
         )
 
     async def cancel_avoid_obstacles_task(self):
