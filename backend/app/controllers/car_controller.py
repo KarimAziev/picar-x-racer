@@ -21,6 +21,9 @@ class CarController(metaclass=SingletonMeta):
         self.avoid_obstacles_mode = False
         self.avoid_obstacles_task = None
 
+    async def stop(self):
+        await asyncio.to_thread(self.px.stop)
+
     async def process_action(self, action: str, payload, websocket: WebSocket):
         """
         Processes specific actions received from WebSocket messages and performs the corresponding operations.
@@ -49,7 +52,7 @@ class CarController(metaclass=SingletonMeta):
             "setServoDirAngle": lambda payload=payload: self.px.set_dir_servo_angle(
                 payload or 0
             ),
-            "stop": self.px.stop,
+            "stop": self.stop,
             "setCamTiltAngle": lambda payload=payload: self.px.set_cam_tilt_angle(
                 payload
             ),
@@ -85,18 +88,16 @@ class CarController(metaclass=SingletonMeta):
             self.logger.warning(error_msg)
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
-    def handle_move(self, payload):
+    async def handle_move(self, payload):
         """
         Handles move actions to control the car's direction and speed.
 
         Args:
             payload (dict): Payload containing direction and speed data.
         """
-
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
-
-        self.move(direction, speed)
+        await self.move(direction, speed)
 
     async def toggle_avoid_obstacles_mode(self, websocket: WebSocket):
         """
@@ -149,7 +150,7 @@ class CarController(metaclass=SingletonMeta):
             websocket (WebSocket): WebSocket connection instance.
         """
 
-        self.px.stop()
+        await self.stop()
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)
@@ -209,7 +210,7 @@ class CarController(metaclass=SingletonMeta):
         finally:
             self.px.forward(0)
 
-    def move(self, direction: int, speed: int):
+    async def move(self, direction: int, speed: int):
         """
         Moves the car in the specified direction at the given speed.
 
@@ -220,9 +221,9 @@ class CarController(metaclass=SingletonMeta):
 
         self.logger.info(f"Moving {direction} with speed {speed}")
         if direction == 1:
-            self.px.forward(speed)
+            await asyncio.to_thread(self.px.forward, speed)
         elif direction == -1:
-            self.px.backward(speed)
+            await asyncio.to_thread(self.px.backward, speed)
 
     async def get_distance(self):
         """
