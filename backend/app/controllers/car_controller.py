@@ -80,9 +80,12 @@ class CarController(metaclass=SingletonMeta):
                     )
                 )
         elif action in actions_map:
-            result = actions_map[action]()
-            if inspect.isawaitable(result):
-                await result
+            func = actions_map[action]
+            if inspect.iscoroutinefunction(func):
+                await func()
+            else:
+                await asyncio.to_thread(func)
+
         else:
             error_msg = f"Unknown action: {action}"
             self.logger.warning(error_msg)
