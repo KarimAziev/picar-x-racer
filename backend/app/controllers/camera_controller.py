@@ -340,4 +340,5 @@ class CameraController(metaclass=SingletonMeta):
 
         if self.detection_process and self.detection_process.is_alive():
             self.stop_event.set()
+            self.detection_process.join()
             self.stop_event.clear()
