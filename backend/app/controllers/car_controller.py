@@ -108,7 +108,7 @@ class CarController(metaclass=SingletonMeta):
             self.logger.warning(error_msg)
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
-    async def handle_move(self, payload):
+    async def handle_move(self, payload, websocket):
         """
         Handles move actions to control the car's direction and speed.
 
