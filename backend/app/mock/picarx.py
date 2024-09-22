@@ -46,7 +46,7 @@ class Ultrasonic:
         return -1
 
 
-class Picarx(SingletonMeta):
+class Picarx(metaclass=SingletonMeta):
 
     CONFIG = PICARX_CONFIG_FILE
 
