@@ -12,8 +12,6 @@ car_manager = CarController()
 
 
 def get_camera_manager() -> "CameraController":
-    from app.controllers.camera_controller import CameraController
-
     return CameraController()
 
 
