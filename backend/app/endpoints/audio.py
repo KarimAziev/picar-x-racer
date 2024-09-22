@@ -108,16 +108,18 @@ async def text_to_speech(
 
 @router.post("/api/volume")
 async def set_volume(
-    payload: Dict[str, int],
+    payload: Dict[str, int | float],
     audio_manager: "AudioController" = Depends(get_audio_manager),
 ):
     if not isinstance(payload, Dict) or "volume" not in payload:
         raise HTTPException(status_code=400, detail="Invalid format")
 
     volume = payload["volume"]
+    int_volume = int(volume)
 
     try:
-        audio_manager.set_volume(volume)
+
+        audio_manager.set_volume(int_volume)
         return JSONResponse(content={"volume": audio_manager.get_volume()})
     except Exception as err:
         raise HTTPException(status_code=404, detail=str(err))
