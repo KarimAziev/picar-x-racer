@@ -11,9 +11,10 @@ from app.robot_hat.ultrasonic import Ultrasonic
 from app.robot_hat.utils import reset_mcu
 from app.util.constrain import constrain
 from app.util.logger import Logger
+from app.util.singleton_meta import SingletonMeta
 
 
-class Picarx:
+class Picarx(SingletonMeta):
     CONFIG = PICARX_CONFIG_FILE
 
     DEFAULT_LINE_REF = [1000, 1000, 1000]

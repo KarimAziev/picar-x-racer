@@ -11,6 +11,7 @@ from app.robot_hat.mock.pin_mock import Pin
 from app.robot_hat.mock.pwm_mock import PWM
 from app.robot_hat.mock.servo_mock import Servo
 from app.util.logger import Logger
+from app.util.singleton_meta import SingletonMeta
 
 logger = Logger(__name__)
 
@@ -45,7 +46,7 @@ class Ultrasonic:
         return -1
 
 
-class Picarx(object):
+class Picarx(SingletonMeta):
 
     CONFIG = PICARX_CONFIG_FILE
 
