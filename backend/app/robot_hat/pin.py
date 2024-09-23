@@ -420,9 +420,9 @@ class Pin(object):
             pressed_handler = handler
             released_handler = handler
 
-        if pressed_handler is not None:
+        if pressed_handler is not None and self.gpio is not None:
             self.gpio.when_pressed = pressed_handler
-        if released_handler is not None:
+        if released_handler is not None and self.gpio is not None:
             self.gpio.when_released = released_handler
 
     def name(self):

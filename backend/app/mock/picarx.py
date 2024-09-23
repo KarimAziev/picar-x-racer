@@ -1,9 +1,7 @@
 import asyncio
 import random
-import time
 
 from app.config.paths import PICARX_CONFIG_FILE
-from app.mock.robot_hat_fake_utils import reset_mcu
 from app.robot_hat.filedb import fileDB
 from app.robot_hat.mock.adc_mock import ADC
 from app.robot_hat.mock.grayscale_mock import Grayscale_Module
@@ -73,8 +71,6 @@ class Picarx(metaclass=SingletonMeta):
         config: str = CONFIG,
     ):
         # reset robot_hat
-        reset_mcu()
-        time.sleep(0.2)
         self.logger = Logger(name=__name__)
 
         # Set up the config file

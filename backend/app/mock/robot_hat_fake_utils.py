@@ -1,5 +1,3 @@
-from app.robot_hat.mock.pin_mock import Pin
-
 """
 This module provides mock implementations of the "robot_hat.utils" functions to
 facilitate development on non-Raspberry Pi operating systems.
@@ -103,6 +101,8 @@ async def reset_mcu():
     transfer loop, and Raspberry Pi getting IOError while
     Reading ADC, manipulating PWM, etc.
     """
+    from app.robot_hat.mock.pin_mock import Pin
+
     mcu_reset = Pin("MCURST")
     mcu_reset.off()
     await asyncio.sleep(0.01)

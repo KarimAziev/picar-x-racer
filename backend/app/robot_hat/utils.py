@@ -1,9 +1,6 @@
 import asyncio
 import os
 import re
-import time
-
-from .pin import Pin
 
 
 def run_command(cmd):
@@ -94,6 +91,8 @@ async def reset_mcu():
     transfer loop, and Raspberry Pi getting IOError while
     Reading ADC, manipulating PWM, etc.
     """
+    from app.robot_hat.pin import Pin
+
     mcu_reset = Pin("MCURST")
     mcu_reset.off()
     await asyncio.sleep(0.01)
