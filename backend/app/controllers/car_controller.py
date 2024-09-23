@@ -1,8 +1,8 @@
 import asyncio
-import inspect
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
+from app.controllers.avoid_obstacles_controller import AvoidObstaclesController
 from app.controllers.calibration_controller import CalibrationController
 from app.util.logger import Logger
 from app.util.platform_adapters import Picarx
@@ -13,42 +13,11 @@ from fastapi import WebSocket
 class CarController(metaclass=SingletonMeta):
     DEBOUNCE_INTERVAL = timedelta(seconds=1)
 
-    def __init__(self):
-        self.px = Picarx()
+    def __init__(self, picarx: Picarx):
         self.logger = Logger(name=__name__)
+        self.px = picarx
+        self.avoid_obstacles_controller = AvoidObstaclesController(self.px)
         self.calibration = CalibrationController(self.px)
-        self.last_toggle_time = None
-        self.avoid_obstacles_mode = False
-        self.avoid_obstacles_task = None
-
-    async def stop(self):
-        await asyncio.to_thread(self.px.stop)
-
-    async def handle_move(self, payload, websocket):
-        direction = payload.get("direction", 0)
-        speed = payload.get("speed", 0)
-        await self.move(direction, speed)
-
-    async def handle_set_servo_dir_angle(self, payload, websocket):
-        angle = payload or 0
-        await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
-
-    async def handle_stop(self, payload, websocket):
-        await self.stop()
-
-    async def handle_set_cam_tilt_angle(self, payload, websocket):
-        angle = payload
-        await asyncio.to_thread(self.px.set_cam_tilt_angle, angle)
-
-    async def handle_set_cam_pan_angle(self, payload, websocket):
-        angle = payload
-        await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
-
-    async def handle_avoid_obstacles(self, payload, websocket):
-        await self.toggle_avoid_obstacles_mode(websocket)
-
-    async def handle_get_distance(self, payload, websocket):
-        await self.respond_with_distance("getDistance", websocket)
 
     async def process_action(self, action: str, payload, websocket: WebSocket):
         """
@@ -108,7 +77,30 @@ class CarController(metaclass=SingletonMeta):
             self.logger.warning(error_msg)
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
-    async def handle_move(self, payload, websocket):
+    async def handle_stop(self, payload, _: WebSocket):
+        await self.px.stop()
+
+    async def handle_set_servo_dir_angle(self, payload, _: WebSocket):
+        angle = payload or 0
+        await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
+
+    async def handle_set_cam_tilt_angle(self, payload, _):
+        angle = payload
+        await asyncio.to_thread(self.px.set_cam_tilt_angle, angle)
+
+    async def handle_set_cam_pan_angle(self, payload, _: WebSocket):
+        angle = payload
+        await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
+
+    async def handle_avoid_obstacles(self, _, websocket: WebSocket):
+        response = await self.avoid_obstacles_controller.toggle_avoid_obstacles_mode()
+        if response is not None:
+            await websocket.send_text(json.dumps(response))
+
+    async def handle_get_distance(self, _, websocket: WebSocket):
+        await self.respond_with_distance("getDistance", websocket)
+
+    async def handle_move(self, payload, _):
         """
         Handles move actions to control the car's direction and speed.
 
@@ -118,32 +110,6 @@ class CarController(metaclass=SingletonMeta):
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
         await self.move(direction, speed)
-
-    async def toggle_avoid_obstacles_mode(self, websocket: WebSocket):
-        """
-        Toggles the mode for avoiding obstacles.
-
-        Args:
-            websocket (WebSocket): WebSocket connection instance.
-        """
-
-        now = datetime.now(timezone.utc)
-        if (
-            self.last_toggle_time
-            and (now - self.last_toggle_time) < self.DEBOUNCE_INTERVAL
-        ):
-            self.logger.info("Debounce: Too quick toggle of avoidObstacles detected.")
-            return
-        await self.cancel_avoid_obstacles_task()
-        await self.handle_px_reset(websocket)
-        self.last_toggle_time = now
-        self.avoid_obstacles_mode = not self.avoid_obstacles_mode
-
-        response = {"payload": self.avoid_obstacles_mode, "type": "avoidObstacles"}
-        await websocket.send_text(json.dumps(response))
-
-        if self.avoid_obstacles_mode:
-            self.avoid_obstacles_task = asyncio.create_task(self.avoid_obstacles())
 
     async def respond_with_distance(self, action, websocket: WebSocket):
         """
@@ -161,74 +127,6 @@ class CarController(metaclass=SingletonMeta):
         except Exception as e:
             error_response = {"type": action, "error": str(e)}
             await websocket.send_text(json.dumps(error_response))
-
-    async def handle_px_reset(self, websocket: WebSocket):
-        """
-        Resets the car's servo and camera to default angles.
-
-        Args:
-            websocket (WebSocket): WebSocket connection instance.
-        """
-
-        await self.stop()
-        self.px.set_cam_tilt_angle(0)
-        self.px.set_cam_pan_angle(0)
-        self.px.set_dir_servo_angle(0)
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "payload": {
-                        "direction": 0,
-                        "servoAngle": 0,
-                        "camPan": 0,
-                        "camTilt": 0,
-                        "speed": 0,
-                        "maxSpeed": 30,
-                    },
-                    "type": "update",
-                }
-            )
-        )
-
-    async def cancel_avoid_obstacles_task(self):
-        """
-        Cancels the background task for avoiding obstacles, if running.
-        """
-
-        if self.avoid_obstacles_task:
-            try:
-                self.avoid_obstacles_task.cancel()
-                await self.avoid_obstacles_task
-            except asyncio.CancelledError:
-                self.logger.info("Avoid obstacles task was cancelled")
-                self.avoid_obstacles_task = None
-
-    async def avoid_obstacles(self):
-        """
-        Background task that continuously checks for obstacles and navigates around them.
-        """
-
-        POWER = 50
-        SafeDistance = 40
-        DangerDistance = 20
-        try:
-            while True:
-                value = await self.px.ultrasonic.read()
-                distance = round(value, 2)
-                self.logger.info(f"distance: {distance}")
-                if distance >= SafeDistance:
-                    self.px.set_dir_servo_angle(0)
-                    self.px.forward(POWER)
-                elif distance >= DangerDistance:
-                    self.px.set_dir_servo_angle(30)
-                    self.px.forward(POWER)
-                    await asyncio.sleep(0.1)
-                else:
-                    self.px.set_dir_servo_angle(-30)
-                    self.px.backward(POWER)
-                    await asyncio.sleep(0.5)
-        finally:
-            self.px.forward(0)
 
     async def move(self, direction: int, speed: int):
         """

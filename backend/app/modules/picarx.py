@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 from app.config.paths import PICARX_CONFIG_FILE
 from app.robot_hat.adc import ADC
@@ -8,7 +8,6 @@ from app.robot_hat.pin import Pin
 from app.robot_hat.pwm import PWM
 from app.robot_hat.servo import Servo
 from app.robot_hat.ultrasonic import Ultrasonic
-from app.robot_hat.utils import reset_mcu
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -39,10 +38,6 @@ class Picarx(metaclass=SingletonMeta):
         ultrasonic_pins: list[str] = ["D2", "D3"],
         config: str = CONFIG,
     ):
-
-        # reset robot_hat
-        reset_mcu()
-        time.sleep(0.2)
         self.logger = Logger(name=__name__)
 
         # Set up the config file
@@ -125,7 +120,8 @@ class Picarx(metaclass=SingletonMeta):
         )
 
     def set_motor_speed(self, motor: int, speed: int):
-        """Set motor speed
+        """
+        Set motor speed
 
         param motor: motor index, 1 means left motor, 2 means right motor
         type motor: int
@@ -188,12 +184,13 @@ class Picarx(metaclass=SingletonMeta):
         )
 
     def motor_direction_calibrate(self, motor: int, value: int):
-        """Set motor direction calibration value
+        """
+        Set motor direction calibration value
 
-        param motor: motor index, 1 means left motor, 2 means right motor
-        type motor: int
-        param value: speed
-        type value: int
+        :param motor: Motor index (1 for left motor, 2 for right motor)
+        :type motor: int
+        :param value: Calibration value (1 or -1)
+        :type value: int
         """
         motor -= 1  # Adjust for zero-indexing
 
@@ -298,24 +295,29 @@ class Picarx(metaclass=SingletonMeta):
             self.set_motor_speed(1, speed)
             self.set_motor_speed(2, -1 * speed)
 
-    def stop(self):
+    async def stop(self):
         """
-        Execute twice to make sure it stops
+        Stop the motors.
         """
-        for _ in range(2):
-            self.motor_speed_pins[0].pulse_width_percent(0)
-            self.motor_speed_pins[1].pulse_width_percent(0)
+        self.motor_speed_pins[0].pulse_width_percent(0)
+        self.motor_speed_pins[1].pulse_width_percent(0)
 
-    def get_distance(self):
-        return self.ultrasonic.read()
+        await asyncio.sleep(0.002)
+
+        self.motor_speed_pins[0].pulse_width_percent(0)
+        self.motor_speed_pins[1].pulse_width_percent(0)
+
+    async def get_distance(self):
+        return await self.ultrasonic.read()
 
     def set_grayscale_reference(self, value):
-        if isinstance(value, list) and len(value) == 3:
-            self.line_reference = value
-            self.grayscale.reference(self.line_reference)
-            self.config_file.set("line_reference", str(self.line_reference))
-        else:
-            raise ValueError("grayscale reference must be a 1*3 list")
+        if not isinstance(value, list) or len(value) != 3:
+            raise ValueError(
+                f"Expected a list of 3 elements for line reference, got {value}"
+            )
+        self.line_reference = value
+        self.grayscale.reference(self.line_reference)
+        self.config_file.set("line_reference", str(self.line_reference))
 
     def get_grayscale_data(self):
         return list.copy(self.grayscale.read())

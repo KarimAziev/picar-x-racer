@@ -5,6 +5,8 @@ from multiprocessing.synchronize import Event
 from app.config.detectors import detectors
 from app.util.logger import Logger
 
+logger = Logger(name=__name__)
+
 
 def detection_process_func(
     stop_event: Event,
@@ -21,13 +23,11 @@ def detection_process_func(
         detection_queue (mp.Queue): Queue to put detection results into.
         control_queue (mp.Queue): Queue for control messages.
     """
-    logger = Logger(name=__name__)
     current_detect_mode = None
     detection_function = None
 
     while not stop_event.is_set():
         try:
-            # Check for control messages
             try:
                 while not control_queue.empty():
                     control_message = control_queue.get_nowait()
@@ -62,4 +62,4 @@ def detection_process_func(
         except Exception as e:
             logger.error(f"Error in detection_process_func: {e}")
 
-    logger.info("Detection process exiting")
+    logger.info(f"Detection process exiting {stop_event.is_set()}")

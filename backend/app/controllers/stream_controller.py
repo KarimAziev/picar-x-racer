@@ -70,6 +70,7 @@ class StreamController(metaclass=SingletonMeta):
                     if skip_count < 1:
                         self.logger.debug("Stream image is None, skipping frame.")
                         skip_count += 1
+
                 await asyncio.sleep(0)
         except Exception as e:
             self.logger.error(f"Error in stream: {e}")
@@ -94,6 +95,8 @@ class StreamController(metaclass=SingletonMeta):
 
         try:
             await self.generate_video_stream_for_websocket(websocket)
+        except WebSocketDisconnect:
+            self.logger.info(f"WebSocket Disconnected {websocket.client}")
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
         finally:

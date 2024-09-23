@@ -12,8 +12,8 @@ class CalibrationController(metaclass=SingletonMeta):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.px = picarx
         self.logger = Logger(__name__)
+        self.px = picarx
 
         self.motor_num = 0
         self.servos_cali = [
@@ -24,7 +24,7 @@ class CalibrationController(metaclass=SingletonMeta):
         self.motors_cali = self.px.cali_dir_value
         self.servos_offset = list.copy(self.servos_cali)
         self.motors_offset = list.copy(self.motors_cali)
-        self.step = 0.2
+        self.step = 0.1
 
         self.motor_run = False
 

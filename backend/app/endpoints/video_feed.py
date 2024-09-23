@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Union
 
-from app.deps import get_camera_manager, get_stream_manager
+from app.deps import get_camera_manager, get_detection_manager, get_stream_manager
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, FastAPI, WebSocket
 from fastapi.responses import JSONResponse
@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from app.controllers.camera_controller import CameraController
+    from app.controllers.detection_controller import DetectionController
     from app.controllers.stream_controller import StreamController
 
 logger = Logger(__name__)
@@ -30,10 +31,11 @@ class VideoFeedSettings(BaseModel):
 async def update_video_feed_settings(
     payload: VideoFeedSettings,
     camera_manager: "CameraController" = Depends(get_camera_manager),
+    detection_manager: "DetectionController" = Depends(get_detection_manager),
 ):
     logger.info(f"Updating video feed settings: {payload}")
     if payload:
-        camera_manager.video_feed_detect_mode = payload.video_feed_detect_mode
+        detection_manager.video_feed_detect_mode = payload.video_feed_detect_mode
         camera_manager.video_feed_enhance_mode = payload.video_feed_enhance_mode
 
         if payload.video_feed_format is not None:
@@ -52,7 +54,7 @@ async def update_video_feed_settings(
             "width": camera_manager.frame_width,
             "height": camera_manager.frame_height,
             "video_feed_fps": camera_manager.target_fps,
-            "video_feed_detect_mode": camera_manager.video_feed_detect_mode,
+            "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
             "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
             "video_feed_quality": camera_manager.video_feed_quality,
             "video_feed_format": camera_manager.video_feed_format,
@@ -63,13 +65,14 @@ async def update_video_feed_settings(
 @video_feed_router.get("/api/video-feed-settings")
 async def get_camera_settings(
     camera_manager: "CameraController" = Depends(get_camera_manager),
+    detection_manager: "DetectionController" = Depends(get_detection_manager),
 ):
     return JSONResponse(
         content={
             "width": camera_manager.frame_width,
             "height": camera_manager.frame_height,
             "video_feed_fps": camera_manager.target_fps,
-            "video_feed_detect_mode": camera_manager.video_feed_detect_mode,
+            "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
             "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
             "video_feed_quality": camera_manager.video_feed_quality,
             "video_feed_format": camera_manager.video_feed_format,

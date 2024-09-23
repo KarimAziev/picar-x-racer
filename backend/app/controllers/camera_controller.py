@@ -1,5 +1,4 @@
 import asyncio
-import multiprocessing as mp
 import queue
 import threading
 from typing import Optional, Union
@@ -7,8 +6,8 @@ from typing import Optional, Union
 import cv2
 import numpy as np
 from app.config.video_enhancers import frame_enhancers
+from app.controllers.detection_controller import DetectionController
 from app.controllers.video_device_controller import VideoDeviceController
-from app.util.detection_process import detection_process_func
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_detection
 from app.util.photo import height_to_width
@@ -39,7 +38,6 @@ class CameraController(metaclass=SingletonMeta):
         video_feed_enhance_mode (Optional[str]): Current video enhancement mode.
         video_feed_quality (int): Quality parameter for video encoding (1-100).
         video_feed_format (str): Format for video encoding (e.g., '.jpg', '.png').
-        _video_feed_detect_mode (Optional[str]): Current detection mode for object detection.
         inhibit_detection (bool): Flag to inhibit detection processing.
         frame_queue (multiprocessing.Queue): Queue for frames to be processed by the detection process.
         detection_queue (multiprocessing.Queue): Queue for detection results from the detection process.
@@ -47,7 +45,7 @@ class CameraController(metaclass=SingletonMeta):
         last_detection_result (Optional[Dict]): Latest detection result received.
     """
 
-    def __init__(self, target_fps=30):
+    def __init__(self, detection_controller: DetectionController, target_fps=30):
         """
         Initializes the `CameraController` singleton instance.
 
@@ -57,6 +55,7 @@ class CameraController(metaclass=SingletonMeta):
         """
         self.logger = Logger(name=__name__)
         self.video_device_manager = VideoDeviceController()
+        self.detection_controller = detection_controller
         self.target_fps = target_fps
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
@@ -68,42 +67,8 @@ class CameraController(metaclass=SingletonMeta):
         self.video_feed_enhance_mode: Optional[str] = None
         self.video_feed_quality = 100
         self.video_feed_format = ".jpg"
-        self._video_feed_detect_mode: Optional[str] = None
-        self.inhibit_detection: bool = False
-        self.frame_queue = mp.Queue(maxsize=5)
-        self.detection_queue = mp.Queue(maxsize=5)
-        self.control_queue = mp.Queue()
         self.last_detection_result = None
         self.cap_task = None
-        self.detection_process = None
-        self.stop_event = mp.Event()
-
-    @property
-    def video_feed_detect_mode(self):
-        """
-        Gets the current video feed detection mode.
-
-        Returns:
-            Optional[str]: The current detection mode (e.g., 'cat', 'person', 'all'),
-            or None if detection is disabled.
-        """
-
-        return self._video_feed_detect_mode
-
-    @video_feed_detect_mode.setter
-    def video_feed_detect_mode(self, new_mode):
-        """
-        Sets the video feed detection mode and communicates the change to the detection process.
-
-        Args:
-            new_mode (Optional[str]): The new detection mode to set. If None, detection is disabled.
-        """
-
-        self.logger.info(f"Setting video_feed_detect_mode to {new_mode}")
-        self._video_feed_detect_mode = new_mode
-        if self.camera_run and hasattr(self, "control_queue"):
-            command = {"command": "set_detect_mode", "mode": new_mode}
-            self.control_queue.put(command)
 
     async def generate_frame(self):
         """
@@ -118,7 +83,9 @@ class CameraController(metaclass=SingletonMeta):
         """
         while True:
             try:
-                self.last_detection_result = self.detection_queue.get_nowait()
+                self.last_detection_result = (
+                    self.detection_controller.detection_queue.get_nowait()
+                )
             except queue.Empty:
                 break
 
@@ -129,7 +96,7 @@ class CameraController(metaclass=SingletonMeta):
             frame = self.stream_img.copy()
             if (
                 self.last_detection_result is not None
-                and self.video_feed_detect_mode is not None
+                and self.detection_controller.video_feed_detect_mode is not None
             ):
                 frame = overlay_detection(frame, self.last_detection_result)
             frame_enhancer = (
@@ -209,6 +176,8 @@ class CameraController(metaclass=SingletonMeta):
                             break
 
                         self.cap = cap
+                        self.img = frame
+                        self.stream_img = frame
 
                         failed_counter = 0
                         continue
@@ -220,14 +189,16 @@ class CameraController(metaclass=SingletonMeta):
                 self.img = frame
                 self.stream_img = frame
                 try:
-                    self.frame_queue.put_nowait(frame)
+                    self.detection_controller.frame_queue.put_nowait(frame)
                 except queue.Full:
                     pass
 
         except Exception as e:
             self.logger.error(f"Exception occurred in camera loop: {e}")
         finally:
-            self.cap.release()
+            if self.cap is not None:
+                self.cap.release()
+
             self.cap = None
             self.stream_img = None
 
@@ -257,13 +228,15 @@ class CameraController(metaclass=SingletonMeta):
         if fps:
             self.target_fps = fps
 
-        if self.camera_run:
-            try:
-                self.stop_camera()
-            except Exception as e:
-                self.logger.error(f"Camera close error {e}")
+        if (
+            self.camera_run
+            and hasattr(self, "capture_thread")
+            and self.capture_thread.is_alive()
+        ):
+            self.logger.info("Restarting camera")
+            self.capture_thread.join()
 
-        self.logger.info(f"Starting camera with FPS={self.target_fps}")
+        self.logger.info(f"Starting camera")
         self.frame_height = height
         self.frame_width = width or (
             height_to_width(height, TARGET_WIDTH, TARGET_HEIGHT) if height else None
@@ -272,25 +245,7 @@ class CameraController(metaclass=SingletonMeta):
         self.camera_run = True
         self.capture_thread = threading.Thread(target=self.camera_thread_func)
         self.capture_thread.start()
-
-        if not self.detection_process or not self.detection_process.is_alive():
-            self.detection_process = mp.Process(
-                target=detection_process_func,
-                args=(
-                    self.stop_event,
-                    self.frame_queue,
-                    self.detection_queue,
-                    self.control_queue,
-                ),
-            )
-            self.detection_process.start()
-
-        if self.video_feed_detect_mode:
-            command = {
-                "command": "set_detect_mode",
-                "mode": self.video_feed_detect_mode,
-            }
-            self.control_queue.put(command)
+        self.detection_controller.start_detection_process()
 
     async def start_camera_and_wait_for_stream_img(
         self,
@@ -333,12 +288,10 @@ class CameraController(metaclass=SingletonMeta):
         Sets `camera_run` to False, waits for the capture thread and detection process
         to terminate, and performs any necessary cleanup of resources.
         """
-        self.logger.info("Closing camera")
+        self.logger.info("Stopping camera")
         self.camera_run = False
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
+            self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
-
-        if self.detection_process and self.detection_process.is_alive():
-            self.stop_event.set()
-            self.detection_process.join()
-            self.stop_event.clear()
+            self.logger.info("Stopped camera capture thread")
+        self.detection_controller.stop_detection_process()
