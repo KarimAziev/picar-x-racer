@@ -62,4 +62,5 @@ def detection_process_func(
         except Exception as e:
             logger.error(f"Error in detection_process_func: {e}")
 
+    stop_event.clear()
     logger.info(f"Detection process exiting {stop_event.is_set()}")
