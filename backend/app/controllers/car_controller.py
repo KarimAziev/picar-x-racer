@@ -13,9 +13,9 @@ from fastapi import WebSocket
 class CarController(metaclass=SingletonMeta):
     DEBOUNCE_INTERVAL = timedelta(seconds=1)
 
-    def __init__(self, picarx: Picarx):
+    def __init__(self):
         self.logger = Logger(name=__name__)
-        self.px = picarx
+        self.px = Picarx()
         self.avoid_obstacles_controller = AvoidObstaclesController(self.px)
         self.calibration = CalibrationController(self.px)
 
