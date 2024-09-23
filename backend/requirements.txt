@@ -16,3 +16,4 @@ python-multipart
 ultralytics
 gpiozero
 RPi.GPIO
+spidev
