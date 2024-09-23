@@ -5,6 +5,8 @@ import uvicorn
 
 from app.util.logger import Logger
 
+os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio"
+
 logger = Logger(__name__)
 
 
