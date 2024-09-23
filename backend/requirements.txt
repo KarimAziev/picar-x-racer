@@ -14,3 +14,5 @@ starlette
 uvicorn[standard]
 python-multipart
 ultralytics
+gpiozero
+RPi.GPIO
