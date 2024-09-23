@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -24,17 +25,17 @@ from app.util.platform_adapters import reset_mcu
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    reset_mcu()
+    app.state.template_folder = TEMPLATE_FOLDER
+    await reset_mcu()
     await asyncio.sleep(0.2)
 
     ip_address = get_ip_address()
-
-    app.state.template_folder = TEMPLATE_FOLDER
     logger.info(
         f"\nTo access the frontend, open http://{ip_address}:9000 in the browser\n"
     )
     yield
     logger.info("Stopping application")
+    await reset_mcu()
 
 
 app = FastAPI(lifespan=lifespan, title="picar-x-racer")

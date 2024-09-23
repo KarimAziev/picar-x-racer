@@ -9,9 +9,10 @@ requiring actual hardware, allowing for testing and development in environments
 where the Raspberry Pi hardware is not available.
 """
 
-import time
+import asyncio
 import os
 import re
+
 from .battery import Battery
 
 
@@ -94,7 +95,7 @@ def get_ip(ifaces=["wlan0", "eth0"]):
     return False
 
 
-def reset_mcu():
+async def reset_mcu():
     """
     Reset mcu on Robot Hat.
 
@@ -104,9 +105,9 @@ def reset_mcu():
     """
     mcu_reset = Pin("MCURST")
     mcu_reset.off()
-    time.sleep(0.01)
+    await asyncio.sleep(0.01)
     mcu_reset.on()
-    time.sleep(0.01)
+    await asyncio.sleep(0.01)
 
     mcu_reset.close()
 
