@@ -1,5 +1,4 @@
 import argparse
-import multiprocessing
 import os
 
 import uvicorn
@@ -10,7 +9,7 @@ logger = Logger(__name__)
 
 
 if __name__ == "__main__":
-    multiprocessing.set_start_method("spawn")
+
     parser = argparse.ArgumentParser(description="Run the application.")
 
     group = parser.add_mutually_exclusive_group()

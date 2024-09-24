@@ -1,3 +1,7 @@
+import multiprocessing
+
+multiprocessing.set_start_method("spawn")
+
 import os
 import time
 
