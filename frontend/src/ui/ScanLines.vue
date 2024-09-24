@@ -1,11 +1,13 @@
 <template>
-  <div class="scanlines" :class>
+  <div class="scanlines" v-bind="attrs">
     <slot></slot>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ class?: string }>();
+import { useAttrs } from "vue";
+
+const attrs = useAttrs();
 </script>
 
 <style scoped lang="scss">
@@ -15,19 +17,12 @@ defineProps<{ class?: string }>();
   position: relative;
   background-color: transparent;
 }
-.scanlines:before,
+
 .scanlines:after {
   display: block;
   pointer-events: none;
   content: "";
   position: absolute;
-}
-.scanlines:before {
-  width: 100%;
-  height: 2px;
-  background: transparent;
-  opacity: 0.55;
-  animation: scanline 6s linear infinite;
 }
 .scanlines:after {
   top: 0;
@@ -44,11 +39,6 @@ defineProps<{ class?: string }>();
   animation: scanlines 2s steps(60) infinite;
 }
 
-@keyframes scanline {
-  0% {
-    transform: translate3d(0, 200000%, 0);
-  }
-}
 @keyframes scanlines {
   0% {
     background-position: 0 50%;

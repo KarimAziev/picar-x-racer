@@ -16,6 +16,7 @@ import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
 import { constrain } from "@/util/constrain";
 import { takePhoto } from "@/features/controller/api";
+import { makeWebsocketUrl } from "@/util/url";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -111,7 +112,7 @@ const defaultState: StoreState = {
   reconnectedEnabled: true,
   messageQueue: [],
   loading: false,
-  url: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws/car-control`,
+  url: makeWebsocketUrl("ws/car-control"),
 } as const;
 
 export const useControllerStore = defineStore("controller", {
@@ -471,10 +472,6 @@ export const useControllerStore = defineStore("controller", {
         popupStore.isOpen = false;
         messager.info("Starting calibration");
       } else {
-        /**
-         * popupStore.tab = SettingsTab.CALIBRATION;
-         * popupStore.isOpen = true;
-         */
         messager.info("Calibration finished");
       }
     },
