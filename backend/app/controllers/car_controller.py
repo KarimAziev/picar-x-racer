@@ -29,7 +29,7 @@ class CarController(metaclass=SingletonMeta):
             websocket (WebSocket): WebSocket connection instance.
         """
 
-        self.logger.info(f"Action: '{action}' with payload {payload}")
+        self.logger.info(f"Action: '{action}' with payload '{payload}'")
         calibration_actions_map = {
             "increaseCamPanCali": self.calibration.increase_cam_pan_angle,
             "decreaseCamPanCali": self.calibration.decrease_cam_pan_angle,

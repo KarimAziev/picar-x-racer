@@ -324,26 +324,30 @@ class I2C(object):
             list: List of I2C addresses of devices found.
         """
 
-        cmd = f"i2cdetect -y {self._bus}"
-        # Run the i2cdetect command
-        _, output = run_command(cmd)
-        self.logger.debug(f"i2cdetect\n{output}")
-        # Parse the output
-        outputs = output.split("\n")[1:]
-        addresses = []
-        addresses_str = []
-        for tmp_addresses in outputs:
-            if tmp_addresses == "":
-                continue
-            tmp_addresses = tmp_addresses.split(":")[1]
-            # Split the addresses into a list
-            tmp_addresses = tmp_addresses.strip().split(" ")
-            for address in tmp_addresses:
-                if address != "--":
-                    addresses.append(int(address, 16))
-                    addresses_str.append(f"0x{address}")
-        self.logger.debug(f"Connected i2c device: {addresses_str}")
-        return addresses
+        try:
+            cmd = f"i2cdetect -y {self._bus}"
+            # Run the i2cdetect command
+            _, output = run_command(cmd)
+            self.logger.debug(f"i2cdetect\n{output}")
+            # Parse the output
+            outputs = output.split("\n")[1:]
+            addresses = []
+            addresses_str = []
+            for tmp_addresses in outputs:
+                if tmp_addresses == "":
+                    continue
+                tmp_addresses = tmp_addresses.split(":")[1]
+                # Split the addresses into a list
+                tmp_addresses = tmp_addresses.strip().split(" ")
+                for address in tmp_addresses:
+                    if address != "--":
+                        addresses.append(int(address, 16))
+                        addresses_str.append(f"0x{address}")
+            self.logger.debug(f"Connected i2c device: {addresses_str}")
+            return addresses
+        except Exception as err:
+            self.logger.error(f"Scan error {err}")
+            return []
 
     def write(self, data: Union[int, List[int], bytearray]) -> None:
         """

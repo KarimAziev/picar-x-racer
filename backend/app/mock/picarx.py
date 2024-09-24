@@ -148,7 +148,9 @@ class Picarx(metaclass=SingletonMeta):
 
         # --------- ultrasonic init ---------
         trig, echo = ultrasonic_pins
-        self.ultrasonic = Ultrasonic(trig, echo)
+        self.ultrasonic = Ultrasonic(
+            Pin(trig), Pin(echo, mode=Pin.IN, pull=Pin.PULL_DOWN)
+        )
 
     def set_motor_speed(self, motor: int, speed: int):
         """

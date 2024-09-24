@@ -1,20 +1,9 @@
 import argparse
 import os
-import time
 
 import uvicorn
 
 from app.util.logger import Logger
-from app.util.os_checks import is_raspberry_pi
-
-os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio"
-
-is_os_raspberry = is_raspberry_pi()
-
-if not is_os_raspberry:
-    from app.robot_hat.mock.pin_mock import Pin
-else:
-    from app.robot_hat.pin import Pin
 
 logger = Logger(__name__)
 
@@ -40,7 +29,7 @@ if __name__ == "__main__":
     uvicorn_group.add_argument(
         "--port",
         type=int,
-        default="9000",
+        default="8000",
         help="The port to run the application on",
     )
 
@@ -58,14 +47,6 @@ if __name__ == "__main__":
     log_level_constant = getattr(Logger, log_level, Logger.DEBUG)
 
     Logger.set_global_log_level(log_level_constant)
-    mcu_reset = Pin("MCURST")
-    mcu_reset.off()
-    time.sleep(0.01)
-    mcu_reset.on()
-    time.sleep(0.01)
-
-    mcu_reset.close()
-
     app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
     uvicorn_config = {
         "app": "app.main:app",

@@ -9,7 +9,7 @@ google-speech
 pygame
 platformdirs
 pydub
-fastapi
+fastapi[standard]
 starlette
 uvicorn[standard]
 python-multipart

@@ -224,17 +224,12 @@ class CameraController(metaclass=SingletonMeta):
             height (Optional[int], optional): Desired height of the video frames.
                 If None, uses default or calculates based on `width`.
         """
+        if self.camera_run:
+            self.logger.info("Camera is already running.")
+            return
 
         if fps:
             self.target_fps = fps
-
-        if (
-            self.camera_run
-            and hasattr(self, "capture_thread")
-            and self.capture_thread.is_alive()
-        ):
-            self.logger.info("Restarting camera")
-            self.capture_thread.join()
 
         self.logger.info(f"Starting camera")
         self.frame_height = height
@@ -288,6 +283,9 @@ class CameraController(metaclass=SingletonMeta):
         Sets `camera_run` to False, waits for the capture thread and detection process
         to terminate, and performs any necessary cleanup of resources.
         """
+        if not self.camera_run:
+            self.logger.info("Camera is not running.")
+            return
         self.logger.info("Stopping camera")
         self.camera_run = False
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
@@ -295,3 +293,4 @@ class CameraController(metaclass=SingletonMeta):
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
         self.detection_controller.stop_detection_process()
+        self.detection_controller.clear_stop_event()

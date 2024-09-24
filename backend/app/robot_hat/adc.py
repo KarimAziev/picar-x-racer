@@ -6,7 +6,19 @@ An Analog-to-Digital Converter (ADC) converts an analog signal into a digital si
 This is essential for interpreting analog signals from sensors in digital devices like a Raspberry Pi.
 """
 
-from .i2c import I2C
+from typing import TYPE_CHECKING
+
+from app.util.os_checks import is_raspberry_pi
+
+if TYPE_CHECKING:
+    from app.robot_hat.i2c import I2C
+else:
+    from app.util.os_checks import is_raspberry_pi
+
+    if is_raspberry_pi():
+        from app.robot_hat.i2c import I2C
+    else:
+        from app.robot_hat.mock.i2c_mock import I2C
 
 
 class ADC(I2C):

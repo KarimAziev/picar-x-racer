@@ -10,9 +10,10 @@ class DetectionController(metaclass=SingletonMeta):
     def __init__(self):
         self.logger = Logger(__name__)
         self.stop_event = mp.Event()
-        self.frame_queue = mp.Queue()
-        self.detection_queue = mp.Queue()
-        self.control_queue = mp.Queue()
+        self.manager = mp.Manager()
+        self.frame_queue = self.manager.Queue()
+        self.detection_queue = self.manager.Queue()
+        self.control_queue = self.manager.Queue()
         self.detection_process = None
         self._video_feed_detect_mode: Optional[str] = None
 
@@ -26,6 +27,7 @@ class DetectionController(metaclass=SingletonMeta):
                     self.detection_queue,
                     self.control_queue,
                 ),
+                daemon=True,
             )
             self.detection_process.start()
             self.logger.info("Detection process has been started")

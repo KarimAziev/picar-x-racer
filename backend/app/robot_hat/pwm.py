@@ -10,12 +10,28 @@ delivered to a device. It does this by changing the width of the digital pulses 
 """
 
 import math
+from typing import TYPE_CHECKING
 
 from app.util.logger import Logger
+from app.util.os_checks import is_raspberry_pi
 
-from .i2c import I2C
+if is_raspberry_pi():
+    from app.robot_hat.i2c import I2C
+else:
+    from app.robot_hat.mock.i2c_mock import I2C
+
 
 timer: list[dict[str, int]] = [{"arr": 1}] * 4
+
+if TYPE_CHECKING:
+    from app.robot_hat.i2c import I2C
+else:
+    from app.util.os_checks import is_raspberry_pi
+
+    if is_raspberry_pi():
+        from app.robot_hat.i2c import I2C
+    else:
+        from app.robot_hat.mock.i2c_mock import I2C
 
 
 class PWM(I2C):

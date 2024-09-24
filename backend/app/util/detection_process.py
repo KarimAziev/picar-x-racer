@@ -26,41 +26,45 @@ def detection_process_func(
     current_detect_mode = None
     detection_function = None
 
-    while not stop_event.is_set():
-        try:
+    try:
+        while not stop_event.is_set():
             try:
-                while not control_queue.empty():
-                    control_message = control_queue.get_nowait()
-                    if control_message.get("command") == "set_detect_mode":
-                        current_detect_mode = control_message.get("mode")
-                        logger.info(f"Detection mode changed to {current_detect_mode}")
-                        detection_function = (
-                            detectors.get(current_detect_mode)
-                            if current_detect_mode
-                            else None
-                        )
-            except queue.Empty:
-                pass
+                try:
+                    while not control_queue.empty():
+                        control_message = control_queue.get(block=False)
+                        if control_message.get("command") == "set_detect_mode":
+                            current_detect_mode = control_message.get("mode")
+                            logger.info(
+                                f"Detection mode changed to {current_detect_mode}"
+                            )
+                            detection_function = (
+                                detectors.get(current_detect_mode)
+                                if current_detect_mode
+                                else None
+                            )
+                except queue.Empty:
+                    pass
 
-            if detection_function is None:
-                continue
+                if detection_function is None:
+                    continue
 
-            try:
-                frame = frame_queue.get(timeout=1)
-            except queue.Empty:
-                continue
+                try:
+                    frame = frame_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
 
-            detection_result = detection_function(frame)
-            if detection_result:
-                logger.debug(f"Detection result: {detection_result}")
+                detection_result = detection_function(frame)
+                if detection_result:
+                    logger.debug(f"Detection result: {detection_result}")
 
-            try:
-                detection_queue.put_nowait(detection_result)
-            except queue.Full:
-                pass
+                try:
+                    detection_queue.put_nowait(detection_result)
+                except queue.Full:
+                    pass
 
-        except Exception as e:
-            logger.error(f"Error in detection_process_func: {e}")
-
-    stop_event.clear()
-    logger.info(f"Detection process exiting {stop_event.is_set()}")
+            except Exception as e:
+                logger.error(f"Error in detection_process_func: {e}")
+    except KeyboardInterrupt:
+        logger.info("Detection process received KeyboardInterrupt, exiting.")
+    finally:
+        logger.info("Detection process is terminating.")
