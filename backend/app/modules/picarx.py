@@ -299,13 +299,20 @@ class Picarx(metaclass=SingletonMeta):
         """
         Stop the motors.
         """
+        self.logger.info("Stopping")
         self.motor_speed_pins[0].pulse_width_percent(0)
         self.motor_speed_pins[1].pulse_width_percent(0)
+
+        self.logger.info("Stopped 1")
 
         await asyncio.sleep(0.002)
 
         self.motor_speed_pins[0].pulse_width_percent(0)
         self.motor_speed_pins[1].pulse_width_percent(0)
+
+        await asyncio.sleep(0.002)
+
+        self.logger.info("Stopped 2")
 
     async def get_distance(self):
         return await self.ultrasonic.read()

@@ -15,7 +15,7 @@ logger = Logger(__name__)
 
 
 @router.post("/api/play-sound")
-async def play_sound(
+def play_sound(
     payload: Dict[str, Any],
     file_manager: "FilesController" = Depends(get_file_manager),
     audio_manager: "AudioController" = Depends(get_audio_manager),
@@ -39,7 +39,7 @@ async def play_sound(
 
 
 @router.get("/api/play-status")
-async def get_play_status(
+def get_play_status(
     file_manager: "FilesController" = Depends(get_file_manager),
     audio_manager: "AudioController" = Depends(get_audio_manager),
 ):
@@ -59,7 +59,7 @@ async def get_play_status(
 
 
 @router.post("/api/play-music")
-async def play_music(
+def play_music(
     payload: Dict[str, Any],
     file_manager: "FilesController" = Depends(get_file_manager),
     audio_manager: "AudioController" = Depends(get_audio_manager),
@@ -83,7 +83,7 @@ async def play_music(
 
 
 @router.post("/api/play-tts")
-async def text_to_speech(
+def text_to_speech(
     payload: Dict[str, str],
     file_manager: "FilesController" = Depends(get_file_manager),
     audio_manager: "AudioController" = Depends(get_audio_manager),
@@ -126,7 +126,7 @@ async def set_volume(
 
 
 @router.get("/api/volume")
-async def get_volume(
+def get_volume(
     audio_manager: "AudioController" = Depends(get_audio_manager),
 ):
     try:
@@ -136,7 +136,7 @@ async def get_volume(
 
 
 @router.get("/api/music")
-async def get_music_tracks(
+def get_music_tracks(
     file_manager: "FilesController" = Depends(get_file_manager),
     audio_manager: "AudioController" = Depends(get_audio_manager),
 ):

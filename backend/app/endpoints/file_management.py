@@ -14,8 +14,8 @@ router = APIRouter()
 logger = Logger(__name__)
 
 
-@router.get("/api/list_files/{media_type}/")
-async def list_files(
+@router.get("/api/list_files/{media_type}")
+def list_files(
     media_type: str, file_manager: "FilesController" = Depends(get_file_manager)
 ):
     if media_type == "music":
@@ -35,8 +35,8 @@ async def list_files(
     return JSONResponse(content={"files": files})
 
 
-@router.post("/api/upload/{media_type}/")
-async def upload_file(
+@router.post("/api/upload/{media_type}")
+def upload_file(
     media_type: str,
     file: UploadFile = File(...),
     file_manager: "FilesController" = Depends(get_file_manager),
@@ -56,8 +56,8 @@ async def upload_file(
     return JSONResponse(content={"success": True, "filename": file.filename})
 
 
-@router.delete("/api/remove_file/{media_type}/")
-async def remove_file(
+@router.delete("/api/remove_file/{media_type}/{filename}")
+def remove_file(
     media_type: str,
     filename: str,
     file_manager: "FilesController" = Depends(get_file_manager),
@@ -79,8 +79,8 @@ async def remove_file(
         raise HTTPException(status_code=404, detail="File not found")
 
 
-@router.get("/api/download/{media_type}/{filename}/")
-async def download_file(
+@router.get("/api/download/{media_type}/{filename}")
+def download_file(
     media_type: str,
     filename: str,
     file_manager: "FilesController" = Depends(get_file_manager),

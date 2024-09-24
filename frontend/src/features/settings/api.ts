@@ -15,6 +15,4 @@ export const downloadFile = async (mediaType: string, fileName: string) => {
 };
 
 export const removeFile = (mediaType: APIMediaType, file: string) =>
-  axios.delete(`/api/remove_file/${mediaType}`, {
-    data: { filename: file },
-  });
+  axios.delete(`/api/remove_file/${mediaType}/${file}`);

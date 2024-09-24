@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import queue
 from typing import Optional
 
 from app.util.detection_process import detection_process_func
@@ -19,6 +20,7 @@ class DetectionController(metaclass=SingletonMeta):
 
     def start_detection_process(self):
         if not self.detection_process or not self.detection_process.is_alive():
+            self.stop_event.clear()
             self.detection_process = mp.Process(
                 target=detection_process_func,
                 args=(

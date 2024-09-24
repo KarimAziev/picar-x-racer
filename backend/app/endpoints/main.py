@@ -7,7 +7,7 @@ main_router = APIRouter()
 
 
 @main_router.get("/", response_class=FileResponse)
-async def root(request: Request):
+def root(request: Request):
     template_folder = request.app.state.template_folder
 
     if not isinstance(template_folder, str) or not os.path.isdir(template_folder):
@@ -22,7 +22,7 @@ async def root(request: Request):
 
 
 @main_router.get("/{path:path}")
-async def catch_all(request: Request, path: str):
+def catch_all(request: Request, path: str):
     template_folder = request.app.state.template_folder
     file_path = os.path.join(template_folder, path)
 

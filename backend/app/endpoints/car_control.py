@@ -14,23 +14,25 @@ logger = Logger(__name__)
 
 
 @router.websocket("/ws/car-control")
-async def ws(
+async def websocket_endpoint(
     websocket: WebSocket, car_manager: "CarController" = Depends(get_car_manager)
 ):
     await websocket.accept()
 
     try:
-        while True:
-            raw_data = await websocket.receive_text()
+        async for raw_data in websocket.iter_text():
             try:
                 data = json.loads(raw_data)
-                logger.info(f"data {data}")
                 action = data.get("action")
                 payload = data.get("payload")
+                logger.info(f"data {data}")
                 if action:
                     await car_manager.process_action(action, payload, websocket)
                 else:
                     logger.info(f"received invalid message {data}")
+            except WebSocketDisconnect:
+                logger.info("WebSocket Disconnected")
+                break
             except Exception as e:
                 logger.error(f"Car controller error occurred: {e}")
     except WebSocketDisconnect:

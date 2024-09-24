@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Union
 
 from app.deps import get_camera_manager, get_detection_manager, get_stream_manager
 from app.util.logger import Logger
-from fastapi import APIRouter, Depends, FastAPI, WebSocket
+from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -63,7 +63,7 @@ async def update_video_feed_settings(
 
 
 @video_feed_router.get("/api/video-feed-settings")
-async def get_camera_settings(
+def get_camera_settings(
     camera_manager: "CameraController" = Depends(get_camera_manager),
     detection_manager: "DetectionController" = Depends(get_detection_manager),
 ):
@@ -85,6 +85,11 @@ async def ws(
     websocket: WebSocket,
     stream_controller: "StreamController" = Depends(get_stream_manager),
 ):
-
     await websocket.accept()
-    await stream_controller.video_stream(websocket)
+
+    try:
+        await stream_controller.video_stream(websocket)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.error(f"Error in video stream: {e}")
