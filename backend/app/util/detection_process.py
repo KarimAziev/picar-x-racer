@@ -31,7 +31,7 @@ def detection_process_func(
             try:
                 try:
                     while not control_queue.empty():
-                        control_message = control_queue.get()
+                        control_message = control_queue.get_nowait()
                         if control_message.get("command") == "set_detect_mode":
                             current_detect_mode = control_message.get("mode")
                             logger.info(
