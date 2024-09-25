@@ -31,7 +31,6 @@ class Logger:
         if app_name is not None:
             Logger._app_logger_name = app_name
 
-        # Initialize logging configuration if not already done
         if not logging.root.handlers:
             setup_logging()
 
@@ -90,7 +89,6 @@ class Logger:
     def setup_global(log_level: str):
         valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if log_level not in valid_log_levels:
-            print(f"Invalid log level: {log_level}. Using DEBUG.")
             log_level = "DEBUG"
         log_level_constant = getattr(Logger, log_level.upper(), Logger.DEBUG)
         Logger.set_global_log_level(log_level_constant)
@@ -98,7 +96,6 @@ class Logger:
     @staticmethod
     def setup_from_env():
         log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-        print(f"log_level {log_level}")
         Logger.setup_global(log_level)
 
     @staticmethod

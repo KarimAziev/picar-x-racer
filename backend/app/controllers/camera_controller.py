@@ -110,9 +110,7 @@ class CameraController(metaclass=SingletonMeta):
                 if format == ".jpg"
                 else []
             )
-            encoded_frame = await asyncio.to_thread(
-                encode, frame, format, encode_params, frame_enhancer
-            )
+            encoded_frame = encode(frame, format, encode_params, frame_enhancer)
 
             return encoded_frame
 

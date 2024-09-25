@@ -28,11 +28,14 @@ def detection_process_func(
     from ultralytics import YOLO
 
     try:
+        logger.debug(f"loading yolomodel to {YOLO_MODEL_8_PATH}")
         torch.set_num_threads(1)
         yolo_model = YOLO(YOLO_MODEL_8_PATH)
         logger.info(f"YOLO yolo_model.task {yolo_model.task}")
         current_detect_mode = None
         detection_function = None
+        counter = 0
+
         while not stop_event.is_set():
             try:
                 try:
@@ -62,8 +65,9 @@ def detection_process_func(
                 detection_result = detection_function(
                     frame=frame, yolo_model=yolo_model
                 )
-                if detection_result:
+                if detection_result and counter < 5:
                     logger.debug(f"Detection result: {detection_result}")
+                    counter += 1
 
                 try:
                     detection_queue.put_nowait(detection_result)

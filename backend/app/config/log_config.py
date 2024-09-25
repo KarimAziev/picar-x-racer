@@ -27,18 +27,52 @@ LOGGING_CONFIG = {
                 "INFO": "green",
                 "WARNING": "yellow",
                 "ERROR": "red",
-                "CRITICAL": "bold_red",
+                "CRITICAL": "red,bg_white",
             },
         },
         "default": {
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
+            "datefmt": "%H:%M:%S",
+        },
+        "colored_px": {
+            "()": "colorlog.ColoredFormatter",
+            "format": "%(log_color)s%(asctime)s [PID %(process)d] - %(name)s - %(levelname)s - %(message)s",
+            "datefmt": "%H:%M:%S",
+            "log_colors": {
+                "DEBUG": "light_purple",
+                "INFO": "light_green",
+                "WARNING": "bold_yellow",
+                "ERROR": "light_red",
+                "CRITICAL": "red,bg_white",
+            },
+        },
+        "colored_ext": {
+            "()": "colorlog.ColoredFormatter",
+            "format": "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "datefmt": "%H:%M:%S",
+            "log_colors": {
+                "DEBUG": "thin_purple",
+                "INFO": "thin_green",
+                "WARNING": "thin_yellow",
+                "ERROR": "thin_red",
+                "CRITICAL": "thin_red",
+            },
         },
     },
     "handlers": {
         "console_colored": {
             "class": "logging.StreamHandler",
             "formatter": "colored",
+            "filters": ["exclude_binary"],
+        },
+        "console_colored_px": {
+            "class": "logging.StreamHandler",
+            "formatter": "colored_px",
+            "filters": ["exclude_binary"],
+        },
+        "console_color_ext": {
+            "class": "logging.StreamHandler",
+            "formatter": "colored_ext",
             "filters": ["exclude_binary"],
         },
         "console_default": {
@@ -50,32 +84,33 @@ LOGGING_CONFIG = {
             "class": "logging.FileHandler",
             "filename": "app.log",
             "formatter": "default",
+            "filters": ["exclude_binary"],
             "level": level,
         },
     },
     "loggers": {
         "uvicorn": {
-            "handlers": ["console_colored"],
+            "handlers": ["console_color_ext"],
             "level": level,
             "propagate": False,
         },
         "uvicorn.error": {
-            "handlers": ["console_colored"],
+            "handlers": ["console_color_ext"],
             "level": level,
             "propagate": False,
         },
         "uvicorn.access": {
-            "handlers": ["console_colored"],
+            "handlers": ["console_color_ext"],
             "level": level,
             "propagate": False,
         },
         "picar-x-racer": {
-            "handlers": ["console_colored", "file"],
+            "handlers": ["console_colored_px"],
             "level": level,
             "propagate": False,
         },
         "px-control": {
-            "handlers": ["console_colored", "file"],
+            "handlers": ["console_colored"],
             "level": level,
             "propagate": False,
         },
