@@ -101,8 +101,8 @@ class CalibrationConfig(BaseModel):
 
 
 class VideoFeedSettings(BaseModel):
-    width: int
-    height: int
+    width: Optional[int] = None
+    height: Optional[int] = None
     video_feed_fps: int
     video_feed_detect_mode: str | None
     video_feed_enhance_mode: str | None

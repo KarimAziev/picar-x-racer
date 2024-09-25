@@ -293,3 +293,4 @@ class CameraController(metaclass=SingletonMeta):
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
         self.detection_controller.stop_detection_process()
+        self.detection_controller.clear_stop_event()

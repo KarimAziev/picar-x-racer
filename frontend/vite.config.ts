@@ -29,8 +29,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      "/ws": {
+      "/ws/video-stream": {
         target: "ws://127.0.0.1:8000/",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/ws/car-control": {
+        target: "ws://127.0.0.1:8001/",
         changeOrigin: true,
         secure: false,
       },

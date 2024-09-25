@@ -1,26 +1,8 @@
-import multiprocessing
+import logging.config
 
-multiprocessing.set_start_method("spawn")
+from app.config.log_config import LOGGING_CONFIG
 
-import os
-import time
-
-from app.util.os_checks import is_raspberry_pi
-
-is_os_raspberry = is_raspberry_pi()
-
-os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio" if is_os_raspberry else "mock"
-
-from app.robot_hat.pin import Pin
-
-mcu_reset = Pin("MCURST")
-mcu_reset.off()
-time.sleep(0.01)
-mcu_reset.on()
-time.sleep(0.01)
-
-mcu_reset.close()
-
+logging.config.dictConfig(LOGGING_CONFIG)
 
 from contextlib import asynccontextmanager
 
@@ -65,7 +47,6 @@ from app.endpoints import (
     audio_management_router,
     battery_router,
     camera_feed_router,
-    car_controller_router,
     distance_router,
     file_management_router,
     main_router,
@@ -76,7 +57,6 @@ from app.endpoints import (
 app.include_router(audio_management_router)
 app.include_router(battery_router)
 app.include_router(camera_feed_router)
-app.include_router(car_controller_router)
 app.include_router(distance_router)
 app.include_router(file_management_router)
 app.include_router(settings_router)

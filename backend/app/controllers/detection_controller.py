@@ -20,7 +20,6 @@ class DetectionController(metaclass=SingletonMeta):
 
     def start_detection_process(self):
         if not self.detection_process or not self.detection_process.is_alive():
-            self.stop_event.clear()
             self.detection_process = mp.Process(
                 target=detection_process_func,
                 args=(
@@ -91,4 +90,13 @@ class DetectionController(metaclass=SingletonMeta):
         self._video_feed_detect_mode = new_mode
         if hasattr(self, "control_queue"):
             command = {"command": "set_detect_mode", "mode": new_mode}
-            self.control_queue.put(command)
+            try:
+                self.control_queue.put(command)
+            except BrokenPipeError as e:
+                self.logger.error(f"BrokenPipeError: {e}")
+            except queue.Full:
+                self.logger.error("Queue is full")
+            except queue.Empty:
+                self.logger.error("Queue is empty")
+            except Exception as e:
+                self.logger.log_exception("Unexpected error: %s", e)

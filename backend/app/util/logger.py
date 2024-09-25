@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Dict, Optional
 
 from colorlog import ColoredFormatter
@@ -19,7 +20,7 @@ class Logger(object):
         "critical": CRITICAL,
     }
 
-    _handlers_added = False
+    _handlers_added_pids = set()
     _app_logger_name = "picar-x-racer"
 
     def __init__(
@@ -41,9 +42,10 @@ class Logger(object):
 
         self.logger.propagate = True
 
-        if not Logger._handlers_added:
+        current_pid = os.getpid()
+        if current_pid not in Logger._handlers_added_pids:
             self._add_app_handlers(fmt, datefmt, log_colors)
-            Logger._handlers_added = True
+            Logger._handlers_added_pids.add(current_pid)
 
     @classmethod
     def _add_app_handlers(cls, fmt, datefmt, log_colors):
@@ -52,7 +54,10 @@ class Logger(object):
         if app_logger.handlers:
             app_logger.handlers = []
 
-        fmt = fmt or "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        fmt = (
+            fmt
+            or "%(log_color)s%(asctime)s [%(process)d] - %(name)s - %(levelname)s - %(message)s"
+        )
         datefmt = datefmt or "%H:%M:%S"
         log_colors = log_colors or {
             "DEBUG": "cyan",
@@ -96,7 +101,7 @@ class Logger(object):
         file_formatter = logging.Formatter(fmt, datefmt=datefmt)
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(level)
-        # Add the file handler to the application logger
+
         app_logger = logging.getLogger(self._app_logger_name)
         app_logger.addHandler(file_handler)
 
