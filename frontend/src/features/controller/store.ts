@@ -112,7 +112,7 @@ const defaultState: StoreState = {
   reconnectedEnabled: true,
   messageQueue: [],
   loading: false,
-  url: makeWebsocketUrl("px/ws"),
+  url: makeWebsocketUrl("px/ws", 8001),
 } as const;
 
 export const useControllerStore = defineStore("controller", {
