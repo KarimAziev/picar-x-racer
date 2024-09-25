@@ -138,7 +138,7 @@ make backend-venv-run
 Once the application is running, open your browser and navigate to (replace `<your-raspberry-pi-ip>` with the actual IP):
 
 ```
-http://<your-raspberry-pi-ip>:9000
+http://<your-raspberry-pi-ip>:8000
 ```
 
 After navigating to the control interface, you can customize your experience via the comprehensive settings panel.
