@@ -3,6 +3,7 @@ import queue
 from multiprocessing.synchronize import Event
 
 from app.config.detectors import detectors
+from app.config.paths import YOLO_MODEL_8_PATH
 from app.util.logger import Logger
 
 logger = Logger(name=__name__)
@@ -23,10 +24,15 @@ def detection_process_func(
         detection_queue (mp.Queue): Queue to put detection results into.
         control_queue (mp.Queue): Queue for control messages.
     """
-    current_detect_mode = None
-    detection_function = None
+    import torch
+    from ultralytics import YOLO
 
     try:
+        torch.set_num_threads(1)
+        yolo_model = YOLO(YOLO_MODEL_8_PATH)
+        logger.info(f"YOLO yolo_model.task {yolo_model.task}")
+        current_detect_mode = None
+        detection_function = None
         while not stop_event.is_set():
             try:
                 try:
@@ -53,7 +59,9 @@ def detection_process_func(
                 except queue.Empty:
                     continue
 
-                detection_result = detection_function(frame)
+                detection_result = detection_function(
+                    frame=frame, yolo_model=yolo_model
+                )
                 if detection_result:
                     logger.debug(f"Detection result: {detection_result}")
 

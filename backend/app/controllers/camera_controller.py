@@ -30,11 +30,11 @@ class CameraController(metaclass=SingletonMeta):
     Attributes:
         logger (Logger): Logger instance for logging messages.
         video_device_manager (VideoDeviceController): Manages video capture devices.
-        target_fps (int): Target frames per second for video capture.
+        video_feed_fps (int): Target frames per second for video capture.
         camera_run (bool): Flag indicating whether the camera is camera_run.
         stream_img (Optional[np.ndarray]): Latest frame captured from the camera for streaming.
-        frame_width (Optional[int]): Width of the video frames.
-        frame_height (Optional[int]): Height of the video frames.
+        video_feed_width (Optional[int]): Width of the video frames.
+        video_feed_height (Optional[int]): Height of the video frames.
         video_feed_enhance_mode (Optional[str]): Current video enhancement mode.
         video_feed_quality (int): Quality parameter for video encoding (1-100).
         video_feed_format (str): Format for video encoding (e.g., '.jpg', '.png').
@@ -45,25 +45,25 @@ class CameraController(metaclass=SingletonMeta):
         last_detection_result (Optional[Dict]): Latest detection result received.
     """
 
-    def __init__(self, detection_controller: DetectionController, target_fps=30):
+    def __init__(self, detection_controller: DetectionController, video_feed_fps=30):
         """
         Initializes the `CameraController` singleton instance.
 
         Args:
-            target_fps (int, optional): Target frames per second for video capture.
+            video_feed_fps (int, optional): Target frames per second for video capture.
                 Defaults to 30.
         """
         self.logger = Logger(name=__name__)
         self.video_device_manager = VideoDeviceController()
         self.detection_controller = detection_controller
-        self.target_fps = target_fps
+        self.video_feed_fps = video_feed_fps
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[VideoCapture, None] = None
         self.frame_counter = 0
-        self.frame_width: Optional[int] = None
-        self.frame_height: Optional[int] = None
+        self.video_feed_width: Optional[int] = None
+        self.video_feed_height: Optional[int] = None
         self.video_feed_enhance_mode: Optional[str] = None
         self.video_feed_quality = 100
         self.video_feed_format = ".jpg"
@@ -93,7 +93,7 @@ class CameraController(metaclass=SingletonMeta):
             format = self.video_feed_format
             video_feed_enhance_mode = self.video_feed_enhance_mode
             video_feed_quality = self.video_feed_quality
-            frame = self.stream_img.copy()
+            frame = self.stream_img
             if (
                 self.last_detection_result is not None
                 and self.detection_controller.video_feed_detect_mode is not None
@@ -125,7 +125,7 @@ class CameraController(metaclass=SingletonMeta):
 
         Args:
             fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `target_fps` value.
+                If None, uses the existing `video_feed_fps` value.
             width (Optional[int], optional): Desired width of the video frames.
                 If None, calculates based on `height` and target aspect ratio.
             height (Optional[int], optional): Desired height of the video frames.
@@ -144,7 +144,9 @@ class CameraController(metaclass=SingletonMeta):
             f"Starting camera loop with camera index {self.video_device_manager.camera_index}"
         )
         self.cap = self.video_device_manager.setup_video_capture(
-            fps=self.target_fps, width=self.frame_width, height=self.frame_height
+            fps=self.video_feed_fps,
+            width=self.video_feed_width,
+            height=self.video_feed_height,
         )
 
         failed_counter = 0
@@ -167,9 +169,9 @@ class CameraController(metaclass=SingletonMeta):
 
                         cap = (
                             self.video_device_manager.find_and_setup_alternative_camera(
-                                fps=self.target_fps,
-                                width=self.frame_width,
-                                height=self.frame_height,
+                                fps=self.video_feed_fps,
+                                width=self.video_feed_width,
+                                height=self.video_feed_height,
                             )
                         )
                         if cap is None:
@@ -218,7 +220,7 @@ class CameraController(metaclass=SingletonMeta):
 
         Args:
             fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `target_fps` value.
+                If None, uses the existing `video_feed_fps` value.
             width (Optional[int], optional): Desired width of the video frames.
                 If None, calculates based on `height` and target aspect ratio.
             height (Optional[int], optional): Desired height of the video frames.
@@ -229,18 +231,19 @@ class CameraController(metaclass=SingletonMeta):
             return
 
         if fps:
-            self.target_fps = fps
+            self.video_feed_fps = fps
 
         self.logger.info(f"Starting camera")
-        self.frame_height = height
-        self.frame_width = width or (
+        self.video_feed_height = height
+        self.video_feed_width = width or (
             height_to_width(height, TARGET_WIDTH, TARGET_HEIGHT) if height else None
         )
 
         self.camera_run = True
         self.capture_thread = threading.Thread(target=self.camera_thread_func)
         self.capture_thread.start()
-        self.detection_controller.start_detection_process()
+        if self.detection_controller.video_feed_detect_mode:
+            self.detection_controller.start_detection_process()
 
     async def start_camera_and_wait_for_stream_img(
         self,
@@ -256,7 +259,7 @@ class CameraController(metaclass=SingletonMeta):
 
         Args:
             fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `target_fps` value.
+                If None, uses the existing `video_feed_fps` value.
             width (Optional[int], optional): Desired width of the video frames.
                 If None, calculates based on `height` and target aspect ratio.
             height (Optional[int], optional): Desired height of the video frames.

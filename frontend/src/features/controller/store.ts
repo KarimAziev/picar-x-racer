@@ -84,7 +84,7 @@ export interface StoreState extends Gauges, Modes {
   /**
    * The WebSocket URL
    */
-  url?: string;
+  url: string;
   /**
    * Whether WebSocket is allowed to reconnect.
    */
@@ -112,7 +112,7 @@ const defaultState: StoreState = {
   reconnectedEnabled: true,
   messageQueue: [],
   loading: false,
-  url: makeWebsocketUrl("ws/car-control"),
+  url: makeWebsocketUrl("px/ws"),
 } as const;
 
 export const useControllerStore = defineStore("controller", {
@@ -433,6 +433,7 @@ export const useControllerStore = defineStore("controller", {
 
     async getDistance() {
       const distanceStore = useDistanceStore();
+
       await distanceStore.fetchDistance();
     },
 

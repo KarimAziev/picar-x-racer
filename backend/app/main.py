@@ -14,6 +14,8 @@ from app.config.paths import FRONTEND_FOLDER, STATIC_FOLDER, TEMPLATE_FOLDER
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 
+Logger.setup_from_env()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,7 +29,7 @@ async def lifespan(app: FastAPI):
     logger.info("Stopping application")
 
 
-app = FastAPI(lifespan=lifespan, title="picar-x-racer")
+app = FastAPI(lifespan=lifespan, title="picar-x-racer-app")
 logger = Logger(__name__)
 
 
@@ -47,7 +49,6 @@ from app.endpoints import (
     audio_management_router,
     battery_router,
     camera_feed_router,
-    distance_router,
     file_management_router,
     main_router,
     settings_router,
@@ -57,7 +58,6 @@ from app.endpoints import (
 app.include_router(audio_management_router)
 app.include_router(battery_router)
 app.include_router(camera_feed_router)
-app.include_router(distance_router)
 app.include_router(file_management_router)
 app.include_router(settings_router)
 app.include_router(video_feed_router)

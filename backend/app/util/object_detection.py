@@ -1,11 +1,15 @@
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
-from app.config.yolo_model import yolo_model
+import torch
+
+if TYPE_CHECKING:
+    from ultralytics import YOLO
 
 
 def perform_detection(
     frame: np.ndarray,
+    yolo_model: "YOLO",
     labels_to_detect: Optional[List[str]] = None,
     confidence_threshold: float = 0.25,
 ) -> List[Dict[str, Any]]:
@@ -20,7 +24,9 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-    results = yolo_model(frame)[0]
+    with torch.no_grad():
+        results = yolo_model(frame)[0]
+
     detection_results = []
 
     for detection in results.boxes:
@@ -44,7 +50,9 @@ def perform_detection(
     return detection_results
 
 
-def perform_cat_detection(frame: np.ndarray) -> List[Dict[str, Any]]:
+def perform_cat_detection(
+    frame: np.ndarray, yolo_model: "YOLO"
+) -> List[Dict[str, Any]]:
     """
     Performs detection for the cat on the given frame.
 
@@ -54,10 +62,17 @@ def perform_cat_detection(frame: np.ndarray) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-    return perform_detection(frame, ["cat"], confidence_threshold=0.3)
+    return perform_detection(
+        frame=frame,
+        labels_to_detect=["cat"],
+        confidence_threshold=0.5,
+        yolo_model=yolo_model,
+    )
 
 
-def perform_person_detection(frame: np.ndarray) -> List[Dict[str, Any]]:
+def perform_person_detection(
+    frame: np.ndarray, yolo_model: "YOLO"
+) -> List[Dict[str, Any]]:
     """
     Performs detection for the person on the given frame.
 
@@ -67,4 +82,9 @@ def perform_person_detection(frame: np.ndarray) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-    return perform_detection(frame, ["person"], 0.5)
+    return perform_detection(
+        frame=frame,
+        labels_to_detect=["person"],
+        confidence_threshold=0.5,
+        yolo_model=yolo_model,
+    )

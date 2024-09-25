@@ -8,7 +8,6 @@ import { groupKeys } from "@/features/settings/util";
 import { usePopupStore } from "@/features/settings/stores";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
 import { isMobileDevice } from "@/util/device";
-import { makeWebsocketUrl } from "@/util/url";
 
 export const useController = (
   controllerStore: ReturnType<typeof useControllerStore>,
@@ -122,7 +121,7 @@ export const useController = (
   const connectWS = () => {
     controllerStore.reconnectedEnabled = true;
     if (!controllerStore.connected && !controllerStore.loading) {
-      controllerStore.initializeWebSocket(makeWebsocketUrl("ws/car-control"));
+      controllerStore.initializeWebSocket(controllerStore.url);
     }
   };
 

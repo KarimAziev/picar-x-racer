@@ -51,3 +51,5 @@ CAT_FACE_EXTENDED_CASCADE_PATH = expand_file_in_project_dir(
 FONT_PATH = expand_file_in_project_dir(
     "frontend/src/assets/font/tt-octosquares-regular.ttf"
 )
+
+YOLO_MODEL_8_PATH = expand_file_in_project_dir("data/yolov8n.pt")

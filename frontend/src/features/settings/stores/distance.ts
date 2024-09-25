@@ -20,7 +20,7 @@ export const useStore = defineStore("distance", {
     async fetchDistance() {
       try {
         this.loading = true;
-        const response = await axios.get("/api/get-distance");
+        const response = await axios.get("/px/api/get-distance");
         const distance = response.data.distance;
         this.distance = isNumber(distance) ? distance : 0;
         this.error = undefined;

@@ -40,7 +40,16 @@ class DetectionController(metaclass=SingletonMeta):
             "mode": self.video_feed_detect_mode,
         }
 
-        self.control_queue.put(command)
+        try:
+            self.control_queue.put_nowait(command)
+        except BrokenPipeError as e:
+            self.logger.error(f"BrokenPipeError: {e}")
+        except queue.Full:
+            self.logger.error("Queue is full")
+        except queue.Empty:
+            self.logger.error("Queue is empty")
+        except Exception as e:
+            self.logger.log_exception("Unexpected error: %s", e)
 
     def stop_detection_process(self):
         if self.detection_process is None:
@@ -91,7 +100,7 @@ class DetectionController(metaclass=SingletonMeta):
         if hasattr(self, "control_queue"):
             command = {"command": "set_detect_mode", "mode": new_mode}
             try:
-                self.control_queue.put(command)
+                self.control_queue.put_nowait(command)
             except BrokenPipeError as e:
                 self.logger.error(f"BrokenPipeError: {e}")
             except queue.Full:

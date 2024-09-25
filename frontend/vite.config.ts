@@ -34,7 +34,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      "/ws/car-control": {
+      "/px/api": {
+        target: "http://127.0.0.1:8001/",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/px/ws": {
         target: "ws://127.0.0.1:8001/",
         changeOrigin: true,
         secure: false,

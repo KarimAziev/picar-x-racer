@@ -24,24 +24,22 @@ def update_video_feed_settings(
 ):
     logger.info(f"Updating video feed settings: {payload}")
     if payload:
-        detection_manager.video_feed_detect_mode = payload.video_feed_detect_mode
-        camera_manager.video_feed_enhance_mode = payload.video_feed_enhance_mode
+        for key, value in payload.model_dump(exclude_unset=True).items():
+            if key is "video_feed_detect_mode":
+                detection_manager.video_feed_detect_mode = value
+                if (
+                    detection_manager.video_feed_detect_mode
+                    and camera_manager.camera_run
+                ):
+                    detection_manager.start_detection_process()
 
-        if payload.video_feed_format is not None:
-            camera_manager.video_feed_format = payload.video_feed_format
-        if payload.video_feed_quality is not None:
-            camera_manager.video_feed_quality = payload.video_feed_quality
-        if payload.video_feed_width is not None:
-            camera_manager.frame_width = payload.video_feed_width
-        if payload.video_feed_height is not None:
-            camera_manager.frame_height = payload.video_feed_height
-        if payload.video_feed_fps is not None:
-            camera_manager.target_fps = payload.video_feed_fps
+            elif hasattr(camera_manager, key):
+                setattr(camera_manager, key, value)
 
     return {
-        "width": camera_manager.frame_width,
-        "height": camera_manager.frame_height,
-        "video_feed_fps": camera_manager.target_fps,
+        "video_feed_width": camera_manager.video_feed_width,
+        "video_feed_height": camera_manager.video_feed_width,
+        "video_feed_fps": camera_manager.video_feed_fps,
         "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
@@ -55,9 +53,9 @@ def get_camera_settings(
     detection_manager: "DetectionController" = Depends(get_detection_manager),
 ):
     return {
-        "width": camera_manager.frame_width,
-        "height": camera_manager.frame_height,
-        "video_feed_fps": camera_manager.target_fps,
+        "video_feed_width": camera_manager.video_feed_width,
+        "video_feed_height": camera_manager.video_feed_width,
+        "video_feed_fps": camera_manager.video_feed_fps,
         "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
