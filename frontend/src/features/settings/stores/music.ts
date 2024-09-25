@@ -223,7 +223,7 @@ export const useStore = defineStore("music", {
 
         const response = await axios.post<PlayMusicResponse>(
           `/api/play-music`,
-          { filename: track, start: start || 0.0, force: force || false },
+          { track, start: start || 0.0, force: force || false },
         );
         const data = response.data;
 

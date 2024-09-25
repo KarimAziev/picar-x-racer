@@ -67,7 +67,7 @@ export const useStore = defineStore("sounds", {
       const messager = useMessagerStore();
       try {
         const response = await axios.post(`/api/play-sound`, {
-          filename: name,
+          track: name,
         });
         const data = response.data;
         const msg = data.playing ? `Playing ${name}` : "Stoped playing";

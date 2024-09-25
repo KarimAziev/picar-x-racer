@@ -1,10 +1,9 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from app.deps import get_camera_manager, get_detection_manager, get_stream_manager
+from app.schemas.settings import VideoFeedSettings, VideoFeedUpdateSettings
 from app.util.logger import Logger
-from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:
     from app.controllers.camera_controller import CameraController
@@ -13,23 +12,13 @@ if TYPE_CHECKING:
 
 logger = Logger(__name__)
 
-app = FastAPI()
+
 video_feed_router = APIRouter()
 
 
-class VideoFeedSettings(BaseModel):
-    video_feed_detect_mode: Union[str, None] = None
-    video_feed_enhance_mode: Union[str, None] = None
-    video_feed_format: Union[str, None] = None
-    video_feed_quality: Union[int, None] = None
-    video_feed_width: Union[int, None] = None
-    video_feed_height: Union[int, None] = None
-    video_feed_fps: Union[int, None] = None
-
-
-@video_feed_router.post("/api/video-feed-settings")
-async def update_video_feed_settings(
-    payload: VideoFeedSettings,
+@video_feed_router.post("/api/video-feed-settings", response_model=VideoFeedSettings)
+def update_video_feed_settings(
+    payload: VideoFeedUpdateSettings,
     camera_manager: "CameraController" = Depends(get_camera_manager),
     detection_manager: "DetectionController" = Depends(get_detection_manager),
 ):
@@ -49,35 +38,31 @@ async def update_video_feed_settings(
         if payload.video_feed_fps is not None:
             camera_manager.target_fps = payload.video_feed_fps
 
-    return JSONResponse(
-        content={
-            "width": camera_manager.frame_width,
-            "height": camera_manager.frame_height,
-            "video_feed_fps": camera_manager.target_fps,
-            "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
-            "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
-            "video_feed_quality": camera_manager.video_feed_quality,
-            "video_feed_format": camera_manager.video_feed_format,
-        }
-    )
+    return {
+        "width": camera_manager.frame_width,
+        "height": camera_manager.frame_height,
+        "video_feed_fps": camera_manager.target_fps,
+        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
+        "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
+        "video_feed_quality": camera_manager.video_feed_quality,
+        "video_feed_format": camera_manager.video_feed_format,
+    }
 
 
-@video_feed_router.get("/api/video-feed-settings")
+@video_feed_router.get("/api/video-feed-settings", response_model=VideoFeedSettings)
 def get_camera_settings(
     camera_manager: "CameraController" = Depends(get_camera_manager),
     detection_manager: "DetectionController" = Depends(get_detection_manager),
 ):
-    return JSONResponse(
-        content={
-            "width": camera_manager.frame_width,
-            "height": camera_manager.frame_height,
-            "video_feed_fps": camera_manager.target_fps,
-            "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
-            "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
-            "video_feed_quality": camera_manager.video_feed_quality,
-            "video_feed_format": camera_manager.video_feed_format,
-        }
-    )
+    return {
+        "width": camera_manager.frame_width,
+        "height": camera_manager.frame_height,
+        "video_feed_fps": camera_manager.target_fps,
+        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
+        "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
+        "video_feed_quality": camera_manager.video_feed_quality,
+        "video_feed_format": camera_manager.video_feed_format,
+    }
 
 
 @video_feed_router.websocket("/ws/video-stream")

@@ -1,10 +1,16 @@
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING
 
 from app.config.detectors import detectors
 from app.config.video_enhancers import frame_enhancers
 from app.deps import get_file_manager
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from app.schemas.settings import (
+    CalibrationConfig,
+    DetectorsResponse,
+    EnhancersResponse,
+    Settings,
+    VideoModesResponse,
+)
+from fastapi import APIRouter, Depends
 
 if TYPE_CHECKING:
     from app.controllers.files_controller import FilesController
@@ -13,45 +19,42 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.get("/api/settings")
+@router.get("/api/settings", response_model=Settings)
 def get_settings(file_controller: "FilesController" = Depends(get_file_manager)):
-    return JSONResponse(content=file_controller.load_settings())
+    return file_controller.load_settings()
 
 
-@router.post("/api/settings")
+@router.post("/api/settings", response_model=Settings)
 def update_settings(
-    new_settings: Union[Dict[str, Any], None],
+    new_settings: Settings,
     file_controller: "FilesController" = Depends(get_file_manager),
 ):
-    if not isinstance(new_settings, dict):
-        raise HTTPException(status_code=400, detail="Invalid settings format")
+    data = new_settings.model_dump(exclude_none=True, exclude_defaults=True)
 
-    file_controller.save_settings(new_settings)
-    return JSONResponse(content={"success": True, "settings": new_settings})
+    file_controller.save_settings(data)
+    return new_settings
 
 
-@router.get("/api/calibration")
+@router.get("/api/calibration", response_model=CalibrationConfig)
 def get_calibration_settings(
     file_controller: "FilesController" = Depends(get_file_manager),
 ):
-    return JSONResponse(content=file_controller.get_calibration_config())
+    return file_controller.get_calibration_config()
 
 
-@router.get("/api/detectors")
+@router.get("/api/detectors", response_model=DetectorsResponse)
 def get_detectors():
-    return JSONResponse(content={"detectors": list(detectors.keys())})
+    return {"detectors": list(detectors.keys())}
 
 
-@router.get("/api/enhancers")
+@router.get("/api/enhancers", response_model=EnhancersResponse)
 def get_frame_enhancers():
-    return JSONResponse(content={"enhancers": list(frame_enhancers.keys())})
+    return {"enhancers": list(frame_enhancers.keys())}
 
 
-@router.get("/api/video-modes")
+@router.get("/api/video-modes", response_model=VideoModesResponse)
 def get_video_modes():
-    return JSONResponse(
-        content={
-            "detectors": list(detectors.keys()),
-            "enhancers": list(frame_enhancers.keys()),
-        }
-    )
+    return {
+        "detectors": list(detectors.keys()),
+        "enhancers": list(frame_enhancers.keys()),
+    }

@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
 main_router = APIRouter()
@@ -28,5 +28,8 @@ def catch_all(request: Request, path: str):
 
     if not os.path.isfile(file_path):
         file_path = os.path.join(template_folder, "index.html")
+
+        if not os.path.isfile(file_path):
+            raise HTTPException(status_code=404, detail="File not found.")
 
     return FileResponse(file_path)

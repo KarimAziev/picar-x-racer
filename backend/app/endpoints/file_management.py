@@ -2,9 +2,13 @@ from typing import TYPE_CHECKING
 
 from app.deps import get_file_manager
 from app.exceptions.file_controller import DefaultFileRemoveAttempt
+from app.schemas.file_management import (
+    FilesResponse,
+    RemoveFileResponse,
+    UploadFileResponse,
+)
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
 from starlette.responses import FileResponse
 
 if TYPE_CHECKING:
@@ -14,7 +18,7 @@ router = APIRouter()
 logger = Logger(__name__)
 
 
-@router.get("/api/list_files/{media_type}")
+@router.get("/api/list_files/{media_type}", response_model=FilesResponse)
 def list_files(
     media_type: str, file_manager: "FilesController" = Depends(get_file_manager)
 ):
@@ -32,10 +36,10 @@ def list_files(
     else:
         raise HTTPException(status_code=400, detail="Invalid media type")
 
-    return JSONResponse(content={"files": files})
+    return {"files": files}
 
 
-@router.post("/api/upload/{media_type}")
+@router.post("/api/upload/{media_type}", response_model=UploadFileResponse)
 def upload_file(
     media_type: str,
     file: UploadFile = File(...),
@@ -53,10 +57,12 @@ def upload_file(
     else:
         raise HTTPException(status_code=400, detail="Invalid media type")
 
-    return JSONResponse(content={"success": True, "filename": file.filename})
+    return {"success": True, "filename": file.filename}
 
 
-@router.delete("/api/remove_file/{media_type}/{filename}")
+@router.delete(
+    "/api/remove_file/{media_type}/{filename}", response_model=RemoveFileResponse
+)
 def remove_file(
     media_type: str,
     filename: str,
@@ -71,7 +77,7 @@ def remove_file(
             file_manager.remove_photo(filename)
         else:
             raise HTTPException(status_code=400, detail="Invalid media type")
-        return JSONResponse(content={"success": True, "filename": filename})
+        return {"success": True, "filename": filename}
     except DefaultFileRemoveAttempt as e:
         logger.warning(f"Duplicate notification attempted: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -79,7 +85,17 @@ def remove_file(
         raise HTTPException(status_code=404, detail="File not found")
 
 
-@router.get("/api/download/{media_type}/{filename}")
+@router.get(
+    "/api/download/{media_type}/{filename}",
+    responses={
+        200: {
+            "content": {"application/octet-stream": {}},
+            "description": "A file will be returned.",
+        },
+        400: {"description": "Invalid media type"},
+        404: {"description": "File not found"},
+    },
+)
 def download_file(
     media_type: str,
     filename: str,

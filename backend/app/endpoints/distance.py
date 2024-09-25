@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
 from app.deps import get_car_manager
+from app.schemas.distance import DistanceData
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
 
 if TYPE_CHECKING:
     from app.controllers.car_controller import CarController
@@ -10,9 +10,9 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.get("/api/get-distance")
+@router.get("/api/get-distance", response_model=DistanceData)
 async def get_ultrasonic_distance(
     car_manager: "CarController" = Depends(get_car_manager),
 ):
     value: float = await car_manager.px.get_distance()
-    return JSONResponse(content={"distance": value})
+    return {"distance": value}
