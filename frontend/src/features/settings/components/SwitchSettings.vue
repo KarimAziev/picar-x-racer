@@ -2,7 +2,7 @@
   <div v-for="(item, field) in toggleableSettings" :key="field" class="field">
     <ToggleSwitch
       @update:model-value="onUpdate"
-      :id="field"
+      :pt="{ input: { id: field } }"
       :v-tooltip="item.description"
       v-model="store.settings[field]"
     />

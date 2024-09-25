@@ -1,14 +1,13 @@
 <template>
   <div class="p-field" :class="props.fieldClassName">
-    <LabelBox
-      v-if="label"
-      :label="label"
-      :class="labelClassName"
-      :for="field"
-      :message="message"
-    />
+    <span class="label" v-if="label" :class="labelClassName" :for="field"
+      >{{ label }}
+      <span v-if="message" class="message">
+        {{ message }}
+      </span>
+    </span>
     <Select
-      :id="props.field"
+      :pt="{ input: { id: field, name: field } }"
       :options="options"
       :optionLabel="optionLabel"
       :optionValue="optionValue"
@@ -27,7 +26,6 @@ import { ref, watch, useAttrs, computed } from "vue";
 import type { SelectEmitsOptions, SelectProps } from "primevue/select";
 import { InlineMessageProps } from "primevue/inlinemessage";
 import Select from "primevue/select";
-import LabelBox from "@/ui/LabelBox.vue";
 
 export type Props = {
   modelValue?: any;
@@ -72,6 +70,17 @@ const onUpdate: SelectEmitsOptions["update:modelValue"] = (newValue) => {
 };
 </script>
 <style scoped lang="scss">
+.label {
+  font-weight: bold;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  .message {
+    background-color: transparent;
+    font-size: 12px;
+    color: var(--red-400);
+  }
+}
 @import "./field.scss";
 :deep(.p-select-dropdown) {
   width: 0.8rem;

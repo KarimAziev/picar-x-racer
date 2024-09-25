@@ -7,7 +7,9 @@
       >
       <InputNumber
         class="input-number"
+        inputId="auto_measure_distance_delay_ms"
         :min="50"
+        :pt="{ pcInput: { id: 'auto_measure_distance_delay_ms' } }"
         :step="50"
         showButtons
         v-tooltip="
