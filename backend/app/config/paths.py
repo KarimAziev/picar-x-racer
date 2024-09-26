@@ -17,6 +17,7 @@ def expand_file_in_project_dir(file: str):
 
 
 DEFAULT_USER_SETTINGS = path.abspath(path.join(PROJECT_DIR, "user_settings.json"))
+APP_DIR = path.abspath(path.join(PROJECT_DIR, "backend/app"))
 DEFAULT_MUSIC_DIR = expand_file_in_project_dir("music")
 DEFAULT_SOUND_DIR = expand_file_in_project_dir("sounds")
 SETTINGS_FILE_PATH = path.abspath(path.join(PROJECT_DIR, "user_settings.json"))
@@ -53,3 +54,4 @@ FONT_PATH = expand_file_in_project_dir(
 )
 
 YOLO_MODEL_8_PATH = expand_file_in_project_dir("data/yolov8n.pt")
+YOLO_MODEL_5_PATH = expand_file_in_project_dir("data/yolov5n.pt")

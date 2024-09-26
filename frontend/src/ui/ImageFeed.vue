@@ -23,6 +23,9 @@ import { onMounted, onUnmounted } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { makeWebsocketUrl } from "@/util/url";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
+import { useCameraStore } from "@/features/settings/stores";
+
+const camStore = useCameraStore();
 
 const {
   initWS,
@@ -35,6 +38,7 @@ const {
 } = useWebsocketStream(makeWebsocketUrl("ws/video-stream"));
 
 onMounted(() => {
+  camStore.fetchCurrentSettings();
   initWS();
   window.addEventListener("beforeunload", closeWS);
 });

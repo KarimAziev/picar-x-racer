@@ -25,27 +25,28 @@ def perform_detection(
         List[Dict[str, Any]]: A list of detection results.
     """
     with torch.no_grad():
-        results = yolo_model(frame)[0]
+        results = yolo_model(frame, verbose=False)[0]
 
     detection_results = []
 
-    for detection in results.boxes:
-        x1, y1, x2, y2 = detection.xyxy[0].tolist()
-        conf = detection.conf.item()
-        cls = detection.cls.item()
-        label = yolo_model.names[int(cls)]
+    if results.boxes:
+        for detection in results.boxes:
+            x1, y1, x2, y2 = detection.xyxy[0].tolist()
+            conf = detection.conf.item()
+            cls = detection.cls.item()
+            label = yolo_model.names[int(cls)]
 
-        if conf < confidence_threshold:
-            continue
+            if conf < confidence_threshold:
+                continue
 
-        if labels_to_detect is None or label in labels_to_detect:
-            detection_results.append(
-                {
-                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
-                    "label": label,
-                    "confidence": conf,
-                }
-            )
+            if labels_to_detect is None or label in labels_to_detect:
+                detection_results.append(
+                    {
+                        "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                        "label": label,
+                        "confidence": conf,
+                    }
+                )
 
     return detection_results
 

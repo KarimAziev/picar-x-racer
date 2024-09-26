@@ -4,7 +4,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, defineAsyncComponent, watch } from "vue";
+import { onMounted, defineAsyncComponent, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
 import PreloadMask from "@/ui/PreloadMask.vue";
@@ -15,7 +15,6 @@ const CarController = defineAsyncComponent({
 });
 
 const settingsStore = useSettingsStore();
-const loaded = computed(() => settingsStore.loaded);
 
 const router = useRouter();
 
@@ -29,10 +28,8 @@ watch(
 );
 
 onMounted(async () => {
-  if (!loaded.value) {
-    await settingsStore.fetchSettingsInitial();
-    await cameraStore.fetchConfig();
-  }
+  await cameraStore.fetchConfig();
+  await settingsStore.fetchSettingsInitial();
 });
 </script>
 <style scoped lang="scss"></style>

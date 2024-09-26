@@ -86,6 +86,20 @@ export const useStore = defineStore("camera", {
       return this.data;
     },
 
+    async fetchCurrentSettings() {
+      try {
+        this.loading = true;
+        const { data } = await axios.get<CameraOpenRequestParams>(
+          "/api/video-feed-settings",
+        );
+        this.data = data;
+      } catch (error) {
+        console.error("Error fetching video modes:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async fetchConfig() {
       try {
         this.loading = true;

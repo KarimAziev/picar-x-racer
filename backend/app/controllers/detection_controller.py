@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.util.detection_process import detection_process_func
 from app.util.logger import Logger
+from app.util.print_memory_usage import print_memory_usage
 from app.util.singleton_meta import SingletonMeta
 
 
@@ -19,6 +20,7 @@ class DetectionController(metaclass=SingletonMeta):
         self._video_feed_detect_mode: Optional[str] = None
 
     def start_detection_process(self):
+        print_memory_usage("Memory before starting process")
         if not self.detection_process or not self.detection_process.is_alive():
             self.detection_process = mp.Process(
                 target=detection_process_func,
@@ -62,6 +64,8 @@ class DetectionController(metaclass=SingletonMeta):
             self.logger.info("Detection process has been stopped")
         else:
             self.logger.info("Detection process is not alive")
+
+        print_memory_usage("Memory after stopping process")
 
     def clear_stop_event(self):
         self.logger.info("Clearing stop event")

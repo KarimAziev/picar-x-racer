@@ -16,6 +16,7 @@ import { retrieveError } from "@/util/error";
 import { useStore as useMusicStore } from "@/features/settings/stores/music";
 import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
 import { cycleValue } from "@/util/cycleValue";
+import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 
 export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
@@ -112,6 +113,7 @@ export const useStore = defineStore("settings", {
       const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
       const soundStore = useSoundStore();
+      const batteryStore = useBatteryStore();
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
       }
@@ -131,6 +133,7 @@ export const useStore = defineStore("settings", {
           musicStore.getCurrentStatus(),
           soundStore.fetchDefaultData(),
           soundStore.fetchData(),
+          batteryStore.fetchBatteryStatus(),
         ]);
         musicStore.autoplay = this.settings.autoplay_music || false;
         this.error = undefined;
