@@ -1,5 +1,5 @@
 from os import path
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 from app.deps import get_audio_manager, get_file_manager
 from app.schemas.audio import (
@@ -110,10 +110,8 @@ async def set_volume(
     payload: VolumeRequest,
     audio_manager: "AudioController" = Depends(get_audio_manager),
 ):
-    if not isinstance(payload, Dict) or "volume" not in payload:
-        raise HTTPException(status_code=400, detail="Invalid format")
 
-    volume = payload["volume"]
+    volume = payload.volume
     int_volume = int(volume)
 
     try:
