@@ -200,7 +200,6 @@ class CameraController(metaclass=SingletonMeta):
                         self.detection_controller.frame_queue.put_nowait(frame)
                         last_frame_time = current_time
                     except queue.Full:
-                        self.logger.warning("Frame queue is full. Dropping frame.")
                         pass
                 else:
                     pass
