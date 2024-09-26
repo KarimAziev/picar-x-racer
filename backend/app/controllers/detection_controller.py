@@ -13,9 +13,9 @@ class DetectionController(metaclass=SingletonMeta):
         self.logger = Logger(__name__)
         self.stop_event = mp.Event()
         self.manager = mp.Manager()
-        self.frame_queue = self.manager.Queue()
-        self.detection_queue = self.manager.Queue()
-        self.control_queue = self.manager.Queue()
+        self.frame_queue = self.manager.Queue(maxsize=10)
+        self.detection_queue = self.manager.Queue(maxsize=10)
+        self.control_queue = self.manager.Queue(maxsize=10)
         self.detection_process = None
         self._video_feed_detect_mode: Optional[str] = None
 
