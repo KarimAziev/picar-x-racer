@@ -26,9 +26,6 @@ def detection_process_func(
         control_queue (mp.Queue): Queue for control messages.
     """
 
-    import torch
-
-    torch.set_num_threads(1)
     print_memory_usage("Memory Usage Before Loading the Model")
     with ModelManager() as yolo_model:
         try:
