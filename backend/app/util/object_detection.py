@@ -25,7 +25,7 @@ def perform_detection(
         List[Dict[str, Any]]: A list of detection results.
     """
     with torch.no_grad():
-        results = yolo_model(frame, verbose=True)[0]
+        results = yolo_model(frame, verbose=False)[0]
 
     detection_results = []
 
