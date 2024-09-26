@@ -100,4 +100,4 @@ class Logger:
 
     @staticmethod
     def log_exception(message: str, exc: Exception):
-        logging.error(f"{message}: {exc}")
+        logging.exception(message, exc_info=exc)

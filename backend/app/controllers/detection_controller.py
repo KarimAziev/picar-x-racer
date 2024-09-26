@@ -45,13 +45,13 @@ class DetectionController(metaclass=SingletonMeta):
         try:
             self.control_queue.put_nowait(command)
         except BrokenPipeError as e:
-            self.logger.error(f"BrokenPipeError: {e}")
+            self.logger.log_exception(f"BrokenPipeError", e)
         except queue.Full:
             self.logger.error("Queue is full")
         except queue.Empty:
             self.logger.error("Queue is empty")
         except Exception as e:
-            self.logger.log_exception("Unexpected error: %s", e)
+            self.logger.log_exception(f"BrokenPipeError", e)
 
     def stop_detection_process(self):
         if self.detection_process is None:
@@ -106,10 +106,10 @@ class DetectionController(metaclass=SingletonMeta):
             try:
                 self.control_queue.put_nowait(command)
             except BrokenPipeError as e:
-                self.logger.error(f"BrokenPipeError: {e}")
+                self.logger.log_exception("BrokenPipeError", e)
             except queue.Full:
                 self.logger.error("Queue is full")
             except queue.Empty:
                 self.logger.error("Queue is empty")
             except Exception as e:
-                self.logger.log_exception("Unexpected error: %s", e)
+                self.logger.log_exception("Unexpected error", e)
