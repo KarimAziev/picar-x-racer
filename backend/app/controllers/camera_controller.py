@@ -188,9 +188,15 @@ class CameraController(metaclass=SingletonMeta):
 
                 self.img = frame
                 self.stream_img = frame
-                try:
-                    self.detection_controller.frame_queue.put_nowait(frame)
-                except queue.Full:
+                if (
+                    self.detection_controller.video_feed_detect_mode
+                    and self.detection_controller.frame_queue is not None
+                ):
+                    try:
+                        self.detection_controller.frame_queue.put_nowait(frame)
+                    except queue.Full:
+                        self.logger.warning("Frame queue is full. Dropping frame.")
+                else:
                     pass
 
         except Exception as e:
