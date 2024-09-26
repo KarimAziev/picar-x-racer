@@ -194,7 +194,7 @@ class CameraController(metaclass=SingletonMeta):
                 if (
                     self.detection_controller.video_feed_detect_mode
                     and self.detection_controller.frame_queue is not None
-                    and current_time - last_frame_time >= 2
+                    and current_time - last_frame_time >= 1
                 ):
                     try:
                         self.detection_controller.frame_queue.put_nowait(frame)
