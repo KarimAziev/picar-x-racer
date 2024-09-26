@@ -15,7 +15,6 @@ class ModelManager:
         return self.model
 
     def __exit__(self, exc_type, exc_value, traceback):
-        pass
 
-        # del self.model
-        # gc.collect()
+        del self.model
+        gc.collect()
