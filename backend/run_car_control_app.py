@@ -3,16 +3,11 @@ import os
 
 import uvicorn
 
-from app.util.logger import Logger
-from app.util.print_memory_usage import print_memory_usage
-from app.util.reset_mcu_sync import reset_mcu_sync
-from app.util.setup_env import setup_env
 
-
-def start_websocket_app(ws_port: int, log_level: str, reload: bool):
+def start_control_app(ws_port: int, log_level: str, reload: bool):
     app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
     uvicorn_config = {
-        "app": "app.websocket_app:app",
+        "app": "app.control_server:app",
         "host": "0.0.0.0",
         "port": ws_port,
         "log_level": log_level.lower(),
@@ -32,6 +27,11 @@ def start_websocket_app(ws_port: int, log_level: str, reload: bool):
 
 
 if __name__ == "__main__":
+    from app.util.logger import Logger
+    from app.util.print_memory_usage import print_memory_usage
+    from app.util.reset_mcu_sync import reset_mcu_sync
+    from app.util.setup_env import setup_env
+
     print_memory_usage("Initial memory usage:")
     setup_env()
     reset_mcu_sync()
@@ -68,4 +68,4 @@ if __name__ == "__main__":
     os.environ["LOG_LEVEL"] = log_level
 
     Logger.setup_from_env()
-    start_websocket_app(ws_port=ws_port, log_level=log_level, reload=reload)
+    start_control_app(ws_port=ws_port, log_level=log_level, reload=reload)

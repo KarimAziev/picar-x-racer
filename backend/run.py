@@ -3,11 +3,11 @@ import multiprocessing as mp
 import os
 import sys
 
-import uvicorn
-
 from app.util.logger import Logger
 from app.util.reset_mcu_sync import reset_mcu_sync
 from app.util.setup_env import setup_env
+from run_car_control_app import start_control_app
+from run_main_app import start_main_app
 
 
 def terminate_processes(processes):
@@ -18,50 +18,6 @@ def terminate_processes(processes):
         process.join()
     print("Child processes terminated. Exiting.")
     sys.exit(0)
-
-
-def start_main_app(port: int, log_level: str, reload: bool):
-    app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
-    uvicorn_config = {
-        "app": "app.main:app",
-        "host": "0.0.0.0",
-        "port": port,
-        "log_level": log_level.lower(),
-    }
-
-    if reload:
-        uvicorn_config.update(
-            {
-                "reload": reload,
-                "reload_dirs": [app_directory],
-                "reload_includes": ["*.py"],
-                "reload_excludes": ["*.log", "tmp/*"],
-            }
-        )
-
-    uvicorn.run(**uvicorn_config)
-
-
-def start_websocket_app(ws_port: int, log_level: str, reload: bool):
-    app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
-    uvicorn_config = {
-        "app": "app.websocket_app:app",
-        "host": "0.0.0.0",
-        "port": ws_port,
-        "log_level": log_level.lower(),
-    }
-
-    if reload:
-        uvicorn_config.update(
-            {
-                "reload": reload,
-                "reload_includes": ["*.py"],
-                "reload_dirs": [app_directory],
-                "reload_excludes": ["*.log", "tmp/*"],
-            }
-        )
-
-    uvicorn.run(**uvicorn_config)
 
 
 if __name__ == "__main__":
@@ -116,7 +72,7 @@ if __name__ == "__main__":
     Logger.setup_from_env()
     main_app_process = mp.Process(target=start_main_app, args=(port, log_level, reload))
     websocket_app_process = mp.Process(
-        target=start_websocket_app, args=(ws_port, log_level, reload)
+        target=start_control_app, args=(ws_port, log_level, reload)
     )
 
     processes = [main_app_process, websocket_app_process]

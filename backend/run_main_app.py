@@ -4,14 +4,11 @@ import os
 
 import uvicorn
 
-from app.util.logger import Logger
-from app.util.print_memory_usage import print_memory_usage
-
 
 def start_main_app(port: int, log_level: str, reload: bool):
     app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
     uvicorn_config = {
-        "app": "app.main:app",
+        "app": "app.main_server:app",
         "host": "0.0.0.0",
         "port": port,
         "log_level": log_level.lower(),
@@ -31,6 +28,9 @@ def start_main_app(port: int, log_level: str, reload: bool):
 
 
 if __name__ == "__main__":
+    from app.util.logger import Logger
+    from app.util.print_memory_usage import print_memory_usage
+
     print_memory_usage("Memory before running app")
     try:
         mp.set_start_method("spawn", force=True)

@@ -1,6 +1,6 @@
 import time
 
-from app.robot_hat.pin import Pin
+from app.adapters.robot_hat.pin import Pin
 
 
 def reset_mcu_sync():
