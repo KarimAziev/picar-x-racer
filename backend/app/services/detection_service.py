@@ -13,10 +13,11 @@ class DetectionService(metaclass=SingletonMeta):
         self.logger = Logger(__name__)
         self.stop_event = mp.Event()
         self.manager = mp.Manager()
-        self.frame_queue = self.manager.Queue(maxsize=2)
-        self.detection_queue = self.manager.Queue(maxsize=2)
+        self.frame_queue = self.manager.Queue(maxsize=1)
+        self.detection_queue = self.manager.Queue(maxsize=1)
         self.control_queue = self.manager.Queue(maxsize=10)
         self.detection_process = None
+        self.video_feed_confidence = 0.25
         self._video_feed_detect_mode: Optional[str] = None
 
     def start_detection_process(self):
@@ -40,6 +41,7 @@ class DetectionService(metaclass=SingletonMeta):
         command = {
             "command": "set_detect_mode",
             "mode": self.video_feed_detect_mode,
+            "confidence": self.video_feed_confidence,
         }
 
         try:
@@ -102,7 +104,12 @@ class DetectionService(metaclass=SingletonMeta):
         self.logger.info(f"Setting video_feed_detect_mode to {new_mode}")
         self._video_feed_detect_mode = new_mode
         if hasattr(self, "control_queue"):
-            command = {"command": "set_detect_mode", "mode": new_mode}
+
+            command = {
+                "command": "set_detect_mode",
+                "mode": new_mode,
+                "confidence": self.video_feed_confidence,
+            }
             try:
                 self.control_queue.put_nowait(command)
             except BrokenPipeError as e:

@@ -32,6 +32,7 @@ def detection_process_func(
             logger.info(f"YOLO yolo_model.task {yolo_model.task}")
             current_detect_mode = None
             detection_function = None
+            confidence_threshold = 0.3
             counter = 0
 
             while not stop_event.is_set():
@@ -41,9 +42,13 @@ def detection_process_func(
                             control_message = control_queue.get_nowait()
                             if control_message.get("command") == "set_detect_mode":
                                 current_detect_mode = control_message.get("mode")
+                                confidence: float = control_message.get("confidence")
+
                                 logger.info(
-                                    f"current_detect_mode: {current_detect_mode}"
+                                    f"current_detect_mode: {current_detect_mode} confidence: {confidence}"
                                 )
+                                if confidence:
+                                    confidence_threshold = confidence
                                 detection_function = (
                                     detectors.get(current_detect_mode)
                                     if current_detect_mode
@@ -61,7 +66,9 @@ def detection_process_func(
                         continue
 
                     detection_result = detection_function(
-                        frame=frame, yolo_model=yolo_model
+                        frame=frame,
+                        yolo_model=yolo_model,
+                        confidence_threshold=confidence_threshold,
                     )
                     if detection_result and counter < 5:
                         logger.debug(f"Detection result: {detection_result}")
@@ -73,7 +80,7 @@ def detection_process_func(
                         pass
 
                 except Exception as e:
-                    logger.error(f"Error in detection_process_func: {e}")
+                    logger.log_exception("Error in detection_process_func", e)
         except KeyboardInterrupt:
             logger.info("Detection process received KeyboardInterrupt, exiting.")
         finally:

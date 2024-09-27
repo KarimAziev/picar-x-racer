@@ -2,9 +2,12 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 import torch
+from app.util.logger import Logger
 
 if TYPE_CHECKING:
     from ultralytics import YOLO
+
+logger = Logger(__name__)
 
 
 def perform_detection(
@@ -18,6 +21,7 @@ def perform_detection(
 
     Args:
         frame (np.ndarray): The frame on which to perform detection.
+        yolo_model: Loaded YOLO model from the ultralytics package.
         labels_to_detect (Optional[List[str]]): List of labels to detect. If None, all detections are returned.
         confidence_threshold (float): Minimum confidence score to include a detection.
 
@@ -52,13 +56,17 @@ def perform_detection(
 
 
 def perform_cat_detection(
-    frame: np.ndarray, yolo_model: "YOLO"
+    frame: np.ndarray,
+    yolo_model: "YOLO",
+    confidence_threshold: float = 0.5,
 ) -> List[Dict[str, Any]]:
     """
     Performs detection for the cat on the given frame.
 
     Args:
         frame (np.ndarray): The frame on which to perform detection.
+        yolo_model: Loaded YOLO model from the ultralytics package.
+        confidence_threshold (float): Minimum confidence score to include a detection.
 
     Returns:
         List[Dict[str, Any]]: A list of detection results.
@@ -66,19 +74,21 @@ def perform_cat_detection(
     return perform_detection(
         frame=frame,
         labels_to_detect=["cat"],
-        confidence_threshold=0.5,
+        confidence_threshold=confidence_threshold,
         yolo_model=yolo_model,
     )
 
 
 def perform_person_detection(
-    frame: np.ndarray, yolo_model: "YOLO"
+    frame: np.ndarray, yolo_model: "YOLO", confidence_threshold: float = 0.5
 ) -> List[Dict[str, Any]]:
     """
     Performs detection for the person on the given frame.
 
     Args:
         frame (np.ndarray): The frame on which to perform detection.
+        yolo_model: Loaded YOLO model from the ultralytics package.
+        confidence_threshold (float): Minimum confidence score to include a detection.
 
     Returns:
         List[Dict[str, Any]]: A list of detection results.
@@ -86,6 +96,6 @@ def perform_person_detection(
     return perform_detection(
         frame=frame,
         labels_to_detect=["person"],
-        confidence_threshold=0.5,
+        confidence_threshold=confidence_threshold,
         yolo_model=yolo_model,
     )

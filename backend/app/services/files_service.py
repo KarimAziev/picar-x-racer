@@ -53,7 +53,7 @@ from app.util.logger import Logger
 from fastapi import UploadFile
 
 
-class FilesService(Logger):
+class FilesService:
     """
     Service for managing file operations related to user settings, photos, sounds, and music.
 
@@ -66,9 +66,10 @@ class FilesService(Logger):
     default_user_sounds_dir = DEFAULT_SOUND_DIR
 
     def __init__(self, audio_manager: AudioService, *args, **kwargs):
-        super().__init__(name=__name__, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.user = os.getlogin()
         self.user_home = path.expanduser(f"~{self.user}")
+        self.logger = Logger(name=__name__)
         self.user_settings_file = path.join(
             CONFIG_USER_DIR, "picar-x-racer", "user_settings.json"
         )
@@ -111,19 +112,19 @@ class FilesService(Logger):
             or self.last_modified_time != current_modified_time
             or self.current_settings_file != settings_file
         ):
-            self.info(f"Loading settings from {settings_file}")
+            self.logger.info(f"Loading settings from {settings_file}")
             self.cached_settings = load_json_file(settings_file)
             self.last_modified_time = current_modified_time
             self.current_settings_file = settings_file
         else:
-            self.info(f"Using cached settings from {self.current_settings_file}")
+            self.logger.info(f"Using cached settings from {self.current_settings_file}")
 
         return self.cached_settings
 
     def save_settings(self, new_settings: Dict[str, Any]):
         """Saves new settings to the user settings file."""
         existing_settings = self.load_settings()
-        self.info(f"Saving settings to {self.user_settings_file}")
+        self.logger.info(f"Saving settings to {self.user_settings_file}")
         merged_settings = {
             **existing_settings,
             **new_settings,
@@ -134,7 +135,7 @@ class FilesService(Logger):
             json.dump(merged_settings, settings_file, indent=2)
 
         self.settings = merged_settings
-        self.debug(f"settings saved to {self.user_settings_file}")
+        self.logger.debug(f"settings saved to {self.user_settings_file}")
         return self.settings
 
     def list_files(self, directory: str, full=False) -> List[str]:
@@ -217,8 +218,7 @@ class FilesService(Logger):
             result = {"track": track, "duration": duration}
             return result
         except Exception as err:
-            self.logger.error(f"Failed to read details for {file}: ${err}")
-            print(f"err {err}")
+            self.logger.log_exception(f"Error getting details for file {file}", err)
 
     def list_default_music(self, full=False):
         """

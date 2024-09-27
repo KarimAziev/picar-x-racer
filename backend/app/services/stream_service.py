@@ -73,7 +73,7 @@ class StreamService(metaclass=SingletonMeta):
 
                 await asyncio.sleep(0)
         except Exception as e:
-            self.logger.error(f"Error in stream: {e}")
+            self.logger.log_exception("Error in stream", e)
 
     async def video_stream(self, websocket: WebSocket):
         """
@@ -98,7 +98,7 @@ class StreamService(metaclass=SingletonMeta):
         except WebSocketDisconnect:
             self.logger.info(f"WebSocket Disconnected {websocket.client}")
         except Exception as e:
-            self.logger.error(f"An error occurred: {e}")
+            self.logger.log_exception("An error occurred", e)
         finally:
             self.active_clients -= 1
             self.logger.info(

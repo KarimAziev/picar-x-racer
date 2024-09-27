@@ -108,6 +108,7 @@ class VideoFeedSettings(BaseModel):
     video_feed_enhance_mode: str | None
     video_feed_quality: int
     video_feed_format: str
+    video_feed_confidence: float
 
 
 class VideoFeedUpdateSettings(BaseModel):
@@ -118,3 +119,4 @@ class VideoFeedUpdateSettings(BaseModel):
     video_feed_width: Union[int, None] = None
     video_feed_height: Union[int, None] = None
     video_feed_fps: Union[int, None] = None
+    video_feed_confidence: Union[float, None] = None

@@ -24,6 +24,9 @@ def update_video_feed_settings(
 ):
     logger.info(f"Updating video feed settings: {payload}")
     if payload:
+        if payload.video_feed_confidence:
+            detection_manager.video_feed_confidence = payload.video_feed_confidence
+
         for key, value in payload.model_dump(exclude_unset=True).items():
             if key is "video_feed_detect_mode":
                 detection_manager.video_feed_detect_mode = value
@@ -44,6 +47,7 @@ def update_video_feed_settings(
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
+        "video_feed_confidence": detection_manager.video_feed_confidence,
     }
 
 
@@ -60,6 +64,7 @@ def get_camera_settings(
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
+        "video_feed_confidence": detection_manager.video_feed_confidence,
     }
 
 
