@@ -36,6 +36,7 @@ export interface CameraOpenRequestParams {
   video_feed_quality?: number;
   video_feed_height?: number;
   video_feed_width?: number;
+  video_feed_confidence?: number;
 }
 
 export interface Settings extends Partial<ToggleableSettings> {
@@ -241,32 +242,6 @@ export const useStore = defineStore("settings", {
       } finally {
         this.loading = false;
       }
-    },
-    nextFrameEnhancerMode(
-      prop: keyof ToggleableSettings,
-      showMsg?: boolean,
-      msgParams?: ShowMessageTypeProps | string,
-    ) {
-      const messager = useMessagerStore();
-      const nextValue = !this.settings[prop];
-      this.settings[prop] = nextValue;
-      if (showMsg) {
-        messager.info(`${prop}: ${nextValue}`, msgParams);
-      }
-      return nextValue;
-    },
-    prevFrameEnhancerMode(
-      prop: keyof ToggleableSettings,
-      showMsg?: boolean,
-      msgParams?: ShowMessageTypeProps | string,
-    ) {
-      const messager = useMessagerStore();
-      const nextValue = !this.settings[prop];
-      this.settings[prop] = nextValue;
-      if (showMsg) {
-        messager.info(`${prop}: ${nextValue}`, msgParams);
-      }
-      return nextValue;
     },
     toggleSettingsProp(
       prop: keyof ToggleableSettings,
