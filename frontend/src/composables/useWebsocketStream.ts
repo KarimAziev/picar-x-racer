@@ -1,9 +1,15 @@
 import { ref } from "vue";
 
+export interface WebsocketStreamParams {
+  reconnectDelay?: number;
+  onOpen?: Function;
+}
+
 export const useWebsocketStream = (
   url: string,
-  reconnectDelay: number = 5000,
+  params?: WebsocketStreamParams,
 ) => {
+  const { reconnectDelay, onOpen } = params || {};
   const ws = ref<WebSocket>();
   const imgRef = ref<HTMLImageElement>();
   const imgInitted = ref(false);
@@ -21,6 +27,11 @@ export const useWebsocketStream = (
     ws.value = new WebSocket(url);
     if (!ws.value) {
       return;
+    }
+    if (onOpen) {
+      ws.value.onopen = () => {
+        onOpen();
+      };
     }
     ws.value.binaryType = "arraybuffer";
 
@@ -54,7 +65,7 @@ export const useWebsocketStream = (
       retryTimer.value = setTimeout(() => {
         console.log("Retrying WebSocket connection...");
         initWS();
-      }, reconnectDelay);
+      }, reconnectDelay || 5000);
     }
   };
 
