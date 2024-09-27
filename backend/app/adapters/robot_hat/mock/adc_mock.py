@@ -70,4 +70,6 @@ class ADC(I2C):
         :return: The total battery voltage in volts (V), which is a sum of two battery voltages.
         :rtype: float
         """
-        return battery.get_battery_voltage()
+        voltage = battery.get_battery_voltage() / 3
+        self.logger.info(f"Read voltage mock: {voltage}")
+        return voltage

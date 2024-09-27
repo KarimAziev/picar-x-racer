@@ -1,4 +1,4 @@
-from app.config.platform import is_raspberry_pi
+from app.config.platform import is_os_raspberry
 
 
 def get_battery_voltage():
@@ -8,7 +8,7 @@ def get_battery_voltage():
     :return: battery voltage(V)
     :rtype: float
     """
-    if is_raspberry_pi:
+    if is_os_raspberry:
         from app.adapters.robot_hat.adc import ADC
     else:
         from app.adapters.robot_hat.mock.adc_mock import ADC
