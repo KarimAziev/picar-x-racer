@@ -237,8 +237,7 @@ Leverage AI-powered object detection modes to enhance your driving and monitorin
 
 #### Technical Details
 
-- **AI Model**: The object detection feature utilizes the YOLOv5n model, optimized for real-time processing on devices like the Raspberry Pi.
-- **Customization**: You can adjust the detection confidence threshold and customize detection parameters in the settings.
+- **AI Model**: The object detection feature utilizes the `YOLOv8n` model, optimized for real-time processing on devices like the Raspberry Pi.
 
 ### Video Enhancers
 
@@ -256,7 +255,6 @@ Enhance your video streaming experience with real-time video enhancement modes.
 
 - **Switch Enhancement Modes**: Use the keybindings `e` (Next Enhance Mode) and `E` (Previous Enhance Mode) to cycle through the available video enhancer modes.
 - **Real-time Application**: Enhancements are applied in real-time to the live video feed, providing immediate visual feedback.
-- **Customization**: Some enhancement modes may have adjustable parameters for finer control, which can be configured in the settings panel.
 
 #### Applications
 
