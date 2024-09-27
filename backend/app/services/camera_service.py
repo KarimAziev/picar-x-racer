@@ -46,7 +46,6 @@ class CameraService(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[VideoCapture, None] = None
-        self.frame_counter = 0
         self.video_feed_width: Optional[int] = None
         self.video_feed_height: Optional[int] = None
         self.video_feed_enhance_mode: Optional[str] = None
@@ -170,15 +169,13 @@ class CameraService(metaclass=SingletonMeta):
                 else:
                     failed_counter = 0
 
-                self.frame_counter += 1
-
                 self.img = frame
                 self.stream_img = frame
                 current_time = time.time()
                 if (
                     self.detection_service.video_feed_detect_mode
                     and self.detection_service.frame_queue is not None
-                    and current_time - last_frame_time >= 1
+                    and current_time - last_frame_time >= 0.5
                 ):
                     try:
                         self.detection_service.frame_queue.put_nowait(frame)
