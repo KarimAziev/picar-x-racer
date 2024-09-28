@@ -13,7 +13,7 @@
                 severity="secondary"
                 text
                 icon="pi pi-download"
-                @click="slotProps.data.filename"
+                @click="handleDownloadFile(slotProps.data.filename)"
               >
               </Button>
               <Button
@@ -48,6 +48,12 @@ const props = defineProps<{
 }>();
 
 const files = computed(() => props.files.map((filename) => ({ filename })));
+
+const handleDownloadFile = (filename: string) => {
+  if (props.downloadFile) {
+    props.downloadFile(filename);
+  }
+};
 
 const handleRemove = async (filename: string) => {
   if (props.removeFile) {
