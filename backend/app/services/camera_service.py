@@ -1,7 +1,6 @@
 import asyncio
 import queue
 import threading
-import time
 from typing import Optional, Union
 
 import cv2
@@ -133,7 +132,6 @@ class CameraService(metaclass=SingletonMeta):
 
         failed_counter = 0
         max_failed_attempt_count = 10
-        last_frame_time = 0
 
         try:
             while self.camera_run:
@@ -171,15 +169,10 @@ class CameraService(metaclass=SingletonMeta):
 
                 self.img = frame
                 self.stream_img = frame
-                current_time = time.time()
-                if (
-                    self.detection_service.video_feed_detect_mode
-                    and self.detection_service.frame_queue is not None
-                    and current_time - last_frame_time >= 0.5
-                ):
+                if self.detection_service.video_feed_detect_mode:
                     try:
                         self.detection_service.frame_queue.put_nowait(frame)
-                        last_frame_time = current_time
+
                     except queue.Full:
                         pass
                 else:
