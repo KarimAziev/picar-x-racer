@@ -13,7 +13,7 @@
                 severity="secondary"
                 text
                 icon="pi pi-download"
-                @click="slotProps.data.filename;"
+                @click="slotProps.data.filename"
               >
               </Button>
               <Button
