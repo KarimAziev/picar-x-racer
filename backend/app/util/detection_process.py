@@ -28,8 +28,10 @@ def detection_process_func(
 
     print_memory_usage("Memory Usage Before Loading the Model")
     with ModelManager() as yolo_model:
+        if yolo_model is None:
+            logger.error("Failed to load the YOLO model. Exiting detection process.")
+            return
         try:
-            logger.info(f"YOLO yolo_model.task {yolo_model.task}")
             current_detect_mode = None
             detection_function = None
             confidence_threshold = 0.3

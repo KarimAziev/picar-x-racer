@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
-import torch
 from app.util.logger import Logger
 
 if TYPE_CHECKING:
@@ -28,8 +27,9 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-    with torch.no_grad():
-        results = yolo_model(frame, verbose=False)[0]
+    results = yolo_model.predict(
+        frame, verbose=True, conf=confidence_threshold, task="detect"
+    )[0]
 
     detection_results = []
 
