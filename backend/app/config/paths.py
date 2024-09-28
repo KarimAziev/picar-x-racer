@@ -55,3 +55,6 @@ FONT_PATH = expand_file_in_project_dir(
 
 YOLO_MODEL_8_PATH = expand_file_in_project_dir("data/yolov8n.pt")
 YOLO_MODEL_5_PATH = expand_file_in_project_dir("data/yolov5n.pt")
+YOLO_MODEL_8_EDGE_TPU = expand_file_in_project_dir(
+    "data/yolov8n_full_integer_quant_edgetpu.tflite"
+)
