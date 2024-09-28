@@ -8,14 +8,6 @@
   textarea,
   input,
   select {
-    font-size: 10px;
-  }
-  @media (min-width: 640px) {
-    .input-number,
-    textarea,
-    input,
-    select {
-      font-size: 1rem;
-    }
+    font-size: 0.6rem;
   }
 }

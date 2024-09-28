@@ -77,7 +77,6 @@ const onUpdate: SelectEmitsOptions["update:modelValue"] = (newValue) => {
   flex-direction: column;
   .message {
     background-color: transparent;
-    font-size: 12px;
     color: var(--red-400);
   }
 }
@@ -85,19 +84,29 @@ const onUpdate: SelectEmitsOptions["update:modelValue"] = (newValue) => {
 :deep(.p-select-dropdown) {
   width: 0.8rem;
   .p-icon {
-    width: 0.7rem;
-    position: relative;
-    right: 50%;
+    width: 0.5rem;
+    right: 30%;
+
     @media (max-width: 640px) {
-      width: 0.5rem;
-      right: 30%;
+      width: 0.7rem;
+      position: relative;
+      right: 50%;
     }
   }
 }
 
 :deep(.p-select-label) {
-  padding: 0.4rem 0.4rem;
-  @media (min-width: 992px) {
+  padding: 0.15rem 0.4rem;
+
+  @media (min-width: 576px) {
+    padding: 0.25rem 0.7rem;
+  }
+
+  @media (min-width: 768px) {
+    padding: 0.3rem 0.7rem;
+  }
+
+  @media (min-width: 1200px) {
     padding: 0.4rem 0.7rem;
   }
 }

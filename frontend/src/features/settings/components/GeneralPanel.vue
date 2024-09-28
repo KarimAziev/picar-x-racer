@@ -42,31 +42,8 @@ const store = useSettingsStore();
 
 <style scoped lang="scss">
 .field {
-  display: flex;
-  flex-direction: column;
-  margin: 1rem 0;
-  .input-number,
-  textarea,
-  input {
-    font-size: 10px;
-  }
-  @media (min-width: 640px) {
-    .input-number,
-    textarea,
-    input {
-      font-size: 1rem;
-    }
-    .input-number {
-      max-width: unset;
-    }
-  }
-}
-:deep(.p-inputnumber-input) {
-  font-size: 10px;
-  @media (min-width: 640px) {
-    & {
-      font-size: 1rem;
-    }
+  label {
+    display: block;
   }
 }
 </style>

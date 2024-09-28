@@ -17,8 +17,6 @@
         icon="pi pi-backward"
         aria-label="Prev track"
         text
-        raised
-        rounded
         :disabled="disabled"
         v-tooltip="'Previous track'"
       />
@@ -28,8 +26,6 @@
         @click="pauseTrack"
         icon="pi pi-pause"
         text
-        raised
-        rounded
         :disabled="disabled"
         aria-label="Pause"
         v-tooltip="'Pause playing track'"
@@ -39,8 +35,6 @@
         v-else
         icon="pi pi-play-circle"
         text
-        raised
-        rounded
         aria-label="Play"
         :disabled="disabled"
         v-tooltip="'Play track'"
@@ -50,8 +44,6 @@
         icon="pi pi-stop"
         :disabled="disabled || !isPlaying"
         text
-        raised
-        rounded
         aria-label="Stop"
         v-tooltip="'Stop playing'"
       />
@@ -64,8 +56,6 @@
         aria-label="Next track"
         v-tooltip="'Play next track'"
         text
-        raised
-        rounded
       />
     </div>
   </div>

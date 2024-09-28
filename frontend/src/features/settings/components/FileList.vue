@@ -1,34 +1,39 @@
 <template>
   <div class="files-wrapper">
     <Loading :loading="loading">
-      <ul class="files">
-        <li v-for="track in files" :key="track" class="filerow">
-          <span class="filename">{{ track }}</span>
-          <Button
-            v-if="downloadFile"
-            v-tooltip="'Download file'"
-            severity="secondary"
-            outlined
-            icon="pi pi-download"
-            @click="downloadFile(track)"
-          >
-          </Button>
-          <Button
-            severity="danger"
-            v-tooltip="'Remove file'"
-            text
-            v-if="removeFile"
-            icon="pi pi-times"
-            @click="handleRemove(track)"
-          ></Button>
-        </li>
-      </ul>
+      <DataTable :value="files" :loading="loading">
+        <Column class="track-col" field="filename" header="File"></Column>
+
+        <Column :exportable="false" header="Actions">
+          <template #body="slotProps">
+            <ButtonGroup class="button-group">
+              <Button
+                rounded
+                v-tooltip="'Download file'"
+                severity="secondary"
+                text
+                icon="pi pi-download"
+                @click="slotProps.data.filename;"
+              >
+              </Button>
+              <Button
+                icon="pi pi-trash"
+                outlined
+                rounded
+                severity="danger"
+                text
+                @click="handleRemove(slotProps.data.filename)"
+              />
+            </ButtonGroup>
+          </template>
+        </Column>
+      </DataTable>
     </Loading>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import Button from "primevue/button";
 import Loading from "@/ui/Loading.vue";
 import { useMessagerStore } from "@/features/messager/store";
@@ -42,10 +47,12 @@ const props = defineProps<{
   removeFile?: (file: string) => Promise<any>;
 }>();
 
-const handleRemove = async (track: string) => {
+const files = computed(() => props.files.map((filename) => ({ filename })));
+
+const handleRemove = async (filename: string) => {
   if (props.removeFile) {
     try {
-      await props.removeFile(track);
+      await props.removeFile(filename);
       if (props.fetchData) {
         await props.fetchData();
       }
@@ -80,7 +87,7 @@ onMounted(async () => {
   gap: 5px;
   justify-content: space-between;
 }
-.filename {
-  min-width: 500px;
+.button-group {
+  white-space: nowrap;
 }
 </style>

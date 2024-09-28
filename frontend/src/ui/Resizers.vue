@@ -103,7 +103,7 @@ $base-size: 120px;
   z-index: 11;
   border-radius: 50%;
   &:hover {
-    background-color: var(--vt-c-divider-dark-1);
+    background-color: var(--robo-color-primary);
   }
 }
 

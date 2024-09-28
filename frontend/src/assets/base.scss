@@ -1,22 +1,13 @@
 :root {
   --c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
+  --c-white-soft: #f8f8f8;
+  --c-white-mute: #f2f2f2;
   --p-slider-handle-width: 5px;
   --p-slider-handle-height: 5px;
   --vt-c-black: #181818;
+
   --vt-c-black-soft: #222222;
   --vt-c-black-mute: #282828;
-
-  --vt-c-indigo: #2c3e50;
-
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
-
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
   --color-red: #ff0040;
 }
 
@@ -34,6 +25,7 @@
   --robo-3-color-primary: #00ffbf;
   --robo-4-color-primary: #33ff33;
   --robo-color-primary: var(--robo-3-color-primary);
+  --color-text: var(--robo-color-primary);
   --font-family-tt-octosquares-regular: "TT-Octosquares-Regular";
   --font-family: var(--font-family-tt-octosquares-regular);
   --font-family-settings: "Inter", system-ui, Avenir, Helvetica, Arial,
@@ -42,16 +34,13 @@
   --font-weight: 400;
 }
 
-/* semantic color variables for this project */
 :root {
   --color-background: var(--c-white);
-  --color-text: var(--robo-color-primary);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: var(--vt-c-black);
-    --color-text: var(--robo-color-primary);
+    --color-background: #003366;
   }
 }
 
@@ -74,14 +63,30 @@ body {
     background-color 0.5s;
   line-height: 1.6;
   font-family: var(--font-family);
-  font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (max-width: 640px) {
-  body {
-    font-size: 10px;
+html {
+  font-size: 10px;
+}
+@media (min-width: 640px) {
+  html {
+    font-size: 12px;
   }
+}
+
+@media (min-width: 1200px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+* {
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+*::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
 }
