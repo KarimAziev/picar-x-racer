@@ -13,9 +13,12 @@ class ModelManager:
         from ultralytics import YOLO
 
         self.model = YOLO(
-            YOLO_MODEL_8_EDGE_TPU
-            if os.path.exists(YOLO_MODEL_8_EDGE_TPU)
-            else YOLO_MODEL_8_PATH
+            (
+                YOLO_MODEL_8_EDGE_TPU
+                if os.path.exists(YOLO_MODEL_8_EDGE_TPU)
+                else YOLO_MODEL_8_PATH
+            ),
+            task="detect",
         )
         return self.model
 
