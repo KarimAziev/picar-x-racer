@@ -65,18 +65,14 @@
             @click="sayText(slotProps.data)"
             icon="pi pi-play-circle"
             text
-            raised
             size="small"
-            rounded
             aria-label="Speak"
           />
           <Button
             icon="pi pi-trash"
-            rounded
             size="small"
             severity="danger"
             text
-            raised
             @click="handleRemove(slotProps.index)"
           />
         </ButtonGroup>
@@ -153,8 +149,6 @@ textarea {
 }
 
 @media (min-width: 576px) {
-  textarea {
-  }
   .language {
     width: 100px;
   }
