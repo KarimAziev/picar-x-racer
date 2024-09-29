@@ -30,6 +30,7 @@ const handleToggle = () => {
     text-align: left;
     line-height: 1;
     font-weight: 600;
+    cursor: pointer;
   }
 }
 </style>
