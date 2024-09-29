@@ -4,10 +4,10 @@
   --c-white-mute: #f2f2f2;
   --p-slider-handle-width: 5px;
   --p-slider-handle-height: 5px;
-  --vt-c-black: #181818;
+  --c-black: #181818;
 
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
+  --c-black-soft: #222222;
+  --c-black-mute: #282828;
   --color-red: #ff0040;
 }
 
@@ -35,12 +35,12 @@
 }
 
 :root {
-  --color-background: var(--c-white);
+  --color-background: #003366;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: #003366;
+    --color-background: var(--c-black);
   }
 }
 

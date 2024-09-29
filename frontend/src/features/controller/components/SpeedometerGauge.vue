@@ -112,9 +112,9 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 10px solid var(--color-text);
+  border: 10px solid var(--robo-color-primary);
   opacity: 0.5;
-  background: rgba(0, 0, 0, 0.4);
+  background: #003366;
   position: absolute;
   top: 0;
   left: 0;
