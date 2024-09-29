@@ -45,8 +45,9 @@ const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 const isSaving = computed(() => settingsStore.saving);
 
-const saveSettings = () => {
-  settingsStore.saveSettings();
+const saveSettings = async () => {
+  await settingsStore.saveSettings();
+  popupStore.isOpen = false;
 };
 </script>
 <style scoped lang="scss">

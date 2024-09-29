@@ -2,10 +2,10 @@ import { ControllerActionName } from "@/features/controller/store";
 import { startCase } from "@/util/str";
 
 export const objectKeysToOptions = (
-  obj: Record<string, string[]>,
+  obj: Record<string, string[]> | string[],
   labelsMap?: Record<string, string>,
 ) =>
-  Object.keys(obj).map((c) => ({
+  (Array.isArray(obj) ? obj : Object.keys(obj)).map((c) => ({
     value: c,
     label: (labelsMap && labelsMap[c]) || startCase(c),
   }));

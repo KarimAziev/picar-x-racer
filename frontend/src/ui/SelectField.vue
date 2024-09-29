@@ -83,15 +83,11 @@ const onUpdate: SelectEmitsOptions["update:modelValue"] = (newValue) => {
 @import "./field.scss";
 :deep(.p-select-dropdown) {
   width: 0.8rem;
-  .p-icon {
-    width: 0.5rem;
-    right: 30%;
 
-    @media (max-width: 640px) {
-      width: 0.7rem;
-      position: relative;
-      right: 50%;
-    }
+  .p-icon {
+    position: relative;
+    width: 0.5rem;
+    right: 50%;
   }
 }
 

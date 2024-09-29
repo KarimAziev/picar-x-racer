@@ -39,7 +39,9 @@ export interface CameraOpenRequestParams {
   video_feed_confidence?: number;
 }
 
-export interface Settings extends Partial<ToggleableSettings> {
+export interface Settings
+  extends Partial<ToggleableSettings>,
+    CameraOpenRequestParams {
   default_sound: string;
   default_music?: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
@@ -72,6 +74,10 @@ const defaultState: State = {
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
     video_feed_quality: 100,
+    video_feed_fps: 30,
+    video_feed_format: ".jpg",
+    video_feed_detect_mode: null,
+    video_feed_enhance_mode: null,
   },
   dimensions: { width: 640, height: 480 },
   retryCounter: 0,

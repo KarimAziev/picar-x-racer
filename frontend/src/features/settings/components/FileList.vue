@@ -1,6 +1,5 @@
 <template>
   <DataTable :value="files" :loading="loading">
-    <!-- Preview Image Column -->
     <Column class="preview-col" header="Preview">
       <template #body="slotProps">
         <img
