@@ -33,7 +33,7 @@ def perform_detection(
     frame = cv2.resize(frame, (resized_height, resized_width))
     results = yolo_model.predict(
         frame,
-        verbose=True,
+        verbose=False,
         conf=confidence_threshold,
         task="detect",
         imgsz=(192, 192),
