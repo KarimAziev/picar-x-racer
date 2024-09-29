@@ -14,7 +14,7 @@ class DetectionService(metaclass=SingletonMeta):
         self.stop_event = mp.Event()
         self.manager = mp.Manager()
         self.frame_queue = self.manager.Queue(maxsize=1)
-        self.detection_queue = self.manager.Queue(maxsize=1)
+        self.detection_queue = self.manager.Queue(maxsize=2)
         self.control_queue = self.manager.Queue(maxsize=10)
         self.detection_process = None
         self.video_feed_confidence = 0.25

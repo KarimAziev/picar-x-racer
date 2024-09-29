@@ -171,7 +171,7 @@ class CameraService(metaclass=SingletonMeta):
                 self.stream_img = frame
                 if self.detection_service.video_feed_detect_mode:
                     try:
-                        self.detection_service.frame_queue.put_nowait(frame)
+                        self.detection_service.frame_queue.put_nowait(frame.copy())
 
                     except queue.Full:
                         pass
