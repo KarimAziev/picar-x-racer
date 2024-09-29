@@ -119,23 +119,6 @@ export const useStore = defineStore("camera", {
         await this.fetchConfig();
       }
     },
-
-    async fetchDimensions() {
-      const messager = useMessagerStore();
-      try {
-        this.loading = true;
-        const { data } = await axios.get("api/frame-dimensions");
-        const { video_feed_height, video_feed_width } = data;
-        this.dimensions = data;
-        messager.info(
-          `Dimensions: video_feed_width ${video_feed_width}, video_feed_height ${video_feed_height}`,
-        );
-      } catch (error) {
-        messager.handleError(error, "Error fetching settings");
-      } finally {
-        this.loading = false;
-      }
-    },
     async increaseFPS() {
       const video_feed_fps = this.data.video_feed_fps || 30;
       await this.updateCameraParams({

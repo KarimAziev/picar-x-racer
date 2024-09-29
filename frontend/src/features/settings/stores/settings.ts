@@ -231,25 +231,6 @@ export const useStore = defineStore("settings", {
       }
     },
 
-    async fetchDimensions() {
-      const messager = useMessagerStore();
-      try {
-        this.loading = true;
-        const { data } = await axios.get("api/frame-dimensions");
-        const { height, width } = data;
-
-        if (isNumber(height)) {
-          this.dimensions.height = height;
-        }
-        if (isNumber(width)) {
-          this.dimensions.width = width;
-        }
-      } catch (error) {
-        messager.handleError(error, "Error fetching settings");
-      } finally {
-        this.loading = false;
-      }
-    },
     toggleSettingsProp(
       prop: keyof ToggleableSettings,
       showMsg?: boolean,

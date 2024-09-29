@@ -82,9 +82,9 @@ watch(
   },
 );
 watch(
-  () => store.settings.video_feed_fps,
+  () => store.settings.video_feed_confidence,
   (newVal) => {
-    camStore.updateCameraParams({ video_feed_fps: newVal });
+    camStore.updateCameraParams({ video_feed_confidence: newVal });
   },
 );
 
