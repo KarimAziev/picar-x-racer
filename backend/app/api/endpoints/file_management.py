@@ -117,3 +117,34 @@ def download_file(
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
+
+
+@router.get(
+    "/api/preview/{filename}",
+    responses={
+        200: {
+            "content": {"image/jpeg": {}, "image/png": {}},
+            "description": "A preview image will be returned.",
+        },
+        404: {"description": "File not found"},
+    },
+)
+def preview_image(
+    filename: str,
+    file_manager: "FilesService" = Depends(get_file_manager),
+):
+    try:
+        directory = file_manager.get_photo_directory(filename)
+        full_path = f"{directory}/{filename}"
+        return FileResponse(
+            path=full_path,
+            media_type=(
+                "image/jpeg"
+                if filename.lower().endswith(".jpg")
+                or filename.lower().endswith(".jpeg")
+                else "image/png"
+            ),
+            filename=filename,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")

@@ -12,7 +12,9 @@
     dismissableMask
     modal
     :closable="!popupStore.isKeyRecording"
-    :closeOnEscape="!popupStore.isKeyRecording"
+    :closeOnEscape="
+      !popupStore.isKeyRecording && !popupStore.isPreviewImageOpen
+    "
   >
     <Settings />
     <div class="footer">
