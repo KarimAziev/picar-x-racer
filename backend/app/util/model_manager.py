@@ -20,6 +20,7 @@ class ModelManager:
             ),
             task="detect",
         )
+        self.model.overrides["imgsz"] = (192, 192)
         return self.model
 
     def __exit__(self, exc_type, exc_value, traceback):
