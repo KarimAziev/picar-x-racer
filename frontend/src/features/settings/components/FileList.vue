@@ -51,6 +51,7 @@
 import { computed, onMounted, ref } from "vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
+import ButtonGroup from "primevue/buttongroup";
 import { useMessagerStore } from "@/features/messager/store";
 import { usePopupStore } from "@/features/settings/stores";
 

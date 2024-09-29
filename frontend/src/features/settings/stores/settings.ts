@@ -77,6 +77,7 @@ const defaultState: State = {
     video_feed_fps: 30,
     video_feed_format: ".jpg",
     video_feed_detect_mode: null,
+    video_feed_confidence: null,
     video_feed_enhance_mode: null,
   },
   dimensions: { width: 640, height: 480 },

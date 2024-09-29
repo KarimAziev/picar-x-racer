@@ -7,6 +7,7 @@
       </span>
     </span>
     <InputNumber
+      showButtons
       :inputId="field"
       :pt="{ pcInput: { id: field } }"
       :class="props.inputClassName"
@@ -59,7 +60,9 @@ const onUpdate: InputNumberEmitsOptions["update:modelValue"] = (newValue) => {
 };
 </script>
 <style scoped lang="scss">
+@import "./field.scss";
 .label {
   display: block;
+  font-weight: bold;
 }
 </style>
