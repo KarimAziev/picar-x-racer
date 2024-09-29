@@ -5,7 +5,7 @@ import {
   useMessagerStore,
   ShowMessageTypeProps,
 } from "@/features/messager/store";
-import { isNumber } from "@/util/guards";
+
 import { toggleableSettings } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
