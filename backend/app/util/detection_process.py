@@ -2,6 +2,7 @@ import multiprocessing as mp
 import queue
 from multiprocessing.synchronize import Event
 
+import cv2
 from app.config.detectors import detectors
 from app.util.logger import Logger
 from app.util.model_manager import ModelManager
@@ -68,7 +69,7 @@ def detection_process_func(
                         continue
 
                     detection_result = detection_function(
-                        frame=frame,
+                        frame=cv2.resize(frame, (192, 192)),
                         yolo_model=yolo_model,
                         confidence_threshold=confidence_threshold,
                     )
