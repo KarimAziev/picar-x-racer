@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+import cv2
 import numpy as np
 from app.util.logger import Logger
 
@@ -27,13 +28,23 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
+    original_height, original_width = frame.shape[:2]
+    resized_height, resized_width = 192, 192
+    frame = cv2.resize(frame, (resized_height, resized_width))
     results = yolo_model.predict(
-        frame, verbose=True, conf=confidence_threshold, task="detect"
+        frame,
+        verbose=True,
+        conf=confidence_threshold,
+        task="detect",
+        imgsz=(192, 192),
     )[0]
+
+    scale_x = original_width / resized_width
+    scale_y = original_height / resized_height
 
     detection_results = []
 
-    if results.boxes:
+    if results.boxes is not None:
         for detection in results.boxes:
             x1, y1, x2, y2 = detection.xyxy[0].tolist()
             conf = detection.conf.item()
@@ -44,9 +55,14 @@ def perform_detection(
                 continue
 
             if labels_to_detect is None or label in labels_to_detect:
+                x1 = int(x1 * scale_x)
+                y1 = int(y1 * scale_y)
+                x2 = int(x2 * scale_x)
+                y2 = int(y2 * scale_y)
+
                 detection_results.append(
                     {
-                        "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                        "bbox": [x1, y1, x2, y2],
                         "label": label,
                         "confidence": conf,
                     }
