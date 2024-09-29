@@ -1,7 +1,8 @@
 import asyncio
 import queue
 import threading
-from typing import Optional, Union
+import time
+from typing import TYPE_CHECKING, Optional, Union
 
 import cv2
 import numpy as np
@@ -14,6 +15,9 @@ from app.util.photo import height_to_width
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import encode
 from cv2 import VideoCapture
+
+if TYPE_CHECKING:
+    from app.services.files_service import FilesService
 
 # Constants for target width and height of video streams
 TARGET_WIDTH = 320
@@ -28,28 +32,39 @@ class CameraService(metaclass=SingletonMeta):
     a separate process.
     """
 
-    def __init__(self, detection_service: DetectionService, video_feed_fps=30):
+    def __init__(
+        self, detection_service: DetectionService, file_manager: "FilesService"
+    ):
         """
         Initializes the `CameraService` singleton instance.
 
         Args:
             detection_service: DetectionService
-            video_feed_fps (int, optional): Target frames per second for video capture.
-                Defaults to 30.
         """
         self.logger = Logger(name=__name__)
-        self.video_device_adapter = VideoDeviceAdapater()
+        self.file_manager = file_manager
         self.detection_service = detection_service
-        self.video_feed_fps = video_feed_fps
+        self.video_device_adapter = VideoDeviceAdapater()
+        self.video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
+        self.video_feed_enhance_mode: Optional[str] = self.file_manager.settings.get(
+            "video_feed_enhance_mode"
+        )
+        self.video_feed_quality = self.file_manager.settings.get(
+            "video_feed_quality", 100
+        )
+        self.video_feed_format = self.file_manager.settings.get(
+            "video_feed_format", ".jpg"
+        )
+        self.video_feed_confidence = self.file_manager.settings.get(
+            "video_feed_confidence"
+        )
+        self.video_feed_width: Optional[int] = None
+        self.video_feed_height: Optional[int] = None
+
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[VideoCapture, None] = None
-        self.video_feed_width: Optional[int] = None
-        self.video_feed_height: Optional[int] = None
-        self.video_feed_enhance_mode: Optional[str] = None
-        self.video_feed_quality = 100
-        self.video_feed_format = ".jpg"
         self.last_detection_result = None
         self.cap_task = None
 
@@ -64,19 +79,27 @@ class CameraService(metaclass=SingletonMeta):
         Returns:
             Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
         """
+
+        latest_detection = None
         while True:
             try:
-                self.last_detection_result = (
-                    self.detection_service.detection_queue.get_nowait()
-                )
+                detection_data = self.detection_service.detection_queue.get_nowait()
+                detection_timestamp = detection_data["timestamp"]
+                if detection_timestamp <= self.current_frame_timestamp:
+                    latest_detection = detection_data["detection_result"]
+                else:
+                    self.detection_service.detection_queue.put_nowait(detection_data)
+                    break
             except queue.Empty:
                 break
+
+            self.last_detection_result = latest_detection
 
         if self.stream_img is not None:
             format = self.video_feed_format
             video_feed_enhance_mode = self.video_feed_enhance_mode
             video_feed_quality = self.video_feed_quality
-            frame = self.stream_img
+            frame = self.stream_img.copy()
             if (
                 self.last_detection_result is not None
                 and self.detection_service.video_feed_detect_mode is not None
@@ -170,16 +193,16 @@ class CameraService(metaclass=SingletonMeta):
                 self.img = frame
                 self.stream_img = frame
                 if self.detection_service.video_feed_detect_mode:
-                    try:
-                        self.detection_service.frame_queue.put_nowait(frame.copy())
+                    self.current_frame_timestamp = time.time()
 
-                    except queue.Full:
-                        pass
-                else:
-                    pass
+                    frame_data = {
+                        "frame": frame.copy(),
+                        "timestamp": self.current_frame_timestamp,
+                    }
+                    self.detection_service.put_frame(frame_data)
 
         except Exception as e:
-            self.logger.error(f"Exception occurred in camera loop: {e}")
+            self.logger.log_exception("Exception occurred in camera loop", e)
         finally:
             if self.cap is not None:
                 self.cap.release()

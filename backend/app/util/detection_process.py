@@ -63,7 +63,9 @@ def detection_process_func(
                         continue
 
                     try:
-                        frame = frame_queue.get(timeout=1)
+                        frame_data = frame_queue.get(timeout=1)
+                        frame = frame_data["frame"]
+                        frame_timestamp = frame_data["timestamp"]
                     except queue.Empty:
                         continue
 
@@ -72,12 +74,17 @@ def detection_process_func(
                         yolo_model=yolo_model,
                         confidence_threshold=confidence_threshold,
                     )
+                    detection_result_with_timestamp = {
+                        "detection_result": detection_result,
+                        "timestamp": frame_timestamp,
+                    }
+
                     if detection_result and counter < 5:
                         logger.debug(f"Detection result: {detection_result}")
                         counter += 1
 
                     try:
-                        detection_queue.put_nowait(detection_result)
+                        detection_queue.put_nowait(detection_result_with_timestamp)
                     except queue.Full:
                         pass
 

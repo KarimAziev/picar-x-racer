@@ -15,6 +15,7 @@ try:
     google_speech_available = True
 except ImportError:
     google_speech_available = False
+    Speech = None
 
 
 class AudioService(metaclass=SingletonMeta):
@@ -93,13 +94,13 @@ class AudioService(metaclass=SingletonMeta):
             None
         """
 
-        if google_speech_available:
+        if google_speech_available and Speech is not None:
             try:
                 self.logger.info(f"text-to-speech: {words} lang {lang}")
                 speech = Speech(words, lang)
                 speech.play()
             except Exception as e:
-                self.logger.error(f"Error playing text-to-speech audio: {e}")
+                self.logger.log_exception("Error playing text-to-speech audio", e)
         else:
             self.logger.warning("google_speech is not available")
 

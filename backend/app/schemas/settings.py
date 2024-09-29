@@ -67,6 +67,7 @@ class Settings(BaseModel):
     video_feed_enhance_mode: Optional[str] = None
     video_feed_format: Optional[str] = None
     video_feed_fps: Optional[int] = None
+    video_feed_confidence: Optional[float] = None
     battery_full_voltage: Optional[float] = None
     car_model_view: Optional[bool] = None
     speedometer_view: Optional[bool] = None

@@ -1,24 +1,32 @@
 import multiprocessing as mp
 import queue
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from app.util.detection_process import detection_process_func
 from app.util.logger import Logger
 from app.util.print_memory_usage import print_memory_usage
 from app.util.singleton_meta import SingletonMeta
 
+if TYPE_CHECKING:
+    from app.services.files_service import FilesService
+
 
 class DetectionService(metaclass=SingletonMeta):
-    def __init__(self):
+    def __init__(self, file_manager: "FilesService"):
         self.logger = Logger(__name__)
         self.stop_event = mp.Event()
         self.manager = mp.Manager()
+        self.file_manager = file_manager
         self.frame_queue = self.manager.Queue(maxsize=1)
-        self.detection_queue = self.manager.Queue(maxsize=2)
-        self.control_queue = self.manager.Queue(maxsize=10)
+        self.detection_queue = self.manager.Queue(maxsize=1)
+        self.control_queue = self.manager.Queue(maxsize=2)
         self.detection_process = None
-        self.video_feed_confidence = 0.25
-        self._video_feed_detect_mode: Optional[str] = None
+        self.video_feed_confidence = self.file_manager.settings.get(
+            "video_feed_confidence", 0.3
+        )
+        self._video_feed_detect_mode: Optional[str] = self.file_manager.settings.get(
+            "video_feed_detect_mode"
+        )
 
     def start_detection_process(self):
         print_memory_usage("Memory before starting process")
@@ -79,6 +87,28 @@ class DetectionService(metaclass=SingletonMeta):
         self.clear_stop_event()
         self.start_detection_process()
         self.logger.info("Detection process has been restarted")
+
+    def clear_frame_queue(self):
+        while not self.frame_queue.empty():
+            try:
+                self.frame_queue.get_nowait()
+            except queue.Empty:
+                pass
+
+    def put_frame(self, frame_data):
+        """Puts the frame data into the frame queue after clearing it."""
+        self.clear_frame_queue()
+        try:
+            self.frame_queue.put_nowait(frame_data)
+        except queue.Full:
+            pass
+
+    def get_detection_result(self):
+        """Retrieves the latest detection result from the detection queue."""
+        try:
+            return self.detection_queue.get_nowait()
+        except queue.Empty:
+            return None
 
     @property
     def video_feed_detect_mode(self):

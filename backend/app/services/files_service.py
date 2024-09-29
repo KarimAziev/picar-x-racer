@@ -50,10 +50,11 @@ from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.services.audio_service import AudioService
 from app.util.file_util import ensure_parent_dir_exists, load_json_file
 from app.util.logger import Logger
+from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
 
 
-class FilesService:
+class FilesService(metaclass=SingletonMeta):
     """
     Service for managing file operations related to user settings, photos, sounds, and music.
 
@@ -89,6 +90,7 @@ class FilesService:
         self.last_modified_time = None
         self.current_settings_file = None
         self.settings = self.load_settings()
+        self.list_all_music_with_details()
 
     def get_settings_file(self):
         """Determines the current settings file to use"""
