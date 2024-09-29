@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
-import Panel from "primevue/panel";
+import Panel from "@/ui/Panel.vue";
 import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Button from "primevue/button";

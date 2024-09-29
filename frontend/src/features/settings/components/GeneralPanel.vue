@@ -28,7 +28,6 @@
 
 <script setup lang="ts">
 import { useSettingsStore } from "@/features/settings/stores";
-import Panel from "primevue/panel";
 
 import InputNumber from "primevue/inputnumber";
 
@@ -36,6 +35,7 @@ import Music from "@/features/settings/components/Music.vue";
 import Images from "@/features/settings/components/Images.vue";
 import SwitchSettings from "@/features/settings/components/SwitchSettings.vue";
 import VideoSettings from "@/features/settings/components/VideoSettings.vue";
+import Panel from "@/ui/Panel.vue";
 
 const store = useSettingsStore();
 </script>

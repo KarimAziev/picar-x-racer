@@ -80,7 +80,7 @@
 import { useStore, mediaType } from "@/features/settings/stores/music";
 import { computed } from "vue";
 import { default as FileUpload } from "primevue/fileupload";
-import Panel from "primevue/panel";
+import Panel from "@/ui/Panel.vue";
 
 import type { FileUploadUploadEvent } from "primevue/fileupload";
 import ButtonGroup from "primevue/buttongroup";

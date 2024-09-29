@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { default as FileUpload } from "primevue/fileupload";
-import Panel from "primevue/panel";
+import Panel from "@/ui/Panel.vue";
 
 import type { FileUploadUploadEvent } from "primevue/fileupload";
 import FileList from "@/features/settings/components/FileList.vue";
