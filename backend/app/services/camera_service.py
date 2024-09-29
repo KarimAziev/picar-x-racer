@@ -55,9 +55,7 @@ class CameraService(metaclass=SingletonMeta):
         self.video_feed_format = self.file_manager.settings.get(
             "video_feed_format", ".jpg"
         )
-        self.video_feed_confidence = self.file_manager.settings.get(
-            "video_feed_confidence"
-        )
+
         self.video_feed_width: Optional[int] = None
         self.video_feed_height: Optional[int] = None
 

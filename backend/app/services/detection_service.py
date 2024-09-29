@@ -21,7 +21,7 @@ class DetectionService(metaclass=SingletonMeta):
         self.detection_queue = self.manager.Queue(maxsize=1)
         self.control_queue = self.manager.Queue(maxsize=2)
         self.detection_process = None
-        self.video_feed_confidence = self.file_manager.settings.get(
+        self._video_feed_confidence = self.file_manager.settings.get(
             "video_feed_confidence", 0.3
         )
         self._video_feed_detect_mode: Optional[str] = self.file_manager.settings.get(
@@ -53,7 +53,7 @@ class DetectionService(metaclass=SingletonMeta):
         }
 
         try:
-            self.control_queue.put_nowait(command)
+            self.put_command(command)
         except BrokenPipeError as e:
             self.logger.log_exception(f"BrokenPipeError", e)
         except queue.Full:
@@ -110,6 +110,47 @@ class DetectionService(metaclass=SingletonMeta):
         except queue.Empty:
             return None
 
+    def clear_control_queue(self):
+        while not self.control_queue.empty():
+            try:
+                self.control_queue.get_nowait()
+            except queue.Empty:
+                pass
+
+    def put_command(self, frame_data):
+        """Puts the control queue into the frame queue after clearing it."""
+        self.clear_control_queue()
+        try:
+            self.control_queue.put_nowait(frame_data)
+        except queue.Full:
+            pass
+
+    @property
+    def video_feed_confidence(self):
+        return self._video_feed_confidence
+
+    @video_feed_confidence.setter
+    def video_feed_confidence(self, new_confidence):
+        if self._video_feed_confidence != new_confidence:
+            self._video_feed_confidence = new_confidence
+            if hasattr(self, "control_queue"):
+
+                command = {
+                    "command": "set_detect_mode",
+                    "mode": self.video_feed_detect_mode,
+                    "confidence": new_confidence,
+                }
+                try:
+                    self.put_command(command)
+                except BrokenPipeError as e:
+                    self.logger.log_exception("BrokenPipeError", e)
+                except queue.Full:
+                    self.logger.error("Queue is full")
+                except queue.Empty:
+                    self.logger.error("Queue is empty")
+                except Exception as e:
+                    self.logger.log_exception("Unexpected error", e)
+
     @property
     def video_feed_detect_mode(self):
         """
@@ -141,7 +182,7 @@ class DetectionService(metaclass=SingletonMeta):
                 "confidence": self.video_feed_confidence,
             }
             try:
-                self.control_queue.put_nowait(command)
+                self.put_command(command)
             except BrokenPipeError as e:
                 self.logger.log_exception("BrokenPipeError", e)
             except queue.Full:
