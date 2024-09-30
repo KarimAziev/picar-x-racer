@@ -4,7 +4,7 @@
 
 ![Alt text](./demo/picar-x-racer-demo.gif)
 
-![Alt text](./demo/cs.gif)
+![Alt text](./demo/computer-vision.gif)
 
 ## Features
 
