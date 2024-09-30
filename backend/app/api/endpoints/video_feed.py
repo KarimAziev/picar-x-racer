@@ -22,7 +22,17 @@ def update_video_feed_settings(
     camera_manager: "CameraService" = Depends(get_camera_manager),
     detection_manager: "DetectionService" = Depends(get_detection_manager),
 ):
-    logger.info(f"Updating video feed settings: {payload}")
+    """
+    Update the video feed settings of the application.
+
+    Args:
+    - payload (VideoFeedUpdateSettings): The new settings to apply to the video feed.
+    - camera_manager (CameraService): The camera service for managing the camera settings.
+    - detection_manager (DetectionService): The detection service for managing the detection settings.
+
+    Returns:
+        `VideoFeedSettings`: The updated settings of the video feed.
+    """
     if payload:
         if payload.video_feed_confidence:
             detection_manager.video_feed_confidence = payload.video_feed_confidence
@@ -43,10 +53,10 @@ def update_video_feed_settings(
         "video_feed_width": camera_manager.video_feed_width,
         "video_feed_height": camera_manager.video_feed_width,
         "video_feed_fps": camera_manager.video_feed_fps,
-        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
+        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
         "video_feed_confidence": detection_manager.video_feed_confidence,
     }
 
@@ -56,6 +66,16 @@ def get_camera_settings(
     camera_manager: "CameraService" = Depends(get_camera_manager),
     detection_manager: "DetectionService" = Depends(get_detection_manager),
 ):
+    """
+    Retrieve the current video feed settings of the application.
+
+    Args:
+    - camera_manager (CameraService): The camera service for managing the camera settings.
+    - detection_manager (DetectionService): The detection service for managing the detection settings.
+
+    Returns:
+        `VideoFeedSettings`: The current settings of the video feed.
+    """
     return {
         "video_feed_width": camera_manager.video_feed_width,
         "video_feed_height": camera_manager.video_feed_width,
@@ -73,6 +93,17 @@ async def ws(
     websocket: WebSocket,
     stream_service: "StreamService" = Depends(get_stream_manager),
 ):
+    """
+    WebSocket endpoint for providing a video stream.
+
+    Args:
+    - websocket (WebSocket): The WebSocket connection for streaming video.
+    - stream_service (StreamService): The service responsible for handling video streams.
+
+    Exceptions:
+        `WebSocketDisconnect`: Handles the case where the WebSocket connection is closed.
+        `Exception`: Logs any other exceptions that occur during the video stream.
+    """
     await websocket.accept()
 
     try:
@@ -80,4 +111,4 @@ async def ws(
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        logger.error(f"Error in video stream: {e}")
+        logger.log_exception("Error in video stream: ", e)

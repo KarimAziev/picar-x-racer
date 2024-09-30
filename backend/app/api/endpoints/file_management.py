@@ -22,6 +22,19 @@ logger = Logger(__name__)
 def list_files(
     media_type: str, file_manager: "FilesService" = Depends(get_file_manager)
 ):
+    """
+    List the files of a specific media type.
+
+    Args:
+    - media_type (str): The type of media to list ('music', 'default_music', 'default_sound', 'sound', 'image').
+    - file_manager (FilesService): The file management service.
+
+    Returns:
+    - `FilesResponse`: A response object containing a list of files.
+
+    Raises:
+    - `HTTPException`: If the media type is invalid.
+    """
     if media_type == "music":
         files = file_manager.list_user_music()
         logger.debug(f"music files {files}")
@@ -45,6 +58,20 @@ def upload_file(
     file: UploadFile = File(...),
     file_manager: "FilesService" = Depends(get_file_manager),
 ):
+    """
+    Upload a file of a specific media type.
+
+    Args:
+    - media_type (str): The type of media to upload ('music', 'sound', 'image').
+    - file (UploadFile): The file to upload.
+    - file_manager (FilesService): The file management service.
+
+    Returns:
+        `UploadFileResponse`: A response object containing the success status and the filename.
+
+    Raises:
+        `HTTPException`: If no file is selected or the media type is invalid.
+    """
     if file.filename == "":
         raise HTTPException(status_code=400, detail="No selected file")
 
@@ -68,6 +95,20 @@ def remove_file(
     filename: str,
     file_manager: "FilesService" = Depends(get_file_manager),
 ):
+    """
+    Remove a file of a specific media type.
+
+    Args:
+    - media_type (str): The type of media ('music', 'sound', 'image').
+    - filename (str): The name of the file to remove.
+    - file_manager (FilesService): The file management service.
+
+    Returns:
+    - `RemoveFileResponse`: A response object containing the success status and the filename.
+
+    Raises:
+    - `HTTPException`: If the media type is invalid, or the file could not be removed or found.
+    """
     try:
         if media_type == "music":
             file_manager.remove_music(filename)
@@ -101,6 +142,20 @@ def download_file(
     filename: str,
     file_manager: "FilesService" = Depends(get_file_manager),
 ):
+    """
+    Download a file of a specific media type.
+
+    Args:
+    - media_type (str): The type of media ('music', 'sound', 'image').
+    - filename (str): The name of the file to download.
+    - file_manager (FilesService): The file management service.
+
+    Returns:
+    - `FileResponse`: A response containing the file to download.
+
+    Raises:
+    - `HTTPException`: If the media type is invalid or the file is not found.
+    """
     try:
         if media_type == "music":
             directory = file_manager.get_music_directory(filename)
@@ -133,6 +188,20 @@ def preview_image(
     filename: str,
     file_manager: "FilesService" = Depends(get_file_manager),
 ):
+    """
+    Download a file of a specific media type.
+
+    Args:
+    - media_type (str): The type of media ('music', 'sound', 'image').
+    - filename (str): The name of the file to download.
+    - file_manager (FilesService): The file management service.
+
+    Returns:
+    - `FileResponse`: A response containing the file to download.
+
+    Raises:
+    - `HTTPException`: If the media type is invalid or the file is not found.
+    """
     try:
         directory = file_manager.get_photo_directory(filename)
         full_path = f"{directory}/{filename}"

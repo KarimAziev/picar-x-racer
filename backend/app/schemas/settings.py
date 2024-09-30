@@ -3,13 +3,26 @@ from typing import List, Optional, Union
 from pydantic import BaseModel
 
 
-class Text(BaseModel):
+class TextToSpeechItem(BaseModel):
+    """
+    A model to represent a text to speech item in multiple languages.
+
+    Attributes:
+    - `text`: The content of the text.
+    - `language`: The language in which the text is written.
+    - `default`: Indicator if this text is the default one. Defaults to None.
+    """
+
     text: str
     language: str
     default: Optional[bool] = None
 
 
 class Keybindings(BaseModel):
+    """
+    A model to represent keybindings for various actions.
+    """
+
     accelerate: Optional[List[str]] = None
     decelerate: Optional[List[str]] = None
     decreaseCamPan: Optional[List[str]] = None
@@ -58,9 +71,37 @@ class Keybindings(BaseModel):
 
 
 class Settings(BaseModel):
+    """
+    A model to represent the application settings.
+
+    Attributes:
+    - `default_music`: The default music to play.
+    - `default_sound`: The default sound to play.
+    - `texts`: A list of text to speech items.
+    - `fullscreen`: Indicator if fullscreen mode is enabled.
+    - `video_feed_quality`: Quality level of the video feed.
+    - `video_feed_detect_mode`: Detection mode for the video feed.
+    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
+    - `video_feed_format`: Format of the video feed.
+    - `video_feed_fps`: Frames per second for the video feed.
+    - `video_feed_confidence`: Confidence level for video feed detection.
+    - `battery_full_voltage`: Voltage level considered as full battery.
+    - `car_model_view`: Indicator if the car model view is enabled.
+    - `speedometer_view`: Indicator if the speedometer view is enabled.
+    - `text_info_view`: Indicator if the text information view is enabled.
+    - `auto_download_photo`: Indicator if photos are automatically downloaded.
+    - `auto_measure_distance_mode`: Indicator if automatic distance measurement mode is enabled.
+    - `auto_measure_distance_delay_ms`: Delay in milliseconds for automatic distance measurement.
+    - `autoplay_music`: Indicator if music should autoplay.
+    - `virtual_mode`: Indicator if virtual mode is enabled. It hides a video stream view and focuses on controlling the car using just a 3D model visualization.
+    - `show_player`: Indicator if the player should be shown.
+    - `text_to_speech_input`: Indicator if text-to-speech input is enabled.
+    - `keybindings`: A list of keybindings.
+    """
+
     default_music: Optional[str] = None
     default_sound: Optional[str] = None
-    texts: Optional[List[Text]] = None
+    texts: Optional[List[TextToSpeechItem]] = None
     fullscreen: Optional[bool] = None
     video_feed_quality: Optional[int] = None
     video_feed_detect_mode: Optional[str] = None
@@ -83,18 +124,48 @@ class Settings(BaseModel):
 
 
 class DetectorsResponse(BaseModel):
+    """
+    A model to represent the response for available object detectors.
+
+    Attributes:
+    - detectors: A list of video detectors.
+    """
+
     detectors: List[str]
 
 
 class EnhancersResponse(BaseModel):
+    """
+    A model to represent the response for video enhancers.
+
+    Attributes:
+    - enhancers: A list of video enhancer names.
+    """
+
     enhancers: List[str]
 
 
 class VideoModesResponse(DetectorsResponse, EnhancersResponse):
+    """
+    A model to represent the response for both detectors and enhancers.
+
+    Inherits from `DetectorsResponse` and `EnhancersResponse`.
+    """
+
     pass
 
 
 class CalibrationConfig(BaseModel):
+    """
+    A model to represent the calibration configuration.
+
+    Attributes:
+    - `picarx_dir_servo`: Direction servo configuration.
+    - `picarx_cam_pan_servo`: Camera pan servo configuration.
+    - `picarx_cam_tilt_servo`: Camera tilt servo configuration.
+    - `picarx_dir_motor`: Direction motor configuration.
+    """
+
     picarx_dir_servo: Optional[str] = None
     picarx_cam_pan_servo: Optional[str] = None
     picarx_cam_tilt_servo: Optional[str] = None
@@ -102,6 +173,20 @@ class CalibrationConfig(BaseModel):
 
 
 class VideoFeedSettings(BaseModel):
+    """
+    A model to represent the video feed settings.
+
+    Attributes:
+    - `video_feed_confidence`: Confidence level for video feed detection.
+    - `video_feed_detect_mode`: Detection mode for the video feed.
+    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
+    - `video_feed_fps`: Frames per second for the video feed.
+    - `video_feed_quality`: Quality level of the video feed.
+    - `video_feed_format`: Format of the video feed.
+    - `video_feed_width`: Width of the video feed.
+    - `video_feed_height`: Height of the video feed.
+    """
+
     video_feed_width: Optional[int] = None
     video_feed_height: Optional[int] = None
     video_feed_fps: int
@@ -113,6 +198,20 @@ class VideoFeedSettings(BaseModel):
 
 
 class VideoFeedUpdateSettings(BaseModel):
+    """
+    A model to represent the video feed update settings.
+
+    Attributes:
+    - `video_feed_detect_mode`: Detection mode for the video feed.
+    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
+    - `video_feed_format`: Format of the video feed.
+    - `video_feed_quality`: Quality level of the video feed.
+    - `video_feed_width`: Width of the video feed.
+    - `video_feed_height`: Height of the video feed.
+    - `video_feed_fps`: Frames per second for the video feed.
+    - `video_feed_confidence`: Confidence level for video feed detection.
+    """
+
     video_feed_detect_mode: Union[str, None] = None
     video_feed_enhance_mode: Union[str, None] = None
     video_feed_format: Union[str, None] = None
