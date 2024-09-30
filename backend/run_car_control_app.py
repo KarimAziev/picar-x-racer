@@ -5,6 +5,9 @@ import uvicorn
 
 
 def start_control_app(ws_port: int, log_level: str, reload: bool):
+    from app.control_server import app
+
+    app.state.port = ws_port
     app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
     uvicorn_config = {
         "app": "app.control_server:app",
