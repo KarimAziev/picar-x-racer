@@ -4,6 +4,8 @@
 
 ![Alt text](./demo/picar-x-racer-demo.gif)
 
+![Alt text](./demo/cs.gif)
+
 ## Features
 
 - **Real-time Control with Video Game-like Precision**: Experience smooth and responsive control over your Picar-X car, similar to a video game interface.
