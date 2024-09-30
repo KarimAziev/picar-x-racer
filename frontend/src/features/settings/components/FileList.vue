@@ -42,8 +42,24 @@
     class="image-dialog"
     dismissableMask
     modal
+    @after-hide="removeKeyEventListeners"
   >
-    <img :src="selectedImage" class="full-image" />
+    <img :src="selectedImage?.url" class="full-image" />
+    <ButtonGroup class="prev-next-buttons">
+      <Button
+        text
+        aria-label="Previous image"
+        icon="pi pi-chevron-left"
+        @click="handlePrevImagePreview"
+      ></Button>
+      <div class="dialog-filename">{{ selectedImage.filename }}</div>
+      <Button
+        text
+        aria-label="Next image"
+        icon="pi pi-chevron-right"
+        @click="handleNextImagePreview"
+      ></Button>
+    </ButtonGroup>
   </Dialog>
 </template>
 
@@ -54,12 +70,15 @@ import Dialog from "primevue/dialog";
 import ButtonGroup from "primevue/buttongroup";
 import { useMessagerStore } from "@/features/messager/store";
 import { usePopupStore } from "@/features/settings/stores";
+import { cycleValue } from "@/util/cycleValue";
+import { formatKeyEventItem } from "@/util/keyboard-util";
 
 const messager = useMessagerStore();
 const popupStore = usePopupStore();
 const loading = ref(false);
 
-const selectedImage = ref("");
+const selectedImage = ref({ url: "", filename: "" });
+
 const props = defineProps<{
   files: string[];
   fetchData?: () => Promise<any>;
@@ -68,6 +87,24 @@ const props = defineProps<{
 }>();
 
 const files = computed(() => props.files.map((filename) => ({ filename })));
+
+const handleNextImagePreview = () => {
+  const nextImg = cycleValue(selectedImage.value.filename, props.files, 1);
+  selectedImage.value.url = getPreviewUrl(nextImg);
+  selectedImage.value.filename = nextImg;
+  if (!popupStore.isPreviewImageOpen) {
+    popupStore.isPreviewImageOpen = true;
+  }
+};
+
+const handlePrevImagePreview = () => {
+  const nextImg = cycleValue(selectedImage.value.filename, props.files, -1);
+  selectedImage.value.url = getPreviewUrl(nextImg);
+  selectedImage.value.filename = nextImg;
+  if (!popupStore.isPreviewImageOpen) {
+    popupStore.isPreviewImageOpen = true;
+  }
+};
 
 const getPreviewUrl = (filename: string) => {
   return `/api/preview/${filename}`;
@@ -92,8 +129,30 @@ const handleRemove = async (filename: string) => {
   }
 };
 
+const keyHandlers: { [key: string]: Function } = {
+  ArrowLeft: handlePrevImagePreview,
+  ArrowRight: handleNextImagePreview,
+};
+
+const handleKeyUp = (event: KeyboardEvent) => {
+  const key = formatKeyEventItem(event);
+  if (keyHandlers[key]) {
+    keyHandlers[key]();
+  }
+};
+
+const addKeyEventListeners = () => {
+  window.addEventListener("keyup", handleKeyUp);
+};
+
+const removeKeyEventListeners = () => {
+  window.removeEventListener("keyup", handleKeyUp);
+};
+
 const openImage = (filename: string) => {
-  selectedImage.value = getPreviewUrl(filename);
+  selectedImage.value.url = getPreviewUrl(filename);
+  selectedImage.value.filename = filename;
+  addKeyEventListeners();
   popupStore.isPreviewImageOpen = true;
 };
 
@@ -111,17 +170,6 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.files {
-  display: flex;
-  list-style: none;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.filerow {
-  display: flex;
-  gap: 5px;
-  justify-content: space-between;
-}
 .button-group {
   white-space: nowrap;
 }
@@ -133,5 +181,14 @@ onMounted(async () => {
 .image-dialog .full-image {
   width: 100%;
   height: auto;
+}
+
+.prev-next-buttons {
+  display: flex;
+  justify-content: center;
+}
+.dialog-filename {
+  flex: auto;
+  text-align: center;
 }
 </style>
