@@ -5,7 +5,7 @@ import {
   useMessagerStore,
   ShowMessageTypeProps,
 } from "@/features/messager/store";
-import { isNumber } from "@/util/guards";
+
 import { toggleableSettings } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
@@ -16,6 +16,7 @@ import { retrieveError } from "@/util/error";
 import { useStore as useMusicStore } from "@/features/settings/stores/music";
 import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
 import { cycleValue } from "@/util/cycleValue";
+import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 
 export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
@@ -35,9 +36,12 @@ export interface CameraOpenRequestParams {
   video_feed_quality?: number;
   video_feed_height?: number;
   video_feed_width?: number;
+  video_feed_confidence?: number | null;
 }
 
-export interface Settings extends Partial<ToggleableSettings> {
+export interface Settings
+  extends Partial<ToggleableSettings>,
+    CameraOpenRequestParams {
   default_sound: string;
   default_music?: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
@@ -70,6 +74,11 @@ const defaultState: State = {
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
     video_feed_quality: 100,
+    video_feed_fps: 30,
+    video_feed_format: ".jpg",
+    video_feed_detect_mode: null,
+    video_feed_confidence: null,
+    video_feed_enhance_mode: null,
   },
   dimensions: { width: 640, height: 480 },
   retryCounter: 0,
@@ -112,6 +121,7 @@ export const useStore = defineStore("settings", {
       const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
       const soundStore = useSoundStore();
+      const batteryStore = useBatteryStore();
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
       }
@@ -131,6 +141,7 @@ export const useStore = defineStore("settings", {
           musicStore.getCurrentStatus(),
           soundStore.fetchDefaultData(),
           soundStore.fetchData(),
+          batteryStore.fetchBatteryStatus(),
         ]);
         musicStore.autoplay = this.settings.autoplay_music || false;
         this.error = undefined;
@@ -220,51 +231,6 @@ export const useStore = defineStore("settings", {
       }
     },
 
-    async fetchDimensions() {
-      const messager = useMessagerStore();
-      try {
-        this.loading = true;
-        const { data } = await axios.get("api/frame-dimensions");
-        const { height, width } = data;
-
-        if (isNumber(height)) {
-          this.dimensions.height = height;
-        }
-        if (isNumber(width)) {
-          this.dimensions.width = width;
-        }
-      } catch (error) {
-        messager.handleError(error, "Error fetching settings");
-      } finally {
-        this.loading = false;
-      }
-    },
-    nextFrameEnhancerMode(
-      prop: keyof ToggleableSettings,
-      showMsg?: boolean,
-      msgParams?: ShowMessageTypeProps | string,
-    ) {
-      const messager = useMessagerStore();
-      const nextValue = !this.settings[prop];
-      this.settings[prop] = nextValue;
-      if (showMsg) {
-        messager.info(`${prop}: ${nextValue}`, msgParams);
-      }
-      return nextValue;
-    },
-    prevFrameEnhancerMode(
-      prop: keyof ToggleableSettings,
-      showMsg?: boolean,
-      msgParams?: ShowMessageTypeProps | string,
-    ) {
-      const messager = useMessagerStore();
-      const nextValue = !this.settings[prop];
-      this.settings[prop] = nextValue;
-      if (showMsg) {
-        messager.info(`${prop}: ${nextValue}`, msgParams);
-      }
-      return nextValue;
-    },
     toggleSettingsProp(
       prop: keyof ToggleableSettings,
       showMsg?: boolean,

@@ -86,6 +86,20 @@ export const useStore = defineStore("camera", {
       return this.data;
     },
 
+    async fetchCurrentSettings() {
+      try {
+        this.loading = true;
+        const { data } = await axios.get<CameraOpenRequestParams>(
+          "/api/video-feed-settings",
+        );
+        this.data = data;
+      } catch (error) {
+        console.error("Error fetching video modes:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async fetchConfig() {
       try {
         this.loading = true;
@@ -103,23 +117,6 @@ export const useStore = defineStore("camera", {
     async ensureConfig() {
       if (!this.loading && !this.detectors.length && !this.enhancers.length) {
         await this.fetchConfig();
-      }
-    },
-
-    async fetchDimensions() {
-      const messager = useMessagerStore();
-      try {
-        this.loading = true;
-        const { data } = await axios.get("api/frame-dimensions");
-        const { video_feed_height, video_feed_width } = data;
-        this.dimensions = data;
-        messager.info(
-          `Dimensions: video_feed_width ${video_feed_width}, video_feed_height ${video_feed_height}`,
-        );
-      } catch (error) {
-        messager.handleError(error, "Error fetching settings");
-      } finally {
-        this.loading = false;
       }
     },
     async increaseFPS() {

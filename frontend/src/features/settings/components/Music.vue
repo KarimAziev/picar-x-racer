@@ -31,8 +31,6 @@
               @click="pauseTrack"
               icon="pi pi-pause"
               text
-              raised
-              rounded
               aria-label="Pause"
             />
             <Button
@@ -40,8 +38,6 @@
               v-else
               icon="pi pi-play-circle"
               text
-              raised
-              rounded
               aria-label="Play"
             />
             <Button
@@ -49,7 +45,6 @@
               v-tooltip="'Download file'"
               severity="secondary"
               text
-              raised
               icon="pi pi-download"
               @click="handleDownloadFile(slotProps.data.track)"
             >
@@ -57,11 +52,8 @@
             <Button
               v-if="slotProps.data.removable"
               icon="pi pi-trash"
-              outlined
-              rounded
               severity="danger"
               text
-              raised
               @click="handleRemove(slotProps.data.track)"
             />
           </ButtonGroup>
@@ -88,7 +80,7 @@
 import { useStore, mediaType } from "@/features/settings/stores/music";
 import { computed } from "vue";
 import { default as FileUpload } from "primevue/fileupload";
-import Panel from "primevue/panel";
+import Panel from "@/ui/Panel.vue";
 
 import type { FileUploadUploadEvent } from "primevue/fileupload";
 import ButtonGroup from "primevue/buttongroup";
@@ -163,7 +155,7 @@ const onUpload = async (_event: FileUploadUploadEvent) => {
   }
   @media (min-width: 1200px) {
     & {
-      max-width: 400px;
+      max-width: 300px;
     }
   }
 }

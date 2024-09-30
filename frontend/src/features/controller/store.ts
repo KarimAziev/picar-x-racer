@@ -16,6 +16,7 @@ import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
 import { constrain } from "@/util/constrain";
 import { takePhoto } from "@/features/controller/api";
+import { makeWebsocketUrl } from "@/util/url";
 
 const ACCELERATION = 10;
 const CAM_PAN_MIN = -90;
@@ -83,7 +84,7 @@ export interface StoreState extends Gauges, Modes {
   /**
    * The WebSocket URL
    */
-  url?: string;
+  url: string;
   /**
    * Whether WebSocket is allowed to reconnect.
    */
@@ -111,7 +112,7 @@ const defaultState: StoreState = {
   reconnectedEnabled: true,
   messageQueue: [],
   loading: false,
-  url: "ws://" + window.location.hostname + ":8765",
+  url: makeWebsocketUrl("px/ws", 8001),
 } as const;
 
 export const useControllerStore = defineStore("controller", {
@@ -432,6 +433,7 @@ export const useControllerStore = defineStore("controller", {
 
     async getDistance() {
       const distanceStore = useDistanceStore();
+
       await distanceStore.fetchDistance();
     },
 
@@ -471,10 +473,6 @@ export const useControllerStore = defineStore("controller", {
         popupStore.isOpen = false;
         messager.info("Starting calibration");
       } else {
-        /**
-         * popupStore.tab = SettingsTab.CALIBRATION;
-         * popupStore.isOpen = true;
-         */
         messager.info("Calibration finished");
       }
     },

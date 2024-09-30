@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
+from app.util.logger import Logger
 from typing_extensions import Any
+
+logger = Logger(__name__)
 
 
 def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
@@ -14,8 +17,10 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
     Returns:
         np.ndarray: The frame with detection overlays.
     """
+    logger.debug(f"detection_result: {detection_result}")
     for detection in detection_result:
         x1, y1, x2, y2 = detection["bbox"]
+
         label = detection["label"]
         confidence = detection["confidence"]
 

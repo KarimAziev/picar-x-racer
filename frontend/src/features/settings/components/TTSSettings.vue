@@ -50,7 +50,7 @@
       /></template>
     </Column>
 
-    <Column field="text" header="Text">
+    <Column field="text" header="Text" :colspan="4">
       <template #body="slotProps">
         <Textarea
           v-tooltip="'Type the text to speech'"
@@ -58,24 +58,21 @@
         />
       </template>
     </Column>
-    <Column :exportable="false" header="Actions">
+    <Column :exportable="false" header="Actions" :colspan="4">
       <template #body="slotProps">
-        <ButtonGroup>
+        <ButtonGroup class="button-group">
           <Button
             @click="sayText(slotProps.data)"
             icon="pi pi-play-circle"
             text
-            raised
-            rounded
+            size="small"
             aria-label="Speak"
           />
           <Button
             icon="pi pi-trash"
-            outlined
-            rounded
+            size="small"
             severity="danger"
             text
-            raised
             @click="handleRemove(slotProps.index)"
           />
         </ButtonGroup>
@@ -144,12 +141,14 @@ const handleAddItem = () => {
   width: 60px;
 }
 textarea {
-  width: 100px;
+  width: 100%;
 }
-@media (min-width: 768px) {
-  textarea {
-    width: 350px;
-  }
+
+.button-group {
+  white-space: nowrap;
+}
+
+@media (min-width: 576px) {
   .language {
     width: 100px;
   }
@@ -157,7 +156,7 @@ textarea {
 
 @media (min-width: 1200px) {
   textarea {
-    width: 350px;
+    width: 200px;
   }
 }
 </style>

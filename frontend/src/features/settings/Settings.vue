@@ -51,82 +51,20 @@ const popupStore = usePopupStore();
   font-family: var(--font-family-settings);
 }
 .wrapper {
-  width: 300px;
-}
-@media (min-width: 500px) {
-  .wrapper {
-    width: 400px;
-  }
-}
-@media (min-width: 840px) {
-  .wrapper {
-    width: 740px;
-  }
-}
+  width: 98%;
+  margin: auto;
+  max-width: 600px;
+  min-width: 340px;
 
-:deep(.p-button) {
-  font-size: 10px;
-  max-width: 150px;
-  @media (min-width: 640px) {
-    & {
-      font-size: 1rem;
-    }
+  @media (min-width: 480px) {
+    width: 450px;
   }
-}
-:deep(.p-datatable-tbody > tr > td) {
-  @media (max-width: 640px) {
-    & {
-      padding: 0.1rem;
-    }
+  @media (min-width: 576px) {
+    width: 460px;
   }
-}
-:deep(.p-select),
-:deep(textarea),
-:deep(.p-input) {
-  font-size: 10px;
 
-  @media (min-width: 640px) {
-    & {
-      font-size: 1rem;
-    }
-  }
-}
-
-:deep(.pi),
-:deep(.p-tag) {
-  font-size: 14px;
-  @media (min-width: 640px) {
-    & {
-      font-size: 1rem;
-    }
-  }
-}
-:deep(.p-button-icon-only.p-button-rounded) {
-  width: 1.5rem;
-  height: 1.5rem;
-  @media (min-width: 640px) {
-    & {
-      width: 2.5rem;
-      height: 2.5rem;
-    }
-  }
-}
-
-:deep(.p-icon) {
-  @media (max-width: 640px) {
-    & {
-      width: 10px;
-      height: 10px;
-    }
-  }
-}
-:deep(.p-inputnumber-input) {
-  font-size: 10px;
-  max-width: 100px;
-  @media (min-width: 640px) {
-    & {
-      font-size: 1rem;
-    }
+  @media (min-width: 768px) {
+    width: 600px;
   }
 }
 </style>

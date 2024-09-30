@@ -121,9 +121,7 @@ export const useController = (
   const connectWS = () => {
     controllerStore.reconnectedEnabled = true;
     if (!controllerStore.connected && !controllerStore.loading) {
-      controllerStore.initializeWebSocket(
-        "ws://" + window.location.hostname + ":8765",
-      );
+      controllerStore.initializeWebSocket(controllerStore.url);
     }
   };
 

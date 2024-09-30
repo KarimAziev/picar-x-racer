@@ -13,7 +13,7 @@ dev: dev-without-install
 
 dev-without-install:
 	cd $(FRONTEND_DIR) && npx concurrently -k \
-		"bash -c 'cd .. && source $(VENV_DIR)/bin/activate && npx nodemon --exec \"clear;python3\" $(BACKEND_DIR)/run.py --debug'" \
+		"bash -c 'cd .. && source $(VENV_DIR)/bin/activate && python3 -u $(BACKEND_DIR)/run.py --reload'" \
 		"bash -c 'sleep 4 && npm run dev'"
 
 dev-with-install: frontend-install backend-venv-install dev-without-install
@@ -32,7 +32,7 @@ frontend-build:
 build-dev-all: frontend-install frontend-build backend-venv-install backend-venv-run
 
 # Build targets for production
-build-all-no-sudo: frontend-install frontend-build backend-venv-install backend-venv-run
+build-all-no-sudo: frontend-install frontend-build backend-venv-install
 
 
 # Backend setup in virtual environment

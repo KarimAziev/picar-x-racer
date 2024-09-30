@@ -28,7 +28,6 @@
         :disabled="text.length === 0"
         icon="pi pi-play-circle"
         text
-        raised
         rounded
         aria-label="Speak"
         v-tooltip="'Speak'"
@@ -86,25 +85,50 @@ const handleKeyEnter = async () => {
 .tag {
   cursor: pointer;
 }
-.language {
-  width: 40px;
-}
+
 input {
   min-width: 50px;
-}
+  margin: 0 0.5rem;
 
-@media (min-width: 768px) {
-  input {
-    min-width: 120px;
-  }
-  .language {
+  @media (min-width: 576px) {
     width: 100px;
   }
+  @media (min-width: 768px) {
+    width: 100px;
+  }
+  @media (min-width: 992px) {
+    width: 120px;
+  }
+  @media (min-width: 1200px) {
+    width: 140px;
+  }
 }
+.language {
+  width: 40px;
 
-@media (min-width: 1200px) {
-  input {
-    min-width: 150px;
+  @media (min-width: 576px) {
+    width: 60px;
+  }
+  @media (min-width: 768px) {
+    width: 80px;
+  }
+  @media (min-width: 992px) {
+    width: 100px;
+    :deep(.p-select-label) {
+      padding: 0.15rem 0.4rem;
+
+      @media (min-width: 576px) {
+        padding: 0.25rem 0.7rem;
+      }
+
+      @media (min-width: 768px) {
+        padding: 0.3rem 0.7rem;
+      }
+
+      @media (min-width: 1200px) {
+        padding: 0.4rem 0.7rem;
+      }
+    }
   }
 }
 </style>

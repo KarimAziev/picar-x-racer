@@ -1,8 +1,0 @@
-numpy==1.26.4
-git+https://github.com/sunfounder/vilib.git@picamera2#egg=vilib
-git+https://github.com/sunfounder/picar-x.git@v2.0#egg=picarx
-Flask==1.1.2
-Flask-Cors==4.0.1
-opencv-contrib-python==4.10.0.84
-google-speech==1.2.0
-websockets==12.0

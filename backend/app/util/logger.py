@@ -1,10 +1,11 @@
 import logging
-from typing import Dict, Optional
+import os
+from typing import Optional
 
-from colorlog import ColoredFormatter
+from app.config.log_config import setup_logging
 
 
-class Logger(object):
+class Logger:
     DEBUG = logging.DEBUG
     INFO = logging.INFO
     WARNING = logging.WARNING
@@ -19,67 +20,36 @@ class Logger(object):
         "critical": CRITICAL,
     }
 
-    _handlers_added = False
+    _handlers_added_pids = set()
     _app_logger_name = "picar-x-racer"
 
     def __init__(
         self,
         name: str,
-        fmt: Optional[str] = None,
-        datefmt: Optional[str] = None,
-        log_colors: Optional[Dict[str, str]] = None,
+        app_name: Optional[str] = None,
     ):
-        if hasattr(self, "logger"):
-            return
+        if app_name is not None:
+            Logger._app_logger_name = app_name
 
-        if not name.startswith(self._app_logger_name):
-            full_name = f"{self._app_logger_name}.{name}"
-        else:
-            full_name = name
+        if not logging.root.handlers:
+            setup_logging()
 
+        full_name = (
+            f"{self._app_logger_name}.{name}"
+            if not name.startswith(self._app_logger_name)
+            else name
+        )
         self.logger = logging.getLogger(full_name)
-
-        self.logger.propagate = True
-
-        if not Logger._handlers_added:
-            self._add_app_handlers(fmt, datefmt, log_colors)
-            Logger._handlers_added = True
-
-    @classmethod
-    def _add_app_handlers(cls, fmt, datefmt, log_colors):
-        app_logger = logging.getLogger(cls._app_logger_name)
-
-        if app_logger.handlers:
-            app_logger.handlers = []
-
-        fmt = fmt or "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        datefmt = datefmt or "%H:%M:%S"
-        log_colors = log_colors or {
-            "DEBUG": "cyan",
-            "INFO": "green",
-            "WARNING": "yellow",
-            "ERROR": "red",
-            "CRITICAL": "bold_red",
-        }
-
-        formatter = ColoredFormatter(fmt, datefmt=datefmt, log_colors=log_colors)
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        app_logger.addHandler(console_handler)
-
-        app_logger.setLevel(logging.INFO)
 
     def set_level(self, level: int):
         if level not in self.LEVELS.values():
             raise ValueError(f"Invalid log level: {level}")
-
         self.logger.setLevel(level)
 
     @classmethod
     def set_global_log_level(cls, level: int):
         if level not in cls.LEVELS.values():
             raise ValueError(f"Invalid log level: {level}")
-
         app_logger = logging.getLogger(cls._app_logger_name)
         app_logger.setLevel(level)
 
@@ -96,7 +66,7 @@ class Logger(object):
         file_formatter = logging.Formatter(fmt, datefmt=datefmt)
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(level)
-        # Add the file handler to the application logger
+
         app_logger = logging.getLogger(self._app_logger_name)
         app_logger.addHandler(file_handler)
 
@@ -116,5 +86,18 @@ class Logger(object):
         self.logger.critical(message)
 
     @staticmethod
+    def setup_global(log_level: str):
+        valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if log_level not in valid_log_levels:
+            log_level = "DEBUG"
+        log_level_constant = getattr(Logger, log_level.upper(), Logger.DEBUG)
+        Logger.set_global_log_level(log_level_constant)
+
+    @staticmethod
+    def setup_from_env():
+        log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+        Logger.setup_global(log_level)
+
+    @staticmethod
     def log_exception(message: str, exc: Exception):
-        logging.error(f"{message}: {exc}")
+        logging.exception(message, exc_info=exc)

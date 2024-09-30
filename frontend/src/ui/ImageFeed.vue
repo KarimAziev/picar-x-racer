@@ -1,10 +1,16 @@
 <template>
-  <ScanLines v-if="!connected" class="scan" />
+  <ScanLines
+    v-if="!connected"
+    class="scan"
+    :class="{
+      'scan-full': !imgInitted,
+    }"
+  />
   <img
     v-else
     ref="imgRef"
     class="image-feed"
-    @load="handleOnLoad"
+    @load="handleImageOnLoad"
     :class="{
       loading: imgLoading,
     }"
@@ -13,71 +19,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
+import { makeWebsocketUrl } from "@/util/url";
+import { useWebsocketStream } from "@/composables/useWebsocketStream";
+import { useCameraStore } from "@/features/settings/stores";
 
-const ws = ref<WebSocket>();
-const WS_URL: string = `ws://${window.location.hostname}:${8050}`;
-const imgRef = ref<HTMLImageElement>();
-const imgInitted = ref(false);
-const imgLoading = ref(true);
-const connected = ref(false);
-const reconnectedEnabled = ref(true);
-const retryTimer = ref<NodeJS.Timeout | null>(null);
+const camStore = useCameraStore();
 
-const handleOnLoad = () => {
-  imgLoading.value = false;
-  imgInitted.value = true;
-};
-
-const initWS = () => {
-  ws.value = new WebSocket(WS_URL);
-  if (!ws.value) {
-    return;
-  }
-  ws.value.binaryType = "arraybuffer";
-
-  ws.value.onmessage = (wsMsg: MessageEvent) => {
-    connected.value = true;
-    const arrayBufferView = new Uint8Array(wsMsg.data);
-    const blob = new Blob([arrayBufferView], { type: "image/jpeg" });
-    const urlCreator = window.URL || window.webkitURL;
-    const imageUrl = urlCreator.createObjectURL(blob);
-    if (imgRef.value) {
-      imgRef.value.src = imageUrl;
-      if (imgInitted.value && imgLoading.value) {
-        imgLoading.value = false;
-      }
-    }
-  };
-
-  ws.value.onclose = (_: CloseEvent) => {
-    connected.value = false;
-    imgLoading.value = true;
-    retryConnection();
-  };
-};
-
-const retryConnection = () => {
-  if (retryTimer.value) {
-    clearTimeout(retryTimer.value);
-  }
-  if (reconnectedEnabled.value && !connected.value) {
-    retryTimer.value = setTimeout(() => {
-      console.log("Retrying WebSocket connection...");
-      initWS();
-    }, 5000);
-  }
-};
+const {
+  initWS,
+  closeWS,
+  imgRef,
+  handleImageOnLoad,
+  imgLoading,
+  connected,
+  imgInitted,
+} = useWebsocketStream(makeWebsocketUrl("ws/video-stream"));
 
 onMounted(() => {
+  camStore.fetchCurrentSettings();
   initWS();
+  window.addEventListener("beforeunload", closeWS);
 });
 onUnmounted(() => {
-  reconnectedEnabled.value = false;
-  if (ws.value) {
-    ws.value.close();
-  }
+  closeWS();
+  window.removeEventListener("beforeunload", closeWS);
 });
 </script>
 
@@ -101,6 +68,8 @@ onUnmounted(() => {
 }
 .scan {
   width: 100%;
-  height: 100%;
+}
+.scan-full {
+  height: 90%;
 }
 </style>

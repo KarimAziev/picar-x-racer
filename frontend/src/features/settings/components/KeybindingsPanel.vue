@@ -45,7 +45,7 @@
         </div>
       </div>
 
-      <div class="form-footer">
+      <ButtonGroup class="form-footer">
         <Button
           size="small"
           label="Add Key"
@@ -65,7 +65,7 @@
           size="small"
           class="p-button-sm p-button-secondary"
         />
-      </div>
+      </ButtonGroup>
     </form>
     <KeyRecorder
       v-if="keyRecorderOpen"
@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
-import Panel from "primevue/panel";
+import Panel from "@/ui/Panel.vue";
 import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Button from "primevue/button";
@@ -321,27 +321,28 @@ const isSubmitDisabled = ref(false);
   justify-items: center;
 }
 
+.row {
+  display: flex;
+  gap: 0.125rem;
+  .select,
+  .input-text,
+  .p-button-sm {
+    max-width: 100%;
+    min-width: 100%;
+    width: 100%;
+  }
+}
+
 .select,
-.input-text,
-.p-button-sm {
-  font-size: 10px;
+.input-text {
   height: 30px;
   max-width: 100%;
   width: 100%;
 }
 
-@media (min-width: 840px) {
-  .select,
-  .input-text,
-  .p-button-sm {
-    height: 45px;
-    font-size: 14px;
-  }
-}
-
-.row {
-  display: flex;
-  gap: 2px;
+.p-button-sm {
+  width: fit-content;
+  height: 30px;
 }
 
 .cmd-field {
@@ -362,5 +363,17 @@ const isSubmitDisabled = ref(false);
   justify-content: flex-start;
   gap: 1rem;
   margin-top: 2rem;
+}
+
+:deep(.p-select-label) {
+  padding: 0.15rem 0.4rem;
+
+  @media (min-width: 640px) {
+    padding: 0.3rem 0.7rem;
+  }
+
+  @media (min-width: 1200px) {
+    padding: 0.4rem 0.7rem;
+  }
 }
 </style>

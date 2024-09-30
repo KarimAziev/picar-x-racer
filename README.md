@@ -1,13 +1,15 @@
 # Picar-X Racer
 
-`Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games. It integrates both frontend and backend components to manage the car's movement, camera, and other functionalities. The new interface includes a speedometer, live camera feed, and multimedia controls.
+`Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games. It integrates both frontend and backend components to manage the car's movement, camera, object detection with AI, and other functionalities. The new interface includes a speedometer, live camera feed, and multimedia controls.
 
 ![Alt text](./demo/picar-x-racer-demo.gif)
+
+![Alt text](./demo/computer-vision.gif)
 
 ## Features
 
 - **Real-time Control with Video Game-like Precision**: Experience smooth and responsive control over your Picar-X car, similar to a video game interface.
-- **Advanced Object Detection with AI**: Integrate AI-powered [object detection modes](#object-detection) to recognize and track objects like cats, persons, and more in real-time.
+- **Advanced Object Detection with AI**: Integrate AI-powered [object detection modes](#object-detection) to recognize and track objects like cats, persons, and more in real-time. Google Coral accelerator is also [supported](#using-google-coral-accelerator).
 - **Dynamic Video Enhancements**: Apply various [video enhancements](#video-enhancers) to your live camera feed.
 - **Smooth Calibration**: Quickly switch to the [calibration mode](#calibration-mode) and adjust the settings.
 - **Acceleration and Speed Indicators**: Realistic acceleration, speed indicators, and smooth driving experience make navigating through tight spaces easy.
@@ -32,8 +34,10 @@
 >   - [Modes](#modes)
 >     - [Object Detection](#object-detection)
 >       - [Available Detection Modes](#available-detection-modes)
->       - [How to Use](#how-to-use)
->       - [Technical Details](#technical-details)
+>         - [How to Use](#how-to-use)
+>         - [Using Custom Models Paths from Environment Variables](#using-custom-models-paths-from-environment-variables)
+>         - [Using Google Coral Accelerator](#using-google-coral-accelerator)
+>         - [Google Coral Troubleshooting](#google-coral-troubleshooting)
 >     - [Video Enhancers](#video-enhancers)
 >       - [Available Enhancement Modes](#available-enhancement-modes)
 >       - [How to Use](#how-to-use-1)
@@ -43,6 +47,7 @@
 >     - [3D Virtual Mode](#3d-virtual-mode)
 >   - [Development on Non-Raspberry OS](#development-on-non-raspberry-os)
 >     - [Backend](#backend)
+>       - [Documentation](#documentation)
 >     - [Makefile Usage](#makefile-usage)
 >       - [Development Environment Setup](#development-environment-setup)
 >   - [Project Status](#project-status)
@@ -51,22 +56,22 @@
 
 ## Prerequisites
 
-- Python 3.11
+- Python 3.10
 - Node.js and npm
 - make
 
 ## Raspberry OS Setup
 
-The `bullseye` version of Raspberry Pi OS has Python 3.9 preinstalled. However, since we need Python 3.11, the easiest way to install it is with [Pyenv](https://github.com/pyenv/pyenv).
+The `bullseye` version of Raspberry Pi OS has Python 3.9 preinstalled. However, since we need Python 3.10, the easiest way to install it is with [Pyenv](https://github.com/pyenv/pyenv).
 
 ```
-pyenv install 3.11
+pyenv install 3.10
 ```
 
 You can optionally make it the default:
 
 ```
-pyenv global 3.11
+pyenv global 3.10
 ```
 
 This project uses neither `Picamera` nor `Picamera 2`; instead, it uses `OpenCV`. `Picamera` is much slower than `OpenCV`, which directly accesses the `/dev/video0` device to grab frames. To access the camera, you need to edit a configuration file in the boot partition of the Raspberry Pi:
@@ -138,7 +143,7 @@ make backend-venv-run
 Once the application is running, open your browser and navigate to (replace `<your-raspberry-pi-ip>` with the actual IP):
 
 ```
-http://<your-raspberry-pi-ip>:9000
+http://<your-raspberry-pi-ip>:8000
 ```
 
 After navigating to the control interface, you can customize your experience via the comprehensive settings panel.
@@ -147,7 +152,7 @@ After navigating to the control interface, you can customize your experience via
 
 To access settings, press the icon in the top right corner, or press `h` to open the general settings, or `?` to open keybindings settings.
 
-![Alt text](./demo/settings-general.png)
+![Alt text](./demo/settings-appearance.png)
 
 - **Text-to-Speech**: Configure the default text that will be converted into speech.
 - **Default Sound**: Select a default sound from the available list to play during specific events.
@@ -158,7 +163,7 @@ To access settings, press the icon in the top right corner, or press `h` to open
 - **Keybindings**: Change all keybindings.
 - **Calibration**: Start calibration mode.
 
-![Alt text](./demo/keybindings-settings.png)
+![Alt text](./demo/settings-keybindings.png)
 
 ### Default Keybindings
 
@@ -229,16 +234,163 @@ Leverage AI-powered object detection modes to enhance your driving and monitorin
 - **Person**: Specifically detects human figures and tracks them.
 - **Cat**: Specifically detects cats and tracks them.
 
-#### How to Use
+##### How to Use
 
 - **Switch Detection Modes**: Use the keybindings `r` (Next Detect Mode) and `R` (Previous Detect Mode) to cycle through the available detection modes.
 - **Overlay Information**: When a detection mode is active, the live video feed will display bounding boxes and labels around the detected objects.
 - **Applications**: Use object detection to avoid obstacles, follow subjects, or gather data about the environment.
 
-#### Technical Details
+In the settings, you can specify the desired confidence level of the model.
 
-- **AI Model**: The object detection feature utilizes the YOLOv5n model, optimized for real-time processing on devices like the Raspberry Pi.
-- **Customization**: You can adjust the detection confidence threshold and customize detection parameters in the settings.
+##### Using Custom Models Paths from Environment Variables
+
+By default, the object detection feature utilizes the `YOLOv8n` model, optimized for real-time processing on devices like the Raspberry Pi. However, you can also specify paths to other models using environment variables, as detailed in the [Using Custom Models Paths from Environment Variables](#using-custom-models-paths-from-environment-variables) section below.
+
+You can also export the model for use with a Google Coral Accelerator. Instructions are provided in the [Using Google Coral Accelerator with a Raspberry Pi](#using-google-coral-accelerator) section below.
+
+To specify custom path locations for your YOLO models, you can leverage environment variables. This flexibility allows you to change the default paths without modifying the source code. You can set the environment variable `YOLO_MODEL_PATH`.
+
+**Using Terminal:**
+
+```sh
+export YOLO_MODEL_PATH=/path/to/your/custom_model.pt
+```
+
+Additionally, you can set the `YOLO_MODEL_EDGE_TPU_PATH` to specify the path to the model optimized for the Coral Edge TPU:
+
+```sh
+export YOLO_MODEL_EDGE_TPU_PATH=/path/to/your/custom_edgetpu_model.tflite
+```
+
+When you set the `YOLO_MODEL_EDGE_TPU_PATH` environment variable, the `ModelManager` class in your application will use that path if the file exists. If not, it will fall back to the `YOLO_MODEL_PATH`.
+
+**Example Implementation:**
+
+Here's a snippet from `ModelManager` that showcases how it handles these paths:
+
+```python
+import gc
+import os
+
+from app.config.paths import YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
+from app.util.logger import Logger
+
+logger = Logger(__name__)
+
+class ModelManager:
+    def __enter__(self):
+        from ultralytics import YOLO
+
+        self.model = YOLO(
+            (
+                YOLO_MODEL_EDGE_TPU_PATH
+                if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
+                else YOLO_MODEL_PATH
+            ),
+            task="detect",
+        )
+        self.model.overrides["imgsz"] = (192, 192)
+        return self.model
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        del self.model
+        gc.collect()
+```
+
+##### Using Google Coral Accelerator
+
+The inference performance on Raspberry is usually poor. The Coral Edge TPU is a great solution to this problem, since it can be used with a Raspberry Pi and accelerate inference performance greatly.
+
+Follow the [Ultralytics guide](https://docs.ultralytics.com/guides/coral-edge-tpu-on-raspberry-pi/), but stop at the model export step because it requires some additional steps.
+
+To export your model for the Edge TPU, you need to run the export with a specific image size (`192x192`). You can use the script `export_model.py` from this repo.
+
+```sh
+cd /path/to/picar-x-racer/backend/
+source .venv/bin/activate
+pip install tensorflow
+python export_model.py
+```
+
+By default, the script will export the model from `data/yolov8n.pt` to `data/yolov8n_full_integer_quant_edgetpu.tflite`. Copy the `yolov8n_full_integer_quant_edgetpu.tflite` file to your Picar-X racer, for example:
+
+```bash
+scp /path/to/picar-x-racer/backend/data/yolov8n_full_integer_quant_edgetpu.tflite pi@raspberrypi.local:/home/pi/picar-x-racer/data/
+```
+
+On the Raspberry Pi, follow these steps to install `tflite-runtime`:
+
+```sh
+cd picar-x-racer/backend/
+source .venv/bin/activate
+pip uninstall tensorflow tensorflow-aarch64
+pip install tflite-runtime
+```
+
+Then you can run the application. If you encounter errors, such as 'Failed to load delegate from libedgetpu.so.1.0 with tflite_runtime', you may need to download a pre-built wheel that matches your `libedgetpu` version and Python version.
+
+**Steps:**
+
+1. **Identify Python Version:**
+
+   ```bash
+   python --version
+   ```
+
+   Assume Python 3.10 (`Python 3.10.x`).
+
+2. **Download the Matching tflite-runtime Wheel:**
+
+   From [feranick/TFlite-builds](https://github.com/feranick/TFlite-builds/releases), download the wheel for **TensorFlow Lite Runtime 2.17.0**.
+
+   For Python 3.10 on aarch64:
+
+   ```bash
+   wget https://github.com/feranick/TFlite-builds/releases/download/v2.17.0/tflite_runtime-2.17.0-cp310-cp310-linux_aarch64.whl
+   ```
+
+3. **Install the Wheel:**
+
+   ```bash
+   pip install tflite_runtime-2.17.0-cp310-cp310-linux_aarch64.whl
+   ```
+
+> [!IMPORTANT]
+> If your Python version or architecture is different, download the appropriate wheel.
+
+##### Google Coral Troubleshooting
+
+If you face issues with recognizing the device, you can try adding the following udev rules and configurations:
+
+**Edit udev rules:**
+
+```sh
+sudo nano /etc/udev/rules.d/65-edgetpu.rules
+```
+
+**Add:**
+
+```udev
+SUBSYSTEM=="apex", GROUP="users", MODE="0660"
+
+# Edge TPU in application mode
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1a6e", ATTRS{idProduct}=="089a", \
+    ACTION=="bind", RUN+="/sbin/modprobe gasket", RUN+="/sbin/modprobe apex"
+
+# Edge TPU in bootloader mode
+SUBSYSTEM=="usb", ATTRS{idVendor}=="18d1", ATTRS{idProduct}=="9302", \
+    ACTION=="bind", RUN+="/sbin/modprobe gasket", RUN+="/sbin/modprobe apex"
+```
+
+**Reload udev rules:**
+
+```sh
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+sudo usermod -aG plugdev $USER
+```
+
+Then reboot.
 
 ### Video Enhancers
 
@@ -256,7 +408,6 @@ Enhance your video streaming experience with real-time video enhancement modes.
 
 - **Switch Enhancement Modes**: Use the keybindings `e` (Next Enhance Mode) and `E` (Previous Enhance Mode) to cycle through the available video enhancer modes.
 - **Real-time Application**: Enhancements are applied in real-time to the live video feed, providing immediate visual feedback.
-- **Customization**: Some enhancement modes may have adjustable parameters for finer control, which can be configured in the settings panel.
 
 #### Applications
 
@@ -291,10 +442,10 @@ The mode is supposed to be used with active Auto Measure Distance Mode, which ac
 
 ## Development on Non-Raspberry OS
 
-For running the server in watch mode (reload on file save), we use `nodemon`, which can be installed globally with `npm`:
+For running the server in watch mode (reload on file save) run:
 
 ```bash
-npm i -g nodemon
+make dev
 ```
 
 ### Backend
@@ -310,6 +461,10 @@ To run the project without installing dependencies:
 ```bash
 make dev
 ```
+
+#### Documentation
+
+The project uses `FastAPI`, so you can access the documentation about API on `http://<your-raspberry-pi-ip>:8000/docs` and `http://<your-raspberry-pi-ip>:8001/docs` for car control server. We use two servers and run them in a separate process from the main server to ensure that control operations are never blocked.
 
 ### Makefile Usage
 

@@ -1,14 +1,13 @@
 <template>
   <div class="p-field" :class="props.fieldClassName">
-    <LabelBox
-      v-if="label"
-      :label="label"
-      :class="labelClassName"
-      :for="field"
-      :message="message"
-    />
+    <span class="label" v-if="label" :class="labelClassName" :for="field"
+      >{{ label }}
+      <span v-if="message" class="message">
+        {{ message }}
+      </span>
+    </span>
     <Select
-      :id="props.field"
+      :pt="{ input: { id: field, name: field } }"
       :options="options"
       :optionLabel="optionLabel"
       :optionValue="optionValue"
@@ -27,7 +26,6 @@ import { ref, watch, useAttrs, computed } from "vue";
 import type { SelectEmitsOptions, SelectProps } from "primevue/select";
 import { InlineMessageProps } from "primevue/inlinemessage";
 import Select from "primevue/select";
-import LabelBox from "@/ui/LabelBox.vue";
 
 export type Props = {
   modelValue?: any;
@@ -72,23 +70,39 @@ const onUpdate: SelectEmitsOptions["update:modelValue"] = (newValue) => {
 };
 </script>
 <style scoped lang="scss">
+.label {
+  font-weight: bold;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  .message {
+    background-color: transparent;
+    color: var(--red-400);
+  }
+}
 @import "./field.scss";
 :deep(.p-select-dropdown) {
   width: 0.8rem;
+
   .p-icon {
-    width: 0.7rem;
     position: relative;
+    width: 0.5rem;
     right: 50%;
-    @media (max-width: 640px) {
-      width: 0.5rem;
-      right: 30%;
-    }
   }
 }
 
 :deep(.p-select-label) {
-  padding: 0.4rem 0.4rem;
-  @media (min-width: 992px) {
+  padding: 0.15rem 0.4rem;
+
+  @media (min-width: 576px) {
+    padding: 0.25rem 0.7rem;
+  }
+
+  @media (min-width: 768px) {
+    padding: 0.3rem 0.7rem;
+  }
+
+  @media (min-width: 1200px) {
     padding: 0.4rem 0.7rem;
   }
 }

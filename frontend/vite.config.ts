@@ -25,19 +25,22 @@ export default defineConfig({
     cors: true,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:9000/",
+        target: "http://127.0.0.1:8000/",
         changeOrigin: true,
         secure: false,
       },
-      "/mjpg": {
-        target: "http://127.0.0.1:9000/",
-
+      "/ws/video-stream": {
+        target: "ws://127.0.0.1:8000/",
         changeOrigin: true,
         secure: false,
       },
-      "/mpng": {
-        target: "http://127.0.0.1:9000/",
-
+      "/px/api": {
+        target: "http://127.0.0.1:8001/",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/px/ws": {
+        target: "ws://127.0.0.1:8001/",
         changeOrigin: true,
         secure: false,
       },

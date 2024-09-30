@@ -56,20 +56,4 @@ const CalibrationModeInfo = defineAsyncComponent({
   text-align: left;
   user-select: none;
 }
-@media screen and (max-width: 1290px) {
-  :global(body) {
-    font-size: 0.7rem;
-  }
-  :deep(.p-datatable-table) {
-    font-size: 0.85rem;
-  }
-}
-@media screen and (max-width: 1200px) {
-  :global(body) {
-    font-size: 0.6rem;
-  }
-  :deep(.p-datatable-table) {
-    font-size: 0.7rem;
-  }
-}
 </style>
