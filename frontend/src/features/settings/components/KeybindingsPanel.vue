@@ -45,7 +45,7 @@
         </div>
       </div>
 
-      <ButtonGroup class="form-footer">
+      <span class="form-footer">
         <Button
           size="small"
           label="Add Key"
@@ -65,7 +65,7 @@
           size="small"
           class="p-button-sm p-button-secondary"
         />
-      </ButtonGroup>
+      </span>
     </form>
     <KeyRecorder
       v-if="keyRecorderOpen"
