@@ -150,7 +150,7 @@ After navigating to the control interface, you can customize your experience via
 
 To access settings, press the icon in the top right corner, or press `h` to open the general settings, or `?` to open keybindings settings.
 
-![Alt text](./demo/settings-general.png)
+![Alt text](./demo/settings-appearance.png)
 
 - **Text-to-Speech**: Configure the default text that will be converted into speech.
 - **Default Sound**: Select a default sound from the available list to play during specific events.
@@ -161,7 +161,7 @@ To access settings, press the icon in the top right corner, or press `h` to open
 - **Keybindings**: Change all keybindings.
 - **Calibration**: Start calibration mode.
 
-![Alt text](./demo/keybindings-settings.png)
+![Alt text](./demo/settings-keybindings.png)
 
 ### Default Keybindings
 
