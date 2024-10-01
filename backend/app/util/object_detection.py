@@ -43,7 +43,9 @@ def perform_detection(
     )[0]
 
     if verbose:
-        logger.info(f"confidence_threshold {confidence_threshold}")
+        logger.info(
+            f"confidence_threshold {confidence_threshold} original_width {original_width} original_height {original_width}"
+        )
 
     scale_x = original_width / resized_width
     scale_y = original_height / resized_height
