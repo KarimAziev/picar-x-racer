@@ -56,6 +56,7 @@ def perform_detection(
     if results.boxes is not None:
         for detection in results.boxes:
             id = detection.id
+
             id_label = id[0] if isinstance(id, Tensor) and len(id) > 0 else None
 
             xyxy = detection.xyxy[0]
@@ -76,7 +77,7 @@ def perform_detection(
                 detection_results.append(
                     {
                         "bbox": [x1, y1, x2, y2],
-                        "label": f"{id_label} {label}" if id_label else label,
+                        "label": f"{id_label} {label}" if id_label else f"{id} {label}",
                         "confidence": conf,
                     }
                 )
