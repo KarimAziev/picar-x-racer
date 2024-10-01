@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import cv2
 import numpy as np
 from app.util.logger import Logger
+from torch import Tensor
 
 if TYPE_CHECKING:
     from ultralytics import YOLO
@@ -34,12 +35,12 @@ def perform_detection(
     resized_height, resized_width = 192, 192
     frame = cv2.resize(frame, (resized_height, resized_width))
 
-    results = yolo_model.predict(
+    results = yolo_model.track(
         frame,
         verbose=verbose,
         conf=confidence_threshold,
-        task="detect",
         imgsz=(192, 192),
+        persist=True,
     )[0]
 
     if verbose:
@@ -54,7 +55,11 @@ def perform_detection(
 
     if results.boxes is not None:
         for detection in results.boxes:
-            x1, y1, x2, y2 = detection.xyxy[0].tolist()
+            id = detection.id
+            id_label = id[0] if isinstance(id, Tensor) and len(id) > 0 else None
+
+            xyxy = detection.xyxy[0]
+            x1, y1, x2, y2 = xyxy.tolist()
             conf = detection.conf.item()
             cls = detection.cls.item()
             label = yolo_model.names[int(cls)]
@@ -71,7 +76,7 @@ def perform_detection(
                 detection_results.append(
                     {
                         "bbox": [x1, y1, x2, y2],
-                        "label": label,
+                        "label": f"{id_label} {label}" if id_label else label,
                         "confidence": conf,
                     }
                 )
