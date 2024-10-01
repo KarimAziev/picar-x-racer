@@ -15,21 +15,21 @@ from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 
 Logger.setup_from_env()
+logger = Logger(__name__)
 
 
 description = """
 `Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games.
 
-It integrates both frontend and backend components to object detection, camera, and other functionalities. 🚀
+This server runs in a separate process from the car-controlling server to ensure that control operations are never blocked.
 
 It provides endpoints for:
+
 - video streaming including AI object detection with YOLO and video enhancements,
 - music/sound playback,
 - managing settings and files,
 - serving the frontend,
 - reading battery status from ADC.
-
-This server runs in a separate process from the car-controlling server to ensure that control operations are never blocked.
 """
 
 tags_metadata = [
@@ -70,7 +70,14 @@ async def lifespan(app: FastAPI):
     port = app.state.port if hasattr(app.state, "port") else 8000
 
     ip_address = get_ip_address()
-    logger.info(f"\n🚗 Open http://{ip_address}:{port} in the browser\n")
+    BOLD = "\033[1m"
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    RESET = "\033[0m"
+
+    print(
+        f"🚗 {BOLD}{RED}Open {YELLOW}http://{ip_address}:{port}{RED} in the browser{RESET}"
+    )
     yield
     logger.info("Stopping application")
 
@@ -92,8 +99,6 @@ app = FastAPI(
     },
     openapi_tags=tags_metadata,
 )
-
-logger = Logger(__name__)
 
 
 app.add_middleware(
