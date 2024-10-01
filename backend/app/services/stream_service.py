@@ -46,9 +46,12 @@ class StreamService(metaclass=SingletonMeta):
 
         await self.camera_service.start_camera_and_wait_for_stream_img()
         skip_count = 0
+        log_count = 0
         try:
             while True:
-                encoded_frame = await self.camera_service.generate_frame()
+                encoded_frame = await self.camera_service.generate_frame(log_count < 3)
+                if log_count < 3:
+                    log_count += 1
                 if encoded_frame:
                     try:
                         if websocket.application_state == WebSocketState.CONNECTED:

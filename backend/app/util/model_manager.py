@@ -3,8 +3,11 @@ import os
 
 from app.config.paths import YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
 from app.util.logger import Logger
+from app.util.print_memory_usage import print_memory_usage
 
 logger = Logger(__name__)
+
+debug = os.getenv("LOG_LEVEL", "INFO").upper() == "DEBUG"
 
 
 class ModelManager:
@@ -41,11 +44,15 @@ class ModelManager:
         )
 
         logger.info(f"Loading model {model_path}")
+        if debug:
+            print_memory_usage("Memory Usage Before Loading the Model")
 
         self.model = YOLO(
             model_path,
             task="detect",
         )
+        if debug:
+            print_memory_usage("Memory Usage After Loading the Model")
         self.model.overrides["imgsz"] = (192, 192)
         logger.info(f"Model {model_path} loaded successfully")
         return self.model
@@ -64,6 +71,8 @@ class ModelManager:
                                   Can be None if no exception occurred.
         """
         logger.info("Cleaning up model resources.")
+        if debug:
+            print_memory_usage("Memory usage up before model resources")
         if exc_type is not None:
             logger.error("An exception occurred during model execution")
             logger.error(f"Exception type: {exc_type}")
@@ -73,4 +82,8 @@ class ModelManager:
 
             logger.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
         del self.model
+        if debug:
+            print_memory_usage("Memory after removing model")
         gc.collect()
+        if debug:
+            print_memory_usage("Memory after running garbage collection")
