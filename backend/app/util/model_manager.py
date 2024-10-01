@@ -49,7 +49,6 @@ class ModelManager:
 
         self.model = YOLO(
             model_path,
-            task="detect",
         )
         if debug:
             print_memory_usage("Memory Usage After Loading the Model")
