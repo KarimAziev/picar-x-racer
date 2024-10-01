@@ -66,7 +66,7 @@ class CameraService(metaclass=SingletonMeta):
         self.last_detection_result = None
         self.cap_task = None
 
-    async def generate_frame(self):
+    async def generate_frame(self, log: Optional[bool] = False):
         """
         Generates a video frame for streaming.
 
@@ -92,6 +92,9 @@ class CameraService(metaclass=SingletonMeta):
                 break
 
             self.last_detection_result = latest_detection
+
+            if log and self.video_feed_enhance_mode:
+                self.logger.info(f"Detection result: {self.last_detection_result}")
 
         if self.stream_img is not None:
             format = self.video_feed_format

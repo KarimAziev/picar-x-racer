@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Optional
 
 from app.util.detection_process import detection_process_func
 from app.util.logger import Logger
-from app.util.print_memory_usage import print_memory_usage
 from app.util.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
@@ -29,7 +28,6 @@ class DetectionService(metaclass=SingletonMeta):
         )
 
     def start_detection_process(self):
-        print_memory_usage("Memory before starting process")
         if not self.detection_process or not self.detection_process.is_alive():
             self.detection_process = mp.Process(
                 target=detection_process_func,
@@ -75,8 +73,6 @@ class DetectionService(metaclass=SingletonMeta):
         else:
             self.logger.info("Detection process is not alive")
 
-        print_memory_usage("Memory after stopping process")
-
     def clear_stop_event(self):
         self.logger.info("Clearing stop event")
         self.stop_event.clear()
@@ -117,11 +113,11 @@ class DetectionService(metaclass=SingletonMeta):
             except queue.Empty:
                 pass
 
-    def put_command(self, frame_data):
+    def put_command(self, command_data):
         """Puts the control queue into the frame queue after clearing it."""
         self.clear_control_queue()
         try:
-            self.control_queue.put_nowait(frame_data)
+            self.control_queue.put_nowait(command_data)
         except queue.Full:
             pass
 

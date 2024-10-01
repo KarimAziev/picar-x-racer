@@ -5,7 +5,6 @@ from multiprocessing.synchronize import Event
 from app.config.detectors import detectors
 from app.util.logger import Logger
 from app.util.model_manager import ModelManager
-from app.util.print_memory_usage import print_memory_usage
 
 logger = Logger(name=__name__)
 
@@ -25,8 +24,6 @@ def detection_process_func(
         detection_queue (mp.Queue): Queue to put detection results into.
         control_queue (mp.Queue): Queue for control messages.
     """
-
-    print_memory_usage("Memory Usage Before Loading the Model")
     with ModelManager() as yolo_model:
         if yolo_model is None:
             logger.error("Failed to load the YOLO model. Exiting detection process.")
@@ -69,17 +66,20 @@ def detection_process_func(
                     except queue.Empty:
                         continue
 
+                    verbose = counter < 5
+
                     detection_result = detection_function(
                         frame=frame,
                         yolo_model=yolo_model,
                         confidence_threshold=confidence_threshold,
+                        verbose=verbose,
                     )
                     detection_result_with_timestamp = {
                         "detection_result": detection_result,
                         "timestamp": frame_timestamp,
                     }
 
-                    if detection_result and counter < 5:
+                    if detection_result and verbose:
                         logger.debug(f"Detection result: {detection_result}")
                         counter += 1
 
@@ -91,10 +91,6 @@ def detection_process_func(
                 except Exception as e:
                     logger.log_exception("Error in detection_process_func", e)
         except KeyboardInterrupt:
-            logger.info("Detection process received KeyboardInterrupt, exiting.")
+            logger.warning("Detection process received KeyboardInterrupt, exiting.")
         finally:
             logger.info("Detection process is terminating.")
-
-        print_memory_usage("Memory Usage After Loading the Model")
-
-    print_memory_usage("Memory Usage After Deleting the Model")

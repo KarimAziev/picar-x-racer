@@ -17,7 +17,7 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
     Returns:
         np.ndarray: The frame with detection overlays.
     """
-    logger.debug(f"detection_result: {detection_result}")
+
     for detection in detection_result:
         x1, y1, x2, y2 = detection["bbox"]
 
