@@ -91,7 +91,7 @@ class AudioService(metaclass=SingletonMeta):
             lang (str): The language of the text. Default is "en".
 
         Returns:
-            None
+            True or None
         """
 
         if google_speech_available and Speech is not None:
@@ -99,6 +99,7 @@ class AudioService(metaclass=SingletonMeta):
                 self.logger.info(f"text-to-speech: {words} lang {lang}")
                 speech = Speech(words, lang)
                 speech.play()
+                return True
             except Exception as e:
                 self.logger.log_exception("Error playing text-to-speech audio", e)
         else:

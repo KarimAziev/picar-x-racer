@@ -115,10 +115,12 @@ class PlayTTSResponse(BaseModel):
     Attributes:
     - `text` (str): The text that was converted to speech.
     - `lang` (str): The language of the text.
+    - `status` (bool): Whether is speaking.
     """
 
     text: str
     lang: str
+    status: bool
 
 
 class VolumeRequest(BaseModel):

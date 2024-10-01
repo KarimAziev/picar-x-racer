@@ -165,8 +165,8 @@ async def text_to_speech(
 
     text = payload.text
     lang = payload.lang or "en"
-    audio_manager.text_to_speech(text, lang)
-    return {"text": text, "lang": lang}
+    status = audio_manager.text_to_speech(text, lang) or False
+    return {"text": text, "lang": lang, "status": status}
 
 
 @router.post("/api/volume", response_model=VolumeResponse)
