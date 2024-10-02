@@ -15,7 +15,7 @@ def perform_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
     labels_to_detect: Optional[List[str]] = None,
-    confidence_threshold: float = 0.25,
+    confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -40,7 +40,7 @@ def perform_detection(
     frame = cv2.resize(frame, (resized_width, resized_height))
 
     results = yolo_model.predict(
-        frame,
+        source=frame,
         verbose=verbose,
         conf=confidence_threshold,
         task="detect",
@@ -87,7 +87,7 @@ def perform_detection(
 def perform_cat_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
-    confidence_threshold: float = 0.5,
+    confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -113,7 +113,7 @@ def perform_cat_detection(
 def perform_person_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
-    confidence_threshold: float = 0.5,
+    confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
     """
