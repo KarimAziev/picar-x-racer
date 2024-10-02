@@ -47,12 +47,12 @@ class ModelManager:
         if debug:
             print_memory_usage("Memory Usage Before Loading the Model")
 
-        self.model = YOLO(model_path, task="detect")
+        self.model = YOLO(model=model_path, task="detect")
 
         if debug:
             print_memory_usage("Memory Usage After Loading the Model")
 
-        logger.info(f"Model {model_path} loaded successfully {self.model.info()}")
+        logger.info(f"Model {model_path} loaded successfully")
         return self.model
 
     def __exit__(self, exc_type, exc_value, traceback):
