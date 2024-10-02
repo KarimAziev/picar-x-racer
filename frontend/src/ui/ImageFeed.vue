@@ -52,20 +52,14 @@ onUnmounted(() => {
 .image-feed {
   width: 100%;
   display: block;
-  height: 100%;
+  height: 99%;
   box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
   user-select: none;
 }
 .loading {
   opacity: 0;
 }
-.box {
-  opacity: 1;
-  width: 100%;
-  height: 100%;
-  box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
-  user-select: none;
-}
+
 .scan {
   width: 100%;
 }

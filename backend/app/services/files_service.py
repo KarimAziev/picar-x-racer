@@ -286,6 +286,24 @@ class FilesService(metaclass=SingletonMeta):
         """
         return self.list_files_sorted(self.user_photos_dir, full)
 
+    def list_user_photos_with_preview(self) -> List[dict[str, str]]:
+        """
+        Lists captured by user photo files.
+        """
+        files = []
+        directory = self.user_photos_dir
+        if not path.exists(directory):
+            return files
+
+        for file in os.listdir(directory):
+            file_path = os.path.join(directory, file)
+            file_item = {"name": file, "path": file_path, "url": f"/api/preview/{file}"}
+            files.append(file_item)
+
+        files.sort(key=lambda x: os.path.getmtime(x["path"]), reverse=True)
+
+        return files
+
     def list_user_music(self, full=False) -> List[str]:
         """
         Lists user-uploaded music files.

@@ -4,6 +4,7 @@ from app.api.deps import get_file_manager
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.schemas.file_management import (
     FilesResponse,
+    PhotosResponse,
     RemoveFileResponse,
     UploadFileResponse,
 )
@@ -217,3 +218,12 @@ def preview_image(
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
+
+
+@router.get("/api/list_photos", response_model=PhotosResponse)
+def list_photos(file_manager: "FilesService" = Depends(get_file_manager)):
+    """
+    List the captured by user photos.
+    """
+
+    return {"files": file_manager.list_user_photos_with_preview()}
