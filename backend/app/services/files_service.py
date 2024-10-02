@@ -161,6 +161,32 @@ class FilesService(metaclass=SingletonMeta):
                 files.append(file if not full else file_path)
         return files
 
+    def list_files_sorted(self, directory: str, full=False) -> List[str]:
+        """
+        Lists all files in the specified directory, sorted by modified time.
+
+        Args:
+            directory (str): The directory to list files from.
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of files in the directory.
+        """
+        if not os.path.exists(directory):
+            return []
+
+        files = []
+        for file in os.listdir(directory):
+            file_path = os.path.join(directory, file)
+            if os.path.isfile(file_path):
+                files.append(
+                    (file if not full else file_path, os.path.getmtime(file_path))
+                )
+
+        files.sort(key=lambda x: x[1], reverse=True)
+
+        return [file[0] for file in files]
+
     def list_all_music_with_details(self):
         """Lists all music files with details including whether they are removable."""
         defaults = self.list_default_music(full=True)
@@ -258,7 +284,7 @@ class FilesService(metaclass=SingletonMeta):
         Returns:
             List[str]: List of user-uploaded photo files.
         """
-        return self.list_files(self.user_photos_dir, full)
+        return self.list_files_sorted(self.user_photos_dir, full)
 
     def list_user_music(self, full=False) -> List[str]:
         """
