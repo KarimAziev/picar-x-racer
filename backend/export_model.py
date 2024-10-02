@@ -35,4 +35,6 @@ def export_yolo_model_to_edgetpu(yolo_model_path, target_path, imgsz=(192, 192))
 
 
 if __name__ == "__main__":
-    export_yolo_model_to_edgetpu(YOLO_MODEL_PATH, YOLO_MODEL_EDGE_TPU_PATH)
+    export_yolo_model_to_edgetpu(
+        YOLO_MODEL_PATH, YOLO_MODEL_EDGE_TPU_PATH, imgsz=(192, 256)
+    )

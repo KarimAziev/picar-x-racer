@@ -30,7 +30,19 @@ async def capture_photo(img: np.ndarray, photo_name: str, path: str) -> bool:
     return status
 
 
+def round_up_to_multiple_of(val: int | float, multiple: int):
+    return ((val + multiple - 1) // multiple) * multiple
+
+
 def height_to_width(height: int, target_width: int, target_height: int):
     aspect_ratio = target_width / target_height
     width = aspect_ratio * height
-    return int(width)
+    rounded_width = round_up_to_multiple_of(width, 32)
+    return int(rounded_width)
+
+
+def width_to_height(width: int, target_width: int, target_height: int):
+    aspect_ratio = target_height / target_width
+    height = aspect_ratio * width
+    rounded_height = round_up_to_multiple_of(height, 32)
+    return int(rounded_height)

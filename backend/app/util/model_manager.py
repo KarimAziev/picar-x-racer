@@ -47,14 +47,11 @@ class ModelManager:
         if debug:
             print_memory_usage("Memory Usage Before Loading the Model")
 
-        self.model = YOLO(
-            model_path,
-            task="track",
-        )
+        self.model = YOLO(model_path, task="detect")
 
         if debug:
             print_memory_usage("Memory Usage After Loading the Model")
-        self.model.overrides["imgsz"] = (192, 192)
+
         logger.info(f"Model {model_path} loaded successfully {self.model.info()}")
         return self.model
 
