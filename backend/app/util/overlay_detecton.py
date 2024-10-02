@@ -23,16 +23,43 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
 
         label = detection["label"]
         confidence = detection["confidence"]
+        bg_color = (191, 255, 0)
+        fg_color = (102, 51, 0)
 
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color=(191, 255, 0), thickness=2)
+        font_face = cv2.FONT_HERSHEY_SIMPLEX
+        text_thickness = 2
+
+        text = f"{label}: {confidence:.2f}".upper()
+
+        (text_width, text_height), _ = cv2.getTextSize(
+            text, font_face, 0.5, text_thickness
+        )
+
+        y1_text = max(y1 - text_height - 10, 0)
+
+        rect_x1 = x1
+        rect_y1 = y1_text
+        rect_x2 = x1 + text_width
+        rect_y2 = y1_text + text_height + 10
+
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color=bg_color, thickness=2)
+
+        cv2.rectangle(
+            frame,
+            (rect_x1, rect_y1),
+            (rect_x2, rect_y2),
+            bg_color,
+            thickness=cv2.FILLED,
+        )
 
         cv2.putText(
             frame,
-            f"{label}: {confidence:.2f}",
-            (x1, y1 - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
+            text,
+            (x1, y1_text + text_height + 5),
+            font_face,
             0.5,
-            (191, 255, 0),
-            2,
+            fg_color,
+            text_thickness,
         )
+
     return frame
