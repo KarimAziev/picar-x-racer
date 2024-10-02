@@ -297,10 +297,9 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("Camera is not running.")
             return
         self.logger.info("Stopping camera")
+        self.last_detection_result = None
         self.camera_run = False
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
-        self.detection_service.stop_detection_process()
-        self.detection_service.clear_stop_event()

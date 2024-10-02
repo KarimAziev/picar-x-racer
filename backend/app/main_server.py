@@ -79,6 +79,7 @@ async def lifespan(app: FastAPI):
         f"🚗 {BOLD}{RED}Open {YELLOW}http://{ip_address}:{port}{RED} in the browser{RESET}"
     )
     yield
+    detection_manager.stop_detection_process()
     logger.info("Stopping application")
 
 
@@ -113,6 +114,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
 app.mount("/frontend", StaticFiles(directory=FRONTEND_FOLDER), name="frontend")
 
+from app.api.deps import detection_manager
 from app.api.endpoints import (
     audio_management_router,
     battery_router,
