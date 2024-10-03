@@ -41,6 +41,12 @@ def is_google_coral_connected():
     Returns:
         bool: True if a Google Coral USB device is detected; False otherwise.
     """
-    GOOGLE_CORAL_VENDOR_ID = 0x1A6E
-    GOOGLE_CORAL_PRODUCT_ID = 0x089A
-    return is_usb_device_connected(GOOGLE_CORAL_VENDOR_ID, GOOGLE_CORAL_PRODUCT_ID)
+
+    GOOGLE_CORAL_VENDOR_ID_1 = 0x1A6E
+    GOOGLE_CORAL_PRODUCT_ID_1 = 0x089A
+
+    GOOGLE_CORAL_VENDOR_ID_2 = 0x18D1
+    GOOGLE_CORAL_PRODUCT_ID_2 = 0x9302
+    return is_usb_device_connected(
+        GOOGLE_CORAL_VENDOR_ID_1, GOOGLE_CORAL_PRODUCT_ID_1
+    ) or is_usb_device_connected(GOOGLE_CORAL_VENDOR_ID_2, GOOGLE_CORAL_PRODUCT_ID_2)
