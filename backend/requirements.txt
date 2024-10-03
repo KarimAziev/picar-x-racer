@@ -17,3 +17,5 @@ ultralytics
 gpiozero
 RPi.GPIO
 spidev
+pyusb
+pyudev
