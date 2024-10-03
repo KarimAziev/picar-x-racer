@@ -98,7 +98,7 @@ class CameraService(metaclass=SingletonMeta):
 
         if self.stream_img is not None:
             format = self.video_feed_format
-            video_feed_enhance_mode = self.video_feed_enhance_mode
+
             video_feed_quality = self.video_feed_quality
             frame = self.stream_img.copy()
             if (
@@ -106,18 +106,13 @@ class CameraService(metaclass=SingletonMeta):
                 and self.detection_service.video_feed_detect_mode is not None
             ):
                 frame = overlay_detection(frame, self.last_detection_result)
-            frame_enhancer = (
-                frame_enhancers.get(video_feed_enhance_mode)
-                if video_feed_enhance_mode
-                else None
-            )
 
             encode_params = (
                 [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality]
                 if format == ".jpg"
                 else []
             )
-            encoded_frame = encode(frame, format, encode_params, frame_enhancer)
+            encoded_frame = encode(frame, format, encode_params)
 
             return encoded_frame
 
@@ -191,13 +186,19 @@ class CameraService(metaclass=SingletonMeta):
                 else:
                     failed_counter = 0
 
+                frame_enhancer = (
+                    frame_enhancers.get(self.video_feed_enhance_mode)
+                    if self.video_feed_enhance_mode
+                    else None
+                )
+
                 self.img = frame
-                self.stream_img = frame
+                self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
                 if self.detection_service.video_feed_detect_mode:
                     self.current_frame_timestamp = time.time()
 
                     frame_data = {
-                        "frame": frame.copy(),
+                        "frame": self.stream_img.copy(),
                         "timestamp": self.current_frame_timestamp,
                     }
                     self.detection_service.put_frame(frame_data)
