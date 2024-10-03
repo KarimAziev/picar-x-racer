@@ -18,6 +18,15 @@ class ModelManager:
     The model loading path is selected dynamically based on available files.
     """
 
+    def __init__(self, model_path=None):
+        """
+        Initializes the ModelManager with an optional model path.
+
+        Parameters:
+            model_path (str): An optional custom path to use for loading the model.
+        """
+        self.model_path = model_path
+
     def __enter__(self):
         """
         Called when entering the context (i.e. using the 'with' statement).
@@ -37,22 +46,22 @@ class ModelManager:
         """
         from ultralytics import YOLO
 
-        model_path = (
-            YOLO_MODEL_EDGE_TPU_PATH
+        self.model_path = (
+            self.model_path or YOLO_MODEL_EDGE_TPU_PATH
             if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
             else YOLO_MODEL_PATH
         )
 
-        logger.info(f"Loading model {model_path}")
+        logger.info(f"Loading model {self.model_path}")
         if debug:
             print_memory_usage("Memory Usage Before Loading the Model")
 
-        self.model = YOLO(model=model_path, task="detect")
+        self.model = YOLO(model=self.model_path, task="detect")
 
         if debug:
             print_memory_usage("Memory Usage After Loading the Model")
 
-        logger.info(f"Model {model_path} loaded successfully")
+        logger.info(f"Model {self.model_path} loaded successfully")
         return self.model
 
     def __exit__(self, exc_type, exc_value, traceback):
