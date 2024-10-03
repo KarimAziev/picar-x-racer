@@ -44,7 +44,11 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
     def __init__(self, camera_index: Optional[int] = 0):
         self.logger = Logger(name=__name__)
         self.device = find_video_device()
-        self.camera_index: int = camera_index or find_video_device_index() or 0
+        self.camera_index: int = (
+            camera_index
+            if isinstance(camera_index, int)
+            else find_video_device_index() or 0
+        )
         self.video_devices: List[CameraInfo] = []
         self.failed_camera_indexes: List[int] = []
 
