@@ -43,7 +43,7 @@ PICARX_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "picar-x.conf")
 PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
 
 
-YOLO_MODEL_PATH = ensure_absolute_path(getenv("YOLO_MODEL_PATH", "data/yolo11x.pt"))
+YOLO_MODEL_PATH = ensure_absolute_path(getenv("YOLO_MODEL_PATH", "data/yolo11s.pt"))
 
 YOLO_MODEL_EDGE_TPU_PATH = ensure_absolute_path(
     getenv(

@@ -151,9 +151,40 @@ def get_available_devices(exclude_devices: List[str] = []) -> List[str]:
 
 
 def find_video_device(exclude_devices: List[str] = []):
-    devices = get_available_devices(exclude_devices)
-    if devices and len(devices) > 0:
-        return devices[0]
+    context = pyudev.Context()
+
+    video_devices = context.list_devices(subsystem="video4linux")
+    primary_cands: List[str] = []
+    not_primary_cands: List[str] = []
+    by_vendors = {}
+
+    for device in video_devices:
+        video_device_path = os.path.join("/dev", device.sys_name)
+        parent_usb_vendor = None
+        if video_device_path in exclude_devices:
+            continue
+
+        try:
+            parent_usb_vendor = device.properties.get("ID_VENDOR_ID")
+
+            logger.debug(
+                f"Device {device.sys_name} parent {device.parent} parent_usb_vendor: {parent_usb_vendor}"
+            )
+        except KeyError:
+            pass
+
+        if isinstance(parent_usb_vendor, str):
+            if not by_vendors.get(parent_usb_vendor):
+                by_vendors[parent_usb_vendor] = True
+                primary_cands.append(video_device_path)
+            else:
+                not_primary_cands.append(video_device_path)
+        else:
+            not_primary_cands.append(video_device_path)
+
+    for item in primary_cands + not_primary_cands:
+        if try_video_path(item):
+            return item
 
 
 def find_video_device_index():
