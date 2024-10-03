@@ -41,7 +41,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         Sets up the video capture device with specified FPS, width, and height.
     """
 
-    def __init__(self, camera_index: Optional[int] = None):
+    def __init__(self, camera_index: Optional[int] = 1):
         self.logger = Logger(name=__name__)
         self.device = find_video_device()
         self.camera_index: int = camera_index or find_video_device_index() or 0
