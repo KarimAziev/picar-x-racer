@@ -48,6 +48,6 @@ YOLO_MODEL_PATH = ensure_absolute_path(getenv("YOLO_MODEL_PATH", "data/yolo11s.p
 YOLO_MODEL_EDGE_TPU_PATH = ensure_absolute_path(
     getenv(
         "YOLO_MODEL_EDGE_TPU_PATH",
-        "data/yolov8l_full_integer_quant_edgetpu.tflite",
+        "data/yolo11s_full_integer_quant_edgetpu.tflite",
     )
 )
