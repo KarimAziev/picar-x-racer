@@ -2,6 +2,7 @@ import gc
 import os
 
 from app.config.paths import YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
+from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.print_memory_usage import print_memory_usage
 
@@ -48,7 +49,7 @@ class ModelManager:
 
         self.model_path = (
             self.model_path or YOLO_MODEL_EDGE_TPU_PATH
-            if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
+            if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH) and is_google_coral_connected()
             else YOLO_MODEL_PATH
         )
 
