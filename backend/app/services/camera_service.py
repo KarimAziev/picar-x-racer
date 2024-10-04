@@ -11,7 +11,6 @@ from app.config.video_enhancers import frame_enhancers
 from app.services.detection_service import DetectionService
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_detection
-from app.util.photo import height_to_width
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import encode
 from cv2 import VideoCapture
@@ -64,7 +63,6 @@ class CameraService(metaclass=SingletonMeta):
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[VideoCapture, None] = None
         self.last_detection_result = None
-        self.cap_task = None
 
     async def generate_frame(self, log: Optional[bool] = False):
         """
@@ -73,6 +71,9 @@ class CameraService(metaclass=SingletonMeta):
         Retrieves the latest detection results, overlays detection annotations onto the frame,
         applies any video enhancements, encodes the frame in the specified format, and returns
         it as a byte array ready for streaming.
+
+        Args:
+            log (Optional[bool]): Indicates whether to log the detection result (default is False).
 
         Returns:
             Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
@@ -118,42 +119,32 @@ class CameraService(metaclass=SingletonMeta):
 
     def camera_thread_func(self):
         """
-        Starts the camera capture thread and the detection process.
+        Camera capture loop function.
 
-        Configures the camera settings, initializes queues, and starts the threads and processes
-        necessary for capturing and processing video frames.
-
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `video_feed_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
+        Manages the process of capturing video frames, enhancing them, and
+        pushing them to the detection service. Handles errors and device resets.
         """
 
         try:
             if self.cap and self.cap.isOpened():
                 self.cap.release()
         except Exception as e:
-            self.logger.error(f"Exception occurred in camera loop: {e}")
+            self.logger.log_exception(
+                f"Exception occurred while stopping camera capture", e
+            )
         finally:
             self.cap = None
 
-        self.logger.info(
-            f"Starting camera loop with camera index {self.video_device_adapter.camera_index}"
-        )
-        self.cap = self.video_device_adapter.setup_video_capture(
-            fps=self.video_feed_fps,
-            width=self.video_feed_width,
-            height=self.video_feed_height,
-        )
+        self.cap = self.video_device_adapter.setup_video_capture()
+
+        if not self.cap:
+            return
 
         failed_counter = 0
         max_failed_attempt_count = 10
 
         try:
-            while self.camera_run:
+            while self.camera_run and self.cap:
                 ret, frame = self.cap.read()
                 if not ret:
                     if failed_counter < max_failed_attempt_count:
@@ -161,27 +152,23 @@ class CameraService(metaclass=SingletonMeta):
                         self.logger.error("Failed to read frame from camera.")
                         continue
                     else:
-                        self.video_device_adapter.failed_camera_indexes.append(
-                            self.video_device_adapter.camera_index
+                        (video_device, _) = self.video_device_adapter.video_device or (
+                            None,
+                            None,
                         )
+                        if video_device:
+                            self.video_device_adapter.failed_camera_devices.append(
+                                video_device
+                            )
+
                         if self.cap:
                             self.cap.release()
 
-                        cap = (
-                            self.video_device_adapter.find_and_setup_alternative_camera(
-                                fps=self.video_feed_fps,
-                                width=self.video_feed_width,
-                                height=self.video_feed_height,
-                            )
-                        )
+                        cap = self.video_device_adapter.setup_video_capture()
                         if cap is None:
                             break
 
                         self.cap = cap
-                        self.img = frame
-                        self.stream_img = frame
-
-                        failed_counter = 0
                         continue
                 else:
                     failed_counter = 0
@@ -214,38 +201,15 @@ class CameraService(metaclass=SingletonMeta):
 
             self.logger.info("Camera loop terminated and camera released.")
 
-    def start_camera(
-        self,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-    ):
+    def start_camera(self):
         """
         Starts the camera capture thread and the detection process.
 
-        Configures the camera settings, initializes queues, and starts the threads and processes
-        necessary for capturing and processing video frames.
-
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `video_feed_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
+        Checks if the camera is already running and prevents multiple starts.
         """
         if self.camera_run:
             self.logger.info("Camera is already running.")
             return
-
-        if fps:
-            self.video_feed_fps = fps
-
-        self.logger.info(f"Starting camera")
-        self.video_feed_height = height
-        self.video_feed_width = width or (
-            height_to_width(height, TARGET_WIDTH, TARGET_HEIGHT) if height else None
-        )
 
         self.camera_run = True
         self.capture_thread = threading.Thread(target=self.camera_thread_func)
@@ -253,29 +217,17 @@ class CameraService(metaclass=SingletonMeta):
         if self.detection_service.video_feed_detect_mode:
             self.detection_service.start_detection_process()
 
-    async def start_camera_and_wait_for_stream_img(
-        self,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-    ):
+    async def start_camera_and_wait_for_stream_img(self):
         """
         Asynchronously starts the camera and waits until the first frame is available.
 
         Useful for ensuring that the camera is ready and frames are available before
         starting operations that depend on the video stream.
 
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `video_feed_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
         """
 
         if not self.camera_run:
-            self.start_camera(fps, width, height)
+            self.start_camera()
 
         counter = 0
 

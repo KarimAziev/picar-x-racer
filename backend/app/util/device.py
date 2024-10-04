@@ -1,108 +1,54 @@
 import os
 import re
 import subprocess
-from typing import List
+from typing import List, Optional, Tuple
 
 import cv2
-import pyudev
-import usb.core
-import usb.util
 from app.util.logger import Logger
 
 logger = Logger(__name__)
 
 
-def get_video_device_info(device_path: str) -> str:
-    """
-    Get detailed information of the video device using `v4l2-ctl` command.
-
-    Args:
-        device_path (str): Path to the video device.
-
-    Returns:
-        str: Detailed information about the video device.
-    """
-    try:
-        result = subprocess.run(
-            ["v4l2-ctl", "--device", device_path, "--all"],
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-        return result.stdout
-    except Exception as e:
-        return f"Error checking device {device_path}: {e}"
+CameraInfo = Tuple[str, str]
 
 
 def try_video_path(path: str):
-    result = None
-    cap = cv2.VideoCapture(path)
+    """
+    Tries to open a video capture at a specified path.
+
+    Attempts to create and read from a video capture object using OpenCV.
+    If successful, returns the video capture object; otherwise, returns None.
+
+    Parameters:
+        path (str): The file path or device path to the video stream.
+
+    Returns:
+        Optional[cv2.VideoCapture]: The video capture object if the path is valid and readable, otherwise None.
+    """
+    result: Optional[bool] = None
+    cap = None
 
     try:
-        ret, _ = cap.read()
-        result = path if ret else None
-    except Exception as err:
-        logger.warning(f"Error while trying camera at path {path} {err}")
-    finally:
-        if cap.isOpened():
+        cap = cv2.VideoCapture(path)
+        result, _ = cap.read()
+    except Exception:
+        if cap and cap.isOpened():
             cap.release()
 
-    return result
+    return cap if result else None
 
 
-def display_best_device_info():
+def v4l2_list_devices() -> list[str]:
     """
-    Attempts to display information for the preferred camera device, based on the priority:
-    - External USB camera
-    - Camera Module/Onboard camera
-    - Built-in camera (as fallback)
-    """
-    camera_device_path = find_video_device()
+    Lists V4L2 video capture devices on the system.
 
-    if camera_device_path:
-        info = get_video_device_info(camera_device_path)
-        logger.info(f"Video Device Information {camera_device_path}:\n{info}")
-    else:
-        logger.info("No video device found.")
-
-
-def is_usb_device_connected(vendor_id: int, product_id: int) -> bool:
-    """
-    Checks if a USB device with a specific vendor ID and product ID is connected.
-
-    This function leverages the `pyusb` library to scan for USB devices and check whether there
-    is a device matching the provided vendor ID and product ID.
-
-    Args:
-        vendor_id (int): The vendor ID of the USB device.
-        product_id (int): The product ID of the USB device.
+    Uses the `v4l2-ctl` command-line utility to get details about available
+    video capture devices on the system and returns the raw output lines.
 
     Returns:
-        bool: True if a device matching the vendor ID and product ID is found; False otherwise.
+        list[str]: A list of output lines from the `v4l2-ctl --list-devices` command. Each line may contain information about a device or its category.
     """
-    try:
-        device = usb.core.find(idVendor=vendor_id, idProduct=product_id)
-        return device is not None
-
-    except Exception as e:
-        logger.log_exception(
-            f"Error searching USB device with Vendor ID {vendor_id} and Product ID {product_id}: ",
-            e,
-        )
-        return False
-
-
-def get_available_cameras():
-    """
-    Finds a video device by preferring an externally connected USB camera, a camera module,
-    or a built-in camera as a fallback.
-
-    The function scans for video devices connected via USB first. If no external USB camera
-    is found, it checks for any other available video devices.
-
-    Returns:
-        str: The path to the preferred video device (`/dev/videoX`) or an empty string if none are found.
-    """
+    lines = []
     try:
         result = subprocess.run(
             ["v4l2-ctl", "--list-devices"],
@@ -110,87 +56,57 @@ def get_available_cameras():
             text=True,
             timeout=2,
         )
-        return result.stdout
+        lines = result.stdout.strip().splitlines()
+
     except Exception as e:
-        return f"Error checking device {e}"
+        logger.log_exception("List devices failed", e)
+
+    return lines
 
 
-def get_available_devices(exclude_devices: List[str] = []) -> List[str]:
-    context = pyudev.Context()
+def list_camera_devices() -> List[CameraInfo]:
+    """
+    Retrieves a list of available camera devices.
 
-    video_devices = context.list_devices(subsystem="video4linux")
-    by_vendors = {}
-    non_vendors: List[str] = []
+    Parses the output from `v4l2_list_devices` to extract camera paths and their respective categories.
+    Returns the primary camera for each category first, followed by secondary cameras. If no cameras are found,
+    falls back to listing potential camera devices based on video files in /dev/.
 
-    for device in video_devices:
-        video_device_path = os.path.join("/dev", device.sys_name)
-        parent_usb_vendor = None
-        if video_device_path in exclude_devices:
-            continue
+    Returns:
+        List[CameraInfo]: A list of tuples, each containing a device path and a category, representing available cameras.
+                          If no category is found, the category string is empty.
+    """
+    lines = v4l2_list_devices()
+    category_pattern = re.compile(r"^(.+) \(.+\):$")
+    video_device_pattern = re.compile(r"^(\s+)(/dev/video\d+)$")
+    primary_cameras: List[CameraInfo] = []
+    secondary_cameras: List[CameraInfo] = []
 
-        working = try_video_path(video_device_path)
-        if working:
-            try:
-                parent_usb_vendor = device.properties.get("ID_VENDOR_ID")
+    current_category: Optional[str] = None
+    current_category_primary_initted = False
 
-                logger.debug(
-                    f"Device {device.sys_name} parent {device.parent} parent_usb_vendor: {parent_usb_vendor}"
-                )
-            except KeyError:
-                pass
-
-            if isinstance(parent_usb_vendor, str):
-                if not by_vendors.get(parent_usb_vendor):
-                    by_vendors[parent_usb_vendor] = [video_device_path]
-                else:
-                    by_vendors[parent_usb_vendor].append(video_device_path)
-            else:
-                non_vendors.append(video_device_path)
-
-    return [item for sublist in by_vendors.values() for item in sublist] + non_vendors
-
-
-def find_video_device(exclude_devices: List[str] = []):
-    context = pyudev.Context()
-
-    video_devices = context.list_devices(subsystem="video4linux")
-    primary_cands: List[str] = []
-    not_primary_cands: List[str] = []
-    by_vendors = {}
-
-    for device in video_devices:
-        video_device_path = os.path.join("/dev", device.sys_name)
-        parent_usb_vendor = None
-        if video_device_path in exclude_devices:
-            continue
-
-        try:
-            parent_usb_vendor = device.properties.get("ID_VENDOR_ID")
-
-            logger.debug(
-                f"Device {device.sys_name} parent {device.parent} parent_usb_vendor: {parent_usb_vendor}"
-            )
-        except KeyError:
-            pass
-
-        if isinstance(parent_usb_vendor, str):
-            if not by_vendors.get(parent_usb_vendor):
-                by_vendors[parent_usb_vendor] = True
-                primary_cands.append(video_device_path)
-            else:
-                not_primary_cands.append(video_device_path)
+    for line in lines:
+        category_match = category_pattern.match(line)
+        if category_match:
+            current_category = category_match.group(1).strip()
+            current_category_primary_initted = False
         else:
-            not_primary_cands.append(video_device_path)
+            video_device_match = video_device_pattern.match(line)
+            if video_device_match and current_category:
+                video_device = video_device_match.group(2).strip()
+                if video_device and isinstance(video_device, str):
+                    pair = (video_device, current_category)
+                    if current_category_primary_initted:
+                        secondary_cameras.append(pair)
+                    else:
+                        current_category_primary_initted = True
+                        primary_cameras.append(pair)
 
-    for item in primary_cands + not_primary_cands:
-        if try_video_path(item):
-            return item
+    result = primary_cameras + secondary_cameras
+    if len(result) >= 1:
+        return result
 
-
-def find_video_device_index():
-    device_name = find_video_device()
-
-    match = re.search(r"/[^\d]*(\d+)$", device_name) if device_name else None
-    if match:
-        return int(match.group(1))
-    return None
+    dev_video_files = sorted(
+        [f"/dev/{dev}" for dev in os.listdir("/dev") if re.match(r"video[0-9]+", dev)]
+    )
+    return [(device, "") for device in dev_video_files]

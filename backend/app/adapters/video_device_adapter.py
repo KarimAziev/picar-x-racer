@@ -1,248 +1,90 @@
-import os
-import re
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import cv2
-import pyudev
-from app.util.device import (
-    find_video_device,
-    find_video_device_index,
-    get_video_device_info,
-)
+from app.util.device import CameraInfo, list_camera_devices, try_video_path
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-
-# This represents (index, device_path, device_info)
-CameraInfo = Tuple[int, str, Optional[str]]
 
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
     """
-    Singleton adapter to manage video devices.
+    A singleton class responsible for managing video capturing devices.
+    This class handles finding available camera devices and setting up
+    video capture sessions. It maintains a list of available camera
+    devices and a list of devices that have previously failed to initialize.
 
     Attributes:
-    -----------
-    camera_index : Optional[int]
-        The index of the camera to be used. Defaults to 0.
-    video_devices : List[str]
-        List of available video devices.
-    failed_camera_indexes : List[int]
-        List of camera indexes that have failed to be opened.
-
-    Methods:
-    --------
-    __init__(camera_index: Optional[int] = 0)
-        Initializes the VideoDeviceAdapater instance.
-
-    find_camera_index()
-        Finds an available camera index. Prefers non-greyscale cameras.
-
-    setup_video_capture(fps: int, width: Optional[int] = None, height: Optional[int] = None)
-        Sets up the video capture device with specified FPS, width, and height.
+        logger (Logger): An instance of the Logger to handle logging.
+        video_device (Optional[CameraInfo]): The currently active camera device information.
+        video_devices (List[CameraInfo]): A list of all possible camera devices.
+        failed_camera_devices (List[str]): A list of camera devices that have experienced initialization failures.
     """
 
-    def __init__(self, camera_index: Optional[int] = 0):
+    def __init__(self):
+        """
+        Initializes the VideoDeviceAdapater instance. Sets up the logger,
+        and initializes attributes for tracking video devices and failed attempts.
+        """
         self.logger = Logger(name=__name__)
-        self.device = find_video_device()
-        self.camera_index: int = (
-            camera_index
-            if isinstance(camera_index, int)
-            else find_video_device_index() or 0
-        )
+        self.video_device: Optional[CameraInfo] = None
         self.video_devices: List[CameraInfo] = []
-        self.failed_camera_indexes: List[int] = []
+        self.failed_camera_devices: List[str] = []
 
-    def discover_video_devices(self) -> List[str]:
+    def find_camera_device(self):
         """
-        Discover video devices on the system by using pyudev and fallback to manually checking /dev.
+        Finds an available and operational camera device among the listed devices.
+        Attempts to open each device and returns the first successful one.
 
         Returns:
-        --------
-        List[str]: A list of available /dev/videoX device paths.
+            Tuple[Optional[object], Optional[str], Optional[str]]:
+            A tuple containing the video capture object, the device path, and its information.
+            Returns (None, None, None) if no operational device is found.
         """
-        context = pyudev.Context()
+        self.video_devices = list_camera_devices()
 
-        video_devices = []
-        for device in context.list_devices(subsystem="video4linux"):
-            try:
-                parent_usb_vendor = device.properties.get("ID_VENDOR_ID")
-                video_device_path = os.path.join("/dev", device.sys_name)
-
-                if parent_usb_vendor:
-                    video_devices.append(video_device_path)
-                    self.logger.info(
-                        f"Discovered external USB camera: {video_device_path}"
-                    )
-
-            except KeyError:
-                pass
-        if not video_devices:
-            self.logger.warning(
-                "No external USB cameras found. Scanning all /dev/video* devices."
-            )
-            video_devices = sorted(
-                [
-                    f"/dev/{dev}"
-                    for dev in os.listdir("/dev")
-                    if re.match(r"video[0-9]+", dev)
-                ]
-            )
-
-        return video_devices
-
-    def find_camera_index(self) -> Optional[CameraInfo]:
-        """
-        Finds an available camera index by scanning devices for cameras that can be successfully opened.
-
-        This version prioritizes external USB cameras first. It falls back to other available non-greyscale or functional cameras.
-
-        Returns:
-        --------
-        Optional[CameraInfo]
-            A tuple containing the camera index (int), device path, and the device information (or None if none is found).
-        """
-
-        self.video_devices: List[CameraInfo] = [
-            (i, path, get_video_device_info(path))
-            for i, path in enumerate(self.discover_video_devices())
-        ]
-
-        greyscale_cameras: List[CameraInfo] = []
-
-        for index, device_path, device_info in self.video_devices:
-            if index in self.failed_camera_indexes:
+        for device_path, device_info in self.video_devices:
+            if device_path in self.failed_camera_devices:
                 continue
 
-            cap = cv2.VideoCapture(index)
-            if cap.isOpened():
-                ret, frame = cap.read()
-
-                if ret and frame is not None:
-                    if device_info and "8-bit Greyscale" in device_info:
-                        greyscale_cameras.append((index, device_path, device_info))
-                    else:
-                        self.logger.info(
-                            f"Using camera: {device_path}, info: {device_info}"
-                        )
-                        cap.release()
-                        return (index, device_path, device_info)
-                else:
-
-                    self.failed_camera_indexes.append(index)
-                    self.logger.warning(
-                        f"Failed to get valid frame from camera {device_path}."
-                    )
-
-            cap.release()
-
-        if greyscale_cameras:
-            return greyscale_cameras[0]
-
-    def setup_video_capture(
-        self, fps: int, width: Optional[int] = None, height: Optional[int] = None
-    ) -> cv2.VideoCapture:
-        """
-        Sets up the video capture device with specified FPS, width, and height.
-
-        Parameters:
-        -----------
-        fps : int
-            Frames per second for the video capture.
-        width : Optional[int], optional
-            Width of the video frame. Defaults to None.
-        height : Optional[int], optional
-            Height of the video frame. Defaults to None.
-
-        Returns:
-        --------
-        cv2.VideoCapture
-            The video capture object.
-
-        Raises:
-        -------
-        SystemExit
-            If the video capture device cannot be opened.
-        """
-        cap = cv2.VideoCapture(self.camera_index)
-        if not cap or not cap.isOpened():
-            if cap:
-                try:
-                    cap.release()
-                except Exception as err:
-                    self.logger.log_exception("Couln't release the cap", err)
-
-            self.logger.error(f"Failed to open camera at {self.camera_index}.")
-            self.failed_camera_indexes.append(self.camera_index)
-            info = self.find_camera_index()
-            new_index, _, device_info = info if info is not None else (None, None, None)
-            if isinstance(new_index, int):
-                self.logger.error(
-                    f"Failed to open camera at {self.camera_index}, trying {new_index}: {device_info}"
+            cap = try_video_path(device_path)
+            if not cap:
+                self.logger.warning(
+                    f"Error trying camera {device_path} ({device_info or 'Unknown category'})"
                 )
-                self.camera_index = new_index
-                return self.setup_video_capture(fps=fps, width=width, height=height)
+                self.failed_camera_devices.append(device_path)
             else:
-                self.logger.error(f"Failed to open camera at {self.camera_index}.")
-                raise SystemExit(
-                    f"Exiting: Camera {self.camera_index} couldn't be opened."
-                )
+                return (cap, device_path, device_info)
+        return (None, None, None)
 
-        if width and height:
-            self.logger.info(f"Frame_width: {width}, frame_height: {height}")
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-
-        self.logger.info(f"FPS: {fps}")
-
-        cap.set(cv2.CAP_PROP_FPS, fps)
-        return cap
-
-    def find_and_setup_alternative_camera(
-        self, fps: int, width: Optional[int] = None, height: Optional[int] = None
-    ):
+    def setup_video_capture(self) -> cv2.VideoCapture | None:
         """
-        Attempts to find and set up an alternative video capture device if the current one fails.
-
-        This method tries to find an alternative video capture device by checking
-        other available video devices when the current device fails to open or operate correctly.
-        It then sets up the video capture with the specified FPS, width, and height.
-
-        Parameters:
-        -----------
-        fps : int
-            Frames per second for the video capture.
-        width : Optional[int], optional
-            Width of the video frame. Defaults to None.
-        height : Optional[int], optional
-            Height of the video frame. Defaults to None.
+        Sets up and returns a video capture object associated with an available camera device.
+        If a device is already set up successfully, it attempts to reuse it.
 
         Returns:
-        --------
-        cv2.VideoCapture
-            The video capture object for the newly found camera.
-
-        Raises:
-        -------
-        SystemExit
-            If no alternative video capture device can be successfully set up.
+            Optional[object]: The video capture object if successful, otherwise None.
+            If the current device fails to reopen, it recursively tries to set up a capture with another available device.
         """
-        if isinstance(self.camera_index, int):
-            self.failed_camera_indexes.append(self.camera_index)
+        if not self.video_device:
+            cap, device, category = self.find_camera_device()
+            if cap and device:
+                self.video_device = (device, category or "")
+                return cap
 
-        info = self.find_camera_index()
-
-        if info is None:
-            self.logger.warning(f"Failed to find alternative camera device")
+        device, category = self.video_device if self.video_device else (None, None)
+        cap = try_video_path(device) if device else None
+        if cap:
+            self.logger.info(f"Started camera {device} {category}")
+            return cap
+        elif not cap and not device:
+            self.logger.error(f"Failed to find camera")
+            self.video_device = None
+        elif not cap and device and not device in self.failed_camera_devices:
+            self.logger.warning(
+                f"Failed to reopen camera {device} ({category or 'Unknown category'}), trying other devices"
+            )
+            self.failed_camera_devices.append(device)
+            self.video_device = None
+            return self.setup_video_capture()
+        else:
             return None
-
-        new_index, _, device_info = info
-        if isinstance(new_index, int):
-            self.logger.info(
-                f"Camera index {self.camera_index} is failed, trying {new_index}:\n{device_info}"
-            )
-            self.camera_index = new_index
-            return self.setup_video_capture(
-                fps=fps,
-                width=width,
-                height=height,
-            )
