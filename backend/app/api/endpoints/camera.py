@@ -43,7 +43,7 @@ async def take_photo(
         await capture_photo(
             img=(
                 camera_manager.stream_img
-                if camera_manager.stream_img
+                if camera_manager.stream_img is not None
                 else camera_manager.img
             ),
             photo_name=name,
