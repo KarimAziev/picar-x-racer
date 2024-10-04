@@ -102,6 +102,8 @@ def list_camera_devices() -> List[CameraInfo]:
                         current_category_primary_initted = True
                         primary_cameras.append(pair)
 
+    primary_cameras.reverse()
+    secondary_cameras.reverse()
     result = primary_cameras + secondary_cameras
     if len(result) >= 1:
         return result

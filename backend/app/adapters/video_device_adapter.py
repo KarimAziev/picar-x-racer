@@ -69,6 +69,9 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
             cap, device, category = self.find_camera_device()
             if cap and device:
                 self.video_device = (device, category or "")
+                self.logger.info(
+                    f"Started camera {device} ({category or 'Unknown category'})"
+                )
                 return cap
 
         device, category = self.video_device if self.video_device else (None, None)
