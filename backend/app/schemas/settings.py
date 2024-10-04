@@ -68,6 +68,7 @@ class Keybindings(BaseModel):
     playPrevMusicTrack: Optional[List[str]] = None
     nextText: Optional[List[str]] = None
     prevText: Optional[List[str]] = None
+    toggleVideoRecord: Optional[List[str]] = None
 
 
 class Settings(BaseModel):
@@ -185,6 +186,7 @@ class VideoFeedSettings(BaseModel):
     - `video_feed_format`: Format of the video feed.
     - `video_feed_width`: Width of the video feed.
     - `video_feed_height`: Height of the video feed.
+    - `video_feed_record`: Flag to record the video.
     """
 
     video_feed_width: Optional[int] = None
@@ -195,6 +197,7 @@ class VideoFeedSettings(BaseModel):
     video_feed_quality: int
     video_feed_format: str
     video_feed_confidence: float
+    video_feed_record: bool
 
 
 class VideoFeedUpdateSettings(BaseModel):
@@ -210,6 +213,7 @@ class VideoFeedUpdateSettings(BaseModel):
     - `video_feed_height`: Height of the video feed.
     - `video_feed_fps`: Frames per second for the video feed.
     - `video_feed_confidence`: Confidence level for video feed detection.
+    - `video_feed_record`: Flag to record the video.
     """
 
     video_feed_detect_mode: Union[str, None] = None
@@ -220,3 +224,4 @@ class VideoFeedUpdateSettings(BaseModel):
     video_feed_height: Union[int, None] = None
     video_feed_fps: Union[int, None] = None
     video_feed_confidence: Union[float, None] = None
+    video_feed_record: Union[bool, None] = None

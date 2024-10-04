@@ -127,6 +127,7 @@ class FilesService(metaclass=SingletonMeta):
         """Saves new settings to the user settings file."""
         existing_settings = self.load_settings()
         self.logger.info(f"Saving settings to {self.user_settings_file}")
+
         merged_settings = {
             **existing_settings,
             **new_settings,

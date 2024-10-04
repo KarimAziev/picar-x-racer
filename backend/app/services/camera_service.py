@@ -1,4 +1,5 @@
 import asyncio
+import os
 import queue
 import threading
 import time
@@ -7,6 +8,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import cv2
 import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapater
+from app.config.paths import DEFAULT_VIDEOS_PATH
 from app.config.video_enhancers import frame_enhancers
 from app.services.detection_service import DetectionService
 from app.util.logger import Logger
@@ -55,8 +57,14 @@ class CameraService(metaclass=SingletonMeta):
             "video_feed_format", ".jpg"
         )
 
+        self._video_feed_record = self.file_manager.settings.get(
+            "video_feed_record", False
+        )
+
         self.video_feed_width: Optional[int] = None
         self.video_feed_height: Optional[int] = None
+
+        self.video_writer: Optional[cv2.VideoWriter] = None
 
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
@@ -178,6 +186,8 @@ class CameraService(metaclass=SingletonMeta):
                     if self.video_feed_enhance_mode
                     else None
                 )
+                if self.video_feed_record and self.video_writer is not None:
+                    self.video_writer.write(frame)
 
                 self.img = frame
                 self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
@@ -198,6 +208,8 @@ class CameraService(metaclass=SingletonMeta):
 
             self.cap = None
             self.stream_img = None
+            if self.video_feed_record:
+                self.video_feed_record = False
 
             self.logger.info("Camera loop terminated and camera released.")
 
@@ -256,3 +268,56 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
+
+    @property
+    def video_feed_record(self) -> bool:
+        """
+        Gets or sets the state of video recording.
+
+        When set to True, video recording starts and video will be saved to the predefined path.
+        When set to False, video recording stops.
+
+        Returns:
+            bool: The current state of video recording.
+        """
+        return self._video_feed_record
+
+    @video_feed_record.setter
+    def video_feed_record(self, value: bool):
+        if self._video_feed_record != value:
+            self._video_feed_record = value
+            if value:
+                self.start_video_recording()
+            else:
+                self.stop_video_recording()
+
+    def start_video_recording(self):
+        """
+        Starts recording video to the specified path. Ensures the directory exists.
+        """
+        if not os.path.exists(DEFAULT_VIDEOS_PATH):
+            os.makedirs(DEFAULT_VIDEOS_PATH)
+
+        name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
+        video_path = os.path.join(DEFAULT_VIDEOS_PATH, name)
+
+        fourcc = cv2.VideoWriter.fourcc(*"XVID")
+        self.video_writer = cv2.VideoWriter(
+            video_path,
+            fourcc,
+            self.video_feed_fps or 30,
+            (
+                self.video_feed_width or 640,
+                self.video_feed_height or 480,
+            ),
+        )
+        self.logger.info(f"Started video recording at {video_path}")
+
+    def stop_video_recording(self):
+        """
+        Stops recording video and releases resources.
+        """
+        if self.video_writer is not None:
+            self.video_writer.release()
+            self.video_writer = None
+            self.logger.info("Stopped video recording")

@@ -229,5 +229,10 @@ export const useStore = defineStore("camera", {
         video_feed_width,
       });
     },
+    async toggleRecording() {
+      return await this.updateCameraParams({
+        video_feed_record: !this.data.video_feed_record,
+      });
+    },
   },
 });

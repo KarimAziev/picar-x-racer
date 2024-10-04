@@ -586,6 +586,10 @@ export const useControllerStore = defineStore("controller", {
       const camStore = useCameraStore();
       await camStore.prevEnhanceMode();
     },
+    async toggleVideoRecord() {
+      const camStore = useCameraStore();
+      await camStore.toggleRecording();
+    },
     async increaseVolume() {
       const musicStore = useMusicStore();
       await musicStore.increaseVolume();

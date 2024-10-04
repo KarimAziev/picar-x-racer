@@ -37,6 +37,7 @@ export interface CameraOpenRequestParams {
   video_feed_height?: number;
   video_feed_width?: number;
   video_feed_confidence?: number | null;
+  video_feed_record?: boolean;
 }
 
 export interface Settings

@@ -49,6 +49,7 @@ export const defaultKeybindinds: Partial<
   playPrevMusicTrack: ["1"],
   nextText: ["4"],
   prevText: ["3"],
+  toggleVideoRecord: ["v"],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -85,6 +86,7 @@ export const commandLabels: Record<string, string> = {
   playPrevMusicTrack: "Previous music track",
   nextText: "Next text to speech",
   prevText: "Previous text to speech",
+  toggleVideoRecord: "Toggle Video Recording",
 };
 
 export const calibrationModeRemap: Partial<

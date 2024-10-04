@@ -50,14 +50,15 @@ def update_video_feed_settings(
                 setattr(camera_manager, key, value)
 
     return {
+        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
+        "video_feed_confidence": detection_manager.video_feed_confidence,
         "video_feed_width": camera_manager.video_feed_width,
         "video_feed_height": camera_manager.video_feed_width,
         "video_feed_fps": camera_manager.video_feed_fps,
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
-        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
-        "video_feed_confidence": detection_manager.video_feed_confidence,
+        "video_feed_record": camera_manager.video_feed_record,
     }
 
 
@@ -77,14 +78,15 @@ def get_camera_settings(
         `VideoFeedSettings`: The current settings of the video feed.
     """
     return {
+        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
+        "video_feed_confidence": detection_manager.video_feed_confidence,
         "video_feed_width": camera_manager.video_feed_width,
         "video_feed_height": camera_manager.video_feed_width,
         "video_feed_fps": camera_manager.video_feed_fps,
-        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
-        "video_feed_confidence": detection_manager.video_feed_confidence,
+        "video_feed_record": camera_manager.video_feed_record,
     }
 
 

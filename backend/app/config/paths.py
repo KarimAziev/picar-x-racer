@@ -8,6 +8,7 @@ user_home = path.expanduser(f"~{user}")
 DEFAULT_PICTURES_PATH = "%s/Pictures/picar-x-racer/" % user_home
 DEFAULT_VIDEOS_PATH = "%s/Videos/picar-x-racer/" % user_home
 
+
 CURRENT_DIR = path.dirname(path.realpath(__file__))
 PROJECT_DIR = path.dirname(path.dirname(path.dirname(CURRENT_DIR)))
 

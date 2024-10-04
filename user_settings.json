@@ -4,6 +4,7 @@
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
   "fullscreen": true,
   "video_feed_quality": 100,
+  "video_feed_record": false,
   "video_feed_confidence": 0.4,
   "video_feed_detect_mode": null,
   "video_feed_enhance_mode": null,
@@ -65,6 +66,7 @@
     "playNextMusicTrack": ["2"],
     "playPrevMusicTrack": ["1"],
     "nextText": ["4"],
-    "prevText": ["3"]
+    "prevText": ["3"],
+    "toggleVideoRecord": ["v"]
   }
 }
