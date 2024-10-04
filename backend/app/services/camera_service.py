@@ -305,9 +305,13 @@ class CameraService(metaclass=SingletonMeta):
             if self.stream_img
             else self.img[:2] if self.img else None
         )
-        (height, width) = shape or (
-            self.video_feed_width or 640,
-            self.video_feed_height or 480,
+        (height, width) = (
+            shape
+            if shape is not None
+            else (
+                self.video_feed_width or 640,
+                self.video_feed_height or 480,
+            )
         )
 
         fourcc = cv2.VideoWriter.fourcc(*"XVID")
