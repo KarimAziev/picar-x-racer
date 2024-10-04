@@ -300,19 +300,21 @@ class CameraService(metaclass=SingletonMeta):
 
         name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
         video_path = os.path.join(DEFAULT_VIDEOS_PATH, name)
+
         shape = (
             self.stream_img.shape[:2]
-            if self.stream_img
-            else self.img[:2] if self.img else None
+            if self.stream_img is not None
+            else (self.img.shape[:2] if self.img is not None else None)
         )
         (height, width) = (
             shape
             if shape is not None
             else (
-                self.video_feed_width or 640,
                 self.video_feed_height or 480,
+                self.video_feed_width or 640,
             )
         )
+        self.logger.info(f"Starting recording {width}x{height}")
 
         fourcc = cv2.VideoWriter.fourcc(*"XVID")
         self.video_writer = cv2.VideoWriter(
@@ -320,8 +322,8 @@ class CameraService(metaclass=SingletonMeta):
             fourcc,
             self.video_feed_fps or 30,
             (
-                height,
                 width,
+                height,
             ),
         )
         self.logger.info(f"Started video recording at {video_path}")
