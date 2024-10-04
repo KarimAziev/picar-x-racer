@@ -60,7 +60,7 @@ onMounted(fetchAndScheduleNext);
 
   .btn {
     font-size: inherit;
-    font-family: var(--font-family-settings);
+    font-family: var(--font-family);
     cursor: pointer;
     padding: 0;
     color: var(--color-text);

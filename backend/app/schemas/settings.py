@@ -115,6 +115,7 @@ class Settings(BaseModel):
     speedometer_view: Optional[bool] = None
     text_info_view: Optional[bool] = None
     auto_download_photo: Optional[bool] = None
+    auto_download_video: Optional[bool] = None
     auto_measure_distance_mode: Optional[bool] = None
     auto_measure_distance_delay_ms: Optional[int] = None
     autoplay_music: Optional[bool] = None

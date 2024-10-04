@@ -44,6 +44,7 @@ from app.config.paths import (
     DEFAULT_MUSIC_DIR,
     DEFAULT_SOUND_DIR,
     DEFAULT_USER_SETTINGS,
+    DEFAULT_VIDEOS_PATH,
     PICARX_CONFIG_FILE,
 )
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
@@ -77,6 +78,7 @@ class FilesService(metaclass=SingletonMeta):
         self.user_photos_dir = environ.get(
             "PHOTOS_PATH", "%s/Pictures/picar-x-racer/" % self.user_home
         )
+        self.user_videos_dir = environ.get("PHOTOS_PATH", DEFAULT_VIDEOS_PATH)
         self.user_sounds_dir = environ.get(
             "SOUNDS_PATH", "%s/Music/picar-x-racer/sounds/" % self.user_home
         )
@@ -287,6 +289,18 @@ class FilesService(metaclass=SingletonMeta):
         """
         return self.list_files_sorted(self.user_photos_dir, full)
 
+    def list_user_videos(self, full=False) -> List[str]:
+        """
+        Lists captured by user video files.
+
+        Args:
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of user-uploaded video files.
+        """
+        return self.list_files_sorted(self.user_videos_dir, full)
+
     def list_user_photos_with_preview(self) -> List[dict[str, str]]:
         """
         Lists captured by user photo files.
@@ -384,6 +398,19 @@ class FilesService(metaclass=SingletonMeta):
 
         return self.remove_file(filename, self.user_photos_dir)
 
+    def remove_video(self, filename: str):
+        """
+        Removes a video file from the user's video directory.
+
+        Args:
+            filename (str): Name of the video file to be removed.
+
+        Returns:
+            bool: True if the file was successfully removed.
+        """
+
+        return self.remove_file(filename, self.user_videos_dir)
+
     def remove_music(self, filename: str):
         """
         Removes a music file from the user's music directory or prevents default music files from being removed.
@@ -450,6 +477,26 @@ class FilesService(metaclass=SingletonMeta):
         user_file = path.join(self.user_photos_dir, filename)
         if path.exists(user_file):
             return self.user_photos_dir
+        else:
+            raise FileNotFoundError
+
+    def get_video_directory(self, filename: str):
+        """
+        Retrieves the directory of a specified video file.
+
+        Args:
+            filename (str): Name of the video file.
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            str: Directory path of the video file.
+        """
+
+        user_file = path.join(self.user_videos_dir, filename)
+        if path.exists(user_file):
+            return self.user_videos_dir
         else:
             raise FileNotFoundError
 

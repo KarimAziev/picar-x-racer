@@ -230,9 +230,34 @@ export const useStore = defineStore("camera", {
       });
     },
     async toggleRecording() {
-      return await this.updateCameraParams({
+      const settings = useSettingsStore();
+      const messager = useMessagerStore();
+      await this.updateCameraParams({
         video_feed_record: !this.data.video_feed_record,
       });
+
+      if (
+        !this.data.video_feed_record &&
+        settings.settings.auto_download_video
+      ) {
+        try {
+          const response = await axios.get(`/api/download-last-video`, {
+            responseType: "blob",
+          });
+          const fileName = response.headers["content-disposition"]
+            ? response.headers["content-disposition"].split("filename=")[1]
+            : "picar-x-recording.avi";
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement("a");
+
+          link.href = url;
+          link.setAttribute("download", fileName);
+          document.body.appendChild(link);
+          link.click();
+        } catch (error) {
+          messager.handleError(error);
+        }
+      }
     },
   },
 });

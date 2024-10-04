@@ -3,6 +3,7 @@
   <LazySettings />
   <Messager />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+    <Recording />
     <CalibrationModeInfo />
     <TextToSpeechInput v-if="isTextToSpeechInputEnabled" />
     <MusicPlayer v-if="isPlayerEnabled" />
@@ -45,6 +46,10 @@ const BatteryIndicator = defineAsyncComponent({
 const CalibrationModeInfo = defineAsyncComponent({
   loader: () =>
     import("@/features/controller/components/CalibrationModeInfo.vue"),
+});
+const Recording = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/VideoRecordingIndicator.vue"),
 });
 </script>
 <style scoped lang="scss">

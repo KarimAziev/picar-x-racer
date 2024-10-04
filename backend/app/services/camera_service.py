@@ -186,11 +186,11 @@ class CameraService(metaclass=SingletonMeta):
                     if self.video_feed_enhance_mode
                     else None
                 )
-                if self.video_feed_record and self.video_writer is not None:
-                    self.video_writer.write(frame)
 
                 self.img = frame
                 self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
+                if self.video_feed_record and self.video_writer is not None:
+                    self.video_writer.write(self.stream_img)
                 if self.detection_service.video_feed_detect_mode:
                     self.current_frame_timestamp = time.time()
 
