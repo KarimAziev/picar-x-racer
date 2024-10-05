@@ -125,6 +125,7 @@ class CameraService(metaclass=SingletonMeta):
                 if format == ".jpg"
                 else []
             )
+
             encoded_frame = encode(frame, format, encode_params)
 
             return encoded_frame
@@ -153,7 +154,11 @@ class CameraService(metaclass=SingletonMeta):
             return
 
         self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
         failed_counter = 0
+
         max_failed_attempt_count = 10
 
         try:
