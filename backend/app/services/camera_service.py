@@ -162,6 +162,7 @@ class CameraService(metaclass=SingletonMeta):
         )
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
         self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
 
