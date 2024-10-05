@@ -12,7 +12,7 @@ logger = Logger(__name__)
 CameraInfo = Tuple[str, str]
 
 
-def try_video_path(path: str | int, backend: int = cv2.CAP_V4L2):
+def try_video_path(path: str | int):
     """
     Tries to open a video capture at a specified path.
 
@@ -29,7 +29,7 @@ def try_video_path(path: str | int, backend: int = cv2.CAP_V4L2):
     cap = None
 
     try:
-        cap = cv2.VideoCapture(path, backend)
+        cap = cv2.VideoCapture(path)
         result, _ = cap.read()
     except Exception as err:
         logger.log_exception("Camera Error:", err)
