@@ -205,6 +205,9 @@ class CameraService(metaclass=SingletonMeta):
                             f"Setting size to: {self.video_feed_width}x{self.video_feed_height}"
                         )
                         self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+                        self.cap.set(
+                            cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG")
+                        )
                         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
                         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
                         self.logger.info(
@@ -383,9 +386,9 @@ class CameraService(metaclass=SingletonMeta):
             os.makedirs(DEFAULT_VIDEOS_PATH)
 
         fps = (
-            self.actual_fps
-            if self.actual_fps is not None
-            else self.video_feed_fps or 30
+            self.video_feed_fps
+            if self.video_feed_fps is not None
+            else self.actual_fps or 30
         )
 
         name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
