@@ -12,6 +12,7 @@ I2C stands for Inter-Integrated Circuit and is a type of synchronous communicati
 - Each I2C device has a unique address that allows the master to communicate with specific devices.
 """
 
+import errno
 from typing import Any, List, Optional, Union
 
 from app.adapters.robot_hat.address_descriptions import (
@@ -20,8 +21,6 @@ from app.adapters.robot_hat.address_descriptions import (
 )
 from app.util.logger import Logger
 from smbus2 import SMBus
-
-from .utils import run_command
 
 
 def _retry_wrapper(func):
@@ -318,36 +317,36 @@ class I2C(object):
 
     def scan(self) -> List[int]:
         """
-        Scan the I2C bus for devices.
+        Scan the I2C bus for devices using smbus2.
 
         Returns:
-            list: List of I2C addresses of devices found.
+            List[int]: List of I2C addresses of devices found.
         """
+        addresses = []
+        self.logger.debug(f"Scanning I2C bus {self._bus} for devices")
 
-        try:
-            cmd = f"i2cdetect -y {self._bus}"
-            # Run the i2cdetect command
-            _, output = run_command(cmd)
-            self.logger.debug(f"i2cdetect\n{output}")
-            # Parse the output
-            outputs = output.split("\n")[1:]
-            addresses = []
-            addresses_str = []
-            for tmp_addresses in outputs:
-                if tmp_addresses == "":
-                    continue
-                tmp_addresses = tmp_addresses.split(":")[1]
-                # Split the addresses into a list
-                tmp_addresses = tmp_addresses.strip().split(" ")
-                for address in tmp_addresses:
-                    if address != "--":
-                        addresses.append(int(address, 16))
-                        addresses_str.append(f"0x{address}")
-            self.logger.debug(f"Connected i2c device: {addresses_str}")
-            return addresses
-        except Exception as err:
-            self.logger.error(f"Scan error {err}")
-            return []
+        for address in range(
+            0x03, 0x78
+        ):  # Most valid addresses fall between 0x03 and 0x77
+            try:
+                self._smbus.write_byte(
+                    address, 0
+                )  # Attempt to write a dummy byte to the address
+                addresses.append(address)
+                self.logger.debug(f"Found device at 0x{address:02x}")
+            except OSError as e:
+                # Ignore devices that don't acknowledge (errno corresponds to "No such device or address")
+                if e.errno != errno.EREMOTEIO:
+                    self.logger.debug(f"OSError at address 0x{address:02x}: {e}")
+                continue
+            except Exception as e:
+                self.logger.error(f"Unexpected error at address 0x{address:02x}: {e}")
+                continue
+
+        self.logger.debug(
+            f"Connected I2C devices: {['0x%02x' % addr for addr in addresses]}"
+        )
+        return addresses
 
     def write(self, data: Union[int, List[int], bytearray]) -> None:
         """
