@@ -1,5 +1,6 @@
 import asyncio
 import os
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -34,15 +35,34 @@ def round_up_to_multiple_of(val: int | float, multiple: int):
     return ((val + multiple - 1) // multiple) * multiple
 
 
-def height_to_width(height: int, target_width: int, target_height: int):
+def height_to_width(
+    height: int,
+    target_width: int,
+    target_height: int,
+    round_up_to_multiple: Optional[int] = None,
+):
     aspect_ratio = target_width / target_height
     width = aspect_ratio * height
-    rounded_width = round_up_to_multiple_of(width, 32)
+    rounded_width = (
+        round_up_to_multiple_of(width, round_up_to_multiple)
+        if round_up_to_multiple is not None
+        else width
+    )
     return int(rounded_width)
 
 
-def width_to_height(width: int, target_width: int, target_height: int):
+def width_to_height(
+    width: int,
+    target_width: int,
+    target_height: int,
+    round_up_to_multiple: Optional[int] = None,
+):
     aspect_ratio = target_height / target_width
     height = aspect_ratio * width
-    rounded_height = round_up_to_multiple_of(height, 32)
+
+    rounded_height = (
+        round_up_to_multiple_of(height, round_up_to_multiple)
+        if round_up_to_multiple is not None
+        else height
+    )
     return int(rounded_height)

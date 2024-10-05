@@ -35,7 +35,10 @@ def perform_detection(
     base_size = 192
     resized_height = base_size
     resized_width = height_to_width(
-        base_size, target_width=original_width, target_height=original_height
+        base_size,
+        target_width=original_width,
+        target_height=original_height,
+        round_up_to_multiple=32,
     )
     frame = cv2.resize(frame, (resized_width, resized_height))
 
