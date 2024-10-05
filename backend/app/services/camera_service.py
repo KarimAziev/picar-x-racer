@@ -153,6 +153,7 @@ class CameraService(metaclass=SingletonMeta):
         if not self.cap:
             return
 
+        self.logger.info(f"CAP backend {self.cap.getBackendName()}")
         self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
