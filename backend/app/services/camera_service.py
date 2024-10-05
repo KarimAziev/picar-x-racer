@@ -66,7 +66,7 @@ class CameraService(metaclass=SingletonMeta):
             "video_feed_width", 800
         )
         self.video_feed_height: int = self.file_manager.settings.get(
-            "video_feed_height", 608
+            "video_feed_height", 600
         )
 
         self.video_writer: Optional[cv2.VideoWriter] = None
@@ -162,6 +162,7 @@ class CameraService(metaclass=SingletonMeta):
         )
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
         self.cap.set(cv2.CAP_PROP_FPS, self._video_feed_fps)
 
