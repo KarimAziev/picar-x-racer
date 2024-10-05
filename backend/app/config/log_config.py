@@ -109,6 +109,7 @@ LOGGING_CONFIG = {
             "formatter": "uvicorn",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
+            "filters": ["exclude_binary"],
         },
     },
     "loggers": {
