@@ -158,18 +158,20 @@ class CameraService(metaclass=SingletonMeta):
             return
 
         self.logger.info(
-            f"CAP backend {self.cap.getBackendName()} fps {self.video_feed_fps} {self.video_feed_width}x{self.video_feed_height}"
+            f"Backend {self.cap.getBackendName()}, setting FPS: {self.video_feed_fps}, size: {self.video_feed_width}x{self.video_feed_height}"
         )
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        self.cap.set(cv2.CAP_PROP_FPS, self._video_feed_fps)
 
         # Later, you can check and verify:
         actual_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         actual_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
-        print(f"Width: {actual_width}, Height: {actual_height}, FPS: {actual_fps}")
+        self.logger.info(
+            f"Actual Width: {actual_width}, Actual Height: {actual_height}, FPS: {actual_fps}"
+        )
 
         failed_counter = 0
 
@@ -218,7 +220,6 @@ class CameraService(metaclass=SingletonMeta):
                         self.actual_fps = (
                             1.0 / avg_time_diff if avg_time_diff > 0 else None
                         )
-                        self.logger.info(f"FPS: {self.actual_fps}")
 
                 frame_enhancer = (
                     frame_enhancers.get(self.video_feed_enhance_mode)
