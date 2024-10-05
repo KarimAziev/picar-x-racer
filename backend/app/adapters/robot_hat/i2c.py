@@ -195,7 +195,7 @@ class I2C(object):
         reg_description = get_address_description(reg)
         data_description = get_value_description(data)
         self.logger.debug(
-            f"Writing word data to address self.address: [0x{reg:02X}] {reg_description} [0x{data:04X}] {data_description}"
+            f"Writing word data to address: [0x{reg:02X}] {reg_description} [0x{data:04X}] {data_description}"
         )
         if self.address:
             return self._smbus.write_word_data(self.address, reg, data)
