@@ -156,7 +156,16 @@ class CameraService(metaclass=SingletonMeta):
         self.logger.info(
             f"CAP backend {self.cap.getBackendName()} fps {self.video_feed_fps}"
         )
-        # self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
+
+        # Later, you can check and verify:
+        actual_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        actual_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
+        print(f"Width: {actual_width}, Height: {actual_height}, FPS: {actual_fps}")
 
         failed_counter = 0
 
