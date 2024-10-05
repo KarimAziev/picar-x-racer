@@ -153,10 +153,10 @@ class CameraService(metaclass=SingletonMeta):
         if not self.cap:
             return
 
-        self.logger.info(f"CAP backend {self.cap.getBackendName()}")
-        self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.logger.info(
+            f"CAP backend {self.cap.getBackendName()} fps {self.video_feed_fps}"
+        )
+        # self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
 
         failed_counter = 0
 
@@ -205,7 +205,7 @@ class CameraService(metaclass=SingletonMeta):
                         self.actual_fps = (
                             1.0 / avg_time_diff if avg_time_diff > 0 else None
                         )
-                        self.logger.debug(f"FPS: {self.actual_fps}")
+                        self.logger.info(f"FPS: {self.actual_fps}")
 
                 frame_enhancer = (
                     frame_enhancers.get(self.video_feed_enhance_mode)
@@ -382,3 +382,20 @@ class CameraService(metaclass=SingletonMeta):
             self.video_writer.release()
             self.video_writer = None
             self.logger.info("Stopped video recording")
+
+
+if __name__ == "__main__":
+    from app.services.audio_service import AudioService
+    from app.services.detection_service import DetectionService
+    from app.services.files_service import FilesService
+
+    audio_manager = AudioService()
+    file_manager = FilesService(audio_manager=audio_manager)
+    detection_manager = DetectionService(file_manager=file_manager)
+
+    camera_service = CameraService(
+        file_manager=file_manager, detection_service=detection_manager
+    )
+
+    camera_service.camera_run = True
+    camera_service.camera_thread_func()
