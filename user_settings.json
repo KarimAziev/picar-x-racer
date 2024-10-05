@@ -4,6 +4,8 @@
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
   "fullscreen": true,
   "video_feed_quality": 100,
+  "video_feed_height": 600,
+  "video_feed_width": 800,
   "video_feed_record": false,
   "video_feed_confidence": 0.4,
   "video_feed_detect_mode": null,

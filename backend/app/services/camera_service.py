@@ -62,10 +62,10 @@ class CameraService(metaclass=SingletonMeta):
             "video_feed_record", False
         )
 
-        self.video_feed_width: int = self.file_manager.settings.get(
+        self._video_feed_width: int = self.file_manager.settings.get(
             "video_feed_width", 800
         )
-        self.video_feed_height: int = self.file_manager.settings.get(
+        self._video_feed_height: int = self.file_manager.settings.get(
             "video_feed_height", 600
         )
 
@@ -162,16 +162,11 @@ class CameraService(metaclass=SingletonMeta):
         )
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
-        self.cap.set(cv2.CAP_PROP_FPS, self._video_feed_fps)
+        self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
 
-        # Later, you can check and verify:
-        actual_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        actual_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.logger.info(
-            f"Actual Width: {actual_width}, Actual Height: {actual_height}, FPS: {actual_fps}"
+            f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}, FPS: {self.cap.get(cv2.CAP_PROP_FPS)}"
         )
 
         failed_counter = 0
@@ -205,7 +200,15 @@ class CameraService(metaclass=SingletonMeta):
                             break
 
                         self.cap = cap
+                        self.logger.info(
+                            f"Setting size to: {self.video_feed_width}x{self.video_feed_height}"
+                        )
                         self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+                        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
+                        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
+                        self.logger.info(
+                            f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}"
+                        )
                         continue
                 else:
                     failed_counter = 0
@@ -324,6 +327,32 @@ class CameraService(metaclass=SingletonMeta):
                 self.logger.info(f"FPS setted to {value}")
 
     @property
+    def video_feed_height(self) -> int:
+        return self._video_feed_height
+
+    @video_feed_height.setter
+    def video_feed_height(self, value: int):
+        if self._video_feed_height != value:
+            self._video_feed_height = value
+            self.logger.info(f"Setting height to {value}")
+            if self.cap:
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, value)
+                self.logger.info(f"Setted height to {value}")
+
+    @property
+    def video_feed_width(self) -> int:
+        return self._video_feed_width
+
+    @video_feed_width.setter
+    def video_feed_width(self, value: int):
+        if self._video_feed_width != value:
+            self._video_feed_width = value
+            self.logger.info(f"Setting width to {value}")
+            if self.cap:
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, value)
+                self.logger.info(f"Setted width to {value}")
+
+    @property
     def video_feed_record(self) -> bool:
         """
         Gets or sets the state of video recording.
@@ -370,8 +399,8 @@ class CameraService(metaclass=SingletonMeta):
             shape
             if shape is not None
             else (
-                self.video_feed_height or 480,
-                self.video_feed_width or 640,
+                self.video_feed_height,
+                self.video_feed_width,
             )
         )
         self.logger.info(

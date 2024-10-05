@@ -47,6 +47,7 @@ def update_video_feed_settings(
                     detection_manager.start_detection_process()
 
             elif hasattr(camera_manager, key):
+                logger.debug(f"Setting camera_manager {key} to {value}")
                 setattr(camera_manager, key, value)
 
     return {

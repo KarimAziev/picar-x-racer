@@ -71,7 +71,34 @@ class Keybindings(BaseModel):
     toggleVideoRecord: Optional[List[str]] = None
 
 
-class Settings(BaseModel):
+class VideoFeedUpdateSettings(BaseModel):
+    """
+    A model to represent the video feed update settings.
+
+    Attributes:
+    - `video_feed_detect_mode`: Detection mode for the video feed.
+    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
+    - `video_feed_format`: Format of the video feed.
+    - `video_feed_quality`: Quality level of the video feed.
+    - `video_feed_width`: Width of the video feed.
+    - `video_feed_height`: Height of the video feed.
+    - `video_feed_fps`: Frames per second for the video feed.
+    - `video_feed_confidence`: Confidence level for video feed detection.
+    - `video_feed_record`: Flag to record the video.
+    """
+
+    video_feed_detect_mode: Union[str, None] = None
+    video_feed_enhance_mode: Union[str, None] = None
+    video_feed_format: Union[str, None] = None
+    video_feed_quality: Union[int, None] = None
+    video_feed_width: Union[int, None] = None
+    video_feed_height: Union[int, None] = None
+    video_feed_fps: Union[int, None] = None
+    video_feed_confidence: Union[float, None] = None
+    video_feed_record: Union[bool, None] = None
+
+
+class Settings(VideoFeedUpdateSettings):
     """
     A model to represent the application settings.
 
@@ -104,12 +131,6 @@ class Settings(BaseModel):
     default_sound: Optional[str] = None
     texts: Optional[List[TextToSpeechItem]] = None
     fullscreen: Optional[bool] = None
-    video_feed_quality: Optional[int] = None
-    video_feed_detect_mode: Optional[str] = None
-    video_feed_enhance_mode: Optional[str] = None
-    video_feed_format: Optional[str] = None
-    video_feed_fps: Optional[int] = None
-    video_feed_confidence: Optional[float] = None
     battery_full_voltage: Optional[float] = None
     car_model_view: Optional[bool] = None
     speedometer_view: Optional[bool] = None
@@ -199,30 +220,3 @@ class VideoFeedSettings(BaseModel):
     video_feed_format: str
     video_feed_confidence: float
     video_feed_record: bool
-
-
-class VideoFeedUpdateSettings(BaseModel):
-    """
-    A model to represent the video feed update settings.
-
-    Attributes:
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_width`: Width of the video feed.
-    - `video_feed_height`: Height of the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `video_feed_record`: Flag to record the video.
-    """
-
-    video_feed_detect_mode: Union[str, None] = None
-    video_feed_enhance_mode: Union[str, None] = None
-    video_feed_format: Union[str, None] = None
-    video_feed_quality: Union[int, None] = None
-    video_feed_width: Union[int, None] = None
-    video_feed_height: Union[int, None] = None
-    video_feed_fps: Union[int, None] = None
-    video_feed_confidence: Union[float, None] = None
-    video_feed_record: Union[bool, None] = None
