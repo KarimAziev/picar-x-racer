@@ -47,7 +47,7 @@ class CameraService(metaclass=SingletonMeta):
         self.file_manager = file_manager
         self.detection_service = detection_service
         self.video_device_adapter = VideoDeviceAdapater()
-        self.video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
+        self._video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
         self.video_feed_enhance_mode: Optional[str] = self.file_manager.settings.get(
             "video_feed_enhance_mode"
         )
@@ -286,6 +286,17 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
+
+    @property
+    def video_feed_fps(self) -> int:
+        return self._video_feed_fps
+
+    @video_feed_fps.setter
+    def video_feed_fps(self, value: int):
+        if self._video_feed_fps != value:
+            self._video_feed_fps = value
+            if self.cap:
+                self.cap.set(cv2.CAP_PROP_FPS, 15)
 
     @property
     def video_feed_record(self) -> bool:
