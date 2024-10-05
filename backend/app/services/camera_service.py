@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import os
 import queue
 import threading
@@ -65,6 +66,9 @@ class CameraService(metaclass=SingletonMeta):
         self.video_feed_height: Optional[int] = None
 
         self.video_writer: Optional[cv2.VideoWriter] = None
+
+        self.frame_timestamps = collections.deque(maxlen=30)
+        self.actual_fps = None
 
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
@@ -153,6 +157,7 @@ class CameraService(metaclass=SingletonMeta):
 
         try:
             while self.camera_run and self.cap:
+                frame_start_time = time.time()
                 ret, frame = self.cap.read()
                 if not ret:
                     if failed_counter < max_failed_attempt_count:
@@ -180,6 +185,18 @@ class CameraService(metaclass=SingletonMeta):
                         continue
                 else:
                     failed_counter = 0
+                    self.frame_timestamps.append(frame_start_time)
+                    if len(self.frame_timestamps) >= 2:
+                        time_diffs = [
+                            t2 - t1
+                            for t1, t2 in zip(
+                                self.frame_timestamps, list(self.frame_timestamps)[1:]
+                            )
+                        ]
+                        avg_time_diff = sum(time_diffs) / len(time_diffs)
+                        self.actual_fps = (
+                            1.0 / avg_time_diff if avg_time_diff > 0 else None
+                        )
 
                 frame_enhancer = (
                     frame_enhancers.get(self.video_feed_enhance_mode)
@@ -298,6 +315,12 @@ class CameraService(metaclass=SingletonMeta):
         if not os.path.exists(DEFAULT_VIDEOS_PATH):
             os.makedirs(DEFAULT_VIDEOS_PATH)
 
+        fps = (
+            self.actual_fps
+            if self.actual_fps is not None
+            else self.video_feed_fps or 30
+        )
+
         name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
         video_path = os.path.join(DEFAULT_VIDEOS_PATH, name)
 
@@ -314,19 +337,20 @@ class CameraService(metaclass=SingletonMeta):
                 self.video_feed_width or 640,
             )
         )
-        self.logger.info(f"Starting recording {width}x{height}")
+        self.logger.info(
+            f"Starting video recording {width}x{height} with {fps} at {video_path}"
+        )
 
         fourcc = cv2.VideoWriter.fourcc(*"XVID")
         self.video_writer = cv2.VideoWriter(
             video_path,
             fourcc,
-            self.video_feed_fps or 30,
+            fps,
             (
                 width,
                 height,
             ),
         )
-        self.logger.info(f"Started video recording at {video_path}")
 
     def stop_video_recording(self):
         """
