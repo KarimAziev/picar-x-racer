@@ -66,7 +66,7 @@ class CameraService(metaclass=SingletonMeta):
             "video_feed_width", 800
         )
         self.video_feed_height: int = self.file_manager.settings.get(
-            "video_feed_height", 600
+            "video_feed_height", 608
         )
 
         self.video_writer: Optional[cv2.VideoWriter] = None
