@@ -152,6 +152,7 @@ class CameraService(metaclass=SingletonMeta):
         if not self.cap:
             return
 
+        self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
         failed_counter = 0
         max_failed_attempt_count = 10
 
@@ -182,6 +183,7 @@ class CameraService(metaclass=SingletonMeta):
                             break
 
                         self.cap = cap
+                        self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
                         continue
                 else:
                     failed_counter = 0
@@ -295,8 +297,10 @@ class CameraService(metaclass=SingletonMeta):
     def video_feed_fps(self, value: int):
         if self._video_feed_fps != value:
             self._video_feed_fps = value
+            self.logger.info(f"FPS setting to {value}")
             if self.cap:
                 self.cap.set(cv2.CAP_PROP_FPS, value)
+                self.logger.info(f"FPS setted to {value}")
 
     @property
     def video_feed_record(self) -> bool:
