@@ -48,7 +48,7 @@ def update_settings(
     Returns:
         `Settings`: The updated settings of the application.
     """
-    data = new_settings.model_dump(exclude_none=True, exclude_defaults=True)
+    data = new_settings.model_dump(exclude_unset=True)
 
     file_service.save_settings(data)
     return new_settings

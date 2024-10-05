@@ -134,9 +134,8 @@ class FilesService(metaclass=SingletonMeta):
             **existing_settings,
             **new_settings,
         }
-        self.logger.debug(
-            f"new_settings {new_settings} merged_settings {merged_settings}"
-        )
+        self.logger.debug(f"new_settings {new_settings}")
+        self.logger.debug(f"merged_settings {merged_settings}")
         ensure_parent_dir_exists(self.user_settings_file)
 
         with open(self.user_settings_file, "w") as settings_file:
