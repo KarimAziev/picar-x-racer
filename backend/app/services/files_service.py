@@ -134,6 +134,9 @@ class FilesService(metaclass=SingletonMeta):
             **existing_settings,
             **new_settings,
         }
+        self.logger.debug(
+            f"new_settings {new_settings} merged_settings {merged_settings}"
+        )
         ensure_parent_dir_exists(self.user_settings_file)
 
         with open(self.user_settings_file, "w") as settings_file:
@@ -228,6 +231,7 @@ class FilesService(metaclass=SingletonMeta):
             self.logger.info(f"Using cached details for {file}")
             return self.cache[cache_key]
         else:
+            self.logger.info(f"Loading file details for {file}")
             details = self.get_audio_file_details(file)
             if details:
                 self.cache[cache_key] = details
