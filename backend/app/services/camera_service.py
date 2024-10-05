@@ -228,6 +228,7 @@ class CameraService(metaclass=SingletonMeta):
                         self.actual_fps = (
                             1.0 / avg_time_diff if avg_time_diff > 0 else None
                         )
+                        self.logger.debug(f"FPS {self.actual_fps}")
 
                 frame_enhancer = (
                     frame_enhancers.get(self.video_feed_enhance_mode)
