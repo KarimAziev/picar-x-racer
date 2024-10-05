@@ -72,9 +72,16 @@ class CameraService(metaclass=SingletonMeta):
 
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
+        self.stream_img_lock = threading.Lock()
+        self.current_frame_timestamp = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[VideoCapture, None] = None
         self.last_detection_result = None
+
+        self.frame_queue = queue.Queue(maxsize=100)
+        self.capture_thread = None
+        self.processing_thread = None
+        self.recording_thread = None
 
     async def generate_frame(self, log: Optional[bool] = False):
         """
@@ -109,25 +116,26 @@ class CameraService(metaclass=SingletonMeta):
             if log and self.video_feed_enhance_mode:
                 self.logger.info(f"Detection result: {self.last_detection_result}")
 
-        if self.stream_img is not None:
-            format = self.video_feed_format
+        frame = None
+        with self.stream_img_lock:
+            if self.stream_img is not None:
+                frame = self.stream_img.copy()
+            else:
+                return None
 
-            video_feed_quality = self.video_feed_quality
-            frame = self.stream_img.copy()
-            if (
-                self.last_detection_result is not None
-                and self.detection_service.video_feed_detect_mode is not None
-            ):
-                frame = overlay_detection(frame, self.last_detection_result)
+        format = self.video_feed_format
+        video_feed_quality = self.video_feed_quality
+        if (
+            self.last_detection_result is not None
+            and self.detection_service.video_feed_detect_mode is not None
+        ):
+            frame = overlay_detection(frame, self.last_detection_result)
 
-            encode_params = (
-                [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality]
-                if format == ".jpg"
-                else []
-            )
-            encoded_frame = encode(frame, format, encode_params)
-
-            return encoded_frame
+        encode_params = (
+            [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality] if format == ".jpg" else []
+        )
+        encoded_frame = encode(frame, format, encode_params)
+        return encoded_frame
 
     def camera_thread_func(self):
         """
@@ -197,25 +205,12 @@ class CameraService(metaclass=SingletonMeta):
                         self.actual_fps = (
                             1.0 / avg_time_diff if avg_time_diff > 0 else None
                         )
+                        self.logger.debug(f"Actual FPS: {self.actual_fps:.2f}")
 
-                frame_enhancer = (
-                    frame_enhancers.get(self.video_feed_enhance_mode)
-                    if self.video_feed_enhance_mode
-                    else None
-                )
-
-                self.img = frame
-                self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
-                if self.video_feed_record and self.video_writer is not None:
-                    self.video_writer.write(self.stream_img)
-                if self.detection_service.video_feed_detect_mode:
-                    self.current_frame_timestamp = time.time()
-
-                    frame_data = {
-                        "frame": self.stream_img.copy(),
-                        "timestamp": self.current_frame_timestamp,
-                    }
-                    self.detection_service.put_frame(frame_data)
+                try:
+                    self.frame_queue.put_nowait(frame)
+                except queue.Full:
+                    self.logger.warning("Frame queue is full. Dropping frame.")
 
         except Exception as e:
             self.logger.log_exception("Exception occurred in camera loop", e)
@@ -243,6 +238,14 @@ class CameraService(metaclass=SingletonMeta):
         self.camera_run = True
         self.capture_thread = threading.Thread(target=self.camera_thread_func)
         self.capture_thread.start()
+
+        self.processing_thread = threading.Thread(target=self.process_frames)
+        self.processing_thread.start()
+
+        if self.video_feed_record:
+            self.recording_thread = threading.Thread(target=self.record_frames)
+            self.recording_thread.start()
+
         if self.detection_service.video_feed_detect_mode:
             self.detection_service.start_detection_process()
 
@@ -281,10 +284,70 @@ class CameraService(metaclass=SingletonMeta):
         self.logger.info("Stopping camera")
         self.last_detection_result = None
         self.camera_run = False
-        if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
+        if (
+            hasattr(self, "capture_thread")
+            and self.capture_thread
+            and self.capture_thread.is_alive()
+        ):
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
+
+        if self.processing_thread and self.processing_thread.is_alive():
+            self.logger.info("Stopping processing_thread")
+            self.processing_thread.join()
+            self.logger.info("Stopped processing_thread")
+
+        if self.recording_thread and self.recording_thread.is_alive():
+            self.logger.info("Stopping recording_thread")
+            self.recording_thread.join()
+            self.logger.info("Stopped recording_thread")
+
+        if self.video_writer is not None:
+            self.logger.info("Stopping video_writer")
+            self.video_writer.release()
+            self.video_writer = None
+            self.logger.info("Stopped video_writer")
+        self.logger.info("Camera stopped.")
+
+    def process_frames(self):
+        while self.camera_run:
+            try:
+                frame = self.frame_queue.get(timeout=1)
+                frame_enhancer = (
+                    frame_enhancers.get(self.video_feed_enhance_mode)
+                    if self.video_feed_enhance_mode
+                    else None
+                )
+                processed_frame = frame if not frame_enhancer else frame_enhancer(frame)
+                with self.stream_img_lock:
+                    self.stream_img = processed_frame
+                    self.img = frame
+                    self.current_frame_timestamp = time.time()
+                if self.detection_service.video_feed_detect_mode:
+                    self.current_frame_timestamp = time.time()
+                    frame_data = {
+                        "frame": self.stream_img.copy(),
+                        "timestamp": self.current_frame_timestamp,
+                    }
+                    self.detection_service.put_frame(frame_data)
+                if self.video_feed_record:
+                    if hasattr(self, "recording_queue"):
+                        self.recording_queue.put_nowait(self.stream_img.copy())
+                self.frame_queue.task_done()
+            except queue.Empty:
+                continue
+
+    def record_frames(self):
+        self.recording_queue = queue.Queue(maxsize=100)
+        while self.camera_run:
+            try:
+                frame = self.recording_queue.get(timeout=1)
+                if self.video_writer is not None:
+                    self.video_writer.write(frame)
+                self.recording_queue.task_done()
+            except queue.Empty:
+                continue
 
     @property
     def video_feed_record(self) -> bool:
