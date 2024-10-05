@@ -12,7 +12,7 @@ logger = Logger(__name__)
 CameraInfo = Tuple[str, str]
 
 
-def try_video_path(path: str | int, backend: Optional[int] = cv2.CAP_V4L2):
+def try_video_path(path: str | int, backend: Optional[int] = cv2.CAP_MSMF):
     """
     Tries to open a video capture at a specified path.
 
