@@ -296,7 +296,7 @@ class CameraService(metaclass=SingletonMeta):
         if self._video_feed_fps != value:
             self._video_feed_fps = value
             if self.cap:
-                self.cap.set(cv2.CAP_PROP_FPS, 15)
+                self.cap.set(cv2.CAP_PROP_FPS, value)
 
     @property
     def video_feed_record(self) -> bool:
