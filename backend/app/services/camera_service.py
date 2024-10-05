@@ -62,8 +62,8 @@ class CameraService(metaclass=SingletonMeta):
             "video_feed_record", False
         )
 
-        self.video_feed_width: Optional[int] = None
-        self.video_feed_height: Optional[int] = None
+        self.video_feed_width: Optional[int] = 1024
+        self.video_feed_height: Optional[int] = 768
 
         self.video_writer: Optional[cv2.VideoWriter] = None
 
@@ -157,8 +157,8 @@ class CameraService(metaclass=SingletonMeta):
             f"CAP backend {self.cap.getBackendName()} fps {self.video_feed_fps}"
         )
 
-        # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-        # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width or 1024)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height or 768)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
 
         # Later, you can check and verify:
