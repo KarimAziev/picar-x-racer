@@ -29,7 +29,7 @@ def try_video_path(path: str | int):
     cap = None
 
     try:
-        cap = cv2.VideoCapture(path)
+        cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
         result, _ = cap.read()
     except Exception as err:
         logger.log_exception("Camera Error:", err)
