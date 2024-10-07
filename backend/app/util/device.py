@@ -130,12 +130,26 @@ def list_available_camera_devices():
     return result
 
 
+COMMON_SIZES = [
+    (640, 480),  # VGA
+    (800, 600),  # SVGA
+    (1024, 768),  # XGA
+    (1280, 720),  # 720p
+    (1280, 960),  # SXGA-
+    (1600, 1200),  # UXGA
+    (1920, 1080),  # 1080p
+    (2560, 1440),  # QHD
+    (2592, 1944),
+]
+
+
 def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
     """
     Parse the output of v4l2-ctl --list-formats-ext for the specified device.
 
     Args:
         device (str): The path to the camera device, e.g., '/dev/video0'.
+        category (str): The camera type or category for labeling purposes.
 
     Returns:
         List[Dict[str, str]]: A formatted list of dictionaries where each dict contains a
@@ -154,9 +168,12 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
 
     formats = []
 
-    # Regex patterns to capture the format type, resolution, and FPS values.
+    # Regex patterns to capture the format type, resolution, and FPS values
     format_pattern = re.compile(r"\[\d+\]: '([A-Z0-9]+)' \((.+)\)")
-    resolution_pattern = re.compile(r"Size: Discrete (\d+x\d+)")
+    resolution_discrete_pattern = re.compile(r"Size: Discrete (\d+x\d+)")
+    resolution_stepwise_pattern = re.compile(
+        r"Size: Stepwise (\d+x\d+) - (\d+x\d+) with step (\d+)/(\d+)"
+    )
     fps_pattern = re.compile(r"Interval: Discrete ([0-9.]+)s \((\d+)\.000 fps\)")
 
     current_format = None
@@ -165,29 +182,51 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
 
     # Parse the output line by line
     for line in output.splitlines():
-
         line = line.strip()
+        logger.info(f"Parsing line: {line}")
 
-        # Match format type: e.g., [0]: 'MJPG' (Motion-JPEG, compressed)
         format_match = format_pattern.match(line)
         if format_match:
             current_format = format_match.group(1)
             current_description = format_match.group(2)
+            logger.info(
+                f"Found format: {current_format}, Description: {current_description}"
+            )
 
-        # Match resolution: e.g., Size: Discrete 1920x1080
-        resolution_match = resolution_pattern.search(line)
-        if resolution_match:
-            frame_size = resolution_match.group(1)
+        resolution_discrete_match = resolution_discrete_pattern.search(line)
+        if resolution_discrete_match:
+            frame_size = resolution_discrete_match.group(1)
+            logger.info(f"Found discrete resolution: {frame_size}")
 
-        # Match FPS: e.g., Interval: Discrete 0.033s (30.000 fps)
+        resolution_stepwise_match = resolution_stepwise_pattern.search(line)
+        if resolution_stepwise_match:
+            min_size = resolution_stepwise_match.group(1)
+            max_size = resolution_stepwise_match.group(2)
+            step_x = resolution_stepwise_match.group(3)
+            step_y = resolution_stepwise_match.group(4)
+            logger.info(
+                f"Found stepwise resolution: {min_size} to {max_size} with steps {step_x}/{step_y}"
+            )
+
+            for width, height in COMMON_SIZES:
+                if f"{width}x{height}" <= max_size:
+                    frame_size = f"{width}x{height}"
+
+                    fps_value = "30"
+                    value = f"{device}:{current_format}:{frame_size}:{fps_value}"
+                    label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
+                    formats.append({"value": value, "label": label})
+                    logger.info(f"Added format: {value}, label: {label}")
+
         fps_match = fps_pattern.search(line)
         if fps_match:
             fps_value = fps_match.group(2)
+            logger.info(f"Found FPS: {fps_value}")
 
-            # Build the value and label for this format and resolution
             if current_format and frame_size:
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
                 label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
                 formats.append({"value": value, "label": label})
+                logger.info(f"Added format: {value}, label: {label}")
 
     return formats
