@@ -19,8 +19,13 @@ from app.adapters.robot_hat.address_descriptions import (
     get_address_description,
     get_value_description,
 )
+from app.config.platform import is_os_raspberry
 from app.util.logger import Logger
-from smbus2 import SMBus
+
+if is_os_raspberry:
+    from smbus2 import SMBus
+else:
+    from app.adapters.robot_hat.mock.smbus2 import MockSMBus as SMBus
 
 
 def _retry_wrapper(func):
@@ -371,10 +376,6 @@ class I2C(object):
                     data >>= 8
         elif isinstance(data, list):
             data_all = data
-        else:
-            msg = f"write data must be int, list, or bytearray, not {type(data)}"
-            self.logger.error(msg)
-            raise ValueError(msg)
 
         if len(data_all) == 1:
             data = data_all[0]
@@ -420,11 +421,6 @@ class I2C(object):
             list: List of bytes read from the I2C device.
         """
 
-        if not isinstance(length, int):
-            msg = f"length must be int, not {type(length)}"
-            self.logger.error(msg)
-            raise ValueError(msg)
-
         result = []
         for _ in range(length):
             byte = self._read_byte()
@@ -460,10 +456,6 @@ class I2C(object):
                 while data > 0:
                     data_all.append(data & 0xFF)
                     data >>= 8
-        else:
-            msg = "memory write requires argument of bytearray, list, or int"
-            self.logger.error(msg)
-            raise ValueError(msg)
 
         reg_description = get_address_description(memaddr)
         data_descriptions = [get_value_description(d) for d in data_all]

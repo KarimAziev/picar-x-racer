@@ -33,9 +33,13 @@ def update_video_feed_settings(
     Returns:
         `VideoFeedSettings`: The updated settings of the video feed.
     """
+    logger.info(f"Updating settings {payload}")
     if payload:
         if payload.video_feed_confidence:
             detection_manager.video_feed_confidence = payload.video_feed_confidence
+
+        dict_data = payload.model_dump(exclude_unset=True)
+        logger.info(f"Updating feed settings: {dict_data}")
 
         for key, value in payload.model_dump(exclude_unset=True).items():
             if key is "video_feed_detect_mode":
@@ -50,6 +54,8 @@ def update_video_feed_settings(
                 logger.debug(f"Setting camera_manager {key} to {value}")
                 setattr(camera_manager, key, value)
 
+    camera_manager.restart_camera()
+
     return {
         "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
         "video_feed_confidence": detection_manager.video_feed_confidence,
@@ -60,6 +66,8 @@ def update_video_feed_settings(
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
         "video_feed_record": camera_manager.video_feed_record,
+        "video_feed_device": camera_manager.video_feed_device,
+        "video_feed_pixel_format": camera_manager.video_feed_pixel_format,
     }
 
 
@@ -78,6 +86,7 @@ def get_camera_settings(
     Returns:
         `VideoFeedSettings`: The current settings of the video feed.
     """
+
     return {
         "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
         "video_feed_confidence": detection_manager.video_feed_confidence,
@@ -88,6 +97,8 @@ def get_camera_settings(
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
         "video_feed_record": camera_manager.video_feed_record,
+        "video_feed_device": camera_manager.video_feed_device,
+        "video_feed_pixel_format": camera_manager.video_feed_pixel_format,
     }
 
 

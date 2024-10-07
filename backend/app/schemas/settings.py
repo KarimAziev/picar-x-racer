@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -96,6 +96,8 @@ class VideoFeedUpdateSettings(BaseModel):
     video_feed_fps: Union[int, None] = None
     video_feed_confidence: Union[float, None] = None
     video_feed_record: Union[bool, None] = None
+    video_feed_device: Union[str, None] = None
+    video_feed_pixel_format: Optional[str] = None
 
 
 class Settings(VideoFeedUpdateSettings):
@@ -209,6 +211,7 @@ class VideoFeedSettings(BaseModel):
     - `video_feed_width`: Width of the video feed.
     - `video_feed_height`: Height of the video feed.
     - `video_feed_record`: Flag to record the video.
+    - `video_feed_device`: Device to use.
     """
 
     video_feed_width: Optional[int] = None
@@ -220,3 +223,13 @@ class VideoFeedSettings(BaseModel):
     video_feed_format: str
     video_feed_confidence: float
     video_feed_record: bool
+    video_feed_device: Optional[str] = None
+    video_feed_pixel_format: Optional[str] = None
+
+
+class CameraDevicesResponse(BaseModel):
+    devices: List[Dict[str, Union[str, List[Dict[str, str]]]]]
+
+
+class UpdateCameraDevice(BaseModel):
+    device: str

@@ -16,7 +16,6 @@ from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_detection
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import encode
-from cv2 import VideoCapture
 
 if TYPE_CHECKING:
     from app.services.files_service import FilesService
@@ -47,7 +46,7 @@ class CameraService(metaclass=SingletonMeta):
         self.file_manager = file_manager
         self.detection_service = detection_service
         self.video_device_adapter = VideoDeviceAdapater()
-        self._video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
+        self.video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
         self.video_feed_enhance_mode: Optional[str] = self.file_manager.settings.get(
             "video_feed_enhance_mode"
         )
@@ -58,15 +57,27 @@ class CameraService(metaclass=SingletonMeta):
             "video_feed_format", ".jpg"
         )
 
+        self.video_feed_format = self.file_manager.settings.get(
+            "video_feed_format", ".jpg"
+        )
+
+        self.video_feed_pixel_format: Optional[str] = self.file_manager.settings.get(
+            "video_feed_pixel_format"
+        )
+
+        self.video_feed_device: Optional[str] = self.file_manager.settings.get(
+            "video_feed_device"
+        )
+
         self._video_feed_record = self.file_manager.settings.get(
             "video_feed_record", False
         )
 
-        self._video_feed_width: int = self.file_manager.settings.get(
-            "video_feed_width", 800
+        self.video_feed_width: int = self.file_manager.settings.get(
+            "video_feed_width", 1280
         )
-        self._video_feed_height: int = self.file_manager.settings.get(
-            "video_feed_height", 600
+        self.video_feed_height: int = self.file_manager.settings.get(
+            "video_feed_height", 720
         )
 
         self.video_writer: Optional[cv2.VideoWriter] = None
@@ -77,7 +88,7 @@ class CameraService(metaclass=SingletonMeta):
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
-        self.cap: Union[VideoCapture, None] = None
+        self.cap: Union[cv2.VideoCapture, None] = None
         self.last_detection_result = None
 
     async def generate_frame(self, log: Optional[bool] = False):
@@ -134,6 +145,23 @@ class CameraService(metaclass=SingletonMeta):
 
             return encoded_frame
 
+    def setup_camera_props(self):
+        if self.cap is not None:
+            self.logger.info(
+                f"Backend {self.cap.getBackendName()}, setting FPS: {self.video_feed_fps}, size: {self.video_feed_width}x{self.video_feed_height}, pixel format: {self.video_feed_pixel_format}"
+            )
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
+            if self.video_feed_pixel_format:
+                self.cap.set(
+                    cv2.CAP_PROP_FOURCC,
+                    cv2.VideoWriter.fourcc(*self.video_feed_pixel_format),
+                )
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
+            self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+            self.logger.info(
+                f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}, FPS: {self.cap.get(cv2.CAP_PROP_FPS)}"
+            )
+
     def camera_thread_func(self):
         """
         Camera capture loop function.
@@ -157,22 +185,12 @@ class CameraService(metaclass=SingletonMeta):
         if not self.cap:
             return
 
-        self.logger.info(
-            f"Backend {self.cap.getBackendName()}, setting FPS: {self.video_feed_fps}, size: {self.video_feed_width}x{self.video_feed_height}"
-        )
-
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
-        self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
-
-        self.logger.info(
-            f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}, FPS: {self.cap.get(cv2.CAP_PROP_FPS)}"
-        )
+        self.setup_camera_props()
 
         failed_counter = 0
 
         max_failed_attempt_count = 10
+        prev_fps = 0.0
 
         try:
             while self.camera_run and self.cap:
@@ -204,12 +222,7 @@ class CameraService(metaclass=SingletonMeta):
                         self.logger.info(
                             f"Setting size to: {self.video_feed_width}x{self.video_feed_height}"
                         )
-                        self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
-                        self.cap.set(
-                            cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG")
-                        )
-                        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
-                        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
+                        self.setup_camera_props()
                         self.logger.info(
                             f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}"
                         )
@@ -228,7 +241,14 @@ class CameraService(metaclass=SingletonMeta):
                         self.actual_fps = (
                             1.0 / avg_time_diff if avg_time_diff > 0 else None
                         )
-                        self.logger.debug(f"FPS {self.actual_fps}")
+
+                        if self.actual_fps and round(self.actual_fps) != round(
+                            prev_fps
+                        ):
+                            self.logger.debug(f"FPS {self.actual_fps}")
+
+                        if self.actual_fps is not None:
+                            prev_fps = self.actual_fps
 
                 frame_enhancer = (
                     frame_enhancers.get(self.video_feed_enhance_mode)
@@ -248,7 +268,8 @@ class CameraService(metaclass=SingletonMeta):
                         "timestamp": self.current_frame_timestamp,
                     }
                     self.detection_service.put_frame(frame_data)
-
+        except asyncio.CancelledError:
+            self.logger.info("Camera loop is cancelled")
         except Exception as e:
             self.logger.log_exception("Exception occurred in camera loop", e)
         finally:
@@ -317,45 +338,6 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
-
-    @property
-    def video_feed_fps(self) -> int:
-        return self._video_feed_fps
-
-    @video_feed_fps.setter
-    def video_feed_fps(self, value: int):
-        if self._video_feed_fps != value:
-            self._video_feed_fps = value
-            self.logger.info(f"FPS setting to {value}")
-            if self.cap:
-                self.cap.set(cv2.CAP_PROP_FPS, value)
-                self.logger.info(f"FPS setted to {value}")
-
-    @property
-    def video_feed_height(self) -> int:
-        return self._video_feed_height
-
-    @video_feed_height.setter
-    def video_feed_height(self, value: int):
-        if self._video_feed_height != value:
-            self._video_feed_height = value
-            self.logger.info(f"Setting height to {value}")
-            if self.cap:
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, value)
-                self.logger.info(f"Setted height to {value}")
-
-    @property
-    def video_feed_width(self) -> int:
-        return self._video_feed_width
-
-    @video_feed_width.setter
-    def video_feed_width(self, value: int):
-        if self._video_feed_width != value:
-            self._video_feed_width = value
-            self.logger.info(f"Setting width to {value}")
-            if self.cap:
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, value)
-                self.logger.info(f"Setted width to {value}")
 
     @property
     def video_feed_record(self) -> bool:
@@ -431,6 +413,32 @@ class CameraService(metaclass=SingletonMeta):
             self.video_writer.release()
             self.video_writer = None
             self.logger.info("Stopped video recording")
+
+    def restart_camera(self):
+        cam_running = self.camera_run
+        if cam_running:
+            self.stop_camera()
+        if self.video_feed_device:
+            result = self.video_device_adapter.update_device(self.video_feed_device)
+            if result is None:
+                self.logger.error(f"Device {self.video_feed_device} is not available")
+        else:
+            self.video_device_adapter.video_device = None
+        if cam_running:
+            self.start_camera()
+
+    def update_device(self, device: Optional[str]):
+        cam_running = self.camera_run
+        if cam_running:
+            self.stop_camera()
+        if device:
+            result = self.video_device_adapter.update_device(device)
+            if result is None:
+                self.logger.error(f"Device {device} is not available")
+        else:
+            self.video_device_adapter.video_device = None
+        if cam_running:
+            self.start_camera()
 
 
 if __name__ == "__main__":

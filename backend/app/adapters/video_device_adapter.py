@@ -56,6 +56,40 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 return (cap, device_path, device_info)
         return (None, None, None)
 
+    def find_camera_device_by_path(self, path):
+        """
+        Finds an available and operational camera device among the listed devices.
+        Attempts to open each device and returns the first successful one.
+
+        Returns:
+            Tuple[Optional[object], Optional[str], Optional[str]]:
+            A tuple containing the video capture object, the device path, and its information.
+            Returns (None, None, None) if no operational device is found.
+        """
+        self.video_devices = list_camera_devices()
+
+        for device_path, device_info in self.video_devices:
+            if device_path == path:
+                cap = try_video_path(device_path)
+                if not cap:
+                    self.logger.warning(
+                        f"Error trying camera {device_path} ({device_info or 'Unknown category'})"
+                    )
+                    self.failed_camera_devices.append(device_path)
+                else:
+                    return (cap, device_path, device_info)
+
+        return (None, None, None)
+
+    def update_device(self, device: str):
+        self.logger.info(f"UPDATE DEVICE {device}")
+        self.video_devices = list_camera_devices()
+        for device_path, device_info in self.video_devices:
+            self.logger.info(f"searching for {device} is {device_path}")
+            if device_path == device:
+                self.video_device = (device_path, device_info)
+                return (device, device_info)
+
     def setup_video_capture(self) -> cv2.VideoCapture | None:
         """
         Sets up and returns a video capture object associated with an available camera device.

@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 from app.util.logger import Logger
@@ -104,7 +104,7 @@ def list_camera_devices() -> List[CameraInfo]:
                         primary_cameras.append(pair)
 
     primary_cameras.reverse()
-    secondary_cameras.reverse()
+
     result = primary_cameras + secondary_cameras
     if len(result) >= 1:
         return result
@@ -113,3 +113,81 @@ def list_camera_devices() -> List[CameraInfo]:
         [f"/dev/{dev}" for dev in os.listdir("/dev") if re.match(r"video[0-9]+", dev)]
     )
     return [(device, "") for device in dev_video_files]
+
+
+def list_available_camera_devices():
+    result: List[Dict[str, Union[str, List[Dict[str, str]]]]] = []
+    for key, category in list_camera_devices():
+        formats = parse_v4l2_formats(key, category)
+        if formats:
+            item = {
+                "value": key,
+                "label": f"{key} ({category or 'Unknown'})",
+                "formats": formats,
+            }
+            result.append(item)
+
+    return result
+
+
+def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
+    """
+    Parse the output of v4l2-ctl --list-formats-ext for the specified device.
+
+    Args:
+        device (str): The path to the camera device, e.g., '/dev/video0'.
+
+    Returns:
+        List[Dict[str, str]]: A formatted list of dictionaries where each dict contains a
+                              'value' and 'label' representing format, resolution, and FPS.
+    """
+    try:
+        # Run the v4l2-ctl command to list formats with detailed information
+        cmd = ["v4l2-ctl", "--list-formats-ext", "--device", device]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        output = result.stdout
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error executing v4l2-ctl: {e}")
+        return []
+
+    logger.info(f"Raw output:\n{output}")
+
+    formats = []
+
+    # Regex patterns to capture the format type, resolution, and FPS values.
+    format_pattern = re.compile(r"\[\d+\]: '([A-Z0-9]+)' \((.+)\)")
+    resolution_pattern = re.compile(r"Size: Discrete (\d+x\d+)")
+    fps_pattern = re.compile(r"Interval: Discrete ([0-9.]+)s \((\d+)\.000 fps\)")
+
+    current_format = None
+    current_description = None
+    frame_size = None
+
+    # Parse the output line by line
+    for line in output.splitlines():
+
+        line = line.strip()
+
+        # Match format type: e.g., [0]: 'MJPG' (Motion-JPEG, compressed)
+        format_match = format_pattern.match(line)
+        if format_match:
+            current_format = format_match.group(1)
+            current_description = format_match.group(2)
+
+        # Match resolution: e.g., Size: Discrete 1920x1080
+        resolution_match = resolution_pattern.search(line)
+        if resolution_match:
+            frame_size = resolution_match.group(1)
+
+        # Match FPS: e.g., Interval: Discrete 0.033s (30.000 fps)
+        fps_match = fps_pattern.search(line)
+        if fps_match:
+            fps_value = fps_match.group(2)
+
+            # Build the value and label for this format and resolution
+            if current_format and frame_size:
+                value = f"{device}:{current_format}:{frame_size}:{fps_value}"
+                label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
+                formats.append({"value": value, "label": label})
+
+    return formats

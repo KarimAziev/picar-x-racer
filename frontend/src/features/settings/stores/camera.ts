@@ -2,14 +2,13 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import { useMessagerStore } from "@/features/messager/store";
 import { constrain } from "@/util/constrain";
-import { wait } from "@/util/wait";
 import { cycleValue } from "@/util/cycleValue";
 import {
   CameraOpenRequestParams,
   useStore as useSettingsStore,
 } from "@/features/settings/stores/settings";
 
-const dimensions = [
+export const dimensions = [
   [640, 480],
   [800, 600],
   [1024, 768],
@@ -23,15 +22,25 @@ const dimensions = [
   [1920, 1200],
 ];
 
+export const commonDimensionOptions = dimensions.map(
+  ([width, height]) => `${width}/${height}`,
+);
+
 const MAX_FPS = 70;
+
+export interface DeviceOption {
+  value: string;
+  label: string;
+  formats: Omit<DeviceOption, "formats">[];
+}
 
 export interface State {
   data: CameraOpenRequestParams;
-  dimensions: { video_feed_width: number; video_feed_height: number } | null;
   loading: boolean;
   cancelTokenSource?: AbortController;
   detectors: string[];
   enhancers: string[];
+  devices: DeviceOption[];
 }
 
 const defaultState: State = {
@@ -39,10 +48,14 @@ const defaultState: State = {
   data: {
     video_feed_enhance_mode: null,
     video_feed_detect_mode: null,
+    video_feed_height: 600,
+    video_feed_width: 800,
+    video_feed_device: null,
+    video_feed_pixel_format: null,
   },
   detectors: [],
   enhancers: [],
-  dimensions: null,
+  devices: [],
   cancelTokenSource: undefined,
 };
 
@@ -66,7 +79,6 @@ export const useStore = defineStore("camera", {
           payload || this.data,
           { signal: cancelTokenSource.signal },
         );
-        await wait(500);
         this.data = data;
         Object.entries(data).forEach(([key, value]) => {
           if (payload && key in payload) {
@@ -95,6 +107,20 @@ export const useStore = defineStore("camera", {
         this.data = data;
       } catch (error) {
         console.error("Error fetching video modes:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchDevices() {
+      try {
+        this.loading = true;
+        const { data } = await axios.get<{ devices: DeviceOption[] }>(
+          "/api/camera-devices",
+        );
+        this.devices = data.devices;
+      } catch (error) {
+        console.error("Error fetching camera devices:", error);
       } finally {
         this.loading = false;
       }

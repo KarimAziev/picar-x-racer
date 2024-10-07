@@ -12,14 +12,8 @@ delivered to a device. It does this by changing the width of the digital pulses 
 import math
 from typing import TYPE_CHECKING
 
-from app.config.platform import is_os_raspberry
+from app.adapters.robot_hat.i2c import I2C
 from app.util.logger import Logger
-
-if is_os_raspberry:
-    from app.adapters.robot_hat.i2c import I2C
-else:
-    from app.adapters.robot_hat.mock.i2c_mock import I2C
-
 
 timer: list[dict[str, int]] = [{"arr": 1}] * 4
 

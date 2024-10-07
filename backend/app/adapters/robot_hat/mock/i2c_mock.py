@@ -134,8 +134,33 @@ class I2C(object):
         addresses = self.scan()
         return self.address in addresses
 
-    def scan(self):
-        return []
+    def scan(self) -> List[int]:
+        """
+        Scan the I2C bus for devices using smbus2.
+
+        Returns:
+            List[int]: List of I2C addresses of devices found.
+        """
+        addresses = []
+        self.logger.debug(f"Scanning I2C bus {self._bus} for devices")
+
+        for address in range(
+            0x03, 0x78
+        ):  # Most valid addresses fall between 0x03 and 0x77
+            try:
+                self._smbus.write_byte(
+                    address, 0
+                )  # Attempt to write a dummy byte to the address
+                addresses.append(address)
+                self.logger.debug(f"Found device at 0x{address:02x}")
+            except OSError as e:
+                # Ignore devices that don't acknowledge (errno corresponds to "No such device or address")
+                if e.errno != errno.EREMOTEIO:
+                    self.logger.debug(f"OSError at address 0x{address:02x}: {e}")
+                continue
+            except Exception as e:
+                self.logger.error(f"Unexpected error at address 0x{address:02x}: {e}")
+                continue
 
     def write(self, data):
         if isinstance(data, bytearray):

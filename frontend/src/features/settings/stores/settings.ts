@@ -34,10 +34,12 @@ export interface CameraOpenRequestParams {
   video_feed_enhance_mode: string | null;
   video_feed_detect_mode: string | null;
   video_feed_quality?: number;
-  video_feed_height?: number;
-  video_feed_width?: number;
+  video_feed_height: number;
+  video_feed_width: number;
   video_feed_confidence?: number | null;
   video_feed_record?: boolean;
+  video_feed_device: string | null;
+  video_feed_pixel_format: string | null;
 }
 
 export interface Settings
@@ -57,7 +59,6 @@ export interface State {
   loaded?: boolean;
   saving?: boolean;
   settings: Settings;
-  dimensions: { width: number; height: number };
   error?: string;
   retryTimer?: NodeJS.Timeout;
   retryCounter: number;
@@ -80,8 +81,12 @@ const defaultState: State = {
     video_feed_detect_mode: null,
     video_feed_confidence: null,
     video_feed_enhance_mode: null,
+    video_feed_height: 600,
+    video_feed_width: 800,
+    video_feed_device: null,
+    video_feed_pixel_format: null,
   },
-  dimensions: { width: 640, height: 480 },
+
   retryCounter: 0,
   text: null,
   language: null,
@@ -176,10 +181,11 @@ export const useStore = defineStore("settings", {
       if (popupStore.tab === SettingsTab.TTS) {
         return await this.saveTexts();
       }
-      const data =
-        popupStore.tab === SettingsTab.GENERAL
-          ? omit(["keybindings"], this.settings)
-          : { keybindings: this.settings.keybindings };
+      const isPrimarySettigns = popupStore.tab === SettingsTab.GENERAL;
+      const data = isPrimarySettigns
+        ? omit(["keybindings"], this.settings)
+        : { keybindings: this.settings.keybindings };
+
       this.saving = true;
       try {
         await axios.post("/api/settings", data);

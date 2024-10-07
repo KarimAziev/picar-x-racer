@@ -28,8 +28,15 @@ const settingsStore = useSettingsStore();
 const cameraStore = useCameraStore();
 
 const fullscreen = computed(() => settingsStore.settings.fullscreen);
-const defaultWidth = computed(() => cameraStore.data.video_feed_width || 640);
-const defaultHeight = computed(() => cameraStore.data.video_feed_height || 480);
+const defaultWidth = computed(() => cameraStore.data.video_feed_width);
+const defaultHeight = computed(() => cameraStore.data.video_feed_height);
+console.log(
+  "%c<VideoBox.vue 33>   defaultHeight: %o :\n",
+  "background-color: #4b0082; color: white",
+  defaultHeight,
+  "defaultWidth",
+  defaultWidth,
+);
 const isResizable = computed(() => !popupStore.isOpen);
 </script>
 
