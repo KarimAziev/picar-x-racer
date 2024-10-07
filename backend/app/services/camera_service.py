@@ -185,6 +185,9 @@ class CameraService(metaclass=SingletonMeta):
         if not self.cap:
             return
 
+        info = self.video_device_adapter.video_device or (None, None)
+        (self.video_feed_device, _) = info
+
         self.setup_camera_props()
 
         failed_counter = 0
