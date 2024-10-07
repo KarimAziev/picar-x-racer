@@ -209,14 +209,13 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
             )
 
             for width, height in COMMON_SIZES:
-                if f"{width}x{height}" <= max_size:
-                    frame_size = f"{width}x{height}"
+                frame_size = f"{width}x{height}"
 
-                    fps_value = "30"
-                    value = f"{device}:{current_format}:{frame_size}:{fps_value}"
-                    label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
-                    formats.append({"value": value, "label": label})
-                    logger.info(f"Added format: {value}, label: {label}")
+                fps_value = "30"
+                value = f"{device}:{current_format}:{frame_size}:{fps_value}"
+                label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
+                formats.append({"value": value, "label": label})
+                logger.info(f"Added format: {value}, label: {label}")
 
         fps_match = fps_pattern.search(line)
         if fps_match:
