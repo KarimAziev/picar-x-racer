@@ -134,12 +134,6 @@ COMMON_SIZES = [
     (640, 480),  # VGA
     (800, 600),  # SVGA
     (1024, 768),  # XGA
-    (1280, 720),  # 720p
-    (1280, 960),  # SXGA-
-    (1600, 1200),  # UXGA
-    (1920, 1080),  # 1080p
-    (2560, 1440),  # QHD
-    (2592, 1944),
 ]
 
 
@@ -156,7 +150,6 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
                               'value' and 'label' representing format, resolution, and FPS.
     """
     try:
-        # Run the v4l2-ctl command to list formats with detailed information
         cmd = ["v4l2-ctl", "--list-formats-ext", "--device", device]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         output = result.stdout
@@ -168,7 +161,6 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
 
     formats = []
 
-    # Regex patterns to capture the format type, resolution, and FPS values
     format_pattern = re.compile(r"\[\d+\]: '([A-Z0-9]+)' \((.+)\)")
     resolution_discrete_pattern = re.compile(r"Size: Discrete (\d+x\d+)")
     resolution_stepwise_pattern = re.compile(
@@ -180,7 +172,6 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
     current_description = None
     frame_size = None
 
-    # Parse the output line by line
     for line in output.splitlines():
         line = line.strip()
         logger.info(f"Parsing line: {line}")
