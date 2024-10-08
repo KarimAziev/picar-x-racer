@@ -157,8 +157,25 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
         logger.error(f"Error executing v4l2-ctl: {e}")
         return []
 
-    logger.info(f"Raw output:\n{output}")
+    logger.debug(f"Raw output:\n{output}")
 
+    return parse_v4l2_formats_output(output, device, category)
+
+
+def parse_v4l2_formats_output(
+    output: str, device: str, category: str
+) -> List[Dict[str, str]]:
+    """
+    Parse the output of v4l2-ctl --list-formats-ext for the specified device.
+
+    Args:
+        device (str): The path to the camera device, e.g., '/dev/video0'.
+        category (str): The camera type or category for labeling purposes.
+
+    Returns:
+        List[Dict[str, str]]: A formatted list of dictionaries where each dict contains a
+                              'value' and 'label' representing format, resolution, and FPS.
+    """
     formats = []
 
     format_pattern = re.compile(r"\[\d+\]: '([A-Z0-9]+)' \((.+)\)")

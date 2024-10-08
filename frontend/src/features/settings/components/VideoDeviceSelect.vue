@@ -1,23 +1,21 @@
 <template>
-  <div>
-    <span class="label">Camera Device </span>
-    <Select
-      v-model="selectedDevice"
-      :options="devices"
-      optionLabel="label"
-      optionValue="value"
-      placeholder="Select a camera"
-    />
-  </div>
+  <SelectField
+    label="Camera Device"
+    field="video_feed_quality"
+    v-model="selectedDevice"
+    optionLabel="label"
+    optionValue="value"
+    :options="devices"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
 
-import Select from "primevue/select";
 import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
 
 import { isString, isNumber } from "@/util/guards";
+import SelectField from "@/ui/SelectField.vue";
 
 const devices = computed(() =>
   [...camStore.devices].flatMap((item) => [...item.formats]),

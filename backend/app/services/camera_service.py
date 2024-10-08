@@ -244,7 +244,7 @@ class CameraService(metaclass=SingletonMeta):
                         if self.actual_fps and round(self.actual_fps) != round(
                             prev_fps
                         ):
-                            self.logger.debug(f"FPS {self.actual_fps}")
+                            self.logger.info(f"Real FPS {self.actual_fps}")
 
                         if self.actual_fps is not None:
                             prev_fps = self.actual_fps
