@@ -174,20 +174,20 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
 
     for line in output.splitlines():
         line = line.strip()
-        logger.info(f"Parsing line: {line}")
+        logger.debug(f"Parsing line: {line}")
 
         format_match = format_pattern.match(line)
         if format_match:
             current_format = format_match.group(1)
             current_description = format_match.group(2)
-            logger.info(
+            logger.debug(
                 f"Found format: {current_format}, Description: {current_description}"
             )
 
         resolution_discrete_match = resolution_discrete_pattern.search(line)
         if resolution_discrete_match:
             frame_size = resolution_discrete_match.group(1)
-            logger.info(f"Found discrete resolution: {frame_size}")
+            logger.debug(f"Found discrete resolution: {frame_size}")
 
         resolution_stepwise_match = resolution_stepwise_pattern.search(line)
         if resolution_stepwise_match:
@@ -195,7 +195,7 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
             max_size = resolution_stepwise_match.group(2)
             step_x = resolution_stepwise_match.group(3)
             step_y = resolution_stepwise_match.group(4)
-            logger.info(
+            logger.debug(
                 f"Found stepwise resolution: {min_size} to {max_size} with steps {step_x}/{step_y}"
             )
 
@@ -206,17 +206,17 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
                 label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
                 formats.append({"value": value, "label": label})
-                logger.info(f"Added format: {value}, label: {label}")
+                logger.debug(f"Added format: {value}, label: {label}")
 
         fps_match = fps_pattern.search(line)
         if fps_match:
             fps_value = fps_match.group(2)
-            logger.info(f"Found FPS: {fps_value}")
+            logger.debug(f"Found FPS: {fps_value}")
 
             if current_format and frame_size:
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
                 label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
                 formats.append({"value": value, "label": label})
-                logger.info(f"Added format: {value}, label: {label}")
+                logger.debug(f"Added format: {value}, label: {label}")
 
     return formats
