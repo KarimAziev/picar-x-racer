@@ -160,7 +160,7 @@ class I2C(object):
 
         description = get_value_description(data)
         self.logger.debug(
-            f"Writing a single byte to the adress {self.address}: [0x{data:02X}] {description}"
+            f"Writing a single byte to the address {self.address}: [0x{data:02X}] {description}"
         )
         result = self._smbus.write_byte(self.address, data) if self.address else None
         return result
@@ -181,7 +181,7 @@ class I2C(object):
         reg_description = get_address_description(reg)
         data_description = get_value_description(data)
         self.logger.debug(
-            f"Writing byte data to the adress {self.address} [0x{reg:02X}] {reg_description} [0x{data:02X}] {data_description}"
+            f"Writing byte data to the address {self.address} [0x{reg:02X}] {reg_description} [0x{data:02X}] {data_description}"
         )
         if self.address:
             return self._smbus.write_byte_data(self.address, reg, data)

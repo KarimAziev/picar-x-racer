@@ -246,7 +246,7 @@ class PWM(I2C):
 def test():
     import time
 
-    p = PWM(0, debug_level="debug")
+    p = PWM(0)
     p.period(1000)
     p.prescaler(10)
     # p.pulse_width(2048)
@@ -264,7 +264,7 @@ def test():
 
 
 def test2():
-    p = PWM("P0", debug_level="debug")
+    p = PWM("P0")
     p.pulse_width_percent(50)
     # while True:
     #     p.pulse_width_percent(50)

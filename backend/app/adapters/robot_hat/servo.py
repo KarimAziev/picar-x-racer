@@ -80,9 +80,17 @@ class Servo(PWM):
         """
         super().__init__(channel, address, *args, **kwargs)
         self.logger = Logger(__name__)
-        self.logger.debug(f"channel {channel} address f{address}")
+
         self.period(self.PERIOD)
         prescaler = self.CLOCK / self.FREQ / self.PERIOD
+        if channel != self.channel:
+            self.logger.debug(
+                f"Initted Servo with channel {channel} {self.channel} and address {address}, prescaler: {prescaler}"
+            )
+        else:
+            self.logger.debug(
+                f"Initted Servo with channel {channel} and address {address}, prescaler: {prescaler}"
+            )
         self.prescaler(prescaler)
 
     def angle(self, angle):
@@ -99,14 +107,17 @@ class Servo(PWM):
             msg = "Angle value should be int or float value, not %s" % type(angle)
             self.logger.error(msg)
             raise ValueError(msg)
-        self.logger.debug(f"Set angle to: {angle}")
+        self.logger.debug(
+            f"channel [{self.channel}]: Setting the angle {angle} of the servo motor"
+        )
         if angle < -90:
             angle = -90
         if angle > 90:
             angle = 90
-        self.logger.debug(f"Set angle to: {angle}")
         pulse_width_time = mapping(angle, -90, 90, self.MIN_PW, self.MAX_PW)
-        self.logger.debug(f"Pulse width: {pulse_width_time}")
+        self.logger.debug(
+            f"channel [{self.channel}]: Mapping adjusted angle {angle} of the servo motor to pulse width {pulse_width_time}"
+        )
         self.pulse_width_time(pulse_width_time)
 
     def pulse_width_time(self, pulse_width_time):
@@ -116,14 +127,19 @@ class Servo(PWM):
         Args:
             pulse_width_time (float): Pulse width time in microseconds (500 to 2500).
         """
-        self.logger.debug(f"pulse_width_time: {pulse_width_time}")
         if pulse_width_time > self.MAX_PW:
             pulse_width_time = self.MAX_PW
         if pulse_width_time < self.MIN_PW:
             pulse_width_time = self.MIN_PW
-        self.logger.debug(f"Adjusted pulse_width_time: {pulse_width_time}")
+        self.logger.debug(
+            f"channel [{self.channel}]: Adjusted pulse width of the servo motor: {pulse_width_time}"
+        )
         pwr = pulse_width_time / 20000.0
-        self.logger.debug(f"pulse width rate: {pwr}")
+        self.logger.debug(
+            f"channel [{self.channel}]: Pulse width rate of the of the servo motor: {pwr}"
+        )
         value = int(pwr * self.PERIOD)
-        self.logger.debug(f"pulse width value: {value}")
+        self.logger.debug(
+            f"channel [{self.channel}]: Pulse width value: {value} of th servo motoer"
+        )
         self.pulse_width(value)

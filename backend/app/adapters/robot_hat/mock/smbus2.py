@@ -1,3 +1,6 @@
+import errno
+
+
 class MockSMBus:
     def __init__(self, bus=None, force=False):
         self.bus = bus
@@ -33,6 +36,8 @@ class MockSMBus:
         return self._command_responses["byte"]
 
     def write_byte(self, i2c_addr, value, force=None):
+        if i2c_addr != 20:
+            raise OSError(errno.EREMOTEIO, "No such device or address")
         self._set_address(i2c_addr, force)
         return
 
