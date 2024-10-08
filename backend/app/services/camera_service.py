@@ -12,6 +12,7 @@ from app.adapters.video_device_adapter import VideoDeviceAdapater
 from app.config.paths import DEFAULT_VIDEOS_PATH
 from app.config.video_enhancers import frame_enhancers
 from app.services.detection_service import DetectionService
+from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_detection
 from app.util.singleton_meta import SingletonMeta
@@ -143,6 +144,8 @@ class CameraService(metaclass=SingletonMeta):
 
     def setup_camera_props(self):
         if self.cap is not None:
+            info = self.video_device_adapter.video_device or (None, None)
+            (self.video_feed_device, _) = info
             self.logger.info(
                 f"Setting FPS: {self.video_feed_fps}, size: {self.video_feed_width}x{self.video_feed_height}, pixel format: {self.video_feed_pixel_format}"
             )
@@ -154,9 +157,19 @@ class CameraService(metaclass=SingletonMeta):
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
             self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
+
             self.logger.info(
-                f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}, FPS: {self.cap.get(cv2.CAP_PROP_FPS)}"
+                f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}, FPS: {fps}"
             )
+            if self.video_feed_device:
+                data = parse_v4l2_device_info(self.video_feed_device)
+                self.video_feed_width = data.get("width", self.video_feed_width)
+                self.video_feed_height = data.get("height", self.video_feed_height)
+                self.video_feed_fps = int(fps)
+                self.video_feed_pixel_format = data.get(
+                    "pixel_format", self.video_feed_pixel_format
+                )
 
     def camera_thread_func(self):
         """
@@ -180,9 +193,6 @@ class CameraService(metaclass=SingletonMeta):
 
         if not self.cap:
             return
-
-        info = self.video_device_adapter.video_device or (None, None)
-        (self.video_feed_device, _) = info
 
         self.setup_camera_props()
 

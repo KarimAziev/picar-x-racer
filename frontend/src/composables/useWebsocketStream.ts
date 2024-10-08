@@ -3,13 +3,14 @@ import { ref } from "vue";
 export interface WebsocketStreamParams {
   reconnectDelay?: number;
   onOpen?: Function;
+  onFirstMessage?: Function;
 }
 
 export const useWebsocketStream = (
   url: string,
   params?: WebsocketStreamParams,
 ) => {
-  const { reconnectDelay, onOpen } = params || {};
+  const { reconnectDelay, onOpen, onFirstMessage } = params || {};
   const ws = ref<WebSocket>();
   const imgRef = ref<HTMLImageElement>();
   const imgInitted = ref(false);
@@ -36,7 +37,13 @@ export const useWebsocketStream = (
     ws.value.binaryType = "arraybuffer";
 
     ws.value.onmessage = (wsMsg: MessageEvent) => {
-      connected.value = true;
+      if (!connected.value) {
+        if (onFirstMessage) {
+          onFirstMessage();
+        }
+        connected.value = true;
+      }
+
       const arrayBufferView = new Uint8Array(wsMsg.data);
       const blob = new Blob([arrayBufferView], { type: "image/jpeg" });
       const urlCreator = window.URL || window.webkitURL;

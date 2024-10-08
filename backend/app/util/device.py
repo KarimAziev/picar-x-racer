@@ -222,7 +222,16 @@ def parse_v4l2_formats_output(
                 fps_value = "30"
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
                 label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
-                formats.append({"value": value, "label": label})
+                formats.append(
+                    {
+                        "value": value,
+                        "label": label,
+                        "device": device,
+                        "size": frame_size,
+                        "fps": fps_value,
+                        "pixel_format": current_format,
+                    }
+                )
                 logger.debug(f"Added format: {value}, label: {label}")
 
         fps_match = fps_pattern.search(line)
@@ -233,7 +242,79 @@ def parse_v4l2_formats_output(
             if current_format and frame_size:
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
                 label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
-                formats.append({"value": value, "label": label})
+                formats.append(
+                    {
+                        "value": value,
+                        "label": label,
+                        "device": device,
+                        "size": frame_size,
+                        "fps": fps_value,
+                        "pixel_format": current_format,
+                    }
+                )
                 logger.debug(f"Added format: {value}, label: {label}")
 
     return formats
+
+
+def parse_v4l2_device_info(device: str):
+    """
+    Parse the output of v4l2-ctl --V --device for the specified device.
+
+    Args:
+        device (str): The path to the camera device, e.g., '/dev/video0'.
+        category (str): The camera type or category for labeling purposes.
+
+    Returns:
+        a dictionary with:
+          width: int
+          height: int
+          pixel_format: str
+    """
+    try:
+        cmd = ["v4l2-ctl", "-V", "--device", device]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        output = result.stdout
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error executing v4l2-ctl: {e}")
+        return {}
+
+    return parse_v4l2_device_info_output(output)
+
+
+def parse_v4l2_device_info_output(output: str):
+    """
+    Parse the output of v4l2-ctl --V --device for the specified device.
+
+    Args:
+        output (str): the output of 'v4l2-ctl --V --device DEVICE', e.g.:
+    Format Video Capture:
+        Width/Height      : 800/600
+        Pixel Format      : 'MJPG' (Motion-JPEG)
+        Field             : None
+        Bytes per Line    : 0
+        Size Image        : 486400
+        Colorspace        : SMPTE 170M
+        Transfer Function : Default (maps to Rec. 709)
+        YCbCr/HSV Encoding: Default (maps to ITU-R 601)
+        Quantization      : Default (maps to Full Range)
+        Flags
+
+    Returns:
+        a dictionary with:
+          width: int
+          height: int
+          pixel_format: str
+    """
+    width_height_regex = re.search(r"Width/Height\s+:\s+(\d+)/(\d+)", output)
+    pixel_format_regex = re.search(r"Pixel Format\s+:\s+'(\w+)'", output)
+
+    if not width_height_regex or not pixel_format_regex:
+        logger.error("Failed to parse the required fields from v4l2-ctl output.")
+        return {}
+
+    width = int(width_height_regex.group(1))
+    height = int(width_height_regex.group(2))
+    pixel_format = pixel_format_regex.group(1)
+
+    return {"width": width, "height": height, "pixel_format": pixel_format}

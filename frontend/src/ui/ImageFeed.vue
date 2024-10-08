@@ -27,6 +27,10 @@ import { useCameraStore } from "@/features/settings/stores";
 
 const camStore = useCameraStore();
 
+const fetchSettttings = async () => {
+  await camStore.fetchCurrentSettings();
+};
+
 const {
   initWS,
   closeWS,
@@ -35,10 +39,15 @@ const {
   imgLoading,
   connected,
   imgInitted,
-} = useWebsocketStream(makeWebsocketUrl("ws/video-stream"));
+} = useWebsocketStream(makeWebsocketUrl("ws/video-stream"), {
+  onFirstMessage: () => {
+    fetchSettttings();
+    console.log("onFirstMessage: Fetch camera settttings");
+  },
+});
 
 onMounted(() => {
-  camStore.fetchCurrentSettings();
+  fetchSettttings();
   initWS();
   window.addEventListener("beforeunload", closeWS);
 });

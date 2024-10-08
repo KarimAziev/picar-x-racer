@@ -58,7 +58,6 @@ watch(
     }
     const [device, pixelFormat, size, fps] = newVal.split(":");
     const [width, height] = size.split("x");
-    console.log("newVal", newVal);
 
     store.settings.video_feed_device = device;
     store.settings.video_feed_width = +width;
@@ -76,15 +75,4 @@ watch(
   },
 );
 </script>
-<style scoped lang="scss">
-.label {
-  font-weight: bold;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  .message {
-    background-color: transparent;
-    color: var(--red-400);
-  }
-}
-</style>
+<style scoped lang="scss"></style>
