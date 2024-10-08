@@ -8,7 +8,6 @@ user_home = path.expanduser(f"~{user}")
 DEFAULT_PICTURES_PATH = "%s/Pictures/picar-x-racer/" % user_home
 DEFAULT_VIDEOS_PATH = "%s/Videos/picar-x-racer/" % user_home
 
-
 CURRENT_DIR = path.dirname(path.realpath(__file__))
 PROJECT_DIR = path.dirname(path.dirname(path.dirname(CURRENT_DIR)))
 
@@ -35,6 +34,8 @@ CONFIG_USER_DIR = user_config_dir()
 FONT_PATH = expand_file_in_project_dir(
     "frontend/src/assets/font/tt-octosquares-regular.ttf"
 )
+
+MUSIC_CACHE_FILE_PATH = expand_file_in_project_dir("music_cache.json")
 
 MUSIC_DIR = expand_file_in_project_dir("music")
 SOUNDS_DIR = expand_file_in_project_dir("sounds")

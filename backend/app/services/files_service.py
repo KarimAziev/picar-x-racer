@@ -45,6 +45,7 @@ from app.config.paths import (
     DEFAULT_SOUND_DIR,
     DEFAULT_USER_SETTINGS,
     DEFAULT_VIDEOS_PATH,
+    MUSIC_CACHE_FILE_PATH,
     PICARX_CONFIG_FILE,
 )
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
@@ -87,12 +88,24 @@ class FilesService(metaclass=SingletonMeta):
         )
         self.audio_manager = audio_manager
 
-        self.cache = {}
+        self.cache = self.load_cache()
         self.cached_settings = None
         self.last_modified_time = None
         self.current_settings_file = None
         self.settings = self.load_settings()
         self.list_all_music_with_details()
+
+    def load_cache(self):
+        """Load cached audio file data from a persistent file."""
+        if os.path.exists(MUSIC_CACHE_FILE_PATH):
+            with open(MUSIC_CACHE_FILE_PATH, "r") as cache_file:
+                return json.load(cache_file)
+        return {}
+
+    def save_cache(self):
+        """Save the cache to a persistent file."""
+        with open(MUSIC_CACHE_FILE_PATH, "w") as cache_file:
+            json.dump(self.cache, cache_file, indent=2)
 
     def get_settings_file(self):
         """Determines the current settings file to use"""
@@ -193,48 +206,50 @@ class FilesService(metaclass=SingletonMeta):
         return [file[0] for file in files]
 
     def list_all_music_with_details(self):
-        """Lists all music files with details including whether they are removable."""
+        """List all music files with cached details."""
         defaults = self.list_default_music(full=True)
         user_music = self.list_user_music(full=True)
+
         result = []
-
-        for file in defaults:
+        for file in defaults + user_music:
             details = self.get_audio_file_details_cached(file)
             if details:
-                details["removable"] = False
-                result.append(details)
-
-        for file in user_music:
-            details = self.get_audio_file_details_cached(file)
-            if details:
-                details["removable"] = True
+                details["removable"] = file in user_music
                 result.append(details)
 
         return result
 
+    def prune_cache(self, max_entries=100):
+        """Limits the cache size by keeping only recent entries."""
+        if len(self.cache) > max_entries:
+            # Keeps the N most popular/most recent entries
+            self.cache = dict(list(self.cache.items())[-max_entries:])
+            self.save_cache()
+
     def get_audio_file_details_cached(self, file: str):
         """
-        Gets cached details of an audio file such as track name and duration.
-
-        Args:
-            file (str): File path of the audio file.
-
-        Returns:
-            dict: A dictionary with track name and duration.
+        Retrieves audio file details from cache if available and fresh.
+        Otherwise, it will calculate and store the details in cache.
         """
         file_mod_time = os.path.getmtime(file)
 
-        cache_key = (file, file_mod_time)
+        if file in self.cache:
+            cached_data = self.cache[file]
+            cached_mod_time = cached_data["modified_time"]
 
-        if cache_key in self.cache:
-            self.logger.info(f"Using cached details for {file}")
-            return self.cache[cache_key]
-        else:
-            self.logger.info(f"Loading file details for {file}")
-            details = self.get_audio_file_details(file)
-            if details:
-                self.cache[cache_key] = details
-            return details
+            if cached_mod_time == file_mod_time:
+                self.logger.info(f"Using cached details for {file}")
+                return cached_data["details"]
+
+        self.logger.info(f"Refreshing details for {file}")
+        details = self.get_audio_file_details(file)
+        if details:
+            self.cache[file] = {
+                "modified_time": file_mod_time,
+                "details": details,
+            }
+            self.save_cache()
+        return details
 
     def get_audio_file_details(self, file):
         """
