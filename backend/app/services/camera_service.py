@@ -20,10 +20,6 @@ from app.util.video_utils import encode
 if TYPE_CHECKING:
     from app.services.files_service import FilesService
 
-# Constants for target width and height of video streams
-TARGET_WIDTH = 320
-TARGET_HEIGHT = 240
-
 
 class CameraService(metaclass=SingletonMeta):
     """
