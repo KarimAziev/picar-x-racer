@@ -144,14 +144,14 @@ class CameraService(metaclass=SingletonMeta):
     def setup_camera_props(self):
         if self.cap is not None:
             self.logger.info(
-                f"Backend {self.cap.getBackendName()}, setting FPS: {self.video_feed_fps}, size: {self.video_feed_width}x{self.video_feed_height}, pixel format: {self.video_feed_pixel_format}"
+                f"Setting FPS: {self.video_feed_fps}, size: {self.video_feed_width}x{self.video_feed_height}, pixel format: {self.video_feed_pixel_format}"
             )
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
             if self.video_feed_pixel_format:
                 self.cap.set(
                     cv2.CAP_PROP_FOURCC,
                     cv2.VideoWriter.fourcc(*self.video_feed_pixel_format),
                 )
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
             self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
             self.logger.info(
