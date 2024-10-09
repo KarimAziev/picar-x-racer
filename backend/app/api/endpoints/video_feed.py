@@ -33,15 +33,25 @@ def update_video_feed_settings(
     Returns:
         `VideoFeedSettings`: The updated settings of the video feed.
     """
-    logger.info(f"Updating settings {payload}")
+
     if payload:
         if payload.video_feed_confidence:
             detection_manager.video_feed_confidence = payload.video_feed_confidence
 
         dict_data = payload.model_dump(exclude_unset=True)
         logger.info(f"Updating feed settings: {dict_data}")
+        keys_to_restart = {
+            "video_feed_device",
+            "video_feed_width",
+            "video_feed_height",
+            "video_feed_fps",
+            "video_feed_pixel_format",
+        }
+        should_restart = False
 
         for key, value in payload.model_dump(exclude_unset=True).items():
+            if key in keys_to_restart:
+                should_restart = True
             if key is "video_feed_detect_mode":
                 detection_manager.video_feed_detect_mode = value
                 if (
@@ -54,7 +64,8 @@ def update_video_feed_settings(
                 logger.debug(f"Setting camera_manager {key} to {value}")
                 setattr(camera_manager, key, value)
 
-    camera_manager.restart_camera()
+        if should_restart:
+            camera_manager.restart_camera()
 
     return {
         "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
