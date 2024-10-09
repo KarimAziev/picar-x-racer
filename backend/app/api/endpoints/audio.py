@@ -127,7 +127,7 @@ async def play_music(
     filename = payload.track
     force = payload.force
     start = payload.start or 0.0
-    logger.info(f"request to play music {filename}")
+    logger.info(f"Request to play music {filename}")
     if filename is None:
         result = audio_manager.stop_music()
         return {"playing": audio_manager.is_music_playing()}
@@ -135,7 +135,7 @@ async def play_music(
     try:
         dir = file_manager.get_music_directory(filename)
         file = path.join(dir, filename)
-        logger.debug(f"playing {file}")
+        logger.debug(f"Playing music {file}")
         result = audio_manager.play_music(track_path=file, force=force, start=start)
         return result
     except Exception as err:
