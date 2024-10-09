@@ -71,7 +71,8 @@ import ButtonGroup from "primevue/buttongroup";
 import { useMessagerStore } from "@/features/messager/store";
 import { usePopupStore } from "@/features/settings/stores";
 import { cycleValue } from "@/util/cycleValue";
-import { formatKeyEventItem } from "@/util/keyboard-util";
+
+import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
 
 const messager = useMessagerStore();
 const popupStore = usePopupStore();
@@ -134,20 +135,8 @@ const keyHandlers: { [key: string]: Function } = {
   ArrowRight: handleNextImagePreview,
 };
 
-const handleKeyUp = (event: KeyboardEvent) => {
-  const key = formatKeyEventItem(event);
-  if (keyHandlers[key]) {
-    keyHandlers[key]();
-  }
-};
-
-const addKeyEventListeners = () => {
-  window.addEventListener("keyup", handleKeyUp);
-};
-
-const removeKeyEventListeners = () => {
-  window.removeEventListener("keyup", handleKeyUp);
-};
+const { addKeyEventListeners, removeKeyEventListeners } =
+  useKeyboardHandlers(keyHandlers);
 
 const openImage = (filename: string) => {
   selectedImage.value.url = getPreviewUrl(filename);

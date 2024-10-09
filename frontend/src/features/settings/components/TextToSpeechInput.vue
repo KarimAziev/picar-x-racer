@@ -16,7 +16,7 @@
     <TextInput
       placeholder="Text to Speech"
       @keydown.stop="doThis"
-      @keyup.stop="doThis"
+      @keyup.stop="handleKeyUp"
       @keypress.stop="doThis"
       @keyup.enter="handleKeyEnter"
       v-model="text"
@@ -46,8 +46,12 @@ import ButtonGroup from "primevue/buttongroup";
 import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 import TextToSpeechButton from "@/features/settings/components/TextToSpeechButton.vue";
+import { isNumber } from "@/util/guards";
+import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
 
 const store = useSettingsStore();
+const inputHistory = ref<string[]>([]);
+const currHistoryIdx = ref(0);
 
 const language = ref("en");
 const text = ref("");
@@ -61,6 +65,36 @@ const handleSelectBeforeHide = () => {
   store.inhibitKeyHandling = false;
 };
 
+const getNextOrPrevHistoryText = (n: number) => {
+  if (!isNumber(currHistoryIdx.value) || !inputHistory.value?.length) {
+    return;
+  }
+  const maxIdx = inputHistory.value.length - 1;
+  const incIdx = currHistoryIdx.value + n;
+  const newIdx =
+    incIdx >= 0 && incIdx <= maxIdx ? incIdx : n > 0 ? 0 : Math.abs(maxIdx);
+  const newText = inputHistory.value[newIdx];
+  if (newText) {
+    text.value = newText;
+    currHistoryIdx.value = newIdx;
+  }
+};
+
+const setNextHistoryText = () => {
+  getNextOrPrevHistoryText(1);
+};
+
+const setPrevHistoryText = () => {
+  getNextOrPrevHistoryText(-1);
+};
+
+const inputKeyHandlers: { [key: string]: Function } = {
+  ArrowUp: setPrevHistoryText,
+  ArrowDown: setNextHistoryText,
+};
+
+const { handleKeyUp } = useKeyboardHandlers(inputKeyHandlers);
+
 const sayText = async () => {
   const value = text.value;
   if (value && value.length) {
@@ -71,6 +105,7 @@ const handleKeyEnter = async () => {
   const value = text.value;
   if (value && value.length > 0) {
     text.value = "";
+    inputHistory.value?.push(value);
     await store.speakText(value, language.value);
   }
 };
