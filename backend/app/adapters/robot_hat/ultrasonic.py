@@ -5,7 +5,7 @@ This module provides an interface for interacting with the HC-SR04 ultrasonic se
 import asyncio
 import time
 
-from .pin import Pin
+from app.adapters.robot_hat.pin import Pin
 
 
 # 0 to 400 cm
@@ -61,16 +61,7 @@ class Ultrasonic:
             trig (Pin): The pin connected to the TRIG of the ultrasonic sensor.
             echo (Pin): The pin connected to the ECHO of the ultrasonic sensor.
             timeout (float): Maximum duration to wait for a pulse to return. Default is 0.1 seconds.
-
-        Raises:
-            TypeError: If `trig` or `echo` is not an instance of `robot_hat.Pin`.
-            RuntimeError: If the echo pin is not properly initialized.
         """
-        if not isinstance(trig, Pin):
-            raise TypeError("trig must be robot_hat.Pin object")
-        if not isinstance(echo, Pin):
-            raise TypeError("echo must be robot_hat.Pin object")
-
         self.timeout = timeout
 
         trig.close()
