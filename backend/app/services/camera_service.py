@@ -157,16 +157,22 @@ class CameraService(metaclass=SingletonMeta):
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
             self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
-            fps = self.cap.get(cv2.CAP_PROP_FPS)
 
-            self.logger.info(
-                f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}, FPS: {fps}"
+            width, height, fps = (
+                int(self.cap.get(x))
+                for x in (
+                    cv2.CAP_PROP_FRAME_WIDTH,
+                    cv2.CAP_PROP_FRAME_HEIGHT,
+                    cv2.CAP_PROP_FPS,
+                )
             )
+            self.video_feed_width = width
+            self.video_feed_height = height
+            self.video_feed_fps = fps
+
+            self.logger.info(f"Updated size: {width}x{height}, FPS: {fps}")
             if self.video_feed_device:
                 data = parse_v4l2_device_info(self.video_feed_device)
-                self.video_feed_width = data.get("width", self.video_feed_width)
-                self.video_feed_height = data.get("height", self.video_feed_height)
-                self.video_feed_fps = int(fps)
                 self.video_feed_pixel_format = data.get(
                     "pixel_format", self.video_feed_pixel_format
                 )
@@ -248,13 +254,13 @@ class CameraService(metaclass=SingletonMeta):
                         ]
                         avg_time_diff = sum(time_diffs) / len(time_diffs)
                         self.actual_fps = (
-                            1.0 / avg_time_diff if avg_time_diff > 0 else None
+                            int(1.0 / avg_time_diff) if avg_time_diff > 0 else None
                         )
 
-                        if self.actual_fps and round(self.actual_fps) != round(
-                            prev_fps
-                        ):
-                            self.logger.info(f"Real FPS {self.actual_fps}")
+                        if self.actual_fps is not None and self.actual_fps >= prev_fps:
+                            diff = self.actual_fps - prev_fps
+                            if abs(diff) >= 2:
+                                self.logger.info(f"Real FPS {self.actual_fps}")
 
                         if self.actual_fps is not None:
                             prev_fps = self.actual_fps
@@ -277,6 +283,8 @@ class CameraService(metaclass=SingletonMeta):
                         "timestamp": self.current_frame_timestamp,
                     }
                     self.detection_service.put_frame(frame_data)
+        except KeyboardInterrupt:
+            self.logger.info("Keyboard interrupt, stopping camera loop")
         except asyncio.CancelledError:
             self.logger.info("Camera loop is cancelled")
         except Exception as e:
