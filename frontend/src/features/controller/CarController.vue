@@ -47,7 +47,9 @@ const VideoBox = defineAsyncComponent({
 useCarController(controllerStore, settingsStore, popupStore);
 
 const { joystickZone } = useJoystickControl(controllerStore);
-const { joystickZone: joystickCam } = useJoystickControl(controllerStore);
+const { joystickZone: joystickCam } = useJoystickControl(controllerStore, {
+  position: { right: "20%", top: "50%" },
+});
 </script>
 
 <style scoped lang="scss">

@@ -1,9 +1,11 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import nipplejs from "nipplejs";
+import type { JoystickManagerOptions } from "nipplejs";
 import { useControllerStore } from "@/features/controller/store";
 
 export const useJoystickControl = (
   controllerStore: ReturnType<typeof useControllerStore>,
+  options?: JoystickManagerOptions,
 ) => {
   const joystickZone = ref<HTMLElement | null>(null);
   let joystickManager: nipplejs.JoystickManager;
@@ -39,6 +41,7 @@ export const useJoystickControl = (
         mode: "static",
         position: { left: "20%", bottom: "50%" },
         color: "#00ffbf",
+        ...options,
       });
 
       joystickManager.on("move", (_event, data) => {
