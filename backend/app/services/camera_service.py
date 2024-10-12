@@ -259,7 +259,7 @@ class CameraService(metaclass=SingletonMeta):
 
                         if self.actual_fps is not None:
                             diff = self.actual_fps - prev_fps
-                            if abs(diff) >= 2:
+                            if abs(diff) >= 1:
                                 self.logger.info(f"Real FPS {self.actual_fps}")
 
                         if self.actual_fps is not None:
@@ -273,6 +273,7 @@ class CameraService(metaclass=SingletonMeta):
 
                 self.img = frame
                 self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
+
                 if self.video_feed_record and self.video_writer is not None:
                     self.video_writer.write(self.stream_img)
                 if self.detection_service.video_feed_detect_mode:
