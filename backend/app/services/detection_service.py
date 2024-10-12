@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import queue
+import threading
 from typing import TYPE_CHECKING, Optional
 
 from app.util.detection_process import detection_process_func
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
 
 class DetectionService(metaclass=SingletonMeta):
     def __init__(self, file_manager: "FilesService"):
+        self.logger = Logger(__name__)
+        self.lock = threading.Lock()
         self.logger = Logger(__name__)
         self.stop_event = mp.Event()
         self.manager = mp.Manager()
@@ -28,50 +31,54 @@ class DetectionService(metaclass=SingletonMeta):
         )
 
     def start_detection_process(self):
-        if not self.detection_process or not self.detection_process.is_alive():
-            self.detection_process = mp.Process(
-                target=detection_process_func,
-                args=(
-                    self.stop_event,
-                    self.frame_queue,
-                    self.detection_queue,
-                    self.control_queue,
-                ),
-                daemon=True,
-            )
-            self.detection_process.start()
-            self.logger.info("Detection process has been started")
-        else:
-            self.logger.info("Skipping starting of detection process: already alive")
+        with self.lock:
+            if self.detection_process is None or not self.detection_process.is_alive():
+                self.detection_process = mp.Process(
+                    target=detection_process_func,
+                    args=(
+                        self.stop_event,
+                        self.frame_queue,
+                        self.detection_queue,
+                        self.control_queue,
+                    ),
+                    daemon=True,
+                )
+                self.detection_process.start()
+                self.logger.info("Detection process has been started")
+            else:
+                self.logger.info(
+                    "Skipping starting of detection process: already alive"
+                )
 
-        command = {
-            "command": "set_detect_mode",
-            "mode": self.video_feed_detect_mode,
-            "confidence": self.video_feed_confidence,
-        }
+            command = {
+                "command": "set_detect_mode",
+                "mode": self.video_feed_detect_mode,
+                "confidence": self.video_feed_confidence,
+            }
 
-        try:
-            self.put_command(command)
-        except BrokenPipeError as e:
-            self.logger.log_exception(f"BrokenPipeError", e)
-        except queue.Full:
-            self.logger.error("Queue is full")
-        except queue.Empty:
-            self.logger.error("Queue is empty")
-        except Exception as e:
-            self.logger.log_exception(f"BrokenPipeError", e)
+            try:
+                self.put_command(command)
+            except BrokenPipeError as e:
+                self.logger.log_exception(f"BrokenPipeError", e)
+            except queue.Full:
+                self.logger.error("Queue is full")
+            except queue.Empty:
+                self.logger.error("Queue is empty")
+            except Exception as e:
+                self.logger.log_exception(f"BrokenPipeError", e)
 
     def stop_detection_process(self):
-        if self.detection_process is None:
-            self.logger.info("Detection process is None, skipping stop")
-        elif self.detection_process.is_alive():
-            self.stop_event.set()
-            self.logger.info("Detection process setted stop_event")
-            self.detection_process.join()
+        with self.lock:
+            if self.detection_process is None:
+                self.logger.info("Detection process is None, skipping stop")
+            elif self.detection_process.is_alive():
+                self.stop_event.set()
+                self.logger.info("Detection process setted stop_event")
+                self.detection_process.join()
 
-            self.logger.info("Detection process has been stopped")
-        else:
-            self.logger.info("Detection process is not alive")
+                self.logger.info("Detection process has been stopped")
+            else:
+                self.logger.info("Detection process is not alive")
 
     def clear_stop_event(self):
         self.logger.info("Clearing stop event")
