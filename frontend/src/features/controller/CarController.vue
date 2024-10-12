@@ -26,7 +26,6 @@ import ToggleableView from "@/ui/ToggleableView.vue";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 import { useJoystickControl } from "@/features/controller/useJoysticManager";
 import { isMobileDevice } from "@/util/device";
-import { useJoystickCameraControl } from "@/features/controller/useJoysticCameraController";
 
 const settingsStore = useSettingsStore();
 const isMobile = computed(() => isMobileDevice());
@@ -48,7 +47,7 @@ const VideoBox = defineAsyncComponent({
 useCarController(controllerStore, settingsStore, popupStore);
 
 const { joystickZone } = useJoystickControl(controllerStore);
-const { joystickZone: joystickCam } = useJoystickCameraControl(controllerStore);
+const { joystickZone: joystickCam } = useJoystickControl(controllerStore);
 </script>
 
 <style scoped lang="scss">
