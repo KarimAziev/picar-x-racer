@@ -47,24 +47,31 @@ def update_video_feed_settings(
             "video_feed_fps",
             "video_feed_pixel_format",
         }
-        should_restart = False
+        keys_to_restart_detection_process = {
+            "video_feed_width",
+            "video_feed_height",
+            "video_feed_detect_mode",
+        }
+        detections_should_restart = False
+        should_restart_camera = False
 
         for key, value in payload.model_dump(exclude_unset=True).items():
             if key in keys_to_restart:
-                should_restart = True
+                should_restart_camera = True
+            if key in keys_to_restart_detection_process:
+                detections_should_restart = True
             if key is "video_feed_detect_mode":
                 detection_manager.video_feed_detect_mode = value
-                if (
-                    detection_manager.video_feed_detect_mode
-                    and camera_manager.camera_run
-                ):
-                    detection_manager.start_detection_process()
+                detections_should_restart = True
 
             elif hasattr(camera_manager, key):
                 logger.debug(f"Setting camera_manager {key} to {value}")
                 setattr(camera_manager, key, value)
 
-        if should_restart:
+        if detections_should_restart:
+            detection_manager.restart_detection_process()
+
+        if should_restart_camera:
             camera_manager.restart_camera()
 
     return {
