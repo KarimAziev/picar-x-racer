@@ -257,7 +257,7 @@ class CameraService(metaclass=SingletonMeta):
                             int(1.0 / avg_time_diff) if avg_time_diff > 0 else None
                         )
 
-                        if self.actual_fps is not None and self.actual_fps >= prev_fps:
+                        if self.actual_fps is not None:
                             diff = self.actual_fps - prev_fps
                             if abs(diff) >= 2:
                                 self.logger.info(f"Real FPS {self.actual_fps}")
