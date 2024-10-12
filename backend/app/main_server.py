@@ -71,21 +71,23 @@ tags_metadata = [
 async def lifespan(app: FastAPI):
     app.state.template_folder = TEMPLATE_FOLDER
     port = app.state.port if hasattr(app.state, "port") else 8000
+    reload = app.state.reload if hasattr(app.state, "reload") else False
 
     ip_address = get_ip_address()
     browser_url = f"http://{ip_address}:{port}"
     print_initial_message(browser_url)
+    signal_file_path = '/tmp/backend_ready.signal' if reload else None
 
-    signal_file_path = '/tmp/backend_ready.signal'
-    with open(signal_file_path, 'w') as f:
-        f.write('Backend is ready')
+    if signal_file_path:
+        with open(signal_file_path, 'w') as f:
+            f.write('Backend is ready')
 
     try:
         yield
     finally:
         logger.info("Stopping 🚗 application")
         detection_manager.stop_detection_process()
-        if os.path.exists(signal_file_path):
+        if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
         logger.info("Application 🚗 stopped")
 

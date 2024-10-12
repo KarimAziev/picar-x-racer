@@ -9,6 +9,7 @@ def start_main_app(port: int, log_level: str, reload: bool):
     from app.main_server import app
 
     app.state.port = port
+    app.state.reload = reload
     app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
     uvicorn_config = {
         "app": "app.main_server:app",
