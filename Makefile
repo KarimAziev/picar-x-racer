@@ -11,10 +11,12 @@ all: build-all-no-sudo
 # Development environment setup
 dev: dev-without-install
 
+# Development environment setup
+dev-debug:
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --reload --log-level=DEBUG"
+
 dev-without-install:
-	cd $(FRONTEND_DIR) && npx concurrently -k \
-		"bash -c 'cd .. && source $(VENV_DIR)/bin/activate && python3 -u $(BACKEND_DIR)/run.py --reload'" \
-		"bash -c 'sleep 4 && npm run dev'"
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --reload"
 
 dev-with-install: frontend-install backend-venv-install dev-without-install
 

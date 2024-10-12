@@ -7,6 +7,7 @@ from app.util.logger import Logger
 from app.util.reset_mcu_sync import reset_mcu_sync
 from app.util.setup_env import setup_env
 from run_car_control_app import start_control_app
+from run_frontend import start_frontend_app
 from run_main_app import start_main_app
 
 
@@ -23,7 +24,6 @@ def terminate_processes(processes):
 if __name__ == "__main__":
     try:
         mp.set_start_method("spawn", force=True)
-        print("spawned")
     except RuntimeError:
         pass
 
@@ -77,9 +77,15 @@ if __name__ == "__main__":
 
     processes = [main_app_process, websocket_app_process]
 
+    if reload:
+        frontend_dev_process = mp.Process(
+            target=start_frontend_app, args=(port, ws_port)
+        )
+        processes.append(frontend_dev_process)
+
     try:
-        main_app_process.start()
-        websocket_app_process.start()
+        for proc in processes:
+            proc.start()
 
         for process in processes:
             process.join()

@@ -1,4 +1,5 @@
 import logging.config
+import os
 
 from app.config.log_config import LOGGING_CONFIG
 
@@ -11,10 +12,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config.paths import FRONTEND_FOLDER, STATIC_FOLDER, TEMPLATE_FOLDER
+from app.util.ansi import print_initial_message
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 
 Logger.setup_from_env()
+
 logger = Logger(__name__)
 
 
@@ -70,17 +73,21 @@ async def lifespan(app: FastAPI):
     port = app.state.port if hasattr(app.state, "port") else 8000
 
     ip_address = get_ip_address()
-    BOLD = "\033[1m"
-    RED = "\033[91m"
-    YELLOW = "\033[93m"
-    RESET = "\033[0m"
+    browser_url = f"http://{ip_address}:{port}"
+    print_initial_message(browser_url)
 
-    print(
-        f"🚗 {BOLD}{RED}Open {YELLOW}http://{ip_address}:{port}{RED} in the browser{RESET}"
-    )
-    yield
-    detection_manager.stop_detection_process()
-    logger.info("Stopping application")
+    signal_file_path = '/tmp/backend_ready.signal'
+    with open(signal_file_path, 'w') as f:
+        f.write('Backend is ready')
+
+    try:
+        yield
+    finally:
+        logger.info("Stopping 🚗 application")
+        detection_manager.stop_detection_process()
+        if os.path.exists(signal_file_path):
+            os.remove(signal_file_path)
+        logger.info("Application 🚗 stopped")
 
 
 app = FastAPI(
