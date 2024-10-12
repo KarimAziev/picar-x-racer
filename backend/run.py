@@ -11,13 +11,17 @@ from run_frontend import start_frontend_app
 from run_main_app import start_main_app
 
 
-def terminate_processes(processes):
-    print("Terminating child processes...")
+def terminate_processes(processes: list[mp.Process]):
+    COLOR_YELLOW = "\033[33m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+    print(f"{BOLD}{COLOR_YELLOW}Terminating picar-x-racer processes...{RESET}")
     for process in processes:
         process.terminate()
     for process in processes:
         process.join()
-    print("Child processes terminated. Exiting.")
+
+    print(f"{BOLD}{COLOR_YELLOW}Child processes terminated. Exiting.{RESET}")
     sys.exit(0)
 
 
