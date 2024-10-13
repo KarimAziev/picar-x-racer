@@ -2,7 +2,7 @@
   <div class="wrapper">
     <div ref="joystickZone" class="joystick-zone" v-if="isMobile"></div>
     <div ref="joystickCam" class="joystick-camera" v-if="isMobile"></div>
-    <div class="content" v-if="!isSettingsOpened"><VideoBox /></div>
+    <div class="content"><VideoBox /></div>
 
     <GaugesBlock class="gauges" v-if="!isMobile">
       <ToggleableView setting="car_model_view">
@@ -31,7 +31,6 @@ const settingsStore = useSettingsStore();
 const isMobile = computed(() => isMobileDevice());
 const controllerStore = useControllerStore();
 const popupStore = usePopupStore();
-const isSettingsOpened = computed(() => popupStore.isOpen);
 
 const CarModelViewer = defineAsyncComponent({
   loader: () =>
