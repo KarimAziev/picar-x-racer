@@ -188,7 +188,7 @@ class I2C(object):
             reg_description = get_address_description(reg)
             data_description = get_value_description(data)
             self.logger.debug(
-                f"Writing a byte of data on I2C address {self.address} "
+                f"Writing a byte of data on I2C address {hex(self.address)} "
                 f"Register: [0x{reg:02X}] {reg_description} "
                 f"Data: [0x{data:02X}] {data_description}"
             )
@@ -211,7 +211,7 @@ class I2C(object):
             reg_description = get_address_description(reg)
             data_description = get_value_description(data)
             self.logger.debug(
-                f"Writing a single word (2 bytes) on I2C address {self.address} "
+                f"Writing a single word (2 bytes) on I2C address {hex(self.address)} "
                 f"Register: [0x{reg:02X}] {reg_description} "
                 f"Data: [0x{data:04X}] {data_description}"
             )
@@ -230,14 +230,14 @@ class I2C(object):
             None
         """
 
-        reg_description = get_address_description(reg)
-        data_descriptions = [get_value_description(d) for d in data]
-        self.logger.debug(
-            f"Writing blocks of data on I2C address {self.address} "
-            f"Register: [0x{reg:02X}] {reg_description} "
-            f"Data: {[f'0x{i:02X} {descr}' for i, descr in zip(data, data_descriptions)]}"
-        )
         if self.address:
+            reg_description = get_address_description(reg)
+            data_descriptions = [get_value_description(d) for d in data]
+            self.logger.debug(
+                f"Writing blocks of data on I2C address {hex(self.address)} "
+                f"Register: [0x{reg:02X}] {reg_description} "
+                f"Data: {[f'0x{i:02X} {descr}' for i, descr in zip(data, data_descriptions)]}"
+            )
             return self._smbus.write_i2c_block_data(self.address, reg, data)
 
     @_retry_wrapper
