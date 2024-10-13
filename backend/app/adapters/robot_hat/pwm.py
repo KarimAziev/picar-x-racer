@@ -10,15 +10,11 @@ delivered to a device. It does this by changing the width of the digital pulses 
 """
 
 import math
-from typing import TYPE_CHECKING
 
 from app.adapters.robot_hat.i2c import I2C
 from app.util.logger import Logger
 
 timer: list[dict[str, int]] = [{"arr": 1}] * 4
-
-if TYPE_CHECKING:
-    from app.adapters.robot_hat.i2c import I2C
 
 
 class PWM(I2C):
