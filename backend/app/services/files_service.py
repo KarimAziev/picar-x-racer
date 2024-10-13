@@ -104,6 +104,7 @@ class FilesService(metaclass=SingletonMeta):
 
     def save_cache(self):
         """Save the cache to a persistent file."""
+        ensure_parent_dir_exists(MUSIC_CACHE_FILE_PATH)
         with open(MUSIC_CACHE_FILE_PATH, "w") as cache_file:
             json.dump(self.cache, cache_file, indent=2)
 

@@ -35,7 +35,7 @@ FONT_PATH = expand_file_in_project_dir(
     "frontend/src/assets/font/tt-octosquares-regular.ttf"
 )
 
-MUSIC_CACHE_FILE_PATH = expand_file_in_project_dir("music_cache.json")
+MUSIC_CACHE_FILE_PATH = path.join(CONFIG_USER_DIR, "picar-x-racer/music_cache.json")
 
 MUSIC_DIR = expand_file_in_project_dir("music")
 SOUNDS_DIR = expand_file_in_project_dir("sounds")
