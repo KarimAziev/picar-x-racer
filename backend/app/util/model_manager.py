@@ -8,7 +8,7 @@ from app.util.print_memory_usage import print_memory_usage
 
 logger = Logger(__name__)
 
-debug = os.getenv("LOG_LEVEL", "INFO").upper() == "DEBUG"
+debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
 
 
 class ModelManager:
