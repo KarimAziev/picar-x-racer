@@ -4,10 +4,9 @@ A module to manage Servo motors using PWM (Pulse Width Modulation) control.
  - Set the pulse width for precise control.
 """
 
+from app.adapters.robot_hat.pwm import PWM
 from app.util.logger import Logger
 from app.util.mapping import mapping
-
-from .pwm import PWM
 
 
 class Servo(PWM):
