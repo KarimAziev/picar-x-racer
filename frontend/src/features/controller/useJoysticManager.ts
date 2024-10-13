@@ -19,16 +19,10 @@ export const useJoystickControl = (
         controllerStore.accelerate();
       } else if (direction > 135 && direction <= 225) {
         controllerStore.left();
-        if (controllerStore.speed === 0) {
-          controllerStore.accelerate();
-        }
       } else if (direction > 225 && direction <= 315) {
         controllerStore.decelerate();
       } else {
         controllerStore.right();
-        if (controllerStore.speed === 0) {
-          controllerStore.accelerate();
-        }
       }
     } else {
       controllerStore.slowdown();
