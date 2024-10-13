@@ -85,6 +85,7 @@ class VideoFeedUpdateSettings(BaseModel):
     - `video_feed_fps`: Frames per second for the video feed.
     - `video_feed_confidence`: Confidence level for video feed detection.
     - `video_feed_record`: Flag to record the video.
+    - `video_feed_render_fps`: Flag to render actual FPS.
     """
 
     video_feed_detect_mode: Union[str, None] = None
@@ -98,6 +99,7 @@ class VideoFeedUpdateSettings(BaseModel):
     video_feed_record: Union[bool, None] = None
     video_feed_device: Union[str, None] = None
     video_feed_pixel_format: Optional[str] = None
+    video_feed_render_fps: Optional[bool] = None
 
 
 class Settings(VideoFeedUpdateSettings):
@@ -212,6 +214,7 @@ class VideoFeedSettings(BaseModel):
     - `video_feed_height`: Height of the video feed.
     - `video_feed_record`: Flag to record the video.
     - `video_feed_device`: Device to use.
+    - `video_feed_render_fps`: Flag to render actual FPS.
     """
 
     video_feed_width: Optional[int] = None
@@ -225,6 +228,7 @@ class VideoFeedSettings(BaseModel):
     video_feed_record: bool
     video_feed_device: Optional[str] = None
     video_feed_pixel_format: Optional[str] = None
+    video_feed_render_fps: Optional[bool] = None
 
 
 class CameraDevicesResponse(BaseModel):

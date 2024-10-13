@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from app.util.logger import Logger
-from typing_extensions import Any
+from typing_extensions import Any, Union
 
 logger = Logger(__name__)
 
@@ -62,4 +62,18 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
             text_thickness,
         )
 
+    return frame
+
+
+def overlay_fps_render(frame: np.ndarray, fps: Union[int, float]) -> np.ndarray:
+    """
+    Put FPS text on the top right corner of the frame.
+
+    """
+    fg_color = (191, 255, 0)
+    text = f"{int(fps)}"
+
+    cv2.putText(
+        frame, text, (frame.shape[1] - 50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, fg_color, 2
+    )
     return frame

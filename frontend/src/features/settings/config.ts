@@ -43,6 +43,10 @@ export const toggleableSettings = {
     description: "Toggle showing music player",
     label: "Show music player",
   },
+  video_feed_render_fps: {
+    description: "Toggle rendering FPS",
+    label: "Show FPS",
+  },
 };
 
 export const ttsLanguages = [

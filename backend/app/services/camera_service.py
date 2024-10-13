@@ -14,7 +14,7 @@ from app.config.video_enhancers import frame_enhancers
 from app.services.detection_service import DetectionService
 from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
-from app.util.overlay_detecton import overlay_detection
+from app.util.overlay_detecton import overlay_detection, overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import encode
 
@@ -44,6 +44,9 @@ class CameraService(metaclass=SingletonMeta):
         self.detection_service = detection_service
         self.video_device_adapter = VideoDeviceAdapater()
         self.video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
+        self.video_feed_render_fps: Optional[str] = self.file_manager.settings.get(
+            "video_feed_render_fps"
+        )
         self.video_feed_enhance_mode: Optional[str] = self.file_manager.settings.get(
             "video_feed_enhance_mode"
         )
@@ -131,6 +134,9 @@ class CameraService(metaclass=SingletonMeta):
                 and self.detection_service.video_feed_detect_mode is not None
             ):
                 frame = overlay_detection(frame, self.last_detection_result)
+
+            if self.video_feed_render_fps and self.actual_fps:
+                frame = overlay_fps_render(frame, self.actual_fps)
 
             encode_params = (
                 [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality]
@@ -259,7 +265,7 @@ class CameraService(metaclass=SingletonMeta):
 
                         if self.actual_fps is not None:
                             diff = self.actual_fps - prev_fps
-                            if abs(diff) >= 1:
+                            if abs(diff) >= 2:
                                 self.logger.info(f"Real FPS {self.actual_fps}")
 
                         if self.actual_fps is not None:

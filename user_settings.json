@@ -12,6 +12,7 @@
   "video_feed_enhance_mode": null,
   "video_feed_format": ".jpg",
   "video_feed_fps": 30,
+  "video_feed_render_fps": true,
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,
