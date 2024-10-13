@@ -344,13 +344,22 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
     async def stop(self):
         """
-        Stop the motors.
+        Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a short delay between attempts.
+
+        The motor speed control is set to 0% pulse width twice for each motor, with a small delay (2 ms) between the
+        two executions. This is done to ensure that even if a brief command or glitch occurred that could have
+        prevented the motors from stopping on the first attempt, the second setting enforces that the motors come
+        to a full stop.
+
+        Steps followed:
+        1. Set both motors' speed to 0% pulse width.
+        2. Wait for 2 milliseconds.
+        3. Set both motors' speed to 0% pulse width again.
+        4. Wait an additional 2 milliseconds for any remaining process to finalize.
         """
         self.logger.info("Stopping motors")
         self.motor_speed_pins[0].pulse_width_percent(0)
         self.motor_speed_pins[1].pulse_width_percent(0)
-
-        self.logger.debug("Stopped 1 motor")
 
         await asyncio.sleep(0.002)
 
