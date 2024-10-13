@@ -1,6 +1,9 @@
 import multiprocessing as mp
 import sys
 
+from app.util.logger import Logger
+from app.util.reset_mcu_sync import reset_mcu_sync
+from app.util.setup_env import setup_env
 from run_car_control_app import start_control_app
 from run_frontend import start_frontend_app
 from run_main_app import start_main_app
@@ -25,11 +28,10 @@ if __name__ == "__main__":
         mp.set_start_method("spawn", force=True)
     except RuntimeError:
         pass
-    from app.util.reset_mcu_sync import reset_mcu_sync
-    from app.util.setup_env import setup_env
 
     setup_env()
     reset_mcu_sync()
+    Logger.setup_from_env()
 
     px_main_app_port, px_control_app_port, px_log_level, px_app_mode = setup_env()
 
