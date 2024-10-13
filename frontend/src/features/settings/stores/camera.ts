@@ -37,7 +37,6 @@ export interface DeviceOption {
 export interface State {
   data: CameraOpenRequestParams;
   loading: boolean;
-  cancelTokenSource?: AbortController;
   detectors: string[];
   enhancers: string[];
   devices: DeviceOption[];
@@ -56,7 +55,6 @@ const defaultState: State = {
   detectors: [],
   enhancers: [],
   devices: [],
-  cancelTokenSource: undefined,
 };
 
 export const useStore = defineStore("camera", {
@@ -65,19 +63,11 @@ export const useStore = defineStore("camera", {
     async updateCameraParams(payload?: Partial<CameraOpenRequestParams>) {
       const messager = useMessagerStore();
 
-      if (this.cancelTokenSource) {
-        this.cancelTokenSource.abort();
-      }
-
-      const cancelTokenSource = new AbortController();
-      this.cancelTokenSource = cancelTokenSource;
-
       try {
         this.loading = true;
         const { data } = await axios.post<CameraOpenRequestParams>(
           "/api/video-feed-settings",
           payload || this.data,
-          { signal: cancelTokenSource.signal },
         );
         this.data = data;
         Object.entries(data).forEach(([key, value]) => {
@@ -93,7 +83,6 @@ export const useStore = defineStore("camera", {
         }
       } finally {
         this.loading = false;
-        this.cancelTokenSource = undefined;
       }
       return this.data;
     },

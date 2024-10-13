@@ -47,13 +47,16 @@ onMounted(async () => {
   await camStore.fetchCurrentSettings();
   await camStore.fetchDevices();
   selectedDevice.value = getInitialValue();
-  isReady.value = true;
 });
 
 watch(
   () => selectedDevice.value,
   async (newVal) => {
-    if (!isReady.value || !isString(newVal)) {
+    if (!isString(newVal)) {
+      return;
+    }
+    if (!isReady.value) {
+      isReady.value = true;
       return;
     }
     const [device, pixelFormat, size, fps] = newVal.split(":");
