@@ -10,19 +10,28 @@ delivered to a device. It does this by changing the width of the digital pulses 
 """
 
 import math
+from typing import List, Optional, Union
 
 from app.adapters.robot_hat.i2c import I2C
 from app.util.logger import Logger
 
 timer: list[dict[str, int]] = [{"arr": 1}] * 4
 
+PRESCALER_SQRT_OFFSET = (
+    5  # The offset applied to the square root result in prescaler calculation.
+)
+PRESCALER_SEARCH_WINDOW = 10  # The window size of prescaler values to search for the optimal prescaler-period pair.
+
 
 class PWM(I2C):
     """
-    A class to manage Pulse Width Modulation (PWM) which allows you to control the power delivered to devices
-    like LEDs, motors, and other actuators.
+    A class to manage Pulse Width Modulation (PWM) - a technique used to encode a message into a pulsing signal.
 
-    ### Key Features:
+    In electronics, it often refers to a method of reducing the average power
+    delivered by an electrical signal by effectively chopping it up into
+    discrete parts.
+
+        ### Key Features:
     - Set and get the frequency of PWM signals.
     - Set and get the prescaler and period values for fine-tuning.
     - Set and get the pulse width and its percentage.
@@ -43,7 +52,7 @@ class PWM(I2C):
         - `pulse_width(self, pulse_width=None)`: Set or get the pulse width value.
         - `pulse_width_percent(self, pulse_width_percent=None)`: Set or get the pulse width percentage.
 
-    #### What is PWM?
+
     Pulse Width Modulation (PWM) is a technique used to encode information or control the amount of power
     delivered to a device. It does this by changing the width of the digital pulses applied to the device.
 
@@ -117,62 +126,120 @@ class PWM(I2C):
         self._freq = 50
         self.freq(50)
 
-    def _i2c_write(self, reg, value):
+    def _i2c_write(self, reg: int, value: int):
         """
-        Write a value to an I2C register.
+        Write a 16-bit value to a specified I2C register.
+
+        This method writes to a device over the I2C bus. It takes a 16-bit value, splits it into
+        a high byte (most significant byte) and a low byte (least significant byte), and writes
+        these two bytes sequentially to the given 8-bit register.
+
+        The operation is typically used to configure or send data to devices such as sensors,
+        memory chips, or display controllers via an I2C interface.
 
         Args:
-            reg (int): Register address.
-            value (int): Value to write.
+            reg (int): An 8-bit register address on the I2C device where the data will be written.
+            value (int): A 16-bit integer value that will be split into two 8-bit bytes. The
+                         most significant byte (high byte) will be sent first, followed by the
+                         least significant byte (low byte).
+
+        I2C Write Format:
+            The data sent via the `write` method is structured as:
+            [register address, high byte, low byte]
+
+            - The high byte is extracted by shifting the 16-bit value 8 bits to the right.
+            - The low byte is extracted using a bitwise AND with 0xFF to mask the upper bits.
+
+        Example:
+            If `reg = 0x05` and `value = 0x1234`:
+                - High byte (`value_h`) = 0x12
+                - Low byte (`value_l`) = 0x34
+            The data written would be [0x05, 0x12, 0x34].
 
         Returns:
             None
         """
-        value_h = value >> 8
-        value_l = value & 0xFF
+        value_h = (
+            value >> 8
+        )  # High byte: Shift right 8 bits to extract the most significant byte
+        value_l = (
+            value & 0xFF
+        )  # Low byte: Mask with 0xFF to keep only the least significant byte
+        # Write the register address followed by the high and low bytes to the I2C device
         self.write([reg, value_h, value_l])
 
     def freq(self, freq=None):
         """
         Set or get the PWM frequency.
 
+        This method dynamically finds appropriate values for the prescaler and period to achieve the requested PWM frequency.
+        The method evaluates a range of prescaler values along with the corresponding period and picks the combination
+        that yields the frequency closest to the requested value.
+
+        Note: The frequency should be in the range of 0 to 65535 Hz, but realistic values are usually lower.
+
         Args:
-            freq (Optional[float]): Frequency in Hz (0-65535). Leave blank to get the current frequency.
+            freq (Optional[float]): Desired PWM frequency in Hertz. If not provided, it returns the current frequency.
 
         Returns:
-            float: The current frequency.
+            float: The current PWM frequency if no argument is provided.
+
+        Example:
+            ```python
+            pwm_controller.freq(1000)  # Set PWM frequency to 1 kHz
+            current_freq = pwm_controller.freq()  # Get the current frequency
+            ```
+
+        Method Details:
+            1. It calculates several prescaler and period values based on the provided frequency.
+            2. For each combination, it checks how close the actual frequency (derived from prescaler and period)
+               is to the desired frequency.
+            3. It selects the best prescaler and period values that produce the closest result, and updates hardware registers.
         """
         if freq is None:
             return self._freq
 
         self._freq = int(freq)
-        result_ap = []  # List of [prescaler, period]
-        result_acy = []  # Accuracy list
 
-        st = int(math.sqrt(self.CLOCK / self._freq))
-        st -= 5
-        if st <= 0:
-            st = 1
-        for psc in range(st, st + 10):
+        result_ap: List[List[int]] = []
+        acurracy_list: List[float] = []
+
+        # Estimate prescaler values and adjust for accuracy
+        st = max(1, int(math.sqrt(self.CLOCK / self._freq)) - PRESCALER_SQRT_OFFSET)
+
+        for psc in range(st, st + PRESCALER_SEARCH_WINDOW):
             arr = int(self.CLOCK / self._freq / psc)
             result_ap.append([psc, arr])
-            result_acy.append(abs(self._freq - self.CLOCK / psc / arr))
+            acurracy_list.append(abs(self._freq - self.CLOCK / psc / arr))
 
-        i = result_acy.index(min(result_acy))
+        i = acurracy_list.index(min(acurracy_list))
+
         psc, arr = result_ap[i]
+
         self.logger.debug(f"Prescaler: {psc}, Period: {arr}")
+
         self.prescaler(psc)
         self.period(arr)
 
-    def prescaler(self, prescaler=None):
+    def prescaler(self, prescaler: Optional[Union[float, int]] = None):
         """
-        Set or get the prescaler value.
+        Set or get the PWM prescaler value.
+
+        The prescaler divides the clock input, which directly affects the speed of the PWM cycle.
+        A larger prescaler value means the PWM cycles more slowly.
 
         Args:
-            prescaler (Optional[int]): Prescaler value (0-65535). Leave blank to get the current prescaler value.
+            prescaler (Optional[int]): The prescaler value to set. It should be between 0 and 65535.
+                                       If not provided, the method will return the current prescaler value.
 
         Returns:
-            int: The current prescaler value.
+            int: The current prescaler value if no argument is passed.
+
+        ## Example:
+        ```python
+        pwm_controller.prescaler(1200)  # Set prescaler to 1200
+        current_prescaler = pwm_controller.prescaler()  # Get the current prescaler
+        ```
         """
         if prescaler is None:
             return self._prescaler
@@ -183,32 +250,63 @@ class PWM(I2C):
         self.logger.debug(f"Set prescaler to: {self._prescaler}")
         self._i2c_write(reg, self._prescaler - 1)
 
-    def period(self, arr=None):
+    def period(self, arr: Optional[int] = None):
         """
-        Set or get the period value.
+        Set or get the PWM period value.
+
+        The period defines the total number of clock ticks in one complete PWM cycle (both high and low pulses).
+        A longer period results in a slower cycle, while a shorter period makes the PWM frequency faster.
 
         Args:
-            arr (Optional[int]): Period value (0-65535). Leave blank to get the current period value.
+            arr (Optional[int]): Auto-Reload Register (ARR). New period value (0-65535).
+            If not provided, retrieves current period.
+
+        ### Visual Representation
+
+        Imagine the PWM signal as a repeating cycle of ON and OFF states.
+        The Auto-Reload Register value determines how long the entire cycle takes:
+
+        ```
+        |<----------- Period (arr) ----------->|
+        |                                      |
+        |   High Time    |    Low Time         |
+        |    (ON)        |     (OFF)           |
+        |*************** |---------------------|
+        ```
+
+        - **Period**: Total duration of one cycle (High Time + Low Time), determined by `arr`.
+
+        - **Frequency**: Number of cycles per second, calculated as `Frequency = Clock / (Prescaler × arr)`.
 
         Returns:
-            int: The current period value.
+            int: The current period value if no argument is passed.
+
+        Example:
+            ```python
+            pwm_controller.period(4095)  # Set period to 4095
+            current_period = pwm_controller.period()  # Get current period
+            ```
         """
         global timer
         if arr is None:
             return timer[self.timer]["arr"]
 
-        timer[self.timer]["arr"] = round(arr)
-        self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
+        arr = round(arr)
+
+        timer[self.timer]["arr"] = arr
+        self._freq = self.CLOCK / self._prescaler / arr
         reg = self.REG_ARR + self.timer
-        self.logger.debug(f"Set period to: {timer[self.timer]['arr']}")
-        self._i2c_write(reg, timer[self.timer]["arr"])
+
+        self.logger.debug(f"Set period to: {arr}")
+        self._i2c_write(reg, arr)
 
     def pulse_width(self, pulse_width=None):
         """
         Set or get the pulse width.
 
         Args:
-            pulse_width (Optional[float]): Pulse width value (0-65535). Leave blank to get the current pulse width.
+            pulse_width (Optional[float]): Pulse width value (0-65535).
+            Leave blank to get the current pulse width.
 
         Returns:
             float: The current pulse width value.
@@ -225,7 +323,8 @@ class PWM(I2C):
         Set or get the pulse width percentage.
 
         Args:
-            pulse_width_percent (Optional[float]): Pulse width percentage (0-100). Leave blank to get the current pulse width percentage.
+            pulse_width_percent (Optional[float]): Pulse width percentage (0-100).
+            Leave blank to get the current pulse width percentage.
 
         Returns:
             float: The current pulse width percentage.
