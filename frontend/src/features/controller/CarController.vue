@@ -1,6 +1,7 @@
 <template>
   <div class="wrapper">
-    <div ref="joystickZone" class="joystick-zone" v-if="isMobile"></div>
+    <div ref="joystickZoneY" class="joystick-zone-left" v-if="isMobile"></div>
+    <div ref="joystickZoneX" class="joystick-zone-right" v-if="isMobile"></div>
     <div ref="joystickCam" class="joystick-camera" v-if="isMobile"></div>
     <div class="content"><VideoBox /></div>
 
@@ -25,6 +26,7 @@ import { useControllerStore } from "@/features/controller/store";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 import { useJoystickControl } from "@/features/controller/useJoysticManager";
+import { useJoystickCameraControl } from "@/features/controller/useJoysticCameraController";
 import { isMobileDevice } from "@/util/device";
 
 const settingsStore = useSettingsStore();
@@ -45,15 +47,21 @@ const VideoBox = defineAsyncComponent({
 
 useCarController(controllerStore, settingsStore, popupStore);
 
-const { joystickZone } = useJoystickControl(controllerStore, {
+const { joystickZone: joystickZoneY } = useJoystickControl(controllerStore, {
   lockY: true,
-  follow: true,
+  position: { left: "15%", bottom: "55px" },
 });
-const { joystickZone: joystickCam } = useJoystickControl(controllerStore, {
-  position: { right: "20%", top: "50%" },
+const { joystickZone: joystickZoneX } = useJoystickControl(controllerStore, {
+  position: { right: "15%", bottom: "55px" },
   lockX: true,
-  follow: true,
 });
+const { joystickZone: joystickCam } = useJoystickCameraControl(
+  controllerStore,
+  {
+    position: { right: "50%", bottom: "55px" },
+    restOpacity: 0.1,
+  },
+);
 </script>
 
 <style scoped lang="scss">
@@ -74,31 +82,32 @@ const { joystickZone: joystickCam } = useJoystickControl(controllerStore, {
   left: 40%;
 }
 
-.joystick-zone,
-.joystick-camera {
-  position: fixed;
-  width: 50%;
+.joystick-zone-left,
+.joystick-zone-right {
   bottom: 0;
-  height: 90%;
 }
 
-.joystick-zone {
+.joystick-camera {
+  height: 50%;
+}
+
+.joystick-zone-left {
   left: 0;
   z-index: 30;
 }
 
-.joystick-camera {
+.joystick-zone-right {
   left: 50%;
   z-index: 30;
 }
 
-.joystick-zone.active,
-.joystick-camera.active {
+.joystick-zone-left.active,
+.joystick-zone-right.active {
   display: block;
 }
 
-.joystick-zone > h1,
-.joystick-camera > h1 {
+.joystick-zone-left > h1,
+.joystick-zone-right > h1 {
   position: absolute;
   padding: 10px 10px;
   margin: 0;
@@ -107,27 +116,31 @@ const { joystickZone: joystickCam } = useJoystickControl(controllerStore, {
   bottom: 0;
 }
 
-.joystick-zone.dynamic {
+.joystick-camera.static {
   background: rgba(0, 0, 255, 0.1);
 }
 
-.joystick-zone.semi {
+.joystick-zone-left.dynamic {
+  background: rgba(0, 0, 255, 0.1);
+}
+
+.joystick-zone-left.semi {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.joystick-zone.static {
+.joystick-zone-left.static {
   background: var(--robo-color-text);
 }
 
-.joystick-camera.dynamic {
+.joystick-zone-right.dynamic {
   background: rgba(0, 0, 255, 0.1);
 }
 
-.joystick-camera.semi {
+.joystick-zone-right.semi {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.joystick-camera.static {
+.joystick-zone-right.static {
   background: rgba(255, 0, 0, 0.1);
 }
 </style>
