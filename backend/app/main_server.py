@@ -70,17 +70,20 @@ tags_metadata = [
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.template_folder = TEMPLATE_FOLDER
-    port = app.state.port if hasattr(app.state, "port") else 8000
-    reload = app.state.reload if hasattr(app.state, "reload") else False
+    port = os.getenv("PX_MAIN_APP_PORT")
+    mode = os.getenv("PX_APP_MODE")
 
     ip_address = get_ip_address()
     browser_url = f"http://{ip_address}:{port}"
     print_initial_message(browser_url)
-    signal_file_path = '/tmp/backend_ready.signal' if reload else None
+    signal_file_path = '/tmp/backend_ready.signal' if mode == "dev" else None
 
     if signal_file_path:
-        with open(signal_file_path, 'w') as f:
-            f.write('Backend is ready')
+        try:
+            with open(signal_file_path, 'w') as f:
+                f.write('Backend is ready')
+        except Exception as e:
+            logger.error(f"Failed to create signal file: {e}")
 
     try:
         yield

@@ -1,6 +1,7 @@
 import os
 import subprocess
 import time
+from typing import Union
 
 
 def wait_for_backend_ready(signal_file_path: str, timeout: int = 60):
@@ -25,7 +26,7 @@ def wait_for_backend_ready(signal_file_path: str, timeout: int = 60):
     return False
 
 
-def start_frontend_app(port: int = 8000, ws_port: int = 8001):
+def start_frontend_app(port: Union[int, str] = 8000, ws_port: int = 8001):
     """
     Starts the frontend application using `npm run dev`, but after making sure the backend is ready.
     """

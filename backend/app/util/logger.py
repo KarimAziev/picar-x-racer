@@ -95,7 +95,8 @@ class Logger:
 
     @staticmethod
     def setup_from_env():
-        log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+        log_level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
+        print(f"log_level {log_level}")
         Logger.setup_global(log_level)
 
     @staticmethod
