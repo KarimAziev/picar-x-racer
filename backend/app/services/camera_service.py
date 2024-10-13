@@ -53,9 +53,6 @@ class CameraService(metaclass=SingletonMeta):
         self.video_feed_quality = self.file_manager.settings.get(
             "video_feed_quality", 100
         )
-        self.video_feed_format = self.file_manager.settings.get(
-            "video_feed_format", ".jpg"
-        )
 
         self.video_feed_format = self.file_manager.settings.get(
             "video_feed_format", ".jpg"
@@ -81,8 +78,6 @@ class CameraService(metaclass=SingletonMeta):
         )
 
         self.video_writer: Optional[cv2.VideoWriter] = None
-
-        self.frame_timestamps = collections.deque(maxlen=30)
         self.actual_fps = None
 
         self.camera_run = False
@@ -212,6 +207,7 @@ class CameraService(metaclass=SingletonMeta):
 
         max_failed_attempt_count = 10
         prev_fps = 0.0
+        self.frame_timestamps = collections.deque(maxlen=30)
 
         try:
             while self.camera_run and self.cap:
@@ -250,6 +246,7 @@ class CameraService(metaclass=SingletonMeta):
                         continue
                 else:
                     failed_counter = 0
+
                     self.frame_timestamps.append(frame_start_time)
                     if len(self.frame_timestamps) >= 2:
                         time_diffs = [
@@ -260,16 +257,14 @@ class CameraService(metaclass=SingletonMeta):
                         ]
                         avg_time_diff = sum(time_diffs) / len(time_diffs)
                         self.actual_fps = (
-                            int(1.0 / avg_time_diff) if avg_time_diff > 0 else None
+                            1.0 / avg_time_diff if avg_time_diff > 0 else None
                         )
 
                         if self.actual_fps is not None:
                             diff = self.actual_fps - prev_fps
                             if abs(diff) >= 2:
                                 self.logger.info(f"Real FPS {self.actual_fps}")
-
-                        if self.actual_fps is not None:
-                            prev_fps = self.actual_fps
+                                prev_fps = self.actual_fps
 
                 frame_enhancer = (
                     frame_enhancers.get(self.video_feed_enhance_mode)
@@ -393,10 +388,12 @@ class CameraService(metaclass=SingletonMeta):
             os.makedirs(DEFAULT_VIDEOS_PATH)
 
         fps = (
-            self.video_feed_fps
-            if self.video_feed_fps is not None
-            else self.actual_fps or 30
+            self.actual_fps
+            if self.actual_fps is not None
+            else self.video_feed_fps or 30.0
         )
+        if isinstance(fps, int):
+            fps = float(fps)
 
         name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
         video_path = os.path.join(DEFAULT_VIDEOS_PATH, name)

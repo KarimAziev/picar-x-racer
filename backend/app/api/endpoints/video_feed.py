@@ -40,6 +40,8 @@ def update_video_feed_settings(
 
         dict_data = payload.model_dump(exclude_unset=True)
         logger.info(f"Updating feed settings: {dict_data}")
+        current_width = camera_manager.video_feed_width
+        current_height = camera_manager.video_feed_height
         keys_to_restart = {
             "video_feed_device",
             "video_feed_width",
@@ -47,32 +49,34 @@ def update_video_feed_settings(
             "video_feed_fps",
             "video_feed_pixel_format",
         }
-        keys_to_restart_detection_process = {
-            "video_feed_width",
-            "video_feed_height",
-            "video_feed_detect_mode",
-        }
-        detections_should_restart = False
+
         should_restart_camera = False
 
         for key, value in payload.model_dump(exclude_unset=True).items():
             if key in keys_to_restart:
                 should_restart_camera = True
-            if key in keys_to_restart_detection_process:
-                detections_should_restart = True
+
             if key is "video_feed_detect_mode":
                 detection_manager.video_feed_detect_mode = value
-                detections_should_restart = True
-
             elif hasattr(camera_manager, key):
                 logger.debug(f"Setting camera_manager {key} to {value}")
                 setattr(camera_manager, key, value)
 
-        if detections_should_restart:
-            detection_manager.restart_detection_process()
-
         if should_restart_camera:
             camera_manager.restart_camera()
+
+        if (
+            current_width != camera_manager.video_feed_width
+            and current_height != camera_manager.video_feed_height
+            and detection_manager.detection_process
+            and detection_manager.detection_process.is_alive()
+        ):
+            detection_manager.restart_detection_process()
+        elif detection_manager.video_feed_detect_mode and (
+            detection_manager.detection_process is None
+            or not detection_manager.detection_process.is_alive()
+        ):
+            detection_manager.start_detection_process()
 
     return {
         "video_feed_detect_mode": detection_manager.video_feed_detect_mode,

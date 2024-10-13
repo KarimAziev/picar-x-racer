@@ -75,8 +75,8 @@ class DetectionService(metaclass=SingletonMeta):
                 self.stop_event.set()
                 self.logger.info("Detection process setted stop_event")
                 self.detection_process.join()
-
                 self.logger.info("Detection process has been stopped")
+                self.detection_process = None
             else:
                 self.logger.info("Detection process is not alive")
 
