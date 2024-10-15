@@ -291,7 +291,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
            value (int): Desired angle
         """
         constrained_value = constrain(value, self.CAM_TILT_MIN, self.CAM_TILT_MAX)
-        angle_value = -(constrained_value + self.cam_tilt_cali_val)
+        angle_value = -1 * (constrained_value + -1 * self.cam_tilt_cali_val)
 
         self.logger.debug(f"Setting camera tilt angle to {angle_value}")
         self.cam_tilt.angle(angle_value)
