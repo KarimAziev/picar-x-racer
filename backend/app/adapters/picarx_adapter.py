@@ -276,8 +276,9 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            value (int): Desired angle
         """
+
         constrained_value = constrain(value, self.CAM_PAN_MIN, self.CAM_PAN_MAX)
-        angle_value = -(constrained_value + self.cam_pan_cali_val)
+        angle_value = -1 * (constrained_value + -1 * self.cam_pan_cali_val)
 
         self.logger.debug(f"Setting camera pan angle to {angle_value}")
         self.cam_pan.angle(angle_value)
