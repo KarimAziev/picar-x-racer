@@ -13,6 +13,7 @@ import math
 from typing import List, Optional, Union
 
 from app.adapters.robot_hat.i2c import I2C
+from app.adapters.robot_hat.pin_descriptions import pin_descriptions
 from app.util.logger import Logger
 
 timer: list[dict[str, int]] = [{"arr": 1}] * 4
@@ -106,6 +107,15 @@ class PWM(I2C):
         else:
             super().__init__(address, *args, **kwargs)
 
+        self._chan_desc = pin_descriptions.get(
+            (
+                channel
+                if isinstance(channel, str)
+                else f"P{channel}" if isinstance(channel, int) else "unknown"
+            ),
+            "unknown",
+        )
+
         self.logger = Logger(__name__)
 
         if isinstance(channel, str):
@@ -119,6 +129,11 @@ class PWM(I2C):
             if channel > 15 or channel < 0:
                 msg = f'channel must be in range of 0-15, not "{channel}"'
                 raise ValueError(msg)
+
+        if isinstance(self.address, int):
+            self.logger.debug(f"Initted PWM at the address {hex(self.address)}")
+        else:
+            self.logger.warning(f"PWM address is not found")
 
         self.channel = channel
         self.timer = int(channel / 4)
@@ -216,7 +231,9 @@ class PWM(I2C):
 
         psc, arr = result_ap[i]
 
-        self.logger.debug(f"Prescaler: {psc}, Period: {arr}")
+        self.logger.debug(
+            f"[{self._chan_desc}]: frequency {self._freq} -> prescaler {psc}, period: {arr}"
+        )
 
         self.prescaler(psc)
         self.period(arr)
@@ -247,7 +264,9 @@ class PWM(I2C):
         self._prescaler = round(prescaler)
         self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
         reg = self.REG_PSC + self.timer
-        self.logger.debug(f"Set prescaler to: {self._prescaler}")
+        self.logger.debug(
+            f"[{self._chan_desc}]: Set prescaler to PWM {self._prescaler - 1} at timer {self.timer} to register: {hex(reg)}"
+        )
         self._i2c_write(reg, self._prescaler - 1)
 
     def period(self, arr: Optional[int] = None):
@@ -276,7 +295,7 @@ class PWM(I2C):
 
         - **Period**: Total duration of one cycle (High Time + Low Time), determined by `arr`.
 
-        - **Frequency**: Number of cycles per second, calculated as `Frequency = Clock / (Prescaler × arr)`.
+        - **Frequency**: Number of cycles per second, calculated as `Frequency = Clock / arr`.
 
         Returns:
             int: The current period value if no argument is passed.
@@ -297,7 +316,9 @@ class PWM(I2C):
         self._freq = self.CLOCK / self._prescaler / arr
         reg = self.REG_ARR + self.timer
 
-        self.logger.debug(f"Set period to: {arr}")
+        self.logger.debug(
+            f"[{self._chan_desc}]: Set period to PWM {arr} at timer {self.timer} to register: {hex(reg)}"
+        )
         self._i2c_write(reg, arr)
 
     def pulse_width(self, pulse_width=None):
@@ -316,6 +337,9 @@ class PWM(I2C):
 
         self._pulse_width = int(pulse_width)
         reg = self.REG_CHN + self.channel
+        self.logger.debug(
+            f"[{self._chan_desc}]: writing pulse width {self._pulse_width}  to register: {hex(reg)}"
+        )
         self._i2c_write(reg, self._pulse_width)
 
     def pulse_width_percent(self, pulse_width_percent=None):

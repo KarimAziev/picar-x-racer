@@ -51,16 +51,16 @@ class PicarxAdapter(metaclass=SingletonMeta):
         cali_val = self.config_file.get("picarx_dir_servo")
         cali_val_float = float(cali_val) if cali_val else 0.0
         self.dir_cali_val = cali_val_float
-        self.logger.debug(f"dir_cali_val {self.dir_cali_val}")
+        self.logger.debug(f"Initted dir_cali_val {self.dir_cali_val}")
 
         self.cam_pan_cali_val = float(
             self.config_file.get("picarx_cam_pan_servo", default_value=0) or 0
         )
-        self.logger.debug(f"init cam_pan_cali_val with {self.cam_pan_cali_val}")
+        self.logger.debug(f"Initted cam_pan_cali_val with {self.cam_pan_cali_val}")
         self.cam_tilt_cali_val = float(
             self.config_file.get("picarx_cam_tilt_servo", default_value=0) or 0
         )
-        self.logger.debug(f"init cam_tilt_cali_val with {self.cam_tilt_cali_val}")
+        self.logger.debug(f"Initted cam_tilt_cali_val with {self.cam_tilt_cali_val}")
         # Set servos to init angle
         self.dir_servo_pin.angle(self.dir_cali_val)
         self.cam_pan.angle(self.cam_pan_cali_val)

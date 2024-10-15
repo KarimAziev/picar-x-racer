@@ -109,6 +109,7 @@ class Settings(VideoFeedUpdateSettings):
     Attributes:
     - `default_music`: The default music to play.
     - `default_sound`: The default sound to play.
+    - `default_tts_language`: The default language to use in text-to-speech.
     - `texts`: A list of text to speech items.
     - `fullscreen`: Indicator if fullscreen mode is enabled.
     - `video_feed_quality`: Quality level of the video feed.
@@ -133,6 +134,7 @@ class Settings(VideoFeedUpdateSettings):
 
     default_music: Optional[str] = None
     default_sound: Optional[str] = None
+    default_tts_language: Optional[str] = None
     texts: Optional[List[TextToSpeechItem]] = None
     fullscreen: Optional[bool] = None
     battery_full_voltage: Optional[float] = None
