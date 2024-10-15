@@ -38,9 +38,9 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "@/features/settings/stores";
+import { ref, watch } from "vue";
 import TextInput from "primevue/inputtext";
-import { ref } from "vue";
+import { useSettingsStore } from "@/features/settings/stores";
 import ButtonGroup from "primevue/buttongroup";
 
 import { ttsLanguages } from "@/features/settings/config";
@@ -53,7 +53,7 @@ const store = useSettingsStore();
 const inputHistory = ref<string[]>([]);
 const currHistoryIdx = ref(0);
 
-const language = ref("en");
+const language = ref(store.settings.default_tts_language);
 const text = ref("");
 
 const doThis = () => {};
@@ -109,6 +109,13 @@ const handleKeyEnter = async () => {
     await store.speakText(value, language.value);
   }
 };
+
+watch(
+  () => store.settings.default_tts_language,
+  (newValue) => {
+    language.value = newValue;
+  },
+);
 </script>
 
 <style scoped lang="scss">

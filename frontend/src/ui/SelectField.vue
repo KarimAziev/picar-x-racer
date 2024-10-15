@@ -1,6 +1,6 @@
 <template>
   <div class="p-field" :class="props.fieldClassName">
-    <span class="label" v-if="label" :class="labelClassName" :for="field"
+    <span class="label" v-if="label" :class="labelClassName"
       >{{ label }}
       <span v-if="message" class="message">
         {{ message }}

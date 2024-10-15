@@ -1,4 +1,16 @@
 <template>
+  <div>
+    Default Language
+    <SelectField
+      fieldClassName="language"
+      field="default_tts_language"
+      filter
+      optionLabel="label"
+      optionValue="value"
+      v-model="store.settings.default_tts_language"
+      :options="ttsLanguages"
+    />
+  </div>
   <DataTable :value="items">
     <template #header>
       <ButtonGroup>
@@ -29,7 +41,7 @@
 
         <Tag
           v-else
-          v-tooltip="'Click to make it default text'"
+          v-tooltip="'Click to set as default text'"
           class="tag"
           @click="markDefault(slotProps.data)"
           severity="secondary"

@@ -47,6 +47,7 @@ export interface Settings
     CameraOpenRequestParams {
   default_sound: string;
   default_music?: string;
+  default_tts_language: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
   battery_full_voltage: number;
   auto_measure_distance_delay_ms: number;
@@ -72,6 +73,7 @@ const defaultState: State = {
     fullscreen: true,
     keybindings: {},
     default_sound: "",
+    default_tts_language: "en",
     texts: [],
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
@@ -182,6 +184,7 @@ export const useStore = defineStore("settings", {
         return await this.saveTexts();
       }
       const isPrimarySettigns = popupStore.tab === SettingsTab.GENERAL;
+
       const data = isPrimarySettigns
         ? omit(["keybindings"], this.settings)
         : { keybindings: this.settings.keybindings };
@@ -203,6 +206,7 @@ export const useStore = defineStore("settings", {
       try {
         await axios.post("/api/settings", {
           texts: this.settings.texts.filter((item) => !!item.text.length),
+          default_tts_language: this.settings.default_tts_language,
         });
 
         messager.success("Settings saved");
