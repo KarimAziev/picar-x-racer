@@ -106,18 +106,21 @@ class CarService(metaclass=SingletonMeta):
 
     async def handle_set_servo_dir_angle(self, payload, _: WebSocket):
         angle = payload or 0
-        await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
-        self.servo_dir_angle = angle
+        if self.servo_dir_angle != angle:
+            await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
+            self.servo_dir_angle = angle
 
     async def handle_set_cam_tilt_angle(self, payload, _):
         angle = payload
-        await asyncio.to_thread(self.px.set_cam_tilt_angle, angle)
-        self.cam_tilt_angle = angle
+        if self.cam_tilt_angle != angle:
+            await asyncio.to_thread(self.px.set_cam_tilt_angle, angle)
+            self.cam_tilt_angle = angle
 
     async def handle_set_cam_pan_angle(self, payload, _: WebSocket):
         angle = payload
-        await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
-        self.cam_pan_angle = angle
+        if self.cam_pan_angle != angle:
+            await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
+            self.cam_pan_angle = angle
 
     async def handle_avoid_obstacles(self, _, websocket: WebSocket):
         response = await self.avoid_obstacles_service.toggle_avoid_obstacles_mode()
@@ -136,7 +139,8 @@ class CarService(metaclass=SingletonMeta):
         """
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
-        await self.move(direction, speed)
+        if self.direction != direction or speed != self.speed:
+            await self.move(direction, speed)
 
     async def respond_with_distance(self, action, websocket: WebSocket):
         """
@@ -171,6 +175,7 @@ class CarService(metaclass=SingletonMeta):
             await asyncio.to_thread(self.px.backward, speed)
 
         self.speed = speed
+
         self.direction = direction
 
     async def get_distance(self):
