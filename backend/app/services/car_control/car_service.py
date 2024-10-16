@@ -93,7 +93,6 @@ class CarService(metaclass=SingletonMeta):
         elif action in actions_map:
             func = actions_map[action]
             await func(payload, websocket)
-            await self.handle_notify_client(websocket)
 
         else:
             error_msg = f"Unknown action: {action}"

@@ -36,6 +36,7 @@ export default defineConfig({
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,
         secure: false,
+        ws: true,
       },
       "/px/api": {
         target: `http://127.0.0.1:${wsAppPort}/`,
@@ -44,6 +45,7 @@ export default defineConfig({
       },
       "/px/ws": {
         target: `ws://127.0.0.1:${wsAppPort}/`,
+        ws: true,
         changeOrigin: true,
         secure: false,
       },
