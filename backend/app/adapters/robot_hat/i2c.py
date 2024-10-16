@@ -15,7 +15,6 @@ communicate with one another using just two lines:
 """
 
 import errno
-import multiprocessing
 from typing import Any, List, Optional, Union
 
 from app.adapters.robot_hat.address_descriptions import (
@@ -119,7 +118,6 @@ class I2C(object):
     """
 
     RETRY = 5
-    i2c_lock = multiprocessing.Value('i', 0)
     """Number of retry attempts for I2C communication"""
 
     def __init__(
@@ -166,15 +164,12 @@ class I2C(object):
             None
         """
 
-        with I2C.i2c_lock.get_lock():
-            description = get_value_description(data)
-            self.logger.debug(
-                f"Writing a single byte to the I2C address {self.address} "
-                f"Data: [0x{data:02X}] {description}"
-            )
-            result = (
-                self._smbus.write_byte(self.address, data) if self.address else None
-            )
+        description = get_value_description(data)
+        self.logger.debug(
+            f"Writing a single byte to the I2C address {self.address} "
+            f"Data: [0x{data:02X}] {description}"
+        )
+        result = self._smbus.write_byte(self.address, data) if self.address else None
         return result
 
     @_retry_wrapper
@@ -190,21 +185,14 @@ class I2C(object):
             None
         """
         if self.address:
-            with I2C.i2c_lock.get_lock():
-                reg_description = get_address_description(reg)
-                data_description = get_value_description(data)
-                self.logger.debug(
-                    f"Writing a byte of data on I2C address {hex(self.address)} "
-                    f"Register: [0x{reg:02X}] {reg_description} "
-                    f"Data: [0x{data:02X}] {data_description}"
-                )
-                return self._smbus.write_byte_data(self.address, reg, data)
-        else:
-            self.logger.warning(
-                f"Writing a byte of data on None I2C address"
-                f"Register: [0x{reg:02X}] {get_address_description(reg)} "
-                f"Data: [0x{data:02X}] {get_value_description(data)}"
+            reg_description = get_address_description(reg)
+            data_description = get_value_description(data)
+            self.logger.debug(
+                f"Writing a byte of data on I2C address {hex(self.address)} "
+                f"Register: [0x{reg:02X}] {reg_description} "
+                f"Data: [0x{data:02X}] {data_description}"
             )
+            return self._smbus.write_byte_data(self.address, reg, data)
 
     @_retry_wrapper
     def _write_word_data(self, reg: int, data: int) -> Optional[int]:
@@ -220,21 +208,14 @@ class I2C(object):
         """
 
         if self.address:
-            with I2C.i2c_lock.get_lock():
-                reg_description = get_address_description(reg)
-                data_description = get_value_description(data)
-                self.logger.debug(
-                    f"Writing a single word (2 bytes) on I2C address {hex(self.address)} "
-                    f"Register: [0x{reg:02X}] {reg_description} "
-                    f"Data: [0x{data:04X}] {data_description}"
-                )
-                return self._smbus.write_word_data(self.address, reg, data)
-        else:
-            self.logger.warning(
-                f"Writing a word of data on None I2C address"
-                f"Register: [0x{reg:02X}] {get_address_description(reg)} "
-                f"Data: [0x{data:02X}] {get_value_description(data)}"
+            reg_description = get_address_description(reg)
+            data_description = get_value_description(data)
+            self.logger.debug(
+                f"Writing a single word (2 bytes) on I2C address {hex(self.address)} "
+                f"Register: [0x{reg:02X}] {reg_description} "
+                f"Data: [0x{data:04X}] {data_description}"
             )
+            return self._smbus.write_word_data(self.address, reg, data)
 
     @_retry_wrapper
     def _write_i2c_block_data(self, reg: int, data: List[int]) -> Optional[int]:
@@ -250,21 +231,14 @@ class I2C(object):
         """
 
         if self.address:
-            with I2C.i2c_lock.get_lock():
-                reg_description = get_address_description(reg)
-                data_descriptions = [get_value_description(d) for d in data]
-                self.logger.debug(
-                    f"Writing blocks of data on I2C address {hex(self.address)} "
-                    f"Register: [0x{reg:02X}] {reg_description} "
-                    f"Data: {[f'0x{i:02X} {descr}' for i, descr in zip(data, data_descriptions)]}"
-                )
-                return self._smbus.write_i2c_block_data(self.address, reg, data)
-        else:
-            self.logger.warning(
-                f"Writing a block of data on None I2C address"
-                f"Register: [0x{reg:02X}] {get_address_description(reg)} "
-                f"Data: [0x{data:02X}] {get_value_description(data)}"
+            reg_description = get_address_description(reg)
+            data_descriptions = [get_value_description(d) for d in data]
+            self.logger.debug(
+                f"Writing blocks of data on I2C address {hex(self.address)} "
+                f"Register: [0x{reg:02X}] {reg_description} "
+                f"Data: {[f'0x{i:02X} {descr}' for i, descr in zip(data, data_descriptions)]}"
             )
+            return self._smbus.write_i2c_block_data(self.address, reg, data)
 
     @_retry_wrapper
     def _read_byte(self) -> Optional[int]:
@@ -276,16 +250,13 @@ class I2C(object):
         """
 
         if self.address:
-            with I2C.i2c_lock.get_lock():
-                result = self._smbus.read_byte(self.address)
-                description = get_value_description(result)
-                self.logger.debug(
-                    f"Read a single byte on the I2C address {self.address}"
-                    f"Result: [0x{result:02X}] {description}"
-                )
-                return result
-        else:
-            self.logger.warning(f"Reading a byte on None I2C address")
+            result = self._smbus.read_byte(self.address)
+            description = get_value_description(result)
+            self.logger.debug(
+                f"Read a single byte on the I2C address {self.address}"
+                f"Result: [0x{result:02X}] {description}"
+            )
+            return result
 
     @_retry_wrapper
     def _read_byte_data(self, reg: int) -> Optional[int]:
@@ -300,18 +271,13 @@ class I2C(object):
         """
 
         if self.address:
-            with I2C.i2c_lock.get_lock():
-                result = self._smbus.read_byte_data(self.address, reg)
-                reg_description = get_address_description(reg)
-                result_description = get_value_description(result)
-                self.logger.debug(
-                    f"Read a byte of data: [0x{reg:02X}] {reg_description} [0x{result:02X}] {result_description}"
-                )
-                return result
-        else:
-            self.logger.warning(
-                f"Read a byte of data on None address [0x{reg:02X}] {get_address_description(reg)}"
+            result = self._smbus.read_byte_data(self.address, reg)
+            reg_description = get_address_description(reg)
+            result_description = get_value_description(result)
+            self.logger.debug(
+                f"Read a byte of data: [0x{reg:02X}] {reg_description} [0x{result:02X}] {result_description}"
             )
+            return result
 
     @_retry_wrapper
     def _read_word_data(self, reg: int) -> Optional[List[int]]:
@@ -326,22 +292,17 @@ class I2C(object):
         """
 
         if self.address:
-            with I2C.i2c_lock.get_lock():
-                result = self._smbus.read_word_data(self.address, reg)
-                result_list = [result & 0xFF, (result >> 8) & 0xFF]
-                reg_description = get_address_description(reg)
-                result_description = get_value_description(result)
+            result = self._smbus.read_word_data(self.address, reg)
+            result_list = [result & 0xFF, (result >> 8) & 0xFF]
+            reg_description = get_address_description(reg)
+            result_description = get_value_description(result)
 
-                self.logger.debug(
-                    f"Read a word of data on the I2C address {self.address}"
-                    f"Register: [0x{reg:02X}] {reg_description}"
-                    f"Result: [0x{result:04X}] {result_description}"
-                )
-                return result_list
-        else:
-            self.logger.warning(
-                f"Read a word of data on None address [0x{reg:02X}] {get_address_description(reg)}"
+            self.logger.debug(
+                f"Read a word of data on the I2C address {self.address}"
+                f"Register: [0x{reg:02X}] {reg_description}"
+                f"Result: [0x{result:04X}] {result_description}"
             )
+            return result_list
 
     @_retry_wrapper
     def _read_i2c_block_data(self, reg: int, num: int) -> Optional[List[int]]:
@@ -357,20 +318,15 @@ class I2C(object):
         """
 
         if self.address:
-            with I2C.i2c_lock.get_lock():
-                result = self._smbus.read_i2c_block_data(self.address, reg, num)
-                reg_description = get_address_description(reg)
-                result_descriptions = [get_value_description(r) for r in result]
-                self.logger.debug(
-                    f"Read blocks of data on the I2C address {self.address}"
-                    f"from a register [0x{reg:02X}] {reg_description}"
-                    f"Result: {[f'0x{i:02X} {descr}' for i, descr in zip(result, result_descriptions)]}"
-                )
-                return result
-        else:
-            self.logger.warning(
-                f"Read a blocks of data on None address [0x{reg:02X}] {get_address_description(reg)}"
+            result = self._smbus.read_i2c_block_data(self.address, reg, num)
+            reg_description = get_address_description(reg)
+            result_descriptions = [get_value_description(r) for r in result]
+            self.logger.debug(
+                f"Read blocks of data on the I2C address {self.address}"
+                f"from a register [0x{reg:02X}] {reg_description}"
+                f"Result: {[f'0x{i:02X} {descr}' for i, descr in zip(result, result_descriptions)]}"
             )
+            return result
 
     @_retry_wrapper
     def is_ready(self) -> bool:
