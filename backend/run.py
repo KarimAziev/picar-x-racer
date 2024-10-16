@@ -50,12 +50,10 @@ if __name__ == "__main__":
     main_app_process = mp.Process(
         target=start_main_app,
         args=(px_main_app_port, px_log_level, px_app_mode),
-        daemon=True,
     )
     websocket_app_process = mp.Process(
         target=start_control_app,
         args=(px_control_app_port, px_log_level, px_app_mode),
-        daemon=True,
     )
 
     processes = [main_app_process, websocket_app_process]
@@ -64,7 +62,6 @@ if __name__ == "__main__":
         frontend_dev_process = mp.Process(
             target=start_frontend_app,
             args=(px_main_app_port, px_control_app_port),
-            daemon=True,
         )
         processes.append(frontend_dev_process)
 
