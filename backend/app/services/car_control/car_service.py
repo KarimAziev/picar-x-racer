@@ -23,6 +23,9 @@ class CarService(metaclass=SingletonMeta):
         self.servo_dir_angle = 0
         self.cam_pan_angle = 0
         self.cam_tilt_angle = 0
+        self.px.set_cam_tilt_angle(0)
+        self.px.set_cam_pan_angle(0)
+        self.px.set_dir_servo_angle(0)
 
     async def handle_notify_client(self, websocket: WebSocket):
         data = {
@@ -125,7 +128,20 @@ class CarService(metaclass=SingletonMeta):
     async def handle_avoid_obstacles(self, _, websocket: WebSocket):
         response = await self.avoid_obstacles_service.toggle_avoid_obstacles_mode()
         if response is not None:
-            await websocket.send_text(json.dumps(response))
+            self.speed = response.get("speed", self.speed)
+            self.direction = response.get("direction", self.direction)
+            self.servo_dir_angle = response.get("servoAngle", self.servo_dir_angle)
+            self.cam_pan_angle = response.get("camPan", self.cam_pan_angle)
+            self.cam_tilt_angle = response.get("camTilt", self.cam_tilt_angle)
+
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "payload": response,
+                        "type": "update",
+                    }
+                )
+            )
 
     async def handle_get_distance(self, _, websocket: WebSocket):
         await self.respond_with_distance("getDistance", websocket)

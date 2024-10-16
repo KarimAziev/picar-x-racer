@@ -40,16 +40,13 @@ class AvoidObstaclesService:
         if self.avoid_obstacles_mode:
             self.avoid_obstacles_task = asyncio.create_task(self.avoid_obstacles())
         return {
-            "payload": {
-                "avoidObstacles": self.avoid_obstacles_mode,
-                "direction": 0,
-                "servoAngle": 0,
-                "camPan": 0,
-                "camTilt": 0,
-                "speed": 0,
-                "maxSpeed": 30,
-            },
-            "type": "update",
+            "avoidObstacles": self.avoid_obstacles_mode,
+            "direction": 0,
+            "servoAngle": 0,
+            "camPan": 0,
+            "camTilt": 0,
+            "speed": 0,
+            "maxSpeed": 30,
         }
 
     async def cancel_avoid_obstacles_task(self) -> None:
