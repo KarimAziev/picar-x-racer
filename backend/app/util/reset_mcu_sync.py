@@ -32,3 +32,7 @@ def reset_mcu_sync():
     time.sleep(0.01)
 
     mcu_reset.close()
+
+
+if __name__ == "main":
+    reset_mcu_sync()
