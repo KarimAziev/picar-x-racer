@@ -1,4 +1,5 @@
 pin_descriptions = {
+    "A4": "ADC voltage",
     "P0": "Camera pan servo PIN",
     "P1": "Camera tilt servo PIN",
     "P2": "Direction servo PIN",
