@@ -181,6 +181,9 @@ class PWM(I2C):
             value & 0xFF
         )  # Low byte: Mask with 0xFF to keep only the least significant byte
         # Write the register address followed by the high and low bytes to the I2C device
+        self.logger.debug(
+            f"[{self._chan_desc}]: 16 bit value {hex(value)} -> high byte: {hex(value_h)}, low byte: {hex(value_l)}"
+        )
         self.write([reg, value_h, value_l])
 
     def freq(self, freq=None):
