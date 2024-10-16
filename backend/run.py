@@ -15,7 +15,7 @@ def terminate_processes(processes: list[mp.Process]):
             p = psutil.Process(process.pid)
             for child in p.children(recursive=True):
                 print(
-                    f"Killing child process {child.name} with status {child.status} {child.info}"
+                    f"Killing child process {child.name()} with status {child.status()}"
                 )
                 child.kill()
             p.kill()
