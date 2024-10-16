@@ -29,6 +29,7 @@ async def websocket_endpoint(
     """
     car_manager: "CarService" = websocket.app.state.car_manager
     await websocket.accept()
+    await car_manager.handle_notify_client(websocket)
     try:
         async for raw_data in websocket.iter_text():
             try:

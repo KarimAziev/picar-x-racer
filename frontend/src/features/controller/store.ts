@@ -268,7 +268,6 @@ export const useControllerStore = defineStore("controller", {
       this.close();
 
       this.loading = false;
-      this.speed = 0;
       this.messageQueue = [];
     },
     // command workers
@@ -278,19 +277,20 @@ export const useControllerStore = defineStore("controller", {
         this.maxSpeed = newValue;
       }
       if (this.speed >= newValue) {
-        this.speed = constrain(MIN_SPEED, newValue, newValue - ACCELERATION);
+        this.move(
+          constrain(MIN_SPEED, newValue, newValue - ACCELERATION),
+          this.direction,
+        );
       }
     },
     setCamTiltAngle(angle: number): void {
       const nextAngle = constrain(CAM_TILT_MIN, CAM_TILT_MAX, angle);
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
-      this.camTilt = nextAngle;
     },
 
     setCamPanAngle(servoAngle: number): void {
       const nextAngle = constrain(CAM_PAN_MIN, CAM_PAN_MAX, servoAngle);
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
-      this.camPan = nextAngle;
     },
 
     move(speed: number, direction: number) {
@@ -304,9 +304,6 @@ export const useControllerStore = defineStore("controller", {
           },
         });
       }
-
-      this.direction = direction;
-      this.speed = speed;
     },
 
     forward(speed: number) {
@@ -324,7 +321,6 @@ export const useControllerStore = defineStore("controller", {
         servoAngle,
       );
       this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
-      this.servoAngle = nextAngle;
     },
     // commands
     accelerate() {
@@ -337,22 +333,18 @@ export const useControllerStore = defineStore("controller", {
     },
 
     slowdown() {
-      if (this.speed > 0) {
-        this.speed = Math.max(this.speed - 10, 0);
-      }
+      const nextSpeed =
+        this.speed > 0 ? Math.max(this.speed - 10, 0) : this.speed;
       if (this.speed === 0 && this.direction !== 0) {
         this.stop();
-        this.direction = 0;
       } else if (this.direction === 1) {
-        this.forward(this.speed);
+        this.forward(nextSpeed);
       } else if (this.direction === -1) {
-        this.backward(this.speed);
+        this.backward(nextSpeed);
       }
     },
     stop() {
       this.sendMessage({ action: "stop" });
-      this.direction = 0;
-      this.speed = 0;
     },
     increaseMaxSpeed() {
       this.setMaxSpeed(this.maxSpeed + ACCELERATION);
