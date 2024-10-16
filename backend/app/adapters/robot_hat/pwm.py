@@ -270,7 +270,7 @@ class PWM(I2C):
         self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
         reg = self.REG_PSC + self.timer
         self.logger.debug(
-            f"[{self._chan_desc}]: Set prescaler to PWM {self._prescaler - 1} at timer {self.timer} to register: {hex(reg)}"
+            f"[{self._chan_desc}]: Set prescaler to PWM {self._prescaler - 1} at timer {self.timer} to register: {hex(reg)}, global timer: {timer}"
         )
         self._i2c_write(reg, self._prescaler - 1)
 
@@ -322,7 +322,7 @@ class PWM(I2C):
         reg = self.REG_ARR + self.timer
 
         self.logger.debug(
-            f"[{self._chan_desc}]: Set period to PWM {arr} at timer {self.timer} to register: {hex(reg)}"
+            f"[{self._chan_desc}]: Set period to PWM {arr} at timer {self.timer} to register: {hex(reg)}, global timer: {timer}"
         )
         self._i2c_write(reg, arr)
 
@@ -343,7 +343,7 @@ class PWM(I2C):
         self._pulse_width = int(pulse_width)
         reg = self.REG_CHN + self.channel
         self.logger.debug(
-            f"[{self._chan_desc}]: writing pulse width {self._pulse_width}  to register: {hex(reg)}"
+            f"[{self._chan_desc}]: writing pulse width {self._pulse_width}  to register: {hex(reg)} global timer: {timer}"
         )
         self._i2c_write(reg, self._pulse_width)
 
@@ -363,7 +363,8 @@ class PWM(I2C):
             return self._pulse_width_percent
 
         self._pulse_width_percent = pulse_width_percent
-        pulse_width = (pulse_width_percent / 100.0) * timer[self.timer]["arr"]
+        temp = self._pulse_width_percent / 100.0
+        pulse_width = temp * timer[self.timer]["arr"]
         self.pulse_width(pulse_width)
 
 
