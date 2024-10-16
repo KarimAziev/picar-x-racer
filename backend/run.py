@@ -1,13 +1,6 @@
 import multiprocessing as mp
 import sys
 
-from app.util.logger import Logger
-from app.util.reset_mcu_sync import reset_mcu_sync
-from app.util.setup_env import setup_env
-from run_car_control_app import start_control_app
-from run_frontend import start_frontend_app
-from run_main_app import start_main_app
-
 
 def terminate_processes(processes: list[mp.Process]):
     COLOR_YELLOW = "\033[33m"
@@ -25,9 +18,16 @@ def terminate_processes(processes: list[mp.Process]):
 
 if __name__ == "__main__":
     try:
-        mp.set_start_method("spawn", force=True)
+        mp.set_start_method("spawn")
     except RuntimeError:
         pass
+
+    from app.util.logger import Logger
+    from app.util.reset_mcu_sync import reset_mcu_sync
+    from app.util.setup_env import setup_env
+    from run_car_control_app import start_control_app
+    from run_frontend import start_frontend_app
+    from run_main_app import start_main_app
 
     setup_env()
     reset_mcu_sync()

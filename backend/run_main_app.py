@@ -29,7 +29,7 @@ def start_main_app(port: Union[str, int], log_level: str, mode: str):
 
 if __name__ == "__main__":
     try:
-        mp.set_start_method("spawn", force=True)
+        mp.set_start_method("spawn")
     except RuntimeError:
         pass
 
