@@ -1,14 +1,26 @@
 import multiprocessing as mp
 import sys
 
+import psutil
+
 
 def terminate_processes(processes: list[mp.Process]):
     COLOR_YELLOW = "\033[33m"
     BOLD = "\033[1m"
     RESET = "\033[0m"
     print(f"{BOLD}{COLOR_YELLOW}Terminating picar-x-racer processes...{RESET}")
+
     for process in processes:
-        process.terminate()
+        try:
+            p = psutil.Process(process.pid)
+            for child in p.children(recursive=True):
+                print(
+                    f"Killing child process {child.name} with status {child.status} {child.info}"
+                )
+                child.kill()
+            p.kill()
+        except psutil.NoSuchProcess:
+            pass
     for process in processes:
         process.join()
 
