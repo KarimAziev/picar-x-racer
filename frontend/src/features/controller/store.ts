@@ -18,15 +18,15 @@ import { constrain } from "@/util/constrain";
 import { takePhoto } from "@/features/controller/api";
 import { makeWebsocketUrl } from "@/util/url";
 
-const ACCELERATION = 10;
-const CAM_PAN_MIN = -90;
-const CAM_PAN_MAX = 90;
-const CAM_TILT_MIN = -35;
-const CAM_TILT_MAX = 65;
-const SERVO_DIR_ANGLE_MIN = -30;
-const SERVO_DIR_ANGLE_MAX = 30;
-const MIN_SPEED = 10;
-const MAX_SPEED = 100;
+export const ACCELERATION = 10;
+export const CAM_PAN_MIN = -90;
+export const CAM_PAN_MAX = 90;
+export const CAM_TILT_MIN = -35;
+export const CAM_TILT_MAX = 65;
+export const SERVO_DIR_ANGLE_MIN = -30;
+export const SERVO_DIR_ANGLE_MAX = 30;
+export const MIN_SPEED = 10;
+export const MAX_SPEED = 100;
 
 export interface Modes {
   /**

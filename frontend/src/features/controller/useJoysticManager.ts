@@ -1,7 +1,13 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import nipplejs from "nipplejs";
 import type { JoystickManagerOptions } from "nipplejs";
-import { useControllerStore } from "@/features/controller/store";
+import {
+  useControllerStore,
+  SERVO_DIR_ANGLE_MIN,
+  SERVO_DIR_ANGLE_MAX,
+} from "@/features/controller/store";
+import { useAsyncDebounce } from "@/composables/useDebounce";
+import { constrain } from "@/util/constrain";
 
 export const useJoystickControl = (
   controllerStore: ReturnType<typeof useControllerStore>,
@@ -13,26 +19,38 @@ export const useJoystickControl = (
   const handleJoystickMove = (data: nipplejs.JoystickOutputData) => {
     const { angle, distance } = data;
     const direction = angle.degree;
+    const speed = Math.round(Math.round(distance * 2) / 10) * 10;
+    const minJoystickAngle = 0;
+    const maxJoystickAngle = 180;
 
-    if (distance > 10) {
-      if (direction > 45 && direction <= 135) {
-        controllerStore.accelerate();
-      } else if (direction > 135 && direction <= 225) {
-        controllerStore.left();
-      } else if (direction > 225 && direction <= 315) {
-        controllerStore.decelerate();
-      } else {
-        controllerStore.right();
-      }
+    const minServoAngle = 30;
+    const maxServoAngle = -30;
+    const isForward = direction <= 180;
+
+    const servoDir = Math.round(
+      constrain(
+        SERVO_DIR_ANGLE_MIN,
+        SERVO_DIR_ANGLE_MAX,
+        (((isForward ? direction : direction - 180) - minJoystickAngle) *
+          (maxServoAngle - minServoAngle)) /
+          (maxJoystickAngle - minJoystickAngle) +
+          minServoAngle,
+      ),
+    );
+
+    if (isForward) {
+      controllerStore.setDirServoAngle(servoDir);
+      controllerStore.forward(speed);
     } else {
-      controllerStore.slowdown();
+      controllerStore.setDirServoAngle(-servoDir);
+      controllerStore.backward(speed);
     }
   };
 
-  const handleJoystickEnd = () => {
+  const handleJoystickEnd = useAsyncDebounce(() => {
     controllerStore.stop();
     controllerStore.resetDirServoAngle();
-  };
+  }, 50);
 
   const handleDestroyJoysticManager = () => {
     if (joystickManager.value) {

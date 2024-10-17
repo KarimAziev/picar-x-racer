@@ -1,6 +1,6 @@
 import { ref } from "vue";
 
-export function useAsyncDebounce<T extends (...args: any[]) => Promise<void>>(
+export function useAsyncDebounce<T extends (...args: any[]) => any>(
   func: T,
   waitFor: number,
 ): (...args: Parameters<T>) => void {

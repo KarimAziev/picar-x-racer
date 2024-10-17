@@ -11,7 +11,6 @@ import { useJoystickCameraControl } from "@/features/controller/useJoysticCamera
 const controllerStore = useControllerStore();
 
 const { joystickZone: joystickZoneY } = useJoystickControl(controllerStore, {
-  lockY: true,
   position: { left: "15%", bottom: "55px" },
 });
 const { joystickZone: joystickZoneX } = useJoystickControl(controllerStore, {
