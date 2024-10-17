@@ -6,7 +6,7 @@ import {
   SERVO_DIR_ANGLE_MIN,
   SERVO_DIR_ANGLE_MAX,
 } from "@/features/controller/store";
-import { useAsyncDebounce } from "@/composables/useDebounce";
+
 import { constrain } from "@/util/constrain";
 
 export const useJoystickControl = (
@@ -40,17 +40,22 @@ export const useJoystickControl = (
 
     if (isForward) {
       controllerStore.setDirServoAngle(servoDir);
-      controllerStore.forward(speed);
+      if (!options?.lockX) {
+        controllerStore.forward(speed);
+      }
     } else {
       controllerStore.setDirServoAngle(-servoDir);
-      controllerStore.backward(speed);
+
+      if (!options?.lockX) {
+        controllerStore.backward(speed);
+      }
     }
   };
 
-  const handleJoystickEnd = useAsyncDebounce(() => {
+  const handleJoystickEnd = () => {
     controllerStore.stop();
     controllerStore.resetDirServoAngle();
-  }, 50);
+  };
 
   const handleDestroyJoysticManager = () => {
     if (joystickManager.value) {
