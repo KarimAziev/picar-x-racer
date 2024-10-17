@@ -17,10 +17,10 @@ import { RouterView } from "vue-router";
 import { defineAsyncComponent, computed } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
-import { isMobileDevice } from "@/util/device";
 import { useSettingsStore } from "@/features/settings/stores";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 
-const isMobile = computed(() => isMobileDevice());
+const isMobile = useDeviceWatcher();
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
 const isTextToSpeechInputEnabled = computed(

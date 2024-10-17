@@ -8,7 +8,7 @@ export const useJoystickControl = (
   options?: JoystickManagerOptions,
 ) => {
   const joystickZone = ref<HTMLElement | null>(null);
-  let joystickManager: nipplejs.JoystickManager;
+  const joystickManager = ref<nipplejs.JoystickManager | null>(null);
 
   const handleJoystickMove = (data: nipplejs.JoystickOutputData) => {
     const { angle, distance } = data;
@@ -34,9 +34,15 @@ export const useJoystickControl = (
     controllerStore.resetDirServoAngle();
   };
 
-  onMounted(() => {
+  const handleDestroyJoysticManager = () => {
+    if (joystickManager.value) {
+      joystickManager.value.destroy();
+    }
+  };
+
+  const handleCreateJoysticManager = () => {
     if (joystickZone.value) {
-      joystickManager = nipplejs.create({
+      joystickManager.value = nipplejs.create({
         zone: joystickZone.value!,
         dynamicPage: true,
         mode: "static",
@@ -45,18 +51,29 @@ export const useJoystickControl = (
         ...options,
       });
 
-      joystickManager.on("move", (_event, data) => {
+      joystickManager.value.on("move", (_event, data) => {
         handleJoystickMove(data);
       });
 
-      joystickManager.on("end", handleJoystickEnd);
+      joystickManager.value.on("end", handleJoystickEnd);
     }
+  };
+
+  const recreateJoysticManager = () => {
+    handleDestroyJoysticManager();
+    handleCreateJoysticManager();
+  };
+
+  onMounted(() => {
+    window.addEventListener("resize", recreateJoysticManager);
+    window.addEventListener("orientationchange", recreateJoysticManager);
+    handleCreateJoysticManager();
   });
 
   onBeforeUnmount(() => {
-    if (joystickManager) {
-      joystickManager.destroy();
-    }
+    window.removeEventListener("resize", recreateJoysticManager);
+    window.removeEventListener("orientationchange", recreateJoysticManager);
+    handleDestroyJoysticManager();
   });
 
   return {
