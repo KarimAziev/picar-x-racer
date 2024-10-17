@@ -159,8 +159,6 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
         logger.error(f"Error executing v4l2-ctl: {e}")
         return []
 
-    logger.debug(f"Raw output:\n{output}")
-
     return parse_v4l2_formats_output(output, device, category)
 
 
@@ -193,30 +191,22 @@ def parse_v4l2_formats_output(
 
     for line in output.splitlines():
         line = line.strip()
-        logger.debug(f"Parsing line: {line}")
 
         format_match = format_pattern.match(line)
         if format_match:
             current_format = format_match.group(1)
             current_description = format_match.group(2)
-            logger.debug(
-                f"Found format: {current_format}, Description: {current_description}"
-            )
 
         resolution_discrete_match = resolution_discrete_pattern.search(line)
         if resolution_discrete_match:
             frame_size = resolution_discrete_match.group(1)
-            logger.debug(f"Found discrete resolution: {frame_size}")
 
         resolution_stepwise_match = resolution_stepwise_pattern.search(line)
         if resolution_stepwise_match:
-            min_size = resolution_stepwise_match.group(1)
-            max_size = resolution_stepwise_match.group(2)
-            step_x = resolution_stepwise_match.group(3)
-            step_y = resolution_stepwise_match.group(4)
-            logger.debug(
-                f"Found stepwise resolution: {min_size} to {max_size} with steps {step_x}/{step_y}"
-            )
+            # min_size = resolution_stepwise_match.group(1)
+            # max_size = resolution_stepwise_match.group(2)
+            # step_x = resolution_stepwise_match.group(3)
+            # step_y = resolution_stepwise_match.group(4)
 
             for width, height in COMMON_SIZES:
                 frame_size = f"{width}x{height}"
