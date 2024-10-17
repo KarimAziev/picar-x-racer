@@ -131,9 +131,11 @@ def list_available_camera_devices():
 
 
 COMMON_SIZES = [
-    (640, 480),  # VGA
-    (800, 600),  # SVGA
-    (1024, 768),  # XGA
+    (640, 480),
+    (800, 600),
+    (1024, 768),
+    (1280, 720),
+    (2592, 1944),
 ]
 
 
@@ -232,12 +234,10 @@ def parse_v4l2_formats_output(
                         "pixel_format": current_format,
                     }
                 )
-                logger.debug(f"Added format: {value}, label: {label}")
 
         fps_match = fps_pattern.search(line)
         if fps_match:
             fps_value = fps_match.group(2)
-            logger.debug(f"Found FPS: {fps_value}")
 
             if current_format and frame_size:
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
@@ -252,7 +252,6 @@ def parse_v4l2_formats_output(
                         "pixel_format": current_format,
                     }
                 )
-                logger.debug(f"Added format: {value}, label: {label}")
 
     return formats
 
