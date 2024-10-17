@@ -31,7 +31,7 @@ class ConnectionService:
         self.logger.debug("Connecting new client")
         await websocket.accept()
         self.active_connections.append(websocket)
-        self.logger.debug(f"Connected {len(self.active_connections)} clients")
+        self.logger.info(f"Connected {len(self.active_connections)} clients")
         await self.car_manager.handle_notify_client(websocket)
         self.logger.debug("Notifying new client")
 
