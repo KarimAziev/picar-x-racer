@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import cv2
 import numpy as np
 from app.util.logger import Logger
-from app.util.photo import height_to_width
 
 if TYPE_CHECKING:
     from ultralytics import YOLO
@@ -34,12 +33,7 @@ def perform_detection(
     original_height, original_width = frame.shape[:2]
     base_size = 192
     resized_height = base_size
-    resized_width = height_to_width(
-        base_size,
-        target_width=original_width,
-        target_height=original_height,
-        round_up_to_multiple=32,
-    )
+    resized_width = base_size
     frame = cv2.resize(frame, (resized_width, resized_height))
 
     results = yolo_model.predict(
@@ -47,7 +41,7 @@ def perform_detection(
         verbose=verbose,
         conf=confidence_threshold,
         task="detect",
-        imgsz=(resized_height, resized_width),
+        imgsz=base_size,
     )[0]
 
     if verbose:

@@ -22,6 +22,12 @@ def ensure_absolute_path(file: str):
     return path.abspath(path.join(PROJECT_DIR, file))
 
 
+def ensure_data_path(file: str):
+    if path.isabs(file):
+        return file
+    return path.abspath(path.join(PROJECT_DIR, "data", file))
+
+
 DEFAULT_USER_SETTINGS = path.abspath(path.join(PROJECT_DIR, "user_settings.json"))
 APP_DIR = path.abspath(path.join(PROJECT_DIR, "backend/app"))
 DEFAULT_MUSIC_DIR = expand_file_in_project_dir("music")
@@ -44,12 +50,12 @@ PICARX_CONFIG_DIR = path.join(CONFIG_USER_DIR, "picar-x")
 PICARX_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "picar-x.conf")
 PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
 
+YOLO_MODEL_PATH = ensure_data_path(getenv("YOLO_MODEL_PATH", "yolov8n.pt"))
 
-YOLO_MODEL_PATH = ensure_absolute_path(getenv("YOLO_MODEL_PATH", "data/yolo11n.pt"))
 
-YOLO_MODEL_EDGE_TPU_PATH = ensure_absolute_path(
+YOLO_MODEL_EDGE_TPU_PATH = ensure_data_path(
     getenv(
         "YOLO_MODEL_EDGE_TPU_PATH",
-        "data/yolo11n_full_integer_quant_edgetpu.tflite",
+        "yolov8n_black_cat_192_edgetpu.tflite",
     )
 )
