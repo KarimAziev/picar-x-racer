@@ -18,7 +18,7 @@ from ultralytics import YOLO
 from app.config.paths import YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
 
 
-def export_yolo_model_to_edgetpu(yolo_model_path, target_path, imgsz=(192, 192)):
+def export_yolo_model_to_edgetpu(yolo_model_path, target_path, imgsz=256):
     model = YOLO(yolo_model_path)
 
     # Export the model to Edge TPU format.
@@ -35,6 +35,4 @@ def export_yolo_model_to_edgetpu(yolo_model_path, target_path, imgsz=(192, 192))
 
 
 if __name__ == "__main__":
-    export_yolo_model_to_edgetpu(
-        YOLO_MODEL_PATH, YOLO_MODEL_EDGE_TPU_PATH, imgsz=(192, 192)
-    )
+    export_yolo_model_to_edgetpu(YOLO_MODEL_PATH, YOLO_MODEL_EDGE_TPU_PATH, imgsz=256)

@@ -56,6 +56,6 @@ YOLO_MODEL_PATH = ensure_data_path(getenv("YOLO_MODEL_PATH", "yolov8n.pt"))
 YOLO_MODEL_EDGE_TPU_PATH = ensure_data_path(
     getenv(
         "YOLO_MODEL_EDGE_TPU_PATH",
-        "yolov8n_black_cat_192_edgetpu.tflite",
+        "yolov8n_256_edgetpu.tflite",
     )
 )

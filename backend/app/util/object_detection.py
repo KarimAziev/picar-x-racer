@@ -31,7 +31,7 @@ def perform_detection(
         List[Dict[str, Any]]: A list of detection results.
     """
     original_height, original_width = frame.shape[:2]
-    base_size = 192
+    base_size = 256
     resized_height = base_size
     resized_width = base_size
     frame = cv2.resize(frame, (resized_width, resized_height))
