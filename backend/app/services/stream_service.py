@@ -71,7 +71,7 @@ class StreamService(metaclass=SingletonMeta):
                         break
                 else:
                     if skip_count < 1:
-                        self.logger.debug("Stream image is None, skipping frame.")
+                        self.logger.debug("No encoded frame, waiting.")
                         skip_count += 1
 
                 await asyncio.sleep(0)

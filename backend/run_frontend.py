@@ -26,7 +26,11 @@ def wait_for_backend_ready(signal_file_path: str, timeout: int = 60):
     return False
 
 
-def start_frontend_app(port: Union[int, str] = 8000, ws_port: int = 8001):
+def start_frontend_app(
+    frontend_port: Union[int, str] = 4000,
+    api_port: Union[int, str] = 8000,
+    ws_port: Union[int, str] = 8001,
+):
     """
     Starts the frontend application using `npm run dev`, but after making sure the backend is ready.
     """
@@ -34,7 +38,11 @@ def start_frontend_app(port: Union[int, str] = 8000, ws_port: int = 8001):
         os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "frontend"
     )
 
-    os.chdir(frontend_app_directory)
+    vite_config = os.path.join(frontend_app_directory, "vite.config.ts")
+
+    node_modules_dir = os.path.join(frontend_app_directory, "node_modules")
+
+    vite_executable = os.path.join(node_modules_dir, '.bin', 'vite')
 
     # Wait for the signal that the backend is ready
     signal_file_path = '/tmp/backend_ready.signal'
@@ -43,14 +51,15 @@ def start_frontend_app(port: Union[int, str] = 8000, ws_port: int = 8001):
         return
 
     env = os.environ.copy()
-    env["VITE_MAIN_APP_PORT"] = str(port)
+    env["VITE_MAIN_APP_PORT"] = str(api_port)
     env["VITE_WS_APP_PORT"] = str(ws_port)
+    env["VITE_DEV_SERVER_PORT"] = str(frontend_port)
 
-    npm_command = ["npm", "run", "dev"]
+    vite_command = [vite_executable, "-c", vite_config]
     process = None
 
     try:
-        process = subprocess.run(npm_command, check=True, env=env)
+        process = subprocess.run(vite_command, cwd=frontend_app_directory, env=env)
     except subprocess.CalledProcessError as e:
         print(f"Error starting the frontend app: {e}")
         raise

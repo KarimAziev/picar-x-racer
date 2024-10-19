@@ -101,17 +101,20 @@ class CameraService(metaclass=SingletonMeta):
         """
 
         latest_detection = None
-        while True:
-            try:
-                detection_data = self.detection_service.detection_queue.get_nowait()
-                detection_timestamp = detection_data["timestamp"]
-                if detection_timestamp <= self.current_frame_timestamp:
-                    latest_detection = detection_data["detection_result"]
-                else:
-                    self.detection_service.detection_queue.put_nowait(detection_data)
+        if self.detection_service.detection_queue:
+            while True:
+                try:
+                    detection_data = self.detection_service.detection_queue.get_nowait()
+                    detection_timestamp = detection_data["timestamp"]
+                    if detection_timestamp <= self.current_frame_timestamp:
+                        latest_detection = detection_data["detection_result"]
+                    else:
+                        self.detection_service.detection_queue.put_nowait(
+                            detection_data
+                        )
+                        break
+                except queue.Empty:
                     break
-            except queue.Empty:
-                break
 
             self.last_detection_result = latest_detection
 

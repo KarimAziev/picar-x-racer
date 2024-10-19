@@ -37,7 +37,7 @@ def detection_process_func(
             while not stop_event.is_set():
                 try:
                     try:
-                        while not control_queue.empty():
+                        while control_queue and not control_queue.empty():
                             control_message = control_queue.get_nowait()
                             if control_message.get("command") == "set_detect_mode":
                                 current_detect_mode = control_message.get("mode")
@@ -55,42 +55,47 @@ def detection_process_func(
                                 )
                     except queue.Empty:
                         pass
+                    except BrokenPipeError as e:
+                        logger.log_exception("BrokenPipeError", e)
 
                     if detection_function is None:
                         continue
+                    if frame_queue:
+                        try:
+                            frame_data = frame_queue.get(timeout=1)
+                            frame = frame_data["frame"]
+                            frame_timestamp = frame_data["timestamp"]
+                        except queue.Empty:
+                            continue
+                        verbose = counter < 5
 
-                    try:
-                        frame_data = frame_queue.get(timeout=1)
-                        frame = frame_data["frame"]
-                        frame_timestamp = frame_data["timestamp"]
-                    except queue.Empty:
-                        continue
+                        detection_result = detection_function(
+                            frame=frame,
+                            yolo_model=yolo_model,
+                            confidence_threshold=confidence_threshold,
+                            verbose=verbose,
+                        )
+                        detection_result_with_timestamp = {
+                            "detection_result": detection_result,
+                            "timestamp": frame_timestamp,
+                        }
 
-                    verbose = counter < 5
+                        if detection_result and verbose:
+                            logger.debug(f"Detection result: {detection_result}")
+                            counter += 1
 
-                    detection_result = detection_function(
-                        frame=frame,
-                        yolo_model=yolo_model,
-                        confidence_threshold=confidence_threshold,
-                        verbose=verbose,
-                    )
-                    detection_result_with_timestamp = {
-                        "detection_result": detection_result,
-                        "timestamp": frame_timestamp,
-                    }
-
-                    if detection_result and verbose:
-                        logger.debug(f"Detection result: {detection_result}")
-                        counter += 1
-
-                    try:
-                        detection_queue.put_nowait(detection_result_with_timestamp)
-                    except queue.Full:
-                        pass
+                        try:
+                            detection_queue.put_nowait(detection_result_with_timestamp)
+                        except queue.Full:
+                            pass
+                except BrokenPipeError as e:
+                    logger.log_exception("BrokenPipeError", e)
 
                 except Exception as e:
                     logger.log_exception("Error in detection_process_func", e)
         except KeyboardInterrupt:
             logger.warning("Detection process received KeyboardInterrupt, exiting.")
+        except BrokenPipeError as e:
+            logger.log_exception("BrokenPipeError", e)
         finally:
             logger.info("Detection process is terminating.")

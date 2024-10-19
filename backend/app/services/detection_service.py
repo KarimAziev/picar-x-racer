@@ -16,13 +16,13 @@ class DetectionService(metaclass=SingletonMeta):
         self.logger = Logger(__name__)
         self.lock = threading.Lock()
         self.logger = Logger(__name__)
-        self.stop_event = mp.Event()
-        self.manager = mp.Manager()
         self.file_manager = file_manager
-        self.frame_queue = self.manager.Queue(maxsize=1)
-        self.detection_queue = self.manager.Queue(maxsize=1)
-        self.control_queue = self.manager.Queue(maxsize=2)
+        self.stop_event = None
+        self.manager = None
         self.detection_process = None
+        self.frame_queue = None
+        self.detection_queue = None
+        self.control_queue = None
         self._video_feed_confidence = self.file_manager.settings.get(
             "video_feed_confidence", 0.3
         )
@@ -32,6 +32,11 @@ class DetectionService(metaclass=SingletonMeta):
 
     def start_detection_process(self):
         with self.lock:
+            self.stop_event = mp.Event()
+            self.manager = mp.Manager()
+            self.frame_queue = self.manager.Queue(maxsize=1)
+            self.detection_queue = self.manager.Queue(maxsize=1)
+            self.control_queue = self.manager.Queue(maxsize=2)
             if self.detection_process is None or not self.detection_process.is_alive():
                 self.detection_process = mp.Process(
                     target=detection_process_func,
@@ -41,7 +46,6 @@ class DetectionService(metaclass=SingletonMeta):
                         self.detection_queue,
                         self.control_queue,
                     ),
-                    daemon=True,
                 )
                 self.detection_process.start()
                 self.logger.info("Detection process has been started")
@@ -67,22 +71,56 @@ class DetectionService(metaclass=SingletonMeta):
             except Exception as e:
                 self.logger.log_exception(f"BrokenPipeError", e)
 
+    def _cleanup_queues(self):
+        """Empty queues or safely close them before shutdown."""
+        try:
+            if self.frame_queue:
+                while not self.frame_queue.empty():
+                    self.frame_queue.get_nowait()
+            if self.detection_queue:
+                while not self.detection_queue.empty():
+                    self.detection_queue.get_nowait()
+            if self.control_queue:
+                while not self.control_queue.empty():
+                    self.control_queue.get_nowait()
+            self.logger.info("Queues cleaned up.")
+        except queue.Empty:
+            pass
+
     def stop_detection_process(self):
         with self.lock:
             if self.detection_process is None:
                 self.logger.info("Detection process is None, skipping stop")
-            elif self.detection_process.is_alive():
-                self.stop_event.set()
-                self.logger.info("Detection process setted stop_event")
-                self.detection_process.join()
-                self.logger.info("Detection process has been stopped")
-                self.detection_process = None
             else:
-                self.logger.info("Detection process is not alive")
+                if self.stop_event:
+                    self.stop_event.set()
+                    self.stop_event = None
+
+                self.logger.info("Detection process setted stop_event")
+                self.detection_process.join(timeout=10)
+                self.logger.info("Detection process has been joined")
+                if self.detection_process.is_alive():
+                    self.logger.warning(
+                        "Force terminating detection process since it's still alive."
+                    )
+                    self.detection_process.terminate()
+            self._cleanup_queues()
+
+            if self.detection_process:
+                self.detection_process.close()
+                self.detection_process = None
+            if self.manager is not None:
+                self.manager.shutdown()
+                self.manager.join()
+                self.manager = None
+
+            self.logger.info("Detection process has been stopped successfully.")
 
     def clear_stop_event(self):
         self.logger.info("Clearing stop event")
-        self.stop_event.clear()
+        if self.stop_event:
+            self.stop_event.clear()
+
         self.logger.info("Stop event cleared")
 
     def restart_detection_process(self):
@@ -92,41 +130,54 @@ class DetectionService(metaclass=SingletonMeta):
         self.logger.info("Detection process has been restarted")
 
     def clear_frame_queue(self):
-        while not self.frame_queue.empty():
-            try:
-                self.frame_queue.get_nowait()
-            except queue.Empty:
-                pass
+        if self.frame_queue:
+            while not self.frame_queue.empty():
+                try:
+                    self.frame_queue.get_nowait()
+                except queue.Empty:
+                    pass
+
+    def clear_detection_queue(self):
+        if self.detection_queue:
+            while not self.detection_queue.empty():
+                try:
+                    self.detection_queue.get_nowait()
+                except queue.Empty:
+                    pass
 
     def put_frame(self, frame_data):
         """Puts the frame data into the frame queue after clearing it."""
-        self.clear_frame_queue()
-        try:
-            self.frame_queue.put_nowait(frame_data)
-        except queue.Full:
-            pass
+        if self.frame_queue:
+            self.clear_frame_queue()
+            try:
+                self.frame_queue.put_nowait(frame_data)
+            except queue.Full:
+                pass
 
     def get_detection_result(self):
         """Retrieves the latest detection result from the detection queue."""
-        try:
-            return self.detection_queue.get_nowait()
-        except queue.Empty:
-            return None
+        if self.detection_queue:
+            try:
+                return self.detection_queue.get_nowait()
+            except queue.Empty:
+                return None
 
     def clear_control_queue(self):
-        while not self.control_queue.empty():
-            try:
-                self.control_queue.get_nowait()
-            except queue.Empty:
-                pass
+        if self.control_queue:
+            while not self.control_queue.empty():
+                try:
+                    self.control_queue.get_nowait()
+                except queue.Empty:
+                    pass
 
     def put_command(self, command_data):
         """Puts the control queue into the frame queue after clearing it."""
-        self.clear_control_queue()
-        try:
-            self.control_queue.put_nowait(command_data)
-        except queue.Full:
-            pass
+        if self.control_queue:
+            self.clear_control_queue()
+            try:
+                self.control_queue.put_nowait(command_data)
+            except queue.Full:
+                pass
 
     @property
     def video_feed_confidence(self):
