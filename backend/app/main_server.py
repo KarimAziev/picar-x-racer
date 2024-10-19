@@ -90,6 +90,21 @@ async def lifespan(app: FastAPI):
     finally:
         logger.info("Stopping 🚗 application")
         detection_manager.stop_detection_process()
+        if detection_manager.manager is not None:
+            logger.info("Stopping detection manager")
+
+            detection_manager.manager.shutdown()
+            detection_manager.manager.join()
+            for prop in [
+                "stop_event",
+                "frame_queue",
+                "control_queue",
+                "detection_queue",
+                "detection_process",
+                "manager",
+            ]:
+                logger.info(f"Removing {prop}")
+                setattr(detection_manager, prop, None)
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
         logger.info("Application 🚗 stopped")
