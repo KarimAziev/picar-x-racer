@@ -28,12 +28,10 @@ class ConnectionService:
         Args:
             websocket (WebSocket): The WebSocket connection instance.
         """
-        self.logger.debug("Connecting new client")
         await websocket.accept()
         self.active_connections.append(websocket)
         self.logger.info(f"Connected {len(self.active_connections)} clients")
         await self.car_manager.handle_notify_client(websocket)
-        self.logger.debug("Notifying new client")
 
     def disconnect(self, websocket: WebSocket):
         """
@@ -43,6 +41,9 @@ class ConnectionService:
             websocket (WebSocket): The WebSocket connection instance to remove.
         """
         self.active_connections.remove(websocket)
+        self.logger.info(
+            f"Removing connection, total clients: {len(self.active_connections)}"
+        )
 
     async def broadcast(self):
         """
