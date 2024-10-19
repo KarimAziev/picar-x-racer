@@ -1,61 +1,62 @@
 from os import getenv, getlogin, path
 
+from app.util.file_util import resolve_absolute_path
 from platformdirs import user_config_dir
 
-user = getlogin()
-user_home = path.expanduser(f"~{user}")
+USER = getlogin()
+USER_HOME = path.expanduser(f"~{USER}")
 
-DEFAULT_PICTURES_PATH = "%s/Pictures/picar-x-racer/" % user_home
-DEFAULT_VIDEOS_PATH = "%s/Videos/picar-x-racer/" % user_home
+# where to save captured photos
+PX_PHOTO_DIR = getenv("PX_PHOTO_DIR", "%s/Pictures/picar-x-racer/" % USER_HOME)
+
+# where to save recordered videos
+PX_VIDEO_DIR = getenv("PX_VIDEO_DIR", "%s/Videos/picar-x-racer/" % USER_HOME)
+
+# where to save uploaded sounds
+PX_SOUND_DIR = getenv("PX_SOUND_DIR", "%s/Music/picar-x-racer/sounds/" % USER_HOME)
+
+# where to save uploaded music
+PX_MUSIC_DIR = getenv("PX_MUSIC_DIR", "%s/Music/picar-x-racer/music/" % USER_HOME)
+
+
+CONFIG_USER_DIR = user_config_dir()
 
 CURRENT_DIR = path.dirname(path.realpath(__file__))
 PROJECT_DIR = path.dirname(path.dirname(path.dirname(CURRENT_DIR)))
 
+DATA_DIR = path.join(PROJECT_DIR, "data")
 
-def expand_file_in_project_dir(file: str):
-    return path.abspath(path.join(PROJECT_DIR, file))
+DEFAULT_USER_SETTINGS = resolve_absolute_path("user_settings.json", PROJECT_DIR)
+DEFAULT_MUSIC_DIR = resolve_absolute_path("music", PROJECT_DIR)
+DEFAULT_SOUND_DIR = resolve_absolute_path("sounds", PROJECT_DIR)
 
+FRONTEND_FOLDER = resolve_absolute_path("frontend", PROJECT_DIR)
+STATIC_FOLDER = resolve_absolute_path("frontend/dist/assets", PROJECT_DIR)
+TEMPLATE_FOLDER = resolve_absolute_path("frontend/dist", PROJECT_DIR)
 
-def ensure_absolute_path(file: str):
-    if path.isabs(file):
-        return file
-    return path.abspath(path.join(PROJECT_DIR, file))
-
-
-def ensure_data_path(file: str):
-    if path.isabs(file):
-        return file
-    return path.abspath(path.join(PROJECT_DIR, "data", file))
-
-
-DEFAULT_USER_SETTINGS = path.abspath(path.join(PROJECT_DIR, "user_settings.json"))
-APP_DIR = path.abspath(path.join(PROJECT_DIR, "backend/app"))
-DEFAULT_MUSIC_DIR = expand_file_in_project_dir("music")
-DEFAULT_SOUND_DIR = expand_file_in_project_dir("sounds")
-SETTINGS_FILE_PATH = path.abspath(path.join(PROJECT_DIR, "user_settings.json"))
-FRONTEND_FOLDER = expand_file_in_project_dir("frontend")
-STATIC_FOLDER = expand_file_in_project_dir("frontend/dist/assets")
-TEMPLATE_FOLDER = expand_file_in_project_dir("frontend/dist")
-CONFIG_USER_DIR = user_config_dir()
-FONT_PATH = expand_file_in_project_dir(
-    "frontend/src/assets/font/tt-octosquares-regular.ttf"
+FONT_PATH = resolve_absolute_path(
+    "frontend/src/assets/font/tt-octosquares-regular.ttf", PROJECT_DIR
 )
 
 MUSIC_CACHE_FILE_PATH = path.join(CONFIG_USER_DIR, "picar-x-racer/music_cache.json")
 
-MUSIC_DIR = expand_file_in_project_dir("music")
-SOUNDS_DIR = expand_file_in_project_dir("sounds")
-PHOTOS_DIR = expand_file_in_project_dir("photos")
 PICARX_CONFIG_DIR = path.join(CONFIG_USER_DIR, "picar-x")
 PICARX_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "picar-x.conf")
 PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
 
-YOLO_MODEL_PATH = ensure_data_path(getenv("YOLO_MODEL_PATH", "yolov8n.pt"))
+YOLO_MODEL_PATH = resolve_absolute_path(
+    getenv(
+        "YOLO_MODEL_PATH",
+        "yolov8n.pt",
+    ),
+    DATA_DIR,
+)
 
 
-YOLO_MODEL_EDGE_TPU_PATH = ensure_data_path(
+YOLO_MODEL_EDGE_TPU_PATH = resolve_absolute_path(
     getenv(
         "YOLO_MODEL_EDGE_TPU_PATH",
         "yolov8n_256_edgetpu.tflite",
-    )
+    ),
+    DATA_DIR,
 )

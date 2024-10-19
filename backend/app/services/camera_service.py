@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Optional, Union
 import cv2
 import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapater
-from app.config.paths import DEFAULT_VIDEOS_PATH
 from app.config.video_enhancers import frame_enhancers
 from app.services.detection_service import DetectionService
 from app.util.device import parse_v4l2_device_info
@@ -384,8 +383,8 @@ class CameraService(metaclass=SingletonMeta):
         """
         Starts recording video to the specified path. Ensures the directory exists.
         """
-        if not os.path.exists(DEFAULT_VIDEOS_PATH):
-            os.makedirs(DEFAULT_VIDEOS_PATH)
+        if not os.path.exists(self.file_manager.user_videos_dir):
+            os.makedirs(self.file_manager.user_videos_dir)
 
         fps = (
             self.actual_fps
@@ -396,7 +395,7 @@ class CameraService(metaclass=SingletonMeta):
             fps = float(fps)
 
         name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
-        video_path = os.path.join(DEFAULT_VIDEOS_PATH, name)
+        video_path = os.path.join(self.file_manager.user_videos_dir, name)
 
         shape = (
             self.stream_img.shape[:2]

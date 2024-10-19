@@ -35,7 +35,7 @@ Methods:
 
 import json
 import os
-from os import environ, path
+from os import path
 from typing import Any, Dict, List
 
 from app.adapters.robot_hat.filedb import fileDB
@@ -44,9 +44,13 @@ from app.config.paths import (
     DEFAULT_MUSIC_DIR,
     DEFAULT_SOUND_DIR,
     DEFAULT_USER_SETTINGS,
-    DEFAULT_VIDEOS_PATH,
     MUSIC_CACHE_FILE_PATH,
     PICARX_CONFIG_FILE,
+    PX_MUSIC_DIR,
+    PX_PHOTO_DIR,
+    PX_SOUND_DIR,
+    PX_VIDEO_DIR,
+    USER_HOME,
 )
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.services.audio_service import AudioService
@@ -70,25 +74,19 @@ class FilesService(metaclass=SingletonMeta):
 
     def __init__(self, audio_manager: AudioService, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.user = os.getlogin()
-        self.user_home = path.expanduser(f"~{self.user}")
         self.logger = Logger(name=__name__)
+        self.user_home = USER_HOME
         self.user_settings_file = path.join(
             CONFIG_USER_DIR, "picar-x-racer", "user_settings.json"
         )
-        self.user_photos_dir = environ.get(
-            "PHOTOS_PATH", "%s/Pictures/picar-x-racer/" % self.user_home
-        )
-        self.user_videos_dir = environ.get("PHOTOS_PATH", DEFAULT_VIDEOS_PATH)
-        self.user_sounds_dir = environ.get(
-            "SOUNDS_PATH", "%s/Music/picar-x-racer/sounds/" % self.user_home
-        )
-        self.user_music_dir = environ.get(
-            "MUSIC_PATH", "%s/Music/picar-x-racer/music/" % self.user_home
-        )
-        self.audio_manager = audio_manager
+        self.user_photos_dir = PX_PHOTO_DIR
+        self.user_videos_dir = PX_VIDEO_DIR
+        self.user_sounds_dir = PX_SOUND_DIR
+        self.user_music_dir = PX_MUSIC_DIR
 
+        self.audio_manager = audio_manager
         self.cache = self.load_cache()
+
         self.cached_settings = None
         self.last_modified_time = None
         self.current_settings_file = None
