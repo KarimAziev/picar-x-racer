@@ -104,10 +104,11 @@ class DetectionService(metaclass=SingletonMeta):
                         "Force terminating detection process since it's still alive."
                     )
                     self.detection_process.terminate()
+                    self.detection_process.join(timeout=5)
+                    self.detection_process.close()
             self._cleanup_queues()
 
             if self.detection_process:
-                self.detection_process.close()
                 self.detection_process = None
             if self.manager is not None:
                 self.manager.shutdown()

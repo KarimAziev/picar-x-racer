@@ -61,35 +61,40 @@ def detection_process_func(
                     if detection_function is None:
                         continue
                     if frame_queue:
+                        frame = None
+                        frame_timestamp = None
                         try:
                             frame_data = frame_queue.get(timeout=1)
                             frame = frame_data["frame"]
                             frame_timestamp = frame_data["timestamp"]
+                        except BrokenPipeError as e:
+                            logger.log_exception("BrokenPipeError", e)
                         except queue.Empty:
                             continue
                         verbose = counter < 5
 
-                        detection_result = detection_function(
-                            frame=frame,
-                            yolo_model=yolo_model,
-                            confidence_threshold=confidence_threshold,
-                            verbose=verbose,
-                        )
-                        detection_result_with_timestamp = {
-                            "detection_result": detection_result,
-                            "timestamp": frame_timestamp,
-                        }
-
-                        if detection_result and verbose:
-                            logger.debug(f"Detection result: {detection_result}")
-                            counter += 1
-
-                        try:
-                            detection_queue.put_nowait(detection_result_with_timestamp)
-                        except queue.Full:
-                            pass
-                except BrokenPipeError as e:
-                    logger.log_exception("BrokenPipeError", e)
+                        if frame is not None and frame_timestamp:
+                            detection_result = detection_function(
+                                frame=frame,
+                                yolo_model=yolo_model,
+                                confidence_threshold=confidence_threshold,
+                                verbose=verbose,
+                            )
+                            detection_result_with_timestamp = {
+                                "detection_result": detection_result,
+                                "timestamp": frame_timestamp,
+                            }
+                            if detection_result and verbose:
+                                logger.debug(f"Detection result: {detection_result}")
+                                counter += 1
+                            try:
+                                detection_queue.put_nowait(
+                                    detection_result_with_timestamp
+                                )
+                            except queue.Full:
+                                pass
+                            except BrokenPipeError as e:
+                                logger.log_exception("BrokenPipeError", e)
 
                 except Exception as e:
                     logger.log_exception("Error in detection_process_func", e)
