@@ -133,7 +133,9 @@ class FilesService(metaclass=SingletonMeta):
             self.last_modified_time = current_modified_time
             self.current_settings_file = settings_file
         else:
-            self.logger.info(f"Using cached settings from {self.current_settings_file}")
+            self.logger.debug(
+                f"Using cached settings from {self.current_settings_file}"
+            )
 
         return self.cached_settings
 
@@ -146,15 +148,15 @@ class FilesService(metaclass=SingletonMeta):
             **existing_settings,
             **new_settings,
         }
-        self.logger.debug(f"new_settings {new_settings}")
-        self.logger.debug(f"merged_settings {merged_settings}")
+        self.logger.debug(f"New settings {new_settings}")
+        self.logger.debug(f"Merged settings {merged_settings}")
         ensure_parent_dir_exists(self.user_settings_file)
 
         with open(self.user_settings_file, "w") as settings_file:
             json.dump(merged_settings, settings_file, indent=2)
 
         self.settings = merged_settings
-        self.logger.debug(f"settings saved to {self.user_settings_file}")
+        self.logger.debug(f"Settings saved to {self.user_settings_file}")
         return self.settings
 
     def list_files(self, directory: str, full=False) -> List[str]:
@@ -237,10 +239,10 @@ class FilesService(metaclass=SingletonMeta):
             cached_mod_time = cached_data["modified_time"]
 
             if cached_mod_time == file_mod_time:
-                self.logger.info(f"Using cached details for {file}")
+                self.logger.debug(f"Using cached details for {file}")
                 return cached_data["details"]
 
-        self.logger.info(f"Refreshing details for {file}")
+        self.logger.debug(f"Refreshing details for {file}")
         details = self.get_audio_file_details(file)
         if details:
             self.cache[file] = {
