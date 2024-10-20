@@ -280,11 +280,22 @@ class CameraService(metaclass=SingletonMeta):
                 if self.video_feed_record and self.video_writer is not None:
                     self.video_writer.write(self.stream_img)
                 if self.detection_service.video_feed_detect_mode:
+                    original_height, original_width = self.stream_img.shape[:2]
+                    base_size = 256
+                    resized_height = base_size
+                    resized_width = base_size
+                    resized_frame = cv2.resize(
+                        self.stream_img.copy(), (resized_width, resized_height)
+                    )
                     self.current_frame_timestamp = time.time()
 
                     frame_data = {
-                        "frame": self.stream_img.copy(),
+                        "frame": resized_frame,
                         "timestamp": self.current_frame_timestamp,
+                        "original_height": original_height,
+                        "original_width": original_width,
+                        "resized_height": resized_height,
+                        "resized_width": resized_width,
                     }
                     self.detection_service.put_frame(frame_data)
         except KeyboardInterrupt:

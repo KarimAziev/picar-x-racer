@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-import cv2
 import numpy as np
 from app.util.logger import Logger
 
@@ -13,6 +12,10 @@ logger = Logger(__name__)
 def perform_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
+    resized_height: int,
+    resized_width: int,
+    original_width: int,
+    original_height: int,
     labels_to_detect: Optional[List[str]] = None,
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
@@ -30,24 +33,14 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-    original_height, original_width = frame.shape[:2]
-    base_size = 256
-    resized_height = base_size
-    resized_width = base_size
-    frame = cv2.resize(frame, (resized_width, resized_height))
 
     results = yolo_model.predict(
         source=frame,
         verbose=verbose,
         conf=confidence_threshold,
         task="detect",
-        imgsz=base_size,
+        imgsz=(resized_height, resized_width),
     )[0]
-
-    if verbose:
-        logger.info(
-            f"original size {original_width}x{original_height} resized: {resized_width}x{resized_height}, confidence_threshold {confidence_threshold}"
-        )
 
     scale_x = original_width / resized_width
     scale_y = original_height / resized_height
