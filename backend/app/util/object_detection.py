@@ -77,6 +77,10 @@ def perform_detection(
 def perform_cat_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
+    resized_height: int,
+    resized_width: int,
+    original_width: int,
+    original_height: int,
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
@@ -97,12 +101,20 @@ def perform_cat_detection(
         confidence_threshold=confidence_threshold,
         yolo_model=yolo_model,
         verbose=verbose,
+        resized_height=resized_height,
+        resized_width=resized_width,
+        original_width=original_width,
+        original_height=original_height,
     )
 
 
 def perform_person_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
+    resized_height: int,
+    resized_width: int,
+    original_width: int,
+    original_height: int,
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
@@ -123,4 +135,8 @@ def perform_person_detection(
         confidence_threshold=confidence_threshold,
         yolo_model=yolo_model,
         verbose=verbose,
+        resized_height=resized_height,
+        resized_width=resized_width,
+        original_width=original_width,
+        original_height=original_height,
     )
