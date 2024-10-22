@@ -77,3 +77,46 @@ def resize_by_height_maybe(frame: np.ndarray, height: int):
     )
 
     return cv2.resize(frame, (width, height))
+
+
+def resize_to_fixed_height(frame: np.ndarray, base_size=192):
+    """
+    Resizes the input frame to a specified base height while maintaining aspect ratio.
+
+    This function takes a frame in the form of a NumPy array and resizes it to a
+    given base height (`base_size`). The new width is calculated proportionally
+    based on the original aspect ratio, using a function `height_to_width` to
+    ensure the aspect ratio is preserved. The resulting resized frame dimensions may
+    also optionally be rounded up to the nearest multiple of a given value (e.g., 32).
+
+    Args:
+        frame (np.ndarray): The input image or video frame to be resized.
+        base_size (int, optional): The height to resize the frame to. The width
+                                   will be calculated according to the original
+                                   aspect ratio. Defaults to 192.
+
+    Returns:
+        tuple: A tuple consisting of:
+            - frame (np.ndarray): The resized frame as an image.
+            - original_width (int): The original width of the input frame.
+            - original_height (int): The original height of the input frame.
+            - resized_width (int): The new width of the resized frame.
+            - resized_height (int): The new height of the resized frame (equals `base_size`).
+
+    Example:
+        >>> import numpy as np
+        >>> frame = np.random.rand(640, 480, 3)  # Assuming an example frame
+        >>> resized_frame, orig_w, orig_h, new_w, new_h = resize_to_fixed_height(frame, base_size=192)
+        >>> print(f"Original size: {orig_w}x{orig_h}")
+        >>> print(f"Resized size: {new_w}x{new_h}")
+    """
+    original_height, original_width = frame.shape[:2]
+    resized_height = base_size
+    resized_width = height_to_width(
+        base_size,
+        target_width=original_width,
+        target_height=original_height,
+        round_up_to_multiple=32,
+    )
+    frame = cv2.resize(frame, (resized_width, resized_height))
+    return (frame, original_width, original_height, resized_width, resized_height)

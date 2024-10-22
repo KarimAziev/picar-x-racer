@@ -1,7 +1,8 @@
 import gc
 import os
 
-from app.config.paths import YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
+from app.config.paths import DATA_DIR, YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
+from app.util.file_util import resolve_absolute_path
 from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.print_memory_usage import print_memory_usage
@@ -26,7 +27,11 @@ class ModelManager:
         Parameters:
             model_path (str): An optional custom path to use for loading the model.
         """
-        self.model_path = model_path
+        self.model_path = (
+            resolve_absolute_path(model_path, DATA_DIR)
+            if model_path is not None
+            else model_path
+        )
 
     def __enter__(self):
         """
@@ -54,15 +59,12 @@ class ModelManager:
         )
 
         logger.info(f"Loading model {self.model_path}")
-        if debug:
-            print_memory_usage("Memory Usage Before Loading the Model")
+        try:
+            self.model = YOLO(model=self.model_path, task="detect")
+            logger.info(f"Model {self.model_path} loaded successfully")
+        except Exception as err:
+            logger.log_exception(f"Error loading model {self.model_path}", err)
 
-        self.model = YOLO(model=self.model_path, task="detect")
-
-        if debug:
-            print_memory_usage("Memory Usage After Loading the Model")
-
-        logger.info(f"Model {self.model_path} loaded successfully")
         return self.model
 
     def __exit__(self, exc_type, exc_value, traceback):

@@ -15,7 +15,7 @@ from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_detection, overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
-from app.util.video_utils import encode
+from app.util.video_utils import encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
     from app.services.files_service import FilesService
@@ -280,13 +280,13 @@ class CameraService(metaclass=SingletonMeta):
                 if self.video_feed_record and self.video_writer is not None:
                     self.video_writer.write(self.stream_img)
                 if self.detection_service.video_feed_detect_mode:
-                    original_height, original_width = self.stream_img.shape[:2]
-                    base_size = 256
-                    resized_height = base_size
-                    resized_width = base_size
-                    resized_frame = cv2.resize(
-                        self.stream_img.copy(), (resized_width, resized_height)
-                    )
+                    (
+                        resized_frame,
+                        original_height,
+                        original_width,
+                        resized_width,
+                        resized_height,
+                    ) = resize_to_fixed_height(self.stream_img.copy(), base_size=192)
                     self.current_frame_timestamp = time.time()
 
                     frame_data = {

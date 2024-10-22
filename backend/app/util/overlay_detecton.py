@@ -1,3 +1,5 @@
+from typing import Optional, Union
+
 import cv2
 import numpy as np
 from app.util.logger import Logger
@@ -23,13 +25,71 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
 
         label = detection["label"]
         confidence = detection["confidence"]
-        bg_color = (191, 255, 0)
-        fg_color = (102, 51, 0)
+        logger.info(
+            f"detection {detection}, x1 {x1}, y1 {y1}, x2 {x2}, y2 {y2}, label {label}, confidence, {confidence}"
+        )
+        frame = draw_overlay(frame, x1, y1, x2, y2, label, confidence)
 
+    return frame
+
+
+def draw_overlay(
+    frame: np.ndarray,
+    x1: Union[float, int],
+    y1: Union[float, int],
+    x2: Union[float, int],
+    y2: Union[float, int],
+    label: Optional[str] = None,
+    confidence: Optional[float] = None,
+) -> np.ndarray:
+    """
+    Draws a bounding box overlay with an optional label and confidence score on an image frame.
+
+    Parameters
+    ----------
+    frame : np.ndarray
+        The image/frame on which the overlay will be drawn.
+    x1 : Union[float, int]
+        The x-coordinate of the top-left corner of the bounding box.
+    y1 : Union[float, int]
+        The y-coordinate of the top-left corner of the bounding box.
+    x2 : Union[float, int]
+        The x-coordinate of the bottom-right corner of the bounding box.
+    y2 : Union[float, int]
+        The y-coordinate of the bottom-right corner of the bounding box.
+    label : Optional[str], default=None
+        Text label to be drawn near the bounding box (e.g., object class name).
+    confidence : Optional[float], default=None
+        Confidence score to be displayed with the label, if available.
+
+    Returns
+    -------
+    np.ndarray
+        The frame with the bounding box and optional label (and confidence score) drawn on it.
+
+    Notes
+    -----
+    - The bounding box is drawn with a specific background color `(191, 255, 0)` and a text color `(102, 51, 0)`.
+    - The label, confidence, or both are displayed above the bounding box when provided.
+    - If both `label` and `confidence` are provided, they are displayed in the format: `LABEL: CONFIDENCE`.
+    - If only `confidence` or `label` is provided, only the relevant value is shown.
+    """
+    x1, y1, x2, y2 = [int(val) for val in (x1, y1, x2, y2)]
+    bg_color = (191, 255, 0)
+    fg_color = (102, 51, 0)
+
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color=bg_color, thickness=2)
+
+    if label is not None or confidence is not None:
         font_face = cv2.FONT_HERSHEY_SIMPLEX
         text_thickness = 2
 
-        text = f"{label}: {confidence:.2f}".upper()
+        text = (
+            f"{label}: {confidence:.2f}"
+            if label is not None and confidence is not None
+            else label if label is not None else f"{confidence:.2f}"
+        )
+        text = text.upper()
 
         (text_width, text_height), _ = cv2.getTextSize(
             text, font_face, 0.5, text_thickness
@@ -41,8 +101,6 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
         rect_y1 = y1_text
         rect_x2 = x1 + text_width
         rect_y2 = y1_text + text_height + 10
-
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color=bg_color, thickness=2)
 
         cv2.rectangle(
             frame,
@@ -67,8 +125,25 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
 
 def overlay_fps_render(frame: np.ndarray, fps: Union[int, float]) -> np.ndarray:
     """
-    Put FPS text on the top right corner of the frame.
+    Overlays the Frames Per Second (FPS) count on the given image frame.
 
+    Parameters
+    ----------
+    frame : np.ndarray
+        The image/frame on which the FPS value will be rendered.
+    fps : Union[int, float]
+        The FPS value to be displayed. It will be converted to an integer and shown in the frame.
+
+    Returns
+    -------
+    np.ndarray
+        The frame with the FPS value overlaid in the upper-right corner.
+
+    Notes
+    -----
+    - The FPS is displayed as an integer in yellowish-green color `(191, 255, 0)`.
+    - The position of the text is fixed to the top-right corner of the frame, offset by 50 pixels horizontally and 30 pixels vertically.
+    - The text is rendered using the `cv2.FONT_HERSHEY_SIMPLEX` font with a scale of 1 and thickness of 2.
     """
     fg_color = (191, 255, 0)
     text = f"{int(fps)}"
