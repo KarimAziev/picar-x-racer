@@ -282,8 +282,8 @@ class CameraService(metaclass=SingletonMeta):
                 if self.detection_service.video_feed_detect_mode:
                     (
                         resized_frame,
-                        original_height,
                         original_width,
+                        original_height,
                         resized_width,
                         resized_height,
                     ) = resize_to_fixed_height(self.stream_img.copy(), base_size=256)
