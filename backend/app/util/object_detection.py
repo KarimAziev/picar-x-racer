@@ -33,8 +33,6 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-
-    original_height, original_width = frame.shape[:2]
     results = yolo_model.predict(
         source=frame,
         verbose=verbose,
