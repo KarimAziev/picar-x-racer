@@ -25,9 +25,6 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
 
         label = detection["label"]
         confidence = detection["confidence"]
-        logger.info(
-            f"detection {detection}, x1 {x1}, y1 {y1}, x2 {x2}, y2 {y2}, label {label}, confidence, {confidence}"
-        )
         frame = draw_overlay(frame, x1, y1, x2, y2, label, confidence)
 
     return frame

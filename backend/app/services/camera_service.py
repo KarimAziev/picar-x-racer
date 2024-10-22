@@ -286,7 +286,7 @@ class CameraService(metaclass=SingletonMeta):
                         original_width,
                         resized_width,
                         resized_height,
-                    ) = resize_to_fixed_height(self.stream_img.copy(), base_size=192)
+                    ) = resize_to_fixed_height(self.stream_img.copy(), base_size=256)
                     self.current_frame_timestamp = time.time()
 
                     frame_data = {

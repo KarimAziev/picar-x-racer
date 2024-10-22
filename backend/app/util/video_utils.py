@@ -79,7 +79,7 @@ def resize_by_height_maybe(frame: np.ndarray, height: int):
     return cv2.resize(frame, (width, height))
 
 
-def resize_to_fixed_height(frame: np.ndarray, base_size=192):
+def resize_to_fixed_height(frame: np.ndarray, base_size=256):
     """
     Resizes the input frame to a specified base height while maintaining aspect ratio.
 
@@ -93,7 +93,7 @@ def resize_to_fixed_height(frame: np.ndarray, base_size=192):
         frame (np.ndarray): The input image or video frame to be resized.
         base_size (int, optional): The height to resize the frame to. The width
                                    will be calculated according to the original
-                                   aspect ratio. Defaults to 192.
+                                   aspect ratio.
 
     Returns:
         tuple: A tuple consisting of:
