@@ -41,11 +41,7 @@ async def take_photo(
 
     status = (
         await capture_photo(
-            img=(
-                camera_manager.stream_img
-                if camera_manager.stream_img is not None
-                else camera_manager.img
-            ),
+            img=camera_manager.img.copy(),
             photo_name=name,
             path=file_manager.user_photos_dir,
         )
