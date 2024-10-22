@@ -47,7 +47,7 @@ PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
 YOLO_MODEL_PATH = resolve_absolute_path(
     getenv(
         "YOLO_MODEL_PATH",
-        "yolov8n.pt",
+        "cat_256.pt",
     ),
     DATA_DIR,
 )
@@ -56,7 +56,7 @@ YOLO_MODEL_PATH = resolve_absolute_path(
 YOLO_MODEL_EDGE_TPU_PATH = resolve_absolute_path(
     getenv(
         "YOLO_MODEL_EDGE_TPU_PATH",
-        "yolov8n_256_edgetpu.tflite",
+        "cat_256_edgetpu.tflite",
     ),
     DATA_DIR,
 )
