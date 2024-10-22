@@ -33,6 +33,7 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
+
     results = yolo_model.predict(
         source=frame,
         verbose=verbose,
@@ -41,7 +42,7 @@ def perform_detection(
         imgsz=resized_height,
     )[0]
 
-    scale_x = original_width / resized_height
+    scale_x = original_width / resized_width
     scale_y = original_height / resized_height
 
     detection_results = []
