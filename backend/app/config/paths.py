@@ -56,7 +56,7 @@ YOLO_MODEL_PATH = resolve_absolute_path(
 YOLO_MODEL_EDGE_TPU_PATH = resolve_absolute_path(
     getenv(
         "YOLO_MODEL_EDGE_TPU_PATH",
-        "yolov8n_320_edgetpu.tflite",
+        "cat_320_edgetpu.tflite",
     ),
     DATA_DIR,
 )
