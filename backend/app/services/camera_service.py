@@ -401,9 +401,9 @@ class CameraService(metaclass=SingletonMeta):
             os.makedirs(self.file_manager.user_videos_dir)
 
         fps = (
-            self.actual_fps
-            if self.actual_fps is not None
-            else self.video_feed_fps or 30.0
+            self.video_feed_fps
+            if self.video_feed_fps is not None
+            else self.actual_fps or 30.0
         )
         if isinstance(fps, int):
             fps = float(fps)
