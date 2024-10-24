@@ -19,3 +19,4 @@ RPi.GPIO
 spidev
 pyusb
 pyudev
+watchdog
