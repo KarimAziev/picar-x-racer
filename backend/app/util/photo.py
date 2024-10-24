@@ -26,7 +26,7 @@ async def capture_photo(img: np.ndarray, photo_name: str, path: str) -> bool:
         os.makedirs(name=path, mode=0o751, exist_ok=True)
         await asyncio.sleep(0.01)
 
-    status = cv2.imwrite(os.path.join(path, photo_name), img)
+    status = await asyncio.to_thread(cv2.imwrite, os.path.join(path, photo_name), img)
 
     return status
 
