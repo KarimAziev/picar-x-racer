@@ -239,10 +239,16 @@ class FilesService(metaclass=SingletonMeta):
             cached_mod_time = cached_data["modified_time"]
 
             if cached_mod_time == file_mod_time:
-                self.logger.debug(f"Using cached details for {file}")
+                self.logger.debug(
+                    "Using cached details for %s",
+                    file,
+                )
                 return cached_data["details"]
 
-        self.logger.debug(f"Refreshing details for {file}")
+        self.logger.debug(
+            "Refreshing details for %s",
+            file,
+        )
         details = self.get_audio_file_details(file)
         if details:
             self.cache[file] = {
