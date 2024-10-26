@@ -22,6 +22,7 @@ import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { onUnmounted } from "vue";
 
 const isMobile = useDeviceWatcher();
+const initialInnerHeight = ref(window.innerHeight);
 const isFullscreen = ref();
 
 const updateAppHeight = () => {
@@ -29,7 +30,7 @@ const updateAppHeight = () => {
 
   document.documentElement.style.setProperty("--app-height", `${vh * 100}px`);
 
-  if (window.innerHeight === screen.height) {
+  if (window.innerHeight !== initialInnerHeight.value) {
     isFullscreen.value = true;
     unlockScroll();
     lockScroll();
@@ -37,6 +38,11 @@ const updateAppHeight = () => {
     isFullscreen.value = false;
     unlockScroll();
   }
+};
+
+const resetInitialHeight = () => {
+  initialInnerHeight.value = window.innerHeight;
+  isFullscreen.value = false;
 };
 
 const lockScroll = () => {
@@ -93,10 +99,12 @@ const Recording = defineAsyncComponent({
 onMounted(() => {
   updateAppHeight();
   window.addEventListener("resize", updateAppHeight);
+  window.addEventListener("orientationchange", resetInitialHeight);
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", updateAppHeight);
+  window.removeEventListener("orientationchange", resetInitialHeight);
 });
 </script>
 <style scoped lang="scss">
