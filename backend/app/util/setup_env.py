@@ -25,7 +25,7 @@ def setup_env():
     )
 
     uvicorn_group.add_argument(
-        "--reload", action="store_true", help="Enable auto-reloading of the server."
+        "--dev", action="store_true", help="Start in development mode."
     )
     uvicorn_group.add_argument(
         "--port",
@@ -54,7 +54,7 @@ def setup_env():
     px_frontend_port: str = str(args.frontend_port)
     log_level = "DEBUG" if args.debug else args.log_level or "INFO"
 
-    mode = "dev" if args.reload else "prod"
+    mode = "dev" if args.dev else "prod"
     log_level = log_level.upper()
     os.environ["PX_LOG_LEVEL"] = log_level
     os.environ["PX_CONTROL_APP_PORT"] = px_control_app_port

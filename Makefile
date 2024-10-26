@@ -13,10 +13,10 @@ dev: dev-without-install
 
 # Development environment setup
 dev-debug:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --reload --log-level=DEBUG"
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --dev --log-level=DEBUG"
 
 dev-without-install:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --reload"
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --dev"
 
 dev-with-install: frontend-install backend-venv-install dev-without-install
 
