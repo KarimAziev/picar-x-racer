@@ -56,13 +56,14 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 #app {
   display: flex;
   flex-direction: column;
   height: calc(var(--app-height));
+  overflow: hidden;
 }
 
 body {
