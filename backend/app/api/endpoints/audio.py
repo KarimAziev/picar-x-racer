@@ -92,12 +92,14 @@ async def get_play_status(
     result = audio_manager.get_music_play_status()
 
     if result is None:
-        default_track = file_manager.load_settings()
-        track = default_track.get("default_music")
+        settings = file_manager.load_settings()
+        track = settings.get("default_music")
         dir = file_manager.get_music_directory(track)
         file = path.join(dir, track)
-        duration = audio_manager.music.music_get_duration(file)
-        return {"playing": False, "track": track, "duration": duration}
+        base_dict = {"playing": False}
+        details = file_manager.get_audio_file_details_cached(file)
+        if isinstance(details, dict):
+            return {**base_dict, **details}
     else:
         return result
 
