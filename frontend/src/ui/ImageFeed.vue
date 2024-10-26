@@ -94,4 +94,10 @@ onUnmounted(() => {
 .scan-full {
   height: 90%;
 }
+
+@media (max-width: 600px) {
+  .image-feed {
+    touch-action: none;
+  }
+}
 </style>
