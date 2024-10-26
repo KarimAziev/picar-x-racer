@@ -60,9 +60,9 @@ body {
 }
 
 #app {
-  height: var(--app-height);
   display: flex;
   flex-direction: column;
+  height: calc(var(--app-height));
 }
 
 body {

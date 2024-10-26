@@ -23,8 +23,17 @@ import { onUnmounted } from "vue";
 
 const isMobile = useDeviceWatcher();
 const updateAppHeight = () => {
-  const fullHeight = window.innerHeight;
-  document.documentElement.style.setProperty("--app-height", `${fullHeight}px`);
+  const vh = window.innerHeight * 0.01;
+
+  document.documentElement.style.setProperty("--app-height", `${vh * 100}px`);
+
+  if (window.innerHeight === screen.height) {
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+  } else {
+    document.body.style.overflow = "";
+    document.body.style.position = "";
+  }
 };
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
@@ -58,8 +67,8 @@ const Recording = defineAsyncComponent({
 });
 
 onMounted(() => {
-  window.addEventListener("resize", updateAppHeight);
   updateAppHeight();
+  window.addEventListener("resize", updateAppHeight);
 });
 
 onUnmounted(() => {
