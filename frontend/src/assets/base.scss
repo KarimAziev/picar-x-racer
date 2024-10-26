@@ -5,7 +5,7 @@
   --p-slider-handle-width: 5px;
   --p-slider-handle-height: 5px;
   --c-black: #181818;
-  --app-height: 100vh;
+  --app-height: 80vh;
   --c-black-soft: #222222;
   --c-black-mute: #282828;
   --color-red: #ff0040;
@@ -56,14 +56,15 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
-  overflow: hidden;
 }
 
 #app {
   display: flex;
   flex-direction: column;
   height: calc(var(--app-height));
-  overflow: hidden;
+  @media (max-width: 480px) {
+    height: calc(70vh);
+  }
 }
 
 body {

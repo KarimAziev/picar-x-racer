@@ -9,10 +9,10 @@ import { useJoystickControl } from "@/features/controller/useJoysticManager";
 const controllerStore = useControllerStore();
 
 const { joystickZone: joystickZoneY } = useJoystickControl(controllerStore, {
-  position: { left: "15%", bottom: "55px" },
+  position: { left: "15%", bottom: "100px" },
 });
 const { joystickZone: joystickZoneX } = useJoystickControl(controllerStore, {
-  position: { right: "15%", bottom: "55px" },
+  position: { right: "15%", bottom: "100px" },
   lockX: true,
 });
 </script>

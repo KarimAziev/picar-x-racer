@@ -40,6 +40,7 @@ const Speedometer = defineAsyncComponent({
     width: 300px;
     text-align: right;
     left: 0;
+    bottom: 100px;
   }
 }
 </style>

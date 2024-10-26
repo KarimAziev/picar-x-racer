@@ -14,7 +14,7 @@
 
 <script setup lang="ts">
 import { RouterView } from "vue-router";
-import { defineAsyncComponent, computed, onMounted } from "vue";
+import { ref, defineAsyncComponent, computed, onMounted } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore } from "@/features/settings/stores";
@@ -22,19 +22,43 @@ import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { onUnmounted } from "vue";
 
 const isMobile = useDeviceWatcher();
+const isFullscreen = ref();
+
 const updateAppHeight = () => {
   const vh = window.innerHeight * 0.01;
 
   document.documentElement.style.setProperty("--app-height", `${vh * 100}px`);
 
   if (window.innerHeight === screen.height) {
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
+    isFullscreen.value = true;
+    unlockScroll();
+    lockScroll();
   } else {
-    document.body.style.overflow = "";
-    document.body.style.position = "";
+    isFullscreen.value = false;
+    unlockScroll();
   }
 };
+
+const lockScroll = () => {
+  document.addEventListener("scroll", preventScroll, { passive: false });
+  document.addEventListener("touchmove", preventScroll, { passive: false });
+  document.addEventListener("wheel", preventScroll, { passive: false });
+  document.body.style.position = "fixed";
+};
+
+const unlockScroll = () => {
+  document.removeEventListener("scroll", preventScroll);
+  document.removeEventListener("touchmove", preventScroll);
+  document.removeEventListener("wheel", preventScroll);
+  document.body.style.position = "";
+};
+
+const preventScroll = (e: Event) => {
+  if (isFullscreen.value) {
+    e.preventDefault();
+  }
+};
+
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
 const isTextToSpeechInputEnabled = computed(
