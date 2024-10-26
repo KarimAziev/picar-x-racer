@@ -30,8 +30,8 @@ async def websocket_endpoint(
     """
     car_manager: "CarService" = websocket.app.state.car_manager
     connection_manager: "ConnectionService" = websocket.app.state.connection_manager
-    await connection_manager.connect(websocket)
     try:
+        await connection_manager.connect(websocket)
         while True:
             raw_data = await websocket.receive_text()
 
