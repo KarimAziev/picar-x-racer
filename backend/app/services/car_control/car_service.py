@@ -53,8 +53,6 @@ class CarService(metaclass=SingletonMeta):
             payload: The payload data associated with the action.
             websocket (WebSocket): WebSocket connection instance.
         """
-
-        self.logger.info(f"Action: '{action}' with payload '{payload}'")
         calibration_actions_map = {
             "increaseCamPanCali": self.calibration.increase_cam_pan_angle,
             "decreaseCamPanCali": self.calibration.decrease_cam_pan_angle,
@@ -183,8 +181,6 @@ class CarService(metaclass=SingletonMeta):
             direction (int): The direction to move the car (1 for forward, -1 for backward).
             speed (int): The speed at which to move the car.
         """
-
-        self.logger.info(f"Moving {direction} with speed {speed}")
         if direction == 1:
             await asyncio.to_thread(self.px.forward, speed)
         elif direction == -1:

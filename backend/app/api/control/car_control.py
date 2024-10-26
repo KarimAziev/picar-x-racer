@@ -34,25 +34,22 @@ async def websocket_endpoint(
     try:
         while True:
             raw_data = await websocket.receive_text()
-            data = json.loads(raw_data)
-            action: str = data.get("action")
-            payload = data.get("payload")
 
-            logger.info(f"Received data: {data}")
-
-            if action:
-                if websocket.application_state == "DISCONNECTED":
-                    connection_manager.disconnect(websocket)
-                else:
-                    try:
-                        await car_manager.process_action(action, payload, websocket)
-                        await connection_manager.broadcast()
-                    except RuntimeError as ex:
-                        logger.error(
-                            f"Failed to send error message due to RuntimeError: {ex}"
-                        )
+            if websocket.application_state == "DISCONNECTED":
+                connection_manager.disconnect(websocket)
             else:
-                logger.warning(f"Received invalid message: {data}")
+                try:
+                    data = json.loads(raw_data)
+                    action: str = data.get("action")
+                    payload = data.get("payload")
+
+                    logger.info("%s", data)
+                    await car_manager.process_action(action, payload, websocket)
+                    await connection_manager.broadcast()
+                except RuntimeError as ex:
+                    logger.error(
+                        f"Failed to send error message due to RuntimeError: {ex}"
+                    )
     except WebSocketDisconnect:
         logger.info("WebSocket Disconnected")
         connection_manager.disconnect(websocket)

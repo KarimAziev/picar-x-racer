@@ -131,9 +131,12 @@ class PWM(I2C):
                 raise ValueError(msg)
 
         if isinstance(self.address, int):
-            self.logger.debug(f"Initted PWM at the address {hex(self.address)}")
+            self.logger.debug(
+                "Initted PWM at the address {%s}",
+                hex(self.address),
+            )
         else:
-            self.logger.warning(f"PWM address is not found")
+            self.logger.warning("PWM address is not found")
 
         self.channel = channel
         self.timer = int(channel / 4)
@@ -181,10 +184,16 @@ class PWM(I2C):
             value & 0xFF
         )  # Low byte: Mask with 0xFF to keep only the least significant byte
         # Write the register address followed by the high and low bytes to the I2C device
+
         self.logger.debug(
-            f"[{self._chan_desc}]: writing 16 bit {value} ({hex(value)}) "
-            f"high byte: {value_h} ({hex(value_h)}) "
-            f"low byte: {value_l}, ({hex(value_l)})"
+            "[%s]: writing 16 bit %s (%s) high byte: %s (%s) low byte: %s, (%s)",
+            self._chan_desc,
+            value,
+            hex(value),
+            value_h,
+            hex(value_h),
+            value_l,
+            hex(value_l),
         )
         self.write([reg, value_h, value_l])
 
@@ -237,7 +246,11 @@ class PWM(I2C):
         psc, arr = result_ap[i]
 
         self.logger.debug(
-            f"[{self._chan_desc}]: frequency {self._freq} -> prescaler {psc}, period: {arr}"
+            "[{%s}]: frequency {%s} -> prescaler {%s}, period: {%s}",
+            self._chan_desc,
+            self._freq,
+            psc,
+            arr,
         )
 
         self.prescaler(psc)
@@ -270,7 +283,12 @@ class PWM(I2C):
         self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
         reg = self.REG_PSC + self.timer
         self.logger.debug(
-            f"[{self._chan_desc}]: Set prescaler to PWM {self._prescaler - 1} at timer {self.timer} to register: {hex(reg)}, global timer: {timer}"
+            "[%s]: Set prescaler to PWM %s at timer %s to register: %s, global timer: %s",
+            self._chan_desc,
+            self._prescaler - 1,
+            self.timer,
+            hex(reg),
+            timer,
         )
         self._i2c_write(reg, self._prescaler - 1)
 
@@ -322,7 +340,12 @@ class PWM(I2C):
         reg = self.REG_ARR + self.timer
 
         self.logger.debug(
-            f"[{self._chan_desc}]: Set period to PWM {arr} at timer {self.timer} to register: {hex(reg)}, global timer: {timer}"
+            "[%s]: Set period to PWM %s at timer %s to register: %s, global timer: %s",
+            self._chan_desc,
+            arr,
+            self.timer,
+            hex(reg),
+            timer,
         )
         self._i2c_write(reg, arr)
 
@@ -343,7 +366,11 @@ class PWM(I2C):
         self._pulse_width = int(pulse_width)
         reg = self.REG_CHN + self.channel
         self.logger.debug(
-            f"[{self._chan_desc}]: writing pulse width {self._pulse_width}  to register: {hex(reg)} global timer: {timer}"
+            "[%s]: writing pulse width %s  to register: %s global timer: %s",
+            self._chan_desc,
+            self._pulse_width,
+            hex(reg),
+            timer,
         )
         self._i2c_write(reg, self._pulse_width)
 

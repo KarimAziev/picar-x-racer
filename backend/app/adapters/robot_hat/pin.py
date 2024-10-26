@@ -209,9 +209,13 @@ class Pin(object):
                 if isinstance(item, str)
             ]
         )
-        self.logger.info(
-            f"Initted [{self.descr}], mode: {mode_str} "
-            f"(0x{self._pin_num:02X}) {pull_str} ({pull_hex})"
+        self.logger.debug(
+            "Initted [%s], mode: %s (0x%s:02X) %s (%s)",
+            self.descr,
+            mode_str,
+            self._pin_num,
+            pull_str,
+            pull_hex,
         )
 
     def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
@@ -241,7 +245,11 @@ class Pin(object):
         """
         Close the GPIO pin.
         """
-        self.logger.debug(f"[{self.descr}]: Closing {self.gpio}")
+        self.logger.debug(
+            "[%s]: Closing %s",
+            self.descr,
+            self.gpio,
+        )
         if self.gpio:
             self.gpio.close()
 
@@ -326,7 +334,9 @@ class Pin(object):
                 self.setup(self.IN)
             result = self.gpio.value if self.gpio else None
             self.logger.debug(
-                f"read pin {self.gpio.pin if self.gpio else None}: {result}"
+                "read pin %s: %s",
+                self.gpio.pin if self.gpio else None,
+                result,
             )
             return result
         else:

@@ -119,7 +119,10 @@ class CameraService(metaclass=SingletonMeta):
             self.last_detection_result = latest_detection
 
             if log and self.video_feed_enhance_mode:
-                self.logger.info(f"Detection result: {self.last_detection_result}")
+                self.logger.info(
+                    "Detection result: %s",
+                    self.last_detection_result,
+                )
 
         if self.stream_img is not None:
             format = self.video_feed_format
@@ -150,7 +153,11 @@ class CameraService(metaclass=SingletonMeta):
             info = self.video_device_adapter.video_device or (None, None)
             (self.video_feed_device, _) = info
             self.logger.info(
-                f"Setting FPS: {self.video_feed_fps}, size: {self.video_feed_width}x{self.video_feed_height}, pixel format: {self.video_feed_pixel_format}"
+                "Setting FPS: %s, size: %sx%s, pixel format: %s",
+                self.video_feed_fps,
+                self.video_feed_width,
+                self.video_feed_height,
+                self.video_feed_pixel_format,
             )
             if self.video_feed_pixel_format:
                 self.cap.set(
@@ -173,7 +180,12 @@ class CameraService(metaclass=SingletonMeta):
             self.video_feed_height = height
             self.video_feed_fps = fps
 
-            self.logger.info(f"Updated size: {width}x{height}, FPS: {fps}")
+            self.logger.info(
+                "Updated size: %sx%s, FPS: %s",
+                width,
+                height,
+                fps,
+            )
             if self.video_feed_device:
                 data = parse_v4l2_device_info(self.video_feed_device)
                 self.video_feed_pixel_format = data.get(
@@ -239,11 +251,15 @@ class CameraService(metaclass=SingletonMeta):
 
                         self.cap = cap
                         self.logger.info(
-                            f"Setting size to: {self.video_feed_width}x{self.video_feed_height}"
+                            "Setting size to: %sx%s",
+                            self.video_feed_width,
+                            self.video_feed_height,
                         )
                         self.setup_camera_props()
                         self.logger.info(
-                            f"Updated size: {self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}"
+                            "Updated size: %sx%s",
+                            self.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
+                            self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
                         )
                         continue
                 else:
@@ -265,7 +281,10 @@ class CameraService(metaclass=SingletonMeta):
                         if self.actual_fps is not None:
                             diff = self.actual_fps - prev_fps
                             if abs(diff) >= 2:
-                                self.logger.info(f"Real FPS {self.actual_fps}")
+                                self.logger.info(
+                                    "Real FPS %s",
+                                    self.actual_fps,
+                                )
                                 prev_fps = self.actual_fps
 
                 frame_enhancer = (
@@ -425,7 +444,11 @@ class CameraService(metaclass=SingletonMeta):
             )
         )
         self.logger.info(
-            f"Starting video recording {width}x{height} with {fps} at {video_path}"
+            "Starting video recording %sx%s with %s at %s",
+            width,
+            height,
+            fps,
+            video_path,
         )
 
         fourcc = cv2.VideoWriter.fourcc(*"XVID")
@@ -455,7 +478,10 @@ class CameraService(metaclass=SingletonMeta):
         if self.video_feed_device:
             result = self.video_device_adapter.update_device(self.video_feed_device)
             if result is None:
-                self.logger.error(f"Device {self.video_feed_device} is not available")
+                self.logger.error(
+                    "Device %s is not available",
+                    self.video_feed_device,
+                )
         else:
             self.video_device_adapter.video_device = None
         if cam_running:

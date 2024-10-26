@@ -51,16 +51,16 @@ class PicarxAdapter(metaclass=SingletonMeta):
         cali_val = self.config_file.get("picarx_dir_servo")
         cali_val_float = float(cali_val) if cali_val else 0.0
         self.dir_cali_val = cali_val_float
-        self.logger.debug(f"Initted dir_cali_val {self.dir_cali_val}")
+        self.logger.debug("Initted dir_cali_val: %s", self.dir_cali_val)
 
         self.cam_pan_cali_val = float(
             self.config_file.get("picarx_cam_pan_servo", default_value=0) or 0
         )
-        self.logger.debug(f"Initted cam_pan_cali_val with {self.cam_pan_cali_val}")
+        self.logger.debug("Initted cam_pan_cali_val: %s", self.cam_pan_cali_val)
         self.cam_tilt_cali_val = float(
             self.config_file.get("picarx_cam_tilt_servo", default_value=0) or 0
         )
-        self.logger.debug(f"Initted cam_tilt_cali_val with {self.cam_tilt_cali_val}")
+        self.logger.debug("Initted cam_tilt_cali_val: %s", self.cam_tilt_cali_val)
         # Set servos to init angle
         self.dir_servo_pin.angle(self.dir_cali_val)
         self.cam_pan.angle(self.cam_pan_cali_val)
@@ -82,7 +82,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
             if temp
             else [1, 1]
         )
-        self.logger.debug(f"Initted cali_dir_value with {self.cali_dir_value}")
+        self.logger.debug("Initted cali_dir_value with %s", self.cali_dir_value)
         self.cali_speed_value = [0, 0]
         self.dir_current_angle = 0
         # Init pwm
@@ -137,7 +137,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         # Log the action with constrained speed
         self.logger.debug(
-            f"Setting speed {speed} for {motor_name} motor (Motor {motor})"
+            "Setting speed %s for %s motor (Motor %s)", speed, motor_name, motor
         )
 
         # Verify calibration values are set and valid
@@ -241,8 +241,10 @@ class PicarxAdapter(metaclass=SingletonMeta):
         angle_value = self.dir_current_angle + self.dir_cali_val
 
         self.logger.debug(
-            f"Updating direction angle from {original_value} to {self.dir_current_angle} "
-            f"(calibrated {angle_value})"
+            "Direction angle from %s to %s (calibrated %s)",
+            original_value,
+            self.dir_current_angle,
+            angle_value,
         )
         self.dir_servo_pin.angle(angle_value)
 
@@ -264,7 +266,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            value (int): Calibration value
         """
-        self.logger.info(f"Calibrating camera tilt servo with value {value}")
+        self.logger.info("Calibrating camera tilt servo with value %s", value)
         self.cam_tilt_cali_val = value
         self.config_file.set("picarx_cam_tilt_servo", str(value))
         self.cam_tilt.angle(value)
@@ -281,7 +283,10 @@ class PicarxAdapter(metaclass=SingletonMeta):
         angle_value = -1 * (constrained_value + -1 * self.cam_pan_cali_val)
 
         self.logger.debug(
-            f"Setting camera pan angle {value} (adjusted: {angle_value} by calibratation offset {self.cam_pan_cali_val})"
+            "Setting camera pan angle: %s, adjusted: %s with offset %s)",
+            value,
+            angle_value,
+            self.cam_pan_cali_val,
         )
         self.cam_pan.angle(angle_value)
 
@@ -295,7 +300,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         constrained_value = constrain(value, self.CAM_TILT_MIN, self.CAM_TILT_MAX)
         angle_value = -1 * (constrained_value + -1 * self.cam_tilt_cali_val)
 
-        self.logger.debug(f"Setting camera tilt angle to {angle_value}")
+        self.logger.debug("Setting camera tilt angle to %s", angle_value)
         self.cam_tilt.angle(angle_value)
 
     def move(self, speed: int, direction: int):
@@ -320,8 +325,13 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 speed2 *= power_scale
 
         self.logger.debug(
-            f"Move with speed {speed}, direction {direction}, angle {current_angle}, "
-            f"power_scale {power_scale:.2f}, motor1_speed {speed1}, motor2_speed {speed2}"
+            "Move with speed %s, direction %s, angle %s, power_scale %.2f, motor1_speed %s, motor2_speed %s",
+            speed,
+            direction,
+            current_angle,
+            power_scale,
+            speed1,
+            speed2,
         )
 
         self.set_motor_speed(1, speed1)
@@ -334,6 +344,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            speed (int): The base speed at which to move.
         """
+        self.logger.debug("Forward: 100/%s", speed)
         self.move(speed, direction=1)
 
     def backward(self, speed: int):
@@ -343,6 +354,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            speed (int): The base speed at which to move.
         """
+        self.logger.debug("Backward: 100/%s", speed)
         self.move(speed, direction=-1)
 
     async def stop(self):
