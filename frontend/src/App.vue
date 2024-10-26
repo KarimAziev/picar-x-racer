@@ -14,13 +14,18 @@
 
 <script setup lang="ts">
 import { RouterView } from "vue-router";
-import { defineAsyncComponent, computed } from "vue";
+import { defineAsyncComponent, computed, onMounted } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import { onUnmounted } from "vue";
 
 const isMobile = useDeviceWatcher();
+const updateAppHeight = () => {
+  const fullHeight = window.innerHeight;
+  document.documentElement.style.setProperty("--app-height", `${fullHeight}px`);
+};
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
 const isTextToSpeechInputEnabled = computed(
@@ -50,6 +55,15 @@ const CalibrationModeInfo = defineAsyncComponent({
 const Recording = defineAsyncComponent({
   loader: () =>
     import("@/features/settings/components/VideoRecordingIndicator.vue"),
+});
+
+onMounted(() => {
+  window.addEventListener("resize", updateAppHeight);
+  updateAppHeight();
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateAppHeight);
 });
 </script>
 <style scoped lang="scss">

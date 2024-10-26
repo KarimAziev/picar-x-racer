@@ -284,12 +284,16 @@ export const useControllerStore = defineStore("controller", {
       }
     },
     setCamTiltAngle(angle: number): void {
-      const nextAngle = constrain(CAM_TILT_MIN, CAM_TILT_MAX, angle);
+      const nextAngle = Math.trunc(
+        constrain(CAM_TILT_MIN, CAM_TILT_MAX, angle),
+      );
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
     },
 
     setCamPanAngle(servoAngle: number): void {
-      const nextAngle = constrain(CAM_PAN_MIN, CAM_PAN_MAX, servoAngle);
+      const nextAngle = Math.trunc(
+        constrain(CAM_PAN_MIN, CAM_PAN_MAX, servoAngle),
+      );
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
     },
 

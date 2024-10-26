@@ -1,18 +1,20 @@
 <template>
   <div class="wrapper">
     <JoysticZone v-if="isMobile" />
-    <div class="content"><VideoBox /></div>
+    <div class="content">
+      <VideoBox />
 
-    <GaugesBlock class="gauges" v-if="!isMobile">
-      <ToggleableView setting="car_model_view">
-        <CarModelViewer
-          class="car-model"
-          :zoom="4"
-          :rotationY="20"
-          :rotationX="0"
-        />
-      </ToggleableView>
-    </GaugesBlock>
+      <GaugesBlock class="gauges">
+        <ToggleableView setting="car_model_view" v-if="!isMobile">
+          <CarModelViewer
+            class="car-model"
+            :zoom="4"
+            :rotationY="20"
+            :rotationX="0"
+          />
+        </ToggleableView>
+      </GaugesBlock>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
@@ -52,6 +54,8 @@ useCarController(controllerStore, settingsStore, popupStore);
 .wrapper {
   width: 100%;
   display: flex;
+  justify-content: center;
+  align-items: center;
   position: relative;
 }
 

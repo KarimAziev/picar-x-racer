@@ -3,6 +3,7 @@
     <InfoItem label="Autopilot is on" />
   </div>
   <InfoBlock v-else>
+    <InfoItem label="Speed" :value="speed" value-suffix="" />
     <InfoItem label="Camera Tilt" :value="camTilt" value-suffix="°" />
     <InfoItem label="Camera Pan" :value="camPan" value-suffix="°" />
     <InfoItem label="Servo Direction" :value="servoAngle" value-suffix="°" />
@@ -24,6 +25,10 @@ const avoidObstacles = computed(() => store.avoidObstacles);
 const camPan = computed(() => store.camPan);
 const camTilt = computed(() => store.camTilt);
 const servoAngle = computed(() => store.servoAngle);
+
+const speed = computed(() =>
+  (store.direction * store.speed).toString().padStart(2, "0"),
+);
 
 const maxSpeed = computed(() => store.maxSpeed);
 </script>

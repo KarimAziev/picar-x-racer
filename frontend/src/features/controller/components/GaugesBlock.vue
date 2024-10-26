@@ -4,7 +4,7 @@
       <TextInfo />
     </ToggleableView>
     <slot></slot>
-    <ToggleableView setting="speedometer_view">
+    <ToggleableView setting="speedometer_view" v-if="!isMobile">
       <Speedometer />
     </ToggleableView>
   </div>
@@ -12,6 +12,9 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+
+const isMobile = useDeviceWatcher();
 
 defineProps<{ class?: string }>();
 
@@ -33,5 +36,10 @@ const Speedometer = defineAsyncComponent({
   right: 0;
   bottom: 0;
   width: 400px;
+  @media (max-width: 480px) {
+    width: 300px;
+    text-align: right;
+    left: 0;
+  }
 }
 </style>

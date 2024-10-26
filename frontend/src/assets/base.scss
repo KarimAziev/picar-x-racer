@@ -5,7 +5,7 @@
   --p-slider-handle-width: 5px;
   --p-slider-handle-height: 5px;
   --c-black: #181818;
-
+  --app-height: 100vh;
   --c-black-soft: #222222;
   --c-black-mute: #282828;
   --color-red: #ff0040;
@@ -51,10 +51,21 @@
   margin: 0;
   font-weight: normal;
 }
-
+html,
 body {
   margin: 0;
-  min-height: 100vh;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+#app {
+  height: var(--app-height);
+  display: flex;
+  flex-direction: column;
+}
+
+body {
   width: 100%;
   color: var(--color-text);
   background: var(--color-background);

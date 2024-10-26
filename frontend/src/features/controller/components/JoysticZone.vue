@@ -1,12 +1,10 @@
 <template>
   <div ref="joystickZoneY" class="joystick-zone-left"></div>
   <div ref="joystickZoneX" class="joystick-zone-right"></div>
-  <div ref="joystickCam" class="joystick-camera"></div>
 </template>
 <script setup lang="ts">
 import { useControllerStore } from "@/features/controller/store";
 import { useJoystickControl } from "@/features/controller/useJoysticManager";
-import { useJoystickCameraControl } from "@/features/controller/useJoysticCameraController";
 
 const controllerStore = useControllerStore();
 
@@ -17,13 +15,6 @@ const { joystickZone: joystickZoneX } = useJoystickControl(controllerStore, {
   position: { right: "15%", bottom: "55px" },
   lockX: true,
 });
-const { joystickZone: joystickCam } = useJoystickCameraControl(
-  controllerStore,
-  {
-    position: { right: "50%", bottom: "55px" },
-    restOpacity: 0.1,
-  },
-);
 </script>
 
 <style scoped lang="scss">
