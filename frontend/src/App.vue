@@ -60,10 +60,10 @@ const Recording = defineAsyncComponent({
 
 const requestFullScreen = () => {
   document.removeEventListener("scroll", requestFullScreen);
+  document.removeEventListener("click", requestFullScreen);
 
   const elem = document.documentElement;
   if (elem.requestFullscreen) {
-    console.log("FULLSCREEN");
     elem
       .requestFullscreen({ navigationUI: "hide" })
       .then(() => {
@@ -77,9 +77,12 @@ const requestFullScreen = () => {
 
 onMounted(() => {
   document.addEventListener("scroll", requestFullScreen);
+  document.addEventListener("click", requestFullScreen);
 });
 onBeforeUnmount(() => {
   document.removeEventListener("scroll", requestFullScreen);
+
+  document.removeEventListener("click", requestFullScreen);
 });
 </script>
 <style scoped lang="scss">
