@@ -1,8 +1,8 @@
 <template>
   <div class="fullscreen-switch">
     <ToggleSwitch
+      inputId="fullscreen-toggle"
       v-tooltip="'Toggle Fullscreen'"
-      id="fullscreen"
       v-model="settingsStore.settings.fullscreen"
     />
   </div>

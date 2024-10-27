@@ -15,6 +15,7 @@
     />
     <TextInput
       placeholder="Text to Speech"
+      id="tts-text"
       @keydown.stop="doThis"
       @keyup.stop="handleKeyUp"
       @keypress.stop="doThis"
