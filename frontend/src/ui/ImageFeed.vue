@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount, watch, onMounted, onUnmounted } from "vue";
+import { ref, onBeforeUnmount, watch, onMounted } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { makeWebsocketUrl } from "@/util/url";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
@@ -29,7 +29,7 @@ import { useCameraRotate } from "@/composables/useCameraRotate";
 
 const camStore = useCameraStore();
 
-const fetchSettttings = async () => {
+const fetchSettings = async () => {
   await camStore.fetchCurrentSettings();
 };
 
@@ -43,11 +43,7 @@ const {
   imgLoading,
   connected,
   imgInitted,
-} = useWebsocketStream(makeWebsocketUrl("ws/video-stream"), {
-  onFirstMessage: () => {
-    fetchSettttings();
-  },
-});
+} = useWebsocketStream(makeWebsocketUrl("ws/video-stream"));
 
 const { addListeners, removeListeners } = useCameraRotate(imgRef);
 
@@ -62,16 +58,15 @@ watch(
 );
 
 onMounted(() => {
-  fetchSettttings();
+  fetchSettings();
   initWS();
   window.addEventListener("beforeunload", closeWS);
 });
+
 onBeforeUnmount(() => {
   removeListeners();
-});
-onUnmounted(() => {
-  closeWS();
   window.removeEventListener("beforeunload", closeWS);
+  closeWS();
 });
 </script>
 
