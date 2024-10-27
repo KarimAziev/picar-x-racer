@@ -10,13 +10,11 @@ import { useJoystickControl } from "@/features/joystick/composables/useJoysticMa
 const controllerStore = useControllerStore();
 const timeout = ref<NodeJS.Timeout>();
 
-const leftJoysticProps = {
-  position: { left: "15%", bottom: "100px" },
-};
-
 const { joystickZone: joystickZoneY, params } = useJoystickControl(
   controllerStore,
-  leftJoysticProps,
+  {
+    position: { left: "15%", bottom: "100px" },
+  },
   {
     onEnd: () => {
       controllerStore.stop();
@@ -53,7 +51,7 @@ const handleEnd = () => {
 const { joystickZone: joystickZoneX } = useJoystickControl(
   controllerStore,
   {
-    position: { bottom: leftJoysticProps.position.bottom, right: "15%" },
+    position: { bottom: "100px", right: "15%" },
     lockX: true,
   },
   {
