@@ -6,6 +6,7 @@
     optionLabel="label"
     optionValue="value"
     :options="devices"
+    :loading="loading"
   />
 </template>
 
@@ -23,6 +24,9 @@ const devices = computed(() =>
 
 const store = useSettingsStore();
 const camStore = useCameraStore();
+
+const loading = computed(() => camStore.loading);
+
 const isReady = ref(false);
 const getInitialValue = () => {
   if (
@@ -45,6 +49,7 @@ const selectedDevice = ref<string | null>();
 
 onMounted(async () => {
   await camStore.fetchCurrentSettings();
+
   await camStore.fetchDevices();
   selectedDevice.value = getInitialValue();
 });

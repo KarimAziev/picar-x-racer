@@ -12,6 +12,7 @@
       :optionLabel="optionLabel"
       :optionValue="optionValue"
       :class="props.inputClassName"
+      :loading="loading"
       v-model="currentValue"
       :invalid="invalid"
       :disabled="readonly || disabled"
@@ -43,6 +44,7 @@ export type Props = {
   optionValue?: string;
   readonly?: boolean;
   disabled?: boolean;
+  loading?: boolean;
 };
 const props = defineProps<Props>();
 const otherAttrs = useAttrs();
