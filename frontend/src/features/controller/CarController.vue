@@ -40,7 +40,7 @@ const CarModelViewer = defineAsyncComponent({
 });
 
 const JoysticZone = defineAsyncComponent({
-  loader: () => import("@/features/controller/components/JoysticZone.vue"),
+  loader: () => import("@/features/joystick/components/JoysticZone.vue"),
 });
 
 const VideoBox = defineAsyncComponent({

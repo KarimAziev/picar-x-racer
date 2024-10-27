@@ -3,18 +3,64 @@
   <div ref="joystickZoneX" class="joystick-zone-right"></div>
 </template>
 <script setup lang="ts">
+import { ref } from "vue";
 import { useControllerStore } from "@/features/controller/store";
-import { useJoystickControl } from "@/features/controller/useJoysticManager";
+import { useJoystickControl } from "@/features/joystick/composables/useJoysticManager";
 
 const controllerStore = useControllerStore();
+const timeout = ref<NodeJS.Timeout>();
 
-const { joystickZone: joystickZoneY } = useJoystickControl(controllerStore, {
+const leftJoysticProps = {
   position: { left: "15%", bottom: "100px" },
-});
-const { joystickZone: joystickZoneX } = useJoystickControl(controllerStore, {
-  position: { right: "15%", bottom: "100px" },
-  lockX: true,
-});
+};
+
+const { joystickZone: joystickZoneY, params } = useJoystickControl(
+  controllerStore,
+  leftJoysticProps,
+  {
+    onEnd: () => {
+      controllerStore.stop();
+      controllerStore.resetDirServoAngle();
+    },
+  },
+);
+
+const debounceRecreate = () => {
+  if (timeout.value) {
+    clearTimeout(timeout.value);
+  }
+  timeout.value = setTimeout(() => {
+    if (params.value) {
+      params.value.lockY = false;
+    }
+  }, 1000);
+};
+
+const handleOnStart = () => {
+  if (timeout.value) {
+    clearTimeout(timeout.value);
+  }
+  if (params.value) {
+    params.value.lockY = true;
+  }
+};
+
+const handleEnd = () => {
+  debounceRecreate();
+  controllerStore.resetDirServoAngle();
+};
+
+const { joystickZone: joystickZoneX } = useJoystickControl(
+  controllerStore,
+  {
+    position: { bottom: leftJoysticProps.position.bottom, right: "15%" },
+    lockX: true,
+  },
+  {
+    onStart: handleOnStart,
+    onEnd: handleEnd,
+  },
+);
 </script>
 
 <style scoped lang="scss">

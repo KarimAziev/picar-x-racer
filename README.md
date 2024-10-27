@@ -285,7 +285,6 @@ class ModelManager:
             ),
             task="detect",
         )
-        self.model.overrides["imgsz"] = (192, 192)
         return self.model
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -299,7 +298,7 @@ The inference performance on Raspberry is usually poor. The Coral Edge TPU is a 
 
 Follow the [Ultralytics guide](https://docs.ultralytics.com/guides/coral-edge-tpu-on-raspberry-pi/), but stop at the model export step because it requires some additional steps.
 
-To export your model for the Edge TPU, you need to run the export with a specific image size (`192x192`). You can use the script `export_model.py` from this repo.
+To export your model for the Edge TPU, you need to run the export with a specific image size (`320x320`). You can use the script `export_model.py` from this repo.
 
 ```sh
 cd /path/to/picar-x-racer/backend/
@@ -323,7 +322,7 @@ pip uninstall tensorflow tensorflow-aarch64
 pip install tflite-runtime
 ```
 
-Then you can run the application. If you encounter errors, such as 'Failed to load delegate from libedgetpu.so.1.0 with tflite_runtime', you may need to download a pre-built wheel that matches your `libedgetpu` version and Python version.
+Then you can run the application. If you encounter errors, such as `Failed to load delegate from libedgetpu.so.1.0 with tflite_runtime`, you may need to download a pre-built wheel that matches your `libedgetpu` version and Python version.
 
 **Steps:**
 

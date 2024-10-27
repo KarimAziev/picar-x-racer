@@ -6,19 +6,27 @@ import {
   SERVO_DIR_ANGLE_MIN,
   SERVO_DIR_ANGLE_MAX,
 } from "@/features/controller/store";
-
+import { roundToNearestTen } from "@/util/number";
 import { constrain } from "@/util/constrain";
+
+export interface Callbacks {
+  onStart?: (outputData: nipplejs.JoystickOutputData) => void;
+  onEnd?: (outputData: nipplejs.JoystickOutputData) => void;
+}
 
 export const useJoystickControl = (
   controllerStore: ReturnType<typeof useControllerStore>,
   options?: JoystickManagerOptions,
+  handlers?: Callbacks,
 ) => {
   const joystickZone = ref<HTMLElement | null>(null);
   const joystickManager = ref<nipplejs.JoystickManager | null>(null);
+  const optionsParams = ref<JoystickManagerOptions | undefined>(options);
 
   const handleJoystickMove = (data: nipplejs.JoystickOutputData) => {
     const { angle, distance } = data;
     const direction = angle.degree;
+
     const speed = Math.round(Math.round(distance * 2) / 10) * 10;
     const minJoystickAngle = 0;
     const maxJoystickAngle = 180;
@@ -27,7 +35,7 @@ export const useJoystickControl = (
     const maxServoAngle = -30;
     const isForward = direction <= 180;
 
-    const servoDir = Math.round(
+    const servoDir = roundToNearestTen(
       constrain(
         SERVO_DIR_ANGLE_MIN,
         SERVO_DIR_ANGLE_MAX,
@@ -38,23 +46,34 @@ export const useJoystickControl = (
       ),
     );
 
+    const servoDirNotLocked = !optionsParams.value?.lockY;
+
     if (isForward) {
-      controllerStore.setDirServoAngle(servoDir);
-      if (!options?.lockX) {
+      if (servoDirNotLocked) {
+        controllerStore.setDirServoAngle(servoDir);
+      }
+
+      if (!optionsParams.value?.lockX) {
         controllerStore.forward(speed);
       }
     } else {
-      controllerStore.setDirServoAngle(-servoDir);
+      if (servoDirNotLocked) {
+        controllerStore.setDirServoAngle(-servoDir);
+      }
 
-      if (!options?.lockX) {
+      if (!optionsParams.value?.lockX) {
         controllerStore.backward(speed);
       }
     }
   };
 
-  const handleJoystickEnd = () => {
-    controllerStore.stop();
-    controllerStore.resetDirServoAngle();
+  const handleJoystickEnd = (
+    _evt: nipplejs.EventData,
+    data: nipplejs.JoystickOutputData,
+  ) => {
+    if (handlers?.onEnd) {
+      handlers?.onEnd(data);
+    }
   };
 
   const handleDestroyJoysticManager = () => {
@@ -63,7 +82,7 @@ export const useJoystickControl = (
     }
   };
 
-  const handleCreateJoysticManager = () => {
+  const handleCreateJoysticManager = (params?: JoystickManagerOptions) => {
     if (joystickZone.value) {
       joystickManager.value = nipplejs.create({
         zone: joystickZone.value!,
@@ -71,7 +90,13 @@ export const useJoystickControl = (
         mode: "static",
         position: { left: "20%", bottom: "50%" },
         color: "#00ffbf",
-        ...options,
+        ...params,
+      });
+
+      joystickManager.value.on("start", (_event, data) => {
+        if (handlers?.onStart) {
+          handlers?.onStart(data);
+        }
       });
 
       joystickManager.value.on("move", (_event, data) => {
@@ -82,24 +107,36 @@ export const useJoystickControl = (
     }
   };
 
-  const recreateJoysticManager = () => {
+  const restartJoysticManager = () => {
     handleDestroyJoysticManager();
     handleCreateJoysticManager();
   };
 
+  const recreateJoysticManager = (params?: JoystickManagerOptions) => {
+    optionsParams.value = { ...optionsParams.value, ...params };
+    handleDestroyJoysticManager();
+    handleCreateJoysticManager(params);
+  };
+
   onMounted(() => {
-    window.addEventListener("resize", recreateJoysticManager);
-    window.addEventListener("orientationchange", recreateJoysticManager);
-    handleCreateJoysticManager();
+    window.addEventListener("resize", restartJoysticManager);
+    window.addEventListener("orientationchange", restartJoysticManager);
+    handleCreateJoysticManager(optionsParams.value);
   });
 
   onBeforeUnmount(() => {
-    window.removeEventListener("resize", recreateJoysticManager);
-    window.removeEventListener("orientationchange", recreateJoysticManager);
+    window.removeEventListener("resize", restartJoysticManager);
+    window.removeEventListener("orientationchange", restartJoysticManager);
     handleDestroyJoysticManager();
   });
 
   return {
+    params: optionsParams,
     joystickZone,
+    joystickManager,
+    restartJoysticManager,
+    handleDestroyJoysticManager,
+    handleCreateJoysticManager,
+    recreateJoysticManager,
   };
 };
