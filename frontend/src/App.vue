@@ -14,12 +14,16 @@
 
 <script setup lang="ts">
 import { RouterView } from "vue-router";
-import { defineAsyncComponent, computed } from "vue";
+import {
+  defineAsyncComponent,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-import { useScrollLock } from "@/composables/useScrollLock";
 
 const isMobile = useDeviceWatcher();
 
@@ -54,7 +58,29 @@ const Recording = defineAsyncComponent({
     import("@/features/settings/components/VideoRecordingIndicator.vue"),
 });
 
-useScrollLock();
+const requestFullScreen = () => {
+  document.removeEventListener("scroll", requestFullScreen);
+
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    console.log("FULLSCREEN");
+    elem
+      .requestFullscreen({ navigationUI: "hide" })
+      .then(() => {
+        console.log("Fullscreen is allowed");
+      })
+      .catch(() => {
+        console.log("Not allowed");
+      });
+  }
+};
+
+onMounted(() => {
+  document.addEventListener("scroll", requestFullScreen);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("scroll", requestFullScreen);
+});
 </script>
 <style scoped lang="scss">
 .indicators {
