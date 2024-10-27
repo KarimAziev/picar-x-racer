@@ -18,6 +18,7 @@ export const useWebsocketStream = (
   const connected = ref(false);
   const reconnectedEnabled = ref(true);
   const retryTimer = ref<NodeJS.Timeout | null>(null);
+  const currentImageUrl = ref<string>();
 
   const handleImageOnLoad = () => {
     imgLoading.value = false;
@@ -44,13 +45,19 @@ export const useWebsocketStream = (
         connected.value = true;
       }
 
+      const urlCreator = window.URL || window.webkitURL;
+      if (currentImageUrl.value) {
+        urlCreator.revokeObjectURL(currentImageUrl.value);
+      }
+
       const arrayBufferView = new Uint8Array(wsMsg.data);
       const blob = new Blob([arrayBufferView], { type: "image/jpeg" });
-      const urlCreator = window.URL || window.webkitURL;
+
       const imageUrl = urlCreator.createObjectURL(blob);
 
       if (imgRef.value) {
         imgRef.value.src = imageUrl;
+        currentImageUrl.value = imageUrl;
         if (imgInitted.value && imgLoading.value) {
           imgLoading.value = false;
         }
@@ -58,6 +65,11 @@ export const useWebsocketStream = (
     };
 
     ws.value.onclose = (_: CloseEvent) => {
+      if (currentImageUrl.value) {
+        const urlCreator = window.URL || window.webkitURL;
+        urlCreator.revokeObjectURL(currentImageUrl.value);
+        currentImageUrl.value = undefined;
+      }
       connected.value = false;
       imgLoading.value = true;
       retryConnection();
