@@ -43,6 +43,8 @@ import { numberSequence } from "@/util/cycleValue";
 import NumberField from "@/ui/NumberField.vue";
 import { objectKeysToOptions } from "@/features/settings/util";
 import VideoDeviceSelect from "@/features/settings/components/VideoDeviceSelect.vue";
+import { roundNumber } from "@/util/number";
+import { isNumber } from "@/util/guards";
 
 const detectors = computed(() => [
   ...objectKeysToOptions(camStore.detectors),
@@ -71,7 +73,9 @@ onMounted(async () => {
 watch(
   () => store.settings.video_feed_confidence,
   (newVal) => {
-    camStore.updateCameraParams({ video_feed_confidence: newVal });
+    camStore.updateCameraParams({
+      video_feed_confidence: isNumber(newVal) ? roundNumber(newVal, 1) : newVal,
+    });
   },
 );
 
