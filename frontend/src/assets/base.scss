@@ -19,12 +19,13 @@
 }
 
 :root {
-  --robo-0-color-primary: #00ff99;
+  --robo-color-primary-4: #00ff99;
   --robo-1-color-primary: #2effa9;
   --robo-2-color-primary: #00ff80;
-  --robo-3-color-primary: #00ffbf;
-  --robo-4-color-primary: #33ff33;
-  --robo-color-primary: var(--robo-3-color-primary);
+  --robo-color-primary: #00ffbf;
+  --robo-color-secondary: #2effa9;
+  --color-warn: #ffcc00;
+  --color-error: var(--color-red);
   --color-text: var(--robo-color-primary);
   --font-family-tt-octosquares-regular: "TT-Octosquares-Regular";
   --font-family: var(--font-family-tt-octosquares-regular);
