@@ -24,11 +24,9 @@ defineProps<{
 
 .info-label {
   font-weight: bold;
-  flex: 1;
 }
 
 .info-value {
-  flex: 1;
   text-align: right;
 }
 </style>

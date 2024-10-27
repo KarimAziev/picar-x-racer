@@ -13,12 +13,22 @@ defineProps<{ class?: string }>();
   text-transform: uppercase;
   display: flex;
   flex-direction: column;
-  padding: 1rem;
-  width: 200px;
-}
+  width: 100px;
+  font-size: 0.8rem;
 
-@media (min-width: 880px) {
-  .info {
+  @media (min-width: 768px) {
+    width: 130px;
+  }
+
+  @media (min-width: 992px) {
+    font-size: 1rem;
+    padding: 1rem;
+    width: 350px;
+  }
+
+  @media (min-width: 992px) {
+    font-size: 1rem;
+    padding: 1rem;
     width: 350px;
   }
 }

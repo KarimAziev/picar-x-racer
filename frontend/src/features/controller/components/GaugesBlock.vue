@@ -35,12 +35,23 @@ const Speedometer = defineAsyncComponent({
   align-items: end;
   right: 0;
   bottom: 0;
-  width: 400px;
-  @media (max-width: 480px) {
-    width: 300px;
-    text-align: right;
-    left: 0;
-    bottom: 100px;
+  width: 300px;
+
+  @media (min-width: 1200px) {
+    width: 400px;
+  }
+
+  @media screen and (max-width: 992px) and (orientation: portrait) {
+    top: 5%;
+    width: 100%;
+    left: 5%;
+    align-items: flex-start;
+  }
+
+  @media screen and (max-width: 992px) and (orientation: landscape) {
+    top: 10%;
+    width: 100%;
+    align-items: flex-start;
   }
 }
 </style>

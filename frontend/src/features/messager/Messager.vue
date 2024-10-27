@@ -22,10 +22,15 @@ const store = useMessagerStore();
 .message-wrapper {
   position: fixed;
   max-height: 50%;
-  top: 100px;
   left: 0;
   z-index: 1000;
   overflow-y: scroll;
+  font-size: 0.8rem;
+  top: 50%;
+  @media (min-width: 1200px) {
+    font-size: 1rem;
+    top: 100px;
+  }
 }
 
 .message {
