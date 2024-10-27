@@ -98,9 +98,8 @@ html {
 }
 
 * {
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
 }
 *::-webkit-scrollbar {
-  display: none; /* Safari and Chrome */
+  display: none;
 }
