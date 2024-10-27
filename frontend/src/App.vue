@@ -24,6 +24,7 @@ import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import { requestFullScreen as requestFSScreen } from "@/util/dom";
 
 const isMobile = useDeviceWatcher();
 
@@ -62,17 +63,7 @@ const requestFullScreen = () => {
   document.removeEventListener("scroll", requestFullScreen);
   document.removeEventListener("click", requestFullScreen);
 
-  const elem = document.documentElement;
-  if (elem.requestFullscreen) {
-    elem
-      .requestFullscreen({ navigationUI: "hide" })
-      .then(() => {
-        console.log("Fullscreen is allowed");
-      })
-      .catch(() => {
-        console.log("Not allowed");
-      });
-  }
+  requestFSScreen();
 };
 
 onMounted(() => {

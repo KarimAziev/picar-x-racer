@@ -12,6 +12,7 @@
 import ToggleSwitch from "primevue/toggleswitch";
 import { watch } from "vue";
 import { useSettingsStore } from "@/features/settings/stores";
+import { requestFullScreen, exitFullScreen } from "@/util/dom";
 
 const settingsStore = useSettingsStore();
 
@@ -20,9 +21,9 @@ watch(
   (newVal) => {
     try {
       if (!newVal) {
-        document.exitFullscreen();
+        exitFullScreen();
       } else {
-        document.documentElement.requestFullscreen({ navigationUI: "hide" });
+        requestFullScreen();
       }
     } catch (error) {}
   },
