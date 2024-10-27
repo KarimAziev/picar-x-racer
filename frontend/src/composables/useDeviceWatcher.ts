@@ -1,4 +1,4 @@
-import { ref, onUnmounted, onMounted } from "vue";
+import { ref, onBeforeUnmount, onMounted } from "vue";
 
 export const useDeviceWatcher = () => {
   const isMobile = ref(/Mobi|Android|iPhone/i.test(navigator.userAgent));
@@ -12,7 +12,7 @@ export const useDeviceWatcher = () => {
     window.addEventListener("orientationchange", updateDeviceStatus);
   });
 
-  onUnmounted(() => {
+  onBeforeUnmount(() => {
     window.removeEventListener("resize", updateDeviceStatus);
     window.removeEventListener("orientationchange", updateDeviceStatus);
   });
