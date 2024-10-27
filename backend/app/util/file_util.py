@@ -2,6 +2,8 @@ import json
 import os
 import shutil
 from os import path
+from pathlib import Path
+from typing import Tuple, Union
 
 
 def copy_file_if_not_exists(source: str, target: str):
@@ -68,6 +70,70 @@ def resolve_absolute_path(file: str, *dir_segmens):
 
         If `file` is 'bash' and `dir_segments` is '/usr', 'bin', then '/usr/bin/bash' will be returned.
     """
+    if file.startswith("~"):
+        file = os.path.expanduser(file)
     if path.isabs(file):
         return file
     return path.abspath(path.join(*dir_segmens, file))
+
+
+def get_files_with_extension(directory: str, extension: Union[str, Tuple[str, ...]]):
+    """
+    Recursively scans the provided directory and returns all files with the specified extension.
+    """
+    result = []
+
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith(extension):
+                result.append(os.path.join(root, file))
+
+    return result
+
+
+def file_name_parent_directory(directory: Union[Path, str]) -> Path:
+    """
+    Returns the parent directory of the given directory.
+
+    Parameters:
+    directory (Path or str): The directory whose parent is to be returned. It can be
+                             provided as a Path object or as a string representing
+                             the path.
+
+    Returns:
+    Path: A Path object representing the parent directory of the given directory.
+
+    Example:
+    >>> file_name_parent_directory("/home/user/documents")
+    PosixPath('/home/user')
+
+    >>> file_name_parent_directory(Path("/home/user/documents"))
+    PosixPath('/home/user')
+    """
+    if isinstance(directory, Path):
+        return directory.parent
+    return Path(directory).parent
+
+
+def get_directory_name(path: Union[Path, str]) -> str:
+    """
+    Returns the name of the directory or file, given a path.
+
+    Parameters:
+    path (Path or str): The path to extract the name from. It can be provided
+                        either as a Path object or as a string representing
+                        the path.
+
+    Returns:
+    str: The name of the file or directory at the given path.
+
+    Example:
+    >>> get_directory_name("/home/user/documents")
+    'documents'
+
+    >>> get_directory_name(Path("/home/user/documents"))
+    'documents'
+    """
+    if isinstance(path, Path):
+        return path.name
+    return Path(path).name
