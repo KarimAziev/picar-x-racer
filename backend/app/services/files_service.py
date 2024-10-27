@@ -41,6 +41,7 @@ from typing import Any, Dict, List
 from app.adapters.robot_hat.filedb import fileDB
 from app.config.paths import (
     CONFIG_USER_DIR,
+    DATA_DIR,
     DEFAULT_MUSIC_DIR,
     DEFAULT_SOUND_DIR,
     DEFAULT_USER_SETTINGS,
@@ -54,7 +55,11 @@ from app.config.paths import (
 )
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.services.audio_service import AudioService
-from app.util.file_util import ensure_parent_dir_exists, load_json_file
+from app.util.file_util import (
+    ensure_parent_dir_exists,
+    get_files_with_extension,
+    load_json_file,
+)
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
@@ -605,3 +610,16 @@ class FilesService(metaclass=SingletonMeta):
             calibration_settings = fileDB(PICARX_CONFIG_FILE).get_all_as_json()
             return calibration_settings
         return {}
+
+    @staticmethod
+    def get_available_models():
+        """
+        Recursively scans the provided directory for .tflite, .onnx and .pt model files.
+        Returns a list of all found models with their full file paths.
+
+        Returns:
+            List[str]: List of paths to discovered .tflite and .pt model files.
+        """
+
+        supported_extensions = ('.tflite', '.pt', ".onnx")
+        return get_files_with_extension(DATA_DIR, supported_extensions)
