@@ -1,9 +1,9 @@
 <template>
-  <SettingsPopup v-if="storeSettings.loaded" />
+  <SettingsPopup v-if="loaded" />
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, defineAsyncComponent } from "vue";
+import { computed, defineAsyncComponent } from "vue";
 import { useSettingsStore } from "@/features/settings/stores";
 
 const SettingsPopup = defineAsyncComponent({
@@ -12,11 +12,5 @@ const SettingsPopup = defineAsyncComponent({
 
 const storeSettings = useSettingsStore();
 const loaded = computed(() => storeSettings.loaded);
-
-onMounted(() => {
-  if (!loaded.value) {
-    storeSettings.fetchSettingsInitial();
-  }
-});
 </script>
 <style scoped lang="scss"></style>
