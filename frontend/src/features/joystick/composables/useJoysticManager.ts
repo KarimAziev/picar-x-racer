@@ -109,7 +109,7 @@ export const useJoystickControl = (
 
   const restartJoysticManager = () => {
     handleDestroyJoysticManager();
-    handleCreateJoysticManager();
+    handleCreateJoysticManager({ ...optionsParams.value });
   };
 
   const recreateJoysticManager = (params?: JoystickManagerOptions) => {
