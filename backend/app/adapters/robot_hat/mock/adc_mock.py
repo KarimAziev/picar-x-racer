@@ -26,7 +26,7 @@ class ADC(ADC_real):
         :rtype: float
         """
         voltage = battery.get_battery_voltage() / 3
-        self.logger.info(
+        self.logger.debug(
             "Read voltage mock: %s",
             voltage,
         )

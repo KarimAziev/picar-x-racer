@@ -26,5 +26,5 @@ class Battery:
             self.voltage_2 -= self.discharge_rate
             self.voltage_1 -= self.discharge_rate
 
-        total_voltage = self.voltage_1 + self.voltage_2
+        total_voltage = max(6.0, self.voltage_1 + self.voltage_2)
         return total_voltage
