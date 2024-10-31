@@ -72,11 +72,18 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
     }
   };
 
+  const handleOrientationChange = () => {
+    lastX.value = 0;
+    lastY.value = 0;
+    controllerStore.resetCameraRotate();
+  };
+
   const addListeners = () => {
     const imgElement = imgRef.value;
     if (imgElement) {
       imgElement.addEventListener("mousedown", startDragging);
       imgElement.addEventListener("mousemove", onDrag);
+      imgElement.addEventListener("orientationchange", handleOrientationChange);
       imgElement.addEventListener("mouseup", onMouseUp);
       imgElement.addEventListener("touchstart", startDragging, {
         passive: true,
@@ -89,14 +96,16 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
   const removeListeners = () => {
     const imgElement = imgRef.value;
     if (imgElement) {
-      imgElement.addEventListener("mousedown", startDragging);
-      imgElement.addEventListener("mousemove", onDrag);
-      imgElement.addEventListener("mouseup", onMouseUp);
-      imgElement.addEventListener("touchstart", startDragging, {
-        passive: true,
-      });
-      imgElement.addEventListener("touchmove", onDrag, { passive: true });
-      imgElement.addEventListener("touchend", onTouchEnd);
+      imgElement.removeEventListener("mousedown", startDragging);
+      imgElement.removeEventListener("mousemove", onDrag);
+      imgElement.removeEventListener("mouseup", onMouseUp);
+      imgElement.removeEventListener("touchstart", startDragging);
+      imgElement.removeEventListener("touchmove", onDrag);
+      imgElement.removeEventListener("touchend", onTouchEnd);
+      imgElement.removeEventListener(
+        "orientationchange",
+        handleOrientationChange,
+      );
     }
   };
   return {
