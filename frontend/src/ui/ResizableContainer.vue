@@ -122,6 +122,7 @@ watch(
 
 onMounted(() => {
   window.addEventListener("resize", handleResize);
+  window.addEventListener("orientationchange", handleResize);
   if (fullscreen.value) {
     handleResize();
   } else {
@@ -132,13 +133,13 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
+  window.addEventListener("orientationchange", handleResize);
 });
 </script>
 
 <style scoped lang="scss">
 .resizable-wrapper {
   position: relative;
-
   display: flex;
   align-items: center;
   justify-content: center;

@@ -3,8 +3,8 @@
     <div class="wrapper" v-if="showPreloader">
       <div class="content">
         <ResizableContainer
-          :default-width="640"
-          :default-height="480"
+          :default-width="defaultWidth"
+          :default-height="defaultHeight"
           :fullscreen="true"
         >
           <ScanLines class="box" />
@@ -23,6 +23,9 @@ import ScanLines from "@/ui/ScanLines.vue";
 const props = defineProps<{ loading?: boolean; delay?: number }>();
 
 const showPreloader = ref(false);
+const defaultWidth = ref(window.innerWidth);
+const defaultHeight = ref(window.innerHeight);
+
 let animationFrameId;
 
 const initPreloader = () => {
