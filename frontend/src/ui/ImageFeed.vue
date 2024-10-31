@@ -60,10 +60,12 @@ watch(
 onMounted(() => {
   fetchSettings();
   initWS();
+  addListeners();
   window.addEventListener("beforeunload", closeWS);
 });
 
 onBeforeUnmount(() => {
+  listenersAdded.value = false;
   removeListeners();
   window.removeEventListener("beforeunload", closeWS);
   closeWS();
@@ -78,6 +80,7 @@ onBeforeUnmount(() => {
   box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
   user-select: none;
   cursor: grab;
+  touch-action: manipulation;
 }
 .loading {
   opacity: 0;
@@ -88,11 +91,5 @@ onBeforeUnmount(() => {
 }
 .scan-full {
   height: 90%;
-}
-
-@media (max-width: 600px) {
-  .image-feed {
-    touch-action: none;
-  }
 }
 </style>

@@ -124,6 +124,7 @@ watch(
   display: flex;
   align-items: center;
   opacity: 0.6;
+  user-select: none;
 
   @media screen and (max-width: 992px) {
     flex-direction: column;
