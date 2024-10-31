@@ -1,7 +1,7 @@
 <template>
   <FullscreenToggle />
   <ResizableContainer
-    :isResizable="isResizable"
+    :isResizable="isResizable && !isMobile"
     :fullscreen="fullscreen"
     :default-width="defaultWidth"
     :default-height="defaultHeight"
@@ -18,6 +18,9 @@ import {
 } from "@/features/settings/stores";
 import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
 import ResizableContainer from "@/ui/ResizableContainer.vue";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+
+const isMobile = useDeviceWatcher();
 
 const ImageFeed = defineAsyncComponent({
   loader: () => import("@/ui/ImageFeed.vue"),

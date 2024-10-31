@@ -8,19 +8,25 @@
     <InfoItem label="Camera Pan" :value="camPan" value-suffix="°" />
     <InfoItem label="Servo Direction" :value="servoAngle" value-suffix="°" />
     <InfoItem label="Max Speed" :value="maxSpeed" />
+    <InfoItem label="Height" :value="windowInnerHeight" value-suffix="px" />
+    <InfoItem label="Width" :value="windowInnerWidth" value-suffix="px" />
   </InfoBlock>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useControllerStore } from "@/features/controller/store";
-
+import { useWindowSize } from "@/composables/useWindowSize";
 import InfoItem from "@/ui/InfoItem.vue";
 import InfoBlock from "@/ui/InfoBlock.vue";
+
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 
 const store = useControllerStore();
 
 const avoidObstacles = computed(() => store.avoidObstacles);
+
+const { height: windowInnerHeight, width: windowInnerWidth } = useWindowSize();
 
 const camPan = computed(() => store.camPan);
 const camTilt = computed(() => store.camTilt);

@@ -14,6 +14,6 @@ defineProps<{ class?: string }>();
   align-items: center;
   justify-content: center;
   position: relative;
-  height: 100vh;
+  height: calc(var(--app-height));
 }
 </style>

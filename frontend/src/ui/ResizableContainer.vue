@@ -17,6 +17,7 @@ import {
 } from "vue";
 
 import FullscreenContent from "@/ui/FullscreenContent.vue";
+import { useWindowSize } from "@/composables/useWindowSize";
 
 const Resizers = defineAsyncComponent({
   loader: () => import("@/ui/Resizers.vue"),
@@ -35,9 +36,8 @@ const defaultHeight = computed(() => props.defaultHeight || 600);
 const aspectRatio = computed(() => defaultWidth.value / defaultHeight.value);
 const isResizable = computed(() => props.isResizable);
 const fullscreen = computed(() => props.fullscreen);
+const { height: windowInnerHeight, width: windowInnerWidth } = useWindowSize();
 
-const windowInnerHeight = ref(window.innerHeight);
-const windowInnerWidth = ref(window.innerWidth);
 const size = ref({ width: 0, height: 0 });
 
 const resizableWrapper = ref<HTMLDivElement | null>(null);
@@ -57,14 +57,18 @@ const setFullWidthHeight = () => {
 };
 
 const resetSize = () => {
-  size.value.width = defaultWidth.value;
-  size.value.height = defaultHeight.value;
+  if (
+    windowInnerWidth.value >= defaultWidth.value &&
+    windowInnerHeight.value >= defaultHeight.value
+  ) {
+    size.value.width = defaultWidth.value;
+    size.value.height = defaultHeight.value;
+  } else {
+    setFullWidthHeight();
+  }
 };
 
 const handleResize = () => {
-  windowInnerHeight.value = window.innerHeight;
-  windowInnerWidth.value = window.innerWidth;
-
   if (fullscreen.value) {
     setFullWidthHeight();
   }
@@ -133,7 +137,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
-  window.addEventListener("orientationchange", handleResize);
+  window.removeEventListener("orientationchange", handleResize);
 });
 </script>
 

@@ -4,7 +4,6 @@
       <RoboText
         :title="message.title"
         :type="message.type"
-        :key="message.id"
         :text="message.text"
       />
     </li>
@@ -20,14 +19,18 @@ const store = useMessagerStore();
 
 <style scoped lang="scss">
 .message-wrapper {
-  position: fixed;
-  max-height: 50%;
-  left: 0;
-  z-index: 1000;
+  position: absolute;
+  top: 0%;
   overflow-y: scroll;
-  font-size: 0.8rem;
-  top: 50%;
-  @media (min-width: 1200px) {
+  height: 20px;
+  max-height: 20px;
+
+  @media (min-width: 1200px) and (orientation: landscape) {
+    left: 0;
+    z-index: 1000;
+    font-size: 0.8rem;
+    top: 50%;
+    max-height: 50%;
     font-size: 1rem;
     top: 100px;
   }

@@ -2,6 +2,7 @@
   <div class="gauges-block" :class="class">
     <ToggleableView setting="text_info_view">
       <TextInfo />
+      <TextToSpeechInput v-if="isMobile" />
     </ToggleableView>
     <slot></slot>
     <ToggleableView setting="speedometer_view" v-if="!isMobile">
@@ -13,6 +14,7 @@
 import { defineAsyncComponent } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import TextToSpeechInput from "@/features/settings/components/TextToSpeechInput.vue";
 
 const isMobile = useDeviceWatcher();
 
@@ -43,7 +45,14 @@ const Speedometer = defineAsyncComponent({
 
   @media screen and (max-width: 992px) and (orientation: portrait) {
     top: 5%;
-    width: 100%;
+    width: 50%;
+    left: 5%;
+    align-items: flex-start;
+  }
+
+  @media screen and (max-width: 480px) and (orientation: portrait) {
+    top: 5%;
+    width: unset;
     left: 5%;
     align-items: flex-start;
   }
@@ -56,19 +65,6 @@ const Speedometer = defineAsyncComponent({
 
   @media (min-width: 1200px) {
     width: 400px;
-  }
-
-  @media screen and (max-width: 992px) and (orientation: portrait) {
-    top: 5%;
-    width: 100%;
-    left: 5%;
-    align-items: flex-start;
-  }
-
-  @media screen and (max-width: 992px) and (orientation: landscape) {
-    top: 10%;
-    width: 100%;
-    align-items: flex-start;
   }
 }
 </style>

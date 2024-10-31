@@ -11,7 +11,7 @@ import Settings from "@/features/settings/Settings.vue";
 <style>
 @media (min-width: 1024px) {
   .settings-wrapper {
-    min-height: 100vh;
+    height: calc(var(--app-height));
   }
 }
 </style>

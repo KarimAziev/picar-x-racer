@@ -56,7 +56,8 @@ html,
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  width: 100%;
+  touch-action: none;
 }
 
 #app {
@@ -66,7 +67,6 @@ body {
 }
 
 body {
-  width: 100%;
   color: var(--color-text);
   background: var(--color-background);
   transition:

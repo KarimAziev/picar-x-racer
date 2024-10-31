@@ -124,6 +124,18 @@ watch(
   display: flex;
   align-items: center;
   opacity: 0.6;
+
+  @media screen and (max-width: 992px) {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  @media screen and (max-width: 480px) and (orientation: landscape) {
+  }
+
+  @media (min-width: 1200px) {
+  }
 }
 .tag {
   cursor: pointer;
@@ -131,7 +143,10 @@ watch(
 
 input {
   min-width: 50px;
-  margin: 0 0.5rem;
+
+  @media (min-width: 992px) {
+    margin: 0 0.5rem;
+  }
 
   @media (min-width: 576px) {
     width: 100px;
@@ -147,8 +162,6 @@ input {
   }
 }
 .language {
-  width: 40px;
-
   @media (min-width: 576px) {
     width: 60px;
   }

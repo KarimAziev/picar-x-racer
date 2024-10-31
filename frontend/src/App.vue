@@ -19,6 +19,7 @@ import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import { useAppHeight } from "@/composables/useAppHeight";
 
 const isMobile = useDeviceWatcher();
 
@@ -52,6 +53,7 @@ const Recording = defineAsyncComponent({
   loader: () =>
     import("@/features/settings/components/VideoRecordingIndicator.vue"),
 });
+useAppHeight();
 </script>
 <style scoped lang="scss">
 .indicators {
