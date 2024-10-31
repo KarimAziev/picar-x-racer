@@ -14,17 +14,11 @@
 
 <script setup lang="ts">
 import { RouterView } from "vue-router";
-import {
-  defineAsyncComponent,
-  computed,
-  onMounted,
-  onBeforeUnmount,
-} from "vue";
+import { defineAsyncComponent, computed } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-import { requestFullScreen as requestFSScreen } from "@/util/dom";
 
 const isMobile = useDeviceWatcher();
 
@@ -57,23 +51,6 @@ const CalibrationModeInfo = defineAsyncComponent({
 const Recording = defineAsyncComponent({
   loader: () =>
     import("@/features/settings/components/VideoRecordingIndicator.vue"),
-});
-
-const requestFullScreen = () => {
-  document.removeEventListener("scroll", requestFullScreen);
-  document.removeEventListener("click", requestFullScreen);
-
-  requestFSScreen();
-};
-
-onMounted(() => {
-  document.addEventListener("scroll", requestFullScreen);
-  document.addEventListener("click", requestFullScreen);
-});
-onBeforeUnmount(() => {
-  document.removeEventListener("scroll", requestFullScreen);
-
-  document.removeEventListener("click", requestFullScreen);
 });
 </script>
 <style scoped lang="scss">

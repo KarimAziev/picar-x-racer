@@ -1,33 +1,38 @@
-import { onMounted, ref, onBeforeUnmount } from "vue";
+import { ref } from "vue";
+import { usePopupStore } from "@/features/settings/stores";
 
 export const useScrollLock = () => {
-  const initialInnerHeight = ref(window.innerHeight);
-  const isFullscreen = ref();
+  const popupStore = usePopupStore();
+
+  const isLocked = ref(false);
 
   const updateAppHeight = () => {
     const vh = window.innerHeight * 0.01;
 
     document.documentElement.style.setProperty("--app-height", `${vh * 100}px`);
-    if (window.innerHeight !== initialInnerHeight.value) {
-      isFullscreen.value = true;
+  };
+
+  const updateAppHeightAndLock = () => {
+    updateAppHeight();
+
+    if (isLocked.value) {
       unlockScroll();
       lockScroll();
     } else {
-      isFullscreen.value = false;
       unlockScroll();
     }
   };
 
-  const resetInitialHeight = () => {
-    initialInnerHeight.value = window.innerHeight;
-    isFullscreen.value = false;
-  };
-
   const lockScroll = () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth",
+    });
     document.addEventListener("scroll", preventScroll, { passive: false });
     document.addEventListener("touchmove", preventScroll, { passive: false });
     document.addEventListener("wheel", preventScroll, { passive: false });
     document.body.style.position = "fixed";
+    isLocked.value = true;
   };
 
   const unlockScroll = () => {
@@ -35,22 +40,40 @@ export const useScrollLock = () => {
     document.removeEventListener("touchmove", preventScroll);
     document.removeEventListener("wheel", preventScroll);
     document.body.style.position = "";
+    isLocked.value = false;
   };
 
   const preventScroll = (e: Event) => {
-    if (isFullscreen.value) {
+    if (isLocked.value && !popupStore.isOpen) {
       e.preventDefault();
     }
   };
 
-  onMounted(() => {
-    updateAppHeight();
+  const addResizeListeners = () => {
     window.addEventListener("resize", updateAppHeight);
-    window.addEventListener("orientationchange", resetInitialHeight);
-  });
+    window.addEventListener("orientationchange", updateAppHeight);
+  };
 
-  onBeforeUnmount(() => {
+  const removeResizeListeners = () => {
+    unlockScroll();
     window.removeEventListener("resize", updateAppHeight);
-    window.removeEventListener("orientationchange", resetInitialHeight);
-  });
+    window.removeEventListener("orientationchange", updateAppHeight);
+  };
+
+  const init = () => {
+    updateAppHeight();
+    addResizeListeners();
+  };
+
+  return {
+    init,
+    addResizeListeners,
+    removeEventListener,
+    unlockScroll,
+    lockScroll,
+    removeResizeListeners,
+    updateAppHeightAndLock,
+    updateAppHeight,
+    isLocked,
+  };
 };

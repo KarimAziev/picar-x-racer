@@ -10,24 +10,45 @@
 
 <script setup lang="ts">
 import ToggleSwitch from "primevue/toggleswitch";
-import { watch } from "vue";
+import { watch, onMounted, onBeforeUnmount } from "vue";
 import { useSettingsStore } from "@/features/settings/stores";
-import { requestFullScreen, exitFullScreen } from "@/util/dom";
+import { useScrollLock } from "@/composables/useScrollLock";
 
 const settingsStore = useSettingsStore();
+const {
+  updateAppHeight,
+  lockScroll,
+  unlockScroll,
+  addResizeListeners,
+  removeResizeListeners,
+} = useScrollLock();
 
 watch(
   () => settingsStore.settings.fullscreen,
   (newVal) => {
     try {
       if (!newVal) {
-        exitFullScreen();
+        unlockScroll();
       } else {
-        requestFullScreen();
+        lockScroll();
       }
     } catch (error) {}
   },
 );
+
+onMounted(() => {
+  addResizeListeners();
+  updateAppHeight();
+  if (settingsStore.settings.fullscreen) {
+    console.log("locking scroll on mounted");
+    lockScroll();
+  }
+});
+
+onBeforeUnmount(() => {
+  removeResizeListeners();
+  unlockScroll();
+});
 </script>
 
 <style scoped lang="scss">
