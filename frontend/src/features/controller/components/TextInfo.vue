@@ -20,8 +20,6 @@ import { useWindowSize } from "@/composables/useWindowSize";
 import InfoItem from "@/ui/InfoItem.vue";
 import InfoBlock from "@/ui/InfoBlock.vue";
 
-import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-
 const store = useControllerStore();
 
 const avoidObstacles = computed(() => store.avoidObstacles);
