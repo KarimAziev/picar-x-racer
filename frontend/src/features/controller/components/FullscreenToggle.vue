@@ -17,7 +17,6 @@ import { useScrollLock } from "@/composables/useScrollLock";
 const settingsStore = useSettingsStore();
 const {
   updateAppHeight,
-  lockScroll,
   unlockScroll,
   addResizeListeners,
   removeResizeListeners,
@@ -33,7 +32,7 @@ watch(
         unlockScroll();
       } else {
         console.log("locking scroll on value change");
-        lockScroll();
+        isLocked.value = true;
       }
     } catch (error) {}
   },
