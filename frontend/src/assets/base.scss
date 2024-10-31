@@ -58,6 +58,7 @@ body {
   padding: 0;
   width: 100%;
   touch-action: none;
+  overscroll-behavior: none;
 }
 
 #app {

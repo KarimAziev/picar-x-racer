@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
   box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
   user-select: none;
   cursor: grab;
-  touch-action: manipulation;
+  touch-action: none;
 }
 .loading {
   opacity: 0;
