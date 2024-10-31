@@ -21,6 +21,7 @@ const {
   unlockScroll,
   addResizeListeners,
   removeResizeListeners,
+  isLocked,
 } = useScrollLock();
 
 watch(
@@ -28,8 +29,10 @@ watch(
   (newVal) => {
     try {
       if (!newVal) {
+        console.log("unlocking scroll on value change");
         unlockScroll();
       } else {
+        console.log("locking scroll on value change");
         lockScroll();
       }
     } catch (error) {}
@@ -40,8 +43,7 @@ onMounted(() => {
   addResizeListeners();
   updateAppHeight();
   if (settingsStore.settings.fullscreen) {
-    console.log("locking scroll on mounted");
-    lockScroll();
+    isLocked.value = true;
   }
 });
 

@@ -50,14 +50,14 @@ export const useScrollLock = () => {
   };
 
   const addResizeListeners = () => {
-    window.addEventListener("resize", updateAppHeight);
-    window.addEventListener("orientationchange", updateAppHeight);
+    window.addEventListener("resize", updateAppHeightAndLock);
+    window.addEventListener("orientationchange", updateAppHeightAndLock);
   };
 
   const removeResizeListeners = () => {
     unlockScroll();
-    window.removeEventListener("resize", updateAppHeight);
-    window.removeEventListener("orientationchange", updateAppHeight);
+    window.removeEventListener("resize", updateAppHeightAndLock);
+    window.removeEventListener("orientationchange", updateAppHeightAndLock);
   };
 
   const init = () => {
