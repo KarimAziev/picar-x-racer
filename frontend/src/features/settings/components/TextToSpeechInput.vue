@@ -68,7 +68,11 @@ const handleSelectBeforeHide = () => {
 };
 
 const getNextOrPrevHistoryText = (n: number) => {
-  if (!isNumber(currHistoryIdx.value) || !inputHistory.value?.length) {
+  if (!isNumber(currHistoryIdx.value) || !inputHistory.value) {
+    return;
+  }
+  const len = inputHistory.value.length;
+  if (!len) {
     return;
   }
   const maxIdx = inputHistory.value.length - 1;
@@ -132,12 +136,6 @@ watch(
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-  }
-
-  @media screen and (max-width: 480px) and (orientation: landscape) {
-  }
-
-  @media (min-width: 1200px) {
   }
 }
 .tag {
