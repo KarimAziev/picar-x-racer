@@ -1,8 +1,10 @@
 <template>
   <div class="gauges-block" :class="class">
+    <ToggleableView setting="text_to_speech_input">
+      <TextToSpeechInput class="tts" v-if="isMobile" />
+    </ToggleableView>
     <ToggleableView setting="text_info_view">
       <TextInfo />
-      <TextToSpeechInput v-if="isMobile" />
     </ToggleableView>
     <slot></slot>
     <ToggleableView setting="speedometer_view" v-if="!isMobile">
@@ -34,34 +36,22 @@ const Speedometer = defineAsyncComponent({
   position: absolute;
   display: flex;
   flex-direction: column;
-  align-items: end;
+  align-items: flex-start;
   width: fit-content;
 
-  @media (min-width: 1200px) {
-    width: fit-content;
-    bottom: 0;
+  @media (min-width: 992px) {
     right: 0;
+    bottom: 0;
   }
 
   @media screen and (max-width: 992px) and (orientation: portrait) {
-    top: 5%;
-    width: 50%;
-    left: 5%;
-    align-items: flex-start;
-  }
-
-  @media screen and (max-width: 480px) and (orientation: portrait) {
-    top: 5%;
-    width: unset;
-    left: 5%;
-    align-items: flex-start;
+    left: 10px;
+    top: 50px;
   }
 
   @media screen and (max-width: 992px) and (orientation: landscape) {
-    top: 10%;
-    width: fit-content;
-    align-items: flex-start;
+    left: 10px;
+    top: 50px;
   }
-
 }
 </style>

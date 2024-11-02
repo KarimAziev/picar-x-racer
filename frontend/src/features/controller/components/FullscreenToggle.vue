@@ -20,7 +20,6 @@ const settingsStore = useSettingsStore();
 .fullscreen-switch {
   position: fixed;
   right: 40px;
-
   top: 10px;
   z-index: 12;
 }

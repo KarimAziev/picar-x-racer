@@ -1,5 +1,5 @@
 <template>
-  <div class="flex">
+  <div class="flex" :class="class">
     <SelectField
       fieldClassName="language"
       field="language"
@@ -50,6 +50,7 @@ import TextToSpeechButton from "@/features/settings/components/TextToSpeechButto
 import { isNumber } from "@/util/guards";
 import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
 
+defineProps<{ class?: string }>();
 const store = useSettingsStore();
 const inputHistory = ref<string[]>([]);
 const currHistoryIdx = ref(0);
