@@ -133,6 +133,9 @@ export function formatKeyEventItem(
   separator = "-",
 ): string {
   const realKey = translateKeyboardEventToKey(curr);
+  if (!realKey) {
+    return "";
+  }
   const isUpcased = realKey.length === 1 && /^[A-Z]$/.test(realKey);
 
   const keyReplacementMap: { [k: KeyEventItem["key"]]: string } = {
