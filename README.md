@@ -250,14 +250,14 @@ By default, the object detection feature uses the `YOLOv8n` model, which is opti
 
 To set a custom model, specify the `YOLO_MODEL_PATH` environment variable with the path to the model.
 
-If you are using a **relative path** (starting from the repository directory), your model path will be resolved to the `data/` directory within the backend project structure. For example:
+If you are using a **relative path**, your model path will be resolved to the `data/` directory within the project root directory. For example:
 
 ```sh
 export YOLO_MODEL_PATH=my_custom_model.pt
 ```
 
 This will resolve to:
-`/path-to-repo/backend/data/my_custom_model.pt`
+`/path-to-repo/data/my_custom_model.pt`
 
 On the other hand, **absolute paths** can be provided directly and will be used as-is:
 
@@ -314,13 +314,13 @@ By default, the script will read from `data/yolov8n.pt` and export the model to 
 
 For instance:
 
-- Input: `my_model.pt` becomes `/path-to-repo/backend/data/my_model.pt`
-- Output: The model will be saved as `/path-to-repo/backend/data/yolov8n_full_integer_quant_edgetpu.tflite`.
+- Input: `my_model.pt` becomes `/path-to-repo/data/my_model.pt`
+- Output: The model will be saved as `/path-to-repo/data/yolov8n_full_integer_quant_edgetpu.tflite`.
 
 You can then copy the exported `.tflite` model to your Picar-X Racer using the following command:
 
 ```bash
-scp /path/to/picar-x-racer/backend/data/yolov8n_full_integer_quant_edgetpu.tflite pi@raspberrypi.local:/home/pi/picar-x-racer/data/
+scp /path/to/picar-x-racer/data/yolov8n_full_integer_quant_edgetpu.tflite pi@raspberrypi.local:/home/pi/picar-x-racer/data/
 ```
 
 Ensure that `/path/to/picar-x-racer/` is your local project path and `raspberrypi.local` is replaced with your Raspberry Pi's actual hostname or IP address. This loads the Coral Edge TPU-optimized model directly onto the Pi's file system, ready for use.
