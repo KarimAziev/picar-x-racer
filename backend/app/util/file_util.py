@@ -137,3 +137,17 @@ def get_directory_name(path: Union[Path, str]) -> str:
     if isinstance(path, Path):
         return path.name
     return Path(path).name
+
+
+def file_to_relative(file, directory):
+    return os.path.relpath(file, directory)
+
+
+def is_parent_directory(parent_dir: str, file_path: str):
+    parent = Path(parent_dir).resolve()
+    file = Path(file_path).resolve()
+
+    try:
+        return parent in file.parents or parent == file
+    except FileNotFoundError:
+        return False

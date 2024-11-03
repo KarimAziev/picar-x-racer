@@ -20,3 +20,4 @@ spidev
 pyusb
 pyudev
 watchdog
+python-dotenv

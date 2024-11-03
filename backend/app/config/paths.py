@@ -24,6 +24,7 @@ CONFIG_USER_DIR = user_config_dir()
 CURRENT_DIR = path.dirname(path.realpath(__file__))
 PROJECT_DIR = path.dirname(path.dirname(path.dirname(CURRENT_DIR)))
 
+
 DATA_DIR = path.join(PROJECT_DIR, "data")
 
 DEFAULT_USER_SETTINGS = resolve_absolute_path("user_settings.json", PROJECT_DIR)
@@ -56,7 +57,7 @@ YOLO_MODEL_PATH = resolve_absolute_path(
 YOLO_MODEL_EDGE_TPU_PATH = resolve_absolute_path(
     getenv(
         "YOLO_MODEL_EDGE_TPU_PATH",
-        "cat_320_edgetpu.tflite",
+        "yolov8n_320_edgetpu.tflite",
     ),
     DATA_DIR,
 )

@@ -10,11 +10,19 @@ def main():
         mp.set_start_method("spawn")
     except RuntimeError:
         pass
+    from dotenv import load_dotenv
+
     from app.util.reset_mcu_sync import reset_mcu_sync
     from app.util.setup_env import setup_env
     from run_car_control_app import start_control_app
     from run_frontend import start_frontend_app
     from run_main_app import start_main_app
+
+    env_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '.env')
+
+    if os.path.exists(env_file):
+        print(f"Loading .env {env_file}")
+        load_dotenv(env_file, verbose=True)
 
     (
         px_main_app_port,

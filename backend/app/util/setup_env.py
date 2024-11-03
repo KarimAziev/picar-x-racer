@@ -5,6 +5,7 @@ from app.config.platform import is_os_raspberry
 
 
 def setup_env():
+
     os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio" if is_os_raspberry else "mock"
 
     parser = argparse.ArgumentParser(description="Run the application.")
@@ -15,12 +16,10 @@ def setup_env():
     group.add_argument(
         "--debug", action="store_true", help="Set logging level to DEBUG."
     )
-    group.add_argument(
-        "--frontend", action="store_true", help="Whether to start frontend in dev mode."
-    )
+
     group.add_argument(
         "--log-level",
-        default="INFO",
+        default=os.getenv("PX_LOG_LEVEL", "INFO"),
         help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
 
@@ -30,14 +29,14 @@ def setup_env():
     uvicorn_group.add_argument(
         "--port",
         type=int,
-        default=8000,
+        default=int(os.getenv("PX_MAIN_APP_PORT", "8000")),
         help="The port to run the application on",
     )
 
     uvicorn_group.add_argument(
         "--px-port",
         type=int,
-        default=8001,
+        default=int(os.getenv("PX_CONTROL_APP_PORT", "8001")),
         help="The port to run the Picar X Racer control websocket application on.",
     )
 
