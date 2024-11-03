@@ -273,7 +273,7 @@ export YOLO_MODEL_EDGE_TPU_PATH=/path/to/your/custom_edgetpu_model.tflite
 
 **Using `.env` file**
 
-You can also configure these environment variables using a [.env](./backend/.env.example) file in the backend directory of this repository. This method is useful for maintaining persistent configurations. See the `.env.example` file provided in the repository for guidance.
+You can also configure these environment variables using a `.env` file in the backend directory of this repository. This method is useful for maintaining persistent configurations. See the [.env.example](./backend/.env.example) file provided in the repository for guidance.
 
 For example:
 
