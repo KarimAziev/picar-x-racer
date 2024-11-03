@@ -20,6 +20,7 @@ Pins are tiny metal sticks or connectors on the board that can be used for diffe
 
 from typing import Dict, Optional, Union
 
+from app.adapters.robot_hat.pin_descriptions import pin_descriptions
 from app.util.logger import Logger
 
 
@@ -105,8 +106,8 @@ class Pin(object):
         "D1": 4,  # Changed
         "D2": 27,
         "D3": 22,
-        "D4": 23,
-        "D5": 24,
+        "D4": 23,  # Left motor direction PIN
+        "D5": 24,  # Right motor direction PIN
         "D6": 25,  # Removed
         "D7": 4,  # Removed
         "D8": 5,  # Removed
@@ -127,6 +128,10 @@ class Pin(object):
         "BLERST": 20,
         "MCURST": 5,  # Changed
         "CE": 8,
+        # servo_pins: list[str] = ["P0", "P1", "P2"],
+        # motor_pins: list[str] = ["D4", "D5", "P12", "P13"],
+        # grayscale_pins: list[str] = ["A0", "A1", "A2"],
+        # ultrasonic_pins: list[str] = ["D2", "D3"],
     }
 
     def __init__(
@@ -153,6 +158,7 @@ class Pin(object):
 
         # Parse pin
         pin_dict = self.dict()
+
         if isinstance(pin, str):
             if pin not in pin_dict.keys():
                 msg = f'Pin should be in {self._dict.keys()}, not "{pin}"'
@@ -165,29 +171,51 @@ class Pin(object):
                 msg = f'Pin should be in {pin_dict.values()}, not "{pin}"'
                 self.logger.error(msg)
                 raise ValueError(msg)
-            self._board_name = {i for i in pin_dict if pin_dict[i] == pin}
+            self._board_name = [i for i in pin_dict if pin_dict[i] == pin]
+            if len(self._board_name) >= 1:
+                self._board_name = self._board_name[0]
+
             self._pin_num = pin
         else:
-            msg = f'Pin should be in {pin_dict.keys()}, not "{pin}"'
+            msg = f'Invalid PIN: "{pin}"'
             self.logger.error(msg)
             raise ValueError(msg)
 
         self._value = 0
         self.gpio = None
         self.setup(mode, pull)
-        mode_str = (
-            "NONE PIN"
-            if mode is None
-            else "OUT PIN" if mode == self.OUT else "INPUT PIN"
-        )
+
+        mode_str = "None" if mode is None else "OUT" if mode == self.OUT else "INPUT"
         pull_str = (
-            "No internal resistor"
+            "without internal resistor"
             if pull is None
-            else "PULL-UP resistor" if pull == self.PULL_UP else "PULL-DOWN resistor"
+            else (
+                "with PULL-UP resistor"
+                if pull == self.PULL_UP
+                else "with PULL-DOWN resistor"
+            )
         )
         pull_hex = "None" if pull is None else f"0x{pull:02X}"
-        self.logger.info(
-            f"Initted {mode_str} {self._board_name} (0x{self._pin_num:02X}) with {pull_str} ({pull_hex})"
+
+        board_description = (
+            pin_descriptions.get(self._board_name)
+            if isinstance(self._board_name, str)
+            else None
+        )
+        self.descr = " ".join(
+            [
+                item
+                for item in [self.name(), board_description, self._board_name]
+                if isinstance(item, str)
+            ]
+        )
+        self.logger.debug(
+            "Initted [%s], mode: %s (0x%s:02X) %s (%s)",
+            self.descr,
+            mode_str,
+            self._pin_num,
+            pull_str,
+            pull_hex,
         )
 
     def dict(self, _dict: Optional[Dict[str, int]] = None) -> Dict[str, int]:
@@ -217,6 +245,11 @@ class Pin(object):
         """
         Close the GPIO pin.
         """
+        self.logger.debug(
+            "[%s]: Closing %s",
+            self.descr,
+            self.gpio,
+        )
         if self.gpio:
             self.gpio.close()
 
@@ -301,7 +334,9 @@ class Pin(object):
                 self.setup(self.IN)
             result = self.gpio.value if self.gpio else None
             self.logger.debug(
-                f"read pin {self.gpio.pin if self.gpio else None}: {result}"
+                "read pin %s: %s",
+                self.gpio.pin if self.gpio else None,
+                result,
             )
             return result
         else:

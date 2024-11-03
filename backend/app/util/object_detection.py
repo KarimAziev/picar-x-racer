@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-import cv2
 import numpy as np
 from app.util.logger import Logger
 
@@ -13,8 +12,12 @@ logger = Logger(__name__)
 def perform_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
+    resized_height: int,
+    resized_width: int,
+    original_width: int,
+    original_height: int,
     labels_to_detect: Optional[List[str]] = None,
-    confidence_threshold: float = 0.25,
+    confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -30,20 +33,14 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
-    original_height, original_width = frame.shape[:2]
-    resized_height, resized_width = 192, 192
-    frame = cv2.resize(frame, (resized_height, resized_width))
 
     results = yolo_model.predict(
-        frame,
+        source=frame,
         verbose=verbose,
         conf=confidence_threshold,
         task="detect",
-        imgsz=(192, 192),
+        imgsz=resized_height,
     )[0]
-
-    if verbose:
-        logger.info(f"confidence_threshold {confidence_threshold}")
 
     scale_x = original_width / resized_width
     scale_y = original_height / resized_height
@@ -80,7 +77,11 @@ def perform_detection(
 def perform_cat_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
-    confidence_threshold: float = 0.5,
+    resized_height: int,
+    resized_width: int,
+    original_width: int,
+    original_height: int,
+    confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -100,13 +101,21 @@ def perform_cat_detection(
         confidence_threshold=confidence_threshold,
         yolo_model=yolo_model,
         verbose=verbose,
+        resized_height=resized_height,
+        resized_width=resized_width,
+        original_width=original_width,
+        original_height=original_height,
     )
 
 
 def perform_person_detection(
     frame: np.ndarray,
     yolo_model: "YOLO",
-    confidence_threshold: float = 0.5,
+    resized_height: int,
+    resized_width: int,
+    original_width: int,
+    original_height: int,
+    confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -126,4 +135,8 @@ def perform_person_detection(
         confidence_threshold=confidence_threshold,
         yolo_model=yolo_model,
         verbose=verbose,
+        resized_height=resized_height,
+        resized_width=resized_width,
+        original_width=original_width,
+        original_height=original_height,
     )

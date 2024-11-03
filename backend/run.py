@@ -1,91 +1,115 @@
-import argparse
 import multiprocessing as mp
 import os
-import sys
+import time
 
-from app.util.logger import Logger
-from app.util.reset_mcu_sync import reset_mcu_sync
-from app.util.setup_env import setup_env
-from run_car_control_app import start_control_app
-from run_main_app import start_main_app
+from app.util.proc import terminate_processes
 
 
-def terminate_processes(processes):
-    print("Terminating child processes...")
-    for process in processes:
-        process.terminate()
-    for process in processes:
-        process.join()
-    print("Child processes terminated. Exiting.")
-    sys.exit(0)
-
-
-if __name__ == "__main__":
+def main():
     try:
-        mp.set_start_method("spawn", force=True)
-        print("spawned")
+        mp.set_start_method("spawn")
     except RuntimeError:
         pass
+    from dotenv import load_dotenv
 
-    setup_env()
+    from app.util.reset_mcu_sync import reset_mcu_sync
+    from app.util.setup_env import setup_env
+    from run_car_control_app import start_control_app
+    from run_frontend import start_frontend_app
+    from run_main_app import start_main_app
+
+    env_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '.env')
+
+    if os.path.exists(env_file):
+        print(f"Loading .env {env_file}")
+        load_dotenv(env_file, verbose=True)
+
+    (
+        px_main_app_port,
+        px_control_app_port,
+        px_log_level,
+        px_app_mode,
+        px_frontend_port,
+    ) = setup_env()
+
     reset_mcu_sync()
-
-    parser = argparse.ArgumentParser(description="Run the application.")
-
-    group = parser.add_mutually_exclusive_group()
-    uvicorn_group = parser.add_argument_group(title="uvicorn")
-
-    group.add_argument(
-        "--debug", action="store_true", help="Set logging level to DEBUG."
+    main_app_process = mp.Process(
+        target=start_main_app, args=(px_main_app_port, px_log_level)
     )
-    group.add_argument(
-        "--log-level",
-        default="INFO",
-        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
-    )
-
-    uvicorn_group.add_argument(
-        "--reload", action="store_true", help="Enable auto-reloading of the server."
-    )
-    uvicorn_group.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="The port to run the application on",
-    )
-
-    uvicorn_group.add_argument(
-        "--ws-port",
-        type=int,
-        default=8001,
-        help="The port to run the WebSocket application on.",
-    )
-
-    args = parser.parse_args()
-    ws_port = args.ws_port
-    port = args.port
-    log_level = "DEBUG" if args.debug else args.log_level or "INFO"
-    reload = args.reload if args.reload else False
-    log_level = log_level.upper()
-    os.environ["LOG_LEVEL"] = log_level
-
-    Logger.setup_from_env()
-    main_app_process = mp.Process(target=start_main_app, args=(port, log_level, reload))
     websocket_app_process = mp.Process(
-        target=start_control_app, args=(ws_port, log_level, reload)
+        target=start_control_app, args=(px_control_app_port, px_log_level), daemon=True
     )
 
-    processes = [main_app_process, websocket_app_process]
+    main_app_process.start()
+    websocket_app_process.start()
+
+    frontend_dev_process = None
+    observer = None
+    if px_app_mode == "dev":
+        from watchdog.events import FileCreatedEvent, FileModifiedEvent, FileMovedEvent
+        from watchdog.observers import Observer
+
+        from app.adapters.reload_handler import ReloadHandler
+
+        frontend_dev_process = mp.Process(
+            target=start_frontend_app,
+            args=(px_frontend_port, px_main_app_port, px_control_app_port),
+        )
+        frontend_dev_process.start()
+
+        def restart_app():
+            nonlocal main_app_process, websocket_app_process
+            terminate_processes([main_app_process, websocket_app_process])
+            main_app_process = mp.Process(
+                target=start_main_app, args=(px_main_app_port, px_log_level)
+            )
+            websocket_app_process = mp.Process(
+                target=start_control_app,
+                args=(px_control_app_port, px_log_level),
+                daemon=True,
+            )
+            main_app_process.start()
+            websocket_app_process.start()
+            reload_handler.restart_pending = False
+
+        app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
+
+        ignore_patterns = ['*.log', 'tmp/*', ".venv", ".pyc", "temp.py"]
+        reload_handler = ReloadHandler(restart_app, ignore_patterns=ignore_patterns)
+        observer = Observer()
+        observer.schedule(
+            reload_handler,
+            path=app_directory,
+            recursive=True,
+            event_filter=[
+                FileMovedEvent,
+                FileModifiedEvent,
+                FileCreatedEvent,
+            ],
+        )
+        observer.start()
 
     try:
-        main_app_process.start()
-        websocket_app_process.start()
-
-        for process in processes:
-            process.join()
+        while True:
+            time.sleep(0.5)
     except KeyboardInterrupt:
-        print("KeyboardInterrupt received. Initiating graceful shutdown...")
-        terminate_processes(processes)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        terminate_processes(processes)
+        COLOR_YELLOW = "\033[33m"
+
+        BOLD = "\033[1m"
+        RESET = "\033[0m"
+        print(
+            f"{BOLD}{COLOR_YELLOW}KeyboardInterrupt received. Initiating graceful shutdown...{RESET}"
+        )
+    finally:
+        if observer:
+            observer.stop()
+            observer.join()
+        if frontend_dev_process:
+            frontend_dev_process.terminate()
+            frontend_dev_process.join()
+            frontend_dev_process.close()
+        terminate_processes([main_app_process, websocket_app_process])
+
+
+if __name__ == '__main__':
+    main()

@@ -1,13 +1,15 @@
 import gc
 import os
 
-from app.config.paths import YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
+from app.config.paths import DATA_DIR, YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
+from app.util.file_util import resolve_absolute_path
+from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.print_memory_usage import print_memory_usage
 
 logger = Logger(__name__)
 
-debug = os.getenv("LOG_LEVEL", "INFO").upper() == "DEBUG"
+debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
 
 
 class ModelManager:
@@ -17,6 +19,19 @@ class ModelManager:
     This class ensures that the model is loaded when entering the context and properly cleaned up upon exiting the context.
     The model loading path is selected dynamically based on available files.
     """
+
+    def __init__(self, model_path=None):
+        """
+        Initializes the ModelManager with an optional model path.
+
+        Parameters:
+            model_path (str): An optional custom path to use for loading the model.
+        """
+        self.model_path = (
+            resolve_absolute_path(model_path, DATA_DIR)
+            if model_path is not None
+            else model_path
+        )
 
     def __enter__(self):
         """
@@ -37,24 +52,19 @@ class ModelManager:
         """
         from ultralytics import YOLO
 
-        model_path = (
-            YOLO_MODEL_EDGE_TPU_PATH
-            if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
+        self.model_path = (
+            self.model_path or YOLO_MODEL_EDGE_TPU_PATH
+            if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH) and is_google_coral_connected()
             else YOLO_MODEL_PATH
         )
 
-        logger.info(f"Loading model {model_path}")
-        if debug:
-            print_memory_usage("Memory Usage Before Loading the Model")
+        logger.info(f"Loading model {self.model_path}")
+        try:
+            self.model = YOLO(model=self.model_path, task="detect")
+            logger.info(f"Model {self.model_path} loaded successfully")
+        except Exception as err:
+            logger.log_exception(f"Error loading model {self.model_path}", err)
 
-        self.model = YOLO(
-            model_path,
-            task="detect",
-        )
-        if debug:
-            print_memory_usage("Memory Usage After Loading the Model")
-        self.model.overrides["imgsz"] = (192, 192)
-        logger.info(f"Model {model_path} loaded successfully")
         return self.model
 
     def __exit__(self, exc_type, exc_value, traceback):

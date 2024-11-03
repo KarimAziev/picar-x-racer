@@ -10,6 +10,7 @@
     v-else
     ref="imgRef"
     class="image-feed"
+    :draggable="false"
     @load="handleImageOnLoad"
     :class="{
       loading: imgLoading,
@@ -19,13 +20,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { ref, onBeforeUnmount, watch, onMounted } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { makeWebsocketUrl } from "@/util/url";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
 import { useCameraStore } from "@/features/settings/stores";
+import { useCameraRotate } from "@/composables/useCameraRotate";
 
 const camStore = useCameraStore();
+
+const fetchSettings = async () => {
+  await camStore.fetchCurrentSettings();
+};
+
+const listenersAdded = ref(false);
 
 const {
   initWS,
@@ -37,14 +45,30 @@ const {
   imgInitted,
 } = useWebsocketStream(makeWebsocketUrl("ws/video-stream"));
 
+const { addListeners, removeListeners } = useCameraRotate(imgRef);
+
+watch(
+  () => imgRef.value,
+  (el) => {
+    if (el && !listenersAdded.value) {
+      addListeners();
+      listenersAdded.value = true;
+    }
+  },
+);
+
 onMounted(() => {
-  camStore.fetchCurrentSettings();
+  fetchSettings();
   initWS();
+  addListeners();
   window.addEventListener("beforeunload", closeWS);
 });
-onUnmounted(() => {
-  closeWS();
+
+onBeforeUnmount(() => {
+  listenersAdded.value = false;
+  removeListeners();
   window.removeEventListener("beforeunload", closeWS);
+  closeWS();
 });
 </script>
 
@@ -52,20 +76,16 @@ onUnmounted(() => {
 .image-feed {
   width: 100%;
   display: block;
-  height: 100%;
+  height: 99%;
   box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
   user-select: none;
+  cursor: grab;
+  touch-action: none;
 }
 .loading {
   opacity: 0;
 }
-.box {
-  opacity: 1;
-  width: 100%;
-  height: 100%;
-  box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
-  user-select: none;
-}
+
 .scan {
   width: 100%;
 }

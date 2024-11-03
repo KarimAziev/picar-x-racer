@@ -1,4 +1,5 @@
 <template>
+  <VideoDeviceSelect />
   <SelectField
     label="Video Quality"
     field="video_feed_quality"
@@ -31,15 +32,6 @@
     v-model="store.settings.video_feed_enhance_mode"
     :options="enhancers"
   />
-
-  <NumberField
-    inputId="video_feed_fps"
-    label="FPS"
-    v-model="store.settings.video_feed_fps"
-    :min="10"
-    :max="80"
-    :step="10"
-  />
 </template>
 
 <script setup lang="ts">
@@ -50,6 +42,9 @@ import SelectField from "@/ui/SelectField.vue";
 import { numberSequence } from "@/util/cycleValue";
 import NumberField from "@/ui/NumberField.vue";
 import { objectKeysToOptions } from "@/features/settings/util";
+import VideoDeviceSelect from "@/features/settings/components/VideoDeviceSelect.vue";
+import { roundNumber } from "@/util/number";
+import { isNumber } from "@/util/guards";
 
 const detectors = computed(() => [
   ...objectKeysToOptions(camStore.detectors),
@@ -76,15 +71,11 @@ onMounted(async () => {
 });
 
 watch(
-  () => store.settings.video_feed_fps,
-  (newVal) => {
-    camStore.updateCameraParams({ video_feed_fps: newVal });
-  },
-);
-watch(
   () => store.settings.video_feed_confidence,
   (newVal) => {
-    camStore.updateCameraParams({ video_feed_confidence: newVal });
+    camStore.updateCameraParams({
+      video_feed_confidence: isNumber(newVal) ? roundNumber(newVal, 1) : newVal,
+    });
   },
 );
 

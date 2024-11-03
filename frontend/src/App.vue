@@ -3,6 +3,7 @@
   <LazySettings />
   <Messager />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+    <Recording />
     <CalibrationModeInfo />
     <TextToSpeechInput v-if="isTextToSpeechInputEnabled" />
     <MusicPlayer v-if="isPlayerEnabled" />
@@ -16,10 +17,12 @@ import { RouterView } from "vue-router";
 import { defineAsyncComponent, computed } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
-import { isMobileDevice } from "@/util/device";
 import { useSettingsStore } from "@/features/settings/stores";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import { useAppHeight } from "@/composables/useAppHeight";
 
-const isMobile = computed(() => isMobileDevice());
+const isMobile = useDeviceWatcher();
+
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
 const isTextToSpeechInputEnabled = computed(
@@ -46,6 +49,11 @@ const CalibrationModeInfo = defineAsyncComponent({
   loader: () =>
     import("@/features/controller/components/CalibrationModeInfo.vue"),
 });
+const Recording = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/VideoRecordingIndicator.vue"),
+});
+useAppHeight();
 </script>
 <style scoped lang="scss">
 .indicators {

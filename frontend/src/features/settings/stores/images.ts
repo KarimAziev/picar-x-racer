@@ -4,8 +4,14 @@ import { useMessagerStore } from "@/features/messager/store";
 import { downloadFile, removeFile } from "@/features/settings/api";
 import { APIMediaType } from "@/features/settings/interface";
 
+export interface FileItem {
+  name: string;
+  path: string;
+  url: string;
+}
+
 export interface State {
-  data: string[];
+  data: FileItem[];
   loading: boolean;
 }
 
@@ -19,10 +25,11 @@ export const useStore = defineStore("images", {
   actions: {
     async fetchData() {
       const messager = useMessagerStore();
-      const mediaType: APIMediaType = "image";
       try {
         this.loading = true;
-        const response = await axios.get(`/api/list_files/${mediaType}`);
+        const response = await axios.get<{ files: FileItem[] }>(
+          "/api/list_photos",
+        );
         this.data = response.data.files;
       } catch (error) {
         messager.handleError(error, "Error fetching images");

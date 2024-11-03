@@ -92,12 +92,14 @@ async def get_play_status(
     result = audio_manager.get_music_play_status()
 
     if result is None:
-        default_track = file_manager.load_settings()
-        track = default_track.get("default_music")
+        settings = file_manager.load_settings()
+        track = settings.get("default_music")
         dir = file_manager.get_music_directory(track)
         file = path.join(dir, track)
-        duration = audio_manager.music.music_get_duration(file)
-        return {"playing": False, "track": track, "duration": duration}
+        base_dict = {"playing": False}
+        details = file_manager.get_audio_file_details_cached(file)
+        if isinstance(details, dict):
+            return {**base_dict, **details}
     else:
         return result
 
@@ -127,7 +129,7 @@ async def play_music(
     filename = payload.track
     force = payload.force
     start = payload.start or 0.0
-    logger.info(f"request to play music {filename}")
+    logger.info(f"Request to play music {filename}")
     if filename is None:
         result = audio_manager.stop_music()
         return {"playing": audio_manager.is_music_playing()}
@@ -135,7 +137,7 @@ async def play_music(
     try:
         dir = file_manager.get_music_directory(filename)
         file = path.join(dir, filename)
-        logger.debug(f"playing {file}")
+        logger.debug(f"Playing music {file}")
         result = audio_manager.play_music(track_path=file, force=force, start=start)
         return result
     except Exception as err:
@@ -165,8 +167,8 @@ async def text_to_speech(
 
     text = payload.text
     lang = payload.lang or "en"
-    audio_manager.text_to_speech(text, lang)
-    return {"text": text, "lang": lang}
+    status = audio_manager.text_to_speech(text, lang) or False
+    return {"text": text, "lang": lang, "status": status}
 
 
 @router.post("/api/volume", response_model=VolumeResponse)

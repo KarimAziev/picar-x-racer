@@ -2,14 +2,13 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import { useMessagerStore } from "@/features/messager/store";
 import { constrain } from "@/util/constrain";
-import { wait } from "@/util/wait";
 import { cycleValue } from "@/util/cycleValue";
 import {
   CameraOpenRequestParams,
   useStore as useSettingsStore,
 } from "@/features/settings/stores/settings";
 
-const dimensions = [
+export const dimensions = [
   [640, 480],
   [800, 600],
   [1024, 768],
@@ -23,15 +22,24 @@ const dimensions = [
   [1920, 1200],
 ];
 
+export const commonDimensionOptions = dimensions.map(
+  ([width, height]) => `${width}/${height}`,
+);
+
 const MAX_FPS = 70;
+
+export interface DeviceOption {
+  value: string;
+  label: string;
+  formats: Omit<DeviceOption, "formats">[];
+}
 
 export interface State {
   data: CameraOpenRequestParams;
-  dimensions: { video_feed_width: number; video_feed_height: number } | null;
   loading: boolean;
-  cancelTokenSource?: AbortController;
   detectors: string[];
   enhancers: string[];
+  devices: DeviceOption[];
 }
 
 const defaultState: State = {
@@ -39,11 +47,14 @@ const defaultState: State = {
   data: {
     video_feed_enhance_mode: null,
     video_feed_detect_mode: null,
+    video_feed_height: 600,
+    video_feed_width: 800,
+    video_feed_device: null,
+    video_feed_pixel_format: null,
   },
   detectors: [],
   enhancers: [],
-  dimensions: null,
-  cancelTokenSource: undefined,
+  devices: [],
 };
 
 export const useStore = defineStore("camera", {
@@ -52,21 +63,12 @@ export const useStore = defineStore("camera", {
     async updateCameraParams(payload?: Partial<CameraOpenRequestParams>) {
       const messager = useMessagerStore();
 
-      if (this.cancelTokenSource) {
-        this.cancelTokenSource.abort();
-      }
-
-      const cancelTokenSource = new AbortController();
-      this.cancelTokenSource = cancelTokenSource;
-
       try {
         this.loading = true;
         const { data } = await axios.post<CameraOpenRequestParams>(
           "/api/video-feed-settings",
           payload || this.data,
-          { signal: cancelTokenSource.signal },
         );
-        await wait(500);
         this.data = data;
         Object.entries(data).forEach(([key, value]) => {
           if (payload && key in payload) {
@@ -81,7 +83,6 @@ export const useStore = defineStore("camera", {
         }
       } finally {
         this.loading = false;
-        this.cancelTokenSource = undefined;
       }
       return this.data;
     },
@@ -95,6 +96,20 @@ export const useStore = defineStore("camera", {
         this.data = data;
       } catch (error) {
         console.error("Error fetching video modes:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchDevices() {
+      try {
+        this.loading = true;
+        const { data } = await axios.get<{ devices: DeviceOption[] }>(
+          "/api/camera-devices",
+        );
+        this.devices = data.devices;
+      } catch (error) {
+        console.error("Error fetching camera devices:", error);
       } finally {
         this.loading = false;
       }
@@ -228,6 +243,36 @@ export const useStore = defineStore("camera", {
         video_feed_height,
         video_feed_width,
       });
+    },
+    async toggleRecording() {
+      const settings = useSettingsStore();
+      const messager = useMessagerStore();
+      await this.updateCameraParams({
+        video_feed_record: !this.data.video_feed_record,
+      });
+
+      if (
+        !this.data.video_feed_record &&
+        settings.settings.auto_download_video
+      ) {
+        try {
+          const response = await axios.get(`/api/download-last-video`, {
+            responseType: "blob",
+          });
+          const fileName = response.headers["content-disposition"]
+            ? response.headers["content-disposition"].split("filename=")[1]
+            : "picar-x-recording.avi";
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement("a");
+
+          link.href = url;
+          link.setAttribute("download", fileName);
+          document.body.appendChild(link);
+          link.click();
+        } catch (error) {
+          messager.handleError(error);
+        }
+      }
     },
   },
 });

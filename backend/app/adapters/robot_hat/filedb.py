@@ -5,7 +5,7 @@ from time import sleep
 class fileDB(object):
     """A file based database.
 
-    A file based database, read and write arguements in the specific file.
+    A file based database, read and write arguments in the specific file.
     """
 
     def __init__(self, db: str):

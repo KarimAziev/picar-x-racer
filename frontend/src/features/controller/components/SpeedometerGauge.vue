@@ -96,6 +96,7 @@ onMounted(() => {
   width: 300px;
   height: 300px;
   color: var(--color-text);
+  pointer-events: none;
 }
 
 .gauge {

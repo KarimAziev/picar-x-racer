@@ -1,4 +1,6 @@
 import asyncio
+import collections
+import os
 import queue
 import threading
 import time
@@ -9,19 +11,14 @@ import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapater
 from app.config.video_enhancers import frame_enhancers
 from app.services.detection_service import DetectionService
+from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
-from app.util.overlay_detecton import overlay_detection
-from app.util.photo import height_to_width
+from app.util.overlay_detecton import overlay_detection, overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
-from app.util.video_utils import encode
-from cv2 import VideoCapture
+from app.util.video_utils import encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
     from app.services.files_service import FilesService
-
-# Constants for target width and height of video streams
-TARGET_WIDTH = 320
-TARGET_HEIGHT = 240
 
 
 class CameraService(metaclass=SingletonMeta):
@@ -46,25 +43,47 @@ class CameraService(metaclass=SingletonMeta):
         self.detection_service = detection_service
         self.video_device_adapter = VideoDeviceAdapater()
         self.video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
+        self.video_feed_render_fps: Optional[str] = self.file_manager.settings.get(
+            "video_feed_render_fps"
+        )
         self.video_feed_enhance_mode: Optional[str] = self.file_manager.settings.get(
             "video_feed_enhance_mode"
         )
         self.video_feed_quality = self.file_manager.settings.get(
             "video_feed_quality", 100
         )
+
         self.video_feed_format = self.file_manager.settings.get(
             "video_feed_format", ".jpg"
         )
 
-        self.video_feed_width: Optional[int] = None
-        self.video_feed_height: Optional[int] = None
+        self.video_feed_pixel_format: Optional[str] = self.file_manager.settings.get(
+            "video_feed_pixel_format"
+        )
+
+        self.video_feed_device: Optional[str] = self.file_manager.settings.get(
+            "video_feed_device"
+        )
+
+        self._video_feed_record = self.file_manager.settings.get(
+            "video_feed_record", False
+        )
+
+        self.video_feed_width: int = self.file_manager.settings.get(
+            "video_feed_width", 1280
+        )
+        self.video_feed_height: int = self.file_manager.settings.get(
+            "video_feed_height", 720
+        )
+
+        self.video_writer: Optional[cv2.VideoWriter] = None
+        self.actual_fps = None
 
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
-        self.cap: Union[VideoCapture, None] = None
+        self.cap: Union[cv2.VideoCapture, None] = None
         self.last_detection_result = None
-        self.cap_task = None
 
     async def generate_frame(self, log: Optional[bool] = False):
         """
@@ -74,31 +93,40 @@ class CameraService(metaclass=SingletonMeta):
         applies any video enhancements, encodes the frame in the specified format, and returns
         it as a byte array ready for streaming.
 
+        Args:
+            log (Optional[bool]): Indicates whether to log the detection result (default is False).
+
         Returns:
             Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
         """
 
         latest_detection = None
-        while True:
-            try:
-                detection_data = self.detection_service.detection_queue.get_nowait()
-                detection_timestamp = detection_data["timestamp"]
-                if detection_timestamp <= self.current_frame_timestamp:
-                    latest_detection = detection_data["detection_result"]
-                else:
-                    self.detection_service.detection_queue.put_nowait(detection_data)
+        if self.detection_service.detection_queue:
+            while True:
+                try:
+                    detection_data = self.detection_service.detection_queue.get_nowait()
+                    detection_timestamp = detection_data["timestamp"]
+                    if detection_timestamp <= self.current_frame_timestamp:
+                        latest_detection = detection_data["detection_result"]
+                    else:
+                        self.detection_service.detection_queue.put_nowait(
+                            detection_data
+                        )
+                        break
+                except queue.Empty:
                     break
-            except queue.Empty:
-                break
 
             self.last_detection_result = latest_detection
 
             if log and self.video_feed_enhance_mode:
-                self.logger.info(f"Detection result: {self.last_detection_result}")
+                self.logger.info(
+                    "Detection result: %s",
+                    self.last_detection_result,
+                )
 
         if self.stream_img is not None:
             format = self.video_feed_format
-            video_feed_enhance_mode = self.video_feed_enhance_mode
+
             video_feed_quality = self.video_feed_quality
             frame = self.stream_img.copy()
             if (
@@ -106,59 +134,98 @@ class CameraService(metaclass=SingletonMeta):
                 and self.detection_service.video_feed_detect_mode is not None
             ):
                 frame = overlay_detection(frame, self.last_detection_result)
-            frame_enhancer = (
-                frame_enhancers.get(video_feed_enhance_mode)
-                if video_feed_enhance_mode
-                else None
-            )
+
+            if self.video_feed_render_fps and self.actual_fps:
+                frame = overlay_fps_render(frame, self.actual_fps)
 
             encode_params = (
                 [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality]
                 if format == ".jpg"
                 else []
             )
-            encoded_frame = encode(frame, format, encode_params, frame_enhancer)
+
+            encoded_frame = encode(frame, format, encode_params)
 
             return encoded_frame
 
+    def setup_camera_props(self):
+        if self.cap is not None:
+            info = self.video_device_adapter.video_device or (None, None)
+            (self.video_feed_device, _) = info
+            self.logger.info(
+                "Setting FPS: %s, size: %sx%s, pixel format: %s",
+                self.video_feed_fps,
+                self.video_feed_width,
+                self.video_feed_height,
+                self.video_feed_pixel_format,
+            )
+            if self.video_feed_pixel_format:
+                self.cap.set(
+                    cv2.CAP_PROP_FOURCC,
+                    cv2.VideoWriter.fourcc(*self.video_feed_pixel_format),
+                )
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
+            self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+
+            width, height, fps = (
+                int(self.cap.get(x))
+                for x in (
+                    cv2.CAP_PROP_FRAME_WIDTH,
+                    cv2.CAP_PROP_FRAME_HEIGHT,
+                    cv2.CAP_PROP_FPS,
+                )
+            )
+            self.video_feed_width = width
+            self.video_feed_height = height
+            self.video_feed_fps = fps
+
+            self.logger.info(
+                "Updated size: %sx%s, FPS: %s",
+                width,
+                height,
+                fps,
+            )
+            if self.video_feed_device:
+                data = parse_v4l2_device_info(self.video_feed_device)
+                self.video_feed_pixel_format = data.get(
+                    "pixel_format", self.video_feed_pixel_format
+                )
+
     def camera_thread_func(self):
         """
-        Starts the camera capture thread and the detection process.
+        Camera capture loop function.
 
-        Configures the camera settings, initializes queues, and starts the threads and processes
-        necessary for capturing and processing video frames.
-
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `video_feed_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
+        Manages the process of capturing video frames, enhancing them, and
+        pushing them to the detection service. Handles errors and device resets.
         """
 
         try:
             if self.cap and self.cap.isOpened():
                 self.cap.release()
         except Exception as e:
-            self.logger.error(f"Exception occurred in camera loop: {e}")
+            self.logger.log_exception(
+                f"Exception occurred while stopping camera capture", e
+            )
         finally:
             self.cap = None
 
-        self.logger.info(
-            f"Starting camera loop with camera index {self.video_device_adapter.camera_index}"
-        )
-        self.cap = self.video_device_adapter.setup_video_capture(
-            fps=self.video_feed_fps,
-            width=self.video_feed_width,
-            height=self.video_feed_height,
-        )
+        self.cap = self.video_device_adapter.setup_video_capture()
+
+        if not self.cap:
+            return
+
+        self.setup_camera_props()
 
         failed_counter = 0
+
         max_failed_attempt_count = 10
+        prev_fps = 0.0
+        self.frame_timestamps = collections.deque(maxlen=30)
 
         try:
-            while self.camera_run:
+            while self.camera_run and self.cap:
+                frame_start_time = time.time()
                 ret, frame = self.cap.read()
                 if not ret:
                     if failed_counter < max_failed_attempt_count:
@@ -166,42 +233,94 @@ class CameraService(metaclass=SingletonMeta):
                         self.logger.error("Failed to read frame from camera.")
                         continue
                     else:
-                        self.video_device_adapter.failed_camera_indexes.append(
-                            self.video_device_adapter.camera_index
+                        (video_device, _) = self.video_device_adapter.video_device or (
+                            None,
+                            None,
                         )
+                        if video_device:
+                            self.video_device_adapter.failed_camera_devices.append(
+                                video_device
+                            )
+
                         if self.cap:
                             self.cap.release()
 
-                        cap = (
-                            self.video_device_adapter.find_and_setup_alternative_camera(
-                                fps=self.video_feed_fps,
-                                width=self.video_feed_width,
-                                height=self.video_feed_height,
-                            )
-                        )
+                        cap = self.video_device_adapter.setup_video_capture()
                         if cap is None:
                             break
 
                         self.cap = cap
-                        self.img = frame
-                        self.stream_img = frame
-
-                        failed_counter = 0
+                        self.logger.info(
+                            "Setting size to: %sx%s",
+                            self.video_feed_width,
+                            self.video_feed_height,
+                        )
+                        self.setup_camera_props()
+                        self.logger.info(
+                            "Updated size: %sx%s",
+                            self.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
+                            self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+                        )
                         continue
                 else:
                     failed_counter = 0
 
+                    self.frame_timestamps.append(frame_start_time)
+                    if len(self.frame_timestamps) >= 2:
+                        time_diffs = [
+                            t2 - t1
+                            for t1, t2 in zip(
+                                self.frame_timestamps, list(self.frame_timestamps)[1:]
+                            )
+                        ]
+                        avg_time_diff = sum(time_diffs) / len(time_diffs)
+                        self.actual_fps = (
+                            1.0 / avg_time_diff if avg_time_diff > 0 else None
+                        )
+
+                        if self.actual_fps is not None:
+                            diff = self.actual_fps - prev_fps
+                            if abs(diff) >= 2:
+                                self.logger.info(
+                                    "Real FPS %s",
+                                    self.actual_fps,
+                                )
+                                prev_fps = self.actual_fps
+
+                frame_enhancer = (
+                    frame_enhancers.get(self.video_feed_enhance_mode)
+                    if self.video_feed_enhance_mode
+                    else None
+                )
+
                 self.img = frame
-                self.stream_img = frame
+                self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
+
+                if self.video_feed_record and self.video_writer is not None:
+                    self.video_writer.write(self.stream_img)
                 if self.detection_service.video_feed_detect_mode:
+                    (
+                        resized_frame,
+                        original_width,
+                        original_height,
+                        resized_width,
+                        resized_height,
+                    ) = resize_to_fixed_height(self.stream_img.copy(), base_size=320)
                     self.current_frame_timestamp = time.time()
 
                     frame_data = {
-                        "frame": frame.copy(),
+                        "frame": resized_frame,
                         "timestamp": self.current_frame_timestamp,
+                        "original_height": original_height,
+                        "original_width": original_width,
+                        "resized_height": resized_height,
+                        "resized_width": resized_width,
                     }
                     self.detection_service.put_frame(frame_data)
-
+        except KeyboardInterrupt:
+            self.logger.info("Keyboard interrupt, stopping camera loop")
+        except asyncio.CancelledError:
+            self.logger.info("Camera loop is cancelled")
         except Exception as e:
             self.logger.log_exception("Exception occurred in camera loop", e)
         finally:
@@ -210,41 +329,20 @@ class CameraService(metaclass=SingletonMeta):
 
             self.cap = None
             self.stream_img = None
+            if self.video_feed_record:
+                self.video_feed_record = False
 
             self.logger.info("Camera loop terminated and camera released.")
 
-    def start_camera(
-        self,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-    ):
+    def start_camera(self):
         """
         Starts the camera capture thread and the detection process.
 
-        Configures the camera settings, initializes queues, and starts the threads and processes
-        necessary for capturing and processing video frames.
-
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `video_feed_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
+        Checks if the camera is already running and prevents multiple starts.
         """
         if self.camera_run:
             self.logger.info("Camera is already running.")
             return
-
-        if fps:
-            self.video_feed_fps = fps
-
-        self.logger.info(f"Starting camera")
-        self.video_feed_height = height
-        self.video_feed_width = width or (
-            height_to_width(height, TARGET_WIDTH, TARGET_HEIGHT) if height else None
-        )
 
         self.camera_run = True
         self.capture_thread = threading.Thread(target=self.camera_thread_func)
@@ -252,29 +350,17 @@ class CameraService(metaclass=SingletonMeta):
         if self.detection_service.video_feed_detect_mode:
             self.detection_service.start_detection_process()
 
-    async def start_camera_and_wait_for_stream_img(
-        self,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-    ):
+    async def start_camera_and_wait_for_stream_img(self):
         """
         Asynchronously starts the camera and waits until the first frame is available.
 
         Useful for ensuring that the camera is ready and frames are available before
         starting operations that depend on the video stream.
 
-        Args:
-            fps (Optional[int], optional): Target frames per second for video capture.
-                If None, uses the existing `video_feed_fps` value.
-            width (Optional[int], optional): Desired width of the video frames.
-                If None, calculates based on `height` and target aspect ratio.
-            height (Optional[int], optional): Desired height of the video frames.
-                If None, uses default or calculates based on `width`.
         """
 
         if not self.camera_run:
-            self.start_camera(fps, width, height)
+            self.start_camera()
 
         counter = 0
 
@@ -297,10 +383,136 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("Camera is not running.")
             return
         self.logger.info("Stopping camera")
+        self.last_detection_result = None
         self.camera_run = False
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
-        self.detection_service.stop_detection_process()
-        self.detection_service.clear_stop_event()
+
+    @property
+    def video_feed_record(self) -> bool:
+        """
+        Gets or sets the state of video recording.
+
+        When set to True, video recording starts and video will be saved to the predefined path.
+        When set to False, video recording stops.
+
+        Returns:
+            bool: The current state of video recording.
+        """
+        return self._video_feed_record
+
+    @video_feed_record.setter
+    def video_feed_record(self, value: bool):
+        if self._video_feed_record != value:
+            self._video_feed_record = value
+            if value:
+                self.start_video_recording()
+            else:
+                self.stop_video_recording()
+
+    def start_video_recording(self):
+        """
+        Starts recording video to the specified path. Ensures the directory exists.
+        """
+        if not os.path.exists(self.file_manager.user_videos_dir):
+            os.makedirs(self.file_manager.user_videos_dir)
+
+        fps = (
+            self.video_feed_fps
+            if self.video_feed_fps is not None
+            else self.actual_fps or 30.0
+        )
+        if isinstance(fps, int):
+            fps = float(fps)
+
+        name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
+        video_path = os.path.join(self.file_manager.user_videos_dir, name)
+
+        shape = (
+            self.stream_img.shape[:2]
+            if self.stream_img is not None
+            else (self.img.shape[:2] if self.img is not None else None)
+        )
+        (height, width) = (
+            shape
+            if shape is not None
+            else (
+                self.video_feed_height,
+                self.video_feed_width,
+            )
+        )
+        self.logger.info(
+            "Starting video recording %sx%s with %s at %s",
+            width,
+            height,
+            fps,
+            video_path,
+        )
+
+        fourcc = cv2.VideoWriter.fourcc(*"XVID")
+        self.video_writer = cv2.VideoWriter(
+            video_path,
+            fourcc,
+            fps,
+            (
+                width,
+                height,
+            ),
+        )
+
+    def stop_video_recording(self):
+        """
+        Stops recording video and releases resources.
+        """
+        if self.video_writer is not None:
+            self.video_writer.release()
+            self.video_writer = None
+            self.logger.info("Stopped video recording")
+
+    def restart_camera(self):
+        cam_running = self.camera_run
+        if cam_running:
+            self.stop_camera()
+        if self.video_feed_device:
+            result = self.video_device_adapter.update_device(self.video_feed_device)
+            if result is None:
+                self.logger.error(
+                    "Device %s is not available",
+                    self.video_feed_device,
+                )
+        else:
+            self.video_device_adapter.video_device = None
+        if cam_running:
+            self.start_camera()
+
+    def update_device(self, device: Optional[str]):
+        cam_running = self.camera_run
+        if cam_running:
+            self.stop_camera()
+        if device:
+            result = self.video_device_adapter.update_device(device)
+            if result is None:
+                self.logger.error(f"Device {device} is not available")
+        else:
+            self.video_device_adapter.video_device = None
+        if cam_running:
+            self.start_camera()
+
+
+if __name__ == "__main__":
+    from app.services.audio_service import AudioService
+    from app.services.detection_service import DetectionService
+    from app.services.files_service import FilesService
+
+    audio_manager = AudioService()
+    file_manager = FilesService(audio_manager=audio_manager)
+    detection_manager = DetectionService(file_manager=file_manager)
+
+    camera_service = CameraService(
+        file_manager=file_manager, detection_service=detection_manager
+    )
+
+    camera_service.camera_run = True
+    camera_service.camera_thread_func()

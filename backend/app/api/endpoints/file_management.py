@@ -4,6 +4,7 @@ from app.api.deps import get_file_manager
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.schemas.file_management import (
     FilesResponse,
+    PhotosResponse,
     RemoveFileResponse,
     UploadFileResponse,
 )
@@ -46,6 +47,8 @@ def list_files(
         files = file_manager.list_user_sounds()
     elif media_type == "image":
         files = file_manager.list_user_photos()
+    elif media_type == "video":
+        files = file_manager.list_user_videos()
     else:
         raise HTTPException(status_code=400, detail="Invalid media type")
 
@@ -116,6 +119,8 @@ def remove_file(
             file_manager.remove_sound(filename)
         elif media_type == "image":
             file_manager.remove_photo(filename)
+        elif media_type == "video":
+            file_manager.remove_video(filename)
         else:
             raise HTTPException(status_code=400, detail="Invalid media type")
         return {"success": True, "filename": filename}
@@ -146,7 +151,7 @@ def download_file(
     Download a file of a specific media type.
 
     Args:
-    - media_type (str): The type of media ('music', 'sound', 'image').
+    - media_type (str): The type of media ('music', 'sound', 'image', 'video').
     - filename (str): The name of the file to download.
     - file_manager (FilesService): The file management service.
 
@@ -163,6 +168,8 @@ def download_file(
             directory = file_manager.get_sound_directory(filename)
         elif media_type == "image":
             directory = file_manager.get_photo_directory(filename)
+        elif media_type == "video":
+            directory = file_manager.get_video_directory(filename)
         else:
             raise HTTPException(status_code=400, detail="Invalid media type")
         return FileResponse(
@@ -217,3 +224,51 @@ def preview_image(
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
+
+
+@router.get("/api/list_photos", response_model=PhotosResponse)
+def list_photos(file_manager: "FilesService" = Depends(get_file_manager)):
+    """
+    List the captured by user photos.
+    """
+
+    return {"files": file_manager.list_user_photos_with_preview()}
+
+
+@router.get(
+    "/api/download-last-video",
+    responses={
+        200: {
+            "content": {"application/octet-stream": {}},
+            "description": "A file will be returned.",
+        },
+        404: {"description": "File not found"},
+    },
+)
+def fetch_last_video(file_manager: "FilesService" = Depends(get_file_manager)):
+    """
+    Download the last video captured by the user.
+
+    Args:
+    - file_manager (FilesService): The file management service for videos.
+
+    Returns:
+    - `FileResponse`: A response containing the most recent video to download.
+
+    Raises:
+    - `HTTPException`: If no videos are found.
+    """
+    videos = file_manager.list_user_videos()
+
+    if not videos:
+        raise HTTPException(status_code=404, detail="No videos found")
+
+    filename = videos[0]
+    directory = file_manager.get_video_directory(filename)
+
+    return FileResponse(
+        path=f"{directory}/{filename}",
+        media_type="application/octet-stream",
+        filename=filename,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

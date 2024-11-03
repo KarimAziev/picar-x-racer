@@ -1,6 +1,6 @@
 <template>
   <div class="battery-indicator">
-    <div class="typed">
+    <div :class="className">
       Nominal battery:
       <span>{{ percentage }}%</span>
       <i class="pi pi-bolt"></i>
@@ -8,7 +8,7 @@
     </div>
     <div :class="className">
       Battery:
-      <span>{{ percentageAdjusted }} %</span>
+      <span>{{ percentageAdjusted }}%</span>
       <i class="pi pi-bolt"></i>
       <span
         >{{ batteryVoltageAdjusted.toFixed(2) }}V of
@@ -19,13 +19,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onUnmounted, onMounted } from "vue";
+import { computed, ref, onBeforeUnmount, onMounted } from "vue";
 
 import { isNumber } from "@/util/guards";
 import { useSettingsStore, useBatteryStore } from "@/features/settings/stores";
+import { roundNumber } from "@/util/number";
 
-const BATTERY_DANGER_LEVEL = 6.7;
-const BATTERY_GOOD_LEVEL = 7.8;
+const BATTERY_TWO_LEDS_LEVEL = 7.6;
+const BATTERY_ONE_LEDS_LEVEL = 7.15;
+const BATTERY_DANGER_LEVEL = 6.5;
+const BATTERY_MIN_LEVEL = 6.0;
 
 const POLL_SHORT_INTERVAL_MS = 60000; // 1 minute
 const POLL_LONG_INTERVAL_MS = 60000 * 10; // 10 minutes
@@ -38,20 +41,23 @@ const batteryTotalVoltage = computed(
   () => settingsStore.settings.battery_full_voltage || 8.4,
 );
 
-const batteryTotalVoltageAdjusted = computed(
-  () => batteryTotalVoltage.value - BATTERY_DANGER_LEVEL,
+const batteryTotalVoltageAdjusted = computed(() =>
+  roundNumber(batteryTotalVoltage.value - BATTERY_MIN_LEVEL, 2),
 );
 
 const batteryVoltage = computed(() =>
   isNumber(batteryStore.voltage)
-    ? `${batteryStore.voltage.toFixed(2)}V of ${batteryTotalVoltage.value.toFixed(2)}V`
+    ? `${batteryStore.voltage.toFixed(2)} of ${batteryTotalVoltage.value.toFixed(2)}V`
     : batteryStore.voltage,
 );
 
 const batteryVoltageAdjusted = computed(() =>
-  isNumber(batteryStore.voltage)
-    ? Math.max(0, batteryStore.voltage - BATTERY_DANGER_LEVEL)
-    : batteryStore.voltage,
+  roundNumber(
+    isNumber(batteryStore.voltage)
+      ? Math.max(0, batteryStore.voltage - BATTERY_MIN_LEVEL)
+      : batteryStore.voltage,
+    2,
+  ),
 );
 
 const percentage = computed(() =>
@@ -70,9 +76,14 @@ const percentageAdjusted = computed(() =>
 const className = computed(() => {
   const voltage = batteryStore.voltage;
 
-  if (voltage > BATTERY_GOOD_LEVEL) {
-    return "typed";
-  } else if (voltage > BATTERY_DANGER_LEVEL && voltage <= BATTERY_GOOD_LEVEL) {
+  if (voltage >= BATTERY_TWO_LEDS_LEVEL) {
+    return "two-led";
+  } else if (voltage >= BATTERY_ONE_LEDS_LEVEL) {
+    return "one-led";
+  } else if (
+    voltage < BATTERY_ONE_LEDS_LEVEL &&
+    voltage > BATTERY_DANGER_LEVEL
+  ) {
     return "warning";
   } else {
     return "danger";
@@ -92,15 +103,18 @@ const getPollInterval = (batteryPercentage: number) => {
 const fetchAndScheduleNext = async () => {
   await batteryStore.fetchBatteryStatus();
   const interval = getPollInterval(Number(percentageAdjusted.value));
-  if (intervalId.value) clearInterval(intervalId.value);
+  if (intervalId.value) {
+    clearInterval(intervalId.value);
+  }
   intervalId.value = setInterval(fetchAndScheduleNext, interval);
 };
 
-onMounted(async () => {
-  await fetchAndScheduleNext();
+onMounted(() => {
+  const interval = getPollInterval(Number(percentageAdjusted.value));
+  intervalId.value = setInterval(fetchAndScheduleNext, interval);
 });
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   if (intervalId.value) {
     clearInterval(intervalId.value);
   }
@@ -124,10 +138,16 @@ onUnmounted(() => {
   overflow: hidden;
   animation: hide-caret 0s steps(30, end) forwards 2s;
 }
+.two-led {
+  color: var(--robo-color-primary);
+}
+.one-led {
+  color: var(--robo-color-secondary);
+}
 .warning {
-  color: #ffcc00;
+  color: var(--color-warn);
 }
 .danger {
-  color: red;
+  color: var(--color-error);
 }
 </style>

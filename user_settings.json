@@ -1,19 +1,25 @@
 {
   "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
   "default_sound": "directives.wav",
+  "default_tts_language": "en",
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
   "fullscreen": true,
   "video_feed_quality": 100,
-  "video_feed_confidence": 0.3,
+  "video_feed_height": 600,
+  "video_feed_width": 800,
+  "video_feed_record": false,
+  "video_feed_confidence": 0.4,
   "video_feed_detect_mode": null,
   "video_feed_enhance_mode": null,
   "video_feed_format": ".jpg",
   "video_feed_fps": 30,
+  "video_feed_render_fps": true,
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,
   "text_info_view": true,
   "auto_download_photo": true,
+  "auto_download_video": true,
   "auto_measure_distance_mode": false,
   "auto_measure_distance_delay_ms": 1000,
   "autoplay_music": true,
@@ -65,6 +71,7 @@
     "playNextMusicTrack": ["2"],
     "playPrevMusicTrack": ["1"],
     "nextText": ["4"],
-    "prevText": ["3"]
+    "prevText": ["3"],
+    "toggleVideoRecord": ["v"]
   }
 }

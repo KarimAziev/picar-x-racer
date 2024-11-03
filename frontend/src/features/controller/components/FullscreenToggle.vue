@@ -1,8 +1,8 @@
 <template>
   <div class="fullscreen-switch">
     <ToggleSwitch
+      inputId="fullscreen-toggle"
       v-tooltip="'Toggle Fullscreen'"
-      id="fullscreen"
       v-model="settingsStore.settings.fullscreen"
     />
   </div>
@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import ToggleSwitch from "primevue/toggleswitch";
+
 import { useSettingsStore } from "@/features/settings/stores";
 
 const settingsStore = useSettingsStore();
@@ -17,8 +18,8 @@ const settingsStore = useSettingsStore();
 
 <style scoped lang="scss">
 .fullscreen-switch {
-  position: absolute;
-  right: 10px;
+  position: fixed;
+  right: 40px;
   top: 10px;
   z-index: 12;
 }

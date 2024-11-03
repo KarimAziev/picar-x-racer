@@ -291,7 +291,6 @@ const handleReset = () => {
 
 const validateAll = () => {
   const errors = validateRowsFields();
-  console.log("errors", errors);
   isSubmitDisabled.value = !!errors.length;
   return errors;
 };

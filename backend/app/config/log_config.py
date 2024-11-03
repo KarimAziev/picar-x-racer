@@ -1,7 +1,7 @@
 import logging.config
 import os
 
-level = os.getenv("LOG_LEVEL", "INFO").upper()
+level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
 
 
 class ExcludeBinaryFilter(logging.Filter):
@@ -109,6 +109,7 @@ LOGGING_CONFIG = {
             "formatter": "uvicorn",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
+            "filters": ["exclude_binary"],
         },
     },
     "loggers": {

@@ -33,31 +33,63 @@ def update_video_feed_settings(
     Returns:
         `VideoFeedSettings`: The updated settings of the video feed.
     """
+
     if payload:
         if payload.video_feed_confidence:
             detection_manager.video_feed_confidence = payload.video_feed_confidence
 
+        dict_data = payload.model_dump(exclude_unset=True)
+        logger.info(f"Updating feed settings: {dict_data}")
+        current_width = camera_manager.video_feed_width
+        current_height = camera_manager.video_feed_height
+        keys_to_restart = {
+            "video_feed_device",
+            "video_feed_width",
+            "video_feed_height",
+            "video_feed_fps",
+            "video_feed_pixel_format",
+        }
+
+        should_restart_camera = False
+
         for key, value in payload.model_dump(exclude_unset=True).items():
+            if key in keys_to_restart:
+                should_restart_camera = True
+
             if key is "video_feed_detect_mode":
                 detection_manager.video_feed_detect_mode = value
-                if (
-                    detection_manager.video_feed_detect_mode
-                    and camera_manager.camera_run
-                ):
-                    detection_manager.start_detection_process()
-
             elif hasattr(camera_manager, key):
+                logger.debug(f"Setting camera_manager {key} to {value}")
                 setattr(camera_manager, key, value)
 
+        if should_restart_camera:
+            camera_manager.restart_camera()
+
+        if (
+            current_width != camera_manager.video_feed_width
+            and current_height != camera_manager.video_feed_height
+            and detection_manager.detection_process
+            and detection_manager.detection_process.is_alive()
+        ):
+            detection_manager.restart_detection_process()
+        elif detection_manager.video_feed_detect_mode and (
+            detection_manager.detection_process is None
+            or not detection_manager.detection_process.is_alive()
+        ):
+            detection_manager.start_detection_process()
+
     return {
+        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
+        "video_feed_confidence": detection_manager.video_feed_confidence,
         "video_feed_width": camera_manager.video_feed_width,
-        "video_feed_height": camera_manager.video_feed_width,
+        "video_feed_height": camera_manager.video_feed_height,
         "video_feed_fps": camera_manager.video_feed_fps,
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
-        "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
-        "video_feed_confidence": detection_manager.video_feed_confidence,
+        "video_feed_record": camera_manager.video_feed_record,
+        "video_feed_device": camera_manager.video_feed_device,
+        "video_feed_pixel_format": camera_manager.video_feed_pixel_format,
     }
 
 
@@ -76,15 +108,19 @@ def get_camera_settings(
     Returns:
         `VideoFeedSettings`: The current settings of the video feed.
     """
+
     return {
-        "video_feed_width": camera_manager.video_feed_width,
-        "video_feed_height": camera_manager.video_feed_width,
-        "video_feed_fps": camera_manager.video_feed_fps,
         "video_feed_detect_mode": detection_manager.video_feed_detect_mode,
+        "video_feed_confidence": detection_manager.video_feed_confidence,
+        "video_feed_width": camera_manager.video_feed_width,
+        "video_feed_height": camera_manager.video_feed_height,
+        "video_feed_fps": camera_manager.video_feed_fps,
         "video_feed_enhance_mode": camera_manager.video_feed_enhance_mode,
         "video_feed_quality": camera_manager.video_feed_quality,
         "video_feed_format": camera_manager.video_feed_format,
-        "video_feed_confidence": detection_manager.video_feed_confidence,
+        "video_feed_record": camera_manager.video_feed_record,
+        "video_feed_device": camera_manager.video_feed_device,
+        "video_feed_pixel_format": camera_manager.video_feed_pixel_format,
     }
 
 

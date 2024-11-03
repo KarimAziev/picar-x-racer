@@ -35,20 +35,31 @@ Methods:
 
 import json
 import os
-from os import environ, path
+from os import path
 from typing import Any, Dict, List
 
 from app.adapters.robot_hat.filedb import fileDB
 from app.config.paths import (
     CONFIG_USER_DIR,
+    DATA_DIR,
     DEFAULT_MUSIC_DIR,
     DEFAULT_SOUND_DIR,
     DEFAULT_USER_SETTINGS,
+    MUSIC_CACHE_FILE_PATH,
     PICARX_CONFIG_FILE,
+    PX_MUSIC_DIR,
+    PX_PHOTO_DIR,
+    PX_SOUND_DIR,
+    PX_VIDEO_DIR,
+    USER_HOME,
 )
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.services.audio_service import AudioService
-from app.util.file_util import ensure_parent_dir_exists, load_json_file
+from app.util.file_util import (
+    ensure_parent_dir_exists,
+    get_files_with_extension,
+    load_json_file,
+)
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
@@ -68,29 +79,37 @@ class FilesService(metaclass=SingletonMeta):
 
     def __init__(self, audio_manager: AudioService, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.user = os.getlogin()
-        self.user_home = path.expanduser(f"~{self.user}")
         self.logger = Logger(name=__name__)
+        self.user_home = USER_HOME
         self.user_settings_file = path.join(
             CONFIG_USER_DIR, "picar-x-racer", "user_settings.json"
         )
-        self.user_photos_dir = environ.get(
-            "PHOTOS_PATH", "%s/Pictures/picar-x-racer/" % self.user_home
-        )
-        self.user_sounds_dir = environ.get(
-            "SOUNDS_PATH", "%s/Music/picar-x-racer/sounds/" % self.user_home
-        )
-        self.user_music_dir = environ.get(
-            "MUSIC_PATH", "%s/Music/picar-x-racer/music/" % self.user_home
-        )
-        self.audio_manager = audio_manager
+        self.user_photos_dir = PX_PHOTO_DIR
+        self.user_videos_dir = PX_VIDEO_DIR
+        self.user_sounds_dir = PX_SOUND_DIR
+        self.user_music_dir = PX_MUSIC_DIR
 
-        self.cache = {}
+        self.audio_manager = audio_manager
+        self.cache = self.load_cache()
+
         self.cached_settings = None
         self.last_modified_time = None
         self.current_settings_file = None
         self.settings = self.load_settings()
         self.list_all_music_with_details()
+
+    def load_cache(self):
+        """Load cached audio file data from a persistent file."""
+        if os.path.exists(MUSIC_CACHE_FILE_PATH):
+            with open(MUSIC_CACHE_FILE_PATH, "r") as cache_file:
+                return json.load(cache_file)
+        return {}
+
+    def save_cache(self):
+        """Save the cache to a persistent file."""
+        ensure_parent_dir_exists(MUSIC_CACHE_FILE_PATH)
+        with open(MUSIC_CACHE_FILE_PATH, "w") as cache_file:
+            json.dump(self.cache, cache_file, indent=2)
 
     def get_settings_file(self):
         """Determines the current settings file to use"""
@@ -119,7 +138,9 @@ class FilesService(metaclass=SingletonMeta):
             self.last_modified_time = current_modified_time
             self.current_settings_file = settings_file
         else:
-            self.logger.info(f"Using cached settings from {self.current_settings_file}")
+            self.logger.debug(
+                f"Using cached settings from {self.current_settings_file}"
+            )
 
         return self.cached_settings
 
@@ -127,17 +148,20 @@ class FilesService(metaclass=SingletonMeta):
         """Saves new settings to the user settings file."""
         existing_settings = self.load_settings()
         self.logger.info(f"Saving settings to {self.user_settings_file}")
+
         merged_settings = {
             **existing_settings,
             **new_settings,
         }
+        self.logger.debug(f"New settings {new_settings}")
+        self.logger.debug(f"Merged settings {merged_settings}")
         ensure_parent_dir_exists(self.user_settings_file)
 
         with open(self.user_settings_file, "w") as settings_file:
             json.dump(merged_settings, settings_file, indent=2)
 
         self.settings = merged_settings
-        self.logger.debug(f"settings saved to {self.user_settings_file}")
+        self.logger.debug(f"Settings saved to {self.user_settings_file}")
         return self.settings
 
     def list_files(self, directory: str, full=False) -> List[str]:
@@ -161,48 +185,83 @@ class FilesService(metaclass=SingletonMeta):
                 files.append(file if not full else file_path)
         return files
 
+    def list_files_sorted(self, directory: str, full=False) -> List[str]:
+        """
+        Lists all files in the specified directory, sorted by modified time.
+
+        Args:
+            directory (str): The directory to list files from.
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of files in the directory.
+        """
+        if not os.path.exists(directory):
+            return []
+
+        files = []
+        for file in os.listdir(directory):
+            file_path = os.path.join(directory, file)
+            if os.path.isfile(file_path):
+                files.append(
+                    (file if not full else file_path, os.path.getmtime(file_path))
+                )
+
+        files.sort(key=lambda x: x[1], reverse=True)
+
+        return [file[0] for file in files]
+
     def list_all_music_with_details(self):
-        """Lists all music files with details including whether they are removable."""
+        """List all music files with cached details."""
         defaults = self.list_default_music(full=True)
         user_music = self.list_user_music(full=True)
+
         result = []
-
-        for file in defaults:
+        for file in defaults + user_music:
             details = self.get_audio_file_details_cached(file)
             if details:
-                details["removable"] = False
-                result.append(details)
-
-        for file in user_music:
-            details = self.get_audio_file_details_cached(file)
-            if details:
-                details["removable"] = True
+                details["removable"] = file in user_music
                 result.append(details)
 
         return result
 
+    def prune_cache(self, max_entries=100):
+        """Limits the cache size by keeping only recent entries."""
+        if len(self.cache) > max_entries:
+            # Keeps the N most popular/most recent entries
+            self.cache = dict(list(self.cache.items())[-max_entries:])
+            self.save_cache()
+
     def get_audio_file_details_cached(self, file: str):
         """
-        Gets cached details of an audio file such as track name and duration.
-
-        Args:
-            file (str): File path of the audio file.
-
-        Returns:
-            dict: A dictionary with track name and duration.
+        Retrieves audio file details from cache if available and fresh.
+        Otherwise, it will calculate and store the details in cache.
         """
         file_mod_time = os.path.getmtime(file)
 
-        cache_key = (file, file_mod_time)
+        if file in self.cache:
+            cached_data = self.cache[file]
+            cached_mod_time = cached_data["modified_time"]
 
-        if cache_key in self.cache:
-            self.logger.info(f"Using cached details for {file}")
-            return self.cache[cache_key]
-        else:
-            details = self.get_audio_file_details(file)
-            if details:
-                self.cache[cache_key] = details
-            return details
+            if cached_mod_time == file_mod_time:
+                self.logger.debug(
+                    "Using cached details for %s",
+                    file,
+                )
+                return cached_data["details"]
+
+        self.logger.debug(
+            "Refreshing details for %s",
+            file,
+        )
+        details = self.get_audio_file_details(file)
+        if details:
+            self.cache[file] = {
+                "modified_time": file_mod_time,
+                "details": details,
+            }
+            self.save_cache()
+        return details
 
     def get_audio_file_details(self, file):
         """
@@ -258,7 +317,37 @@ class FilesService(metaclass=SingletonMeta):
         Returns:
             List[str]: List of user-uploaded photo files.
         """
-        return self.list_files(self.user_photos_dir, full)
+        return self.list_files_sorted(self.user_photos_dir, full)
+
+    def list_user_videos(self, full=False) -> List[str]:
+        """
+        Lists captured by user video files.
+
+        Args:
+            full (bool, optional): Whether to return full file paths. Defaults to False.
+
+        Returns:
+            List[str]: List of user-uploaded video files.
+        """
+        return self.list_files_sorted(self.user_videos_dir, full)
+
+    def list_user_photos_with_preview(self) -> List[dict[str, str]]:
+        """
+        Lists captured by user photo files.
+        """
+        files = []
+        directory = self.user_photos_dir
+        if not path.exists(directory):
+            return files
+
+        for file in os.listdir(directory):
+            file_path = os.path.join(directory, file)
+            file_item = {"name": file, "path": file_path, "url": f"/api/preview/{file}"}
+            files.append(file_item)
+
+        files.sort(key=lambda x: os.path.getmtime(x["path"]), reverse=True)
+
+        return files
 
     def list_user_music(self, full=False) -> List[str]:
         """
@@ -339,6 +428,19 @@ class FilesService(metaclass=SingletonMeta):
 
         return self.remove_file(filename, self.user_photos_dir)
 
+    def remove_video(self, filename: str):
+        """
+        Removes a video file from the user's video directory.
+
+        Args:
+            filename (str): Name of the video file to be removed.
+
+        Returns:
+            bool: True if the file was successfully removed.
+        """
+
+        return self.remove_file(filename, self.user_videos_dir)
+
     def remove_music(self, filename: str):
         """
         Removes a music file from the user's music directory or prevents default music files from being removed.
@@ -405,6 +507,26 @@ class FilesService(metaclass=SingletonMeta):
         user_file = path.join(self.user_photos_dir, filename)
         if path.exists(user_file):
             return self.user_photos_dir
+        else:
+            raise FileNotFoundError
+
+    def get_video_directory(self, filename: str):
+        """
+        Retrieves the directory of a specified video file.
+
+        Args:
+            filename (str): Name of the video file.
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            str: Directory path of the video file.
+        """
+
+        user_file = path.join(self.user_videos_dir, filename)
+        if path.exists(user_file):
+            return self.user_videos_dir
         else:
             raise FileNotFoundError
 
@@ -488,3 +610,16 @@ class FilesService(metaclass=SingletonMeta):
             calibration_settings = fileDB(PICARX_CONFIG_FILE).get_all_as_json()
             return calibration_settings
         return {}
+
+    @staticmethod
+    def get_available_models():
+        """
+        Recursively scans the provided directory for .tflite, .onnx and .pt model files.
+        Returns a list of all found models with their full file paths.
+
+        Returns:
+            List[str]: List of paths to discovered .tflite and .pt model files.
+        """
+
+        supported_extensions = ('.tflite', '.pt', ".onnx")
+        return get_files_with_extension(DATA_DIR, supported_extensions)

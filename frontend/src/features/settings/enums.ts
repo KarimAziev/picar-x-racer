@@ -3,4 +3,5 @@ export enum SettingsTab {
   KEYBINDINGS = "Keybindings",
   CALIBRATION = "Calibration",
   TTS = "Text To Speach",
+  PHOTOS = "Photos",
 }

@@ -23,6 +23,10 @@ export const toggleableSettings = {
     description: "Toggle auto-download of captured photos",
     label: "Auto-download of captured photos",
   },
+  auto_download_video: {
+    description: "Toggle auto-download of recorded videos",
+    label: "Auto-download of recordered videos",
+  },
   auto_measure_distance_mode: {
     description: "Toggle auto-measure distance mode",
     label: "Auto-measure distance mode",
@@ -38,6 +42,10 @@ export const toggleableSettings = {
   show_player: {
     description: "Toggle showing music player",
     label: "Show music player",
+  },
+  video_feed_render_fps: {
+    description: "Toggle rendering FPS",
+    label: "Show FPS",
   },
 };
 

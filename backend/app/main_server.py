@@ -1,4 +1,5 @@
 import logging.config
+import os
 
 from app.config.log_config import LOGGING_CONFIG
 
@@ -11,10 +12,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config.paths import FRONTEND_FOLDER, STATIC_FOLDER, TEMPLATE_FOLDER
+from app.util.ansi import print_initial_message
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
 
 Logger.setup_from_env()
+
 logger = Logger(__name__)
 
 
@@ -67,19 +70,44 @@ tags_metadata = [
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.template_folder = TEMPLATE_FOLDER
-    port = app.state.port if hasattr(app.state, "port") else 8000
+    port = os.getenv("PX_MAIN_APP_PORT")
+    mode = os.getenv("PX_APP_MODE")
 
     ip_address = get_ip_address()
-    BOLD = "\033[1m"
-    RED = "\033[91m"
-    YELLOW = "\033[93m"
-    RESET = "\033[0m"
+    browser_url = f"http://{ip_address}:{port}"
+    print_initial_message(browser_url)
+    signal_file_path = '/tmp/backend_ready.signal' if mode == "dev" else None
 
-    print(
-        f"🚗 {BOLD}{RED}Open {YELLOW}http://{ip_address}:{port}{RED} in the browser{RESET}"
-    )
-    yield
-    logger.info("Stopping application")
+    if signal_file_path:
+        try:
+            with open(signal_file_path, 'w') as f:
+                f.write('Backend is ready')
+        except Exception as e:
+            logger.error(f"Failed to create signal file: {e}")
+
+    try:
+        yield
+    finally:
+        logger.info("Stopping 🚗 application")
+        detection_manager.stop_detection_process()
+        if detection_manager.manager is not None:
+            logger.info("Stopping detection manager")
+
+            detection_manager.manager.shutdown()
+            detection_manager.manager.join()
+            for prop in [
+                "stop_event",
+                "frame_queue",
+                "control_queue",
+                "detection_queue",
+                "detection_process",
+                "manager",
+            ]:
+                logger.info(f"Removing {prop}")
+                setattr(detection_manager, prop, None)
+        if signal_file_path and os.path.exists(signal_file_path):
+            os.remove(signal_file_path)
+        logger.info("Application 🚗 stopped")
 
 
 app = FastAPI(
@@ -113,6 +141,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
 app.mount("/frontend", StaticFiles(directory=FRONTEND_FOLDER), name="frontend")
 
+from app.api.deps import detection_manager
 from app.api.endpoints import (
     audio_management_router,
     battery_router,

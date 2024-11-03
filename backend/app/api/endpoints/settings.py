@@ -1,18 +1,23 @@
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_file_manager
+from app.api.deps import get_camera_manager, get_detection_manager, get_file_manager
 from app.config.detectors import detectors
 from app.config.video_enhancers import frame_enhancers
 from app.schemas.settings import (
     CalibrationConfig,
+    CameraDevicesResponse,
     DetectorsResponse,
     EnhancersResponse,
     Settings,
+    UpdateCameraDevice,
     VideoModesResponse,
 )
+from app.util.device import list_available_camera_devices
 from fastapi import APIRouter, Depends
 
 if TYPE_CHECKING:
+    from app.services.camera_service import CameraService
+    from app.services.detection_service import DetectionService
     from app.services.files_service import FilesService
 
 
@@ -37,6 +42,8 @@ def get_settings(file_service: "FilesService" = Depends(get_file_manager)):
 def update_settings(
     new_settings: Settings,
     file_service: "FilesService" = Depends(get_file_manager),
+    camera_manager: "CameraService" = Depends(get_camera_manager),
+    detection_manager: "DetectionService" = Depends(get_detection_manager),
 ):
     """
     Update the application settings.
@@ -44,13 +51,25 @@ def update_settings(
     Args:
     - new_settings (Settings): The new settings to apply.
     - file_service (FilesService): The file service for managing settings.
+    - camera_manager (CameraService): The camera service for managing the camera settings.
+    - detection_manager (DetectionService): The detection service for managing the detection settings.
+
 
     Returns:
         `Settings`: The updated settings of the application.
     """
-    data = new_settings.model_dump(exclude_none=True, exclude_defaults=True)
+    data = new_settings.model_dump(exclude_unset=True)
 
     file_service.save_settings(data)
+
+    for key, value in data.items():
+        if hasattr(camera_manager, key) and getattr(camera_manager, key) != value:
+            setattr(camera_manager, key, value)
+        elif (
+            hasattr(detection_manager, key) and getattr(detection_manager, key) != value
+        ):
+            setattr(detection_manager, key, value)
+
     return new_settings
 
 
@@ -104,3 +123,28 @@ def get_video_modes():
         "detectors": list(detectors.keys()),
         "enhancers": list(frame_enhancers.keys()),
     }
+
+
+@router.get("/api/camera-devices", response_model=CameraDevicesResponse)
+def get_camera_devices():
+    """
+    Retrieve available camera devices.
+    """
+    devices = list_available_camera_devices()
+    return {"devices": devices}
+
+
+@router.post("/api/camera-device", response_model=UpdateCameraDevice)
+def update_camera_device(
+    data: UpdateCameraDevice,
+    camera_manager: "CameraService" = Depends(get_camera_manager),
+):
+    """
+    Retrieve available camera devices.
+    """
+
+    camera_manager.update_device(data.device)
+    info = camera_manager.video_device_adapter.video_device
+    (device, _) = info or (None, None)
+
+    return {"device": device}

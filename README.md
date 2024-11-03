@@ -244,62 +244,58 @@ In the settings, you can specify the desired confidence level of the model.
 
 ##### Using Custom Models
 
-By default, the object detection feature utilizes the `YOLOv8n` model, optimized for real-time processing on devices like the Raspberry Pi. However, you can also specify paths to other models using environment variables.
+By default, the object detection feature uses the `YOLOv8n` model, which is optimized for real-time processing on devices like the Raspberry Pi. However, you can specify custom model paths using environment variables, enabling greater flexibility.
 
 **Using Terminal:**
+
+To set a custom model, specify the `YOLO_MODEL_PATH` environment variable with the path to the model.
+
+If you are using a **relative path** (starting from the repository directory), your model path will be resolved to the `data/` directory within the backend project structure. For example:
+
+```sh
+export YOLO_MODEL_PATH=my_custom_model.pt
+```
+
+This will resolve to:
+`/path-to-repo/backend/data/my_custom_model.pt`
+
+On the other hand, **absolute paths** can be provided directly and will be used as-is:
 
 ```sh
 export YOLO_MODEL_PATH=/path/to/your/custom_model.pt
 ```
 
-Additionally, you can set the `YOLO_MODEL_EDGE_TPU_PATH` to specify the path to the model optimized for the Coral Edge TPU:
+Similarly, if using a **model optimized for the Coral Edge TPU**, you can set the `YOLO_MODEL_EDGE_TPU_PATH` environment variable to point to the `.tflite` model file:
 
 ```sh
 export YOLO_MODEL_EDGE_TPU_PATH=/path/to/your/custom_edgetpu_model.tflite
 ```
 
-When you set the `YOLO_MODEL_EDGE_TPU_PATH` environment variable, the `ModelManager` class in your application will use that path if the file exists. If not, it will fall back to the `YOLO_MODEL_PATH`.
+**Using `.env` file**
 
-**Example Implementation:**
+You can also configure these environment variables using a `.env` file in the backend directory of this repository. This method is useful for maintaining persistent configurations. See the [.env.example](./backend/.env.example) file provided in the repository for guidance.
 
-Here's a snippet from `ModelManager` that showcases how it handles these paths:
+For example:
 
-```python
-import gc
-import os
-
-from app.config.paths import YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
-from app.util.logger import Logger
-
-logger = Logger(__name__)
-
-class ModelManager:
-    def __enter__(self):
-        from ultralytics import YOLO
-
-        self.model = YOLO(
-            (
-                YOLO_MODEL_EDGE_TPU_PATH
-                if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
-                else YOLO_MODEL_PATH
-            ),
-            task="detect",
-        )
-        self.model.overrides["imgsz"] = (192, 192)
-        return self.model
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        del self.model
-        gc.collect()
+```sh
+# In your .env file:
+YOLO_MODEL_PATH=my_custom_model.pt
+YOLO_MODEL_EDGE_TPU_PATH=/path/to/your_custom_edgetpu_model.tflite
 ```
+
+Any relative model paths mentioned here will also be resolved within the `data/` directory.
+
+---
 
 ##### Using Google Coral Accelerator
 
-The inference performance on Raspberry is usually poor. The Coral Edge TPU is a great solution to this problem, since it can be used with a Raspberry Pi and accelerate inference performance greatly.
+Inference performance directly on the Raspberry Pi can be suboptimal due to limited processing power. A great way to enhance this is by using the **Google Coral Edge TPU** in combination with the Raspberry Pi, which significantly boosts inference speed.
 
-Follow the [Ultralytics guide](https://docs.ultralytics.com/guides/coral-edge-tpu-on-raspberry-pi/), but stop at the model export step because it requires some additional steps.
+To set up your model with Coral Edge TPU, make sure to follow the [Ultralytics guide](https://docs.ultralytics.com/guides/coral-edge-tpu-on-raspberry-pi/), but take note of specific steps required for exporting your model as a Coral-compatible `.tflite` file.
 
-To export your model for the Edge TPU, you need to run the export with a specific image size (`192x192`). You can use the script `export_model.py` from this repo.
+The image size for the model should be set to `320x320` before exporting to ensure optimal performance on the Coral TPU. You can use our provided `export_model.py` script to assist with exporting your YOLO model for Coral TPU use.
+
+Run the export script as follows:
 
 ```sh
 cd /path/to/picar-x-racer/backend/
@@ -308,11 +304,26 @@ pip install tensorflow
 python export_model.py
 ```
 
-By default, the script will export the model from `data/yolov8n.pt` to `data/yolov8n_full_integer_quant_edgetpu.tflite`. Copy the `yolov8n_full_integer_quant_edgetpu.tflite` file to your Picar-X racer, for example:
+For more options, run the script with the help argument:
+
+```bash
+python export_model.py --help
+```
+
+By default, the script will read from `data/yolov8n.pt` and export the model to `data/yolov8n_full_integer_quant_edgetpu.tflite`. If you're using relative paths for input or output, they will be resolved into the `data/` directory automatically.
+
+For instance:
+
+- Input: `my_model.pt` becomes `/path-to-repo/backend/data/my_model.pt`
+- Output: The model will be saved as `/path-to-repo/backend/data/yolov8n_full_integer_quant_edgetpu.tflite`.
+
+You can then copy the exported `.tflite` model to your Picar-X Racer using the following command:
 
 ```bash
 scp /path/to/picar-x-racer/backend/data/yolov8n_full_integer_quant_edgetpu.tflite pi@raspberrypi.local:/home/pi/picar-x-racer/data/
 ```
+
+Ensure that `/path/to/picar-x-racer/` is your local project path and `raspberrypi.local` is replaced with your Raspberry Pi's actual hostname or IP address. This loads the Coral Edge TPU-optimized model directly onto the Pi's file system, ready for use.
 
 On the Raspberry Pi, follow these steps to install `tflite-runtime`:
 
@@ -323,7 +334,7 @@ pip uninstall tensorflow tensorflow-aarch64
 pip install tflite-runtime
 ```
 
-Then you can run the application. If you encounter errors, such as 'Failed to load delegate from libedgetpu.so.1.0 with tflite_runtime', you may need to download a pre-built wheel that matches your `libedgetpu` version and Python version.
+Then you can run the application. If you encounter errors, such as `Failed to load delegate from libedgetpu.so.1.0 with tflite_runtime`, you may need to download a pre-built wheel that matches your `libedgetpu` version and Python version.
 
 **Steps:**
 

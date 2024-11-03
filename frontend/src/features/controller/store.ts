@@ -18,15 +18,15 @@ import { constrain } from "@/util/constrain";
 import { takePhoto } from "@/features/controller/api";
 import { makeWebsocketUrl } from "@/util/url";
 
-const ACCELERATION = 10;
-const CAM_PAN_MIN = -90;
-const CAM_PAN_MAX = 90;
-const CAM_TILT_MIN = -35;
-const CAM_TILT_MAX = 65;
-const SERVO_DIR_ANGLE_MIN = -30;
-const SERVO_DIR_ANGLE_MAX = 30;
-const MIN_SPEED = 10;
-const MAX_SPEED = 100;
+export const ACCELERATION = 10;
+export const CAM_PAN_MIN = -90;
+export const CAM_PAN_MAX = 90;
+export const CAM_TILT_MIN = -35;
+export const CAM_TILT_MAX = 65;
+export const SERVO_DIR_ANGLE_MIN = -30;
+export const SERVO_DIR_ANGLE_MAX = 30;
+export const MIN_SPEED = 10;
+export const MAX_SPEED = 100;
 
 export interface Modes {
   /**
@@ -268,7 +268,6 @@ export const useControllerStore = defineStore("controller", {
       this.close();
 
       this.loading = false;
-      this.speed = 0;
       this.messageQueue = [];
     },
     // command workers
@@ -278,19 +277,24 @@ export const useControllerStore = defineStore("controller", {
         this.maxSpeed = newValue;
       }
       if (this.speed >= newValue) {
-        this.speed = constrain(MIN_SPEED, newValue, newValue - ACCELERATION);
+        this.move(
+          constrain(MIN_SPEED, newValue, newValue - ACCELERATION),
+          this.direction,
+        );
       }
     },
     setCamTiltAngle(angle: number): void {
-      const nextAngle = constrain(CAM_TILT_MIN, CAM_TILT_MAX, angle);
+      const nextAngle = Math.trunc(
+        constrain(CAM_TILT_MIN, CAM_TILT_MAX, angle),
+      );
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
-      this.camTilt = nextAngle;
     },
 
     setCamPanAngle(servoAngle: number): void {
-      const nextAngle = constrain(CAM_PAN_MIN, CAM_PAN_MAX, servoAngle);
+      const nextAngle = Math.trunc(
+        constrain(CAM_PAN_MIN, CAM_PAN_MAX, servoAngle),
+      );
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
-      this.camPan = nextAngle;
     },
 
     move(speed: number, direction: number) {
@@ -304,9 +308,6 @@ export const useControllerStore = defineStore("controller", {
           },
         });
       }
-
-      this.direction = direction;
-      this.speed = speed;
     },
 
     forward(speed: number) {
@@ -324,7 +325,6 @@ export const useControllerStore = defineStore("controller", {
         servoAngle,
       );
       this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
-      this.servoAngle = nextAngle;
     },
     // commands
     accelerate() {
@@ -337,22 +337,18 @@ export const useControllerStore = defineStore("controller", {
     },
 
     slowdown() {
-      if (this.speed > 0) {
-        this.speed = Math.max(this.speed - 10, 0);
-      }
+      const nextSpeed =
+        this.speed > 0 ? Math.max(this.speed - 10, 0) : this.speed;
       if (this.speed === 0 && this.direction !== 0) {
         this.stop();
-        this.direction = 0;
       } else if (this.direction === 1) {
-        this.forward(this.speed);
+        this.forward(nextSpeed);
       } else if (this.direction === -1) {
-        this.backward(this.speed);
+        this.backward(nextSpeed);
       }
     },
     stop() {
       this.sendMessage({ action: "stop" });
-      this.direction = 0;
-      this.speed = 0;
     },
     increaseMaxSpeed() {
       this.setMaxSpeed(this.maxSpeed + ACCELERATION);
@@ -585,6 +581,10 @@ export const useControllerStore = defineStore("controller", {
     async prevEnhanceMode() {
       const camStore = useCameraStore();
       await camStore.prevEnhanceMode();
+    },
+    async toggleVideoRecord() {
+      const camStore = useCameraStore();
+      await camStore.toggleRecording();
     },
     async increaseVolume() {
       const musicStore = useMusicStore();

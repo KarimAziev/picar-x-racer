@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import queue
+import time
 from multiprocessing.synchronize import Event
 
 from app.config.detectors import detectors
@@ -32,7 +33,7 @@ def detection_process_func(
             current_detect_mode = None
             detection_function = None
             confidence_threshold = 0.3
-            counter = 0
+            prev_time = time.time()
 
             while not stop_event.is_set():
                 try:
@@ -66,22 +67,28 @@ def detection_process_func(
                     except queue.Empty:
                         continue
 
-                    verbose = counter < 5
+                    curr_time = time.time()
+                    verbose = curr_time - prev_time >= 5
 
                     detection_result = detection_function(
                         frame=frame,
                         yolo_model=yolo_model,
                         confidence_threshold=confidence_threshold,
                         verbose=verbose,
+                        original_height=frame_data["original_height"],
+                        original_width=frame_data["original_width"],
+                        resized_height=frame_data["resized_height"],
+                        resized_width=frame_data["resized_width"],
                     )
+
                     detection_result_with_timestamp = {
                         "detection_result": detection_result,
                         "timestamp": frame_timestamp,
                     }
 
-                    if detection_result and verbose:
-                        logger.debug(f"Detection result: {detection_result}")
-                        counter += 1
+                    if verbose:
+                        logger.info(f"Detection result: {detection_result}")
+                        prev_time = time.time()
 
                     try:
                         detection_queue.put_nowait(detection_result_with_timestamp)

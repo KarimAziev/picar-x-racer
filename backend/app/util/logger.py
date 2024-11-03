@@ -70,20 +70,20 @@ class Logger:
         app_logger = logging.getLogger(self._app_logger_name)
         app_logger.addHandler(file_handler)
 
-    def debug(self, message: str):
-        self.logger.debug(message)
+    def debug(self, message: str, *args, **kwargs):
+        self.logger.debug(message, *args, **kwargs)
 
-    def info(self, message: str):
-        self.logger.info(message)
+    def info(self, message: str, *args, **kwargs):
+        self.logger.info(message, *args, **kwargs)
 
-    def warning(self, message: str):
-        self.logger.warning(message)
+    def warning(self, message: str, *args, **kwargs):
+        self.logger.warning(message, *args, **kwargs)
 
-    def error(self, message: str):
-        self.logger.error(message)
+    def error(self, message: str, *args, **kwargs):
+        self.logger.error(message, *args, **kwargs)
 
-    def critical(self, message: str):
-        self.logger.critical(message)
+    def critical(self, message: str, *args, **kwargs):
+        self.logger.critical(message, *args, **kwargs)
 
     @staticmethod
     def setup_global(log_level: str):
@@ -95,7 +95,7 @@ class Logger:
 
     @staticmethod
     def setup_from_env():
-        log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+        log_level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
         Logger.setup_global(log_level)
 
     @staticmethod

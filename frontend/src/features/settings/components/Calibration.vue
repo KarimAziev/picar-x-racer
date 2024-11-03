@@ -40,7 +40,6 @@ const controllerStore = useControllerStore();
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  justify-items: center;
 }
 
 .field {

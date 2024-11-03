@@ -4,6 +4,7 @@
       <Tab :value="SettingsTab.GENERAL">General</Tab>
       <Tab :value="SettingsTab.KEYBINDINGS">Keybindings</Tab>
       <Tab :value="SettingsTab.CALIBRATION">Calibration</Tab>
+      <Tab :value="SettingsTab.PHOTOS">Photos</Tab>
       <Tab :value="SettingsTab.TTS">TTS</Tab>
     </TabList>
     <TabPanels>
@@ -20,6 +21,11 @@
       <TabPanel :value="SettingsTab.CALIBRATION">
         <ScrollPanel class="wrapper">
           <Calibration />
+        </ScrollPanel>
+      </TabPanel>
+      <TabPanel :value="SettingsTab.PHOTOS">
+        <ScrollPanel class="wrapper">
+          <Images />
         </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.TTS">
@@ -43,6 +49,7 @@ import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
 import { SettingsTab } from "@/features/settings/enums";
 import { usePopupStore } from "@/features/settings/stores";
 import Calibration from "@/features/settings/components/Calibration.vue";
+import Images from "@/features/settings/components/Images.vue";
 
 const popupStore = usePopupStore();
 </script>

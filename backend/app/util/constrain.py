@@ -1,4 +1,9 @@
-def constrain(x: int, min_val: int, max_val: int):
+from typing import Union
+
+
+def constrain(
+    x: Union[int, float], min_val: Union[int, float], max_val: Union[int, float]
+):
     """
     Constrains value to be within a range.
     """

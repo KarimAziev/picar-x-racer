@@ -4,10 +4,10 @@ A module to manage Servo motors using PWM (Pulse Width Modulation) control.
  - Set the pulse width for precise control.
 """
 
+from app.adapters.robot_hat.pin_descriptions import pin_descriptions
+from app.adapters.robot_hat.pwm import PWM
 from app.util.logger import Logger
 from app.util.mapping import mapping
-
-from .pwm import PWM
 
 
 class Servo(PWM):
@@ -78,9 +78,18 @@ class Servo(PWM):
             channel (int or str): PWM channel number (0-14 or P0-P14).
             address (Optional[List[int]]): I2C device address or list of addresses.
         """
+        self.channel_description = pin_descriptions.get(
+            (
+                channel
+                if isinstance(channel, str)
+                else f"P{channel}" if isinstance(channel, int) else "unknown"
+            ),
+            "unknown",
+        )
         super().__init__(channel, address, *args, **kwargs)
         self.logger = Logger(__name__)
-        self.logger.debug(f"channel {channel} address f{address}")
+
+        self.logger.debug(f"Initted {self.channel_description} at address {address}")
         self.period(self.PERIOD)
         prescaler = self.CLOCK / self.FREQ / self.PERIOD
         self.prescaler(prescaler)
@@ -99,14 +108,12 @@ class Servo(PWM):
             msg = "Angle value should be int or float value, not %s" % type(angle)
             self.logger.error(msg)
             raise ValueError(msg)
-        self.logger.debug(f"Set angle to: {angle}")
+        self.logger.debug(f"[{self.channel_description}]: Setting angle {angle} ")
         if angle < -90:
             angle = -90
         if angle > 90:
             angle = 90
-        self.logger.debug(f"Set angle to: {angle}")
         pulse_width_time = mapping(angle, -90, 90, self.MIN_PW, self.MAX_PW)
-        self.logger.debug(f"Pulse width: {pulse_width_time}")
         self.pulse_width_time(pulse_width_time)
 
     def pulse_width_time(self, pulse_width_time):
@@ -116,14 +123,12 @@ class Servo(PWM):
         Args:
             pulse_width_time (float): Pulse width time in microseconds (500 to 2500).
         """
-        self.logger.debug(f"pulse_width_time: {pulse_width_time}")
         if pulse_width_time > self.MAX_PW:
             pulse_width_time = self.MAX_PW
         if pulse_width_time < self.MIN_PW:
             pulse_width_time = self.MIN_PW
-        self.logger.debug(f"Adjusted pulse_width_time: {pulse_width_time}")
         pwr = pulse_width_time / 20000.0
-        self.logger.debug(f"pulse width rate: {pwr}")
+
         value = int(pwr * self.PERIOD)
-        self.logger.debug(f"pulse width value: {value}")
+        self.logger.debug(f"[{self.channel_description}]: setting pulse width: {value}")
         self.pulse_width(value)
