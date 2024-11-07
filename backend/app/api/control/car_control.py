@@ -37,13 +37,14 @@ async def websocket_endpoint(
 
             if websocket.application_state == "DISCONNECTED":
                 connection_manager.disconnect(websocket)
+                break
             else:
                 try:
                     data = json.loads(raw_data)
                     action: str = data.get("action")
                     payload = data.get("payload")
 
-                    logger.info("%s", data)
+                    logger.debug("%s", data)
                     await car_manager.process_action(action, payload, websocket)
                     await connection_manager.broadcast()
                 except RuntimeError as ex:

@@ -372,7 +372,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         3. Set both motors' speed to 0% pulse width again.
         4. Wait an additional 2 milliseconds for any remaining process to finalize.
         """
-        self.logger.info("Stopping motors")
+        self.logger.debug("Stopping motors")
         self.motor_speed_pins[0].pulse_width_percent(0)
         self.motor_speed_pins[1].pulse_width_percent(0)
 
