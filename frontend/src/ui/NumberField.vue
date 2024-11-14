@@ -1,11 +1,10 @@
 <template>
-  <div class="p-field" :class="props.fieldClassName">
-    <span class="label" v-if="label" :class="labelClassName" :for="field"
-      >{{ label }}
-      <span v-if="message" class="message">
-        {{ message }}
-      </span>
-    </span>
+  <Field
+    :fieldClassName="fieldClassName"
+    :labelClassName="labelClassName"
+    :label="label"
+    :message="message"
+  >
     <InputNumber
       showButtons
       :inputId="field"
@@ -17,22 +16,21 @@
       v-bind="otherAttrs"
       @update:model-value="onUpdate"
     />
-  </div>
+  </Field>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, useAttrs } from "vue";
-import { InlineMessageProps } from "primevue/inlinemessage";
 import InputNumber, {
   InputNumberEmitsOptions,
   InputNumberProps,
 } from "primevue/inputnumber";
+import Field from "@/ui/Field.vue";
 
 export type Props = {
   modelValue?: any;
   invalid?: boolean;
   message?: string;
-  messageSeverity?: InlineMessageProps["severity"];
   label?: string;
   field?: string;
   fieldClassName?: string;
@@ -59,10 +57,3 @@ const onUpdate: InputNumberEmitsOptions["update:modelValue"] = (newValue) => {
   emit("update:modelValue", newValue);
 };
 </script>
-<style scoped lang="scss">
-@import "./field.scss";
-.label {
-  display: block;
-  font-weight: bold;
-}
-</style>
