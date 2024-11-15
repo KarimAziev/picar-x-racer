@@ -12,16 +12,16 @@ def terminate_processes(processes: list["mp.Process"], allow_exit=False):
 
     for process in processes:
         try:
-            print(f"{BOLD}{COLOR_YELLOW}Terminating process {process.pid}.{RESET}")
+            print(f"{BOLD}{COLOR_YELLOW}Terminating process {process.name}.{RESET}")
             process.terminate()
-            print(f"{BOLD}{COLOR_YELLOW}Joining process {process.pid}.{RESET}")
+            print(f"{BOLD}{COLOR_YELLOW}Joining process {process.name}.{RESET}")
             process.join()
         except Exception:
             pass
 
     for process in processes:
         try:
-            print(f"{BOLD}{COLOR_YELLOW}Closing process {process.pid}.{RESET}")
+            print(f"{BOLD}{COLOR_YELLOW}Closing process {process.name}.{RESET}")
             process.close()
         except (Exception, ValueError):
             pass
