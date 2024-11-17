@@ -60,8 +60,7 @@ class Keybindings(BaseModel):
     decreaseDimension: Optional[List[str]] = None
     nextEnhanceMode: Optional[List[str]] = None
     prevEnhanceMode: Optional[List[str]] = None
-    nextDetectMode: Optional[List[str]] = None
-    prevDetectMode: Optional[List[str]] = None
+    toggleDetection: Optional[List[str]] = None
     increaseVolume: Optional[List[str]] = None
     decreaseVolume: Optional[List[str]] = None
     playNextMusicTrack: Optional[List[str]] = None
@@ -77,6 +76,7 @@ class VideoFeedUpdateSettings(BaseModel):
 
     Attributes:
     - `video_feed_detect_mode`: Detection mode for the video feed.
+    - `video_feed_model_img_size`: The image size for YOLO model.
     - `video_feed_enhance_mode`: Enhancement mode for the video feed.
     - `video_feed_format`: Format of the video feed.
     - `video_feed_quality`: Quality level of the video feed.
@@ -89,6 +89,8 @@ class VideoFeedUpdateSettings(BaseModel):
     """
 
     video_feed_detect_mode: Union[str, None] = None
+    video_feed_model_img_size: Optional[int] = None
+    video_feed_object_detection: Optional[bool] = False
     video_feed_enhance_mode: Union[str, None] = None
     video_feed_format: Union[str, None] = None
     video_feed_quality: Union[int, None] = None
@@ -98,6 +100,41 @@ class VideoFeedUpdateSettings(BaseModel):
     video_feed_confidence: Union[float, None] = None
     video_feed_record: Union[bool, None] = None
     video_feed_device: Union[str, None] = None
+    video_feed_pixel_format: Optional[str] = None
+    video_feed_render_fps: Optional[bool] = None
+
+
+class VideoFeedSettings(BaseModel):
+    """
+    A model to represent the video feed settings.
+
+    Attributes:
+    - `video_feed_confidence`: Confidence level for video feed detection.
+    - `video_feed_detect_mode`: Detection mode for the video feed.
+    - `video_feed_model_img_size`: The image size for YOLO model.
+    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
+    - `video_feed_fps`: Frames per second for the video feed.
+    - `video_feed_quality`: Quality level of the video feed.
+    - `video_feed_format`: Format of the video feed.
+    - `video_feed_width`: Width of the video feed.
+    - `video_feed_height`: Height of the video feed.
+    - `video_feed_record`: Flag to record the video.
+    - `video_feed_device`: Device to use.
+    - `video_feed_render_fps`: Flag to render actual FPS.
+    """
+
+    video_feed_detect_mode: str | None
+    video_feed_model_img_size: Optional[int] = None
+    video_feed_object_detection: Optional[bool] = False
+    video_feed_enhance_mode: str | None
+    video_feed_format: str
+    video_feed_quality: int
+    video_feed_width: Optional[int] = None
+    video_feed_height: Optional[int] = None
+    video_feed_fps: int
+    video_feed_confidence: float
+    video_feed_record: bool
+    video_feed_device: Optional[str] = None
     video_feed_pixel_format: Optional[str] = None
     video_feed_render_fps: Optional[bool] = None
 
@@ -160,7 +197,7 @@ class DetectorsResponse(BaseModel):
     - detectors: A list of video detectors.
     """
 
-    detectors: List[str]
+    data: List[Dict[str, str]]
 
 
 class EnhancersResponse(BaseModel):
@@ -201,40 +238,8 @@ class CalibrationConfig(BaseModel):
     picarx_dir_motor: Optional[str] = None
 
 
-class VideoFeedSettings(BaseModel):
-    """
-    A model to represent the video feed settings.
-
-    Attributes:
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_width`: Width of the video feed.
-    - `video_feed_height`: Height of the video feed.
-    - `video_feed_record`: Flag to record the video.
-    - `video_feed_device`: Device to use.
-    - `video_feed_render_fps`: Flag to render actual FPS.
-    """
-
-    video_feed_width: Optional[int] = None
-    video_feed_height: Optional[int] = None
-    video_feed_fps: int
-    video_feed_detect_mode: str | None
-    video_feed_enhance_mode: str | None
-    video_feed_quality: int
-    video_feed_format: str
-    video_feed_confidence: float
-    video_feed_record: bool
-    video_feed_device: Optional[str] = None
-    video_feed_pixel_format: Optional[str] = None
-    video_feed_render_fps: Optional[bool] = None
-
-
 class CameraDevicesResponse(BaseModel):
-    devices: List[Dict[str, Union[str, List[Dict[str, str]]]]]
+    devices: List[Dict[str, Union[str, bool, List[Dict[str, str]]]]]
 
 
 class UpdateCameraDevice(BaseModel):

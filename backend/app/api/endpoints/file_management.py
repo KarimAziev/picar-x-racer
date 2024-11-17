@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_file_manager
+from app.config.paths import DATA_DIR
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.schemas.file_management import (
     FilesResponse,
@@ -8,6 +9,7 @@ from app.schemas.file_management import (
     RemoveFileResponse,
     UploadFileResponse,
 )
+from app.util.file_util import resolve_absolute_path
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from starlette.responses import FileResponse
@@ -78,16 +80,18 @@ def upload_file(
     if file.filename == "":
         raise HTTPException(status_code=400, detail="No selected file")
 
-    if media_type == "music":
-        file_manager.save_music(file)
-    elif media_type == "sound":
-        file_manager.save_sound(file)
-    elif media_type == "image":
-        file_manager.save_photo(file)
-    else:
+    handlers = {
+        "music": file_manager.save_music,
+        "sound": file_manager.save_sound,
+        "image": file_manager.save_photo,
+        "data": file_manager.save_data,
+    }
+    handler = handlers.get(media_type)
+
+    if not handler:
         raise HTTPException(status_code=400, detail="Invalid media type")
 
-    return {"success": True, "filename": file.filename}
+    return {"success": handler(file), "filename": file.filename}
 
 
 @router.delete(
@@ -112,23 +116,29 @@ def remove_file(
     Raises:
     - `HTTPException`: If the media type is invalid, or the file could not be removed or found.
     """
+    handlers = {
+        "music": file_manager.remove_music,
+        "sound": file_manager.remove_sound,
+        "image": file_manager.remove_photo,
+        "video": file_manager.remove_video,
+        "data": file_manager.remove_data,
+    }
+
+    handler = handlers.get(media_type)
+
+    if not handler:
+        raise HTTPException(status_code=400, detail="Invalid media type")
+
     try:
-        if media_type == "music":
-            file_manager.remove_music(filename)
-        elif media_type == "sound":
-            file_manager.remove_sound(filename)
-        elif media_type == "image":
-            file_manager.remove_photo(filename)
-        elif media_type == "video":
-            file_manager.remove_video(filename)
-        else:
-            raise HTTPException(status_code=400, detail="Invalid media type")
-        return {"success": True, "filename": filename}
+        return {"success": handler(filename), "filename": filename}
     except DefaultFileRemoveAttempt as e:
-        logger.warning(f"Duplicate notification attempted: {e}")
+        logger.warning(str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
+    except Exception:
+        logger.error(f"Error removing file {filename}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get(
@@ -162,6 +172,13 @@ def download_file(
     - `HTTPException`: If the media type is invalid or the file is not found.
     """
     try:
+        if media_type == 'data':
+            path = resolve_absolute_path(filename, DATA_DIR)
+            return FileResponse(
+                path=path,
+                media_type="application/octet-stream",
+                filename=filename,
+            )
         if media_type == "music":
             directory = file_manager.get_music_directory(filename)
         elif media_type == "sound":

@@ -82,7 +82,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         return (None, None, None)
 
     def update_device(self, device: str):
-        self.logger.info(f"UPDATE DEVICE {device}")
+        self.logger.info(f"Update device {device}")
         self.video_devices = list_camera_devices()
         for device_path, device_info in self.video_devices:
             self.logger.info(f"searching for {device} is {device_path}")

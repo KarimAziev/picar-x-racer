@@ -116,14 +116,15 @@ def list_camera_devices() -> List[CameraInfo]:
 
 
 def list_available_camera_devices():
-    result: List[Dict[str, Union[str, List[Dict[str, str]]]]] = []
+    result: List[Dict[str, Union[str, bool, List[Dict[str, str]]]]] = []
     for key, category in list_camera_devices():
-        formats = parse_v4l2_formats(key, category)
+        formats = parse_v4l2_formats(key)
         if formats:
             item = {
-                "value": key,
-                "label": f"{key} ({category or 'Unknown'})",
-                "formats": formats,
+                "key": key,
+                "label": f"{key} ({category})" if category is not None else key,
+                "selectable": False,
+                "children": formats,
             }
             result.append(item)
 
@@ -139,13 +140,12 @@ COMMON_SIZES = [
 ]
 
 
-def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
+def parse_v4l2_formats(device: str) -> List[Dict[str, str]]:
     """
     Parse the output of v4l2-ctl --list-formats-ext for the specified device.
 
     Args:
         device (str): The path to the camera device, e.g., '/dev/video0'.
-        category (str): The camera type or category for labeling purposes.
 
     Returns:
         List[Dict[str, str]]: A formatted list of dictionaries where each dict contains a
@@ -159,18 +159,16 @@ def parse_v4l2_formats(device: str, category: str) -> List[Dict[str, str]]:
         logger.error(f"Error executing v4l2-ctl: {e}")
         return []
 
-    return parse_v4l2_formats_output(output, device, category)
+    return parse_v4l2_formats_output(output, device)
 
 
-def parse_v4l2_formats_output(
-    output: str, device: str, category: str
-) -> List[Dict[str, str]]:
+def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
     """
     Parse the output of v4l2-ctl --list-formats-ext for the specified device.
 
     Args:
+        output (str): the output of v4l2-ctl --list-formats-ext.
         device (str): The path to the camera device, e.g., '/dev/video0'.
-        category (str): The camera type or category for labeling purposes.
 
     Returns:
         List[Dict[str, str]]: A formatted list of dictionaries where each dict contains a
@@ -186,7 +184,6 @@ def parse_v4l2_formats_output(
     fps_pattern = re.compile(r"Interval: Discrete ([0-9.]+)s \((\d+)\.000 fps\)")
 
     current_format = None
-    current_description = None
     frame_size = None
 
     for line in output.splitlines():
@@ -195,7 +192,6 @@ def parse_v4l2_formats_output(
         format_match = format_pattern.match(line)
         if format_match:
             current_format = format_match.group(1)
-            current_description = format_match.group(2)
 
         resolution_discrete_match = resolution_discrete_pattern.search(line)
         if resolution_discrete_match:
@@ -213,15 +209,16 @@ def parse_v4l2_formats_output(
 
                 fps_value = "30"
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
-                label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
+                label = f"{current_format}, {frame_size}, {fps_value} fps"
                 formats.append(
                     {
-                        "value": value,
+                        "key": value,
                         "label": label,
                         "device": device,
                         "size": frame_size,
                         "fps": fps_value,
                         "pixel_format": current_format,
+                        "icon": "pi pi-video",
                     }
                 )
 
@@ -231,15 +228,16 @@ def parse_v4l2_formats_output(
 
             if current_format and frame_size:
                 value = f"{device}:{current_format}:{frame_size}:{fps_value}"
-                label = f"{device} ({category}) {current_format} ({current_description}), {frame_size} @ {fps_value} fps"
+                label = f"{current_format}, {frame_size},  {fps_value} fps"
                 formats.append(
                     {
-                        "value": value,
+                        "key": value,
                         "label": label,
                         "device": device,
                         "size": frame_size,
                         "fps": fps_value,
                         "pixel_format": current_format,
+                        "icon": "pi pi-video",
                     }
                 )
 

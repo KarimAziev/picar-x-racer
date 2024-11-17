@@ -47,6 +47,10 @@ export const toggleableSettings = {
     description: "Toggle rendering FPS",
     label: "Show FPS",
   },
+  video_feed_object_detection: {
+    description: "Toggle object detection process",
+    label: "Toggle object detection",
+  },
 };
 
 export const ttsLanguages = [

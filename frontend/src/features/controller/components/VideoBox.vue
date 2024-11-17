@@ -19,7 +19,6 @@ import {
 import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
 import ResizableContainer from "@/ui/ResizableContainer.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-
 const isMobile = useDeviceWatcher();
 
 const ImageFeed = defineAsyncComponent({

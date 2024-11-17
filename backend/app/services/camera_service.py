@@ -1,7 +1,7 @@
 import asyncio
 import collections
 import os
-import queue
+import struct
 import threading
 import time
 from typing import TYPE_CHECKING, Optional, Union
@@ -13,7 +13,7 @@ from app.config.video_enhancers import frame_enhancers
 from app.services.detection_service import DetectionService
 from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
-from app.util.overlay_detecton import overlay_detection, overlay_fps_render
+from app.util.overlay_detecton import overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import encode, resize_to_fixed_height
 
@@ -76,6 +76,12 @@ class CameraService(metaclass=SingletonMeta):
             "video_feed_height", 720
         )
 
+        self.video_feed_model_img_size: int = self.file_manager.settings.get(
+            "video_feed_model_img_size", 320
+        )
+
+        self.current_frame_timestamp = None
+
         self.video_writer: Optional[cv2.VideoWriter] = None
         self.actual_fps = None
 
@@ -85,70 +91,57 @@ class CameraService(metaclass=SingletonMeta):
         self.cap: Union[cv2.VideoCapture, None] = None
         self.last_detection_result = None
 
-    async def generate_frame(self, log: Optional[bool] = False):
+    def generate_frame(self):
         """
-        Generates a video frame for streaming.
+        Generates a video frame for streaming, including an embedded timestamp.
 
-        Retrieves the latest detection results, overlays detection annotations onto the frame,
-        applies any video enhancements, encodes the frame in the specified format, and returns
-        it as a byte array ready for streaming.
+        Retrieves the latest detection results, optionally overlays FPS rendering on the frame,
+        encodes the frame in the specified format, and returns it as a byte array along with the
+        timestamp.
 
-        Args:
-            log (Optional[bool]): Indicates whether to log the detection result (default is False).
+        The timestamp is packed in binary format (double-precision float), and it is prepended to the encoded frame.
 
         Returns:
-            Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
+            Optional[bytes]: The encoded video frame as a byte array, prefixed by the frame's
+                             timestamp (as double-precision floating point format), or None if no
+                             frame is available.
         """
-
-        latest_detection = None
-        if self.detection_service.detection_queue:
-            while True:
-                try:
-                    detection_data = self.detection_service.detection_queue.get_nowait()
-                    detection_timestamp = detection_data["timestamp"]
-                    if detection_timestamp <= self.current_frame_timestamp:
-                        latest_detection = detection_data["detection_result"]
-                    else:
-                        self.detection_service.detection_queue.put_nowait(
-                            detection_data
-                        )
-                        break
-                except queue.Empty:
-                    break
-
-            self.last_detection_result = latest_detection
-
-            if log and self.video_feed_enhance_mode:
-                self.logger.info(
-                    "Detection result: %s",
-                    self.last_detection_result,
-                )
-
         if self.stream_img is not None:
-            format = self.video_feed_format
-
-            video_feed_quality = self.video_feed_quality
-            frame = self.stream_img.copy()
-            if (
-                self.last_detection_result is not None
-                and self.detection_service.video_feed_detect_mode is not None
-            ):
-                frame = overlay_detection(frame, self.last_detection_result)
-
-            if self.video_feed_render_fps and self.actual_fps:
-                frame = overlay_fps_render(frame, self.actual_fps)
+            frame = (
+                overlay_fps_render(self.stream_img, self.actual_fps)
+                if self.video_feed_render_fps and self.actual_fps
+                else self.stream_img
+            )
 
             encode_params = (
-                [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality]
-                if format == ".jpg"
+                [cv2.IMWRITE_JPEG_QUALITY, self.video_feed_quality]
+                if self.video_feed_format == ".jpg"
                 else []
             )
 
-            encoded_frame = encode(frame, format, encode_params)
+            encoded_frame = encode(frame, self.video_feed_format, encode_params)
 
-            return encoded_frame
+            timestamp = self.current_frame_timestamp or time.time()
+            timestamp_bytes = struct.pack('d', timestamp)
+
+            return timestamp_bytes + encoded_frame
 
     def setup_camera_props(self):
+        """
+        Configure the camera properties such as FPS, resolution (width and height),
+        and pixel format based on the current settings and device information.
+
+        This method initializes and sets key camera parameters, including:
+        - Pixel format if provided.
+        - Frame width and height.
+        - Frame rate (FPS).
+
+        Updates:
+            - `self.video_feed_fps`: Frames per second setting of the video feed.
+            - `self.video_feed_width`: Width of the video frame.
+            - `self.video_feed_height`: Height of the video frame.
+            - `self.video_feed_pixel_format`: Pixel format based on device information.
+        """
         if self.cap is not None:
             info = self.video_device_adapter.video_device or (None, None)
             (self.video_feed_device, _) = info
@@ -192,14 +185,18 @@ class CameraService(metaclass=SingletonMeta):
                     "pixel_format", self.video_feed_pixel_format
                 )
 
-    def camera_thread_func(self):
+    def release_cap_safe(self):
         """
-        Camera capture loop function.
+        Safely releases the camera resource represented by `self.cap`.
 
-        Manages the process of capturing video frames, enhancing them, and
-        pushing them to the detection service. Handles errors and device resets.
+        This method checks whether the camera capture object (`self.cap`) is initialized and open.
+        If so, it releases the camera resource, ensuring no further frames are captured.
+
+        This method also handles potential exceptions that may occur while releasing
+        the camera resource by logging the exception via `self.logger`.
+
+        After releasing the camera, the `self.cap` object is set to `None`.
         """
-
         try:
             if self.cap and self.cap.isOpened():
                 self.cap.release()
@@ -210,9 +207,19 @@ class CameraService(metaclass=SingletonMeta):
         finally:
             self.cap = None
 
+    def camera_thread_func(self):
+        """
+        Camera capture loop function.
+
+        Manages the process of capturing video frames, enhancing them, and
+        pushing them to the detection service. Handles errors and device resets.
+        """
+
+        self.release_cap_safe()
         self.cap = self.video_device_adapter.setup_video_capture()
 
         if not self.cap:
+            self.logger.warning("Couldn't setup video capture")
             return
 
         self.setup_camera_props()
@@ -221,6 +228,7 @@ class CameraService(metaclass=SingletonMeta):
 
         max_failed_attempt_count = 10
         prev_fps = 0.0
+
         self.frame_timestamps = collections.deque(maxlen=30)
 
         try:
@@ -298,16 +306,20 @@ class CameraService(metaclass=SingletonMeta):
 
                 if self.video_feed_record and self.video_writer is not None:
                     self.video_writer.write(self.stream_img)
-                if self.detection_service.video_feed_detect_mode:
+                if (
+                    self.detection_service.video_feed_detect_mode
+                    and not self.detection_service.loading
+                ):
+                    self.current_frame_timestamp = time.time()
                     (
                         resized_frame,
                         original_width,
                         original_height,
                         resized_width,
                         resized_height,
-                    ) = resize_to_fixed_height(self.stream_img.copy(), base_size=320)
-                    self.current_frame_timestamp = time.time()
-
+                    ) = resize_to_fixed_height(
+                        self.stream_img.copy(), base_size=self.video_feed_model_img_size
+                    )
                     frame_data = {
                         "frame": resized_frame,
                         "timestamp": self.current_frame_timestamp,
@@ -315,8 +327,10 @@ class CameraService(metaclass=SingletonMeta):
                         "original_width": original_width,
                         "resized_height": resized_height,
                         "resized_width": resized_width,
+                        "should_resize": False,
                     }
                     self.detection_service.put_frame(frame_data)
+
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
         except asyncio.CancelledError:
@@ -324,14 +338,10 @@ class CameraService(metaclass=SingletonMeta):
         except Exception as e:
             self.logger.log_exception("Exception occurred in camera loop", e)
         finally:
-            if self.cap is not None:
-                self.cap.release()
-
-            self.cap = None
+            self.release_cap_safe()
             self.stream_img = None
             if self.video_feed_record:
                 self.video_feed_record = False
-
             self.logger.info("Camera loop terminated and camera released.")
 
     def start_camera(self):
@@ -347,8 +357,6 @@ class CameraService(metaclass=SingletonMeta):
         self.camera_run = True
         self.capture_thread = threading.Thread(target=self.camera_thread_func)
         self.capture_thread.start()
-        if self.detection_service.video_feed_detect_mode:
-            self.detection_service.start_detection_process()
 
     async def start_camera_and_wait_for_stream_img(self):
         """
@@ -494,7 +502,7 @@ class CameraService(metaclass=SingletonMeta):
         if device:
             result = self.video_device_adapter.update_device(device)
             if result is None:
-                self.logger.error(f"Device {device} is not available")
+                self.logger.error("Device %s is not available", device)
         else:
             self.video_device_adapter.video_device = None
         if cam_running:

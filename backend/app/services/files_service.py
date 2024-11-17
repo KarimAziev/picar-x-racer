@@ -57,8 +57,10 @@ from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.services.audio_service import AudioService
 from app.util.file_util import (
     ensure_parent_dir_exists,
+    file_to_relative,
     get_files_with_extension,
     load_json_file,
+    resolve_absolute_path,
 )
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -415,6 +417,12 @@ class FilesService(metaclass=SingletonMeta):
         """
         return self.save_uploaded_file(file, self.user_photos_dir)
 
+    def save_data(self, file: UploadFile) -> str:
+        """
+        Saves the uploaded file to the data directory.
+        """
+        return self.save_uploaded_file(file, DATA_DIR)
+
     def remove_photo(self, filename: str):
         """
         Removes a photo file from the user's photo directory.
@@ -456,7 +464,7 @@ class FilesService(metaclass=SingletonMeta):
             bool: True if the file was successfully removed.
         """
 
-        self.logger.info(f"removing music file {filename}")
+        self.logger.info(f"Removing music file {filename}")
         if path.exists(path.join(self.user_music_dir, filename)):
             return self.remove_file(filename, self.user_music_dir)
         elif path.exists(path.join(self.default_user_music_dir, filename)):
@@ -466,7 +474,7 @@ class FilesService(metaclass=SingletonMeta):
         else:
             raise FileNotFoundError
 
-    def remove_sound(self, filename: str):
+    def remove_sound(self, filename: str) -> bool:
         """
         Removes a sound file from the user's sound directory or prevents default sound files from being removed.
 
@@ -489,6 +497,20 @@ class FilesService(metaclass=SingletonMeta):
             )
         else:
             raise FileNotFoundError
+
+    def remove_data(self, filename: str) -> bool:
+        """
+        Removes a file from the data directory.
+
+        Args:
+            filename (str): Name of the file to be removed.
+
+        Returns:
+            bool: True if the file was successfully removed.
+        """
+
+        os.remove(resolve_absolute_path(filename, DATA_DIR))
+        return True
 
     def get_photo_directory(self, filename: str):
         """
@@ -621,5 +643,7 @@ class FilesService(metaclass=SingletonMeta):
             List[str]: List of paths to discovered .tflite and .pt model files.
         """
 
-        supported_extensions = ('.tflite', '.pt', ".onnx")
-        return get_files_with_extension(DATA_DIR, supported_extensions)
+        return [
+            file_to_relative(item, DATA_DIR)
+            for item in get_files_with_extension(DATA_DIR, ('.tflite', '.pt', ".onnx"))
+        ]

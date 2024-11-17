@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 from app.util.logger import Logger
+from app.util.video_utils import resize_to_fixed_height
 
 if TYPE_CHECKING:
     from ultralytics import YOLO
@@ -19,6 +20,7 @@ def perform_detection(
     labels_to_detect: Optional[List[str]] = None,
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
+    should_resize=False,
 ) -> List[Dict[str, Any]]:
     """
     Performs detection on the given frame and filters detections by specified labels and confidence.
@@ -33,9 +35,20 @@ def perform_detection(
     Returns:
         List[Dict[str, Any]]: A list of detection results.
     """
+    (
+        resized_frame,
+        original_width,
+        original_height,
+        resized_width,
+        resized_height,
+    ) = (
+        resize_to_fixed_height(frame, base_size=resized_height)
+        if should_resize
+        else (frame, original_width, original_height, resized_width, resized_height)
+    )
 
     results = yolo_model.predict(
-        source=frame,
+        source=resized_frame,
         verbose=verbose,
         conf=confidence_threshold,
         task="detect",
@@ -83,6 +96,7 @@ def perform_cat_detection(
     original_height: int,
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
+    should_resize=False,
 ) -> List[Dict[str, Any]]:
     """
     Performs detection for the cat on the given frame.
@@ -105,6 +119,7 @@ def perform_cat_detection(
         resized_width=resized_width,
         original_width=original_width,
         original_height=original_height,
+        should_resize=should_resize,
     )
 
 
@@ -117,6 +132,7 @@ def perform_person_detection(
     original_height: int,
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
+    should_resize=False,
 ) -> List[Dict[str, Any]]:
     """
     Performs detection for the person on the given frame.
@@ -139,4 +155,5 @@ def perform_person_detection(
         resized_width=resized_width,
         original_width=original_width,
         original_height=original_height,
+        should_resize=should_resize,
     )

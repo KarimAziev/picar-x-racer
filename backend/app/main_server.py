@@ -69,7 +69,11 @@ tags_metadata = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.services.connection_service import ConnectionService
+
     app.state.template_folder = TEMPLATE_FOLDER
+    detection_connection_manager = ConnectionService(notifier=detection_manager)
+    app.state.detection_notifier = detection_connection_manager
     port = os.getenv("PX_MAIN_APP_PORT")
     mode = os.getenv("PX_APP_MODE")
 
@@ -89,22 +93,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         logger.info("Stopping 🚗 application")
-        detection_manager.stop_detection_process()
-        if detection_manager.manager is not None:
-            logger.info("Stopping detection manager")
-
-            detection_manager.manager.shutdown()
-            detection_manager.manager.join()
-            for prop in [
-                "stop_event",
-                "frame_queue",
-                "control_queue",
-                "detection_queue",
-                "detection_process",
-                "manager",
-            ]:
-                logger.info(f"Removing {prop}")
-                setattr(detection_manager, prop, None)
+        detection_manager.cleanup()
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
         logger.info("Application 🚗 stopped")

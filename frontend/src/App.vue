@@ -4,6 +4,9 @@
   <Messager />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
     <Recording />
+    <ObjectDetectionSwitch v-if="!isPopupOpen" class="object-detection-switch"
+      ><ModelSelect
+    /></ObjectDetectionSwitch>
     <CalibrationModeInfo />
     <TextToSpeechInput v-if="isTextToSpeechInputEnabled" />
     <MusicPlayer v-if="isPlayerEnabled" />
@@ -17,14 +20,18 @@ import { RouterView } from "vue-router";
 import { defineAsyncComponent, computed } from "vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
+import ObjectDetectionSwitch from "@/features/settings/components/ObjectDetectionSwitch.vue";
+import ModelSelect from "@/features/settings/components/ModelSelect.vue";
 
+const popupStore = usePopupStore();
 const isMobile = useDeviceWatcher();
 
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
+const isPopupOpen = computed(() => popupStore.isOpen);
 const isTextToSpeechInputEnabled = computed(
   () => settingsStore.settings.text_to_speech_input,
 );
@@ -63,5 +70,9 @@ useAppHeight();
   z-index: 11;
   text-align: left;
   user-select: none;
+}
+.object-detection-switch {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 </style>

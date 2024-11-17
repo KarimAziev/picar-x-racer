@@ -17,23 +17,33 @@
     }"
     alt="Video"
   />
+  <canvas
+    v-if="objectDetectionIsOn"
+    ref="overlayCanvas"
+    class="overlay-canvas"
+  ></canvas>
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount, watch, onMounted } from "vue";
+import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { makeWebsocketUrl } from "@/util/url";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
-import { useCameraStore } from "@/features/settings/stores";
+import { useCameraStore, useSettingsStore } from "@/features/settings/stores";
 import { useCameraRotate } from "@/composables/useCameraRotate";
+import { useDetectionStore } from "@/features/controller/detectionStore";
+import { drawOverlay, drawAimOverlay } from "@/util/overlay";
 
+const settingsStore = useSettingsStore();
 const camStore = useCameraStore();
-
-const fetchSettings = async () => {
-  await camStore.fetchCurrentSettings();
-};
+const detectionStore = useDetectionStore();
+const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
 const listenersAdded = ref(false);
+
+const objectDetectionIsOn = computed(
+  () => camStore.data.video_feed_object_detection,
+);
 
 const {
   initWS,
@@ -48,6 +58,28 @@ const {
 const { addListeners, removeListeners } = useCameraRotate(imgRef);
 
 watch(
+  () => detectionStore.detection_result,
+  (newResults) => {
+    if (overlayCanvas.value && imgRef.value) {
+      const frameTimeStamp = detectionStore.currentFrameTimestamp;
+      const detectionTimeStamp = detectionStore.timestamp;
+      const enabled =
+        detectionTimeStamp &&
+        frameTimeStamp &&
+        detectionTimeStamp <= frameTimeStamp;
+
+      if (enabled) {
+        const handler =
+          settingsStore.settings.video_feed_enhance_mode === "robocop_vision"
+            ? drawAimOverlay
+            : drawOverlay;
+        handler(overlayCanvas.value, imgRef.value, newResults);
+      }
+    }
+  },
+);
+
+watch(
   () => imgRef.value,
   (el) => {
     if (el && !listenersAdded.value) {
@@ -57,9 +89,23 @@ watch(
   },
 );
 
-onMounted(() => {
-  fetchSettings();
+watch(
+  () => camStore.data.video_feed_detect_mode,
+  (mode) => {
+    if (mode && !detectionStore.connected && !detectionStore.loading) {
+      detectionStore.initializeWebSocket();
+    } else if (!mode) {
+      detectionStore.cleanup();
+    }
+  },
+);
+
+onMounted(async () => {
+  await camStore.fetchAllCameraSettings();
   initWS();
+  if (camStore.data.video_feed_detect_mode) {
+    detectionStore.initializeWebSocket();
+  }
   addListeners();
   window.addEventListener("beforeunload", closeWS);
 });
@@ -68,6 +114,7 @@ onBeforeUnmount(() => {
   listenersAdded.value = false;
   removeListeners();
   window.removeEventListener("beforeunload", closeWS);
+  detectionStore.cleanup();
   closeWS();
 });
 </script>
@@ -91,5 +138,12 @@ onBeforeUnmount(() => {
 }
 .scan-full {
   height: 90%;
+}
+.overlay-canvas {
+  position: absolute;
+
+  left: 0;
+  height: 99%;
+  pointer-events: none;
 }
 </style>

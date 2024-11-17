@@ -5,11 +5,8 @@ from app.config.paths import DATA_DIR, YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
 from app.util.file_util import resolve_absolute_path
 from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
-from app.util.print_memory_usage import print_memory_usage
 
 logger = Logger(__name__)
-
-debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
 
 
 class ModelManager:
@@ -27,6 +24,7 @@ class ModelManager:
         Parameters:
             model_path (str): An optional custom path to use for loading the model.
         """
+        self.model = None
         self.model_path = (
             resolve_absolute_path(model_path, DATA_DIR)
             if model_path is not None
@@ -52,11 +50,13 @@ class ModelManager:
         """
         from ultralytics import YOLO
 
-        self.model_path = (
-            self.model_path or YOLO_MODEL_EDGE_TPU_PATH
-            if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH) and is_google_coral_connected()
-            else YOLO_MODEL_PATH
-        )
+        if self.model_path is None:
+            self.model_path = (
+                YOLO_MODEL_EDGE_TPU_PATH
+                if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
+                and is_google_coral_connected()
+                else YOLO_MODEL_PATH
+            )
 
         logger.info(f"Loading model {self.model_path}")
         try:
@@ -81,8 +81,6 @@ class ModelManager:
                                   Can be None if no exception occurred.
         """
         logger.info("Cleaning up model resources.")
-        if debug:
-            print_memory_usage("Memory usage up before model resources")
         if exc_type is not None:
             logger.error("An exception occurred during model execution")
             logger.error(f"Exception type: {exc_type}")
@@ -92,8 +90,4 @@ class ModelManager:
 
             logger.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
         del self.model
-        if debug:
-            print_memory_usage("Memory after removing model")
         gc.collect()
-        if debug:
-            print_memory_usage("Memory after running garbage collection")

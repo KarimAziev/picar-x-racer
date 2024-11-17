@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import axios from "axios";
+import type { TreeNode } from "primevue/treenode";
 import { useMessagerStore } from "@/features/messager/store";
 import { constrain } from "@/util/constrain";
 import { cycleValue } from "@/util/cycleValue";
@@ -22,24 +23,30 @@ export const dimensions = [
   [1920, 1200],
 ];
 
-export const commonDimensionOptions = dimensions.map(
-  ([width, height]) => `${width}/${height}`,
-);
-
 const MAX_FPS = 70;
 
-export interface DeviceOption {
-  value: string;
-  label: string;
-  formats: Omit<DeviceOption, "formats">[];
+export interface DeviceSuboption extends TreeNode {
+  device: string;
+  size: string;
+  fps: string;
+  pixel_format: string;
 }
+
+export interface DeviceOption extends Pick<DeviceSuboption, "key" | "label"> {
+  children: DeviceSuboption[];
+}
+
+export type LoadingFields = Partial<{
+  [P in keyof CameraOpenRequestParams]: boolean;
+}>;
 
 export interface State {
   data: CameraOpenRequestParams;
   loading: boolean;
-  detectors: string[];
+  detectors: TreeNode[];
   enhancers: string[];
   devices: DeviceOption[];
+  loadingData: LoadingFields;
 }
 
 const defaultState: State = {
@@ -51,10 +58,12 @@ const defaultState: State = {
     video_feed_width: 800,
     video_feed_device: null,
     video_feed_pixel_format: null,
+    video_feed_object_detection: false,
   },
   detectors: [],
   enhancers: [],
   devices: [],
+  loadingData: {},
 };
 
 export const useStore = defineStore("camera", {
@@ -65,6 +74,11 @@ export const useStore = defineStore("camera", {
 
       try {
         this.loading = true;
+        const requestData = payload || this.data;
+        this.loadingData = {};
+        Object.keys(requestData).forEach((key) => {
+          this.loadingData[key as keyof CameraOpenRequestParams] = true;
+        });
         const { data } = await axios.post<CameraOpenRequestParams>(
           "/api/video-feed-settings",
           payload || this.data,
@@ -83,11 +97,17 @@ export const useStore = defineStore("camera", {
         }
       } finally {
         this.loading = false;
+        this.loadingData = {};
       }
       return this.data;
     },
 
+    async fetchAllCameraSettings() {
+      await Promise.all([this.fetchCurrentSettings(), this.fetchDevices()]);
+    },
+
     async fetchCurrentSettings() {
+      const messager = useMessagerStore();
       try {
         this.loading = true;
         const { data } = await axios.get<CameraOpenRequestParams>(
@@ -95,13 +115,14 @@ export const useStore = defineStore("camera", {
         );
         this.data = data;
       } catch (error) {
-        console.error("Error fetching video modes:", error);
+        messager.handleError(error, "Error fetching video feed settings");
       } finally {
         this.loading = false;
       }
     },
 
     async fetchDevices() {
+      const messager = useMessagerStore();
       try {
         this.loading = true;
         const { data } = await axios.get<{ devices: DeviceOption[] }>(
@@ -109,21 +130,37 @@ export const useStore = defineStore("camera", {
         );
         this.devices = data.devices;
       } catch (error) {
-        console.error("Error fetching camera devices:", error);
+        messager.handleError(error, "Error fetching camera devices");
       } finally {
         this.loading = false;
       }
     },
 
     async fetchConfig() {
+      await Promise.all([this.fetchModels(), this.fetchEnhancers()]);
+    },
+
+    async fetchEnhancers() {
+      const messager = useMessagerStore();
       try {
         this.loading = true;
-        const response = await axios.get("/api/video-modes");
+        const response = await axios.get("/api/enhancers");
         const data = response.data;
-        this.detectors = data.detectors;
         this.enhancers = data.enhancers;
       } catch (error) {
-        console.error("Error fetching video modes:", error);
+        messager.handleError(error, "Error fetching video enhancers");
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchModels() {
+      const messager = useMessagerStore();
+      try {
+        const response = await axios.get<TreeNode[]>("/api/detection-models");
+        this.detectors = response.data;
+      } catch (error) {
+        messager.handleError(error, "Error fetching detection models");
       } finally {
         this.loading = false;
       }
@@ -146,17 +183,9 @@ export const useStore = defineStore("camera", {
         video_feed_fps: constrain(5, MAX_FPS, Math.max(5, video_feed_fps - 10)),
       });
     },
-    async nextDetectMode() {
-      await this.ensureConfig();
-      const currentMode = this.data.video_feed_detect_mode;
-      this.data.video_feed_detect_mode = cycleValue(
-        currentMode,
-        [...this.detectors, null],
-        1,
-      );
-
+    async toggleDetection() {
       await this.updateCameraParams({
-        video_feed_detect_mode: this.data.video_feed_detect_mode,
+        video_feed_object_detection: !this.data.video_feed_object_detection,
       });
     },
     async nextEnhanceMode() {
@@ -166,19 +195,6 @@ export const useStore = defineStore("camera", {
 
       await this.updateCameraParams({
         video_feed_enhance_mode: nextMode,
-      });
-    },
-    async prevDetectMode() {
-      await this.ensureConfig();
-      const currentMode = this.data.video_feed_detect_mode;
-      this.data.video_feed_detect_mode = cycleValue(
-        currentMode,
-        [...this.detectors, null],
-        -1,
-      );
-
-      await this.updateCameraParams({
-        video_feed_detect_mode: this.data.video_feed_detect_mode,
       });
     },
     async prevEnhanceMode() {

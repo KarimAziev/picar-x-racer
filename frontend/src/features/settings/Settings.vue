@@ -2,7 +2,8 @@
   <Tabs v-model:value="popupStore.tab" class="robo-tabs" lazy>
     <TabList>
       <Tab :value="SettingsTab.GENERAL">General</Tab>
-      <Tab :value="SettingsTab.KEYBINDINGS">Keybindings</Tab>
+      <Tab :value="SettingsTab.MODELS">Models</Tab>
+      <Tab :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">Keybindings</Tab>
       <Tab :value="SettingsTab.CALIBRATION">Calibration</Tab>
       <Tab :value="SettingsTab.PHOTOS">Photos</Tab>
       <Tab :value="SettingsTab.TTS">TTS</Tab>
@@ -13,7 +14,12 @@
           <GeneralPanel />
         </ScrollPanel>
       </TabPanel>
-      <TabPanel :value="SettingsTab.KEYBINDINGS">
+      <TabPanel :value="SettingsTab.MODELS">
+        <ScrollPanel class="wrapper">
+          <ModelsTable />
+        </ScrollPanel>
+      </TabPanel>
+      <TabPanel :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">
         <ScrollPanel class="wrapper">
           <KeybindingsPanel />
         </ScrollPanel>
@@ -50,8 +56,11 @@ import { SettingsTab } from "@/features/settings/enums";
 import { usePopupStore } from "@/features/settings/stores";
 import Calibration from "@/features/settings/components/Calibration.vue";
 import Images from "@/features/settings/components/Images.vue";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import ModelsTable from "@/features/settings/components/ModelsTable.vue";
 
 const popupStore = usePopupStore();
+const isMobile = useDeviceWatcher();
 </script>
 <style scoped lang="scss">
 .robo-tabs {

@@ -40,6 +40,7 @@ export interface CameraOpenRequestParams {
   video_feed_record?: boolean;
   video_feed_device: string | null;
   video_feed_pixel_format: string | null;
+  video_feed_object_detection?: boolean;
 }
 
 export interface Settings
@@ -88,7 +89,6 @@ const defaultState: State = {
     video_feed_device: null,
     video_feed_pixel_format: null,
   },
-
   retryCounter: 0,
   text: null,
   language: null,
@@ -123,6 +123,7 @@ export const useStore = defineStore("settings", {
         this.loading = false;
       }
     },
+
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
@@ -183,11 +184,17 @@ export const useStore = defineStore("settings", {
       if (popupStore.tab === SettingsTab.TTS) {
         return await this.saveTexts();
       }
-      const isPrimarySettigns = popupStore.tab === SettingsTab.GENERAL;
 
-      const data = isPrimarySettigns
-        ? omit(["keybindings"], this.settings)
-        : { keybindings: this.settings.keybindings };
+      const data =
+        popupStore.tab === SettingsTab.KEYBINDINGS
+          ? { keybindings: this.settings.keybindings }
+          : popupStore.tab === SettingsTab.MODELS
+            ? {
+                video_feed_object_detection:
+                  this.settings.video_feed_object_detection,
+                video_feed_detect_mode: this.settings.video_feed_detect_mode,
+              }
+            : omit(["keybindings", "video_feed_detect_mode"], this.settings);
 
       this.saving = true;
       try {

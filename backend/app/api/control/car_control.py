@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from app.util.logger import Logger
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 
 logger = Logger(name=__name__, app_name="px-control")
 
@@ -10,7 +11,7 @@ car_manager_router = APIRouter()
 
 if TYPE_CHECKING:
     from app.services.car_control.car_service import CarService
-    from app.services.car_control.connection_service import ConnectionService
+    from app.services.connection_service import ConnectionService
 
 
 @car_manager_router.websocket("/px/ws")
@@ -35,7 +36,7 @@ async def websocket_endpoint(
         while True:
             raw_data = await websocket.receive_text()
 
-            if websocket.application_state == "DISCONNECTED":
+            if websocket.application_state == WebSocketState.DISCONNECTED:
                 connection_manager.disconnect(websocket)
                 break
             else:
@@ -57,4 +58,5 @@ async def websocket_endpoint(
     except KeyboardInterrupt:
         logger.info("WebSocket interrupted")
         connection_manager.disconnect(websocket)
-        await websocket.close()
+        if websocket.application_state == WebSocketState.CONNECTED:
+            await websocket.close()

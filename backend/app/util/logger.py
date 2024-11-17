@@ -102,5 +102,8 @@ class Logger:
         Logger.setup_global(log_level)
 
     @staticmethod
-    def log_exception(message: str, exc: Exception):
-        logging.exception(message, exc_info=exc)
+    def log_exception(message: str, exc: Optional[Exception] = None):
+        if exc:
+            logging.exception(message, exc_info=exc)
+        else:
+            logging.exception(message, exc_info=True)

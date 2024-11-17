@@ -3,7 +3,7 @@ import os
 import shutil
 from os import path
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 
 def copy_file_if_not_exists(source: str, target: str):
@@ -139,11 +139,42 @@ def get_directory_name(path: Union[Path, str]) -> str:
     return Path(path).name
 
 
-def file_to_relative(file, directory):
-    return os.path.relpath(file, directory)
+def file_to_relative(filename: Union[str, Path], directory: Union[str, Path]) -> str:
+    """
+    Convert filename to be relative to directory.
+    """
+    return os.path.relpath(filename, directory)
 
 
 def is_parent_directory(parent_dir: str, file_path: str):
+    """
+    Check if a given directory is a parent (or ancestor) of a specified file
+    or directory, or if it is the same directory as the file path provided.
+
+    This function resolves both the parent directory and the file path to
+    their absolute canonical paths before performing the check. It returns
+    True if `parent_dir` is an ancestor directory of `file_path` or if
+    `parent_dir` is the same as `file_path`, after resolving both paths. If
+    the file or directory does not exist, the function will return False.
+
+    Args:
+        parent_dir (str): The path to the potential parent directory.
+        file_path (str): The path to the file or directory to compare.
+
+    Returns:
+        bool: True if `parent_dir` contains `file_path` or is the same as
+              `file_path`, False otherwise. Returns False if either path
+              does not exist.
+
+    Raises:
+        None: The function handles FileNotFoundError internally.
+
+    Example:
+        >>> is_parent_directory('/home/user', '/home/user/docs/file.txt')
+        True
+        >>> is_parent_directory('/home/user/docs', '/home/user/photos')
+        False
+    """
     parent = Path(parent_dir).resolve()
     file = Path(file_path).resolve()
 
@@ -151,3 +182,56 @@ def is_parent_directory(parent_dir: str, file_path: str):
         return parent in file.parents or parent == file
     except FileNotFoundError:
         return False
+
+
+def get_directory_structure(
+    initial_directory: str,
+    extension: Optional[Union[str, Tuple[str, ...]]] = None,
+    exclude_empty_dirs=True,
+    absolute=True,
+    file_processor: Optional[Callable[[str], Any]] = None,
+) -> list[Dict[str, Any]]:
+
+    def walk_directory(current_path: str):
+        children = []
+        entries = sorted(
+            os.listdir(current_path),
+            key=lambda entry: (
+                not os.path.isdir(os.path.join(current_path, entry)),
+                entry,
+            ),
+        )
+
+        for entry in entries:
+            entry_path = os.path.join(current_path, entry)
+            key_path = (
+                entry_path
+                if absolute
+                else file_to_relative(entry_path, initial_directory)
+            )
+            if os.path.isdir(entry_path):
+                subchildren = walk_directory(entry_path)
+                if not exclude_empty_dirs or len(subchildren) > 0:
+                    children.append(
+                        {
+                            "key": key_path,
+                            "label": entry,
+                            "selectable": False,
+                            "children": subchildren,
+                            "data": {"name": entry, "type": "Folder"},
+                        }
+                    )
+            elif extension is None or entry_path.endswith(extension):
+                if file_processor is not None:
+                    file_processor(entry_path)
+                children.append(
+                    {
+                        "key": key_path,
+                        "label": entry,
+                        "data": {"name": entry, "type": "File"},
+                    }
+                )
+
+        return children
+
+    return walk_directory(initial_directory)

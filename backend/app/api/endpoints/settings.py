@@ -1,12 +1,11 @@
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_camera_manager, get_detection_manager, get_file_manager
-from app.config.detectors import detectors
 from app.config.video_enhancers import frame_enhancers
+from app.config.yolo_common_models import get_available_models
 from app.schemas.settings import (
     CalibrationConfig,
     CameraDevicesResponse,
-    DetectorsResponse,
     EnhancersResponse,
     Settings,
     UpdateCameraDevice,
@@ -89,15 +88,12 @@ def get_calibration_settings(
     return file_service.get_calibration_config()
 
 
-@router.get("/api/detectors", response_model=DetectorsResponse)
+@router.get("/api/detection-models")
 def get_detectors():
     """
     Retrieve a list of available object detectors.
-
-    Returns:
-        `DetectorsResponse`: A list of available detector names.
     """
-    return {"detectors": list(detectors.keys())}
+    return get_available_models()
 
 
 @router.get("/api/enhancers", response_model=EnhancersResponse)
@@ -120,7 +116,7 @@ def get_video_modes():
         `VideoModesResponse`: A list of available detector and enhancer names.
     """
     return {
-        "detectors": list(detectors.keys()),
+        "detectors": get_available_models(),
         "enhancers": list(frame_enhancers.keys()),
     }
 

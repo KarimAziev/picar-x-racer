@@ -566,18 +566,15 @@ export const useControllerStore = defineStore("controller", {
       const camStore = useCameraStore();
       await camStore.decreaseQuality();
     },
-    async nextDetectMode() {
+    async toggleDetection() {
       const camStore = useCameraStore();
-      await camStore.nextDetectMode();
+      await camStore.toggleDetection();
     },
     async nextEnhanceMode() {
       const camStore = useCameraStore();
       await camStore.nextEnhanceMode();
     },
-    async prevDetectMode() {
-      const camStore = useCameraStore();
-      await camStore.prevDetectMode();
-    },
+
     async prevEnhanceMode() {
       const camStore = useCameraStore();
       await camStore.prevEnhanceMode();

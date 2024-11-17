@@ -64,7 +64,7 @@ def main():
 
         def restart_app():
             nonlocal main_app_process, websocket_app_process
-            terminate_processes([main_app_process, websocket_app_process])
+            terminate_processes([websocket_app_process, main_app_process])
             main_app_process = mp.Process(
                 target=start_main_app,
                 args=(px_main_app_port, px_log_level),
@@ -118,7 +118,7 @@ def main():
             frontend_dev_process.terminate()
             frontend_dev_process.join()
             frontend_dev_process.close()
-        terminate_processes([main_app_process, websocket_app_process])
+        terminate_processes([websocket_app_process, main_app_process])
 
 
 if __name__ == '__main__':

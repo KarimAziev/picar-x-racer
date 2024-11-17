@@ -1,18 +1,16 @@
 import asyncio
 import json
-from datetime import timedelta
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.services.car_control.avoid_obstacles_service import AvoidObstaclesService
 from app.services.car_control.calibration_service import CalibrationService
+from app.services.client_notifier import ClientNotifier
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import WebSocket
 
 
-class CarService(metaclass=SingletonMeta):
-    DEBOUNCE_INTERVAL = timedelta(seconds=1)
-
+class CarService(ClientNotifier, metaclass=SingletonMeta):
     def __init__(self):
         self.logger = Logger(name=__name__)
         self.px = PicarxAdapter()

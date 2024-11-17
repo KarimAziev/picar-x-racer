@@ -1,24 +1,22 @@
-from typing import TYPE_CHECKING
+from typing import Optional
 
+from app.services.client_notifier import ClientNotifier
 from app.util.logger import Logger
 from fastapi import WebSocket, WebSocketDisconnect
-
-if TYPE_CHECKING:
-    from app.services.car_control.car_service import CarService
 
 
 class ConnectionService:
     """Handles WebSocket connections and broadcasts messages to connected clients."""
 
-    def __init__(self, car_manager: "CarService"):
+    def __init__(self, notifier: "ClientNotifier", app_name: Optional[str] = None):
         """
-        Initialize the ConnectionService with a car manager.
+        Initialize the ConnectionService with a notifier.
 
         Args:
-            car_manager (CarService): The car manager service responsible for handling car operations.
+            notifier (ClientNotifier): The service with async `handle_notify_client` method.
         """
-        self.logger = Logger(name=__name__, app_name="px-control")
-        self.car_manager = car_manager
+        self.logger = Logger(name=__name__, app_name=app_name)
+        self.notifier = notifier
         self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
@@ -32,7 +30,7 @@ class ConnectionService:
 
         self.active_connections.append(websocket)
         self.logger.info(f"Connected {len(self.active_connections)} clients")
-        await self.car_manager.handle_notify_client(websocket)
+        await self.notifier.handle_notify_client(websocket)
 
     def disconnect(self, websocket: WebSocket):
         """
@@ -55,7 +53,7 @@ class ConnectionService:
 
         for connection in self.active_connections:
             try:
-                await self.car_manager.handle_notify_client(connection)
+                await self.notifier.handle_notify_client(connection)
             except WebSocketDisconnect:
                 disconnected_clients.append(connection)
 
