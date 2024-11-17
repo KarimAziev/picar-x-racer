@@ -90,7 +90,7 @@ watch(
 );
 
 watch(
-  () => camStore.data.video_feed_detect_mode,
+  () => camStore.data.video_feed_object_detection,
   (mode) => {
     if (mode && !detectionStore.connected && !detectionStore.loading) {
       detectionStore.initializeWebSocket();
@@ -103,7 +103,7 @@ watch(
 onMounted(async () => {
   await camStore.fetchAllCameraSettings();
   initWS();
-  if (camStore.data.video_feed_detect_mode) {
+  if (camStore.data.video_feed_object_detection) {
     detectionStore.initializeWebSocket();
   }
   addListeners();
