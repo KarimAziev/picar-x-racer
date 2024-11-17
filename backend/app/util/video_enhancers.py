@@ -7,90 +7,34 @@ from app.util.logger import Logger
 logger = Logger(__name__)
 
 
-def simulate_robocop_vision(frame: np.ndarray) -> np.ndarray:
+def simulate_robocop_vision(
+    frame: np.ndarray, line_thickness: int = 1, line_spacing: int = 2
+) -> np.ndarray:
     """
-    Simulate RoboCop vision by applying overlaying a targeting
-    reticle and HUD with custom font.
+    Simulate RoboCop vision by creating alternating lines of:
+    - Original frame line.
+    - Lightened frame line with specific thickness (thin lightened lines).
 
     Parameters:
         frame (np.ndarray): The input frame to simulate RoboCop vision.
+        line_thickness (int): The thickness of the lightened lines.
+        line_spacing (int): The number of rows in between lightened lines.
 
     Returns:
-        np.ndarray: The frame with RoboCop vision effects.
+        np.ndarray: The frame with alternating lightened scan lines.
     """
-    brightened_frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=20)
 
-    line_thickness = 1
-    scan_line_spacing = 8
-    for i in range(0, brightened_frame.shape[0], scan_line_spacing):
-        cv2.line(
-            brightened_frame,
-            (0, i),
-            (brightened_frame.shape[1], i),
-            (0, 0, 0),
-            line_thickness,
-        )
+    white_image = np.ones_like(frame) * 255
+    opacity = 0.8  # lightness of the scan lines (from 0 to 1, as in CSS)
+    lightened_frame = cv2.addWeighted(frame, opacity, white_image, 1 - opacity, 0)
 
-    return brightened_frame
+    result_frame = np.copy(frame)
 
+    for i in range(0, frame.shape[0], line_spacing + line_thickness):
+        # Replace a block of rows with lightened frame rows (thin lightened lines)
+        result_frame[i : i + line_thickness] = lightened_frame[i : i + line_thickness]
 
-def simulate_robocop_vision_targeting(frame: np.ndarray) -> np.ndarray:
-    """
-    Simulate RoboCop vision by applying grayscale conversion,
-    edge detection, scan lines, and overlaying a targeting
-    reticle and HUD with custom font.
-
-    Parameters:
-        frame (np.ndarray): The input frame to simulate RoboCop vision.
-
-    Returns:
-        np.ndarray: The frame with RoboCop vision effects.
-    """
-    # Constants
-    target_color = (191, 255, 0)
-
-    # Convert to grayscale
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Apply edge detection
-    edges = cv2.Canny(gray_frame, threshold1=50, threshold2=150)
-
-    # Convert edges to 3 channels and colorize them
-    edges_colored = cv2.merge([edges, edges, edges])
-    edges_colored[:, :, 0] = 0  # R Channel to 0
-    edges_colored[:, :, 2] = 0  # B Channel to 0
-    edges_colored[:, :, 1] = edges  # G Channel to the edges intensity
-
-    # Combine the original frame and edges for a composite image
-    combined = cv2.addWeighted(frame, 0.7, edges_colored, 0.3, 0)
-
-    # Draw scan lines
-    for i in range(0, combined.shape[0], 4):
-        cv2.line(combined, (0, i), (combined.shape[1], i), (0, 0, 0), 1)
-
-    # Overlay a targeting reticle
-    height, width, _ = combined.shape
-    center_x, center_y = width // 2, height // 2
-
-    # Fullsized vertical and horizontal lines
-    cv2.line(
-        combined,
-        (0, center_y),
-        (width, center_y),
-        target_color,
-        2,
-    )
-    cv2.line(
-        combined,
-        (center_x, 0),
-        (center_x, height),
-        target_color,
-        2,
-    )
-
-    combined = np.array(combined)
-
-    return combined
+    return result_frame
 
 
 def simulate_predator_vision(frame: np.ndarray) -> np.ndarray:
