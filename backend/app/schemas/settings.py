@@ -90,7 +90,7 @@ class VideoFeedUpdateSettings(BaseModel):
 
     video_feed_detect_mode: Union[str, None] = None
     video_feed_model_img_size: Optional[int] = None
-    video_feed_object_detection: Optional[bool] = False
+    video_feed_object_detection: Optional[bool] = None
     video_feed_enhance_mode: Union[str, None] = None
     video_feed_format: Union[str, None] = None
     video_feed_quality: Union[int, None] = None
