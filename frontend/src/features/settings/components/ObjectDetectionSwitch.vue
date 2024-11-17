@@ -1,6 +1,12 @@
 <template>
   <div :class="class" class="field">
     <ToggleSwitch
+      @update:model-value="
+        (newVal) =>
+          camStore.updateCameraParams({
+            video_feed_object_detection: newVal,
+          })
+      "
       :pt="{ input: { id: 'video_feed_object_detection' } }"
       v-model="camStore.data.video_feed_object_detection"
     />
