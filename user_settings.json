@@ -27,6 +27,7 @@
   "autoplay_music": true,
   "virtual_mode": false,
   "show_player": true,
+  "show_object_detection_settings": true,
   "text_to_speech_input": true,
   "keybindings": {
     "accelerate": ["w"],

@@ -28,19 +28,23 @@ export interface TextItem {
   default?: boolean;
 }
 
-export interface CameraOpenRequestParams {
+export interface ObjectDetectionParams {
+  video_feed_detect_mode: string | null;
+  video_feed_model_img_size?: number;
+  video_feed_object_detection?: boolean;
+  video_feed_confidence?: number | null;
+}
+
+export interface CameraOpenRequestParams extends ObjectDetectionParams {
   video_feed_fps?: number;
   video_feed_format?: string;
   video_feed_enhance_mode: string | null;
-  video_feed_detect_mode: string | null;
   video_feed_quality?: number;
   video_feed_height: number;
   video_feed_width: number;
-  video_feed_confidence?: number | null;
   video_feed_record?: boolean;
   video_feed_device: string | null;
   video_feed_pixel_format: string | null;
-  video_feed_object_detection?: boolean;
 }
 
 export interface Settings

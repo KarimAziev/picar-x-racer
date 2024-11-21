@@ -3,6 +3,7 @@
     <ToggleableView setting="text_to_speech_input">
       <TextToSpeechInput class="tts" v-if="isMobile" />
     </ToggleableView>
+
     <ToggleableView setting="text_info_view">
       <TextInfo />
     </ToggleableView>

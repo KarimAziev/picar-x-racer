@@ -55,19 +55,16 @@ export const useWebsocketStream = (
         connected.value = true;
       }
 
-      // Revoke the old image URL Blob if it's still being stored
       const urlCreator = window.URL || window.webkitURL;
       if (currentImageBlobUrl.value) {
         urlCreator.revokeObjectURL(currentImageBlobUrl.value);
+        currentImageBlobUrl.value = undefined;
       }
 
       const { timestamp, blob } = extractFrameWithTimestamp(wsMsg.data);
       const imageUrl = urlCreator.createObjectURL(blob);
 
-      // Update detection store with the current frame timestamp.
-
       detectionStore.setCurrentFrameTimestamp(timestamp);
-
       if (imgRef.value) {
         imgRef.value.src = imageUrl;
         currentImageBlobUrl.value = imageUrl;
@@ -80,7 +77,10 @@ export const useWebsocketStream = (
     ws.value.onclose = (_: CloseEvent) => {
       if (currentImageBlobUrl.value) {
         const urlCreator = window.URL || window.webkitURL;
-        urlCreator.revokeObjectURL(currentImageBlobUrl.value);
+        if (currentImageBlobUrl.value) {
+          urlCreator.revokeObjectURL(currentImageBlobUrl.value);
+        }
+
         currentImageBlobUrl.value = undefined;
       }
       connected.value = false;

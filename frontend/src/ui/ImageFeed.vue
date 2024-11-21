@@ -29,12 +29,11 @@ import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { makeWebsocketUrl } from "@/util/url";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
-import { useCameraStore, useSettingsStore } from "@/features/settings/stores";
+import { useCameraStore } from "@/features/settings/stores";
 import { useCameraRotate } from "@/composables/useCameraRotate";
 import { useDetectionStore } from "@/features/controller/detectionStore";
 import { drawOverlay, drawAimOverlay } from "@/util/overlay";
 
-const settingsStore = useSettingsStore();
 const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
@@ -63,17 +62,22 @@ watch(
     if (overlayCanvas.value && imgRef.value) {
       const frameTimeStamp = detectionStore.currentFrameTimestamp;
       const detectionTimeStamp = detectionStore.timestamp;
-      const enabled =
-        detectionTimeStamp &&
-        frameTimeStamp &&
-        detectionTimeStamp <= frameTimeStamp;
 
-      if (enabled) {
-        const handler =
-          settingsStore.settings.video_feed_enhance_mode === "robocop_vision"
-            ? drawAimOverlay
-            : drawOverlay;
+      const enabled = detectionTimeStamp && frameTimeStamp;
+
+      if (!enabled) {
+        return drawOverlay(overlayCanvas.value, imgRef.value, []);
+      }
+      const timeDiff = frameTimeStamp - detectionTimeStamp;
+
+      const handler =
+        camStore.data.video_feed_enhance_mode === "robocop_vision"
+          ? drawAimOverlay
+          : drawOverlay;
+      if (timeDiff >= 0 && timeDiff <= 1) {
         handler(overlayCanvas.value, imgRef.value, newResults);
+      } else {
+        handler(overlayCanvas.value, imgRef.value, []);
       }
     }
   },

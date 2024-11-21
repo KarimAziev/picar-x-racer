@@ -20,13 +20,13 @@
       @keyup.stop="handleKeyUp"
       @keypress.stop="doThis"
       @keyup.enter="handleKeyEnter"
-      v-model="text"
+      v-model="inputRef"
       v-tooltip="'Type the Text To Speech and press Enter to speak'"
     />
     <ButtonGroup>
       <Button
         @click="sayText"
-        :disabled="text.length === 0"
+        :disabled="!inputRef || inputRef.length === 0"
         icon="pi pi-play-circle"
         text
         rounded
@@ -47,16 +47,14 @@ import ButtonGroup from "primevue/buttongroup";
 import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 import TextToSpeechButton from "@/features/settings/components/TextToSpeechButton.vue";
-import { isNumber } from "@/util/guards";
-import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
+import { useInputHistory } from "@/composables/useInputHistory";
 
 defineProps<{ class?: string }>();
 const store = useSettingsStore();
-const inputHistory = ref<string[]>([]);
-const currHistoryIdx = ref(0);
 
 const language = ref(store.settings.default_tts_language);
-const text = ref("");
+
+const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
 const doThis = () => {};
 const handleSelectBeforeShow = () => {
@@ -67,50 +65,16 @@ const handleSelectBeforeHide = () => {
   store.inhibitKeyHandling = false;
 };
 
-const getNextOrPrevHistoryText = (n: number) => {
-  if (!isNumber(currHistoryIdx.value) || !inputHistory.value) {
-    return;
-  }
-  const len = inputHistory.value.length;
-  if (!len) {
-    return;
-  }
-  const maxIdx = inputHistory.value.length - 1;
-  const incIdx = currHistoryIdx.value + n;
-  const newIdx =
-    incIdx >= 0 && incIdx <= maxIdx ? incIdx : n > 0 ? 0 : Math.abs(maxIdx);
-  const newText = inputHistory.value[newIdx];
-  if (newText) {
-    text.value = newText;
-    currHistoryIdx.value = newIdx;
-  }
-};
-
-const setNextHistoryText = () => {
-  getNextOrPrevHistoryText(1);
-};
-
-const setPrevHistoryText = () => {
-  getNextOrPrevHistoryText(-1);
-};
-
-const inputKeyHandlers: { [key: string]: Function } = {
-  ArrowUp: setPrevHistoryText,
-  ArrowDown: setNextHistoryText,
-};
-
-const { handleKeyUp } = useKeyboardHandlers(inputKeyHandlers);
-
 const sayText = async () => {
-  const value = text.value;
+  const value = inputRef.value;
   if (value && value.length) {
     await store.speakText(value, language.value);
   }
 };
 const handleKeyEnter = async () => {
-  const value = text.value;
+  const value = inputRef.value;
   if (value && value.length > 0) {
-    text.value = "";
+    inputRef.value = "";
     inputHistory.value?.push(value);
     await store.speakText(value, language.value);
   }

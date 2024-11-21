@@ -1,10 +1,15 @@
-import { ref } from "vue";
+import { ref, onBeforeUnmount } from "vue";
 
-export function useAsyncDebounce<T extends (...args: any[]) => any>(
+export function useAsyncDebounce<T extends (...args: any[]) => Promise<void>>(
   func: T,
   waitFor: number,
 ): (...args: Parameters<T>) => void {
   const timeout = ref<NodeJS.Timeout>();
+  onBeforeUnmount(() => {
+    if (timeout.value) {
+      clearTimeout(timeout.value);
+    }
+  });
 
   return async (...args: Parameters<T>) => {
     let later = async () => {

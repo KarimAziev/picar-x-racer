@@ -1,6 +1,7 @@
 import { useMessagerStore } from "@/features/messager/store";
 import { makeWebsocketUrl } from "@/util/url";
 import { defineStore } from "pinia";
+import { useCameraStore } from "@/features/settings/stores";
 
 export interface DetectionResult {
   bbox: [number, number, number, number];
@@ -14,6 +15,11 @@ export interface Detection {
   model: string | null;
   loading: boolean;
 }
+export const msg = {
+  retry: "Retrying object detection connection...",
+  closing: "Closing object detection connection...",
+  error: "Object detection connection error",
+};
 
 export interface StoreState extends Detection {
   /**
@@ -29,7 +35,7 @@ export interface StoreState extends Detection {
    */
   websocket?: WebSocket;
   /**
-   * The WebSocket messages queue
+   * The WebSocket message queue
    */
   messageQueue: string[];
   /**
@@ -65,18 +71,20 @@ export const useDetectionStore = defineStore("detection", {
       this.websocket!.onopen = () => {
         this.loading = false;
         messager.remove((m) =>
-          ["Retrying connection...", "WebSocket error"].includes(m.text),
+          [msg.closing, msg.retry, msg.error].includes(m.text),
         );
-        console.log(`WebSocket connection established with URL: ${this.url}`);
+        console.log(
+          `Object detection connection established with URL: ${this.url}`,
+        );
         this.connected = true;
         while (this.messageQueue.length > 0) {
           this.websocket!.send(this.messageQueue.shift()!);
         }
       };
 
-      this.websocket.onmessage = (msg) => {
+      this.websocket.onmessage = (msgRaw) => {
         try {
-          const data: Detection = JSON.parse(msg.data);
+          const data: Detection = JSON.parse(msgRaw.data);
 
           if (data.detection_result) {
             this.detection_result = data.detection_result;
@@ -88,7 +96,7 @@ export const useDetectionStore = defineStore("detection", {
 
       this.websocket.onerror = (error) => {
         console.error(`WebSocket error: ${error.type}`);
-        messager.error("WebSocket error");
+        messager.error(msg.error);
         this.detection_result = [];
         this.loading = false;
         this.connected = false;
@@ -103,16 +111,20 @@ export const useDetectionStore = defineStore("detection", {
       };
     },
     setCurrentFrameTimestamp(timestamp: number) {
-      this.currentFrameTimestamp = timestamp; // Store frame timestamp here
+      this.currentFrameTimestamp = timestamp;
     },
-    retryConnection() {
+    async retryConnection() {
       const messager = useMessagerStore();
+      const camStore = useCameraStore();
       if (this.reconnectedEnabled && !this.connected) {
-        setTimeout(() => {
-          console.log("Retrying WebSocket connection...");
-          messager.info("Retrying connection...");
-          this.initializeWebSocket();
-        }, 5000);
+        await camStore.fetchAllCameraSettings();
+        if (camStore.data.video_feed_object_detection) {
+          setTimeout(async () => {
+            console.log(msg.retry);
+            messager.info(msg.retry);
+            this.initializeWebSocket();
+          }, 5000);
+        }
       }
     },
 
@@ -127,7 +139,7 @@ export const useDetectionStore = defineStore("detection", {
 
     close() {
       const messager = useMessagerStore();
-      messager.info("Closing connection...");
+      messager.info(msg.closing);
       this.websocket?.close();
     },
     cleanup() {

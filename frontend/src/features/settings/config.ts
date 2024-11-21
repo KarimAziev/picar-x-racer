@@ -47,9 +47,9 @@ export const toggleableSettings = {
     description: "Toggle rendering FPS",
     label: "Show FPS",
   },
-  video_feed_object_detection: {
-    description: "Toggle object detection process",
-    label: "Toggle object detection",
+  show_object_detection_settings: {
+    description: "Toggle showing object detection settings",
+    label: "Show object detection",
   },
 };
 

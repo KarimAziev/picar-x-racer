@@ -7,6 +7,8 @@
       placeholder="Model"
       filter
       :loading="camStore.loadingData.video_feed_detect_mode"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
     >
       <template #dropdownicon>
         <i class="pi pi-search" />
@@ -39,6 +41,14 @@ import Field from "@/ui/Field.vue";
 
 const store = useSettingsStore();
 const camStore = useCameraStore();
+const handleSelectBeforeShow = () => {
+  store.inhibitKeyHandling = true;
+};
+
+const handleSelectBeforeHide = () => {
+  store.inhibitKeyHandling = false;
+};
+
 const NONE_KEY = "NONE";
 const nodes = computed(() => [
   { key: NONE_KEY, label: "None", selectable: true },

@@ -186,6 +186,7 @@ class Settings(VideoFeedUpdateSettings):
     virtual_mode: Optional[bool] = None
     show_player: Optional[bool] = None
     text_to_speech_input: Optional[bool] = None
+    show_object_detection_settings: Optional[bool] = True
     keybindings: Optional[Keybindings] = None
 
 
