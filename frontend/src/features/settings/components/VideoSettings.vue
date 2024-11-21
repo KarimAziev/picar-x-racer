@@ -27,7 +27,6 @@ import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
 
 import SelectField from "@/ui/SelectField.vue";
 import { numberSequence } from "@/util/cycleValue";
-import NumberField from "@/ui/NumberField.vue";
 import { objectKeysToOptions } from "@/features/settings/util";
 import VideoDeviceSelect from "@/features/settings/components/VideoDeviceSelect.vue";
 
