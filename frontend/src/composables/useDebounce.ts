@@ -1,9 +1,9 @@
 import { ref, onBeforeUnmount } from "vue";
 
-export function useAsyncDebounce<T extends (...args: any[]) => Promise<void>>(
+export function useAsyncDebounce<T extends (...args: any[]) => Promise<any>>(
   func: T,
   waitFor: number,
-): (...args: Parameters<T>) => void {
+): (...args: Parameters<T>) => Promise<ReturnType<T>> {
   const timeout = ref<NodeJS.Timeout>();
   onBeforeUnmount(() => {
     if (timeout.value) {
@@ -11,18 +11,20 @@ export function useAsyncDebounce<T extends (...args: any[]) => Promise<void>>(
     }
   });
 
-  return async (...args: Parameters<T>) => {
-    let later = async () => {
-      if (timeout.value) {
-        clearTimeout(timeout.value);
-      }
-
-      await func(...args);
-    };
+  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
     if (timeout.value) {
       clearTimeout(timeout.value);
     }
 
-    timeout.value = setTimeout(later, waitFor);
+    return new Promise((resolve, rej) => {
+      timeout.value = setTimeout(async () => {
+        try {
+          const result = await func(...args);
+          resolve(result);
+        } catch (error) {
+          rej();
+        }
+      }, waitFor);
+    });
   };
 }

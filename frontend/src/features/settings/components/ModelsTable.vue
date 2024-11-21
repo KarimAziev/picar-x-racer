@@ -42,16 +42,16 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref, watch, computed } from "vue";
 import ButtonGroup from "primevue/buttongroup";
 import TreeTable from "primevue/treetable";
+import ObjectDetectionSettings from "@/features/settings/components/ObjectDetectionSettings.vue";
 import { useMessagerStore } from "@/features/messager/store";
 import { downloadFile, removeFile } from "@/features/settings/api";
 import { useCameraStore, useSettingsStore } from "@/features/settings/stores";
-import { onMounted, ref, watch, computed } from "vue";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import { roundNumber } from "@/util/number";
 import { isNumber } from "@/util/guards";
-import ObjectDetectionSettings from "@/features/settings/components/ObjectDetectionSettings.vue";
 
 const NONE_KEY = "NONE";
 const store = useSettingsStore();
@@ -61,6 +61,18 @@ const selectedValue = ref(
     ? { [store.settings.video_feed_detect_mode]: true }
     : {},
 );
+
+const items = computed(() => camStore.detectors);
+
+const handleRemove = async (key: string) => {
+  const messager = useMessagerStore();
+  try {
+    await removeFile("data", key);
+    await camStore.fetchModels();
+  } catch (error) {
+    messager.handleError(error);
+  }
+};
 
 const handleDownloadFile = (value: string) => {
   downloadFile("data", value);
@@ -73,7 +85,6 @@ const updateCameraParams = useAsyncDebounce(async () => {
     video_feed_confidence: isNumber(store.settings.video_feed_confidence)
       ? roundNumber(store.settings.video_feed_confidence, 1)
       : store.settings.video_feed_confidence,
-    video_feed_object_detection: store.settings.video_feed_object_detection,
   });
 }, 2000);
 
@@ -92,7 +103,7 @@ watch(
   async (newVal) => {
     store.settings.video_feed_detect_mode = Object.keys(newVal)[0] || null;
 
-    updateCameraParams();
+    await updateCameraParams();
     await camStore.fetchModels();
   },
 );
@@ -102,52 +113,16 @@ watch(() => store.settings.video_feed_detect_mode, updateCameraParams);
 watch(() => store.settings.video_feed_confidence, updateCameraParams);
 
 onMounted(camStore.fetchModels);
-
-const items = computed(() => camStore.detectors);
-
-const handleRemove = async (key: string) => {
-  const messager = useMessagerStore();
-  try {
-    await removeFile("data", key);
-    await camStore.fetchModels();
-  } catch (error) {
-    messager.handleError(error);
-  }
-};
 </script>
 
 <style scoped lang="scss">
-.tag {
-  cursor: pointer;
-}
-.language {
-  width: 60px;
-}
-textarea {
-  width: 100%;
-}
-
-.button-group {
-  white-space: nowrap;
-}
-
 .header {
   display: flex;
 }
-
+.button-group {
+  white-space: nowrap;
+}
 :deep(.p-inputtext) {
   width: 90px;
-}
-
-@media (min-width: 576px) {
-  .language {
-    width: 100px;
-  }
-}
-
-@media (min-width: 1200px) {
-  textarea {
-    width: 200px;
-  }
 }
 </style>
