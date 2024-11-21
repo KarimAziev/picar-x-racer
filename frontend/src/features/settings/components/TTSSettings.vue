@@ -108,7 +108,7 @@ const store = useSettingsStore();
 const items = computed(() => store.settings.texts);
 
 function saveSettings() {
-  store.saveTexts();
+  store.saveSettings;
 }
 
 const sayText = async (textItem: TextItem) => {
@@ -119,7 +119,7 @@ const sayText = async (textItem: TextItem) => {
 
 const handleRemove = (index: number) => {
   store.settings.texts = store.settings.texts.filter((_, idx) => idx !== index);
-  store.saveTexts();
+  store.saveSettings();
 };
 
 const markDefault = (item: TextItem) => {

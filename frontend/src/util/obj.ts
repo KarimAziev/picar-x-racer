@@ -9,3 +9,13 @@ export const omit = <V extends Record<string, any>, K extends keyof V>(
     return acc;
   }, {} as V);
 };
+
+export const pickAll = <V extends Record<string, any>, K extends keyof V>(
+  props: K[],
+  data: V,
+): Pick<V, K> => {
+  return props.reduce((acc, key) => {
+    acc[key as K] = data[key];
+    return acc;
+  }, {} as V);
+};

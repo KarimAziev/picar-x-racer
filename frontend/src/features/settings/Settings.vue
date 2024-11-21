@@ -69,8 +69,16 @@ const isMobile = useDeviceWatcher();
 .wrapper {
   width: 98%;
   margin: auto;
-  max-width: 600px;
-  min-width: 340px;
+
+  @media (min-width: 360px) {
+    width: 300px;
+  }
+
+  @media (min-width: 360px) {
+    max-width: 600px;
+    min-width: 340px;
+    width: 350px;
+  }
 
   @media (min-width: 480px) {
     width: 450px;

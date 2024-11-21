@@ -101,6 +101,45 @@ const defaultState: State = {
 
 export const useStore = defineStore("settings", {
   state: () => ({ ...defaultState }),
+  getters: {
+    detection({
+      settings: {
+        video_feed_detect_mode,
+        video_feed_confidence,
+        video_feed_object_detection,
+        video_feed_model_img_size,
+      },
+    }) {
+      return {
+        video_feed_detect_mode,
+        video_feed_confidence,
+        video_feed_object_detection,
+        video_feed_model_img_size,
+      };
+    },
+    tts({ settings: { texts, default_tts_language } }) {
+      return {
+        default_tts_language,
+        texts: texts.filter((item) => !!item.text.length),
+      };
+    },
+    keybindings({ settings: { keybindings } }) {
+      return { keybindings };
+    },
+
+    generalSettings({ settings }) {
+      const excludedKeys: (keyof Settings)[] = [
+        "keybindings",
+        "texts",
+        "default_tts_language",
+        "video_feed_model_img_size",
+        "video_feed_confidence",
+        "video_feed_object_detection",
+        "video_feed_model_img_size",
+      ];
+      return omit(excludedKeys, settings);
+    },
+  },
 
   actions: {
     async fetchSettings() {
@@ -182,62 +221,28 @@ export const useStore = defineStore("settings", {
         messager.remove((m) => m.text === errText);
       }
     },
-    async saveSettings() {
-      const messager = useMessagerStore();
+    getCurrentTabSettings() {
       const popupStore = usePopupStore();
-      if (popupStore.tab === SettingsTab.TTS) {
-        return await this.saveTexts();
-      }
-
-      const data =
-        popupStore.tab === SettingsTab.KEYBINDINGS
-          ? { keybindings: this.settings.keybindings }
-          : popupStore.tab === SettingsTab.MODELS
-            ? {
-                video_feed_object_detection:
-                  this.settings.video_feed_object_detection,
-                video_feed_detect_mode: this.settings.video_feed_detect_mode,
-              }
-            : omit(["keybindings", "video_feed_detect_mode"], this.settings);
-
-      this.saving = true;
-      try {
-        await axios.post("/api/settings", data);
-        messager.success("Settings saved");
-      } catch (error) {
-        messager.handleError(error, "Error saving settings");
-      } finally {
-        this.saving = false;
+      const currentTab = popupStore.tab;
+      switch (currentTab) {
+        case SettingsTab.GENERAL:
+          return this.generalSettings;
+        case SettingsTab.KEYBINDINGS:
+          return this.keybindings;
+        case SettingsTab.TTS:
+          return this.tts;
+        case SettingsTab.MODELS:
+          return this.detection;
+        default:
+          return null;
       }
     },
-    async saveTexts() {
-      const messager = useMessagerStore();
-
-      this.saving = true;
-      try {
-        await axios.post("/api/settings", {
-          texts: this.settings.texts.filter((item) => !!item.text.length),
-          default_tts_language: this.settings.default_tts_language,
-        });
-
-        messager.success("Settings saved");
-      } catch (error) {
-        messager.handleError(error, "Error saving settings");
-      } finally {
-        this.saving = false;
+    async saveSettings() {
+      const data = this.getCurrentTabSettings();
+      if (!data) {
+        return;
       }
-    },
-    async saveAllSettings() {
-      const messager = useMessagerStore();
-      this.saving = true;
-      try {
-        await axios.post("/api/settings", this.settings);
-        messager.success("Settings saved");
-      } catch (error) {
-        messager.handleError(error, "Error saving settings");
-      } finally {
-        this.saving = false;
-      }
+      await this.saveData(data);
     },
 
     async saveData(data: Partial<Settings>) {

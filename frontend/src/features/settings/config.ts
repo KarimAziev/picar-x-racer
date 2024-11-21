@@ -1,3 +1,5 @@
+import { SettingsTab } from "@/features/settings/enums";
+
 export const toggleableSettings = {
   fullscreen: {
     description: "Toggle fullscreen",
@@ -130,3 +132,14 @@ export const ttsLanguages = [
   { label: "Chinese (Simplified)", value: "zh-cn" },
   { label: "Chinese (Traditional)", value: "zh-tw" },
 ];
+
+export const NONE_KEY = "NONE";
+
+export const saveableTabs = {
+  [SettingsTab.GENERAL]: true,
+  [SettingsTab.KEYBINDINGS]: false,
+  [SettingsTab.CALIBRATION]: false,
+  [SettingsTab.TTS]: false,
+  [SettingsTab.PHOTOS]: false,
+  [SettingsTab.MODELS]: true,
+};

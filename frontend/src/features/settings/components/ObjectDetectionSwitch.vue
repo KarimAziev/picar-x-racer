@@ -58,9 +58,8 @@
         @keypress.stop="doThis"
         showButtons
         label="Img size"
-        inputId="video_feed_model_img_size"
+        field="video_feed_model_img_size"
         :loading="camStore.loadingData.video_feed_model_img_size"
-        :pt="{ pcInput: { id: 'video_feed_model_img_size' } }"
         v-model="camStore.data.video_feed_model_img_size"
         :step="10"
         @update:model-value="updateCameraParams"
@@ -69,7 +68,7 @@
         @keydown.stop="doThis"
         @keyup.stop="doThis"
         @keypress.stop="doThis"
-        inputId="video_feed_fps"
+        field="video_feed_confidence"
         label="Confidence"
         v-model="camStore.data.video_feed_confidence"
         :loading="camStore.loadingData.video_feed_confidence"
@@ -84,11 +83,10 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from "vue";
-
 import { useCameraStore, useSettingsStore } from "@/features/settings/stores";
-
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import NumberField from "@/ui/NumberField.vue";
+import { NONE_KEY } from "@/features/settings/config";
 
 defineProps<{ class?: string; label?: string }>();
 
@@ -108,7 +106,6 @@ const handleSelectBeforeHide = () => {
   store.inhibitKeyHandling = false;
 };
 
-const NONE_KEY = "NONE";
 const nodes = computed(() => [
   { key: NONE_KEY, label: "None", selectable: true },
   ...camStore.detectors,

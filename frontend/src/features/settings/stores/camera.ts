@@ -156,6 +156,7 @@ export const useStore = defineStore("camera", {
 
     async fetchModels() {
       const messager = useMessagerStore();
+      this.loading = true;
       try {
         const response = await axios.get<TreeNode[]>("/api/detection-models");
         this.detectors = response.data;
