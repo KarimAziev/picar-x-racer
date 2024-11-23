@@ -79,14 +79,21 @@ export const useStore = defineStore("camera", {
         Object.keys(requestData).forEach((key) => {
           this.loadingData[key as keyof CameraOpenRequestParams] = true;
         });
+
+        const prevData = { ...this.data };
+
         const { data } = await axios.post<CameraOpenRequestParams>(
           "/api/video-feed-settings",
           payload || this.data,
         );
         this.data = data;
-        Object.entries(data).forEach(([key, value]) => {
-          if (payload && key in payload) {
-            messager.info(`${key}: ${value}`, { immediately: true });
+        Object.entries(data).forEach(([k, value]) => {
+          const key = k as keyof CameraOpenRequestParams;
+          this.loadingData[key] = false;
+          if (prevData[key] !== value) {
+            messager.info(`${key.replace(/^video_feed_/g, "")}: ${value}`, {
+              immediately: true,
+            });
           }
         });
       } catch (error) {
