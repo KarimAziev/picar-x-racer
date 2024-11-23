@@ -1,30 +1,57 @@
 import { ref, onBeforeUnmount } from "vue";
 
-export function useAsyncDebounce<T extends (...args: any[]) => Promise<any>>(
+export function useAsyncDebounce<T extends (...args: any[]) => Promise<void>>(
   func: T,
   waitFor: number,
-): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+) {
   const timeout = ref<NodeJS.Timeout>();
+
   onBeforeUnmount(() => {
     if (timeout.value) {
       clearTimeout(timeout.value);
     }
   });
 
-  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+  return async (...args: Parameters<T>) => {
+    let later = async () => {
+      if (timeout.value) {
+        clearTimeout(timeout.value);
+      }
+
+      return await func(...args);
+    };
     if (timeout.value) {
       clearTimeout(timeout.value);
     }
 
-    return new Promise((resolve, rej) => {
-      timeout.value = setTimeout(async () => {
-        try {
-          const result = await func(...args);
-          resolve(result);
-        } catch (error) {
-          rej();
-        }
-      }, waitFor);
-    });
+    timeout.value = setTimeout(later, waitFor);
+  };
+}
+
+export function useDebounce<T extends (...args: any[]) => any>(
+  func: T,
+  waitFor: number,
+) {
+  const timeout = ref<NodeJS.Timeout>();
+
+  onBeforeUnmount(() => {
+    if (timeout.value) {
+      clearTimeout(timeout.value);
+    }
+  });
+
+  return (...args: Parameters<T>) => {
+    let later = () => {
+      if (timeout.value) {
+        clearTimeout(timeout.value);
+      }
+
+      return func(...args);
+    };
+    if (timeout.value) {
+      clearTimeout(timeout.value);
+    }
+
+    timeout.value = setTimeout(later, waitFor);
   };
 }
