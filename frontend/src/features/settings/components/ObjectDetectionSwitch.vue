@@ -4,27 +4,21 @@
       <div class="flex-column">
         <div class="flex">
           Detection:
-          <Button
-            class="label"
-            @click="
-              () => {
-                camStore.data.video_feed_object_detection =
-                  !camStore.data.video_feed_object_detection;
-                updateCameraParams();
-              }
-            "
-            aria-label="Toggle object detection"
-            text
-            ><span class="bold">&nbsp;{{ toggleLabel }}</span>
-          </Button>
+          <ToggleSwitch
+            inputId="toggle_detection"
+            v-tooltip="'Toggle Object Detection'"
+            :loading="detectionStore.loading"
+            @update:model-value="updateCameraParams"
+            v-model="detectionStore.data.active"
+          />
         </div>
         <TreeSelect
-          inputId="video_feed_detect_mode"
+          inputId="model"
           v-model="selectedValue"
           :options="nodes"
           placeholder="Model"
           filter
-          :loading="camStore.loadingData.video_feed_detect_mode"
+          :loading="detectionStore.loading"
           @before-show="handleSelectBeforeShow"
           @before-hide="handleSelectBeforeHide"
           @update:model-value="updateCameraParams"
@@ -41,7 +35,7 @@
                 mode="basic"
                 name="model[]"
                 url="/api/upload/data"
-                @upload="camStore.fetchModels"
+                @upload="detectionStore.fetchModels"
                 :auto="true"
                 chooseLabel="Add"
               />
@@ -58,9 +52,9 @@
         @keypress.stop="doThis"
         showButtons
         label="Img size"
-        field="video_feed_model_img_size"
-        :loading="camStore.loadingData.video_feed_model_img_size"
-        v-model="camStore.data.video_feed_model_img_size"
+        field="img_size"
+        :loading="detectionStore.loading"
+        v-model="detectionStore.data.img_size"
         :step="10"
         @update:model-value="updateCameraParams"
       />
@@ -68,10 +62,10 @@
         @keydown.stop="doThis"
         @keyup.stop="doThis"
         @keypress.stop="doThis"
-        field="video_feed_confidence"
+        field="confidence"
         label="Confidence"
-        v-model="camStore.data.video_feed_confidence"
-        :loading="camStore.loadingData.video_feed_confidence"
+        v-model="detectionStore.data.confidence"
+        :loading="detectionStore.loading"
         :min="0.1"
         :max="1.0"
         :step="0.1"
@@ -82,25 +76,27 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, computed } from "vue";
-import { useCameraStore, useSettingsStore } from "@/features/settings/stores";
+import { onMounted, ref, computed } from "vue";
+import ToggleSwitch from "primevue/toggleswitch";
+import {
+  useSettingsStore,
+  useDetectionStore,
+} from "@/features/settings/stores";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import NumberField from "@/ui/NumberField.vue";
 import { NONE_KEY } from "@/features/settings/config";
+import { roundNumber } from "@/util/number";
+import { isNumber } from "@/util/guards";
 
 defineProps<{ class?: string; label?: string }>();
 
 const doThis = () => {};
-const camStore = useCameraStore();
+const detectionStore = useDetectionStore();
 
 const store = useSettingsStore();
 const handleSelectBeforeShow = () => {
   store.inhibitKeyHandling = true;
 };
-
-const toggleLabel = computed(() =>
-  camStore.data.video_feed_object_detection ? "ON" : "OFF",
-);
 
 const handleSelectBeforeHide = () => {
   store.inhibitKeyHandling = false;
@@ -108,34 +104,26 @@ const handleSelectBeforeHide = () => {
 
 const nodes = computed(() => [
   { key: NONE_KEY, label: "None", selectable: true },
-  ...camStore.detectors,
+  ...detectionStore.detectors,
 ]);
 const selectedValue = ref(
-  store.settings.video_feed_detect_mode
-    ? { [store.settings.video_feed_detect_mode]: true }
-    : {},
+  detectionStore.data.model ? { [detectionStore.data.model]: true } : {},
 );
 
 const updateCameraParams = useAsyncDebounce(async () => {
-  await camStore.updateCameraParams({
-    video_feed_model_img_size: camStore.data.video_feed_model_img_size,
-    video_feed_detect_mode: camStore.data.video_feed_detect_mode,
-    video_feed_object_detection: camStore.data.video_feed_object_detection,
+  const nextModel = Object.keys(selectedValue.value)[0] || null;
+  await detectionStore.updateData({
+    img_size: detectionStore.data.img_size,
+    model: nextModel,
+    active: detectionStore.data.active,
+    confidence: isNumber(detectionStore.data.confidence)
+      ? roundNumber(detectionStore.data.confidence, 1)
+      : detectionStore.data.confidence,
   });
-  await camStore.fetchModels();
-}, 2000);
+  await detectionStore.fetchModels();
+}, 3000);
 
-watch(
-  () => selectedValue.value,
-  async (newVal) => {
-    const nextValue = Object.keys(newVal)[0] || null;
-    camStore.data.video_feed_detect_mode =
-      nextValue === NONE_KEY ? null : nextValue;
-    updateCameraParams();
-  },
-);
-
-onMounted(camStore.fetchModels);
+onMounted(detectionStore.fetchModels);
 </script>
 <style scoped lang="scss">
 @import "src/ui/field.scss";

@@ -70,7 +70,7 @@ def perform_detection(
             if conf < confidence_threshold:
                 continue
 
-            if labels_to_detect is None or label in labels_to_detect:
+            if not labels_to_detect or label in labels_to_detect:
                 x1 = int(x1 * scale_x)
                 y1 = int(y1 * scale_y)
                 x2 = int(x2 * scale_x)

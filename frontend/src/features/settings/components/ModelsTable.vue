@@ -20,9 +20,7 @@
     <template #header>
       <div class="header align-center">
         <div class="title">
-          Current model: &nbsp;{{
-            camStore.data.video_feed_detect_mode || "None"
-          }}
+          Current model: &nbsp;{{ detectionStore.data.model || "None" }}
         </div>
         <div class="search-wrapper">
           <div class="search-field">
@@ -42,9 +40,9 @@
       <div class="flex">
         <Field label="Detection" class="align-center">
           <ToggleSwitch
-            inputId="video_feed_object_detection"
+            inputId="active"
             v-tooltip="'Toggle object detection'"
-            v-model="camStore.data.video_feed_object_detection"
+            v-model="detectionStore.data.active"
           />
         </Field>
 
@@ -54,19 +52,19 @@
           @keypress.stop="doNothing"
           showButtons
           label="Img size"
-          inputId="video_feed_model_img_size"
-          :loading="camStore.loadingData.video_feed_model_img_size"
-          v-model="camStore.data.video_feed_model_img_size"
+          inputId="img_size"
+          :loading="detectionStore.loadingData.img_size"
+          v-model="detectionStore.data.img_size"
           :step="10"
         />
         <NumberField
           @keydown.stop="doNothing"
           @keyup.stop="doNothing"
           @keypress.stop="doNothing"
-          field="video_feed_confidence"
+          field="confidence"
           label="Confidence"
-          v-model="camStore.data.video_feed_confidence"
-          :loading="camStore.loadingData.video_feed_confidence"
+          v-model="detectionStore.data.confidence"
+          :loading="detectionStore.loadingData.confidence"
           :min="0.1"
           :max="1.0"
           :step="0.1"
@@ -105,7 +103,7 @@
     mode="basic"
     name="model[]"
     url="/api/upload/data"
-    @upload="camStore.fetchModels"
+    @upload="detectionStore.fetchModels"
     :auto="true"
     chooseLabel="Add model"
   />
@@ -121,22 +119,25 @@ import ToggleSwitch from "primevue/toggleswitch";
 import NumberField from "@/ui/NumberField.vue";
 import { useMessagerStore } from "@/features/messager/store";
 import { downloadFile, removeFile } from "@/features/settings/api";
-import { useCameraStore, useSettingsStore } from "@/features/settings/stores";
+import {
+  useSettingsStore,
+  useDetectionStore,
+} from "@/features/settings/stores";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import { roundNumber } from "@/util/number";
 import { isNumber } from "@/util/guards";
 import Field from "@/ui/Field.vue";
 
 const store = useSettingsStore();
-const camStore = useCameraStore();
-const loading = computed(() => camStore.loading);
+const detectionStore = useDetectionStore();
+const loading = computed(() => detectionStore.loading);
 const selectedValue = ref(
-  store.settings.video_feed_detect_mode
-    ? { [store.settings.video_feed_detect_mode]: true }
+  store.settings.detection.model
+    ? { [store.settings.detection.model]: true }
     : {},
 );
 
-const items = computed(() => camStore.detectors);
+const items = computed(() => detectionStore.detectors);
 const filters = ref<TreeTableFilterMeta>({});
 const doNothing = () => {};
 
@@ -144,7 +145,7 @@ const handleRemove = async (key: string) => {
   const messager = useMessagerStore();
   try {
     await removeFile("data", key);
-    await camStore.fetchModels();
+    await detectionStore.fetchModels();
   } catch (error) {
     messager.handleError(error);
   }
@@ -155,21 +156,18 @@ const handleDownloadFile = (value: string) => {
 };
 
 const updateCameraParams = useAsyncDebounce(async () => {
-  store.settings.video_feed_model_img_size =
-    camStore.data.video_feed_model_img_size;
-  store.settings.video_feed_detect_mode = camStore.data.video_feed_detect_mode;
-  store.settings.video_feed_confidence = isNumber(
-    camStore.data.video_feed_confidence,
-  )
-    ? roundNumber(camStore.data.video_feed_confidence)
-    : camStore.data.video_feed_confidence;
-  store.settings.video_feed_object_detection =
-    camStore.data.video_feed_object_detection;
-  await camStore.updateCameraParams({
-    video_feed_model_img_size: store.settings.video_feed_model_img_size,
-    video_feed_detect_mode: store.settings.video_feed_detect_mode,
-    video_feed_object_detection: store.settings.video_feed_object_detection,
-    video_feed_confidence: store.settings.video_feed_confidence,
+  store.settings.detection.img_size = detectionStore.data.img_size;
+  store.settings.detection.model = detectionStore.data.model;
+  store.settings.detection.confidence = isNumber(detectionStore.data.confidence)
+    ? roundNumber(detectionStore.data.confidence, 1)
+    : detectionStore.data.confidence;
+  store.settings.detection.active = detectionStore.data.active;
+
+  await detectionStore.updateData({
+    img_size: store.settings.detection.img_size,
+    model: store.settings.detection.model,
+    active: store.settings.detection.active,
+    confidence: store.settings.detection.confidence,
   });
 }, 2000);
 
@@ -177,16 +175,13 @@ watch(
   () => selectedValue.value,
   async (newVal) => {
     const nextValue = Object.keys(newVal)[0] || null;
-    camStore.data.video_feed_detect_mode = nextValue;
+    detectionStore.data.model = nextValue;
     await updateCameraParams();
-    await camStore.fetchModels();
+    await detectionStore.fetchModels();
   },
 );
 
-watch(() => camStore.data.video_feed_detect_mode, updateCameraParams);
-watch(() => camStore.data.video_feed_confidence, updateCameraParams);
-watch(() => camStore.data.video_feed_object_detection, updateCameraParams);
-onMounted(camStore.fetchModels);
+onMounted(detectionStore.fetchModels);
 </script>
 
 <style scoped lang="scss">

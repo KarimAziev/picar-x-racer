@@ -28,23 +28,91 @@ export interface TextItem {
   default?: boolean;
 }
 
-export interface ObjectDetectionParams {
-  video_feed_detect_mode: string | null;
-  video_feed_model_img_size?: number;
-  video_feed_object_detection?: boolean;
-  video_feed_confidence?: number | null;
+export interface CameraSettings {
+  /**
+   * The ID or name of the camera device.
+   */
+  device?: string;
+
+  /**
+   * The width of the camera frame in pixels.
+   */
+  width?: number;
+
+  /**
+   * The height of the camera frame in pixels.
+   */
+  height?: number;
+
+  /**
+   * The number of frames per second the camera should capture.
+   */
+  fps?: number;
+
+  /**
+   * The format for the pixels (e.g., 'RGB', 'GRAY').
+   */
+  pixel_format?: string;
 }
 
-export interface CameraOpenRequestParams extends ObjectDetectionParams {
-  video_feed_fps?: number;
-  video_feed_format?: string;
-  video_feed_enhance_mode: string | null;
-  video_feed_quality?: number;
-  video_feed_height: number;
-  video_feed_width: number;
-  video_feed_record?: boolean;
-  video_feed_device: string | null;
-  video_feed_pixel_format: string | null;
+export interface StreamSettings {
+  /**
+   * The format of the stream (e.g., '.jpg').
+   */
+  format: string;
+
+  /**
+   * The quality of the stream (0-100).
+   */
+  quality: number;
+
+  /**
+   * The enhancement mode for the stream, if any.
+   */
+  enhance_mode?: string | null;
+
+  /**
+   * Whether video recording is enabled.
+   */
+  video_record?: boolean;
+
+  /**
+   * Whether the frames per second (FPS) should be rendered.
+   */
+  render_fps?: boolean;
+}
+
+export interface DetectionSettings {
+  /**
+   * The name or ID of the detection model to be used.
+   */
+  model: string | null;
+
+  /**
+   * The confidence threshold for detections (e.g., a value between 0 and 1).
+   */
+  confidence?: number;
+
+  /**
+   * Indicates whether detection is active.
+   */
+  active?: boolean;
+
+  /**
+   * The size of the image for detection (default is 640).
+   */
+  img_size: number;
+
+  /**
+   * A list of labels (e.g., object categories) to filter detections.
+   */
+  labels?: string[];
+}
+
+export interface CameraOpenRequestParams {
+  camera: CameraSettings;
+  detection: DetectionSettings;
+  stream: StreamSettings;
 }
 
 export interface Settings
@@ -56,7 +124,6 @@ export interface Settings
   keybindings: Partial<Record<ControllerActionName, string[]>>;
   battery_full_voltage: number;
   auto_measure_distance_delay_ms: number;
-  video_feed_quality: number;
   texts: TextItem[];
 }
 
@@ -73,7 +140,7 @@ export interface State {
   inhibitKeyHandling: boolean;
 }
 
-const defaultState: State = {
+export const defaultState: State = {
   settings: {
     fullscreen: true,
     keybindings: {},
@@ -82,16 +149,15 @@ const defaultState: State = {
     texts: [],
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
-    video_feed_quality: 100,
-    video_feed_fps: 30,
-    video_feed_format: ".jpg",
-    video_feed_detect_mode: null,
-    video_feed_confidence: null,
-    video_feed_enhance_mode: null,
-    video_feed_height: 600,
-    video_feed_width: 800,
-    video_feed_device: null,
-    video_feed_pixel_format: null,
+    camera: {},
+    detection: {
+      img_size: 640,
+      model: null,
+    },
+    stream: {
+      format: ".jpg",
+      quality: 100,
+    },
   },
   retryCounter: 0,
   text: null,
@@ -102,20 +168,8 @@ const defaultState: State = {
 export const useStore = defineStore("settings", {
   state: () => ({ ...defaultState }),
   getters: {
-    detection({
-      settings: {
-        video_feed_detect_mode,
-        video_feed_confidence,
-        video_feed_object_detection,
-        video_feed_model_img_size,
-      },
-    }) {
-      return {
-        video_feed_detect_mode,
-        video_feed_confidence,
-        video_feed_object_detection,
-        video_feed_model_img_size,
-      };
+    detection({ settings: { detection } }) {
+      return detection;
     },
     tts({ settings: { texts, default_tts_language } }) {
       return {
@@ -132,10 +186,7 @@ export const useStore = defineStore("settings", {
         "keybindings",
         "texts",
         "default_tts_language",
-        "video_feed_model_img_size",
-        "video_feed_confidence",
-        "video_feed_object_detection",
-        "video_feed_model_img_size",
+        "detection",
       ];
       return omit(excludedKeys, settings);
     },

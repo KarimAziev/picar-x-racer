@@ -1,15 +1,23 @@
+import asyncio
 from time import localtime, strftime
 from typing import TYPE_CHECKING
 
 import numpy as np
 from app.api.deps import get_camera_manager, get_file_manager
-from app.schemas.camera import FrameDimensionsResponse, PhotoResponse
+from app.schemas.camera import (
+    CameraDevicesResponse,
+    CameraSettings,
+    FrameDimensionsResponse,
+    PhotoResponse,
+)
+from app.util.device import list_available_camera_devices
 from app.util.logger import Logger
 from app.util.photo import capture_photo
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
     from app.services.camera_service import CameraService
+    from app.services.connection_service import ConnectionService
     from app.services.files_service import FilesService
 
 router = APIRouter()
@@ -72,3 +80,53 @@ async def frame_dimensions(
     frame_array = np.array(camera_manager.stream_img, dtype=np.uint8)
     height, width = frame_array.shape[:2]
     return {"width": width, "height": height}
+
+
+@router.post("/api/camera-settings", response_model=CameraSettings, tags=["camera"])
+async def update_camera_settings(
+    request: Request,
+    payload: CameraSettings,
+    camera_manager: "CameraService" = Depends(get_camera_manager),
+):
+    """
+    Endpoint to get the dimensions of the current camera frame.
+
+    Args:
+    - `camera_manager` (CameraService): The camera service for managing the camera operations.
+
+    Returns:
+        `FrameDimensionsResponse`: A response object containing the width and height of the current camera frame.
+    """
+    connection_manager: "ConnectionService" = request.app.state.app_manager
+    result: CameraSettings = await asyncio.to_thread(
+        camera_manager.update_camera_settings, payload
+    )
+    await connection_manager.broadcast_json(
+        {"type": "camera", "payload": result.model_dump()}
+    )
+    return result
+
+
+@router.get("/api/camera-settings", response_model=CameraSettings, tags=["camera"])
+def get_camera_settings(
+    camera_manager: "CameraService" = Depends(get_camera_manager),
+):
+    """
+    Endpoint to get the dimensions of the current camera frame.
+
+    Args:
+    - `camera_manager` (CameraService): The camera service for managing the camera operations.
+
+    Returns:
+        `FrameDimensionsResponse`: A response object containing the width and height of the current camera frame.
+    """
+    return camera_manager.camera_settings
+
+
+@router.get("/api/camera-devices", response_model=CameraDevicesResponse)
+def get_camera_devices():
+    """
+    Retrieve available camera devices.
+    """
+    devices = list_available_camera_devices()
+    return {"devices": devices}

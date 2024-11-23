@@ -10,6 +10,8 @@ import {
   useCameraStore,
   useMusicStore,
   useSoundStore,
+  useDetectionStore,
+  useStreamStore,
 } from "@/features/settings/stores";
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
@@ -218,13 +220,7 @@ export const useControllerStore = defineStore("controller", {
     setMaxSpeed(value: number) {
       const newValue = constrain(MIN_SPEED, MAX_SPEED, value);
       if (newValue !== this.maxSpeed) {
-        this.maxSpeed = newValue;
-      }
-      if (this.speed >= newValue) {
-        this.move(
-          constrain(MIN_SPEED, newValue, newValue - ACCELERATION),
-          this.direction,
-        );
+        this.sendMessage({ action: "setMaxSpeed", payload: newValue });
       }
     },
     setCamTiltAngle(angle: number): void {
@@ -503,29 +499,29 @@ export const useControllerStore = defineStore("controller", {
       await camStore.decreaseDimension();
     },
     async increaseQuality() {
-      const camStore = useCameraStore();
-      await camStore.increaseQuality();
+      const streamStore = useStreamStore();
+      await streamStore.increaseQuality();
     },
     async decreaseQuality() {
-      const camStore = useCameraStore();
-      await camStore.decreaseQuality();
+      const streamStore = useStreamStore();
+      await streamStore.decreaseQuality();
     },
     async toggleDetection() {
-      const camStore = useCameraStore();
-      await camStore.toggleDetection();
+      const detectionStore = useDetectionStore();
+      await detectionStore.toggleDetection();
     },
     async nextEnhanceMode() {
-      const camStore = useCameraStore();
-      await camStore.nextEnhanceMode();
+      const streamStore = useStreamStore();
+      await streamStore.nextEnhanceMode();
     },
 
     async prevEnhanceMode() {
-      const camStore = useCameraStore();
-      await camStore.prevEnhanceMode();
+      const streamStore = useStreamStore();
+      await streamStore.prevEnhanceMode();
     },
     async toggleVideoRecord() {
-      const camStore = useCameraStore();
-      await camStore.toggleRecording();
+      const streamStore = useStreamStore();
+      await streamStore.toggleRecording();
     },
     async increaseVolume() {
       const musicStore = useMusicStore();

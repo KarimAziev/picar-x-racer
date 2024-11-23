@@ -1,22 +1,29 @@
 import asyncio
 import json
+from typing import TYPE_CHECKING
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.services.car_control.avoid_obstacles_service import AvoidObstaclesService
 from app.services.car_control.calibration_service import CalibrationService
-from app.services.client_notifier import ClientNotifier
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import WebSocket
 
+if TYPE_CHECKING:
+    from app.services.connection_service import ConnectionService
 
-class CarService(ClientNotifier, metaclass=SingletonMeta):
-    def __init__(self):
+
+class CarService(metaclass=SingletonMeta):
+    def __init__(self, connection_manager: "ConnectionService"):
         self.logger = Logger(name=__name__)
         self.px = PicarxAdapter()
-        self.avoid_obstacles_service = AvoidObstaclesService(self.px)
+        self.connection_manager = connection_manager
+        self.avoid_obstacles_service = AvoidObstaclesService(
+            self.px,
+        )
         self.calibration = CalibrationService(self.px)
         self.speed = 0
+        self.max_speed = 80
         self.direction = 0
         self.servo_dir_angle = 0
         self.cam_pan_angle = 0
@@ -25,22 +32,46 @@ class CarService(ClientNotifier, metaclass=SingletonMeta):
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)
 
-    async def handle_notify_client(self, websocket: WebSocket):
-        data = {
+    async def broadcast(self):
+        await self.connection_manager.broadcast_json(self.broadcast_payload)
+
+    @property
+    def current_state(self):
+        """
+        Returns key metrics of the current state as a dictionary.
+
+        The returned dictionary contains:
+        - "speed": Current speed.
+        - "maxSpeed": The maximum allowed speed.
+        - "direction": Current travel direction.
+        - "servoAngle": Current servo direction angle.
+        - "camPan": Current camera pan angle.
+        - "camTilt": Current camera tilt angle.
+        - "avoidObstacles": Whether avoid obstacles mode is on.
+        """
+        return {
             "speed": self.speed,
+            "maxSpeed": self.max_speed,
             "direction": self.direction,
             "servoAngle": self.servo_dir_angle,
             "camPan": self.cam_pan_angle,
             "camTilt": self.cam_tilt_angle,
+            "avoidObstacles": self.avoid_obstacles_service.avoid_obstacles_mode,
         }
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "type": "update",
-                    "payload": data,
-                }
-            )
-        )
+
+    @property
+    def broadcast_payload(self):
+        """
+        Returns the dictionary used for notifying clients about the current state.
+
+        The broadcast message includes:
+        - type: The type of message, set to "update".
+        - payload: The current state of the object.
+        """
+        return {
+            "type": "update",
+            "payload": self.current_state,
+        }
 
     async def process_action(self, action: str, payload, websocket: WebSocket):
         """
@@ -71,27 +102,28 @@ class CarService(ClientNotifier, metaclass=SingletonMeta):
             "setCamPanAngle": self.handle_set_cam_pan_angle,
             "avoidObstacles": self.handle_avoid_obstacles,
             "getDistance": self.handle_get_distance,
+            "setMaxSpeed": self.handle_max_speed,
         }
 
         calibrationData = None
         if action in calibration_actions_map:
             calibrationData = calibration_actions_map[action]()
             if calibrationData:
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "type": (
-                                "saveCalibration"
-                                if action == "saveCalibration"
-                                else "updateCalibration"
-                            ),
-                            "payload": calibrationData,
-                        }
-                    )
+                await self.connection_manager.broadcast_json(
+                    {
+                        "type": (
+                            "saveCalibration"
+                            if action == "saveCalibration"
+                            else "updateCalibration"
+                        ),
+                        "payload": calibrationData,
+                    }
                 )
+
         elif action in actions_map:
             func = actions_map[action]
             await func(payload, websocket)
+            await self.broadcast()
 
         else:
             error_msg = f"Unknown action: {action}"
@@ -130,17 +162,20 @@ class CarService(ClientNotifier, metaclass=SingletonMeta):
             self.cam_pan_angle = response.get("camPan", self.cam_pan_angle)
             self.cam_tilt_angle = response.get("camTilt", self.cam_tilt_angle)
 
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "payload": response,
-                        "type": "update",
-                    }
-                )
+            await self.connection_manager.broadcast_json(
+                {
+                    "payload": response,
+                    "type": "update",
+                }
             )
 
     async def handle_get_distance(self, _, websocket: WebSocket):
         await self.respond_with_distance("getDistance", websocket)
+
+    async def handle_max_speed(self, payload: int, websocket: WebSocket):
+        self.max_speed = payload
+        if self.speed > self.max_speed:
+            await self.move(self.direction, self.max_speed)
 
     async def handle_move(self, payload, _):
         """
@@ -166,10 +201,10 @@ class CarService(ClientNotifier, metaclass=SingletonMeta):
         try:
             distance = await self.get_distance()
             response = {"payload": distance, "type": action}
-            await websocket.send_text(json.dumps(response))
+            await self.connection_manager.broadcast_json(response)
         except Exception as e:
             error_response = {"type": action, "error": str(e)}
-            await websocket.send_text(json.dumps(error_response))
+            await websocket.send_json(error_response)
 
     async def move(self, direction: int, speed: int):
         """

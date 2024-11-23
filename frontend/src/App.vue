@@ -23,7 +23,12 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, computed } from "vue";
+import {
+  onBeforeUnmount,
+  defineAsyncComponent,
+  computed,
+  onMounted,
+} from "vue";
 import { RouterView } from "vue-router";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import Messager from "@/features/messager/Messager.vue";
@@ -31,8 +36,10 @@ import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
+import { useAppSyncStore } from "@/features/syncer/store";
 
 const popupStore = usePopupStore();
+const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();
 
 const settingsStore = useSettingsStore();
@@ -67,7 +74,15 @@ const Recording = defineAsyncComponent({
   loader: () =>
     import("@/features/settings/components/VideoRecordingIndicator.vue"),
 });
+
 useAppHeight();
+
+onMounted(() => {
+  syncStore.initializeWebSocket();
+});
+onBeforeUnmount(() => {
+  syncStore.cleanup();
+});
 </script>
 <style scoped lang="scss">
 .indicators {

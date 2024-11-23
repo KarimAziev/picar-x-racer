@@ -39,6 +39,12 @@ export default defineConfig({
         secure: false,
         ws: true,
       },
+      "/ws/sync": {
+        target: `ws://127.0.0.1:${mainAppPort}/`,
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
       "/ws/object-detection": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,

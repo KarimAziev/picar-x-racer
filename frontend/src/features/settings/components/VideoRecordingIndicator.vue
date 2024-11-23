@@ -6,14 +6,14 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useCameraStore } from "@/features/settings/stores";
+import { useStreamStore } from "@/features/settings/stores";
 
-const camStore = useCameraStore();
+const streamStore = useStreamStore();
 
-const isRecording = computed(() => camStore.data.video_feed_record);
+const isRecording = computed(() => streamStore.data.video_record);
 
 const handleToggle = async () => {
-  await camStore.toggleRecording();
+  await streamStore.toggleRecording();
 };
 </script>
 

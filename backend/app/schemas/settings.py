@@ -1,5 +1,8 @@
-from typing import Dict, List, Optional, Union
+from typing import List, Optional
 
+from app.schemas.camera import CameraSettings
+from app.schemas.stream import StreamSettings
+from app.services.detection_service import DetectionSettings
 from pydantic import BaseModel
 
 
@@ -70,103 +73,9 @@ class Keybindings(BaseModel):
     toggleVideoRecord: Optional[List[str]] = None
 
 
-class VideoFeedUpdateSettings(BaseModel):
-    """
-    A model to represent the video feed update settings.
-
-    Attributes:
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_model_img_size`: The image size for YOLO model.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_width`: Width of the video feed.
-    - `video_feed_height`: Height of the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `video_feed_record`: Flag to record the video.
-    - `video_feed_render_fps`: Flag to render actual FPS.
-    """
-
-    video_feed_detect_mode: Union[str, None] = None
-    video_feed_model_img_size: Optional[int] = None
-    video_feed_object_detection: Optional[bool] = None
-    video_feed_enhance_mode: Union[str, None] = None
-    video_feed_format: Union[str, None] = None
-    video_feed_quality: Union[int, None] = None
-    video_feed_width: Union[int, None] = None
-    video_feed_height: Union[int, None] = None
-    video_feed_fps: Union[int, None] = None
-    video_feed_confidence: Union[float, None] = None
-    video_feed_record: Union[bool, None] = None
-    video_feed_device: Union[str, None] = None
-    video_feed_pixel_format: Optional[str] = None
-    video_feed_render_fps: Optional[bool] = None
-
-
-class VideoFeedSettings(BaseModel):
-    """
-    A model to represent the video feed settings.
-
-    Attributes:
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_model_img_size`: The image size for YOLO model.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_width`: Width of the video feed.
-    - `video_feed_height`: Height of the video feed.
-    - `video_feed_record`: Flag to record the video.
-    - `video_feed_device`: Device to use.
-    - `video_feed_render_fps`: Flag to render actual FPS.
-    """
-
-    video_feed_detect_mode: str | None
-    video_feed_model_img_size: Optional[int] = None
-    video_feed_object_detection: Optional[bool] = False
-    video_feed_enhance_mode: str | None
-    video_feed_format: str
-    video_feed_quality: int
-    video_feed_width: Optional[int] = None
-    video_feed_height: Optional[int] = None
-    video_feed_fps: int
-    video_feed_confidence: float
-    video_feed_record: bool
-    video_feed_device: Optional[str] = None
-    video_feed_pixel_format: Optional[str] = None
-    video_feed_render_fps: Optional[bool] = None
-
-
-class Settings(VideoFeedUpdateSettings):
+class Settings(BaseModel):
     """
     A model to represent the application settings.
-
-    Attributes:
-    - `default_music`: The default music to play.
-    - `default_sound`: The default sound to play.
-    - `default_tts_language`: The default language to use in text-to-speech.
-    - `texts`: A list of text to speech items.
-    - `fullscreen`: Indicator if fullscreen mode is enabled.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `battery_full_voltage`: Voltage level considered as full battery.
-    - `car_model_view`: Indicator if the car model view is enabled.
-    - `speedometer_view`: Indicator if the speedometer view is enabled.
-    - `text_info_view`: Indicator if the text information view is enabled.
-    - `auto_download_photo`: Indicator if photos are automatically downloaded.
-    - `auto_measure_distance_mode`: Indicator if automatic distance measurement mode is enabled.
-    - `auto_measure_distance_delay_ms`: Delay in milliseconds for automatic distance measurement.
-    - `autoplay_music`: Indicator if music should autoplay.
-    - `virtual_mode`: Indicator if virtual mode is enabled. It hides a video stream view and focuses on controlling the car using just a 3D model visualization.
-    - `show_player`: Indicator if the player should be shown.
-    - `text_to_speech_input`: Indicator if text-to-speech input is enabled.
-    - `keybindings`: A list of keybindings.
     """
 
     default_music: Optional[str] = None
@@ -188,38 +97,9 @@ class Settings(VideoFeedUpdateSettings):
     text_to_speech_input: Optional[bool] = None
     show_object_detection_settings: Optional[bool] = True
     keybindings: Optional[Keybindings] = None
-
-
-class DetectorsResponse(BaseModel):
-    """
-    A model to represent the response for available object detectors.
-
-    Attributes:
-    - detectors: A list of video detectors.
-    """
-
-    data: List[Dict[str, str]]
-
-
-class EnhancersResponse(BaseModel):
-    """
-    A model to represent the response for video enhancers.
-
-    Attributes:
-    - enhancers: A list of video enhancer names.
-    """
-
-    enhancers: List[str]
-
-
-class VideoModesResponse(DetectorsResponse, EnhancersResponse):
-    """
-    A model to represent the response for both detectors and enhancers.
-
-    Inherits from `DetectorsResponse` and `EnhancersResponse`.
-    """
-
-    pass
+    camera: Optional[CameraSettings] = None
+    detection: Optional[DetectionSettings] = None
+    stream: Optional[StreamSettings] = None
 
 
 class CalibrationConfig(BaseModel):
@@ -237,11 +117,3 @@ class CalibrationConfig(BaseModel):
     picarx_cam_pan_servo: Optional[str] = None
     picarx_cam_tilt_servo: Optional[str] = None
     picarx_dir_motor: Optional[str] = None
-
-
-class CameraDevicesResponse(BaseModel):
-    devices: List[Dict[str, Union[str, bool, List[Dict[str, str]]]]]
-
-
-class UpdateCameraDevice(BaseModel):
-    device: str

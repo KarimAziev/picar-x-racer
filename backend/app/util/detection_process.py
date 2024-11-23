@@ -41,6 +41,7 @@ def detection_process_func(
         try:
             confidence_threshold = 0.3
             prev_time = time.time()
+            labels = None
 
             while not stop_event.is_set():
                 try:
@@ -48,6 +49,7 @@ def detection_process_func(
                         control_message = control_queue.get_nowait()
                         if control_message.get("command") == "set_detect_mode":
                             confidence: float = control_message.get("confidence")
+                            labels = control_message.get("labels")
 
                             logger.info(f"confidence: {confidence}")
                             if confidence:
@@ -75,6 +77,7 @@ def detection_process_func(
                     resized_height=frame_data["resized_height"],
                     resized_width=frame_data["resized_width"],
                     should_resize=frame_data["should_resize"],
+                    labels_to_detect=labels,
                 )
 
                 detection_result_with_timestamp = {

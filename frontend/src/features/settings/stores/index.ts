@@ -7,6 +7,8 @@ import { useStore as useBatteryStore } from "@/features/settings/stores/battery"
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
 import { useStore as useDistanceStore } from "@/features/settings/stores/distance";
 import { useStore as useCameraStore } from "@/features/settings/stores/camera";
+import { useStore as useStreamStore } from "@/features/settings/stores/stream";
+import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
 
 export {
   useImageStore,
@@ -18,4 +20,6 @@ export {
   useCalibrationStore,
   useDistanceStore,
   useCameraStore,
+  useDetectionStore,
+  useStreamStore,
 };

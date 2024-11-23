@@ -1,14 +1,19 @@
 from app.services.audio_service import AudioService
 from app.services.camera_service import CameraService
+from app.services.connection_service import ConnectionService
 from app.services.detection_service import DetectionService
 from app.services.files_service import FilesService
 from app.services.stream_service import StreamService
 
+connection_manager = ConnectionService()
 audio_manager = AudioService()
 file_manager = FilesService(audio_manager=audio_manager)
-detection_manager = DetectionService(file_manager=file_manager)
+detection_manager = DetectionService(
+    file_manager=file_manager, connection_manager=connection_manager
+)
 camera_manager = CameraService(
-    detection_service=detection_manager, file_manager=file_manager
+    detection_service=detection_manager,
+    file_manager=file_manager,
 )
 stream_manager = StreamService(camera_service=camera_manager)
 

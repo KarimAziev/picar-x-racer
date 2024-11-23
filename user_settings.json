@@ -4,18 +4,6 @@
   "default_tts_language": "en",
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
   "fullscreen": true,
-  "video_feed_quality": 100,
-  "video_feed_height": 600,
-  "video_feed_width": 800,
-  "video_feed_record": false,
-  "video_feed_confidence": 0.4,
-  "video_feed_object_detection": false,
-  "video_feed_model_img_size": 320,
-  "video_feed_detect_mode": null,
-  "video_feed_enhance_mode": null,
-  "video_feed_format": ".jpg",
-  "video_feed_fps": 30,
-  "video_feed_render_fps": true,
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,
@@ -29,6 +17,27 @@
   "show_player": true,
   "show_object_detection_settings": true,
   "text_to_speech_input": true,
+  "camera": {
+    "device": null,
+    "height": 600,
+    "width": 800,
+    "fps": 30,
+    "pixel_format": null
+  },
+  "stream": {
+    "quality": 100,
+    "format": ".jpg",
+    "enhance_mode": null,
+    "video_record": false,
+    "render_fps": true
+  },
+  "detection": {
+    "model": null,
+    "confidence": 0.4,
+    "active": false,
+    "img_size": 320,
+    "labels": []
+  },
   "keybindings": {
     "accelerate": ["w"],
     "decelerate": ["s"],

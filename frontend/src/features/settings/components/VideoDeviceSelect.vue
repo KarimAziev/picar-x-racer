@@ -1,7 +1,7 @@
 <template>
   <Field :label="label"
     ><TreeSelect
-      inputId="video_feed_device"
+      inputId="device"
       v-model="selectedDevice"
       :options="devices"
       :disabled="loading"
@@ -40,21 +40,21 @@ const loading = computed(() => camStore.loading);
 const isReady = ref(false);
 const getInitialValue = () => {
   if (
-    !isString(camStore.data.video_feed_device) ||
-    !isString(camStore.data.video_feed_pixel_format) ||
-    !isNumber(camStore.data.video_feed_fps) ||
-    !isNumber(camStore.data.video_feed_height) ||
-    !isNumber(camStore.data.video_feed_width)
+    !isString(camStore.data.device) ||
+    !isString(camStore.data.pixel_format) ||
+    !isNumber(camStore.data.fps) ||
+    !isNumber(camStore.data.height) ||
+    !isNumber(camStore.data.width)
   ) {
     return {};
   }
-  const fps = camStore.data.video_feed_fps;
-  const width = camStore.data.video_feed_width;
-  const height = camStore.data.video_feed_height;
+  const fps = camStore.data.fps;
+  const width = camStore.data.width;
+  const height = camStore.data.height;
   const size = `${width}x${height}`;
 
   return {
-    [`${camStore.data.video_feed_device}:${camStore.data.video_feed_pixel_format}:${size}:${fps}`]:
+    [`${camStore.data.device}:${camStore.data.pixel_format}:${size}:${fps}`]:
       true,
   };
 };
@@ -92,18 +92,18 @@ watch(
 
     const [width, height] = size.split("x");
 
-    store.settings.video_feed_device = device;
-    store.settings.video_feed_width = +width;
-    store.settings.video_feed_height = +height;
-    store.settings.video_feed_pixel_format = pixel_format;
-    store.settings.video_feed_fps = +fps;
+    store.settings.camera.device = device;
+    store.settings.camera.width = +width;
+    store.settings.camera.height = +height;
+    store.settings.camera.pixel_format = pixel_format;
+    store.settings.camera.fps = +fps;
 
-    await camStore.updateCameraParams({
-      video_feed_device: device,
-      video_feed_pixel_format: pixel_format,
-      video_feed_width: +width,
-      video_feed_height: +height,
-      video_feed_fps: +fps,
+    await camStore.updateData({
+      device: device,
+      pixel_format: pixel_format,
+      width: +width,
+      height: +height,
+      fps: +fps,
     });
   },
 );

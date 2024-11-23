@@ -21,6 +21,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
     DIR_MIN = -30
     DIR_MAX = 30
+    MAX_SPEED = 100
     CAM_PAN_MIN = -90
     CAM_PAN_MAX = 90
     CAM_TILT_MIN = -35
@@ -28,7 +29,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
     PERIOD = 4095
     PRESCALER = 10
-    TIMEOUT = 0.02
 
     def __init__(
         self,
@@ -131,7 +131,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         motor_names = {1: "left", 2: "right"}
         motor_name = motor_names.get(motor, "unknown")
 
-        speed = max(-100, min(100, speed))
+        speed = max(-self.MAX_SPEED, min(self.MAX_SPEED, speed))
 
         motor_index = motor - 1
 

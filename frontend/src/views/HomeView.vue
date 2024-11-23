@@ -28,7 +28,7 @@ watch(
 );
 
 onMounted(async () => {
-  await cameraStore.fetchConfig();
+  await cameraStore.fetchData();
   await settingsStore.fetchSettingsInitial();
 });
 </script>

@@ -28,20 +28,22 @@
 import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
-import { useCameraStore } from "@/features/settings/stores";
+import {
+  useCameraStore,
+  useDetectionStore,
+  useStreamStore,
+} from "@/features/settings/stores";
 import { useCameraRotate } from "@/composables/useCameraRotate";
-import { useDetectionStore } from "@/features/controller/detectionStore";
 import { drawOverlay, drawAimOverlay } from "@/util/overlay";
 
 const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
+const streamStore = useStreamStore();
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
 const listenersAdded = ref(false);
 
-const objectDetectionIsOn = computed(
-  () => camStore.data.video_feed_object_detection,
-);
+const objectDetectionIsOn = computed(() => detectionStore.data.active);
 
 const {
   initWS,
@@ -70,7 +72,7 @@ watch(
       const timeDiff = frameTimeStamp - detectionTimeStamp;
 
       const handler =
-        camStore.data.video_feed_enhance_mode === "robocop_vision"
+        streamStore.data.enhance_mode === "robocop_vision"
           ? drawAimOverlay
           : drawOverlay;
       if (timeDiff >= 0 && timeDiff <= 0.2) {
@@ -93,7 +95,7 @@ watch(
 );
 
 watch(
-  () => camStore.data.video_feed_object_detection,
+  () => detectionStore.data.active,
   (mode) => {
     if (mode && !detectionStore.connecting && !detectionStore.connected) {
       detectionStore.initializeWebSocket();
@@ -112,7 +114,7 @@ const handleSocketsCleanup = () => {
 onMounted(async () => {
   await camStore.fetchAllCameraSettings();
   initWS();
-  if (camStore.data.video_feed_object_detection) {
+  if (detectionStore.data.active) {
     detectionStore.initializeWebSocket();
   }
   addListeners();

@@ -1,17 +1,7 @@
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_camera_manager, get_detection_manager, get_file_manager
-from app.config.video_enhancers import frame_enhancers
-from app.config.yolo_common_models import get_available_models
-from app.schemas.settings import (
-    CalibrationConfig,
-    CameraDevicesResponse,
-    EnhancersResponse,
-    Settings,
-    UpdateCameraDevice,
-    VideoModesResponse,
-)
-from app.util.device import list_available_camera_devices
+from app.schemas.settings import CalibrationConfig, Settings
 from fastapi import APIRouter, Depends
 
 if TYPE_CHECKING:
@@ -86,61 +76,3 @@ def get_calibration_settings(
         `CalibrationConfig`: The calibration settings.
     """
     return file_service.get_calibration_config()
-
-
-@router.get("/api/detection-models")
-def get_detectors():
-    """
-    Retrieve a list of available object detectors.
-    """
-    return get_available_models()
-
-
-@router.get("/api/enhancers", response_model=EnhancersResponse)
-def get_frame_enhancers():
-    """
-    Retrieve a list of available frame enhancers.
-
-    Returns:
-        `EnhancersResponse`: A list of available frame enhancer names.
-    """
-    return {"enhancers": list(frame_enhancers.keys())}
-
-
-@router.get("/api/video-modes", response_model=VideoModesResponse)
-def get_video_modes():
-    """
-    Retrieve a list of available video modes, including both detectors and enhancers.
-
-    Returns:
-        `VideoModesResponse`: A list of available detector and enhancer names.
-    """
-    return {
-        "detectors": get_available_models(),
-        "enhancers": list(frame_enhancers.keys()),
-    }
-
-
-@router.get("/api/camera-devices", response_model=CameraDevicesResponse)
-def get_camera_devices():
-    """
-    Retrieve available camera devices.
-    """
-    devices = list_available_camera_devices()
-    return {"devices": devices}
-
-
-@router.post("/api/camera-device", response_model=UpdateCameraDevice)
-def update_camera_device(
-    data: UpdateCameraDevice,
-    camera_manager: "CameraService" = Depends(get_camera_manager),
-):
-    """
-    Retrieve available camera devices.
-    """
-
-    camera_manager.update_device(data.device)
-    info = camera_manager.video_device_adapter.video_device
-    (device, _) = info or (None, None)
-
-    return {"device": device}

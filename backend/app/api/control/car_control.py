@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import TYPE_CHECKING
 
@@ -33,30 +34,23 @@ async def websocket_endpoint(
     connection_manager: "ConnectionService" = websocket.app.state.connection_manager
     try:
         await connection_manager.connect(websocket)
-        while True:
+        await car_manager.broadcast()
+        while websocket.application_state == WebSocketState.CONNECTED:
             raw_data = await websocket.receive_text()
+            data = json.loads(raw_data)
+            action: str = data.get("action")
+            payload = data.get("payload")
 
-            if websocket.application_state == WebSocketState.DISCONNECTED:
-                connection_manager.disconnect(websocket)
-                break
-            else:
-                try:
-                    data = json.loads(raw_data)
-                    action: str = data.get("action")
-                    payload = data.get("payload")
+            logger.debug("%s", data)
+            await car_manager.process_action(action, payload, websocket)
 
-                    logger.debug("%s", data)
-                    await car_manager.process_action(action, payload, websocket)
-                    await connection_manager.broadcast()
-                except RuntimeError as ex:
-                    logger.error(
-                        f"Failed to send error message due to RuntimeError: {ex}"
-                    )
     except WebSocketDisconnect:
         logger.info("WebSocket Disconnected")
-        connection_manager.disconnect(websocket)
+    except asyncio.CancelledError:
+        logger.info("Gracefully shutting down Detection WebSocket connection")
+        await connection_manager.disconnect(websocket)
     except KeyboardInterrupt:
         logger.info("WebSocket interrupted")
-        connection_manager.disconnect(websocket)
-        if websocket.application_state == WebSocketState.CONNECTED:
-            await websocket.close()
+        await connection_manager.disconnect(websocket)
+    finally:
+        connection_manager.remove(websocket)

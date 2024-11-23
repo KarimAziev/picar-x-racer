@@ -1,4 +1,4 @@
-import { DetectionResult } from "@/features/controller/detectionStore";
+import { DetectionResult } from "@/features/settings/stores/detection";
 
 export const drawLabelWithConfidence = (
   label: string,

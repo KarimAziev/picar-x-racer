@@ -1,6 +1,6 @@
 import { ref } from "vue";
-import { useDetectionStore } from "@/features/controller/detectionStore";
 import { useWebSocket, WebSocketOptions } from "@/composables/useWebsocket";
+import { useDetectionStore } from "@/features/settings/stores";
 
 export interface WebsocketStreamParams {
   retryInterval?: number;

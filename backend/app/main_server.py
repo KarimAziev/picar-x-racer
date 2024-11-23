@@ -37,6 +37,10 @@ It provides endpoints for:
 
 tags_metadata = [
     {
+        "name": "sync",
+        "description": "Websocket endpoint for synchronizing app state between several clients",
+    },
+    {
         "name": "audio",
         "description": "Endpoints related to audio functionalities, including playing and managing music and sound effects.",
     },
@@ -61,6 +65,10 @@ tags_metadata = [
         "description": "Endpoints for handling video feed settings and WebSocket connections for streaming real-time video.",
     },
     {
+        "name": "detection",
+        "description": "Endpoints for handling object detection.",
+    },
+    {
         "name": "serve",
         "description": "General serving endpoints, including serving the frontend application and handling fallback routes.",
     },
@@ -69,11 +77,14 @@ tags_metadata = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.api.deps import connection_manager
     from app.services.connection_service import ConnectionService
 
     app.state.template_folder = TEMPLATE_FOLDER
-    detection_connection_manager = ConnectionService(notifier=detection_manager)
+    detection_connection_manager = ConnectionService()
+    app_manager = connection_manager
     app.state.detection_notifier = detection_connection_manager
+    app.state.app_manager = app_manager
     port = os.getenv("PX_MAIN_APP_PORT")
     mode = os.getenv("PX_APP_MODE")
 
@@ -93,7 +104,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         logger.info("Stopping 🚗 application")
-        detection_manager.cleanup()
+        await detection_manager.cleanup()
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
         logger.info("Application 🚗 stopped")
@@ -140,6 +151,8 @@ from app.api.endpoints import (
     settings_router,
     video_feed_router,
 )
+from app.api.endpoints.app_syncer import app_sync_router
+from app.api.endpoints.detection import detection_router
 
 app.include_router(audio_management_router, tags=["audio"])
 app.include_router(battery_router, tags=["battery"])
@@ -147,4 +160,6 @@ app.include_router(camera_feed_router, tags=["camera"])
 app.include_router(file_management_router, tags=["files"])
 app.include_router(settings_router, tags=["settings"])
 app.include_router(video_feed_router, tags=["video-stream"])
+app.include_router(detection_router, tags=["detection"])
+app.include_router(app_sync_router, tags=["sync"])
 app.include_router(main_router, tags=["serve"])

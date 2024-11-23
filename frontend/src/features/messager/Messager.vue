@@ -18,6 +18,8 @@ const store = useMessagerStore();
   max-height: 20px;
 
   @media (min-width: 1200px) and (orientation: landscape) {
+    height: 200px;
+    max-height: 200px;
     left: 0;
     z-index: 1000;
     font-size: 0.8rem;

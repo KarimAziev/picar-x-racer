@@ -28,9 +28,8 @@ This server runs in a separate process from the main server to ensure that contr
 Logger.setup_from_env()
 
 logger = Logger(name=__name__, app_name="px-control")
-
-car_manager = CarService()
-connection_manager = ConnectionService(notifier=car_manager, app_name="px-control")
+connection_manager = ConnectionService(app_name="px-control")
+car_manager = CarService(connection_manager=connection_manager)
 
 
 @asynccontextmanager
