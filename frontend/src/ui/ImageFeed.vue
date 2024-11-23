@@ -1,6 +1,6 @@
 <template>
   <ScanLines
-    v-if="!connected"
+    v-if="!active"
     class="scan"
     :class="{
       'scan-full': !imgInitted,
@@ -18,7 +18,7 @@
     alt="Video"
   />
   <canvas
-    v-if="objectDetectionIsOn"
+    v-if="objectDetectionIsOn && active"
     ref="overlayCanvas"
     class="overlay-canvas"
   ></canvas>
@@ -27,7 +27,6 @@
 <script setup lang="ts">
 import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
-import { makeWebsocketUrl } from "@/util/url";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
 import { useCameraStore } from "@/features/settings/stores";
 import { useCameraRotate } from "@/composables/useCameraRotate";
@@ -46,13 +45,13 @@ const objectDetectionIsOn = computed(
 
 const {
   initWS,
-  closeWS,
+  cleanup,
   imgRef,
   handleImageOnLoad,
   imgLoading,
-  connected,
+  active,
   imgInitted,
-} = useWebsocketStream(makeWebsocketUrl("ws/video-stream"));
+} = useWebsocketStream({ url: "ws/video-stream" });
 
 const { addListeners, removeListeners } = useCameraRotate(imgRef);
 
@@ -74,7 +73,7 @@ watch(
         camStore.data.video_feed_enhance_mode === "robocop_vision"
           ? drawAimOverlay
           : drawOverlay;
-      if (timeDiff >= 0 && timeDiff <= 1) {
+      if (timeDiff >= 0 && timeDiff <= 0.2) {
         handler(overlayCanvas.value, imgRef.value, newResults);
       } else {
         handler(overlayCanvas.value, imgRef.value, []);
@@ -96,13 +95,19 @@ watch(
 watch(
   () => camStore.data.video_feed_object_detection,
   (mode) => {
-    if (mode && !detectionStore.connected && !detectionStore.loading) {
+    if (mode && !detectionStore.connecting && !detectionStore.connected) {
       detectionStore.initializeWebSocket();
     } else if (!mode) {
       detectionStore.cleanup();
     }
   },
 );
+
+const handleSocketsCleanup = () => {
+  window.removeEventListener("beforeunload", handleSocketsCleanup);
+  detectionStore.cleanup();
+  cleanup();
+};
 
 onMounted(async () => {
   await camStore.fetchAllCameraSettings();
@@ -111,15 +116,13 @@ onMounted(async () => {
     detectionStore.initializeWebSocket();
   }
   addListeners();
-  window.addEventListener("beforeunload", closeWS);
+  window.addEventListener("beforeunload", handleSocketsCleanup);
 });
 
 onBeforeUnmount(() => {
   listenersAdded.value = false;
   removeListeners();
-  window.removeEventListener("beforeunload", closeWS);
-  detectionStore.cleanup();
-  closeWS();
+  handleSocketsCleanup();
 });
 </script>
 

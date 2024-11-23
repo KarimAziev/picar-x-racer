@@ -43,6 +43,9 @@ export const useController = (
   const findKey = (keys?: string[]) =>
     keys && keys.find((k) => activeKeys.value.has(k));
 
+  const findInactiveKey = (keys?: string[]) =>
+    keys && keys.find((k) => inactiveKeys.value.has(k));
+
   const handleKeyUp = (event: KeyboardEvent) => {
     const key = formatKeyEventItem(event);
     activeKeys.value.delete(key);
@@ -83,13 +86,30 @@ export const useController = (
     const leftKey = findKey(settingsKeybindings.value.left);
     const rightKey = findKey(settingsKeybindings.value?.right);
     const stopKey = findKey(settingsKeybindings.value?.stop);
+    const accelerateKey = findKey(settingsKeybindings.value?.accelerate);
+    const decelerateKey = findKey(settingsKeybindings.value?.decelerate);
 
-    if (findKey(settingsKeybindings.value?.accelerate)) {
+    if (accelerateKey) {
       controllerStore.accelerate();
-    } else if (findKey(settingsKeybindings.value?.decelerate)) {
+      inactiveKeys.value.add(accelerateKey);
+    } else if (decelerateKey) {
       controllerStore.decelerate();
-    } else if (!controllerStore.avoidObstacles) {
-      controllerStore.slowdown();
+      inactiveKeys.value.add(decelerateKey);
+    } else if (
+      stopKey ||
+      findInactiveKey(settingsKeybindings.value?.accelerate) ||
+      findInactiveKey(settingsKeybindings.value?.decelerate)
+    ) {
+      if (!controllerStore.avoidObstacles) {
+        controllerStore.stop();
+      }
+      const keys = [
+        ...(settingsKeybindings.value?.decelerate || []),
+        ...(settingsKeybindings.value?.accelerate || []),
+      ];
+      keys.forEach((key) => {
+        inactiveKeys.value.delete(key);
+      });
     }
 
     if (leftKey) {
@@ -98,31 +118,38 @@ export const useController = (
     } else if (rightKey) {
       inactiveKeys.value.add(rightKey);
       controllerStore.right();
-    } else if (inactiveKeys.value.size > 0) {
-      inactiveKeys.value.clear();
+    } else if (
+      findInactiveKey(settingsKeybindings.value?.left) ||
+      findInactiveKey(settingsKeybindings.value?.right)
+    ) {
       controllerStore.resetDirServoAngle();
-    }
-
-    if (stopKey) {
-      controllerStore.stop();
+      const keys = [
+        ...(settingsKeybindings.value?.left || []),
+        ...(settingsKeybindings.value?.right || []),
+      ];
+      keys.forEach((key) => {
+        inactiveKeys.value.delete(key);
+      });
     }
   };
-
+  const cleanup = () => {
+    window.removeEventListener("beforeunload", cleanup);
+    controllerStore.cleanup();
+  };
   const addKeyEventListeners = () => {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("beforeunload", cleanup);
   };
 
   const removeKeyEventListeners = () => {
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
+    window.removeEventListener("cleanup", cleanup);
   };
 
   const connectWS = () => {
-    controllerStore.reconnectedEnabled = true;
-    if (!controllerStore.connected && !controllerStore.loading) {
-      controllerStore.initializeWebSocket(controllerStore.url);
-    }
+    controllerStore.initializeWebSocket();
   };
 
   return {
@@ -135,6 +162,7 @@ export const useController = (
     addKeyEventListeners,
     removeKeyEventListeners,
     connectWS,
+    cleanup,
   };
 };
 
@@ -149,6 +177,7 @@ export const useCarController = (
     removeKeyEventListeners,
     cleanupGameLoop,
     connectWS,
+    cleanup,
   } = useController(controllerStore, settingsStore, popupStore);
 
   onMounted(() => {
@@ -162,6 +191,6 @@ export const useCarController = (
   onBeforeUnmount(() => {
     cleanupGameLoop();
     removeKeyEventListeners();
-    controllerStore.cleanup();
+    cleanup();
   });
 };

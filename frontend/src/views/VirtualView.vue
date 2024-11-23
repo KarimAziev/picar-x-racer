@@ -35,6 +35,7 @@ const {
   connectWS,
   cleanupGameLoop,
   gameLoop,
+  cleanup,
 } = useController(controllerStore, settingsStore, popupStore);
 
 const router = useRouter();
@@ -69,6 +70,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cleanupGameLoop();
   removeKeyEventListeners();
+  cleanup();
 });
 </script>
 <style scoped lang="scss">

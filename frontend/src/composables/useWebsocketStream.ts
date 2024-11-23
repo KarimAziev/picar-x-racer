@@ -1,8 +1,9 @@
 import { ref } from "vue";
 import { useDetectionStore } from "@/features/controller/detectionStore";
+import { useWebSocket, WebSocketOptions } from "@/composables/useWebsocket";
 
 export interface WebsocketStreamParams {
-  reconnectDelay?: number;
+  retryInterval?: number;
   onOpen?: Function;
   onFirstMessage?: Function;
 }
@@ -19,19 +20,11 @@ const extractFrameWithTimestamp = (data: ArrayBuffer) => {
   return { timestamp, blob };
 };
 
-export const useWebsocketStream = (
-  url: string,
-  params?: WebsocketStreamParams,
-) => {
-  const { reconnectDelay, onOpen, onFirstMessage } = params || {};
+export const useWebsocketStream = (params: WebSocketOptions) => {
   const detectionStore = useDetectionStore();
-  const ws = ref<WebSocket>();
   const imgRef = ref<HTMLImageElement>();
   const imgInitted = ref(false);
   const imgLoading = ref(true);
-  const connected = ref(false);
-  const reconnectedEnabled = ref(true);
-  const retryTimer = ref<NodeJS.Timeout | null>(null);
   const currentImageBlobUrl = ref<string>();
 
   const handleImageOnLoad = () => {
@@ -39,84 +32,182 @@ export const useWebsocketStream = (
     imgInitted.value = true;
   };
 
-  const initWS = () => {
-    ws.value = new WebSocket(url);
-    if (!ws.value) {
-      return;
+  const handleOnMessage = (data: MessageEvent["data"]) => {
+    if (params.onMessage) {
+      params.onMessage(data);
     }
-    if (onOpen) {
-      ws.value.onopen = () => onOpen();
+    const urlCreator = window.URL || window.webkitURL;
+    if (currentImageBlobUrl.value) {
+      urlCreator.revokeObjectURL(currentImageBlobUrl.value);
+      currentImageBlobUrl.value = undefined;
     }
-    ws.value.binaryType = "arraybuffer";
 
-    ws.value.onmessage = (wsMsg: MessageEvent) => {
-      if (!connected.value) {
-        if (onFirstMessage) onFirstMessage();
-        connected.value = true;
+    const { timestamp, blob } = extractFrameWithTimestamp(data);
+
+    const imageUrl = urlCreator.createObjectURL(blob);
+
+    detectionStore.setCurrentFrameTimestamp(timestamp);
+    if (imgRef.value) {
+      imgRef.value.src = imageUrl;
+      currentImageBlobUrl.value = imageUrl;
+      if (imgInitted.value && imgLoading.value) {
+        imgLoading.value = false;
       }
+    }
+  };
 
+  const handleOnClose = () => {
+    if (params.onClose) {
+      params.onClose();
+    }
+    if (currentImageBlobUrl.value) {
       const urlCreator = window.URL || window.webkitURL;
-      if (currentImageBlobUrl.value) {
-        urlCreator.revokeObjectURL(currentImageBlobUrl.value);
-        currentImageBlobUrl.value = undefined;
-      }
+      urlCreator.revokeObjectURL(currentImageBlobUrl.value);
 
-      const { timestamp, blob } = extractFrameWithTimestamp(wsMsg.data);
-      const imageUrl = urlCreator.createObjectURL(blob);
-
-      detectionStore.setCurrentFrameTimestamp(timestamp);
-      if (imgRef.value) {
-        imgRef.value.src = imageUrl;
-        currentImageBlobUrl.value = imageUrl;
-        if (imgInitted.value && imgLoading.value) {
-          imgLoading.value = false;
-        }
-      }
-    };
-
-    ws.value.onclose = (_: CloseEvent) => {
-      if (currentImageBlobUrl.value) {
-        const urlCreator = window.URL || window.webkitURL;
-        if (currentImageBlobUrl.value) {
-          urlCreator.revokeObjectURL(currentImageBlobUrl.value);
-        }
-
-        currentImageBlobUrl.value = undefined;
-      }
-      connected.value = false;
-      imgLoading.value = true;
-      retryConnection();
-    };
+      currentImageBlobUrl.value = undefined;
+    }
+    imgLoading.value = true;
   };
 
-  const retryConnection = () => {
-    if (retryTimer.value) {
-      clearTimeout(retryTimer.value);
-    }
-    if (reconnectedEnabled.value && !connected.value) {
-      retryTimer.value = setTimeout(() => {
-        console.log("Retrying WebSocket connection...");
-        initWS();
-      }, reconnectDelay || 5000);
-    }
-  };
-
-  const closeWS = () => {
-    reconnectedEnabled.value = false;
-    if (ws.value) {
-      ws.value.close();
-    }
-  };
+  const {
+    ws,
+    initWS,
+    send,
+    closeWS,
+    cleanup,
+    retry,
+    connected,
+    active,
+    loading,
+    reconnectEnabled,
+  } = useWebSocket({
+    ...params,
+    binaryType: "arraybuffer",
+    onMessage: handleOnMessage,
+    onClose: handleOnClose,
+  });
 
   return {
+    ws,
     initWS,
+    send,
     closeWS,
+    cleanup,
+    retry,
+    connected,
+    active,
+    loading,
+    reconnectEnabled,
     handleImageOnLoad,
     imgRef,
     imgInitted,
     imgLoading,
-    reconnectedEnabled,
-    retryTimer,
-    connected,
   };
 };
+
+/**
+ * export const useWebsocketStream = (
+ *   url: string,
+ *   params?: WebsocketStreamParams,
+ * ) => {
+ *
+ *   const { retryInterval, onOpen, onFirstMessage } = params || {};
+ *
+ *
+ *   const detectionStore = useDetectionStore();
+ *   const ws = ref<WebSocket>();
+ *   const imgRef = ref<HTMLImageElement>();
+ *   const imgInitted = ref(false);
+ *   const imgLoading = ref(true);
+ *   const connected = ref(false);
+ *   const reconnectedEnabled = ref(true);
+ *   const retryTimer = ref<NodeJS.Timeout | null>(null);
+ *   const currentImageBlobUrl = ref<string>();
+ *
+ *   const handleImageOnLoad = () => {
+ *     imgLoading.value = false;
+ *     imgInitted.value = true;
+ *   };
+ *
+ *   const initWS = () => {
+ *     ws.value = new WebSocket(url);
+ *     if (!ws.value) {
+ *       return;
+ *     }
+ *     if (onOpen) {
+ *       ws.value.onopen = () => onOpen();
+ *     }
+ *     ws.value.binaryType = "arraybuffer";
+ *
+ *     ws.value.onmessage = (wsMsg: MessageEvent) => {
+ *       if (!connected.value) {
+ *         if (onFirstMessage) onFirstMessage();
+ *         connected.value = true;
+ *       }
+ *
+ *       const urlCreator = window.URL || window.webkitURL;
+ *       if (currentImageBlobUrl.value) {
+ *         urlCreator.revokeObjectURL(currentImageBlobUrl.value);
+ *         currentImageBlobUrl.value = undefined;
+ *       }
+ *
+ *       const { timestamp, blob } = extractFrameWithTimestamp(wsMsg.data);
+ *       const imageUrl = urlCreator.createObjectURL(blob);
+ *
+ *       detectionStore.setCurrentFrameTimestamp(timestamp);
+ *       if (imgRef.value) {
+ *         imgRef.value.src = imageUrl;
+ *         currentImageBlobUrl.value = imageUrl;
+ *         if (imgInitted.value && imgLoading.value) {
+ *           imgLoading.value = false;
+ *         }
+ *       }
+ *     };
+ *
+ *     ws.value.onclose = (_: CloseEvent) => {
+ *       if (currentImageBlobUrl.value) {
+ *         const urlCreator = window.URL || window.webkitURL;
+ *         if (currentImageBlobUrl.value) {
+ *           urlCreator.revokeObjectURL(currentImageBlobUrl.value);
+ *         }
+ *
+ *         currentImageBlobUrl.value = undefined;
+ *       }
+ *       connected.value = false;
+ *       imgLoading.value = true;
+ *       retryConnection();
+ *     };
+ *   };
+ *
+ *   const retryConnection = () => {
+ *     if (retryTimer.value) {
+ *       clearTimeout(retryTimer.value);
+ *     }
+ *     if (reconnectedEnabled.value && !connected.value) {
+ *       retryTimer.value = setTimeout(() => {
+ *         console.log("Retrying WebSocket connection...");
+ *         initWS();
+ *       }, retryInterval || 5000);
+ *     }
+ *   };
+ *
+ *   const closeWS = () => {
+ *     reconnectedEnabled.value = false;
+ *     if (ws.value) {
+ *       ws.value.close();
+ *     }
+ *   };
+ *
+ *   return {
+ *     initWS,
+ *     closeWS,
+ *     handleImageOnLoad,
+ *     imgRef,
+ *     imgInitted,
+ *     imgLoading,
+ *     reconnectedEnabled,
+ *     retryTimer,
+ *     connected,
+ *   };
+ * };
+ */

@@ -1,3 +1,4 @@
+import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
 import {
   useImageStore,
@@ -16,7 +17,7 @@ import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
 import { constrain } from "@/util/constrain";
 import { takePhoto } from "@/features/controller/api";
-import { makeWebsocketUrl } from "@/util/url";
+import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;
@@ -65,30 +66,7 @@ export interface Gauges {
 }
 
 export interface StoreState extends Gauges, Modes {
-  /**
-   * Whether the WebSocket is loading.
-   */
-  loading: boolean;
-  /**
-   * Whether the WebSocket connection is opened.
-   */
-  connected: boolean;
-  /**
-   * Current WebSocket instance
-   */
-  websocket?: WebSocket;
-  /**
-   * The WebSocket messages queue
-   */
-  messageQueue: string[];
-  /**
-   * The WebSocket URL
-   */
-  url: string;
-  /**
-   * Whether WebSocket is allowed to reconnect.
-   */
-  reconnectedEnabled?: boolean;
+  model: ShallowRef<WebSocketModel> | null;
 }
 
 const defaultGauges: Gauges = {
@@ -108,167 +86,133 @@ const modes: Modes = {
 const defaultState: StoreState = {
   ...defaultGauges,
   ...modes,
-  connected: false,
-  reconnectedEnabled: true,
-  messageQueue: [],
-  loading: false,
-  url: makeWebsocketUrl("px/ws", 8001),
+  model: null,
 } as const;
+
+export interface WSMessageData {
+  type: string;
+  payload: any;
+  error?: string;
+}
 
 export const useControllerStore = defineStore("controller", {
   state: (): StoreState => ({ ...defaultState }),
   actions: {
-    initializeWebSocket(url: string) {
+    initializeWebSocket() {
+      if (this.model?.connected || this.model?.loading) {
+        return;
+      }
       const messager = useMessagerStore();
       const distanceStore = useDistanceStore();
       const calibrationStore = useCalibrationStore();
-      this.url = url;
+      const handleMessage = (data: WSMessageData) => {
+        if (!data) {
+          return;
+        }
+        const { type, payload, error } = data;
 
-      this.websocket = new WebSocket(url);
-      this.loading = true;
-      this.websocket!.onopen = () => {
-        this.loading = false;
-        messager.remove((m) =>
-          ["Retrying connection...", "WebSocket error"].includes(m.text),
-        );
-        console.log(`WebSocket connection established with URL: ${url}`);
-        messager.info("Connection status: Open");
-        this.connected = true;
-        while (this.messageQueue.length > 0) {
-          this.websocket!.send(this.messageQueue.shift()!);
+        switch (type) {
+          case "getDistance":
+            if (error) {
+              messager.error(error, "distance error");
+            } else {
+              distanceStore.distance = payload;
+            }
+
+            break;
+          case "stop":
+            this.direction = 0;
+            this.speed = 0;
+            break;
+
+          case "setServoDirAngle":
+            this.servoAngle = payload;
+            break;
+
+          case "setCamPanAngle":
+            this.camPan = payload;
+            break;
+
+          case "setCamTiltAngle":
+            this.camTilt = payload;
+            break;
+
+          case "avoidObstacles":
+            this.avoidObstacles = payload;
+            messager.info(`Avoid Obstacles: ${payload}`, {
+              immediately: true,
+            });
+            break;
+
+          case "updateCalibration":
+            calibrationStore.data = payload;
+            break;
+
+          case "saveCalibration":
+            calibrationStore.data = payload;
+            this.calibrationMode = false;
+            messager.info(`Calibration saved`);
+            break;
+
+          default:
+            if (data.error) {
+              messager.error(data.error);
+            } else if (isPlainObject(payload)) {
+              Object.entries(payload).forEach(([k, value]) => {
+                if (k in defaultGauges && isNumber(value)) {
+                  this[k as keyof Gauges] = value as Gauges[keyof Gauges];
+                } else if (k in modes && (value === false || value === true)) {
+                  const mode = k as keyof typeof modes;
+                  const currMode = this[mode];
+                  if (currMode !== value) {
+                    this[mode] = value as boolean;
+                    messager.info(`${k}: ${value}`, {
+                      immediately: true,
+                    });
+                  }
+                }
+              });
+            } else if (
+              isNumber(payload) &&
+              isString(type) &&
+              type in defaultGauges
+            ) {
+              this[type as keyof Gauges] = payload;
+            }
         }
       };
 
-      this.websocket.onmessage = (msg) => {
-        let data;
-        try {
-          data = JSON.parse(msg.data);
-          if (!isPlainObject(data)) {
-            return;
-          }
-          const { type, payload, error } = data;
-
-          switch (type) {
-            case "getDistance":
-              if (error) {
-                messager.error(error, "distance error");
-              } else {
-                distanceStore.distance = payload;
-              }
-
-              break;
-            case "stop":
-              this.direction = 0;
-              this.speed = 0;
-              break;
-
-            case "setServoDirAngle":
-              this.servoAngle = payload;
-              break;
-
-            case "setCamPanAngle":
-              this.camPan = payload;
-              break;
-
-            case "setCamTiltAngle":
-              this.camTilt = payload;
-              break;
-
-            case "avoidObstacles":
-              this.avoidObstacles = payload;
-              messager.info(`Avoid Obstacles: ${payload}`, {
-                immediately: true,
-              });
-              break;
-
-            case "updateCalibration":
-              calibrationStore.data = payload;
-              break;
-
-            case "saveCalibration":
-              calibrationStore.data = payload;
-              this.calibrationMode = false;
-              messager.info(`Calibration saved`);
-              break;
-
-            default:
-              if (data.error) {
-                messager.error(data.error);
-              } else if (isPlainObject(payload)) {
-                Object.entries(payload).forEach(([k, value]) => {
-                  if (k in defaultGauges && isNumber(value)) {
-                    this[k as keyof Gauges] = value as Gauges[keyof Gauges];
-                  } else if (
-                    k in modes &&
-                    (value === false || value === true)
-                  ) {
-                    this[k as keyof typeof modes] = value as boolean;
-                  }
-                });
-              } else if (
-                isNumber(payload) &&
-                isString(type) &&
-                type in defaultGauges
-              ) {
-                this[type as keyof Gauges] = payload;
-              }
-          }
-        } catch (error) {}
-      };
-
-      this.websocket.onerror = (error) => {
-        console.error(`WebSocket error: ${error.type}`);
-        messager.error("WebSocket error");
-        this.loading = false;
-        this.connected = false;
-      };
-
-      this.websocket.onclose = () => {
-        console.log("WebSocket connection closed");
-
-        this.connected = false;
-        this.loading = false;
-        this.retryConnection();
-      };
+      this.model = useWebSocket({
+        url: "px/ws",
+        port: 8001,
+        onMessage: handleMessage,
+        logPrefix: "px",
+      });
+      this.model.initWS();
     },
 
-    retryConnection() {
-      const messager = useMessagerStore();
-      if (this.reconnectedEnabled && !this.connected) {
-        setTimeout(() => {
-          console.log("Retrying WebSocket connection...");
-          messager.info("Retrying connection...");
-          if (this.url) {
-            this.initializeWebSocket(this.url);
-          }
-        }, 5000);
+    cleanup() {
+      if (this.speed !== 0) {
+        this.stop();
       }
+
+      if (this.servoAngle !== 0) {
+        this.resetDirServoAngle();
+      }
+
+      if (this.camPan !== 0) {
+        this.resetCamPan();
+      }
+      if (this.camTilt !== 0) {
+        this.resetCamTilt();
+      }
+
+      this.model?.cleanup();
+      this.model = null;
     },
 
     sendMessage(message: any): void {
-      const msgString = JSON.stringify(message);
-      if (this.connected) {
-        this.websocket!.send(msgString);
-      } else {
-        this.messageQueue.push(msgString);
-      }
-    },
-
-    close() {
-      const messager = useMessagerStore();
-      messager.info("Closing connection...");
-      this.websocket?.close();
-    },
-    cleanup() {
-      this.reconnectedEnabled = false;
-
-      this.stop();
-      this.resetDirServoAngle();
-      this.resetCameraRotate();
-      this.close();
-
-      this.loading = false;
-      this.messageQueue = [];
+      this.model?.send(message);
     },
     // command workers
     setMaxSpeed(value: number) {
