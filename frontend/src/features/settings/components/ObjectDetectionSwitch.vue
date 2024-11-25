@@ -8,20 +8,20 @@
             inputId="toggle_detection"
             v-tooltip="'Toggle Object Detection'"
             :loading="detectionStore.loading"
-            @update:model-value="updateCameraParams"
+            @update:model-value="updateData"
             v-model="detectionStore.data.active"
           />
         </div>
         <TreeSelect
           inputId="model"
-          v-model="selectedValue"
+          v-model="selectedModel"
           :options="nodes"
           placeholder="Model"
           filter
           :loading="detectionStore.loading"
           @before-show="handleSelectBeforeShow"
           @before-hide="handleSelectBeforeHide"
-          @update:model-value="updateCameraParams"
+          @update:model-value="updateData"
         >
           <template #dropdownicon>
             <i class="pi pi-search" />
@@ -47,21 +47,21 @@
     Models paramaters
     <div class="flex">
       <NumberField
-        @keydown.stop="doThis"
-        @keyup.stop="doThis"
-        @keypress.stop="doThis"
+        @keydown.stop="doNothing"
+        @keyup.stop="doNothing"
+        @keypress.stop="doNothing"
         showButtons
         label="Img size"
         field="img_size"
         :loading="detectionStore.loading"
         v-model="detectionStore.data.img_size"
         :step="10"
-        @update:model-value="updateCameraParams"
+        @update:model-value="updateData"
       />
       <NumberField
-        @keydown.stop="doThis"
-        @keyup.stop="doThis"
-        @keypress.stop="doThis"
+        @keydown.stop="doNothing"
+        @keyup.stop="doNothing"
+        @keypress.stop="doNothing"
         field="confidence"
         label="Confidence"
         v-model="detectionStore.data.confidence"
@@ -69,14 +69,14 @@
         :min="0.1"
         :max="1.0"
         :step="0.1"
-        @update:model-value="updateCameraParams"
+        @update:model-value="updateData"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
+import { watch, onMounted, ref, computed } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
 import {
   useSettingsStore,
@@ -90,7 +90,7 @@ import { isNumber } from "@/util/guards";
 
 defineProps<{ class?: string; label?: string }>();
 
-const doThis = () => {};
+const doNothing = () => {};
 const detectionStore = useDetectionStore();
 
 const store = useSettingsStore();
@@ -106,12 +106,24 @@ const nodes = computed(() => [
   { key: NONE_KEY, label: "None", selectable: true },
   ...detectionStore.detectors,
 ]);
-const selectedValue = ref(
+const selectedModel = ref(
   detectionStore.data.model ? { [detectionStore.data.model]: true } : {},
 );
 
-const updateCameraParams = useAsyncDebounce(async () => {
-  const nextModel = Object.keys(selectedValue.value)[0] || null;
+watch(
+  () => detectionStore.data,
+  (newVal) => {
+    Object.keys(selectedModel.value).forEach((k) => {
+      selectedModel.value[k] = newVal.model === k;
+    });
+    if (newVal.model) {
+      selectedModel.value[newVal.model] = true;
+    }
+  },
+);
+
+const updateData = useAsyncDebounce(async () => {
+  const nextModel = Object.keys(selectedModel.value)[0] || null;
   await detectionStore.updateData({
     img_size: detectionStore.data.img_size,
     model: nextModel,
