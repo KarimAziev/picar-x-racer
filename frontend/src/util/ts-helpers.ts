@@ -5,3 +5,31 @@ export type MethodsWithoutParams<T> = {
       : never
     : never]: T[K] extends (...args: infer _P) => any ? T[K] : never;
 };
+
+/**
+ * Cast type A to type B if A is assignable to B, otherwise, default to B.
+ * @param A - The type to cast.
+ * @param B - The target type to cast to.
+ * @returns Either A if it is assignable to B, or B.
+ */
+export type Cast<A, B> = A extends B ? A : B;
+
+/**
+ * A union of types that are considered "narrowable" which means their type is not widened in certain contexts.
+ */
+export type Narrowable = string | number | bigint | boolean;
+
+/**
+ * Recursively narrow the types in object `A`, preventing them from being widened.
+ * If the value is of a `Narrowable` type, it remains as is, otherwise it is replaced with `never`.
+ * For objects, each property is recursively narrowed.
+ * @param A - The type to recursively narrow.
+ * @returns The recursively narrowed type.
+ */
+export type Narrow<A> = Cast<
+  A,
+  [] | (A extends Narrowable ? A : never) | { [K in keyof A]: Narrow<A[K]> }
+>;
+
+// return first element from Array
+export type First<T> = T extends any[] ? T[0] : never;

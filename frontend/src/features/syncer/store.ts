@@ -14,6 +14,7 @@ import {
 import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { useMessagerStore } from "@/features/messager/store";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
+import { formatObjectDiff } from "@/util/obj";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
@@ -51,6 +52,7 @@ export const useAppSyncStore = defineStore("syncer", {
           return;
         }
         const { type, payload } = data;
+        let diffMsg: string | undefined;
 
         switch (type) {
           case "music":
@@ -69,6 +71,7 @@ export const useAppSyncStore = defineStore("syncer", {
             distanceStore.distance = payload;
             break;
           case "camera":
+            diffMsg = formatObjectDiff({ ...cameraStore.data }, payload);
             cameraStore.data = payload;
             break;
           case "stream":
@@ -76,7 +79,9 @@ export const useAppSyncStore = defineStore("syncer", {
             break;
 
           case "detection":
+            diffMsg = formatObjectDiff({ ...detectionStore.data }, payload);
             detectionStore.data = payload;
+
             break;
 
           case "settings":
@@ -94,6 +99,13 @@ export const useAppSyncStore = defineStore("syncer", {
               immediately: true,
             });
             break;
+        }
+
+        if (diffMsg) {
+          messager.info(diffMsg, {
+            immediately: true,
+            title: `Updated ${type}: `,
+          });
         }
       };
 

@@ -20,6 +20,7 @@
         v-if="isCurrentTabSaveable"
         type="button"
         label="Save"
+        :disabled="isSaveDisabled"
         :loading="isSaving"
         @click="saveSettings"
       ></Button>
@@ -39,6 +40,7 @@ import { saveableTabs } from "@/features/settings/config";
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 const isSaving = computed(() => settingsStore.saving);
+const isSaveDisabled = computed(() => settingsStore.isSaveButtonDisabled());
 
 const isClosable = computed(() => !popupStore.isKeyRecording);
 

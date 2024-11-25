@@ -35,4 +35,8 @@ export const isEmptyString = (value: any) => isString(value) && !value.length;
 export const isEmptyArray = (value: any) => isArray(value) && !value.length;
 
 export const isEmpty = (value: any) =>
-  (isArray(value) || isString(value)) && !value.length;
+  isArray(value) || isString(value)
+    ? value.length === 0
+    : isPlainObject(value)
+      ? Object.keys(value).length === 0
+      : false;

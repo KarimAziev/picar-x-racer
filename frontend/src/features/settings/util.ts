@@ -1,4 +1,6 @@
 import { ControllerActionName } from "@/features/controller/store";
+import { roundNumber } from "@/util/number";
+import { isNumber } from "@/util/guards";
 import { startCase } from "@/util/str";
 
 export const objectKeysToOptions = (
@@ -22,3 +24,6 @@ export const groupKeys = (
     },
     {} as Record<string, ControllerActionName>,
   );
+
+export const normalizeConfidence = (value?: number) =>
+  isNumber(value) ? roundNumber(value, 1) : value;

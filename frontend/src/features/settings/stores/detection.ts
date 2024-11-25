@@ -3,10 +3,7 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import type { TreeNode } from "primevue/treenode";
 import { useMessagerStore } from "@/features/messager/store";
-import {
-  DetectionSettings,
-  defaultState as settingsDefaultState,
-} from "@/features/settings/stores/settings";
+import { DetectionSettings } from "@/features/settings/stores/settings";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 
 export type LoadingFields = Partial<{
@@ -28,7 +25,13 @@ export interface State extends DetectionResponse {
 }
 const defaultState: State = {
   loading: false,
-  data: { ...settingsDefaultState.settings.detection },
+  data: {
+    active: false,
+    confidence: 0.4,
+    img_size: 640,
+    model: null,
+    labels: null,
+  },
   detectors: [],
   detection_result: [],
   timestamp: null,
@@ -60,31 +63,16 @@ export const useStore = defineStore("detection-settings", {
   actions: {
     async updateData(payload: DetectionSettings) {
       const messager = useMessagerStore();
+      console.log("saving PAYLOAD", payload);
 
       try {
         this.loading = true;
-        const requestData = payload || this.data;
-        this.loadingData = {};
-        Object.keys(requestData).forEach((key) => {
+
+        Object.keys(payload).forEach((key) => {
           this.loadingData[key as keyof DetectionSettings] = true;
         });
 
-        const prevData = { ...this.data };
-
-        const { data } = await axios.post<DetectionSettings>(
-          "/api/detection-settings",
-          payload,
-        );
-        this.data = data;
-        Object.entries(data).forEach(([k, value]) => {
-          const key = k as keyof DetectionSettings;
-          this.loadingData[key] = false;
-          if (prevData[key] !== value) {
-            messager.info(`${key.replace(/^video_feed_/g, "")}: ${value}`, {
-              immediately: true,
-            });
-          }
-        });
+        await axios.post<DetectionSettings>("/api/detection-settings", payload);
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);

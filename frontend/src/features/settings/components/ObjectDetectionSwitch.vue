@@ -3,25 +3,25 @@
     <div class="p-field">
       <div class="flex-column">
         <div class="flex">
-          Detection:
+          <span class="label">Detection:&nbsp;</span>
           <ToggleSwitch
             inputId="toggle_detection"
             v-tooltip="'Toggle Object Detection'"
             :loading="detectionStore.loading"
-            @update:model-value="updateData"
-            v-model="detectionStore.data.active"
+            @update:model-value="updateDebounced"
+            v-model="fields.active"
           />
         </div>
         <TreeSelect
           inputId="model"
-          v-model="selectedModel"
+          v-model="fields.model"
           :options="nodes"
           placeholder="Model"
           filter
           :loading="detectionStore.loading"
           @before-show="handleSelectBeforeShow"
           @before-hide="handleSelectBeforeHide"
-          @update:model-value="updateData"
+          @update:model-value="updateDebounced"
         >
           <template #dropdownicon>
             <i class="pi pi-search" />
@@ -54,9 +54,9 @@
         label="Img size"
         field="img_size"
         :loading="detectionStore.loading"
-        v-model="detectionStore.data.img_size"
+        v-model="fields.img_size"
         :step="10"
-        @update:model-value="updateData"
+        @update:model-value="updateDebounced"
       />
       <NumberField
         @keydown.stop="doNothing"
@@ -64,29 +64,27 @@
         @keypress.stop="doNothing"
         field="confidence"
         label="Confidence"
-        v-model="detectionStore.data.confidence"
+        v-model="fields.confidence"
         :loading="detectionStore.loading"
         :min="0.1"
         :max="1.0"
         :step="0.1"
-        @update:model-value="updateData"
+        @update:model-value="updateDebounced"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { watch, onMounted, ref, computed } from "vue";
+import { computed } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
 import {
   useSettingsStore,
   useDetectionStore,
 } from "@/features/settings/stores";
-import { useAsyncDebounce } from "@/composables/useDebounce";
 import NumberField from "@/ui/NumberField.vue";
 import { NONE_KEY } from "@/features/settings/config";
-import { roundNumber } from "@/util/number";
-import { isNumber } from "@/util/guards";
+import { useDetectionFields } from "@/features/settings/composable/useDetectionFields";
 
 defineProps<{ class?: string; label?: string }>();
 
@@ -94,6 +92,8 @@ const doNothing = () => {};
 const detectionStore = useDetectionStore();
 
 const store = useSettingsStore();
+const { fields, updateDebounced } = useDetectionFields();
+
 const handleSelectBeforeShow = () => {
   store.inhibitKeyHandling = true;
 };
@@ -106,36 +106,6 @@ const nodes = computed(() => [
   { key: NONE_KEY, label: "None", selectable: true },
   ...detectionStore.detectors,
 ]);
-const selectedModel = ref(
-  detectionStore.data.model ? { [detectionStore.data.model]: true } : {},
-);
-
-watch(
-  () => detectionStore.data,
-  (newVal) => {
-    Object.keys(selectedModel.value).forEach((k) => {
-      selectedModel.value[k] = newVal.model === k;
-    });
-    if (newVal.model) {
-      selectedModel.value[newVal.model] = true;
-    }
-  },
-);
-
-const updateData = useAsyncDebounce(async () => {
-  const nextModel = Object.keys(selectedModel.value)[0] || null;
-  await detectionStore.updateData({
-    img_size: detectionStore.data.img_size,
-    model: nextModel,
-    active: detectionStore.data.active,
-    confidence: isNumber(detectionStore.data.confidence)
-      ? roundNumber(detectionStore.data.confidence, 1)
-      : detectionStore.data.confidence,
-  });
-  await detectionStore.fetchModels();
-}, 3000);
-
-onMounted(detectionStore.fetchModels);
 </script>
 <style scoped lang="scss">
 @import "src/ui/field.scss";

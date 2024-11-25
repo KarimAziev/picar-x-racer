@@ -10,13 +10,14 @@ import { toggleableSettings } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
-import { omit } from "@/util/obj";
+import { omit, isObjectEquals } from "@/util/obj";
 import type { ControllerActionName } from "@/features/controller/store";
 import { retrieveError } from "@/util/error";
 import { useStore as useMusicStore } from "@/features/settings/stores/music";
 import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
 import { cycleValue } from "@/util/cycleValue";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
+import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
 
 export type ToggleableSettings = {
   [P in keyof typeof toggleableSettings]: boolean;
@@ -91,12 +92,12 @@ export interface DetectionSettings {
   /**
    * The confidence threshold for detections (e.g., a value between 0 and 1).
    */
-  confidence?: number;
+  confidence: number;
 
   /**
    * Indicates whether detection is active.
    */
-  active?: boolean;
+  active: boolean;
 
   /**
    * The size of the image for detection (default is 640).
@@ -106,7 +107,7 @@ export interface DetectionSettings {
   /**
    * A list of labels (e.g., object categories) to filter detections.
    */
-  labels?: string[];
+  labels: string[] | null;
 }
 
 export interface CameraOpenRequestParams {
@@ -151,8 +152,11 @@ export const defaultState: State = {
     auto_measure_distance_delay_ms: 1000,
     camera: {},
     detection: {
+      active: false,
+      confidence: 0.4,
       img_size: 640,
       model: null,
+      labels: null,
     },
     stream: {
       format: ".jpg",
@@ -275,6 +279,7 @@ export const useStore = defineStore("settings", {
     getCurrentTabSettings() {
       const popupStore = usePopupStore();
       const currentTab = popupStore.tab;
+      const detectionStore = useDetectionStore();
       switch (currentTab) {
         case SettingsTab.GENERAL:
           return this.generalSettings;
@@ -283,9 +288,20 @@ export const useStore = defineStore("settings", {
         case SettingsTab.TTS:
           return this.tts;
         case SettingsTab.MODELS:
-          return this.detection;
+          return detectionStore.data;
         default:
           return null;
+      }
+    },
+    isSaveButtonDisabled() {
+      const popupStore = usePopupStore();
+      const currentTab = popupStore.tab;
+      const detectionStore = useDetectionStore();
+      switch (currentTab) {
+        case SettingsTab.MODELS:
+          return isObjectEquals(detectionStore.data, this.settings.detection);
+        default:
+          return false;
       }
     },
     async saveSettings() {
@@ -301,7 +317,6 @@ export const useStore = defineStore("settings", {
       this.saving = true;
       try {
         await axios.post("/api/settings", data);
-        messager.success("Settings saved");
       } catch (error) {
         messager.handleError(error, "Error saving settings");
       } finally {

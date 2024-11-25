@@ -1,7 +1,7 @@
 <template>
   <TreeTable
     :rowHover="true"
-    v-model:selectionKeys="selectedValue"
+    v-model:selectionKeys="fields.model"
     :value="items"
     :loading="loading"
     dataKey="key"
@@ -9,6 +9,7 @@
     selectionMode="single"
     filterMode="lenient"
     :filters="filters"
+    @update:selectionKeys="updateDebounced"
     scrollHeight="400px"
     :virtualScrollerOptions="{
       itemSize: 30,
@@ -41,8 +42,9 @@
         <Field label="Detection" class="align-center">
           <ToggleSwitch
             inputId="active"
+            @update:model-value="updateDebounced"
             v-tooltip="'Toggle object detection'"
-            v-model="detectionStore.data.active"
+            v-model="fields.active"
           />
         </Field>
 
@@ -53,8 +55,9 @@
           showButtons
           label="Img size"
           inputId="img_size"
-          :loading="detectionStore.loadingData.img_size"
-          v-model="detectionStore.data.img_size"
+          :loading="loading"
+          v-model="fields.img_size"
+          @update:model-value="updateDebounced"
           :step="10"
         />
         <NumberField
@@ -63,8 +66,9 @@
           @keypress.stop="doNothing"
           field="confidence"
           label="Confidence"
-          v-model="detectionStore.data.confidence"
-          :loading="detectionStore.loadingData.confidence"
+          @update:model-value="updateDebounced"
+          v-model="fields.confidence"
+          :loading="loading"
           :min="0.1"
           :max="1.0"
           :step="0.1"
@@ -110,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import ButtonGroup from "primevue/buttongroup";
 import TreeTable, { TreeTableFilterMeta } from "primevue/treetable";
 import InputIcon from "primevue/inputicon";
@@ -123,19 +127,17 @@ import {
   useSettingsStore,
   useDetectionStore,
 } from "@/features/settings/stores";
-import { useAsyncDebounce } from "@/composables/useDebounce";
-import { roundNumber } from "@/util/number";
-import { isNumber } from "@/util/guards";
+
 import Field from "@/ui/Field.vue";
+import { useDetectionFields } from "@/features/settings/composable/useDetectionFields";
 
 const store = useSettingsStore();
 const detectionStore = useDetectionStore();
-const loading = computed(() => detectionStore.loading);
-const selectedValue = ref(
-  store.settings.detection.model
-    ? { [store.settings.detection.model]: true }
-    : {},
-);
+const { fields, updateDebounced } = useDetectionFields({
+  store: detectionStore,
+});
+
+const loading = computed(() => detectionStore.loading || store.loading);
 
 const items = computed(() => detectionStore.detectors);
 const filters = ref<TreeTableFilterMeta>({});
@@ -155,33 +157,9 @@ const handleDownloadFile = (value: string) => {
   downloadFile("data", value);
 };
 
-const updateCameraParams = useAsyncDebounce(async () => {
-  store.settings.detection.img_size = detectionStore.data.img_size;
-  store.settings.detection.model = detectionStore.data.model;
-  store.settings.detection.confidence = isNumber(detectionStore.data.confidence)
-    ? roundNumber(detectionStore.data.confidence, 1)
-    : detectionStore.data.confidence;
-  store.settings.detection.active = detectionStore.data.active;
-
-  await detectionStore.updateData({
-    img_size: store.settings.detection.img_size,
-    model: store.settings.detection.model,
-    active: store.settings.detection.active,
-    confidence: store.settings.detection.confidence,
-  });
-}, 2000);
-
-watch(
-  () => selectedValue.value,
-  async (newVal) => {
-    const nextValue = Object.keys(newVal)[0] || null;
-    detectionStore.data.model = nextValue;
-    await updateCameraParams();
-    await detectionStore.fetchModels();
-  },
-);
-
-onMounted(detectionStore.fetchModels);
+onMounted(() => {
+  store.settings.detection = detectionStore.data;
+});
 </script>
 
 <style scoped lang="scss">
