@@ -108,7 +108,7 @@ const store = useSettingsStore();
 const items = computed(() => store.settings.texts);
 
 function saveSettings() {
-  store.saveSettings;
+  store.saveSettings();
 }
 
 const sayText = async (textItem: TextItem) => {
