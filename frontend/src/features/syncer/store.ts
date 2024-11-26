@@ -15,6 +15,7 @@ import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { useMessagerStore } from "@/features/messager/store";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import { formatObjectDiff } from "@/util/obj";
+import { startCase } from "@/util/str";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
@@ -52,40 +53,63 @@ export const useAppSyncStore = defineStore("syncer", {
           return;
         }
         const { type, payload } = data;
+        let msgPrefix: null | string = `Updated ${type}:`;
         let diffMsg: string | undefined;
 
         switch (type) {
           case "music":
             musicStore.data = payload;
             break;
-          case "image":
-            imageStore.data = payload;
+          case "volume": {
+            diffMsg = `${payload}`;
+            musicStore.volume = payload;
             break;
-          case "sound":
-            soundStore.data = payload;
+          }
+          case "uploaded":
+          case "removed": {
+            const mediaType: string = payload.type;
+            msgPrefix = `${startCase(type)} ${mediaType} file `;
+            diffMsg = `${payload.file}`;
+            const mediaTypeRefreshers: { [key: string]: Function } = {
+              music: musicStore.fetchData,
+              data: detectionStore.fetchModels,
+              image: imageStore.fetchData,
+              sound: soundStore.fetchData,
+            };
+            if (mediaType && mediaTypeRefreshers[mediaType]) {
+              mediaTypeRefreshers[mediaType]();
+            }
             break;
-          case "battery":
+          }
+          case "battery": {
+            diffMsg = `${payload}`;
             batteryStore.voltage = payload;
             break;
-          case "distance":
-            distanceStore.distance = payload;
-            break;
-          case "camera":
+          }
+
+          case "camera": {
             diffMsg = formatObjectDiff({ ...cameraStore.data }, payload);
             cameraStore.data = payload;
             break;
-          case "stream":
-            streamStore.data = payload;
-            break;
+          }
 
-          case "detection":
+          case "detection": {
             diffMsg = formatObjectDiff({ ...detectionStore.data }, payload);
             detectionStore.data = payload;
 
             break;
+          }
 
-          case "settings":
-            settingsStore.settings = payload;
+          case "settings": {
+            const currentData = { ...settingsStore.settings };
+            const nextData = { ...currentData, ...payload };
+            diffMsg = formatObjectDiff(currentData, nextData);
+            settingsStore.settings = nextData;
+            break;
+          }
+
+          case "distance":
+            distanceStore.distance = payload;
             break;
 
           case "info":
@@ -99,12 +123,23 @@ export const useAppSyncStore = defineStore("syncer", {
               immediately: true,
             });
             break;
+
+          case "image":
+            imageStore.data = payload;
+            break;
+          case "sound":
+            soundStore.data = payload;
+            break;
+
+          case "stream":
+            streamStore.data = payload;
+            break;
         }
 
         if (diffMsg) {
           messager.info(diffMsg, {
             immediately: true,
-            title: `Updated ${type}: `,
+            title: msgPrefix ? msgPrefix : undefined,
           });
         }
       };

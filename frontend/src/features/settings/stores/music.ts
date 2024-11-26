@@ -101,7 +101,6 @@ export const useStore = defineStore("music", {
       try {
         const response = await axios.post("/api/volume", { volume });
         this.volume = response.data.volume;
-        messager.info(`Volume: ${this.volume}`);
       } catch (error) {
         messager.handleError(error);
       }

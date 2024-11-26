@@ -1,3 +1,4 @@
+import asyncio
 from os import path
 from typing import TYPE_CHECKING
 
@@ -15,10 +16,11 @@ from app.schemas.audio import (
     VolumeResponse,
 )
 from app.util.logger import Logger
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
+    from app.services.connection_service import ConnectionService
     from app.services.files_service import FilesService
 
 router = APIRouter()
@@ -146,6 +148,7 @@ async def play_music(
 
 @router.post("/api/play-tts", response_model=PlayTTSResponse)
 async def text_to_speech(
+    request: Request,
     payload: PlayTTSItem,
     audio_manager: "AudioService" = Depends(get_audio_manager),
 ):
@@ -165,14 +168,20 @@ async def text_to_speech(
     if not audio_manager.google_speech_available:
         raise HTTPException(status_code=404, detail="Google speech is not available")
 
+    connection_manager: "ConnectionService" = request.app.state.app_manager
     text = payload.text
     lang = payload.lang or "en"
     status = audio_manager.text_to_speech(text, lang) or False
-    return {"text": text, "lang": lang, "status": status}
+    data = {"text": text, "lang": lang, "status": status}
+    await connection_manager.broadcast_json(
+        {"type": "info", "payload": "Speaking " + text}
+    )
+    return data
 
 
 @router.post("/api/volume", response_model=VolumeResponse)
 async def set_volume(
+    request: Request,
     payload: VolumeRequest,
     audio_manager: "AudioService" = Depends(get_audio_manager),
 ):
@@ -191,12 +200,19 @@ async def set_volume(
         HTTPException (404): If there is an error while setting the volume.
     """
 
+    connection_manager: "ConnectionService" = request.app.state.app_manager
+
     volume = payload.volume
     int_volume = int(volume)
 
     try:
-        audio_manager.set_volume(int_volume)
-        return {"volume": audio_manager.get_volume()}
+        await asyncio.to_thread(audio_manager.set_volume, int_volume)
+        new_volume = await asyncio.to_thread(audio_manager.get_volume)
+        result = {"volume": new_volume}
+        await connection_manager.broadcast_json(
+            {"type": "volume", "payload": new_volume}
+        )
+        return result
     except Exception as err:
         raise HTTPException(status_code=404, detail=str(err))
 

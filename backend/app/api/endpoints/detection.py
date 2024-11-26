@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 from app.api.deps import get_detection_manager
 from app.config.yolo_common_models import get_available_models
 from app.schemas.detection import DetectionSettings
-from app.services.connection_service import ConnectionService
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
+    from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
 
 logger = Logger(__name__)

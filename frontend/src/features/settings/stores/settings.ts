@@ -306,7 +306,9 @@ export const useStore = defineStore("settings", {
     },
     async saveSettings() {
       const data = this.getCurrentTabSettings();
+      const messager = useMessagerStore();
       if (!data) {
+        messager.error("Nothing to save");
         return;
       }
       await this.saveData(data);

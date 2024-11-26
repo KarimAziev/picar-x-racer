@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+import asyncio
 
 from app.api.deps import get_file_manager
 from app.config.paths import DATA_DIR
@@ -11,10 +12,11 @@ from app.schemas.file_management import (
 )
 from app.util.file_util import resolve_absolute_path
 from app.util.logger import Logger
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from starlette.responses import FileResponse
 
 if TYPE_CHECKING:
+    from app.services.connection_service import ConnectionService
     from app.services.files_service import FilesService
 
 router = APIRouter()
@@ -58,7 +60,8 @@ def list_files(
 
 
 @router.post("/api/upload/{media_type}", response_model=UploadFileResponse)
-def upload_file(
+async def upload_file(
+    request: Request,
     media_type: str,
     file: UploadFile = File(...),
     file_manager: "FilesService" = Depends(get_file_manager),
@@ -77,6 +80,7 @@ def upload_file(
     Raises:
         `HTTPException`: If no file is selected or the media type is invalid.
     """
+    connection_manager: "ConnectionService" = request.app.state.app_manager
     if file.filename == "":
         raise HTTPException(status_code=400, detail="No selected file")
 
@@ -91,13 +95,19 @@ def upload_file(
     if not handler:
         raise HTTPException(status_code=400, detail="Invalid media type")
 
-    return {"success": handler(file), "filename": file.filename}
+    result = await asyncio.to_thread(handler, file)
+    if result:
+        await connection_manager.broadcast_json(
+            {"type": "uploaded", "payload": {"file": file.filename, "type": media_type}}
+        )
+    return {"success": result, "filename": file.filename}
 
 
 @router.delete(
     "/api/remove_file/{media_type}/{filename}", response_model=RemoveFileResponse
 )
-def remove_file(
+async def remove_file(
+    request: Request,
     media_type: str,
     filename: str,
     file_manager: "FilesService" = Depends(get_file_manager),
@@ -125,12 +135,18 @@ def remove_file(
     }
 
     handler = handlers.get(media_type)
+    connection_manager: "ConnectionService" = request.app.state.app_manager
 
     if not handler:
         raise HTTPException(status_code=400, detail="Invalid media type")
 
     try:
-        return {"success": handler(filename), "filename": filename}
+        result = await asyncio.to_thread(handler, filename)
+        if result:
+            await connection_manager.broadcast_json(
+                {"type": "removed", "payload": {"file": filename, "type": media_type}}
+            )
+        return {"success": result, "filename": filename}
     except DefaultFileRemoveAttempt as e:
         logger.warning(str(e))
         raise HTTPException(status_code=400, detail=str(e))

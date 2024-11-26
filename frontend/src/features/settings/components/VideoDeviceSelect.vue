@@ -74,6 +74,14 @@ onMounted(async () => {
 });
 
 watch(
+  () => camStore.data,
+  () => {
+    isReady.value = false;
+    selectedDevice.value = getInitialValue();
+  },
+);
+
+watch(
   () => selectedDevice.value,
   async (newValObj) => {
     const newVal = Object.keys(newValObj)[0];
