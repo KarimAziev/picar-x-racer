@@ -41,9 +41,7 @@ export const useMessagerStore = defineStore("messager", {
     add(params: MessageItem) {
       this.messages.push(params);
       setTimeout(() => {
-        /**
-         * this.messages = this.messages.filter((m) => m.id !== params.id);
-         */
+        this.messages = this.messages.filter((m) => m.id !== params.id);
       }, params.delay);
     },
 
