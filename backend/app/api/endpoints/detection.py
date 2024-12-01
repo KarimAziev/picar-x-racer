@@ -3,9 +3,17 @@ from typing import TYPE_CHECKING
 
 from app.api.deps import get_detection_manager
 from app.config.yolo_common_models import get_available_models
+from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
 from app.schemas.detection import DetectionSettings
 from app.util.logger import Logger
-from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
@@ -25,13 +33,31 @@ async def update_detection_settings(
     detection_service: "DetectionService" = Depends(get_detection_manager),
 ):
     connection_manager: "ConnectionService" = request.app.state.app_manager
-    result = await detection_service.update_detection_settings(payload)
-    logger.info(f"result={result}")
-    await connection_manager.broadcast_json(
-        {"type": "detection", "payload": result.model_dump()}
-    )
-
-    return result
+    try:
+        result = await detection_service.update_detection_settings(payload)
+        logger.info(f"result={result}")
+        await connection_manager.broadcast_json(
+            {"type": "detection", "payload": result.model_dump()}
+        )
+        return result
+    except DetectionModelLoadError as e:
+        detection_service.detection_settings.active = False
+        await connection_manager.broadcast_json(
+            {
+                "type": "detection",
+                "payload": detection_service.detection_settings.model_dump(),
+            }
+        )
+        raise HTTPException(status_code=400, detail=f"Model loading error {e}")
+    except DetectionProcessError as e:
+        detection_service.detection_settings.active = False
+        await connection_manager.broadcast_json(
+            {
+                "type": "detection",
+                "payload": detection_service.detection_settings.model_dump(),
+            }
+        )
+        raise HTTPException(status_code=400, detail=f"Detection error {e}")
 
 
 @detection_router.get("/api/detection-settings", response_model=DetectionSettings)

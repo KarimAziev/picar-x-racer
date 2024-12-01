@@ -31,10 +31,9 @@ def detection_process_func(
     """
     with ModelManager(model) as yolo_model:
         if yolo_model is None:
-            logger.error(
-                "Failed to load the model %s. Exiting detection process.", model
-            )
-            put_to_queue(out_queue, {"success": False})
+            msg = f"Failed to load the model {model}. Exiting detection process."
+            logger.error(msg)
+            put_to_queue(out_queue, {"success": False, "error": msg})
             return
         else:
             put_to_queue(out_queue, {"success": True})
@@ -67,18 +66,23 @@ def detection_process_func(
                 curr_time = time.time()
                 verbose = curr_time - prev_time >= 5
 
-                detection_result = perform_detection(
-                    frame=frame,
-                    yolo_model=yolo_model,
-                    confidence_threshold=confidence_threshold,
-                    verbose=verbose,
-                    original_height=frame_data["original_height"],
-                    original_width=frame_data["original_width"],
-                    resized_height=frame_data["resized_height"],
-                    resized_width=frame_data["resized_width"],
-                    should_resize=frame_data["should_resize"],
-                    labels_to_detect=labels,
-                )
+                try:
+                    detection_result = perform_detection(
+                        frame=frame,
+                        yolo_model=yolo_model,
+                        confidence_threshold=confidence_threshold,
+                        verbose=verbose,
+                        original_height=frame_data["original_height"],
+                        original_width=frame_data["original_width"],
+                        resized_height=frame_data["resized_height"],
+                        resized_width=frame_data["resized_width"],
+                        should_resize=frame_data["should_resize"],
+                        labels_to_detect=labels,
+                    )
+                except Exception as e:
+                    logger.error("Exception in detection process", exc_info=True)
+                    put_to_queue(out_queue, {"error": str(e)})
+                    break
 
                 detection_result_with_timestamp = {
                     "detection_result": detection_result,

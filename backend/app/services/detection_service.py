@@ -5,6 +5,7 @@ import time
 from typing import TYPE_CHECKING, Optional
 
 from app.config.paths import DATA_DIR, YOLO_MODEL_PATH
+from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
 from app.schemas.detection import DetectionSettings
 from app.util.detection_process import detection_process_func
 from app.util.file_util import resolve_absolute_path
@@ -32,6 +33,7 @@ class DetectionService(metaclass=SingletonMeta):
         self.detection_settings = DetectionSettings(
             **self.file_manager.settings.get("detection", {})
         )
+        self.task_event = asyncio.Event()
         self.stop_event = mp.Event()
         self.manager = mp.Manager()
         self.frame_queue = self.manager.Queue(maxsize=1)
@@ -40,6 +42,7 @@ class DetectionService(metaclass=SingletonMeta):
         self.out_queue = self.manager.Queue(maxsize=1)
         self.detection_process = None
         self.detection_result = None
+        self.detection_process_task: Optional[asyncio.Task] = None
         self.active_connections: list[WebSocket] = []
         self.loading = False
 
@@ -55,6 +58,21 @@ class DetectionService(metaclass=SingletonMeta):
             return next_model
         else:
             return model
+
+    async def cancel_detection_process_task(self) -> None:
+        """
+        Cancels the background task for avoiding obstacles, if running.
+        """
+        if self.detection_process_task:
+            try:
+                self.task_event.set()
+                self.detection_process_task.cancel()
+                await self.detection_process_task
+            except asyncio.CancelledError:
+                self.logger.info("Avoid obstacles task was cancelled")
+                self.detection_process_task = None
+            finally:
+                self.task_event.clear()
 
     async def update_detection_settings(self, settings: DetectionSettings):
         detection_action = None
@@ -81,12 +99,16 @@ class DetectionService(metaclass=SingletonMeta):
                     detection_action = True
 
         if detection_action is not None:
+            await self.cancel_detection_process_task()
             await self.stop_detection_process()
 
         self.detection_settings = settings
 
         if detection_action == True:
             await self.start_detection_process()
+            self.detection_process_task = asyncio.create_task(
+                self.start_detection_process_task()
+            )
 
         if detection_action is None and len(runtime_data.items()) > 0:
             async with self.lock:
@@ -103,54 +125,95 @@ class DetectionService(metaclass=SingletonMeta):
 
         return self.detection_settings
 
+    async def start_detection_process_task(self):
+        try:
+            while (
+                hasattr(self, "out_queue")
+                and not self.task_event.is_set()
+                and self.detection_process_task
+                and not self.stop_event.is_set()
+            ):
+
+                try:
+                    msg = await asyncio.to_thread(self.out_queue.get, timeout=1)
+                    self.logger.debug("msg %s", msg)
+                    err = msg.get('error')
+                    if err is not None:
+                        raise DetectionProcessError(err)
+                except queue.Empty:
+                    pass
+                await asyncio.sleep(0.5)
+        except DetectionProcessError as e:
+            self.detection_settings.active = False
+            await self.connection_manager.broadcast_json(
+                {"type": "detection", "payload": self.detection_settings.model_dump()}
+            )
+            await self.connection_manager.error(f"Detection process error: {e}")
+
     async def start_detection_process(self):
-        async with self.lock:
-            if self.detection_settings.model is None:
-                await self.connection_manager.info(f"No model, skipping starting model")
-                return
-            if self.detection_process is None or not self.detection_process.is_alive():
-                self.connection_manager
-                self.loading = True
-                self.detection_process = mp.Process(
-                    target=detection_process_func,
-                    args=(
-                        resolve_absolute_path(self.detection_settings.model, DATA_DIR),
-                        self.stop_event,
-                        self.frame_queue,
-                        self.detection_queue,
-                        self.control_queue,
-                        self.out_queue,
-                    ),
-                )
-                self.detection_process.start()
-                self.logger.info("Detection process has been started")
-            else:
-                self.logger.info(
-                    "Skipping starting of detection process: already alive"
-                )
+        try:
+            async with self.lock:
+                if self.detection_settings.model is None:
+                    await self.connection_manager.info(
+                        f"No model, skipping starting model"
+                    )
+                    return
+                if (
+                    self.detection_process is None
+                    or not self.detection_process.is_alive()
+                ):
+                    self.connection_manager
+                    self.loading = True
+                    self.detection_process = mp.Process(
+                        target=detection_process_func,
+                        args=(
+                            resolve_absolute_path(
+                                self.detection_settings.model, DATA_DIR
+                            ),
+                            self.stop_event,
+                            self.frame_queue,
+                            self.detection_queue,
+                            self.control_queue,
+                            self.out_queue,
+                        ),
+                    )
+                    self.detection_process.start()
+                    self.logger.info("Detection process has been started")
+                else:
+                    self.logger.info(
+                        "Skipping starting of detection process: already alive"
+                    )
 
-            command = {
-                "command": "set_detect_mode",
-                "confidence": self.detection_settings.confidence,
-                "labels": self.detection_settings.labels,
-            }
-
-            try:
+                command = {
+                    "command": "set_detect_mode",
+                    "confidence": self.detection_settings.confidence,
+                    "labels": self.detection_settings.labels,
+                }
                 self.logger.info("Waiting for loading model")
                 await self.connection_manager.info(
                     f"Loading model {self.detection_settings.model}"
                 )
                 msg = await asyncio.to_thread(self.out_queue.get)
                 self.logger.info("Received %s", msg)
+                if msg.get('error') is not None:
+                    raise DetectionModelLoadError(
+                        f"Model {self.detection_settings.model} failed to load"
+                    )
+
                 await asyncio.to_thread(clear_and_put, self.control_queue, command)
                 await self.connection_manager.info(
                     f"Detection process is started with {self.detection_settings.model}"
                 )
                 self.logger.info("Detection process is started")
-            except Exception:
-                self.logger.log_exception("Exception occurred")
-            finally:
-                self.loading = False
+        except DetectionModelLoadError as e:
+            await self.connection_manager.error(str(e))
+            raise DetectionModelLoadError from e
+        except Exception as e:
+            self.logger.exception(f"Unhandled exception in detection process: {e}")
+            await self.connection_manager.error(f"Detection process error: {str(e)}")
+            raise e
+        finally:
+            self.loading = False
 
     async def stop_detection_process(self):
         async with self.lock:
@@ -224,6 +287,7 @@ class DetectionService(metaclass=SingletonMeta):
         }
 
     async def cleanup(self):
+        await self.cancel_detection_process_task()
         await self.stop_detection_process()
         if self.manager is not None:
             logger.info("Shutdown detection manager")
