@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING
 import asyncio
+from typing import TYPE_CHECKING
 
 from app.api.deps import get_file_manager
 from app.config.paths import DATA_DIR
@@ -100,7 +100,7 @@ async def upload_file(
         await connection_manager.broadcast_json(
             {"type": "uploaded", "payload": {"file": file.filename, "type": media_type}}
         )
-    return {"success": result, "filename": file.filename}
+    return {"success": True, "filename": file.filename}
 
 
 @router.delete(
