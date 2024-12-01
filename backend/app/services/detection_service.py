@@ -63,6 +63,7 @@ class DetectionService(metaclass=SingletonMeta):
         """
         Cancels the background task for avoiding obstacles, if running.
         """
+        self.logger.info("Cancelling detection task")
         if self.detection_process_task:
             try:
                 self.task_event.set()
