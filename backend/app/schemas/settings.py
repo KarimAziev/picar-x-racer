@@ -81,6 +81,7 @@ class Settings(BaseModel):
     default_music: Optional[str] = None
     default_sound: Optional[str] = None
     default_tts_language: Optional[str] = None
+    music_order: Optional[List] = None
     texts: Optional[List[TextToSpeechItem]] = None
     fullscreen: Optional[bool] = None
     battery_full_voltage: Optional[float] = None

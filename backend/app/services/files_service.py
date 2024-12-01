@@ -214,16 +214,27 @@ class FilesService(metaclass=SingletonMeta):
         return [file[0] for file in files]
 
     def list_all_music_with_details(self):
-        """List all music files with cached details."""
+        """List all music files with cached details, applying the user-defined order if available."""
         defaults = self.list_default_music(full=True)
         user_music = self.list_user_music(full=True)
+        all_files = defaults + user_music
 
         result = []
-        for file in defaults + user_music:
+        for file in all_files:
             details = self.get_audio_file_details_cached(file)
             if details:
                 details["removable"] = file in user_music
                 result.append(details)
+
+        custom_order = self.get_custom_music_order()
+        if custom_order:
+            result.sort(
+                key=lambda x: (
+                    custom_order.index(x["track"])
+                    if x["track"] in custom_order
+                    else len(custom_order)
+                )
+            )
 
         return result
 
@@ -233,6 +244,21 @@ class FilesService(metaclass=SingletonMeta):
             # Keeps the N most popular/most recent entries
             self.cache = dict(list(self.cache.items())[-max_entries:])
             self.save_cache()
+
+    def update_track_order_in_cache(self, ordered_tracks: List[str]):
+        """
+        Updates the order for tracks in the music cache.
+
+        Args:
+            ordered_tracks (List[str]): List of track filenames in the desired order.
+        """
+        for idx, track_filename in enumerate(ordered_tracks):
+            for _, cache_entry in self.cache.items():
+                if cache_entry["details"]["track"] == track_filename:
+                    self.logger.debug(f"Updating order for track: {track_filename}")
+                    cache_entry["details"]["order"] = idx
+                    break
+        self.save_cache()
 
     def get_audio_file_details_cached(self, file: str):
         """
@@ -264,6 +290,25 @@ class FilesService(metaclass=SingletonMeta):
             }
             self.save_cache()
         return details
+
+    def get_custom_music_order(self) -> List[str]:
+        """
+        Retrieves the custom music track order from the user settings.
+
+        Returns:
+            List[str]: List of filenames in the specified custom order.
+        """
+        settings = self.load_settings()
+        return settings.get("music_order", [])
+
+    def save_custom_music_order(self, order: List[str]):
+        """
+        Saves the custom music track order to the user settings.
+
+        Args:
+            order (List[str]): The custom track order to save.
+        """
+        self.save_settings({"music_order": order})
 
     def get_audio_file_details(self, file):
         """
@@ -466,7 +511,14 @@ class FilesService(metaclass=SingletonMeta):
 
         self.logger.info(f"Removing music file {filename}")
         if path.exists(path.join(self.user_music_dir, filename)):
-            return self.remove_file(filename, self.user_music_dir)
+            self.remove_file(filename, self.user_music_dir)
+
+            custom_order = self.get_custom_music_order()
+            if filename in custom_order:
+                custom_order.remove(filename)
+                self.save_custom_music_order(custom_order)
+
+            return True
         elif path.exists(path.join(self.default_user_music_dir, filename)):
             raise DefaultFileRemoveAttempt(
                 f"{filename} is default music and cannot be removed!"

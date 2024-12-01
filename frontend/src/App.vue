@@ -1,7 +1,7 @@
 <template>
   <RouterView />
   <LazySettings />
-  <Messager />
+  <Messager v-if="!isMobile" />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
     <Recording />
     <ToggleableView

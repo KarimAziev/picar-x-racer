@@ -5,6 +5,12 @@ import {
   isFunction,
   isString,
   isNumber,
+  isSymbol,
+  isBigint,
+  isBoolean,
+  isArray,
+  isNull,
+  isUndefined,
 } from "@/util/guards";
 
 export const omit = <V extends Record<string, any>, K extends keyof V>(
@@ -131,56 +137,96 @@ export const reduceObjWith = <
   );
 };
 
-export const diffObjects = <
-  V extends Record<string, unknown>,
-  B extends Record<string, unknown>,
-  O extends V & B,
-  K extends keyof O,
->(
-  origData: V,
-  newData: B,
-) => {
-  const origKeys = Object.keys(origData);
-  const newDataKeys = Object.keys(newData);
-  const allKeys = [...newDataKeys, ...origKeys];
-  const setKeys = new Set(allKeys);
-  const uniqKeys = [...setKeys];
+export function cloneDeep<T>(value: T): T {
+  if (value === null || value === undefined) {
+    return value;
+  }
 
-  return uniqKeys.reduce(
-    (acc, key) => {
-      const newVal = newData[key];
-      const origVal = origData[key];
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneDeep(item)) as unknown as T;
+  }
 
-      if (Array.isArray(newVal) && Array.isArray(origVal)) {
-        const modifiedItems = newVal.filter((v, i) => {
-          if (isPlainObject(v)) {
-            const origObj = origVal[i];
-            if (!isPlainObject(origObj) || !isEmpty(diffObjects(origObj, v))) {
-              return v;
-            } else {
-              return origVal.includes(v);
-            }
-          }
-        });
-        if (!isEmpty(modifiedItems)) {
-          (acc as any)[key] = modifiedItems;
-        }
-      } else if (isPlainObject(newVal) && isPlainObject(origVal)) {
-        const modified = diffObjects(origVal, newVal);
-
-        if (!isEmpty(modified)) {
-          (acc as any)[key] = modified as Record<string, unknown>;
-        }
-      } else if (origVal !== newVal) {
-        (acc as any)[key] = newVal;
+  if (typeof value === "object") {
+    const clonedObj: Record<string, any> = {};
+    for (const key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        clonedObj[key] = cloneDeep((value as Record<string, any>)[key]);
       }
+    }
+    return clonedObj as T;
+  }
 
-      return acc;
-    },
-    {} as Partial<{
-      [P in K]: O[P] extends Record<string, any> ? Partial<O[P]> : O[P];
-    }>,
-  );
+  return value;
+}
+
+export const diffObjects = <
+  OrigObj extends Record<string, unknown>,
+  UpdatedObj extends Record<string, unknown>,
+>(
+  origObj: OrigObj,
+  updatedObj: UpdatedObj,
+) => {
+  const visited = new WeakSet();
+  const worker = <
+    V extends Record<string, unknown>,
+    B extends Record<string, unknown>,
+    O extends V & B,
+    K extends keyof O,
+  >(
+    origData: V,
+    newData: B,
+  ) => {
+    if (visited.has(origData as object) || visited.has(newData as object)) {
+      return {};
+    }
+    visited.add(origData as object).add(newData as object);
+    const origKeys = Object.keys(origData);
+    const newDataKeys = Object.keys(newData);
+    const allKeys = [...newDataKeys, ...origKeys];
+    const setKeys = new Set(allKeys);
+    const uniqKeys = [...setKeys];
+
+    return uniqKeys.reduce(
+      (acc, key) => {
+        const newVal = newData[key];
+        const origVal = origData[key];
+
+        if (Array.isArray(newVal) && Array.isArray(origVal)) {
+          const modifiedItems = newVal.filter((v, i) => {
+            if (isPlainObject(v)) {
+              const origObj = origVal[i];
+              if (!isPlainObject(origObj) || !isEmpty(worker(origObj, v))) {
+                return v;
+              } else {
+                return origVal.includes(v);
+              }
+            }
+          });
+          if (!isEmpty(modifiedItems)) {
+            (acc as any)[key] = modifiedItems;
+          }
+        } else if (isPlainObject(newVal) && isPlainObject(origVal)) {
+          const modified = worker(origVal, newVal);
+
+          if (!isEmpty(modified)) {
+            (acc as any)[key] = modified as Record<string, unknown>;
+          }
+        } else if (origVal !== newVal) {
+          (acc as any)[key] = newVal;
+        }
+
+        return acc;
+      },
+      {} as Partial<{
+        [P in K]: O[P] extends Record<string, any> ? Partial<O[P]> : O[P];
+      }>,
+    );
+  };
+  const result = worker(origObj, updatedObj);
+  if (isEmpty(result)) {
+    return undefined;
+  }
+  return result;
 };
 
 export const formatObjDeep = <Obj extends any>(
@@ -188,14 +234,8 @@ export const formatObjDeep = <Obj extends any>(
   separator = ", ",
   prefix?: string,
 ): string | undefined => {
-  if (isString(obj)) {
-    return obj;
-  }
-  if (isNumber(obj)) {
-    return prefix ? `${prefix}: ${obj}` : `${obj}`;
-  }
-  if (obj === null) {
-    return prefix ? `${prefix}: ${null}` : `${null}`;
+  if (obj === undefined || isEmpty(obj)) {
+    return;
   }
   if (Array.isArray(obj)) {
     const result = obj
@@ -221,6 +261,7 @@ export const formatObjDeep = <Obj extends any>(
 
     return `${result.join(separator)}`;
   }
+  return prefix ? `${prefix}: ${obj}` : `${obj}`;
 };
 
 export const formatObjectDiff = <
@@ -230,7 +271,10 @@ export const formatObjectDiff = <
   origData: V,
   newData: B,
 ) => {
-  const diffObj = diffObjects(origData, newData);
+  const a = cloneDeep(origData);
+  const b = cloneDeep(newData);
+  const diffObj = diffObjectsDeep(a, b);
+  console.log("origData", a, "newData", b, "diffObj", diffObj);
   if (!isEmpty(diffObj)) {
     return formatObjDeep(diffObj);
   }
@@ -245,4 +289,118 @@ export const isObjectEquals = <
 ) => {
   const diffObj = diffObjects(origData, newData);
   return isEmpty(diffObj);
+};
+
+export const diffObjectsDeep = <
+  OrigObj extends Record<string, any>,
+  NewObj extends Record<string, any>,
+>(
+  orig: OrigObj,
+  updated: NewObj,
+): Partial<NewObj> | NewObj[] | undefined => {
+  const visited = new WeakSet();
+  const primitivesFns = [
+    isString,
+    isNumber,
+    isUndefined,
+    isNull,
+    isBoolean,
+    isBigint,
+    isSymbol,
+    isFunction,
+  ];
+
+  const noDiffs = Symbol("nodiffs");
+  type ResultType = Partial<NewObj> | NewObj[] | typeof noDiffs;
+
+  const worker = <OrigData, NewData = OrigData>(
+    origData: OrigData,
+    newData: NewData,
+  ): ResultType => {
+    console.log("origData", origData, "newData", newData);
+    if (primitivesFns.some((fn) => fn(origData) || fn(newData))) {
+      return origData === (newData as unknown as OrigData)
+        ? noDiffs
+        : (newData as ResultType);
+    }
+
+    const isOrigArray = isArray(origData);
+    const isNewArray = isArray(newData);
+
+    if (isOrigArray || isNewArray) {
+      if (!isOrigArray || !isNewArray) {
+        return newData as ResultType;
+      }
+
+      if (origData.length > newData.length) {
+        return newData;
+      }
+
+      const diffs = (newData as any[]).flatMap((v, i) => {
+        if (
+          !isPlainObject(v) &&
+          !isArray(v) &&
+          origData.some((val) => {
+            visited.delete(val);
+            visited.delete(v);
+            const r = worker(val, v);
+            return r === noDiffs;
+          })
+        ) {
+          return [];
+        }
+        if (i > (origData as any[]).length - 1) {
+          return [v];
+        }
+
+        visited.delete(origData[i]);
+        visited.delete(v);
+        const changes = worker((origData as any[])[i], v);
+
+        return changes === noDiffs ? [] : [changes];
+      });
+
+      return isEmpty(diffs) ? noDiffs : diffs;
+    }
+
+    const isOrigObject = isPlainObject(origData);
+    const isNewObject = isPlainObject(newData);
+
+    if (isOrigObject || isNewObject) {
+      if (!isOrigObject || !isNewObject) {
+        return newData as ResultType;
+      }
+
+      if (visited.has(origData as object) || visited.has(newData as object)) {
+        return noDiffs;
+      }
+      visited.add(origData as object).add(newData as object);
+
+      const origKeys = Object.keys(origData);
+      const newDataKeys = Object.keys(newData).filter(
+        (k) => !origKeys.includes(k),
+      );
+      const allKeys = [...newDataKeys, ...origKeys];
+
+      const diffs = allKeys.reduce(
+        (acc, key) => {
+          const origVal = (origData as Record<string, any>)[key];
+          const newVal = (newData as Record<string, any>)[key];
+
+          const changes = worker(origVal, newVal);
+          if (changes !== noDiffs) {
+            acc[key] = changes;
+          }
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
+
+      return isEmpty(diffs) ? noDiffs : (diffs as ResultType);
+    }
+    return newData as ResultType;
+  };
+
+  const result = worker(orig, updated);
+  return result === noDiffs ? undefined : result;
 };

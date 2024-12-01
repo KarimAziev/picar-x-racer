@@ -1,6 +1,6 @@
 <template>
   <Panel :toggleable="toggleable" :header="header" :collapsed="collapsed">
-    <DataTable :value="files" :loading="loading">
+    <DataTable :value="files" :loading="loading" @rowReorder="onRowReorder">
       <template #header>
         <div class="flex justify-content-between align-items-center">
           <div class="flex gap-4">
@@ -15,7 +15,7 @@
           </div>
         </div>
       </template>
-
+      <Column rowReorder headerStyle="width: 3rem" :reorderableColumn="false" />
       <Column class="track-col" field="track" header="Track"></Column>
       <Column field="duration" header="Duration">
         <template #body="slotProps">
@@ -77,12 +77,18 @@
 </template>
 
 <script setup lang="ts">
-import { useStore, mediaType } from "@/features/settings/stores/music";
+import {
+  useStore,
+  mediaType,
+  FileDetail,
+} from "@/features/settings/stores/music";
 import { computed } from "vue";
-import { default as FileUpload } from "primevue/fileupload";
+import FileUpload from "primevue/fileupload";
+import type { DataTableRowReorderEvent } from "primevue/datatable";
 import Panel from "@/ui/Panel.vue";
 
 import type { FileUploadUploadEvent } from "primevue/fileupload";
+
 import ButtonGroup from "primevue/buttongroup";
 import { secondsToReadableString } from "@/util/time";
 import SelectField from "@/ui/SelectField.vue";
@@ -109,6 +115,12 @@ const playTrack = (track: string) => {
 
 const pauseTrack = () => {
   musicStore.pauseMusic();
+};
+
+const onRowReorder = async (e: DataTableRowReorderEvent) => {
+  const files: FileDetail[] = e.value;
+  const tracks = files.map(({ track }) => track);
+  await musicStore.updateMusicOrder(tracks);
 };
 
 const handleRemove = async (track: string) => {

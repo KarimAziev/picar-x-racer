@@ -11,6 +11,7 @@
     <ToggleableView setting="speedometer_view" v-if="!isMobile">
       <Speedometer />
     </ToggleableView>
+    <Messages v-if="isMobile" class="messages" />
   </div>
 </template>
 <script setup lang="ts">
@@ -18,7 +19,7 @@ import { defineAsyncComponent } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import TextToSpeechInput from "@/features/settings/components/TextToSpeechInput.vue";
-
+import Messages from "@/features/messager/Messages.vue";
 const isMobile = useDeviceWatcher();
 
 defineProps<{ class?: string }>();
@@ -54,5 +55,19 @@ const Speedometer = defineAsyncComponent({
     left: 10px;
     top: 50px;
   }
+}
+.messages {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin-block-start: 0em;
+  margin-block-end: 0em;
+  margin-inline-start: 0px;
+  margin-inline-end: 0px;
+  padding-inline-start: 0px;
+  max-height: 50px;
+  overflow-y: scroll;
+  font-size: 0.8rem;
 }
 </style>

@@ -1,6 +1,6 @@
 import asyncio
 from os import path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from app.api.deps import get_audio_manager, get_file_manager
 from app.schemas.audio import (
@@ -272,3 +272,34 @@ async def get_music_tracks(
         }
     except Exception as err:
         raise HTTPException(status_code=404, detail=str(err))
+
+
+@router.post("/api/music/order")
+async def save_music_order(
+    request: Request,
+    order: List[str],
+    file_manager: "FilesService" = Depends(get_file_manager),
+):
+    """
+    Save the custom order of music tracks.
+
+    Args:
+    - order (List[str]): List of music file names in the desired order.
+
+    Returns:
+        dict: Confirmation message.
+
+    Raises:
+        HTTPException (400): If the order is invalid.
+    """
+    connection_manager: "ConnectionService" = request.app.state.app_manager
+    try:
+        await asyncio.to_thread(file_manager.save_custom_music_order, order)
+        files = await asyncio.to_thread(file_manager.list_all_music_with_details)
+        await connection_manager.broadcast_json({"type": "music", "payload": files})
+        await connection_manager.broadcast_json(
+            {"type": "settings", "payload": {"music_order": order}}
+        )
+        return {"message": "Custom music order saved successfully!"}
+    except Exception as err:
+        raise HTTPException(status_code=400, detail=str(err))

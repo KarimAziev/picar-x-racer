@@ -3,6 +3,7 @@
   "default_sound": "directives.wav",
   "default_tts_language": "en",
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
+  "music_order": [],
   "fullscreen": true,
   "battery_full_voltage": 8.4,
   "car_model_view": true,

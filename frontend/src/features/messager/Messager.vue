@@ -1,23 +1,21 @@
 <template>
-  <MessageList :messages="store.messages" class="message-wrapper" />
+  <Messages class="message-wrapper" />
 </template>
 
 <script setup lang="ts">
-import MessageList from "@/ui/MessageList.vue";
-import { useMessagerStore } from "@/features/messager/store";
-
-const store = useMessagerStore();
+import Messages from "@/features/messager/Messages.vue";
 </script>
 
 <style scoped lang="scss">
 .message-wrapper {
   position: absolute;
-  top: 0%;
+  top: 0;
+  left: 0;
   overflow-y: scroll;
-  height: 20px;
-  max-height: 20px;
+  height: 40px;
+  max-height: 40px;
 
-  @media (min-width: 1200px) and (orientation: landscape) {
+  @media (min-height: 768px) and (min-width: 992px) {
     height: 200px;
     max-height: 200px;
     left: 0;

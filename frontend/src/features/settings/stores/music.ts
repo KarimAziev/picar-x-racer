@@ -269,5 +269,17 @@ export const useStore = defineStore("music", {
         this.trackLoading = false;
       }
     },
+
+    async updateMusicOrder(tracks: string[]) {
+      const messager = useMessagerStore();
+      try {
+        this.loading = true;
+        await axios.post("/api/music/order", tracks);
+      } catch (error) {
+        messager.handleError(error);
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });
