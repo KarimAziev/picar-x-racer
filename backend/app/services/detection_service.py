@@ -131,7 +131,6 @@ class DetectionService(metaclass=SingletonMeta):
             while (
                 hasattr(self, "out_queue")
                 and not self.task_event.is_set()
-                and self.detection_process_task
                 and not self.stop_event.is_set()
             ):
 
