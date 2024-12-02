@@ -4,3 +4,14 @@ export const roundNumber = (value: number, fractionDigits?: number) => {
 };
 
 export const roundToNearestTen = (value: number) => Math.round(value / 10) * 10;
+
+export const generateMultiplesOf32 = (limit: number): number[] => {
+  const multiples: number[] = [];
+  const stride = 32;
+
+  for (let i = stride; i <= limit; i += stride) {
+    multiples.push(i);
+  }
+
+  return multiples;
+};

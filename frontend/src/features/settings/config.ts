@@ -1,3 +1,4 @@
+import { generateMultiplesOf32 } from "@/util/number";
 import { SettingsTab } from "@/features/settings/enums";
 
 export const toggleableSettings = {
@@ -139,3 +140,5 @@ export const saveableTabs = {
   [SettingsTab.PHOTOS]: false,
   [SettingsTab.MODELS]: true,
 };
+
+export const imgSizeOptions = generateMultiplesOf32(2000);

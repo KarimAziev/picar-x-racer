@@ -48,17 +48,16 @@
           />
         </Field>
 
-        <NumberField
-          @keydown.stop="doNothing"
-          @keyup.stop="doNothing"
-          @keypress.stop="doNothing"
-          showButtons
-          label="Img size"
+        <SelectField
           inputId="img_size"
-          :loading="loading"
           v-model="fields.img_size"
+          placeholder="Img size"
+          label="Img size"
+          filter
+          simple-options
+          :loading="loading"
           @update:model-value="updateDebounced"
-          :step="10"
+          :options="imgSizeOptions"
         />
         <NumberField
           @keydown.stop="doNothing"
@@ -130,6 +129,8 @@ import {
 
 import Field from "@/ui/Field.vue";
 import { useDetectionFields } from "@/features/settings/composable/useDetectionFields";
+import { imgSizeOptions } from "@/features/settings/config";
+import SelectField from "@/ui/SelectField.vue";
 
 const store = useSettingsStore();
 const detectionStore = useDetectionStore();

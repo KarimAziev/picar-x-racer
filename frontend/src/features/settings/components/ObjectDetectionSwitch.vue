@@ -46,17 +46,18 @@
     </div>
     Models paramaters
     <div class="flex">
-      <NumberField
-        @keydown.stop="doNothing"
-        @keyup.stop="doNothing"
-        @keypress.stop="doNothing"
-        showButtons
-        label="Img size"
-        field="img_size"
-        :loading="detectionStore.loading"
+      <SelectField
+        inputId="img_size"
         v-model="fields.img_size"
-        :step="10"
+        placeholder="Img size"
+        label="Img size"
+        filter
+        simple-options
+        :loading="detectionStore.loading"
+        @before-show="handleSelectBeforeShow"
+        @before-hide="handleSelectBeforeHide"
         @update:model-value="updateDebounced"
+        :options="imgSizeOptions"
       />
       <NumberField
         @keydown.stop="doNothing"
@@ -83,8 +84,9 @@ import {
   useDetectionStore,
 } from "@/features/settings/stores";
 import NumberField from "@/ui/NumberField.vue";
-import { NONE_KEY } from "@/features/settings/config";
+import { NONE_KEY, imgSizeOptions } from "@/features/settings/config";
 import { useDetectionFields } from "@/features/settings/composable/useDetectionFields";
+import SelectField from "@/ui/SelectField.vue";
 
 defineProps<{ class?: string; label?: string }>();
 
