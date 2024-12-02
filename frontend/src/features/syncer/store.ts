@@ -11,7 +11,6 @@ import {
   useStreamStore,
   useDetectionStore,
 } from "@/features/settings/stores";
-import { MethodsWithoutParams } from "@/util/ts-helpers";
 import { useMessagerStore } from "@/features/messager/store";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import { formatObjectDiff } from "@/util/obj";
@@ -105,7 +104,6 @@ export const useAppSyncStore = defineStore("syncer", {
             const nextData = { ...currentData, ...payload };
 
             diffMsg = formatObjectDiff(currentData, nextData);
-            console.log("diffMsg", diffMsg);
             settingsStore.settings = nextData;
             break;
           }
@@ -164,11 +162,3 @@ export const useAppSyncStore = defineStore("syncer", {
     },
   },
 });
-
-export type ControllerState = Omit<
-  ReturnType<typeof useAppSyncStore>,
-  keyof ReturnType<typeof defineStore>
->;
-
-export type ControllerActions = MethodsWithoutParams<ControllerState>;
-export type ControllerActionName = keyof ControllerActions;

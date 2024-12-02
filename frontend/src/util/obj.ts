@@ -274,7 +274,6 @@ export const formatObjectDiff = <
   const a = cloneDeep(origData);
   const b = cloneDeep(newData);
   const diffObj = diffObjectsDeep(a, b);
-  console.log("origData", a, "newData", b, "diffObj", diffObj);
   if (!isEmpty(diffObj)) {
     return formatObjDeep(diffObj);
   }
@@ -317,7 +316,6 @@ export const diffObjectsDeep = <
     origData: OrigData,
     newData: NewData,
   ): ResultType => {
-    console.log("origData", origData, "newData", newData);
     if (primitivesFns.some((fn) => fn(origData) || fn(newData))) {
       return origData === (newData as unknown as OrigData)
         ? noDiffs
