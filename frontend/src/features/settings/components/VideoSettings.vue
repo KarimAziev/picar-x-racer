@@ -52,7 +52,7 @@ const enhancers = computed(() => [
 ]);
 
 const updateStreamParams = useAsyncDebounce(async () => {
-  store.settings.stream = streamStore.data;
+  store.data.stream = streamStore.data;
   await streamStore.updateData(streamStore.data);
 }, 2000);
 

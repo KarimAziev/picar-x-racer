@@ -82,7 +82,7 @@ const nextTrack = async () => {
   await musicStore.nextTrack();
 };
 const song = computed(
-  () => musicStore.track || settingsStore.settings.default_music,
+  () => musicStore.track || settingsStore.data.default_music,
 );
 
 const disabled = computed(() => musicStore.trackLoading);
@@ -102,7 +102,7 @@ const playCurrentTrack = () => {
   if (musicStore.track) {
     musicStore.resumeMusic();
   } else {
-    musicStore.playMusic(settingsStore.settings.default_music || null);
+    musicStore.playMusic(settingsStore.data.default_music || null);
   }
 };
 

@@ -3,7 +3,7 @@
     <SwitchSettings />
     <NumberField
       label="Auto Measure Distance Delay in Milliseconds"
-      v-model="store.settings.auto_measure_distance_delay_ms"
+      v-model="store.data.auto_measure_distance_delay_ms"
       inputId="auto_measure_distance_delay_ms"
       :min="50"
       :step="50"

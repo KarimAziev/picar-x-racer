@@ -48,7 +48,7 @@ export interface State {
 
 const defaultState: State = {
   loading: false,
-  data: { ...settingsDefaultState.settings.camera },
+  data: { ...settingsDefaultState.data.camera },
   devices: [],
   loadingData: {},
 };

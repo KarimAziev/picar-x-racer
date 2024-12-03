@@ -159,7 +159,7 @@ const handleDownloadFile = (value: string) => {
 };
 
 onMounted(() => {
-  store.settings.detection = detectionStore.data;
+  store.data.detection = detectionStore.data;
 });
 </script>
 

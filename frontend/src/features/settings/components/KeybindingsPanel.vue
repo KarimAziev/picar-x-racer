@@ -90,7 +90,7 @@ import { splitKeySequence } from "@/util/keyboard-util";
 const popupStore = usePopupStore();
 
 const store = useSettingsStore();
-const originalKeys = computed(() => store.settings.keybindings);
+const originalKeys = computed(() => store.data.keybindings);
 const keyRecorderOpen = computed(() => popupStore.isKeyRecording);
 
 const commandsToOptions = (obj: Record<string, string[]>): Fields => {
@@ -128,7 +128,7 @@ const commandsToOptions = (obj: Record<string, string[]>): Fields => {
   return res;
 };
 const fields = computed(() =>
-  reactive(commandsToOptions(store.settings.keybindings)),
+  reactive(commandsToOptions(store.data.keybindings)),
 );
 
 const invalidKeys = computed(() =>
@@ -280,13 +280,13 @@ const handleSubmit = async () => {
   );
 
   if (!errs.length && validFields.length > 0) {
-    store.settings.keybindings = pairsToConfig(validFields);
+    store.data.keybindings = pairsToConfig(validFields);
     await store.saveSettings();
   }
 };
 
 const handleReset = () => {
-  store.settings.keybindings = originalKeys.value;
+  store.data.keybindings = originalKeys.value;
 };
 
 const validateAll = () => {

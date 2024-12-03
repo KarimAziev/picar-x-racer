@@ -14,16 +14,13 @@ const controllerStore = useControllerStore();
 const popupStore = usePopupStore();
 
 const isTextInfoVisible = computed(
-  () =>
-    !controllerStore.avoidObstacles && settingsStore.settings.text_info_view,
+  () => !controllerStore.avoidObstacles && settingsStore.data.text_info_view,
 );
 const isSpeedometerVisible = computed(
-  () =>
-    !controllerStore.avoidObstacles && settingsStore.settings.speedometer_view,
+  () => !controllerStore.avoidObstacles && settingsStore.data.speedometer_view,
 );
 const isCarModelVisible = computed(
-  () =>
-    !controllerStore.avoidObstacles && settingsStore.settings.car_model_view,
+  () => !controllerStore.avoidObstacles && settingsStore.data.car_model_view,
 );
 
 const CarModelViewer = defineAsyncComponent({

@@ -38,7 +38,7 @@ const settingsStore = useSettingsStore();
 const intervalId = ref<NodeJS.Timeout>();
 
 const batteryTotalVoltage = computed(
-  () => settingsStore.settings.battery_full_voltage || 8.4,
+  () => settingsStore.data.battery_full_voltage || 8.4,
 );
 
 const batteryTotalVoltageAdjusted = computed(() =>

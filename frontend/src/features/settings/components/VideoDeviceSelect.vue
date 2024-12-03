@@ -100,11 +100,11 @@ watch(
 
     const [width, height] = size.split("x");
 
-    store.settings.camera.device = device;
-    store.settings.camera.width = +width;
-    store.settings.camera.height = +height;
-    store.settings.camera.pixel_format = pixel_format;
-    store.settings.camera.fps = +fps;
+    store.data.camera.device = device;
+    store.data.camera.width = +width;
+    store.data.camera.height = +height;
+    store.data.camera.pixel_format = pixel_format;
+    store.data.camera.fps = +fps;
 
     await camStore.updateData({
       device: device,

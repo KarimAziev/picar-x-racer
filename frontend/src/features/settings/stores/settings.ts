@@ -4,7 +4,6 @@ import { cycleValue } from "@/util/cycleValue";
 import { omit, isObjectEquals } from "@/util/obj";
 import { retrieveError } from "@/util/error";
 import type { ControllerActionName } from "@/features/controller/store";
-import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
 import { toggleableSettings } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
 import {
@@ -131,7 +130,7 @@ export interface State {
   loading?: boolean;
   loaded?: boolean;
   saving?: boolean;
-  settings: Settings;
+  data: Settings;
   error?: string;
   retryTimer?: NodeJS.Timeout;
   retryCounter: number;
@@ -141,7 +140,7 @@ export interface State {
 }
 
 export const defaultState: State = {
-  settings: {
+  data: {
     fullscreen: true,
     keybindings: {},
     default_sound: "",
@@ -171,56 +170,31 @@ export const defaultState: State = {
 export const useStore = defineStore("settings", {
   state: () => ({ ...defaultState }),
   getters: {
-    detection({ settings: { detection } }) {
+    detection({ data: { detection } }) {
       return detection;
     },
-    tts({ settings: { texts, default_tts_language } }) {
+    tts({ data: { texts, default_tts_language } }) {
       return {
         default_tts_language,
         texts: texts.filter((item) => !!item.text.length),
       };
     },
-    keybindings({ settings: { keybindings } }) {
+    keybindings({ data: { keybindings } }) {
       return { keybindings };
     },
 
-    generalSettings({ settings }) {
+    generalSettings({ data }) {
       const excludedKeys: (keyof Settings)[] = [
         "keybindings",
         "texts",
         "default_tts_language",
         "detection",
       ];
-      return omit(excludedKeys, settings);
+      return omit(excludedKeys, data);
     },
   },
 
   actions: {
-    async fetchSettings() {
-      const messager = useMessagerStore();
-      const musicStore = useMusicStore();
-      try {
-        this.loading = true;
-        const response = await axios.get("/api/settings");
-        const resData = response.data;
-
-        const data = {
-          ...this.settings,
-          keybindings: { ...defaultKeybindinds },
-          ...resData,
-        };
-        this.settings = data;
-        musicStore.autoplay = this.settings.autoplay_music || false;
-        this.error = undefined;
-        messager.info("System status: OK");
-      } catch (error) {
-        this.error = retrieveError(error).text;
-        messager.handleError(error, "Error fetching settings");
-      } finally {
-        this.loading = false;
-      }
-    },
-
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
@@ -233,15 +207,8 @@ export const useStore = defineStore("settings", {
       }
       try {
         this.loading = true;
-        const response = await axios.get("/api/settings");
-
-        const data = {
-          ...this.settings,
-          keybindings: { ...defaultKeybindinds },
-          ...response.data,
-        };
-        this.settings = data;
-        await Promise.all([
+        const [response] = await Promise.all([
+          axios.get<Settings>("/api/settings"),
           calibrationStore.fetchData(),
           musicStore.fetchData(),
           musicStore.getCurrentStatus(),
@@ -249,7 +216,8 @@ export const useStore = defineStore("settings", {
           soundStore.fetchData(),
           batteryStore.fetchBatteryStatus(),
         ]);
-        musicStore.autoplay = this.settings.autoplay_music || false;
+        this.data = response.data;
+        musicStore.autoplay = this.data.autoplay_music || false;
         this.error = undefined;
       } catch (error) {
         this.error = retrieveError(error).text;
@@ -298,7 +266,7 @@ export const useStore = defineStore("settings", {
       const detectionStore = useDetectionStore();
       switch (currentTab) {
         case SettingsTab.MODELS:
-          return isObjectEquals(detectionStore.data, this.settings.detection);
+          return isObjectEquals(detectionStore.data, this.data.detection);
         default:
           return false;
       }
@@ -331,8 +299,8 @@ export const useStore = defineStore("settings", {
       msgParams?: ShowMessageTypeProps | string,
     ) {
       const messager = useMessagerStore();
-      const nextValue = !this.settings[prop];
-      this.settings[prop] = nextValue;
+      const nextValue = !this.data[prop];
+      this.data[prop] = nextValue;
       if (showMsg) {
         messager.info(`${prop}: ${nextValue}`, msgParams);
       }
@@ -356,8 +324,7 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       if (!this.text) {
         const item =
-          this.settings.texts.find((item) => item.default) ||
-          this.settings.texts[0];
+          this.data.texts.find((item) => item.default) || this.data.texts[0];
         this.text = item.text;
         this.language = item.language;
         messager.info(
@@ -367,7 +334,7 @@ export const useStore = defineStore("settings", {
       }
       const nextTrack = cycleValue(
         (v) => v.text === this.text,
-        this.settings.texts,
+        this.data.texts,
         direction,
       );
       if (!nextTrack) {

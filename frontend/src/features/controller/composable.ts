@@ -23,9 +23,7 @@ export const useController = (
     "stop",
   ];
 
-  const settingsKeybindings = computed(
-    () => settingsStore.settings.keybindings,
-  );
+  const settingsKeybindings = computed(() => settingsStore.data.keybindings);
 
   const keybindings = computed(() => {
     const data = controllerStore.calibrationMode

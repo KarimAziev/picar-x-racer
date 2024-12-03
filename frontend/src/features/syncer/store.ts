@@ -100,11 +100,12 @@ export const useAppSyncStore = defineStore("syncer", {
           }
 
           case "settings": {
-            const currentData = { ...settingsStore.settings };
+            const currentData = { ...settingsStore.data };
             const nextData = { ...currentData, ...payload };
 
             diffMsg = formatObjectDiff(currentData, nextData);
-            settingsStore.settings = nextData;
+
+            settingsStore.data = nextData;
             break;
           }
 

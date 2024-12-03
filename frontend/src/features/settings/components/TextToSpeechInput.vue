@@ -52,7 +52,7 @@ import { useInputHistory } from "@/composables/useInputHistory";
 defineProps<{ class?: string }>();
 const store = useSettingsStore();
 
-const language = ref(store.settings.default_tts_language);
+const language = ref(store.data.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
@@ -81,7 +81,7 @@ const handleKeyEnter = async () => {
 };
 
 watch(
-  () => store.settings.default_tts_language,
+  () => store.data.default_tts_language,
   (newValue) => {
     language.value = newValue;
   },

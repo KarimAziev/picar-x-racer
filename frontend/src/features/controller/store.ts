@@ -336,7 +336,7 @@ export const useControllerStore = defineStore("controller", {
     async playSound() {
       const soundStore = useSoundStore();
       const settingsStore = useSettingsStore();
-      const name = settingsStore.settings.default_sound;
+      const name = settingsStore.data.default_sound;
 
       if (name) {
         await soundStore.playSound(name);
@@ -347,8 +347,8 @@ export const useControllerStore = defineStore("controller", {
       const settingsStore = useSettingsStore();
       if (!settingsStore.text) {
         const item =
-          settingsStore.settings.texts.find((item) => item.default) ||
-          settingsStore.settings.texts[0];
+          settingsStore.data.texts.find((item) => item.default) ||
+          settingsStore.data.texts[0];
         settingsStore.text = item.text;
         settingsStore.language = item.language;
       }
@@ -383,7 +383,7 @@ export const useControllerStore = defineStore("controller", {
       try {
         const response = await takePhoto();
         const file = response.data.file;
-        if (file && settingsStore.settings.auto_download_photo) {
+        if (file && settingsStore.data.auto_download_photo) {
           await imageStore.downloadFile(file);
         }
       } catch (error) {
@@ -546,7 +546,7 @@ export const useControllerStore = defineStore("controller", {
         await musicStore.stopMusic();
       } else {
         await musicStore.playMusic(
-          musicStore.track || settingsStore.settings.default_music || null,
+          musicStore.track || settingsStore.data.default_music || null,
           false,
           0.0,
         );

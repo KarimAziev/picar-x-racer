@@ -19,6 +19,7 @@ import {
 import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
 import ResizableContainer from "@/ui/ResizableContainer.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+
 const isMobile = useDeviceWatcher();
 
 const ImageFeed = defineAsyncComponent({
@@ -29,7 +30,7 @@ const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 const cameraStore = useCameraStore();
 
-const fullscreen = computed(() => settingsStore.settings.fullscreen);
+const fullscreen = computed(() => settingsStore.data.fullscreen);
 const defaultWidth = computed(() => cameraStore.data.width);
 const defaultHeight = computed(() => cameraStore.data.height);
 

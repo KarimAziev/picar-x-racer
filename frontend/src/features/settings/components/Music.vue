@@ -10,7 +10,7 @@
               :options="files"
               optionLabel="track"
               optionValue="track"
-              v-model="settingsStore.settings.default_music"
+              v-model="settingsStore.data.default_music"
             />
           </div>
         </div>

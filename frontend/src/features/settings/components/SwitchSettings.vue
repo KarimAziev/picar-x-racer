@@ -4,7 +4,7 @@
       @update:model-value="onUpdate"
       :pt="{ input: { id: field } }"
       :v-tooltip="item.description"
-      v-model="store.settings[field]"
+      v-model="store.data[field]"
     />
     <label :for="field">{{ item.label }}</label>
   </div>

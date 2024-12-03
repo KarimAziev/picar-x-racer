@@ -22,7 +22,7 @@ export interface State {
 
 const defaultState: State = {
   loading: false,
-  data: { ...settingsDefaultState.settings.stream },
+  data: { ...settingsDefaultState.data.stream },
   enhancers: [],
   loadingData: {},
 };
@@ -121,8 +121,7 @@ export const useStore = defineStore("stream", {
     },
     async increaseQuality() {
       const settings = useSettingsStore();
-      const currentValue =
-        this.data.quality || settings.settings.stream.quality;
+      const currentValue = this.data.quality || settings.data.stream.quality;
       const newValue = constrain(10, 100, currentValue + 10);
       await this.updateData({
         ...this.data,
@@ -131,8 +130,7 @@ export const useStore = defineStore("stream", {
     },
     async decreaseQuality() {
       const settings = useSettingsStore();
-      const currentValue =
-        this.data.quality || settings.settings.stream.quality;
+      const currentValue = this.data.quality || settings.data.stream.quality;
       const newValue = constrain(10, 100, currentValue - 10);
       await this.updateData({
         ...this.data,
@@ -147,7 +145,7 @@ export const useStore = defineStore("stream", {
         video_record: !this.data.video_record,
       });
 
-      if (!this.data.video_record && settings.settings.auto_download_video) {
+      if (!this.data.video_record && settings.data.auto_download_video) {
         try {
           const response = await axios.get(`/api/download-last-video`, {
             responseType: "blob",

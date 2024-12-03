@@ -48,7 +48,7 @@ const CarModelViewer = defineAsyncComponent({
 });
 
 watch(
-  () => settingsStore.settings.virtual_mode,
+  () => settingsStore.data.virtual_mode,
   (value) => {
     if (!value) {
       router.push("/");
@@ -57,8 +57,8 @@ watch(
 );
 
 onBeforeMount(() => {
-  if (!settingsStore.settings.virtual_mode) {
-    settingsStore.settings.virtual_mode = true;
+  if (!settingsStore.data.virtual_mode) {
+    settingsStore.data.virtual_mode = true;
   }
 });
 

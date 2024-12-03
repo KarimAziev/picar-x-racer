@@ -20,6 +20,6 @@ const isEnabled = computed(
   () =>
     settingsStore.loaded &&
     !controllerStore.avoidObstacles &&
-    settingsStore.settings[props.setting],
+    settingsStore.data[props.setting],
 );
 </script>
