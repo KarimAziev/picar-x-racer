@@ -3,6 +3,11 @@ import type { ShallowRef } from "vue";
 import { isNumber } from "@/util/guards";
 import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
 
+export const inputHistoryDirectionByKey: { [key: string]: number } = {
+  ArrowUp: -1,
+  ArrowDown: 1,
+};
+
 export const useInputHistory = <Value>(initialValue?: Value) => {
   const inputHistory = ref<ShallowRef<Value[]>>(shallowRef([]));
   const currHistoryIdx = ref(0);
@@ -27,18 +32,15 @@ export const useInputHistory = <Value>(initialValue?: Value) => {
     }
   };
 
-  const setNextHistoryText = () => {
-    getNextOrPrevHistoryText(1);
-  };
-
-  const setPrevHistoryText = () => {
-    getNextOrPrevHistoryText(-1);
-  };
-
-  const inputKeyHandlers: { [key: string]: Function } = {
-    ArrowUp: setPrevHistoryText,
-    ArrowDown: setNextHistoryText,
-  };
+  const inputKeyHandlers = Object.entries(inputHistoryDirectionByKey).reduce(
+    (acc, [key, arg]) => {
+      acc[key] = () => {
+        getNextOrPrevHistoryText(arg);
+      };
+      return acc;
+    },
+    {} as { [key: string]: Function },
+  );
 
   const { handleKeyUp } = useKeyboardHandlers(inputKeyHandlers);
 

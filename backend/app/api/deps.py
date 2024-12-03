@@ -3,6 +3,7 @@ from app.services.camera_service import CameraService
 from app.services.connection_service import ConnectionService
 from app.services.detection_service import DetectionService
 from app.services.files_service import FilesService
+from app.services.music_service import MusicService
 from app.services.stream_service import StreamService
 
 connection_manager = ConnectionService()
@@ -16,6 +17,9 @@ camera_manager = CameraService(
     file_manager=file_manager,
 )
 stream_manager = StreamService(camera_service=camera_manager)
+music_manager = MusicService(
+    file_manager=file_manager, connection_manager=connection_manager
+)
 
 
 def get_camera_manager() -> "CameraService":
@@ -36,3 +40,7 @@ def get_file_manager() -> "FilesService":
 
 def get_detection_manager() -> "DetectionService":
     return detection_manager
+
+
+def get_music_manager() -> "MusicService":
+    return music_manager

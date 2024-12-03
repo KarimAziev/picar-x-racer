@@ -1,11 +1,11 @@
 <template>
   <div class="player">
     <div>
-      <div class="title">{{ song }}</div>
+      <div class="title">{{ currentTrack }}</div>
       <Slider
-        @update:model-value="debounceHandleStartUpdate"
+        @change="handlePositionUpdate"
         :disabled="disabled"
-        v-model="musicStore.start"
+        v-model="musicStore.player.position"
         :max="duration"
         v-if="duration"
       />
@@ -23,7 +23,7 @@
 
       <Button
         v-if="isPlaying"
-        @click="pauseTrack"
+        @click="togglePlaying"
         icon="pi pi-pause"
         text
         :disabled="disabled"
@@ -31,7 +31,7 @@
         v-tooltip="'Pause playing track'"
       />
       <Button
-        @click="playCurrentTrack"
+        @click="togglePlaying"
         v-else
         icon="pi pi-play-circle"
         text
@@ -64,61 +64,46 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Slider from "primevue/slider";
-import { useMusicStore, useSettingsStore } from "@/features/settings/stores";
+import { useMusicStore } from "@/features/settings/stores";
 import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 
 const musicStore = useMusicStore();
-const settingsStore = useSettingsStore();
 
-const debounceHandleStartUpdate = useAsyncDebounce(async () => {
-  if (musicStore.playing) {
-    await musicStore.resumeMusic();
-  }
-}, 1000);
-
-const nextTrack = async () => {
-  await musicStore.nextTrack();
-};
-const song = computed(
-  () => musicStore.track || settingsStore.data.default_music,
-);
-
+const currentTrack = computed(() => musicStore.player.track);
+const isPlaying = computed(() => musicStore.player.is_playing);
 const disabled = computed(() => musicStore.trackLoading);
 
-const duration = computed(() => musicStore.duration);
+const duration = computed(() => musicStore.player.duration);
 
 const durationLabel = computed(() =>
-  isNumber(musicStore.duration) && isNumber(musicStore.start)
+  isNumber(musicStore.player.duration) && isNumber(musicStore.player.position)
     ? [
-        secondsToReadableString(musicStore.start),
-        secondsToReadableString(musicStore.duration),
+        secondsToReadableString(musicStore.player.position),
+        secondsToReadableString(musicStore.player.duration),
       ].join(" / ")
     : "00:00 / 00:00",
 );
 
-const playCurrentTrack = () => {
-  if (musicStore.track) {
-    musicStore.resumeMusic();
-  } else {
-    musicStore.playMusic(settingsStore.data.default_music || null);
-  }
+const handlePositionUpdate = useAsyncDebounce(async (value: number) => {
+  await musicStore.updatePosition(value);
+}, 50);
+
+const togglePlaying = async () => {
+  await musicStore.togglePlaying();
+};
+const nextTrack = async () => {
+  await musicStore.nextTrack();
 };
 
-const prevTrack = () => {
-  musicStore.prevTrack();
-};
-
-const pauseTrack = () => {
-  musicStore.pauseMusic();
+const prevTrack = async () => {
+  await musicStore.prevTrack();
 };
 
 const stopTrack = async () => {
-  await musicStore.stopMusic();
+  await musicStore.stopPlaying();
 };
-
-const isPlaying = computed(() => musicStore.playing);
 </script>
 
 <style scoped lang="scss">
@@ -136,6 +121,7 @@ const isPlaying = computed(() => musicStore.playing);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-top: 10px;
 }
 
 .title {
@@ -144,9 +130,14 @@ const isPlaying = computed(() => musicStore.playing);
   text-overflow: ellipsis;
 }
 
+:deep(.p-button) {
+  padding-top: 0;
+}
+
 :deep(.p-slider) {
+  cursor: pointer;
   .p-slider-handle {
-    transform: scale(0.5);
+    transform: scale(0.6);
   }
 }
 </style>

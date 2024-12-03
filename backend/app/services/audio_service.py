@@ -2,7 +2,7 @@ import re
 import subprocess
 import time
 from os import path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from app.adapters.robot_hat.music import Music
 from app.util.constrain import constrain
@@ -46,7 +46,7 @@ class AudioService(metaclass=SingletonMeta):
         self.last_response: Optional[dict[str, Any]] = None
         self.last_track: Optional[str] = None
 
-    def get_amixer_volume(self):
+    def get_volume(self):
         try:
             result = subprocess.run(["amixer", "get", "Master"], stdout=subprocess.PIPE)
 
@@ -55,13 +55,26 @@ class AudioService(metaclass=SingletonMeta):
             match = re.search(r"\[(\d+%)\]", output)
 
             if match:
-                return match.group(1)
+                return int(match.group(1).rstrip("%"))
             else:
                 return "Volume information not found"
         except Exception as e:
             return f"An error occurred: {e}"
 
-    def set_volume(self, volume: int):
+    def set_volume(self, volume_percentage: Union[int, float]):
+        volume_percentage = int(max(0, min(100, volume_percentage)))
+        try:
+            subprocess.run(
+                ["amixer", "sset", "Master", f"{volume_percentage}%"], check=True
+            )
+        except FileNotFoundError:
+            self.logger.warning("'amixer' is not installed on your system.")
+            self.set_music_volume(volume_percentage)
+        except subprocess.CalledProcessError as e:
+            self.logger.log_exception("Error in setting volume.")
+            raise e
+
+    def set_music_volume(self, volume: int):
         """
         Set the music volume.
 
@@ -72,15 +85,6 @@ class AudioService(metaclass=SingletonMeta):
             None
         """
         self.music.music_set_volume(constrain(volume, 0, 100))
-
-    def get_volume(self):
-        """
-        Get the current music volume level.
-
-        Returns:
-            int: The current volume level (0-100).
-        """
-        return self.music.music_get_volume()
 
     def text_to_speech(self, words: str, lang="en"):
         """
@@ -104,60 +108,6 @@ class AudioService(metaclass=SingletonMeta):
                 self.logger.log_exception("Error playing text-to-speech audio", e)
         else:
             self.logger.warning("google_speech is not available")
-
-    def play_music(
-        self, track_path: str, force: bool, start=0.0, volume: Optional[int] = None
-    ) -> dict[str, Any]:
-        """
-        Play a music track.
-
-        Args:
-            track_path (str): The file path of the music track to play.
-            force (bool): Whether to force the playback if something else is currently playing.
-
-        Returns:
-            dict: Information about the music track being played, including whether it is playing, its duration, and its file name.
-
-        Raises:
-            FileNotFoundError: If the specified track file does not exist.
-        """
-
-        if path.exists(track_path):
-            track = path.basename(track_path)
-            is_playing = self.is_sound_playing()
-            if is_playing and not force:
-                self.logger.info(f"Stopping currently playing music")
-                self.stop_music()
-                self.last_response = {
-                    "playing": self.is_music_playing(),
-                    "track": track,
-                    "start": start,
-                }
-                return self.last_response
-            else:
-                if is_playing:
-                    self.stop_music()
-                if self.is_sound_playing():
-                    self.logger.info(f"Stopping currently playing sound")
-                    self.stop_sound()
-                self.logger.info(f"Playing music {track_path}")
-                self.music.music_play(filename=track_path, start=start, volume=volume)
-                self.last_response = {
-                    "playing": self.is_music_playing(),
-                    "track": track,
-                    "start": start,
-                }
-                return self.last_response
-        else:
-            text = f"The music file {track_path} is missing."
-            self.logger.error(text)
-            raise FileNotFoundError(f"No such file or directory: '{text}'")
-
-    def get_music_play_status(self):
-        if self.last_response:
-            self.last_response["playing"] = self.is_music_playing()
-            self.last_response["start"] = self.get_music_pos()
-            return self.last_response
 
     def stop_music(self):
         """

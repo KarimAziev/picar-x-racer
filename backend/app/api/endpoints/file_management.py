@@ -1,7 +1,7 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_file_manager
+from app.api.deps import get_file_manager, get_music_manager
 from app.config.paths import DATA_DIR
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.schemas.file_management import (
@@ -18,6 +18,7 @@ from starlette.responses import FileResponse
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.files_service import FilesService
+    from app.services.music_service import MusicService
 
 router = APIRouter()
 logger = Logger(__name__)
@@ -31,13 +32,16 @@ def list_files(
     List the files of a specific media type.
 
     Args:
+    --------------
     - media_type (str): The type of media to list ('music', 'default_music', 'default_sound', 'sound', 'image').
     - file_manager (FilesService): The file management service.
 
     Returns:
+    --------------
     - `FilesResponse`: A response object containing a list of files.
 
     Raises:
+    --------------
     - `HTTPException`: If the media type is invalid.
     """
     if media_type == "music":
@@ -70,15 +74,18 @@ async def upload_file(
     Upload a file of a specific media type.
 
     Args:
+    --------------
     - media_type (str): The type of media to upload ('music', 'sound', 'image').
     - file (UploadFile): The file to upload.
     - file_manager (FilesService): The file management service.
 
     Returns:
-        `UploadFileResponse`: A response object containing the success status and the filename.
+    --------------
+    `UploadFileResponse`: A response object containing the success status and the filename.
 
     Raises:
-        `HTTPException`: If no file is selected or the media type is invalid.
+    --------------
+    `HTTPException`: If no file is selected or the media type is invalid.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     if file.filename == "":
@@ -111,23 +118,27 @@ async def remove_file(
     media_type: str,
     filename: str,
     file_manager: "FilesService" = Depends(get_file_manager),
+    music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
     Remove a file of a specific media type.
 
     Args:
+    --------------
     - media_type (str): The type of media ('music', 'sound', 'image').
     - filename (str): The name of the file to remove.
     - file_manager (FilesService): The file management service.
 
     Returns:
+    --------------
     - `RemoveFileResponse`: A response object containing the success status and the filename.
 
     Raises:
+    --------------
     - `HTTPException`: If the media type is invalid, or the file could not be removed or found.
     """
     handlers = {
-        "music": file_manager.remove_music,
+        "music": music_player.remove_music_track,
         "sound": file_manager.remove_sound,
         "image": file_manager.remove_photo,
         "video": file_manager.remove_video,
@@ -177,14 +188,17 @@ def download_file(
     Download a file of a specific media type.
 
     Args:
+    --------------
     - media_type (str): The type of media ('music', 'sound', 'image', 'video').
     - filename (str): The name of the file to download.
     - file_manager (FilesService): The file management service.
 
     Returns:
+    --------------
     - `FileResponse`: A response containing the file to download.
 
     Raises:
+    --------------
     - `HTTPException`: If the media type is invalid or the file is not found.
     """
     try:
@@ -232,14 +246,17 @@ def preview_image(
     Download a file of a specific media type.
 
     Args:
+    --------------
     - media_type (str): The type of media ('music', 'sound', 'image').
     - filename (str): The name of the file to download.
     - file_manager (FilesService): The file management service.
 
     Returns:
+    --------------
     - `FileResponse`: A response containing the file to download.
 
     Raises:
+    --------------
     - `HTTPException`: If the media type is invalid or the file is not found.
     """
     try:
@@ -283,12 +300,15 @@ def fetch_last_video(file_manager: "FilesService" = Depends(get_file_manager)):
     Download the last video captured by the user.
 
     Args:
+    --------------
     - file_manager (FilesService): The file management service for videos.
 
     Returns:
+    --------------
     - `FileResponse`: A response containing the most recent video to download.
 
     Raises:
+    --------------
     - `HTTPException`: If no videos are found.
     """
     videos = file_manager.list_user_videos()

@@ -8,13 +8,13 @@ A module for playing music, sound effects, and controlling musical notes.
 """
 
 import math
-import os
 import struct
 import threading
 import time
 from typing import Optional
 
 import pyaudio
+import pygame
 from pydub import AudioSegment
 
 
@@ -228,15 +228,6 @@ class Music:
     """Notes name, MIDI compatible"""
 
     def __init__(self):
-        import warnings
-
-        warnings_bk = warnings.filters
-        warnings.filterwarnings("ignore")
-        # close welcome message of pygame, and the value must be <str>
-        os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-        import pygame
-
-        warnings.filters = warnings_bk
         """Initialize music"""
         self.pygame = pygame
         self.pygame.mixer.init()

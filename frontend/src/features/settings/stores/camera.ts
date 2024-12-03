@@ -61,28 +61,12 @@ export const useStore = defineStore("camera", {
 
       try {
         this.loading = true;
-        const requestData = payload || this.data;
-        this.loadingData = {};
-        Object.keys(requestData).forEach((key) => {
-          this.loadingData[key as keyof CameraSettings] = true;
-        });
-
-        const prevData = { ...this.data };
 
         const { data } = await axios.post<CameraSettings>(
           "/api/camera-settings",
           payload || this.data,
         );
         this.data = data;
-        Object.entries(data).forEach(([k, value]) => {
-          const key = k as keyof CameraSettings;
-          this.loadingData[key] = false;
-          if (prevData[key] !== value) {
-            messager.info(`${key.replace(/^video_feed_/g, "")}: ${value}`, {
-              immediately: true,
-            });
-          }
-        });
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
@@ -91,7 +75,6 @@ export const useStore = defineStore("camera", {
         }
       } finally {
         this.loading = false;
-        this.loadingData = {};
       }
       return this.data;
     },

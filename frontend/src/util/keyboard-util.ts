@@ -202,4 +202,3 @@ export const translateKeyboardEventToKey = (
   const props = code && KeyboardMapper.nonModifiersConfig[code];
   return props ? props.key : key;
 };
-splitKeySequence("ff");

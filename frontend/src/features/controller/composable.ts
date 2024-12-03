@@ -8,6 +8,11 @@ import { groupKeys } from "@/features/settings/util";
 import { usePopupStore } from "@/features/settings/stores";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
 import { isMobileDevice } from "@/util/device";
+import { inputHistoryDirectionByKey } from "@/composables/useInputHistory";
+
+const shouldSkip = (event: KeyboardEvent) =>
+  event.target !== document.body &&
+  (event.key.length === 1 || inputHistoryDirectionByKey[event.key]);
 
 export const useController = (
   controllerStore: ReturnType<typeof useControllerStore>,
@@ -45,6 +50,9 @@ export const useController = (
     keys && keys.find((k) => inactiveKeys.value.has(k));
 
   const handleKeyUp = (event: KeyboardEvent) => {
+    if (shouldSkip(event)) {
+      return;
+    }
     const key = formatKeyEventItem(event);
     activeKeys.value.delete(key);
   };
@@ -53,7 +61,9 @@ export const useController = (
     if (popupStore.isOpen || settingsStore.inhibitKeyHandling) {
       return;
     }
-
+    if (shouldSkip(event)) {
+      return;
+    }
     const key = formatKeyboardEvents([event]);
     const commandName = keybindings.value[key];
 

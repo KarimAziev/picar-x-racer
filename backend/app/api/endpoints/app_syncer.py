@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_camera_manager, get_detection_manager
+from app.api.deps import get_camera_manager, get_detection_manager, get_music_manager
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
+    from app.services.music_service import MusicService
 
 
 logger = Logger(__name__)
@@ -24,11 +25,13 @@ async def runtime_settings(
     websocket: WebSocket,
     detection_service: "DetectionService" = Depends(get_detection_manager),
     camera_service: "CameraService" = Depends(get_camera_manager),
+    music_service: "MusicService" = Depends(get_music_manager),
 ):
     connection_manager: "ConnectionService" = websocket.app.state.app_manager
 
     try:
         await connection_manager.connect(websocket)
+        await music_service.broadcast_state()
         data = {
             "camera": camera_service.camera_settings.model_dump(),
             "stream": camera_service.stream_settings.model_dump(),

@@ -13,7 +13,7 @@ Methods:
     - save_settings: Saves user settings to a JSON file.
     - list_files: Lists all files in a specified directory.
     - list_all_music_with_details: Lists all music files with details (duration).
-    - get_audio_file_details: Retrieves details (track name and duration) of a specific audio file.
+    - _get_audio_file_details: Retrieves details (track name and duration) of a specific audio file.
     - list_default_music: Lists default music files.
     - list_default_sounds: Lists default sound files.
     - list_user_photos: Lists user-uploaded photo files.
@@ -36,7 +36,7 @@ Methods:
 import json
 import os
 from os import path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.adapters.robot_hat.filedb import fileDB
 from app.config.paths import (
@@ -213,7 +213,7 @@ class FilesService(metaclass=SingletonMeta):
 
         return [file[0] for file in files]
 
-    def list_all_music_with_details(self):
+    def list_all_music_with_details(self) -> List[Dict[str, Any]]:
         """List all music files with cached details, applying the user-defined order if available."""
         defaults = self.list_default_music(full=True)
         user_music = self.list_user_music(full=True)
@@ -221,7 +221,7 @@ class FilesService(metaclass=SingletonMeta):
 
         result = []
         for file in all_files:
-            details = self.get_audio_file_details_cached(file)
+            details = self.get_audio_file_details(file)
             if details:
                 details["removable"] = file in user_music
                 result.append(details)
@@ -237,6 +237,10 @@ class FilesService(metaclass=SingletonMeta):
             )
 
         return result
+
+    def list_music_tracks_sorted(self) -> List[str]:
+        """List sorted music tracks."""
+        return [details["track"] for details in self.list_all_music_with_details()]
 
     def prune_cache(self, max_entries=100):
         """Limits the cache size by keeping only recent entries."""
@@ -260,7 +264,25 @@ class FilesService(metaclass=SingletonMeta):
                     break
         self.save_cache()
 
-    def get_audio_file_details_cached(self, file: str):
+    def _get_audio_file_details(self, file: str):
+        """
+        Gets details of an audio file such as track name and duration.
+
+        Args:
+            file (str): File path of the audio file.
+
+        Returns:
+            dict: A dictionary with track name and duration.
+        """
+        try:
+            duration = self.audio_manager.music.music_get_duration(file)
+            track: str = path.basename(file)
+            result = {"track": track, "duration": duration}
+            return result
+        except Exception as err:
+            self.logger.log_exception(f"Error getting details for file {file}", err)
+
+    def get_audio_file_details(self, file: str) -> Optional[Dict[str, Any]]:
         """
         Retrieves audio file details from cache if available and fresh.
         Otherwise, it will calculate and store the details in cache.
@@ -282,7 +304,7 @@ class FilesService(metaclass=SingletonMeta):
             "Refreshing details for %s",
             file,
         )
-        details = self.get_audio_file_details(file)
+        details = self._get_audio_file_details(file)
         if details:
             self.cache[file] = {
                 "modified_time": file_mod_time,
@@ -290,6 +312,10 @@ class FilesService(metaclass=SingletonMeta):
             }
             self.save_cache()
         return details
+
+    def music_track_to_absolute(self, track: str):
+        dir = self.get_music_directory(track)
+        return path.join(dir, track)
 
     def get_custom_music_order(self) -> List[str]:
         """
@@ -309,24 +335,6 @@ class FilesService(metaclass=SingletonMeta):
             order (List[str]): The custom track order to save.
         """
         self.save_settings({"music_order": order})
-
-    def get_audio_file_details(self, file):
-        """
-        Gets details of an audio file such as track name and duration.
-
-        Args:
-            file (str): File path of the audio file.
-
-        Returns:
-            dict: A dictionary with track name and duration.
-        """
-        try:
-            duration = self.audio_manager.music.music_get_duration(file)
-            track: str = path.basename(file)
-            result = {"track": track, "duration": duration}
-            return result
-        except Exception as err:
-            self.logger.log_exception(f"Error getting details for file {file}", err)
 
     def list_default_music(self, full=False):
         """

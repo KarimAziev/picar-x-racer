@@ -535,22 +535,8 @@ export const useControllerStore = defineStore("controller", {
       await musicStore.decreaseVolume();
     },
     async playMusic() {
-      const settingsStore = useSettingsStore();
       const musicStore = useMusicStore();
-
-      if (musicStore.trackLoading) {
-        return;
-      }
-      if (musicStore.playing) {
-        musicStore.start = 0.0;
-        await musicStore.stopMusic();
-      } else {
-        await musicStore.playMusic(
-          musicStore.track || settingsStore.data.default_music || null,
-          false,
-          0.0,
-        );
-      }
+      await musicStore.togglePlaying();
     },
 
     async playNextMusicTrack() {

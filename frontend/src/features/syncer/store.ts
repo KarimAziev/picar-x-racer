@@ -52,10 +52,14 @@ export const useAppSyncStore = defineStore("syncer", {
           return;
         }
         const { type, payload } = data;
-        let msgPrefix: null | string = `Updated ${type}:`;
+        let msgPrefix: null | string = `${type}:`;
         let diffMsg: string | undefined;
 
         switch (type) {
+          case "player":
+            msgPrefix = null;
+            musicStore.player = payload;
+            break;
           case "music":
             musicStore.data = payload;
             break;
@@ -87,6 +91,7 @@ export const useAppSyncStore = defineStore("syncer", {
           }
 
           case "camera": {
+            msgPrefix = "Camera: ";
             diffMsg = formatObjectDiff({ ...cameraStore.data }, payload);
             cameraStore.data = payload;
             break;

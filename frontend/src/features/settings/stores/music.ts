@@ -13,6 +13,21 @@ export interface FileDetail {
   removable: boolean;
 }
 
+export enum MusicMode {
+  LOOP = "loop",
+  QUEUE = "queue",
+  SINGLE = "single",
+  LOOP_ONE = "loop_one",
+}
+
+export interface MusicPlayerInfo {
+  track: string | null;
+  position: number;
+  is_playing: boolean;
+  duration: number;
+  mode: MusicMode;
+}
+
 export interface PlayMusicResponse {
   playing: boolean;
   track?: string;
@@ -23,23 +38,22 @@ export interface PlayMusicResponse {
 export interface State {
   data: FileDetail[];
   loading: boolean;
-  autoplay: boolean;
   volume?: number;
-  playing?: boolean;
-  duration?: number;
-  track: string | null;
-  start: number;
   timer?: NodeJS.Timeout;
   trackLoading?: boolean;
+  player: MusicPlayerInfo;
 }
 
 const defaultState: State = {
   loading: false,
-  autoplay: false,
   data: [],
-  track: null,
-  trackLoading: false,
-  start: 0.0,
+  player: {
+    mode: MusicMode.LOOP,
+    track: null,
+    position: 0.0,
+    is_playing: false,
+    duration: 0.0,
+  },
 };
 
 export const mediaType: APIMediaType = "music";
@@ -63,6 +77,110 @@ export const useStore = defineStore("music", {
       } finally {
         this.loading = false;
       }
+    },
+
+    async togglePlaying() {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await axios.post("/api/music/toggle-play");
+      } catch (error) {
+        messager.handleError(error, `Error toggling music playing`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async stopPlaying() {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await axios.post("/api/music/stop");
+      } catch (error) {
+        messager.handleError(error, `Error stopping music`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async nextTrack() {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await axios.post("/api/music/next-track");
+      } catch (error) {
+        messager.handleError(error, `Error switching to next track`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async prevTrack() {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await axios.post("/api/music/prev-track");
+      } catch (error) {
+        messager.handleError(error, `Error switching to previous track`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async playTrack(track: string) {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await axios.post("/api/music/track", { track });
+      } catch (error) {
+        messager.handleError(error, `Error seeking music`);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async updatePosition(position: number) {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await axios.post("/api/music/position", { position });
+      } catch (error) {
+        messager.handleError(error, `Error seeking music`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async updateMode(mode: MusicMode) {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await axios.post("/api/music/mode", { mode });
+      } catch (error) {
+        messager.handleError(error, `Error updating player mode`);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async cycleMode(direction: number) {
+      this.player.mode = cycleValue(
+        this.player.mode,
+        Object.values(MusicMode),
+        direction,
+      );
+
+      await this.updateMode(this.player.mode);
+    },
+
+    async nextMode() {
+      await this.cycleMode(1);
     },
 
     async removeFile(file: string) {
@@ -110,166 +228,11 @@ export const useStore = defineStore("music", {
       try {
         const response = await axios.get<{ volume: number }>("/api/volume");
         this.volume = response.data.volume;
-        messager.info(`Volume: ${this.volume}`);
         return this.volume;
       } catch (error) {
         messager.handleError(error);
       }
     },
-    async cycleTrack(direction: number, force?: boolean, start?: number) {
-      if (!this.data.length) {
-        await this.fetchData();
-      }
-
-      const messager = useMessagerStore();
-      const nextTrack = cycleValue(
-        (v) => v.track === this.track,
-        this.data,
-        direction,
-      );
-
-      if (nextTrack.track !== this.track) {
-        await this.playMusic(nextTrack.track, force, start);
-      } else {
-        messager.info("No next track");
-      }
-    },
-    async nextTrack() {
-      if (this.timer) {
-        clearInterval(this.timer);
-      }
-      this.playing = true;
-      this.start = 0.0;
-      await this.cycleTrack(1, true, 0.0);
-    },
-    async prevTrack() {
-      if (this.timer) {
-        clearInterval(this.timer);
-      }
-      this.playing = true;
-      this.start = 0.0;
-      await this.cycleTrack(-1, true, 0.0);
-    },
-    async pauseMusic() {
-      this.playing = false;
-      const start = this.start;
-      const track = this.track;
-      const duration = this.duration;
-      await this.playMusic(null);
-      this.start = start;
-      this.duration = duration;
-      this.track = track;
-    },
-
-    async stopMusic() {
-      this.playing = false;
-      const track = this.track;
-      const duration = this.duration;
-      await this.playMusic(null);
-      this.start = 0.0;
-      this.track = track;
-      this.duration = duration;
-    },
-    async resumeMusic() {
-      this.playing = true;
-      await this.playMusic(this.track, true, this.start);
-    },
-    startTimer() {
-      if (this.timer) {
-        clearInterval(this.timer);
-      }
-      if (this.playing && isNumber(this.duration) && isNumber(this.start)) {
-        this.timer = setInterval(() => {
-          if (!this.playing || !this.duration) {
-            clearTimeout(this.timer);
-          } else if (this.start >= this.duration) {
-            clearTimeout(this.timer);
-            if (this.autoplay) {
-              return this.nextTrack();
-            }
-          } else {
-            this.start = (this.start || 0.0) + 1.0;
-          }
-        }, 1000);
-      }
-    },
-    getItemData(file: string) {
-      const itemData = this.data.find((item) => item.track === file);
-      return itemData;
-    },
-    async playMusic(track: string | null, force?: boolean, start?: number) {
-      const messager = useMessagerStore();
-      let item = track ? this.getItemData(track) : null;
-      if (this.timer) {
-        clearInterval(this.timer);
-      }
-      if (track && !item) {
-        await this.fetchData();
-        item = this.getItemData(track);
-        if (!item) {
-          return;
-        }
-      }
-      if (this.track !== track) {
-        this.start = 0.0;
-      }
-      this.duration = item?.duration || this.duration;
-
-      this.track = track;
-
-      try {
-        this.trackLoading = true;
-
-        const response = await axios.post<PlayMusicResponse>(
-          `/api/play-music`,
-          { track, start: start || 0.0, force: force || false },
-        );
-        const data = response.data;
-
-        this.playing = data.playing;
-
-        if (data.track) {
-          this.track = data.track;
-        }
-
-        if (isNumber(data.start)) {
-          this.start = data.start;
-        }
-
-        this.startTimer();
-        return data;
-      } catch (error) {
-        messager.handleError(error);
-      } finally {
-        this.trackLoading = false;
-      }
-    },
-
-    async getCurrentStatus() {
-      const messager = useMessagerStore();
-      try {
-        this.trackLoading = true;
-        const response = await axios.get<PlayMusicResponse>(`/api/play-status`);
-        const data = response.data;
-        this.playing = data.playing;
-        if (data.track) {
-          this.track = data.track;
-        }
-        if (isNumber(data.duration)) {
-          this.duration = data.duration;
-        }
-
-        if (isNumber(data.start)) {
-          this.start = data.start;
-        }
-        this.startTimer();
-      } catch (error) {
-        messager.handleError(error, `Error fetching music status`);
-      } finally {
-        this.trackLoading = false;
-      }
-    },
-
     async updateMusicOrder(tracks: string[]) {
       const messager = useMessagerStore();
       try {

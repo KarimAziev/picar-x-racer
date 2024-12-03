@@ -118,6 +118,7 @@ export interface Settings
   extends Partial<ToggleableSettings>,
     CameraOpenRequestParams {
   default_sound: string;
+
   default_music?: string;
   default_tts_language: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
@@ -211,13 +212,11 @@ export const useStore = defineStore("settings", {
           axios.get<Settings>("/api/settings"),
           calibrationStore.fetchData(),
           musicStore.fetchData(),
-          musicStore.getCurrentStatus(),
           soundStore.fetchDefaultData(),
           soundStore.fetchData(),
           batteryStore.fetchBatteryStatus(),
         ]);
         this.data = response.data;
-        musicStore.autoplay = this.data.autoplay_music || false;
         this.error = undefined;
       } catch (error) {
         this.error = retrieveError(error).text;
@@ -309,13 +308,10 @@ export const useStore = defineStore("settings", {
     async speakText(text: string, language?: string) {
       const messager = useMessagerStore();
       try {
-        const response = await axios.post(`/api/play-tts`, {
+        await axios.post(`/api/play-tts`, {
           text: text,
           lang: language,
         });
-        const data = response.data;
-        const msg = data.status ? `Speaking: ${text}` : "Not speaking";
-        messager.info(msg);
       } catch (error) {
         messager.handleError(error);
       }
@@ -327,9 +323,6 @@ export const useStore = defineStore("settings", {
           this.data.texts.find((item) => item.default) || this.data.texts[0];
         this.text = item.text;
         this.language = item.language;
-        messager.info(
-          `Text to speech: ${this.text}, language: ${this.language}`,
-        );
         return;
       }
       const nextTrack = cycleValue(
@@ -344,7 +337,6 @@ export const useStore = defineStore("settings", {
 
       this.text = nextTrack.text;
       this.language = nextTrack.language;
-      messager.info(`Text to speech: ${this.text}, language: ${this.language}`);
     },
     nextText() {
       this.cycleText(1);

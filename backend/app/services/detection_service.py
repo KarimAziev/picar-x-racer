@@ -13,7 +13,6 @@ from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.queue import clear_and_put, clear_queue
 from app.util.singleton_meta import SingletonMeta
-from fastapi import WebSocket
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -43,7 +42,6 @@ class DetectionService(metaclass=SingletonMeta):
         self.detection_process = None
         self.detection_result = None
         self.detection_process_task: Optional[asyncio.Task] = None
-        self.active_connections: list[WebSocket] = []
         self.loading = False
 
     @staticmethod
@@ -61,7 +59,7 @@ class DetectionService(metaclass=SingletonMeta):
 
     async def cancel_detection_process_task(self) -> None:
         """
-        Cancels the background task for avoiding obstacles, if running.
+        Cancels the background detection task, if running.
         """
         self.logger.info("Cancelling detection task")
         if self.detection_process_task:

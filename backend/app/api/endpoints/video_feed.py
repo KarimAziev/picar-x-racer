@@ -50,12 +50,14 @@ async def ws(
     WebSocket endpoint for providing a video stream.
 
     Args:
+    --------------
     - websocket (WebSocket): The WebSocket connection for streaming video.
     - stream_service (StreamService): The service responsible for handling video streams.
 
     Exceptions:
-        `WebSocketDisconnect`: Handles the case where the WebSocket connection is closed.
-        `Exception`: Logs any other exceptions that occur during the video stream.
+    --------------
+    - `WebSocketDisconnect`: Handles the case where the WebSocket connection is closed.
+    - `Exception`: Logs any other exceptions that occur during the video stream.
     """
     try:
         await websocket.accept()
@@ -72,6 +74,7 @@ def get_frame_enhancers():
     Retrieve a list of available frame enhancers.
 
     Returns:
-        `EnhancersResponse`: A list of available frame enhancer names.
+    --------------
+    `EnhancersResponse`: A list of available frame enhancer names.
     """
     return {"enhancers": list(frame_enhancers.keys())}

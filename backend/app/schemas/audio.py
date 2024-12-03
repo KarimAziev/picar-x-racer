@@ -1,4 +1,5 @@
-from typing import Any, List, Optional
+from enum import Enum
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -41,36 +42,6 @@ class PlayStatusResponse(BaseModel):
     playing: bool
     track: str
     duration: Optional[float] = None
-    start: Optional[float] = None
-
-
-class PlayMusicResponse(BaseModel):
-    """
-    A model to represent the response after playing a music track.
-
-    Attributes:
-    - `playing` (bool): Indicator if the music is currently playing.
-    - `track` (Optional[str]): The name of the playing track. Defaults to None.
-    - `start` (Optional[float]): The start time of the track in seconds. Defaults to None.
-    """
-
-    playing: bool
-    track: Optional[str] = None
-    start: Optional[float] = None
-
-
-class PlayMusicItem(BaseModel):
-    """
-    A model to represent the details required to play a music track.
-
-    Attributes:
-    - `force` (bool): Indicator if the track should be forcefully played.
-    - `track` (Optional[str]): The name of the track to play. Defaults to None.
-    - `start` (Optional[float]): The start time of the track in seconds. Defaults to None.
-    """
-
-    force: bool
-    track: Optional[str] = None
     start: Optional[float] = None
 
 
@@ -131,7 +102,7 @@ class VolumeRequest(BaseModel):
     - `volume` (int | float): The desired volume level.
     """
 
-    volume: int | float
+    volume: Union[float, int]
 
 
 class VolumeResponse(BaseModel):
@@ -142,7 +113,7 @@ class VolumeResponse(BaseModel):
     - `volume` (float): The current volume level.
     """
 
-    volume: float
+    volume: Union[float, int]
 
 
 class MusicResponse(VolumeResponse):
@@ -155,4 +126,22 @@ class MusicResponse(VolumeResponse):
     """
 
     files: List[MusicDetailItem]
-    system_volume: str | Any
+
+
+class MusicPlayerMode(str, Enum):
+    LOOP = "loop"  # Repeat all tracks (auto-loop playlist)
+    QUEUE = "queue"  # Play in order without repeating (one loop through the playlist)
+    SINGLE = "single"  # Play a single track once, then stop
+    LOOP_ONE = "loop_one"  # Repeat a single track continuously
+
+
+class MusicPositionPayload(BaseModel):
+    position: Union[float, int]
+
+
+class MusicModePayload(BaseModel):
+    mode: MusicPlayerMode
+
+
+class MusicTrackPayload(BaseModel):
+    track: str

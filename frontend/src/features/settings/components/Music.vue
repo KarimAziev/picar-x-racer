@@ -103,18 +103,14 @@ const files = computed(() => musicStore.data);
 const loading = computed(() => musicStore.loading);
 
 const isPlaying = (track: string) =>
-  musicStore.track === track && musicStore.playing;
+  musicStore.player.track === track && musicStore.player.is_playing;
 
-const playTrack = (track: string) => {
-  if (musicStore.track === track) {
-    musicStore.resumeMusic();
-  } else {
-    musicStore.playMusic(track, true, 0);
-  }
+const playTrack = async (track: string) => {
+  await musicStore.playTrack(track);
 };
 
-const pauseTrack = () => {
-  musicStore.pauseMusic();
+const pauseTrack = async () => {
+  await musicStore.togglePlaying();
 };
 
 const onRowReorder = async (e: DataTableRowReorderEvent) => {
