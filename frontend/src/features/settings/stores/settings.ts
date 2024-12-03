@@ -1,21 +1,20 @@
 import { defineStore } from "pinia";
 import axios from "axios";
+import { cycleValue } from "@/util/cycleValue";
+import { omit, isObjectEquals } from "@/util/obj";
+import { retrieveError } from "@/util/error";
+import type { ControllerActionName } from "@/features/controller/store";
 import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
+import { toggleableSettings } from "@/features/settings/config";
+import { SettingsTab } from "@/features/settings/enums";
 import {
   useMessagerStore,
   ShowMessageTypeProps,
 } from "@/features/messager/store";
-
-import { toggleableSettings } from "@/features/settings/config";
-import { SettingsTab } from "@/features/settings/enums";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
-import { omit, isObjectEquals } from "@/util/obj";
-import type { ControllerActionName } from "@/features/controller/store";
-import { retrieveError } from "@/util/error";
 import { useStore as useMusicStore } from "@/features/settings/stores/music";
 import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
-import { cycleValue } from "@/util/cycleValue";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
 

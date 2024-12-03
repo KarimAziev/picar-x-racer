@@ -1,5 +1,6 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
+import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import {
   useImageStore,
   useSettingsStore,
@@ -13,16 +14,15 @@ import {
   useDetectionStore,
   useStreamStore,
 } from "@/features/settings/stores";
+import { useMessagerStore } from "@/features/messager/store";
+import { SettingsTab } from "@/features/settings/enums";
+import { takePhoto } from "@/features/controller/api";
+import { isNumber, isPlainObject, isString } from "@/util/guards";
+import { constrain } from "@/util/constrain";
 import type {
   MethodsWithoutParams,
   ExcludePropertiesWithPrefix,
 } from "@/util/ts-helpers";
-import { SettingsTab } from "@/features/settings/enums";
-import { useMessagerStore } from "@/features/messager/store";
-import { isNumber, isPlainObject, isString } from "@/util/guards";
-import { constrain } from "@/util/constrain";
-import { takePhoto } from "@/features/controller/api";
-import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;

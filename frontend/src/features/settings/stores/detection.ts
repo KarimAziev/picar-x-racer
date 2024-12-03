@@ -63,7 +63,6 @@ export const useStore = defineStore("detection-settings", {
   actions: {
     async updateData(payload: DetectionSettings) {
       const messager = useMessagerStore();
-      console.log("saving PAYLOAD", payload);
 
       try {
         this.loading = true;
