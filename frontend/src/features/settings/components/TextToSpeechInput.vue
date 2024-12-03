@@ -16,9 +16,9 @@
     <TextInput
       placeholder="Text to Speech"
       id="tts-text"
-      @keydown.stop="doThis"
+      @keydown.stop="doNothing"
       @keyup.stop="handleKeyUp"
-      @keypress.stop="doThis"
+      @keypress.stop="doNothing"
       @keyup.enter="handleKeyEnter"
       v-model="inputRef"
       v-tooltip="'Type the Text To Speech and press Enter to speak'"
@@ -50,13 +50,14 @@ import TextToSpeechButton from "@/features/settings/components/TextToSpeechButto
 import { useInputHistory } from "@/composables/useInputHistory";
 
 defineProps<{ class?: string }>();
+
 const store = useSettingsStore();
 
 const language = ref(store.data.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
-const doThis = () => {};
+const doNothing = () => {};
 const handleSelectBeforeShow = () => {
   store.inhibitKeyHandling = true;
 };
