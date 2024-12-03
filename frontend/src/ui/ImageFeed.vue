@@ -75,7 +75,7 @@ watch(
         streamStore.data.enhance_mode === "robocop_vision"
           ? drawAimOverlay
           : drawOverlay;
-      if (timeDiff >= 0 && timeDiff <= 0.2) {
+      if (timeDiff >= 0 && timeDiff <= 1) {
         handler(overlayCanvas.value, imgRef.value, newResults);
       } else {
         handler(overlayCanvas.value, imgRef.value, []);
