@@ -95,7 +95,7 @@ export const useStore = defineStore("detection-settings", {
         );
         this.data = data;
       } catch (error) {
-        messager.handleError(error, "Error fetching video feed settings");
+        messager.handleError(error, "Error fetching detection settings");
       } finally {
         this.loading = false;
       }

@@ -28,12 +28,12 @@
 import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { useWebsocketStream } from "@/composables/useWebsocketStream";
+import { useCameraRotate } from "@/composables/useCameraRotate";
 import {
   useCameraStore,
   useDetectionStore,
   useStreamStore,
 } from "@/features/settings/stores";
-import { useCameraRotate } from "@/composables/useCameraRotate";
 import { drawOverlay, drawAimOverlay } from "@/util/overlay";
 
 const camStore = useCameraStore();
