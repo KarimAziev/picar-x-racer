@@ -44,7 +44,7 @@
         </TreeSelect>
       </div>
     </div>
-    Models paramaters
+    Models parameters
     <div class="flex">
       <SelectField
         inputId="img_size"
