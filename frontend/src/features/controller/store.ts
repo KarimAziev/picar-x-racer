@@ -13,7 +13,10 @@ import {
   useDetectionStore,
   useStreamStore,
 } from "@/features/settings/stores";
-import { MethodsWithoutParams } from "@/util/ts-helpers";
+import type {
+  MethodsWithoutParams,
+  ExcludePropertiesWithPrefix,
+} from "@/util/ts-helpers";
 import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore } from "@/features/messager/store";
 import { isNumber, isPlainObject, isString } from "@/util/guards";
@@ -573,5 +576,9 @@ export type ControllerState = Omit<
   keyof ReturnType<typeof defineStore>
 >;
 
-export type ControllerActions = MethodsWithoutParams<ControllerState>;
+export type ControllerActions = Omit<
+  ExcludePropertiesWithPrefix<"$", MethodsWithoutParams<ControllerState>>,
+  "initializeWebSocket" | "cleanup"
+>;
+
 export type ControllerActionName = keyof ControllerActions;

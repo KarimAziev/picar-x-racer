@@ -33,3 +33,15 @@ export type Narrow<A> = Cast<
 
 // return first element from Array
 export type First<T> = T extends any[] ? T[0] : never;
+
+export type ExcludePrefix<
+  Prefix extends string,
+  Str extends string,
+> = Str extends `${Prefix}${string}` ? never : Str;
+
+export type ExcludePropertiesWithPrefix<
+  Prefix extends string,
+  T extends Record<string, any>,
+> = {
+  [K in keyof T as K extends `${Prefix}${string}` ? never : K]: T[K];
+};
