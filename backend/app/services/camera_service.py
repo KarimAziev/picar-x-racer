@@ -13,7 +13,6 @@ from app.config.video_enhancers import frame_enhancers
 from app.exceptions.camera import CameraRecordingError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.services.detection_service import DetectionService
 from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_fps_render
@@ -21,6 +20,7 @@ from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
+    from app.services.detection_service import DetectionService
     from app.services.files_service import FilesService
 
 
@@ -33,13 +33,10 @@ class CameraService(metaclass=SingletonMeta):
     """
 
     def __init__(
-        self, detection_service: DetectionService, file_manager: "FilesService"
+        self, detection_service: "DetectionService", file_manager: "FilesService"
     ):
         """
         Initializes the `CameraService` singleton instance.
-
-        Args:
-            detection_service: DetectionService
         """
         self.logger = Logger(name=__name__)
         self.file_manager = file_manager
@@ -61,18 +58,17 @@ class CameraService(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[cv2.VideoCapture, None] = None
-        self.last_detection_result = None
 
-    def update_camera_settings(self, settings: CameraSettings):
+    def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         self.camera_settings = settings
         self.restart_camera()
         return self.camera_settings
 
-    def update_stream_settings(self, settings: StreamSettings):
+    def update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
         self.stream_settings = settings
         return self.stream_settings
 
-    def generate_frame(self):
+    def generate_frame(self) -> Optional[bytes]:
         """
         Generates a video frame for streaming, including an embedded timestamp.
 
@@ -107,7 +103,7 @@ class CameraService(metaclass=SingletonMeta):
 
             return timestamp_bytes + encoded_frame
 
-    def setup_camera_props(self):
+    def setup_camera_props(self) -> None:
         """
         Configure the camera properties such as FPS, resolution (width and height),
         and pixel format based on the current settings and device information.
@@ -184,17 +180,12 @@ class CameraService(metaclass=SingletonMeta):
                     "pixel_format", self.camera_settings.pixel_format
                 )
 
-    def release_cap_safe(self):
+    def _release_cap_safe(self) -> None:
         """
         Safely releases the camera resource represented by `self.cap`.
 
         This method checks whether the camera capture object (`self.cap`) is initialized and open.
         If so, it releases the camera resource, ensuring no further frames are captured.
-
-        This method also handles potential exceptions that may occur while releasing
-        the camera resource by logging the exception via `self.logger`.
-
-        After releasing the camera, the `self.cap` object is set to `None`.
         """
         try:
             if self.cap and self.cap.isOpened():
@@ -206,7 +197,7 @@ class CameraService(metaclass=SingletonMeta):
         finally:
             self.cap = None
 
-    def camera_thread_func(self):
+    def _camera_thread_func(self) -> None:
         """
         Camera capture loop function.
 
@@ -214,11 +205,11 @@ class CameraService(metaclass=SingletonMeta):
         pushing them to the detection service. Handles errors and device resets.
         """
 
-        self.release_cap_safe()
+        self._release_cap_safe()
         self.cap = self.video_device_adapter.setup_video_capture()
 
         if not self.cap:
-            self.logger.warning("Couldn't setup video capture")
+            self.logger.error("Couldn't setup video capture")
             return
 
         self.setup_camera_props()
@@ -339,7 +330,7 @@ class CameraService(metaclass=SingletonMeta):
         except Exception as e:
             self.logger.log_exception("Exception occurred in camera loop", e)
         finally:
-            self.release_cap_safe()
+            self._release_cap_safe()
             self.stream_img = None
             if self.video_writer is not None:
                 try:
@@ -350,9 +341,9 @@ class CameraService(metaclass=SingletonMeta):
                     )
             self.logger.info("Camera loop terminated and camera released.")
 
-    def start_camera(self):
+    def start_camera(self) -> None:
         """
-        Starts the camera capture thread and the detection process.
+        Starts the camera capture thread.
 
         Checks if the camera is already running and prevents multiple starts.
         """
@@ -361,7 +352,7 @@ class CameraService(metaclass=SingletonMeta):
             return
 
         self.camera_run = True
-        self.capture_thread = threading.Thread(target=self.camera_thread_func)
+        self.capture_thread = threading.Thread(target=self._camera_thread_func)
         self.capture_thread.start()
 
     async def start_camera_and_wait_for_stream_img(self):
@@ -386,7 +377,7 @@ class CameraService(metaclass=SingletonMeta):
             counter += 1
             await asyncio.sleep(0.1)
 
-    def stop_camera(self):
+    def stop_camera(self) -> None:
         """
         Stops the camera capture and detection processes.
 
@@ -396,37 +387,16 @@ class CameraService(metaclass=SingletonMeta):
         if not self.camera_run:
             self.logger.info("Camera is not running.")
             return
+
         self.logger.info("Stopping camera")
-        self.last_detection_result = None
+
         self.camera_run = False
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
 
-    @property
-    def video_feed_record(self) -> bool:
-        """
-        Gets or sets the state of video recording.
-
-        When set to True, video recording starts and video will be saved to the predefined path.
-        When set to False, video recording stops.
-
-        Returns:
-            bool: The current state of video recording.
-        """
-        return self._video_feed_record
-
-    @video_feed_record.setter
-    def video_feed_record(self, value: bool):
-        if self._video_feed_record != value:
-            self._video_feed_record = value
-            if value:
-                self.start_video_recording()
-            else:
-                self.stop_video_recording()
-
-    def start_video_recording(self):
+    def start_video_recording(self) -> None:
         """
         Starts recording video to the specified path. Ensures the directory exists.
         """
@@ -482,7 +452,7 @@ class CameraService(metaclass=SingletonMeta):
             ),
         )
 
-    def stop_video_recording(self):
+    def stop_video_recording(self) -> None:
         """
         Stops recording video and releases resources.
         """
@@ -491,7 +461,7 @@ class CameraService(metaclass=SingletonMeta):
             self.video_writer = None
             self.logger.info("Stopped video recording")
 
-    def restart_camera(self):
+    def restart_camera(self) -> None:
         cam_running = self.camera_run
         if cam_running:
             self.stop_camera()
@@ -509,7 +479,7 @@ class CameraService(metaclass=SingletonMeta):
         if cam_running:
             self.start_camera()
 
-    def update_device(self, device: Optional[str]):
+    def update_device(self, device: Optional[str]) -> None:
         cam_running = self.camera_run
         if cam_running:
             self.stop_camera()

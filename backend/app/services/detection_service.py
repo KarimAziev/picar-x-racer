@@ -4,12 +4,11 @@ import queue
 import time
 from typing import TYPE_CHECKING, Optional
 
-from app.config.paths import DATA_DIR, YOLO_MODEL_PATH
+from app.config.paths import DATA_DIR
 from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
 from app.schemas.detection import DetectionSettings
 from app.util.detection_process import detection_process_func
 from app.util.file_util import resolve_absolute_path
-from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.queue import clear_and_put, clear_queue
 from app.util.singleton_meta import SingletonMeta
@@ -22,6 +21,12 @@ logger = Logger(__name__)
 
 
 class DetectionService(metaclass=SingletonMeta):
+    """
+    A service class for managing object detection processes. This service handles
+    starting, stopping, and updating settings for object detection using multiprocessing
+    and asynchronous tasks.
+    """
+
     def __init__(
         self, file_manager: "FilesService", connection_manager: "ConnectionService"
     ):
@@ -44,36 +49,21 @@ class DetectionService(metaclass=SingletonMeta):
         self.detection_process_task: Optional[asyncio.Task] = None
         self.loading = False
 
-    @staticmethod
-    def check_model(model: Optional[str]):
-        if model is None:
-            return None
-        if model.endswith(".tflite") and not is_google_coral_connected():
-            next_model = resolve_absolute_path(YOLO_MODEL_PATH, DATA_DIR)
-            logger.warning(
-                "Google coral is not connected, setting model to %s", next_model
-            )
-            return next_model
-        else:
-            return model
-
-    async def cancel_detection_process_task(self) -> None:
-        """
-        Cancels the background detection task, if running.
-        """
-        self.logger.info("Cancelling detection task")
-        if self.detection_process_task:
-            try:
-                self.task_event.set()
-                self.detection_process_task.cancel()
-                await self.detection_process_task
-            except asyncio.CancelledError:
-                self.logger.info("Avoid obstacles task was cancelled")
-                self.detection_process_task = None
-            finally:
-                self.task_event.clear()
-
     async def update_detection_settings(self, settings: DetectionSettings):
+        """
+        Updates the detection settings and applies the changes to the detection process.
+
+        Args:
+            settings (DetectionSettings): The new detection configuration.
+
+        Behavior:
+            - Compares the new settings with the existing ones.
+            - Restarts the detection process if required by updates in critical settings.
+            - Dynamically updates runtime settings like confidence and labels without restarting.
+
+        Returns:
+            DetectionSettings: The updated detection settings.
+        """
         detection_action = None
         dict_data = settings.model_dump()
         detection_data = self.detection_settings.model_dump(exclude_unset=True)
@@ -125,6 +115,13 @@ class DetectionService(metaclass=SingletonMeta):
         return self.detection_settings
 
     async def start_detection_process_task(self):
+        """
+        Background task that monitors the output from the detection process in real-time.
+
+        Behavior:
+            - Reads messages from the `out_queue` and handles errors if they arise.
+            - Runs continuously until the associated events signal a stop.
+        """
         try:
             while (
                 hasattr(self, "out_queue")
@@ -148,7 +145,40 @@ class DetectionService(metaclass=SingletonMeta):
             )
             await self.connection_manager.error(f"Detection process error: {e}")
 
+    async def cancel_detection_process_task(self) -> None:
+        """
+        Cancels the background asyncio detection process task, ensuring it shuts down cleanly.
+
+        Behavior:
+            - Signals the task to stop.
+            - Handles cancellation gracefully while clearing necessary state.
+        """
+
+        self.logger.info("Cancelling detection task")
+        if self.detection_process_task:
+            try:
+                self.task_event.set()
+                self.detection_process_task.cancel()
+                await self.detection_process_task
+            except asyncio.CancelledError:
+                self.logger.info("Detection process is cancelled")
+                self.detection_process_task = None
+            finally:
+                self.task_event.clear()
+
     async def start_detection_process(self):
+        """
+        Starts the detection process as a multiprocessing subprocess.
+
+        Behavior:
+            - Ensures the model is loaded and initializes required resources.
+            - Configures the detection subprocess and provides the necessary queues.
+            - Broadcasts updates to connected clients regarding the operational status.
+
+        Raises:
+            DetectionModelLoadError: If the detection model fails to load.
+            Exception: For unhandled errors during initialization.
+        """
         try:
             async with self.lock:
                 if self.detection_settings.model is None:
@@ -214,6 +244,14 @@ class DetectionService(metaclass=SingletonMeta):
             self.loading = False
 
     async def stop_detection_process(self):
+        """
+        Stops the currently running detection process.
+
+        Behavior:
+            - Signals the process to stop using the `stop_event`.
+            - Waits for the process to terminate, forcibly closing it if required.
+            - Cleans up shared resources like queues and resets state.
+        """
         async with self.lock:
             if self.detection_process is None:
                 self.logger.info("Detection process is None, skipping stop")
@@ -232,7 +270,9 @@ class DetectionService(metaclass=SingletonMeta):
                     await asyncio.to_thread(self.detection_process.join, 5)
                     self.detection_process.close()
             await asyncio.to_thread(self._cleanup_queues)
-            self.clear_stop_event()
+            self.logger.info("Clearing stop event")
+            self.stop_event.clear()
+            self.logger.info("Stop event cleared")
 
             self.detection_result = None
 
@@ -242,7 +282,12 @@ class DetectionService(metaclass=SingletonMeta):
             self.logger.info("Detection process has been stopped successfully.")
 
     def _cleanup_queues(self):
-        """Empty queues or safely close them before shutdown."""
+        """
+        Cleans up all multiprocessing queues by clearing their contents.
+
+        Behavior:
+            - Ensures safe shutdown of the queues without leaving residual data.
+        """
         for queue_item in [
             self.frame_queue,
             self.control_queue,
@@ -250,16 +295,6 @@ class DetectionService(metaclass=SingletonMeta):
             self.out_queue,
         ]:
             clear_queue(queue_item)
-
-    def clear_stop_event(self):
-        self.logger.info("Clearing stop event")
-        self.stop_event.clear()
-        self.logger.info("Stop event cleared")
-
-    async def restart_detection_process(self):
-        await self.stop_detection_process()
-        await self.start_detection_process()
-        self.logger.info("Detection process has been restarted")
 
     def put_frame(self, frame_data):
         """Puts the frame data into the frame queue after clearing it."""
@@ -271,6 +306,15 @@ class DetectionService(metaclass=SingletonMeta):
 
     @property
     def current_state(self):
+        """
+        Retrieves the current state of the detection service, including the latest detection results.
+
+        Returns:
+            dict: The current state with keys:
+                - `detection_result`: The latest detection results (or an empty result if none exist).
+                - `timestamp`: The timestamp associated with the detection results.
+                - `loading`: A flag indicating whether a detection load operation is in progress.
+        """
         data = (
             self.detection_result
             if self.detection_result is not None
@@ -285,6 +329,14 @@ class DetectionService(metaclass=SingletonMeta):
         }
 
     async def cleanup(self):
+        """
+        Performs cleanup operations for the detection service, preparing it for shutdown.
+
+        Behavior:
+            - Cancels any running tasks and stops the detection process.
+            - Shuts down the multiprocessing manager.
+            - Deletes class properties associated with multiprocessing and async state.
+        """
         await self.cancel_detection_process_task()
         await self.stop_detection_process()
         if self.manager is not None:
@@ -306,6 +358,12 @@ class DetectionService(metaclass=SingletonMeta):
                 delattr(self, prop)
 
     def get_detection(self):
+        """
+        Retrieves the latest detection result from the detection process.
+
+        Returns:
+            dict or None: The detection result, or `None` if no result is available.
+        """
         if self.stop_event.is_set():
             return None
         try:
