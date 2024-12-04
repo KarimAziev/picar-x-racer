@@ -77,7 +77,6 @@ class DetectionService(metaclass=SingletonMeta):
         runtime_data_keys = {"confidence", "labels"}
 
         runtime_data = {}
-        detection_action = settings.active
 
         for key, value in dict_data.items():
             if detection_data.get(key) != value:

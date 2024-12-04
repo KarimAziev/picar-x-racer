@@ -90,10 +90,11 @@ import { splitKeySequence } from "@/util/keyboard-util";
 const popupStore = usePopupStore();
 
 const store = useSettingsStore();
+
 const originalKeys = computed(() => store.data.keybindings);
 const keyRecorderOpen = computed(() => popupStore.isKeyRecording);
 
-const commandsToOptions = (obj: Record<string, string[]>): Fields => {
+const commandsToOptions = (obj: Record<string, string[] | null>): Fields => {
   const makeKeybindingItem = (key: string): KeybindingField => ({
     label: "Keybinding",
     name: "keybinding",
@@ -117,7 +118,7 @@ const commandsToOptions = (obj: Record<string, string[]>): Fields => {
   );
 
   const res = sortedEntries.flatMap(([cmd, keybindings]) =>
-    keybindings.map((k) => {
+    (keybindings || []).map((k) => {
       const keyItem = makeKeybindingItem(k);
       const cmdItem = makeCommandItem(cmd);
 

@@ -73,7 +73,7 @@ async def update_settings(
     return new_settings
 
 
-@router.get("/api/calibration", response_model=CalibrationConfig)
+@router.get("/api/settings/calibration", response_model=CalibrationConfig)
 def get_calibration_settings(
     file_service: "FilesService" = Depends(get_file_manager),
 ):

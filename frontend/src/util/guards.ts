@@ -49,3 +49,8 @@ export const isBoolean = (v: unknown) => typeof v === "boolean";
 export const isSymbol = (v: unknown): v is symbol => typeof v === "symbol";
 export const isNull = (v: unknown): v is null => v === null;
 export const isUndefined = (v: unknown): v is undefined => v === undefined;
+
+export const isInput = (v: unknown): v is HTMLInputElement =>
+  v instanceof HTMLInputElement;
+export const isButton = (v: unknown): v is HTMLButtonElement =>
+  v instanceof HTMLButtonElement;

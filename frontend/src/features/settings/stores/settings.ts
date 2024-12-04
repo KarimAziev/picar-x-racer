@@ -118,7 +118,7 @@ export interface Settings
     CameraOpenRequestParams {
   default_music?: string;
   default_tts_language: string;
-  keybindings: Partial<Record<ControllerActionName, string[]>>;
+  keybindings: Partial<Record<ControllerActionName, string[] | null>>;
   battery_full_voltage: number;
   auto_measure_distance_delay_ms: number;
   texts: TextItem[];
@@ -265,6 +265,7 @@ export const useStore = defineStore("settings", {
     },
     async saveSettings() {
       const data = this.getCurrentTabSettings();
+
       const messager = useMessagerStore();
       if (!data) {
         messager.error("Nothing to save");
@@ -301,7 +302,7 @@ export const useStore = defineStore("settings", {
     async speakText(text: string, language?: string) {
       const messager = useMessagerStore();
       try {
-        await axios.post(`/api/play-tts`, {
+        await axios.post(`/api/tts/speak`, {
           text: text,
           lang: language,
         });

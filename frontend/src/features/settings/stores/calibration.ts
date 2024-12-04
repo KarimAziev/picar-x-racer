@@ -27,7 +27,7 @@ export const useStore = defineStore("calibration", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const response = await axios.get("/api/calibration");
+        const response = await axios.get("/api/settings/calibration");
         Object.entries(response.data).forEach(([key, value]) => {
           messager.info(`${value}`, key);
           this.data[key] = value as string | number | null;

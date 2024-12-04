@@ -9,9 +9,10 @@ import { usePopupStore } from "@/features/settings/stores";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
 import { isMobileDevice } from "@/util/device";
 import { inputHistoryDirectionByKey } from "@/composables/useInputHistory";
+import { isButton, isInput } from "@/util/guards";
 
 const shouldSkip = (event: KeyboardEvent) =>
-  event.target !== document.body &&
+  (isButton(event.target) || isInput(event.target)) &&
   (event.key.length === 1 || inputHistoryDirectionByKey[event.key]);
 
 export const useController = (
@@ -43,10 +44,10 @@ export const useController = (
   const activeKeys = ref(new Set<string>());
   const inactiveKeys = ref(new Set<string>());
 
-  const findKey = (keys?: string[]) =>
+  const findKey = (keys?: string[] | null) =>
     keys && keys.find((k) => activeKeys.value.has(k));
 
-  const findInactiveKey = (keys?: string[]) =>
+  const findInactiveKey = (keys?: string[] | null) =>
     keys && keys.find((k) => inactiveKeys.value.has(k));
 
   const handleKeyUp = (event: KeyboardEvent) => {
