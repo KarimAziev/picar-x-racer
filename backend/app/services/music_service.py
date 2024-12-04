@@ -382,4 +382,4 @@ class MusicService(metaclass=SingletonMeta):
 
             # Broadcast player state to clients
             await self.broadcast_state()
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(10)
