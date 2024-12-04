@@ -67,26 +67,25 @@ class FilesService(metaclass=SingletonMeta):
         self.audio_manager = audio_manager
         self.cache = self.load_cache()
 
-        self.cached_settings = None
         self.last_modified_time = None
         self.current_settings_file = None
-        self.settings = self.load_settings()
+        self.settings: Dict[str, Any] = self.load_settings()
         self.list_all_music_with_details()
 
-    def load_cache(self):
+    def load_cache(self) -> Dict:
         """Load cached audio file data from a persistent file."""
         if os.path.exists(MUSIC_CACHE_FILE_PATH):
             with open(MUSIC_CACHE_FILE_PATH, "r") as cache_file:
                 return json.load(cache_file)
         return {}
 
-    def save_cache(self):
+    def save_cache(self) -> None:
         """Save the cache to a persistent file."""
         ensure_parent_dir_exists(MUSIC_CACHE_FILE_PATH)
         with open(MUSIC_CACHE_FILE_PATH, "w") as cache_file:
             json.dump(self.cache, cache_file, indent=2)
 
-    def get_settings_file(self):
+    def get_settings_file(self) -> str:
         """Determines the current settings file to use"""
         return (
             self.user_settings_file
@@ -94,7 +93,7 @@ class FilesService(metaclass=SingletonMeta):
             else FilesService.default_user_settings_file
         )
 
-    def load_settings(self):
+    def load_settings(self) -> Dict[str, Any]:
         """Loads user settings from a JSON file, using cache if file is not modified."""
         settings_file = self.get_settings_file()
 
@@ -104,12 +103,13 @@ class FilesService(metaclass=SingletonMeta):
             current_modified_time = None
 
         if (
-            self.cached_settings is None
+            not hasattr(self, 'cached_settings')
+            or self.cached_settings is None
             or self.last_modified_time != current_modified_time
             or self.current_settings_file != settings_file
         ):
             self.logger.info(f"Loading settings from {settings_file}")
-            self.cached_settings = load_json_file(settings_file)
+            self.cached_settings: Dict[str, Any] = load_json_file(settings_file)
             self.last_modified_time = current_modified_time
             self.current_settings_file = settings_file
         else:
@@ -119,7 +119,7 @@ class FilesService(metaclass=SingletonMeta):
 
         return self.cached_settings
 
-    def save_settings(self, new_settings: Dict[str, Any]):
+    def save_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         """Saves new settings to the user settings file."""
         existing_settings = self.load_settings()
         self.logger.info(f"Saving settings to {self.user_settings_file}")
@@ -215,14 +215,14 @@ class FilesService(metaclass=SingletonMeta):
         """List sorted music tracks."""
         return [details["track"] for details in self.list_all_music_with_details()]
 
-    def prune_cache(self, max_entries=100):
+    def prune_cache(self, max_entries=100) -> None:
         """Limits the cache size by keeping only recent entries."""
         if len(self.cache) > max_entries:
             # Keeps the N most popular/most recent entries
             self.cache = dict(list(self.cache.items())[-max_entries:])
             self.save_cache()
 
-    def update_track_order_in_cache(self, ordered_tracks: List[str]):
+    def update_track_order_in_cache(self, ordered_tracks: List[str]) -> None:
         """
         Updates the order for tracks in the music cache.
 
@@ -237,7 +237,7 @@ class FilesService(metaclass=SingletonMeta):
                     break
         self.save_cache()
 
-    def _get_audio_file_details(self, file: str):
+    def _get_audio_file_details(self, file: str) -> Optional[Dict[str, Any]]:
         """
         Gets details of an audio file such as track name and duration.
 
@@ -286,7 +286,7 @@ class FilesService(metaclass=SingletonMeta):
             self.save_cache()
         return details
 
-    def music_track_to_absolute(self, track: str):
+    def music_track_to_absolute(self, track: str) -> str:
         dir = self.get_music_directory(track)
         return path.join(dir, track)
 
@@ -300,7 +300,7 @@ class FilesService(metaclass=SingletonMeta):
         settings = self.load_settings()
         return settings.get("music_order", [])
 
-    def save_custom_music_order(self, order: List[str]):
+    def save_custom_music_order(self, order: List[str]) -> None:
         """
         Saves the custom music track order to the user settings.
 
@@ -309,7 +309,7 @@ class FilesService(metaclass=SingletonMeta):
         """
         self.save_settings({"music_order": order})
 
-    def list_default_music(self, full=False):
+    def list_default_music(self, full=False) -> List[str]:
         """
         Lists default music files.
 
@@ -415,7 +415,7 @@ class FilesService(metaclass=SingletonMeta):
         """
         return self.save_uploaded_file(file, DATA_DIR)
 
-    def remove_photo(self, filename: str):
+    def remove_photo(self, filename: str) -> bool:
         """
         Removes a photo file from the user's photo directory.
 
@@ -428,7 +428,7 @@ class FilesService(metaclass=SingletonMeta):
 
         return self.remove_file(filename, self.user_photos_dir)
 
-    def remove_video(self, filename: str):
+    def remove_video(self, filename: str) -> bool:
         """
         Removes a video file from the user's video directory.
 
@@ -441,7 +441,7 @@ class FilesService(metaclass=SingletonMeta):
 
         return self.remove_file(filename, self.user_videos_dir)
 
-    def remove_music(self, filename: str):
+    def remove_music(self, filename: str) -> bool:
         """
         Removes a music file from the user's music directory or prevents default music files from being removed.
 
@@ -487,7 +487,7 @@ class FilesService(metaclass=SingletonMeta):
         os.remove(resolve_absolute_path(filename, DATA_DIR))
         return True
 
-    def get_photo_directory(self, filename: str):
+    def get_photo_directory(self, filename: str) -> str:
         """
         Retrieves the directory of a specified photo file.
 
@@ -507,7 +507,7 @@ class FilesService(metaclass=SingletonMeta):
         else:
             raise FileNotFoundError
 
-    def get_video_directory(self, filename: str):
+    def get_video_directory(self, filename: str) -> str:
         """
         Retrieves the directory of a specified video file.
 
@@ -527,7 +527,7 @@ class FilesService(metaclass=SingletonMeta):
         else:
             raise FileNotFoundError
 
-    def get_music_directory(self, filename: str):
+    def get_music_directory(self, filename: str) -> str:
         """
         Retrieves the directory of a specified music file.
 
@@ -573,7 +573,7 @@ class FilesService(metaclass=SingletonMeta):
             buffer.write(file.file.read())
         return file_path
 
-    def get_calibration_config(self):
+    def get_calibration_config(self) -> Dict:
         """
         Loads calibration settings from a configuration file.
 
