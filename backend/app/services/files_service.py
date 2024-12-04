@@ -10,7 +10,7 @@ Classes:
 import json
 import os
 from os import path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.adapters.robot_hat.filedb import fileDB
 from app.config.paths import (
@@ -27,7 +27,6 @@ from app.config.paths import (
 )
 from app.config.yolo_common_models import yolo_descriptions
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
-from app.services.audio_service import AudioService
 from app.util.file_util import (
     ensure_parent_dir_exists,
     get_directory_structure,
@@ -38,6 +37,9 @@ from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
+
+if TYPE_CHECKING:
+    from app.services.audio_service import AudioService
 
 
 class FilesService(metaclass=SingletonMeta):
@@ -51,7 +53,7 @@ class FilesService(metaclass=SingletonMeta):
     default_user_settings_file = DEFAULT_USER_SETTINGS
     default_user_music_dir = DEFAULT_MUSIC_DIR
 
-    def __init__(self, audio_manager: AudioService, *args, **kwargs):
+    def __init__(self, audio_manager: "AudioService", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = Logger(name=__name__)
         self.user_home = USER_HOME
