@@ -71,6 +71,3 @@ def get_available_models():
             result.append(item)
 
     return result
-
-
-get_available_models()
