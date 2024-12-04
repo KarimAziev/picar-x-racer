@@ -41,33 +41,3 @@ yolo_descriptions = {
     'yolo11l.pt': 'Large model delivering SOTA performance with a focus on accuracy, suitable for intricate tasks.',
     'yolo11x.pt': 'Extra-large variant pushing SOTA performance boundaries for the most demanding object detection tasks.',
 }
-
-
-def get_available_models():
-    """
-    Recursively scans the provided directory for .tflite, .onnx and .pt model files.
-    Returns a list of all found models with their full file paths.
-
-    Returns:
-        List[str]: List of paths to discovered .tflite and .pt model files.
-    """
-    allowed_extensions = ('.tflite', '.pt') if is_google_coral_connected() else ('.pt')
-    existing_set = set()
-    result = get_directory_structure(
-        DATA_DIR,
-        allowed_extensions,
-        exclude_empty_dirs=True,
-        absolute=False,
-        file_processor=lambda file_path: existing_set.add(os.path.basename(file_path)),
-    )
-
-    for key, _ in yolo_descriptions.items():
-        if not key in existing_set:
-            item = {
-                "label": key,
-                "key": key,
-                "data": {"name": key, "type": "Loadable model"},
-            }
-            result.append(item)
-
-    return result

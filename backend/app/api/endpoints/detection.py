@@ -1,8 +1,7 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_detection_manager
-from app.config.yolo_common_models import get_available_models
+from app.api.deps import get_detection_manager, get_file_manager
 from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
 from app.schemas.detection import DetectionSettings
 from app.util.logger import Logger
@@ -19,6 +18,7 @@ from starlette.websockets import WebSocketState
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
+    from app.services.files_service import FilesService
 
 logger = Logger(__name__)
 
@@ -61,7 +61,6 @@ async def update_detection_settings(
     connection_manager: "ConnectionService" = request.app.state.app_manager
     try:
         result = await detection_service.update_detection_settings(payload)
-        logger.info(f"result={result}")
         await connection_manager.broadcast_json(
             {"type": "detection", "payload": result.model_dump()}
         )
@@ -157,7 +156,7 @@ async def object_detection(
     summary="Retrieve Available Detection Models",
     response_description="Returns a list of available object detection models.",
 )
-def get_detectors():
+def get_detectors(file_manager: "FilesService" = Depends(get_file_manager)):
     """
     Endpoint to retrieve a list of available object detection models.
 
@@ -165,4 +164,4 @@ def get_detectors():
     -------------
     List[str]: A list of available detection models that can be used for object detection.
     """
-    return get_available_models()
+    return file_manager.get_available_models()

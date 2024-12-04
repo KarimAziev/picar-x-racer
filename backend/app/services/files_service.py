@@ -5,32 +5,6 @@ This module handles file operations such as listing, saving, and removing photos
 
 Classes:
     - FilesService: Handles file-related operations including saving, removing, and listing files from specified directories.
-
-Methods:
-    - __init__: Initializes the FilesService with user-specific directories and audio manager.
-    - get_settings_file: Determines the current settings file to use
-    - load_settings: Loads user settings from a cache or JSON file.
-    - save_settings: Saves user settings to a JSON file.
-    - list_files: Lists all files in a specified directory.
-    - list_all_music_with_details: Lists all music files with details (duration).
-    - _get_audio_file_details: Retrieves details (track name and duration) of a specific audio file.
-    - list_default_music: Lists default music files.
-    - list_default_sounds: Lists default sound files.
-    - list_user_photos: Lists user-uploaded photo files.
-    - list_user_music: Lists user-uploaded music files.
-    - list_user_sounds: Lists user-uploaded sound files.
-    - remove_file: Removes a file from a specified directory.
-    - save_sound: Saves an uploaded sound file to the user’s sound directory.
-    - save_music: Saves an uploaded music file to the user’s music directory.
-    - save_photo: Saves an uploaded photo file to the user’s photos directory.
-    - remove_photo: Removes a photo file from the user’s photo directory.
-    - remove_music: Removes a music file from the user’s music directory, preventing default music files from being removed.
-    - remove_sound: Removes a sound file from the user’s sound directory, preventing default sound files from being removed.
-    - get_photo_directory: Retrieves the directory of a specified photo file.
-    - get_sound_directory: Retrieves the directory of a specified sound file.
-    - get_music_directory: Retrieves the directory of a specified music file.
-    - save_uploaded_file: Saves an uploaded file to a specified directory.
-    - get_calibration_config: Loads calibration settings from a configuration file.
 """
 
 import json
@@ -51,15 +25,16 @@ from app.config.paths import (
     PX_VIDEO_DIR,
     USER_HOME,
 )
+from app.config.yolo_common_models import yolo_descriptions
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.services.audio_service import AudioService
 from app.util.file_util import (
     ensure_parent_dir_exists,
-    file_to_relative,
-    get_files_with_extension,
+    get_directory_structure,
     load_json_file,
     resolve_absolute_path,
 )
+from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
@@ -610,16 +585,32 @@ class FilesService(metaclass=SingletonMeta):
         return {}
 
     @staticmethod
-    def get_available_models():
+    def get_available_models() -> List[Dict[str, Any]]:
         """
         Recursively scans the provided directory for .tflite, .onnx and .pt model files.
-        Returns a list of all found models with their full file paths.
-
-        Returns:
-            List[str]: List of paths to discovered .tflite and .pt model files.
+        Returns a structed list of all found models.
         """
+        allowed_extensions = (
+            ('.tflite', '.pt') if is_google_coral_connected() else ('.pt')
+        )
+        existing_set = set()
+        result = get_directory_structure(
+            DATA_DIR,
+            allowed_extensions,
+            exclude_empty_dirs=True,
+            absolute=False,
+            file_processor=lambda file_path: existing_set.add(
+                os.path.basename(file_path)
+            ),
+        )
 
-        return [
-            file_to_relative(item, DATA_DIR)
-            for item in get_files_with_extension(DATA_DIR, ('.tflite', '.pt', ".onnx"))
-        ]
+        for key, _ in yolo_descriptions.items():
+            if not key in existing_set:
+                item = {
+                    "label": key,
+                    "key": key,
+                    "data": {"name": key, "type": "Loadable model"},
+                }
+                result.append(item)
+
+        return result
