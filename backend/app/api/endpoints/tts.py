@@ -1,3 +1,4 @@
+import asyncio
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_tts_manager
@@ -45,7 +46,7 @@ async def text_to_speech(
         connection_manager: "ConnectionService" = request.app.state.app_manager
         text = payload.text
         lang = payload.lang or "en"
-        tts_manager.text_to_speech(text, lang)
+        await asyncio.to_thread(tts_manager.text_to_speech, text, lang)
         await connection_manager.broadcast_json(
             {"type": "info", "payload": "Speaking: " + text}
         )
