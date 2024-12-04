@@ -34,6 +34,7 @@ class DetectionService(metaclass=SingletonMeta):
         self.logger = Logger(__name__)
         self.file_manager = file_manager
         self.connection_manager = connection_manager
+
         self.detection_settings = DetectionSettings(
             **self.file_manager.settings.get("detection", {})
         )
@@ -86,7 +87,7 @@ class DetectionService(metaclass=SingletonMeta):
                 elif key in runtime_data_keys:
                     runtime_data[key] = value
                 elif key in detection_keys_to_restart and detection_action is None:
-                    detection_action = True
+                    detection_action = settings.active
 
         if detection_action is not None:
             await self.cancel_detection_process_task()
@@ -155,14 +156,15 @@ class DetectionService(metaclass=SingletonMeta):
             - Handles cancellation gracefully while clearing necessary state.
         """
 
-        self.logger.info("Cancelling detection task")
         if self.detection_process_task:
+            self.logger.info("Cancelling detection task")
             try:
                 self.task_event.set()
+
                 self.detection_process_task.cancel()
                 await self.detection_process_task
             except asyncio.CancelledError:
-                self.logger.info("Detection process is cancelled")
+                self.logger.info("Detection task is cancelled")
                 self.detection_process_task = None
             finally:
                 self.task_event.clear()
@@ -191,7 +193,7 @@ class DetectionService(metaclass=SingletonMeta):
                     self.detection_process is None
                     or not self.detection_process.is_alive()
                 ):
-                    self.connection_manager
+
                     self.loading = True
                     self.detection_process = mp.Process(
                         target=detection_process_func,
@@ -279,8 +281,7 @@ class DetectionService(metaclass=SingletonMeta):
 
             if self.detection_process:
                 self.detection_process = None
-
-            self.logger.info("Detection process has been stopped successfully.")
+                self.logger.info("Detection process has been stopped successfully.")
 
     def _cleanup_queues(self) -> None:
         """
@@ -340,6 +341,7 @@ class DetectionService(metaclass=SingletonMeta):
         """
         await self.cancel_detection_process_task()
         await self.stop_detection_process()
+
         if self.manager is not None:
             logger.info("Shutdown detection manager")
             self.manager.shutdown()
