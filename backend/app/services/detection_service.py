@@ -49,7 +49,9 @@ class DetectionService(metaclass=SingletonMeta):
         self.detection_process_task: Optional[asyncio.Task] = None
         self.loading = False
 
-    async def update_detection_settings(self, settings: DetectionSettings):
+    async def update_detection_settings(
+        self, settings: DetectionSettings
+    ) -> DetectionSettings:
         """
         Updates the detection settings and applies the changes to the detection process.
 
@@ -114,7 +116,7 @@ class DetectionService(metaclass=SingletonMeta):
 
         return self.detection_settings
 
-    async def start_detection_process_task(self):
+    async def start_detection_process_task(self) -> None:
         """
         Background task that monitors the output from the detection process in real-time.
 
@@ -166,7 +168,7 @@ class DetectionService(metaclass=SingletonMeta):
             finally:
                 self.task_event.clear()
 
-    async def start_detection_process(self):
+    async def start_detection_process(self) -> None:
         """
         Starts the detection process as a multiprocessing subprocess.
 
@@ -243,7 +245,7 @@ class DetectionService(metaclass=SingletonMeta):
         finally:
             self.loading = False
 
-    async def stop_detection_process(self):
+    async def stop_detection_process(self) -> None:
         """
         Stops the currently running detection process.
 
@@ -281,7 +283,7 @@ class DetectionService(metaclass=SingletonMeta):
 
             self.logger.info("Detection process has been stopped successfully.")
 
-    def _cleanup_queues(self):
+    def _cleanup_queues(self) -> None:
         """
         Cleans up all multiprocessing queues by clearing their contents.
 
@@ -296,11 +298,11 @@ class DetectionService(metaclass=SingletonMeta):
         ]:
             clear_queue(queue_item)
 
-    def put_frame(self, frame_data):
+    def put_frame(self, frame_data) -> None:
         """Puts the frame data into the frame queue after clearing it."""
         return clear_and_put(self.frame_queue, frame_data)
 
-    def put_command(self, command_data):
+    def put_command(self, command_data) -> None:
         """Puts the control queue into the frame queue after clearing it."""
         return clear_and_put(self.control_queue, command_data)
 
@@ -328,7 +330,7 @@ class DetectionService(metaclass=SingletonMeta):
             "loading": self.loading,
         }
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """
         Performs cleanup operations for the detection service, preparing it for shutdown.
 
