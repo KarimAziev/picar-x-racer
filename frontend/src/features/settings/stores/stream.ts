@@ -9,22 +9,16 @@ import {
   defaultState as settingsDefaultState,
 } from "@/features/settings/stores/settings";
 
-export type LoadingFields = Partial<{
-  [P in keyof StreamSettings]: boolean;
-}>;
-
 export interface State {
   data: StreamSettings;
   loading: boolean;
   enhancers: string[];
-  loadingData: LoadingFields;
 }
 
 const defaultState: State = {
   loading: false,
   data: { ...settingsDefaultState.data.stream },
   enhancers: [],
-  loadingData: {},
 };
 
 export const useStore = defineStore("stream", {
@@ -35,28 +29,11 @@ export const useStore = defineStore("stream", {
 
       try {
         this.loading = true;
-        const requestData = payload || this.data;
-        this.loadingData = {};
-        Object.keys(requestData).forEach((key) => {
-          this.loadingData[key as keyof StreamSettings] = true;
-        });
 
-        const prevData = { ...this.data };
-
-        const { data } = await axios.post<StreamSettings>(
-          "/api/video-feed-settings",
+        await axios.post<StreamSettings>(
+          "/api/video-feed/settings",
           payload || this.data,
         );
-        this.data = data;
-        Object.entries(data).forEach(([k, value]) => {
-          const key = k as keyof StreamSettings;
-          this.loadingData[key] = false;
-          if (prevData[key] !== value) {
-            messager.info(`${key.replace(/^video_feed_/g, "")}: ${value}`, {
-              immediately: true,
-            });
-          }
-        });
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
@@ -65,7 +42,6 @@ export const useStore = defineStore("stream", {
         }
       } finally {
         this.loading = false;
-        this.loadingData = {};
       }
       return this.data;
     },
@@ -75,7 +51,7 @@ export const useStore = defineStore("stream", {
       try {
         this.loading = true;
         const { data } = await axios.get<StreamSettings>(
-          "/api/video-feed-settings",
+          "/api/video-feed/settings",
         );
         this.data = data;
       } catch (error) {
@@ -88,7 +64,7 @@ export const useStore = defineStore("stream", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const response = await axios.get("/api/enhancers");
+        const response = await axios.get("/api/video-feed/enhancers");
         const data = response.data;
         this.enhancers = data.enhancers;
       } catch (error) {
@@ -147,7 +123,7 @@ export const useStore = defineStore("stream", {
 
       if (!this.data.video_record && settings.data.auto_download_video) {
         try {
-          const response = await axios.get(`/api/download-last-video`, {
+          const response = await axios.get(`/api/files/download-last-video`, {
             responseType: "blob",
           });
           const fileName = response.headers["content-disposition"]

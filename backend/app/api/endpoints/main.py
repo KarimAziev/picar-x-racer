@@ -3,10 +3,10 @@ import os
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
-main_router = APIRouter()
+router = APIRouter()
 
 
-@main_router.get("/", response_class=FileResponse)
+@router.get("/", response_class=FileResponse)
 def root(request: Request):
     """
     Serve the root HTML page of the frontend application.
@@ -37,7 +37,7 @@ def root(request: Request):
     return file_path
 
 
-@main_router.get("/{path:path}")
+@router.get("/{path:path}")
 def catch_all(request: Request, path: str):
     """
     Serve any requested file or fallback to the `index.html` for the frontend application.

@@ -41,7 +41,7 @@
       <div class="flex">
         <Field label="Detection" class="align-center">
           <ToggleSwitch
-            inputId="active"
+            inputId="settings.detection.active"
             @update:model-value="updateDebounced"
             v-tooltip="'Toggle object detection'"
             v-model="fields.active"
@@ -49,7 +49,7 @@
         </Field>
 
         <SelectField
-          inputId="img_size"
+          inputId="settings.detection.img_size"
           v-model="fields.img_size"
           placeholder="Img size"
           label="Img size"
@@ -63,7 +63,7 @@
           @keydown.stop="doNothing"
           @keyup.stop="doNothing"
           @keypress.stop="doNothing"
-          field="confidence"
+          field="settings.detection.confidence"
           label="Confidence"
           @update:model-value="updateDebounced"
           v-model="fields.confidence"

@@ -34,7 +34,7 @@
               <FileUpload
                 mode="basic"
                 name="model[]"
-                url="/api/upload/data"
+                url="/api/files/upload/data"
                 @upload="detectionStore.fetchModels"
                 :auto="true"
                 chooseLabel="Add"

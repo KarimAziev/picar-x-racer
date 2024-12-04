@@ -11,18 +11,21 @@ class PhotoResponse(BaseModel):
     file: str
 
 
-class FrameDimensionsResponse(BaseModel):
-    """
-    A response object containing the width and height of the current camera frame.
-    """
-
-    width: int
-    height: int
-
-
 class CameraSettings(BaseModel):
     """
-    A model to represent the camera device settings.
+    Model representing camera settings and configurations.
+
+    Attributes:
+    --------------
+    - `device` (Optional[str]): ID or name of the camera device.
+    - `width` (Optional[int]): Frame width in pixels.
+    - `height` (Optional[int]): Frame height in pixels.
+    - `fps` (Optional[int]): Frames per second for capturing.
+    - `pixel_format` (Optional[str]): Pixel format, such as 'RGB' or 'GRAY'.
+
+    Validators:
+    --------------
+    - Ensures both `width` and `height` must either be specified together or not at all.
     """
 
     device: Optional[str] = Field(
@@ -61,4 +64,39 @@ class CameraSettings(BaseModel):
 
 
 class CameraDevicesResponse(BaseModel):
+    """
+    Response model for available camera devices.
+
+    Attributes:
+    --------------
+    - `devices` (List[Dict[str, Union[str, bool, List[Dict[str, str]]]]]):
+      A list of devices with details such as paths, categories, and supported formats.
+
+    Example:
+    --------------
+    ```json
+    {
+        "devices": [
+            {
+                "key": "/dev/video0",
+                "label": "/dev/video0 (Primary Camera)",
+                "selectable": False,
+                "children": [
+                    {"key": "MJPEG", "label": "MJPEG (1920x1080)"},
+                    {"key": "YUYV", "label": "YUYV (640x480)"}
+                ]
+            },
+            {
+                "key": "/dev/video1",
+                "label": "/dev/video1 (Secondary Camera)",
+                "selectable": False,
+                "children": [
+                    {"key": "H264", "label": "H264 (1280x720)"}
+                ]
+            }
+        ]
+    }
+    ```
+    """
+
     devices: List[Dict[str, Union[str, bool, List[Dict[str, str]]]]]

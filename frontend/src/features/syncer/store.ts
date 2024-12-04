@@ -7,7 +7,6 @@ import {
   useDistanceStore,
   useCameraStore,
   useMusicStore,
-  useSoundStore,
   useStreamStore,
   useDetectionStore,
 } from "@/features/settings/stores";
@@ -43,7 +42,6 @@ export const useAppSyncStore = defineStore("syncer", {
       const detectionStore = useDetectionStore();
       const musicStore = useMusicStore();
       const imageStore = useImageStore();
-      const soundStore = useSoundStore();
       const batteryStore = useBatteryStore();
       const distanceStore = useDistanceStore();
 
@@ -77,7 +75,6 @@ export const useAppSyncStore = defineStore("syncer", {
               music: musicStore.fetchData,
               data: detectionStore.fetchModels,
               image: imageStore.fetchData,
-              sound: soundStore.fetchData,
             };
             if (mediaType && mediaTypeRefreshers[mediaType]) {
               mediaTypeRefreshers[mediaType]();
@@ -100,7 +97,6 @@ export const useAppSyncStore = defineStore("syncer", {
           case "detection": {
             diffMsg = formatObjectDiff({ ...detectionStore.data }, payload);
             detectionStore.data = payload;
-
             break;
           }
 
@@ -132,9 +128,6 @@ export const useAppSyncStore = defineStore("syncer", {
 
           case "image":
             imageStore.data = payload;
-            break;
-          case "sound":
-            soundStore.data = payload;
             break;
 
           case "stream":

@@ -5,6 +5,7 @@ from app.services.detection_service import DetectionService
 from app.services.files_service import FilesService
 from app.services.music_service import MusicService
 from app.services.stream_service import StreamService
+from app.services.tts_service import TTSService
 
 connection_manager = ConnectionService()
 audio_manager = AudioService()
@@ -20,6 +21,8 @@ stream_manager = StreamService(camera_service=camera_manager)
 music_manager = MusicService(
     file_manager=file_manager, connection_manager=connection_manager
 )
+
+tts_manager = TTSService()
 
 
 def get_camera_manager() -> "CameraService":
@@ -44,3 +47,7 @@ def get_detection_manager() -> "DetectionService":
 
 def get_music_manager() -> "MusicService":
     return music_manager
+
+
+def get_tts_manager() -> "TTSService":
+    return tts_manager

@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get(
     "/api/battery-status",
     response_model=BatteryStatusResponse,
-    summary="Read battery level voltage.",
+    summary="Retrieve the current battery status in volts.",
 )
 async def get_battery_voltage(request: Request):
     """
@@ -25,7 +25,7 @@ async def get_battery_voltage(request: Request):
 
     Returns:
     --------------
-    dict: A dictionary containing the measured voltage in volts.
+    A dictionary containing the measured voltage in volts.
 
     Example response:
     --------------

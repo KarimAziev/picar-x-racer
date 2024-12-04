@@ -43,13 +43,11 @@ from app.config.paths import (
     CONFIG_USER_DIR,
     DATA_DIR,
     DEFAULT_MUSIC_DIR,
-    DEFAULT_SOUND_DIR,
     DEFAULT_USER_SETTINGS,
     MUSIC_CACHE_FILE_PATH,
     PICARX_CONFIG_FILE,
     PX_MUSIC_DIR,
     PX_PHOTO_DIR,
-    PX_SOUND_DIR,
     PX_VIDEO_DIR,
     USER_HOME,
 )
@@ -69,7 +67,7 @@ from fastapi import UploadFile
 
 class FilesService(metaclass=SingletonMeta):
     """
-    Service for managing file operations related to user settings, photos, sounds, and music.
+    Service for managing file operations related to user settings, photos, and music.
 
     Args:
         audio_manager (AudioService): An instance of AudioService to handle audio operations.
@@ -77,7 +75,6 @@ class FilesService(metaclass=SingletonMeta):
 
     default_user_settings_file = DEFAULT_USER_SETTINGS
     default_user_music_dir = DEFAULT_MUSIC_DIR
-    default_user_sounds_dir = DEFAULT_SOUND_DIR
 
     def __init__(self, audio_manager: AudioService, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,7 +85,6 @@ class FilesService(metaclass=SingletonMeta):
         )
         self.user_photos_dir = PX_PHOTO_DIR
         self.user_videos_dir = PX_VIDEO_DIR
-        self.user_sounds_dir = PX_SOUND_DIR
         self.user_music_dir = PX_MUSIC_DIR
 
         self.audio_manager = audio_manager
@@ -275,7 +271,7 @@ class FilesService(metaclass=SingletonMeta):
             dict: A dictionary with track name and duration.
         """
         try:
-            duration = self.audio_manager.music.music_get_duration(file)
+            duration = self.audio_manager.get_audio_duration(file)
             track: str = path.basename(file)
             result = {"track": track, "duration": duration}
             return result
@@ -349,19 +345,6 @@ class FilesService(metaclass=SingletonMeta):
 
         return self.list_files(self.default_user_music_dir, full)
 
-    def list_default_sounds(self, full=False):
-        """
-        Lists default sound files.
-
-        Args:
-            full (bool, optional): Whether to return full file paths. Defaults to False.
-
-        Returns:
-            List[str]: List of default sound files.
-        """
-
-        return self.list_files(self.default_user_sounds_dir, full)
-
     def list_user_photos(self, full=False) -> List[str]:
         """
         Lists captured by user photo files.
@@ -397,7 +380,11 @@ class FilesService(metaclass=SingletonMeta):
 
         for file in os.listdir(directory):
             file_path = os.path.join(directory, file)
-            file_item = {"name": file, "path": file_path, "url": f"/api/preview/{file}"}
+            file_item = {
+                "name": file,
+                "path": file_path,
+                "url": f"/api/files/preview/{file}",
+            }
             files.append(file_item)
 
         files.sort(key=lambda x: os.path.getmtime(x["path"]), reverse=True)
@@ -416,19 +403,6 @@ class FilesService(metaclass=SingletonMeta):
         """
         return self.list_files(self.user_music_dir, full)
 
-    def list_user_sounds(self, full=False) -> List[str]:
-        """
-        Lists user-uploaded sound files.
-
-        Args:
-            full (bool, optional): Whether to return full file paths. Defaults to False.
-
-        Returns:
-            List[str]: List of user-uploaded sound files.
-        """
-
-        return self.list_files(self.user_sounds_dir, full)
-
     def remove_file(self, file: str, directory: str):
         """
         Removes a file from a specified directory.
@@ -445,18 +419,6 @@ class FilesService(metaclass=SingletonMeta):
 
         os.remove(full_name)
         return True
-
-    def save_sound(self, file: UploadFile) -> str:
-        """
-        Saves an uploaded sound file to the user's sound directory.
-
-        Args:
-            file (UploadFile): Uploaded sound file.
-
-        Returns:
-            str: File path of the saved sound file.
-        """
-        return self.save_uploaded_file(file, self.user_sounds_dir)
 
     def save_music(self, file: UploadFile) -> str:
         """
@@ -534,30 +496,6 @@ class FilesService(metaclass=SingletonMeta):
         else:
             raise FileNotFoundError
 
-    def remove_sound(self, filename: str) -> bool:
-        """
-        Removes a sound file from the user's sound directory or prevents default sound files from being removed.
-
-        Args:
-            filename (str): Name of the sound file to be removed.
-
-        Raises:
-            DefaultFileRemoveAttempt: If attempting to remove a default sound file.
-            FileNotFoundError: If the file doesn't exist.
-
-        Returns:
-            bool: True if the file was successfully removed.
-        """
-
-        if path.exists(path.join(self.user_sounds_dir, filename)):
-            return self.remove_file(filename, self.user_sounds_dir)
-        elif path.exists(path.join(self.default_user_sounds_dir, filename)):
-            raise DefaultFileRemoveAttempt(
-                f"{filename} is default sound and cannot be removed!"
-            )
-        else:
-            raise FileNotFoundError
-
     def remove_data(self, filename: str) -> bool:
         """
         Removes a file from the data directory.
@@ -609,28 +547,6 @@ class FilesService(metaclass=SingletonMeta):
         user_file = path.join(self.user_videos_dir, filename)
         if path.exists(user_file):
             return self.user_videos_dir
-        else:
-            raise FileNotFoundError
-
-    def get_sound_directory(self, filename: str):
-        """
-        Retrieves the directory of a specified sound file.
-
-        Args:
-            filename (str): Name of the sound file.
-
-        Raises:
-            FileNotFoundError: If the file doesn't exist.
-
-        Returns:
-            str: Directory path of the sound file.
-        """
-
-        user_file = path.join(self.user_sounds_dir, filename)
-        if path.exists(user_file):
-            return self.user_sounds_dir
-        elif path.exists(path.join(self.default_user_sounds_dir, filename)):
-            return self.default_user_sounds_dir
         else:
             raise FileNotFoundError
 

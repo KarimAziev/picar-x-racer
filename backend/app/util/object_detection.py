@@ -23,17 +23,31 @@ def perform_detection(
     should_resize=False,
 ) -> List[Dict[str, Any]]:
     """
-    Performs detection on the given frame and filters detections by specified labels and confidence.
+    Performs object detection on a given frame and filters the results based on specified labels and confidence thresholds.
 
     Args:
-        frame (np.ndarray): The frame on which to perform detection.
-        yolo_model: Loaded YOLO model from the ultralytics package.
-        labels_to_detect (Optional[List[str]]): List of labels to detect. If None, all detections are returned.
-        confidence_threshold (float): Minimum confidence score to include a detection.
-        verbose (Optional[bool]): If True, prints/logs detailed information during detection.
+        frame: The frame (image data) on which object detection is performed.
+        yolo_model: The pre-loaded YOLO model from the ultralytics package.
+        resized_height: The height of the frame after resizing, used for YOLO detection.
+        resized_width: The width of the frame after resizing, used for YOLO detection.
+        original_width: The original width of the frame before resizing.
+        original_height: The original height of the frame before resizing.
+        labels_to_detect: A list of target labels to filter the detection results. If `None`, all detections are returned.
+        confidence_threshold: The minimum confidence level required for a detection to be valid. Default is 0.4.
+        verbose: If `True`, logs detailed information about the detection process. Optional.
+        should_resize: A flag indicating whether the input frame should be resized before detection. Defaults to `False`.
 
     Returns:
-        List[Dict[str, Any]]: A list of detection results.
+        A list of detection results, where each result is a dictionary containing:
+            - `bbox`: A list of bounding box coordinates [x1, y1, x2, y2].
+            - `label`: The label (class name) of the detected object.
+            - `confidence`: The confidence score of the detection.
+
+    Behavior:
+        - If resizing is enabled, adjusts the frame size and calculates scaling factors.
+        - Performs detection using the YOLO model.
+        - Applies scaling to map detected bounding boxes to the original frame dimensions.
+        - Filters detections based on confidence threshold and specified labels.
     """
     (
         resized_frame,
@@ -85,75 +99,3 @@ def perform_detection(
                 )
 
     return detection_results
-
-
-def perform_cat_detection(
-    frame: np.ndarray,
-    yolo_model: "YOLO",
-    resized_height: int,
-    resized_width: int,
-    original_width: int,
-    original_height: int,
-    confidence_threshold: float = 0.4,
-    verbose: Optional[bool] = False,
-    should_resize=False,
-) -> List[Dict[str, Any]]:
-    """
-    Performs detection for the cat on the given frame.
-
-    Args:
-        frame (np.ndarray): The frame on which to perform detection.
-        yolo_model: Loaded YOLO model from the ultralytics package.
-        confidence_threshold (float): Minimum confidence score to include a detection.
-
-    Returns:
-        List[Dict[str, Any]]: A list of detection results.
-    """
-    return perform_detection(
-        frame=frame,
-        labels_to_detect=["cat"],
-        confidence_threshold=confidence_threshold,
-        yolo_model=yolo_model,
-        verbose=verbose,
-        resized_height=resized_height,
-        resized_width=resized_width,
-        original_width=original_width,
-        original_height=original_height,
-        should_resize=should_resize,
-    )
-
-
-def perform_person_detection(
-    frame: np.ndarray,
-    yolo_model: "YOLO",
-    resized_height: int,
-    resized_width: int,
-    original_width: int,
-    original_height: int,
-    confidence_threshold: float = 0.4,
-    verbose: Optional[bool] = False,
-    should_resize=False,
-) -> List[Dict[str, Any]]:
-    """
-    Performs detection for the person on the given frame.
-
-    Args:
-        frame (np.ndarray): The frame on which to perform detection.
-        yolo_model: Loaded YOLO model from the ultralytics package.
-        confidence_threshold (float): Minimum confidence score to include a detection.
-
-    Returns:
-        List[Dict[str, Any]]: A list of detection results.
-    """
-    return perform_detection(
-        frame=frame,
-        labels_to_detect=["person"],
-        confidence_threshold=confidence_threshold,
-        yolo_model=yolo_model,
-        verbose=verbose,
-        resized_height=resized_height,
-        resized_width=resized_width,
-        original_width=original_width,
-        original_height=original_height,
-        should_resize=should_resize,
-    )

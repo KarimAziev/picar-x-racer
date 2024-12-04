@@ -6,10 +6,6 @@ import { useMessagerStore } from "@/features/messager/store";
 import { DetectionSettings } from "@/features/settings/stores/settings";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 
-export type LoadingFields = Partial<{
-  [P in keyof DetectionSettings]: boolean;
-}>;
-
 export interface DetectionResponse {
   detection_result: DetectionResult[];
   timestamp: number | null;
@@ -19,7 +15,6 @@ export interface State extends DetectionResponse {
   data: DetectionSettings;
   loading: boolean;
   detectors: TreeNode[];
-  loadingData: LoadingFields;
   connection: ShallowRef<WebSocketModel> | null;
   currentFrameTimestamp?: number;
 }
@@ -36,7 +31,6 @@ const defaultState: State = {
   detection_result: [],
   timestamp: null,
   connection: null,
-  loadingData: {},
 };
 
 export interface DetectionResult {
@@ -67,11 +61,7 @@ export const useStore = defineStore("detection-settings", {
       try {
         this.loading = true;
 
-        Object.keys(payload).forEach((key) => {
-          this.loadingData[key as keyof DetectionSettings] = true;
-        });
-
-        await axios.post<DetectionSettings>("/api/detection-settings", payload);
+        await axios.post<DetectionSettings>("/api/detection/settings", payload);
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
@@ -80,7 +70,6 @@ export const useStore = defineStore("detection-settings", {
         }
       } finally {
         this.loading = false;
-        this.loadingData = {};
       }
       return this.data;
     },
@@ -90,7 +79,7 @@ export const useStore = defineStore("detection-settings", {
       try {
         this.loading = true;
         const { data } = await axios.get<DetectionSettings>(
-          "/api/detection-settings",
+          "/api/detection/settings",
         );
         this.data = data;
       } catch (error) {
@@ -104,7 +93,7 @@ export const useStore = defineStore("detection-settings", {
       const messager = useMessagerStore();
       this.loading = true;
       try {
-        const response = await axios.get<TreeNode[]>("/api/detection-models");
+        const response = await axios.get<TreeNode[]>("/api/detection/models");
         this.detectors = response.data;
       } catch (error) {
         messager.handleError(error, "Error fetching detection models");

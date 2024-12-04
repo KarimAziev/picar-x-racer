@@ -45,6 +45,10 @@ tags_metadata = [
         "description": "Endpoints related to audio functionalities, including volume controls and text to speech.",
     },
     {
+        "name": "tts",
+        "description": "Endpoints related to text to speech functionalities.",
+    },
+    {
         "name": "music",
         "description": "Endpoints related to music playing.",
     },
@@ -165,11 +169,13 @@ from app.api.endpoints import (
     main_router,
     music_router,
     settings_router,
+    tts_router,
     video_feed_router,
 )
 
 app.include_router(audio_management_router, tags=["audio"])
-app.include_router(music_router, tags=["music", "audio"])
+app.include_router(music_router, tags=["music"])
+app.include_router(tts_router, tags=["tts"])
 app.include_router(battery_router, tags=["battery"])
 app.include_router(camera_feed_router, tags=["camera"])
 app.include_router(file_management_router, tags=["files"])

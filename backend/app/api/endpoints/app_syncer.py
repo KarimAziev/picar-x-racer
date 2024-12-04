@@ -17,11 +17,11 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 
-app_sync_router = APIRouter()
+router = APIRouter()
 
 
-@app_sync_router.websocket("/ws/sync")
-async def runtime_settings(
+@router.websocket("/ws/sync")
+async def app_synchronizer(
     websocket: WebSocket,
     detection_service: "DetectionService" = Depends(get_detection_manager),
     camera_service: "CameraService" = Depends(get_camera_manager),
@@ -59,12 +59,12 @@ async def runtime_settings(
                     await asyncio.to_thread(handler, payload)
 
     except WebSocketDisconnect:
-        logger.info("Detection WebSocket Disconnected")
+        logger.info("Synchronization WebSocket Disconnected")
     except asyncio.CancelledError:
-        logger.info("Gracefully shutting down Detection WebSocket connection")
+        logger.info("Gracefully shutting down Synchronization WebSocket connection")
         await connection_manager.disconnect(websocket)
     except KeyboardInterrupt:
-        logger.info("Detection WebSocket interrupted")
+        logger.info("Synchronization WebSocket interrupted")
         await connection_manager.disconnect(websocket)
     finally:
         connection_manager.remove(websocket)

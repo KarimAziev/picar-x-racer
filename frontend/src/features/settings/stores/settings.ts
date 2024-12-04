@@ -13,7 +13,6 @@ import {
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
 import { useStore as useMusicStore } from "@/features/settings/stores/music";
-import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
 
@@ -117,8 +116,6 @@ export interface CameraOpenRequestParams {
 export interface Settings
   extends Partial<ToggleableSettings>,
     CameraOpenRequestParams {
-  default_sound: string;
-
   default_music?: string;
   default_tts_language: string;
   keybindings: Partial<Record<ControllerActionName, string[]>>;
@@ -144,7 +141,6 @@ export const defaultState: State = {
   data: {
     fullscreen: true,
     keybindings: {},
-    default_sound: "",
     default_tts_language: "en",
     texts: [],
     battery_full_voltage: 8.4,
@@ -201,7 +197,6 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
-      const soundStore = useSoundStore();
       const batteryStore = useBatteryStore();
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
@@ -212,8 +207,6 @@ export const useStore = defineStore("settings", {
           axios.get<Settings>("/api/settings"),
           calibrationStore.fetchData(),
           musicStore.fetchData(),
-          soundStore.fetchDefaultData(),
-          soundStore.fetchData(),
           batteryStore.fetchBatteryStatus(),
         ]);
         this.data = response.data;

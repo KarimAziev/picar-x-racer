@@ -42,7 +42,6 @@ class Keybindings(BaseModel):
     openGeneralSettings: Optional[List[str]] = None
     openShortcutsSettings: Optional[List[str]] = None
     playMusic: Optional[List[str]] = None
-    playSound: Optional[List[str]] = None
     resetCameraRotate: Optional[List[str]] = None
     right: Optional[List[str]] = None
     sayText: Optional[List[str]] = None

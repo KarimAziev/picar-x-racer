@@ -10,7 +10,6 @@ import {
   useDistanceStore,
   useCameraStore,
   useMusicStore,
-  useSoundStore,
   useDetectionStore,
   useStreamStore,
 } from "@/features/settings/stores";
@@ -332,15 +331,6 @@ export const useControllerStore = defineStore("controller", {
 
     resetDirServoAngle(): void {
       this.setDirServoAngle(0);
-    },
-    async playSound() {
-      const soundStore = useSoundStore();
-      const settingsStore = useSettingsStore();
-      const name = settingsStore.data.default_sound;
-
-      if (name) {
-        await soundStore.playSound(name);
-      }
     },
 
     async sayText() {

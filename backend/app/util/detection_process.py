@@ -20,14 +20,23 @@ def detection_process_func(
     out_queue: mp.Queue,
 ):
     """
-    Function run in a separate process to perform object detection on video frames.
+    A function that runs in a separate multiprocessing process to perform object detection on input frames.
 
     Args:
-        model (str): Name of the YOLO based model.
-        stop_event (mp.Event): Event to signal the process to stop.
-        frame_queue (mp.Queue): Queue from which frames are retrieved.
-        detection_queue (mp.Queue): Queue to put detection results into.
-        control_queue (mp.Queue): Queue for control messages.
+        model: Path to the YOLO-based object detection model.
+        stop_event: A multiprocessing event used to signal the process to stop.
+        frame_queue: A queue from which frames are retrieved for detection.
+        detection_queue: A queue where object detection results are placed.
+        control_queue: A queue for control commands (e.g., updating confidence thresholds or detection labels).
+        out_queue: A queue for sending the detection process's success or error statuses.
+
+    Behavior:
+        - Loads the specified YOLO model and initializes required settings.
+        - Processes frames from the `frame_queue` and performs object detection.
+        - Updates detection settings dynamically using messages from the `control_queue`.
+        - Outputs detection results with timestamps to the `detection_queue`.
+        - Sends success or error messages to the `out_queue`.
+        - Stops gracefully when the `stop_event` is set.
     """
     with ModelManager(model) as yolo_model:
         if yolo_model is None:

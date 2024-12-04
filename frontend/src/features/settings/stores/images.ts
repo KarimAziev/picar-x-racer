@@ -28,7 +28,7 @@ export const useStore = defineStore("images", {
       try {
         this.loading = true;
         const response = await axios.get<{ files: FileItem[] }>(
-          "/api/list_photos",
+          "/api/files/list/photos",
         );
         this.data = response.data.files;
       } catch (error) {

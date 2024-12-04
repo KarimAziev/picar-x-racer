@@ -217,7 +217,7 @@ export const useStore = defineStore("music", {
     async setVolume(volume: number) {
       const messager = useMessagerStore();
       try {
-        const response = await axios.post("/api/volume", { volume });
+        const response = await axios.post("/api/audio/volume", { volume });
         this.volume = response.data.volume;
       } catch (error) {
         messager.handleError(error);
@@ -226,7 +226,9 @@ export const useStore = defineStore("music", {
     async getVolume() {
       const messager = useMessagerStore();
       try {
-        const response = await axios.get<{ volume: number }>("/api/volume");
+        const response = await axios.get<{ volume: number }>(
+          "/api/audio/volume",
+        );
         this.volume = response.data.volume;
         return this.volume;
       } catch (error) {

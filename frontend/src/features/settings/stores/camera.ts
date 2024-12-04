@@ -35,22 +35,16 @@ export interface DeviceOption extends Pick<DeviceSuboption, "key" | "label"> {
   children: DeviceSuboption[];
 }
 
-export type LoadingFields = Partial<{
-  [P in keyof CameraSettings]: boolean;
-}>;
-
 export interface State {
   data: CameraSettings;
   loading: boolean;
   devices: DeviceOption[];
-  loadingData: LoadingFields;
 }
 
 const defaultState: State = {
   loading: false,
   data: { ...settingsDefaultState.data.camera },
   devices: [],
-  loadingData: {},
 };
 
 export const useStore = defineStore("camera", {
@@ -62,11 +56,10 @@ export const useStore = defineStore("camera", {
       try {
         this.loading = true;
 
-        const { data } = await axios.post<CameraSettings>(
-          "/api/camera-settings",
+        await axios.post<CameraSettings>(
+          "/api/camera/settings",
           payload || this.data,
         );
-        this.data = data;
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
@@ -88,7 +81,7 @@ export const useStore = defineStore("camera", {
       try {
         this.loading = true;
         const { data } = await axios.get<CameraSettings>(
-          "/api/camera-settings",
+          "/api/camera/settings",
         );
         this.data = data;
       } catch (error) {
@@ -103,7 +96,7 @@ export const useStore = defineStore("camera", {
       try {
         this.loading = true;
         const { data } = await axios.get<{ devices: DeviceOption[] }>(
-          "/api/camera-devices",
+          "/api/camera/devices",
         );
         this.devices = data.devices;
       } catch (error) {

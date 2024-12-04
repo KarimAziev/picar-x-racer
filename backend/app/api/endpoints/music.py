@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List
 
 from app.api.deps import get_audio_manager, get_file_manager, get_music_manager
 from app.exceptions.music import MusicPlayerError
-from app.schemas.audio import (
+from app.schemas.music import (
     MusicModePayload,
     MusicPositionPayload,
     MusicResponse,
@@ -38,11 +38,13 @@ async def toggle_play_music(
 
     Behavior:
     -------------
-    Broadcasts the state to connected clients.
+    This endpoint toggles the playback state (play/pause) of the current track
+    and notifies connected clients by broadcasting the updated state over WebSocket.
 
     Returns:
     -------------
-    None: If successful, no additional payload is returned.
+    None: The endpoint does not return any data to the caller.
+    All connected clients are notified asynchronously via WebSocket.
 
     Raises:
     -------------
@@ -82,7 +84,8 @@ async def play_track(
 
     Returns:
     -------------
-    - None: If successful, no additional payload is returned.
+    None: If successful, no additional payload is returned.
+    All connected clients are notified asynchronously via WebSocket.
 
     Raises:
     -------------
@@ -121,6 +124,7 @@ async def stop_playing(
     Returns:
     -------------
     None: If successful, no additional payload is returned.
+    All connected clients are notified asynchronously via WebSocket.
 
     Raises:
     -------------
@@ -160,6 +164,7 @@ async def update_position(
     Returns:
     --------------
     None: If successful, no additional payload is returned.
+    All connected clients are notified asynchronously via WebSocket.
 
     Raises:
     - HTTPException (400): If there is a `MusicPlayerError`.
@@ -199,6 +204,7 @@ async def update_mode(
     Returns:
     --------------
     None: If successful, no additional payload is returned.
+    All connected clients are notified asynchronously via WebSocket.
 
     Raises:
     - HTTPException (400): If there is a `MusicPlayerError`.
@@ -234,6 +240,7 @@ async def next_track(
     Returns:
     --------------
     None: If successful, no additional payload is returned.
+    All connected clients are notified asynchronously via WebSocket.
 
     Raises:
     - HTTPException (400): If there is a `MusicPlayerError`.
@@ -270,6 +277,7 @@ async def prev_track(
     Returns:
     --------------
     None: If successful, no additional payload is returned.
+    All connected clients are notified asynchronously via WebSocket.
 
     Raises:
     --------------

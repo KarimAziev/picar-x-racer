@@ -1,6 +1,5 @@
 {
   "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
-  "default_sound": "directives.wav",
   "default_tts_language": "en",
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
   "music_order": [],
@@ -56,7 +55,6 @@
     "openGeneralSettings": ["h"],
     "openShortcutsSettings": ["?"],
     "playMusic": ["m"],
-    "playSound": ["o"],
     "resetCameraRotate": ["0"],
     "right": ["d"],
     "sayText": ["k"],

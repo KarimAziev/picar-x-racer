@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING
 import asyncio
+from typing import TYPE_CHECKING
 
 from app.api.deps import get_camera_manager, get_detection_manager, get_file_manager
 from app.schemas.settings import CalibrationConfig, Settings
@@ -21,10 +21,12 @@ def get_settings(file_service: "FilesService" = Depends(get_file_manager)):
     Retrieve the current application settings.
 
     Args:
+    --------------
     - file_service (FilesService): The file service for managing settings.
 
     Returns:
-        `Settings`: The current settings of the application.
+    --------------
+    - `Settings`: The current settings of the application.
     """
     return file_service.load_settings()
 
@@ -41,6 +43,8 @@ async def update_settings(
     Update the application settings.
 
     Args:
+    --------------
+    - request (Request): The incoming HTTP request.
     - new_settings (Settings): The new settings to apply.
     - file_service (FilesService): The file service for managing settings.
     - camera_manager (CameraService): The camera service for managing the camera settings.
@@ -48,7 +52,8 @@ async def update_settings(
 
 
     Returns:
-        `Settings`: The updated settings of the application.
+    --------------
+    - `Settings`: The updated settings of the application.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     data = new_settings.model_dump(exclude_unset=True)
@@ -76,9 +81,11 @@ def get_calibration_settings(
     Retrieve the calibration settings.
 
     Args:
+    --------------
     - file_service (FilesService): The file service for managing settings.
 
     Returns:
-        `CalibrationConfig`: The calibration settings.
+    --------------
+    - `CalibrationConfig`: The calibration settings.
     """
     return file_service.get_calibration_config()

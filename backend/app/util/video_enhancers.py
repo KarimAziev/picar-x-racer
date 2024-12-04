@@ -12,6 +12,7 @@ def simulate_robocop_vision(
 ) -> np.ndarray:
     """
     Simulate RoboCop vision by creating alternating lines of:
+
     - Original frame line.
     - Lightened frame line with specific thickness (thin lightened lines).
 

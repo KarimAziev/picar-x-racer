@@ -94,7 +94,7 @@ import { secondsToReadableString } from "@/util/time";
 import SelectField from "@/ui/SelectField.vue";
 import { useSettingsStore } from "@/features/settings/stores";
 
-const apiURL = `/api/upload/${mediaType}`;
+const apiURL = `/api/files/upload/${mediaType}`;
 
 const settingsStore = useSettingsStore();
 const musicStore = useStore();

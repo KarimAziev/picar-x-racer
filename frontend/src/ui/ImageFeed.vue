@@ -150,7 +150,6 @@ onBeforeUnmount(() => {
 }
 .overlay-canvas {
   position: absolute;
-
   left: 0;
   height: 99%;
   pointer-events: none;

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 import pygame
 from app.exceptions.music import MusicPlayerError
-from app.schemas.audio import MusicPlayerMode
+from app.schemas.music import MusicPlayerMode
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 

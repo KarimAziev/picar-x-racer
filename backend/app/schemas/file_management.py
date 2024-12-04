@@ -3,17 +3,6 @@ from typing import List
 from pydantic import BaseModel
 
 
-class FilesResponse(BaseModel):
-    """
-    A model to represent a response containing a list of files.
-
-    Attributes:
-    - `files` (List[str]): A list of file names.
-    """
-
-    files: List[str]
-
-
 class UploadFileResponse(BaseModel):
     """
     A model to represent a response after uploading a file.

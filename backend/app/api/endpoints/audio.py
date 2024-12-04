@@ -1,164 +1,170 @@
 import asyncio
-from os import path
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_audio_manager, get_file_manager
-from app.schemas.audio import (
-    PlaySoundItem,
-    PlaySoundResponse,
-    PlayTTSItem,
-    PlayTTSResponse,
-    VolumeRequest,
-    VolumeResponse,
-)
+from app.api.deps import get_audio_manager
+from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
+from app.schemas.audio import VolumeData
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
 
 router = APIRouter()
 logger = Logger(__name__)
 
 
 @router.post(
-    "/api/play-sound", response_model=PlaySoundResponse, summary="Play a sound"
+    "/api/audio/volume",
+    response_model=VolumeData,
+    summary="Set the playback volume level",
 )
-async def play_sound(
-    payload: PlaySoundItem,
-    file_manager: "FilesService" = Depends(get_file_manager),
-    audio_manager: "AudioService" = Depends(get_audio_manager),
-):
-    """
-    Endpoint to play a sound.
-
-    Args:
-
-    - payload (PlaySoundItem): Contains the track details for the sound to be played.
-    - file_manager (FilesService): The file service for managing files.
-    - audio_manager (AudioService): The audio service for managing audio playback.
-
-    Returns:
-        `PlaySoundResponse`: The response object containing the play sound result.
-
-    Raises:
-
-    - HTTPException (400): If the track filename is invalid.
-    - HTTPException (404): If the track file is not found.
-    - HTTPException (500): If there is an error while playing the sound.
-    """
-    filename = payload.track
-
-    force = payload.force if payload.force is not None else False
-    if not isinstance(filename, str):
-        raise HTTPException(status_code=400, detail="Invalid settings format")
-
-    logger.info(f"Request to play sound {filename}")
-    try:
-        dir = file_manager.get_sound_directory(filename)
-        file = path.join(dir, filename)
-        result = audio_manager.play_sound(file, force)
-        return result
-    except FileNotFoundError as err:
-        raise HTTPException(status_code=404, detail=str(err))
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=str(err))
-
-
-@router.post("/api/play-tts", response_model=PlayTTSResponse)
-async def text_to_speech(
-    request: Request,
-    payload: PlayTTSItem,
-    audio_manager: "AudioService" = Depends(get_audio_manager),
-):
-    """
-    Endpoint to convert text to speech.
-
-    Args:
-    - payload (PlayTTSItem): Contains the text and language details for text-to-speech conversion.
-    - audio_manager (AudioService): The audio service for managing audio playback.
-
-    Returns:
-    - `PlayTTSResponse`: The response object containing the text and language used for TTS.
-
-    Raises:
-    - HTTPException (404): If Google speech is not available.
-    """
-    if not audio_manager.google_speech_available:
-        raise HTTPException(status_code=404, detail="Google speech is not available")
-
-    connection_manager: "ConnectionService" = request.app.state.app_manager
-    text = payload.text
-    lang = payload.lang or "en"
-    status = audio_manager.text_to_speech(text, lang) or False
-    data = {"text": text, "lang": lang, "status": status}
-    await connection_manager.broadcast_json(
-        {"type": "info", "payload": "Speaking " + text}
-    )
-    return data
-
-
-@router.post("/api/volume", response_model=VolumeResponse)
 async def set_volume(
     request: Request,
-    payload: VolumeRequest,
+    payload: VolumeData,
     audio_manager: "AudioService" = Depends(get_audio_manager),
 ):
     """
-    Endpoint to set the volume.
+    Set the playback volume level.
+
+    This endpoint allows the client to set the playback volume level. It also notifies all
+    connected WebSocket clients about the volume change.
+
+    Behavior:
+    --------------
+    - The input should specify the `volume` level, either as an integer or a float.
+    - Floats are automatically normalized to integers (e.g., `45.6` becomes `46`).
+    - The accepted range is 0 to 100; values outside this range will raise an error.
+    - All responses will return the `volume` as a normalized integer.
 
     Args:
-    - payload (VolumeRequest): Contains the desired volume level.
-    - audio_manager (AudioService): The audio service for managing audio playback.
+    --------------
+    - `request` (Request): The incoming HTTP request object.
+    - `payload` (VolumeData): The desired volume level provided by the client.
+    - `audio_manager` (AudioService): Dependency injection of the AudioService instance.
 
     Returns:
-
-        `VolumeResponse`: The response object containing the current volume level.
+    --------------
+    - `VolumeData`: The updated volume level (as an integer).
 
     Raises:
-        HTTPException (404): If there is an error while setting the volume.
+    --------------
+    - `HTTPException` (500): If `amixer` is not installed on the system.
+    - `HTTPException` (400): If there is an error while setting the volume.
+    - `HTTPException` (500): If an unexpected error occurs.
+
+    Example Request:
+    --------------
+    ```
+    POST /api/volume
+    Content-Type: application/json
+
+    {
+        "volume": 45.6
+    }
+    ```
+
+    Example Response:
+    --------------
+    ```
+    200 OK
+    {
+        "volume": 46
+    }
+    ```
     """
 
     connection_manager: "ConnectionService" = request.app.state.app_manager
-
     volume = payload.volume
     int_volume = int(volume)
-
     try:
         await asyncio.to_thread(audio_manager.set_volume, int_volume)
         new_volume = await asyncio.to_thread(audio_manager.get_volume)
-        result = {"volume": new_volume}
-        await connection_manager.broadcast_json(
-            {"type": "volume", "payload": new_volume}
+
+        try:
+            await connection_manager.broadcast_json(
+                {"type": "volume", "payload": new_volume}
+            )
+        except Exception as ws_err:
+            logger.error(f"WebSocket broadcasting error: {ws_err}", exc_info=True)
+
+        return {"volume": new_volume}
+    except AmixerNotInstalled:
+        logger.warning("'amixer' is not installed on the system.")
+        raise HTTPException(
+            status_code=500, detail="'amixer' is not installed on the system!"
         )
-        return result
+    except AudioVolumeError:
+        logger.error("Error occurred while setting the volume.")
+        raise HTTPException(
+            status_code=400, detail="Error occurred while setting the volume level!"
+        )
     except Exception as err:
-        raise HTTPException(status_code=404, detail=str(err))
+        logger.error(f"Unexpected error in set_volume: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while processing your request.",
+        )
 
 
 @router.get(
-    "/api/volume",
-    response_model=VolumeResponse,
+    "/api/audio/volume",
+    response_model=VolumeData,
     summary="Retrieve the current volume level",
 )
 async def get_volume(
     audio_manager: "AudioService" = Depends(get_audio_manager),
 ):
     """
-    Retrieve the current volume level.
+    Retrieve the current playback volume level.
+
+    This endpoint allows the client to retrieve the current volume level of the playback device.
+
+    Behavior:
+    --------------
+    - The volume level is returned as a normalized integer between 0 and 100.
+    - Floats are not involved in this endpoint, as the volume is always computed and stored as integers.
 
     Args:
-    - audio_manager (AudioService): The audio service for managing audio playback.
+    --------------
+    - `audio_manager` (AudioService): Dependency injection of the AudioService instance.
 
     Returns:
-        `VolumeResponse`: The response object containing the current volume level.
+    --------------
+    - `VolumeData`: The current volume level (as an integer).
 
     Raises:
-        HTTPException (404): If there is an error while retrieving the volume level.
+    --------------
+    - `HTTPException` (500): If `amixer` is not installed on the system.
+    - `HTTPException` (400): If there is an error while retrieving the volume level.
+    - `HTTPException` (500): If an unexpected error occurs.
+
+    Example Response:
+    --------------
+    ```
+    200 OK
+    {
+        "volume": 75
+    }
+    ```
     """
     try:
-        return {"volume": audio_manager.get_volume()}
+        current_volume = await asyncio.to_thread(audio_manager.get_volume)
+        if isinstance(current_volume, str):
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to retrieve volume information: {current_volume}",
+            )
+        return {"volume": current_volume}
+    except AmixerNotInstalled:
+        raise HTTPException(
+            status_code=404, detail="'amixer' is not installed on the system!"
+        )
+    except AudioVolumeError:
+        raise HTTPException(
+            status_code=404, detail="Error occurred while setting the volume level!"
+        )
     except Exception as err:
-        raise HTTPException(status_code=404, detail=str(err))
+        logger.error(f"Unexpected error in get_volume: {err}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(err))

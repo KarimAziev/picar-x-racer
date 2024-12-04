@@ -5,7 +5,6 @@ from app.api.deps import get_file_manager, get_music_manager
 from app.config.paths import DATA_DIR
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.schemas.file_management import (
-    FilesResponse,
     PhotosResponse,
     RemoveFileResponse,
     UploadFileResponse,
@@ -24,46 +23,7 @@ router = APIRouter()
 logger = Logger(__name__)
 
 
-@router.get("/api/list_files/{media_type}", response_model=FilesResponse)
-def list_files(
-    media_type: str, file_manager: "FilesService" = Depends(get_file_manager)
-):
-    """
-    List the files of a specific media type.
-
-    Args:
-    --------------
-    - media_type (str): The type of media to list ('music', 'default_music', 'default_sound', 'sound', 'image').
-    - file_manager (FilesService): The file management service.
-
-    Returns:
-    --------------
-    - `FilesResponse`: A response object containing a list of files.
-
-    Raises:
-    --------------
-    - `HTTPException`: If the media type is invalid.
-    """
-    if media_type == "music":
-        files = file_manager.list_user_music()
-        logger.debug(f"music files {files}")
-    elif media_type == "default_music":
-        files = file_manager.list_default_music()
-    elif media_type == "default_sound":
-        files = file_manager.list_default_sounds()
-    elif media_type == "sound":
-        files = file_manager.list_user_sounds()
-    elif media_type == "image":
-        files = file_manager.list_user_photos()
-    elif media_type == "video":
-        files = file_manager.list_user_videos()
-    else:
-        raise HTTPException(status_code=400, detail="Invalid media type")
-
-    return {"files": files}
-
-
-@router.post("/api/upload/{media_type}", response_model=UploadFileResponse)
+@router.post("/api/files/upload/{media_type}", response_model=UploadFileResponse)
 async def upload_file(
     request: Request,
     media_type: str,
@@ -75,7 +35,7 @@ async def upload_file(
 
     Args:
     --------------
-    - media_type (str): The type of media to upload ('music', 'sound', 'image').
+    - media_type (str): The type of media to upload ('music', 'image', 'data' etc).
     - file (UploadFile): The file to upload.
     - file_manager (FilesService): The file management service.
 
@@ -93,7 +53,6 @@ async def upload_file(
 
     handlers = {
         "music": file_manager.save_music,
-        "sound": file_manager.save_sound,
         "image": file_manager.save_photo,
         "data": file_manager.save_data,
     }
@@ -111,7 +70,7 @@ async def upload_file(
 
 
 @router.delete(
-    "/api/remove_file/{media_type}/{filename}", response_model=RemoveFileResponse
+    "/api/files/remove/{media_type}/{filename}", response_model=RemoveFileResponse
 )
 async def remove_file(
     request: Request,
@@ -125,7 +84,7 @@ async def remove_file(
 
     Args:
     --------------
-    - media_type (str): The type of media ('music', 'sound', 'image').
+    - media_type (str): The type of media ('music', 'video', 'image', 'data').
     - filename (str): The name of the file to remove.
     - file_manager (FilesService): The file management service.
 
@@ -139,7 +98,6 @@ async def remove_file(
     """
     handlers = {
         "music": music_player.remove_music_track,
-        "sound": file_manager.remove_sound,
         "image": file_manager.remove_photo,
         "video": file_manager.remove_video,
         "data": file_manager.remove_data,
@@ -169,7 +127,7 @@ async def remove_file(
 
 
 @router.get(
-    "/api/download/{media_type}/{filename}",
+    "/api/files/download/{media_type}/{filename}",
     responses={
         200: {
             "content": {"application/octet-stream": {}},
@@ -189,7 +147,7 @@ def download_file(
 
     Args:
     --------------
-    - media_type (str): The type of media ('music', 'sound', 'image', 'video').
+    - media_type (str): The type of media ('music', 'image', 'video', 'data').
     - filename (str): The name of the file to download.
     - file_manager (FilesService): The file management service.
 
@@ -211,8 +169,6 @@ def download_file(
             )
         if media_type == "music":
             directory = file_manager.get_music_directory(filename)
-        elif media_type == "sound":
-            directory = file_manager.get_sound_directory(filename)
         elif media_type == "image":
             directory = file_manager.get_photo_directory(filename)
         elif media_type == "video":
@@ -229,7 +185,7 @@ def download_file(
 
 
 @router.get(
-    "/api/preview/{filename}",
+    "/api/files/preview/{filename}",
     responses={
         200: {
             "content": {"image/jpeg": {}, "image/png": {}},
@@ -243,21 +199,20 @@ def preview_image(
     file_manager: "FilesService" = Depends(get_file_manager),
 ):
     """
-    Download a file of a specific media type.
+    Provide a preview image of a specific file.
 
     Args:
     --------------
-    - media_type (str): The type of media ('music', 'sound', 'image').
-    - filename (str): The name of the file to download.
+    - filename (str): The name of the image file to preview.
     - file_manager (FilesService): The file management service.
 
     Returns:
     --------------
-    - `FileResponse`: A response containing the file to download.
+    - `FileResponse`: A response containing the preview image.
 
     Raises:
     --------------
-    - `HTTPException`: If the media type is invalid or the file is not found.
+    - `HTTPException`: If the file is not found.
     """
     try:
         directory = file_manager.get_photo_directory(filename)
@@ -276,7 +231,7 @@ def preview_image(
         raise HTTPException(status_code=404, detail="File not found")
 
 
-@router.get("/api/list_photos", response_model=PhotosResponse)
+@router.get("/api/files/list/photos", response_model=PhotosResponse)
 def list_photos(file_manager: "FilesService" = Depends(get_file_manager)):
     """
     List the captured by user photos.
@@ -286,7 +241,7 @@ def list_photos(file_manager: "FilesService" = Depends(get_file_manager)):
 
 
 @router.get(
-    "/api/download-last-video",
+    "/api/files/download-last-video",
     responses={
         200: {
             "content": {"application/octet-stream": {}},
