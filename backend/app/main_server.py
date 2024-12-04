@@ -42,7 +42,7 @@ tags_metadata = [
     },
     {
         "name": "audio",
-        "description": "Endpoints related to audio functionalities, including volume controls and text to speech.",
+        "description": "Endpoints related to audio functionalities, including volume controls.",
     },
     {
         "name": "tts",
@@ -54,11 +54,11 @@ tags_metadata = [
     },
     {
         "name": "battery",
-        "description": "Endpoints related to battery status and monitoring, providing real-time insights into battery voltage levels.",
+        "description": "Endpoints related to battery status and monitoring.",
     },
     {
         "name": "camera",
-        "description": "Endpoints for camera operations, including capturing photos and retrieving frame dimensions.",
+        "description": "Endpoints for camera operations, including capturing photos.",
     },
     {
         "name": "files",
