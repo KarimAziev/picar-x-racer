@@ -363,7 +363,8 @@ class MusicService(metaclass=SingletonMeta):
         """
         while not self.stop_event.is_set():
             if self.is_playing:
-                if self.pygame.mixer.music.get_busy() == 0:
+                current_position = self.get_current_position()
+                if current_position >= self.get_current_position():
                     if self.mode == MusicPlayerMode.LOOP_ONE:
                         self.start_playing_current_track()
                     elif self.mode == MusicPlayerMode.SINGLE:
