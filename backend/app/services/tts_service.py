@@ -18,7 +18,7 @@ class TTSService(metaclass=SingletonMeta):
         """
         self.logger = Logger(__name__)
 
-    def text_to_speech(self, words: str, lang="en"):
+    def text_to_speech(self, words: str, lang="en") -> None:
         """
         Convert the given text to speech and play it.
 

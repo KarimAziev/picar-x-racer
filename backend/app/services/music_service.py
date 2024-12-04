@@ -1,7 +1,7 @@
 import asyncio
 import time
 from os import path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import pygame
 from app.exceptions.music import MusicPlayerError
@@ -71,7 +71,7 @@ class MusicService(metaclass=SingletonMeta):
         self.pygame = pygame
         self.pygame.mixer.init()
 
-    def get_current_position(self):
+    def get_current_position(self) -> Union[int, float]:
         """
         Calculates and returns the current playback position of the active track.
 
@@ -84,7 +84,7 @@ class MusicService(metaclass=SingletonMeta):
         self.last_update_time = time.time()
         return self.position
 
-    def get_track_duration(self, track: str):
+    def get_track_duration(self, track: str) -> float:
         """
         Retrieves the duration of a specified music track.
 
@@ -101,7 +101,7 @@ class MusicService(metaclass=SingletonMeta):
 
         return duration
 
-    def music_track_to_absolute(self, track: str):
+    def music_track_to_absolute(self, track: str) -> str:
         """
         Converts a music track's name to its absolute file path.
 
@@ -137,7 +137,7 @@ class MusicService(metaclass=SingletonMeta):
         else:
             self.logger.info("Skipping cancelling music player task")
 
-    async def broadcast_state(self):
+    async def broadcast_state(self) -> None:
         """
         Broadcasts the current player state to all connected clients.
 
@@ -155,7 +155,7 @@ class MusicService(metaclass=SingletonMeta):
             {"type": "player", "payload": data}
         )
 
-    def remove_music_track(self, track: str):
+    def remove_music_track(self, track: str) -> bool:
         """
         Removes a music track from the playlist.
 
@@ -175,7 +175,7 @@ class MusicService(metaclass=SingletonMeta):
 
         return self.file_manager.remove_music(track)
 
-    def update_tracks(self, new_tracks: List[str]):
+    def update_tracks(self, new_tracks: List[str]) -> None:
         """
         Updates the playlist with a new track order.
 
@@ -196,13 +196,13 @@ class MusicService(metaclass=SingletonMeta):
         self.playlist = new_tracks
         self.file_manager.save_custom_music_order(new_tracks)
 
-    def start_broadcast_task(self):
+    def start_broadcast_task(self) -> None:
         """
         Starts a background task to periodically broadcast the player state.
         """
         self.play_task = asyncio.create_task(self.broadcast_loop())
 
-    def toggle_playing(self):
+    def toggle_playing(self) -> None:
         """
         Toggles playback (play or pause) for the current track.
 
@@ -223,7 +223,7 @@ class MusicService(metaclass=SingletonMeta):
 
         self.is_playing = not self.is_playing
 
-    def stop_playing(self):
+    def stop_playing(self) -> None:
         """
         Stops playback and resets the playback position to the beginning.
 
@@ -235,7 +235,7 @@ class MusicService(metaclass=SingletonMeta):
         self.position = 0
         self.is_playing = not self.is_playing
 
-    def update_position(self, position: float):
+    def update_position(self, position: float) -> None:
         """
         Updates the current playback position of the currently playing track.
 
@@ -250,7 +250,7 @@ class MusicService(metaclass=SingletonMeta):
         if self.is_playing and self.track:
             self.pygame.mixer.music.set_pos(self.position)
 
-    def update_mode(self, mode: MusicPlayerMode):
+    def update_mode(self, mode: MusicPlayerMode) -> None:
         """
         Updates the playback mode of the music player.
 
@@ -259,7 +259,7 @@ class MusicService(metaclass=SingletonMeta):
         """
         self.mode = mode
 
-    def play_track(self, track: str):
+    def play_track(self, track: str) -> None:
         """
         Plays a specified track from the playlist.
 
@@ -277,7 +277,7 @@ class MusicService(metaclass=SingletonMeta):
         self.duration = self.get_track_duration(self.track)
         self.start_playing_current_track()
 
-    def next_track(self):
+    def next_track(self) -> None:
         """
         Switches to the next track in the playlist.
 
@@ -301,7 +301,7 @@ class MusicService(metaclass=SingletonMeta):
         if self.is_playing:
             self.start_playing_current_track()
 
-    def prev_track(self):
+    def prev_track(self) -> None:
         """
         Switches to the previous track in the playlist.
 
@@ -324,7 +324,7 @@ class MusicService(metaclass=SingletonMeta):
         if self.is_playing:
             self.start_playing_current_track()
 
-    def start_playing_current_track(self):
+    def start_playing_current_track(self) -> None:
         """
         Starts playback of the current track from the beginning.
 
@@ -344,7 +344,7 @@ class MusicService(metaclass=SingletonMeta):
         self.position = 0
         self.is_playing = True
 
-    async def broadcast_loop(self):
+    async def broadcast_loop(self) -> None:
         """
         Asynchronous loop to handle continuous broadcasting of the player state.
 
