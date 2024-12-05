@@ -18,14 +18,14 @@ if ! command_exists apt-get; then
   exit 1
 fi
 
-log_info "Installing portaudio19-dev, sox, libsox-fmt-mp3, and ffmpeg..."
+log_info "Installing ffmpeg..."
 if [ "$(id -u)" -ne 0 ]; then
   SUDO="sudo"
 else
   SUDO=""
 fi
 $SUDO apt-get update
-$SUDO apt-get install -y portaudio19-dev sox libsox-fmt-mp3 ffmpeg
+$SUDO apt-get install -y ffmpeg
 
 if ! command_exists python3; then
   log_error "Python 3 is not installed or not in PATH. Please install it and try again."

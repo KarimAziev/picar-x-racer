@@ -1,11 +1,9 @@
 numpy==1.26.4
 pandas
-pyaudio
 pygame
 colorlog
 opencv-python
 smbus2
-google-speech
 pygame
 platformdirs
 pydub
@@ -21,3 +19,6 @@ pyusb
 pyudev
 watchdog
 python-dotenv
+appdirs>=1.4.0
+requests>=2.6.0
+web_cache>=1.1.0

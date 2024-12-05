@@ -1,7 +1,7 @@
 from app.exceptions.tts import TextToSpeechException
+from app.adapters.google_speech import Speech
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from google_speech import Speech
 
 
 class TTSService(metaclass=SingletonMeta):
