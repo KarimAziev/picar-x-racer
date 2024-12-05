@@ -1,8 +1,6 @@
 {
-  "default_music": "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3",
   "default_tts_language": "en",
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
-  "music_order": [],
   "fullscreen": true,
   "battery_full_voltage": 8.4,
   "car_model_view": true,
@@ -17,6 +15,11 @@
   "show_player": true,
   "show_object_detection_settings": true,
   "text_to_speech_input": true,
+  "max_speed": 80,
+  "music": {
+    "mode": "loop",
+    "order": []
+  },
   "camera": {
     "device": null,
     "height": 600,
