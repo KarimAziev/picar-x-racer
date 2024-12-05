@@ -48,7 +48,7 @@ class AudioService(metaclass=SingletonMeta):
         try:
             result = subprocess.run(
                 ["amixer", "get", "Master"],
-                stdout=subprocess.PIPE if not debug else subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT if not debug else subprocess.DEVNULL,
             )
 
