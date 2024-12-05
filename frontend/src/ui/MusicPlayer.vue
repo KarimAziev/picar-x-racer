@@ -4,7 +4,6 @@
       <div class="title">{{ currentTrack }}</div>
       <Slider
         @change="handlePositionUpdate"
-        :disabled="disabled"
         v-model="musicStore.player.position"
         :max="duration"
         v-if="duration"
@@ -17,7 +16,6 @@
         icon="pi pi-backward"
         aria-label="Prev track"
         text
-        :disabled="disabled"
         v-tooltip="'Previous track'"
       />
 
@@ -26,7 +24,6 @@
         @click="togglePlaying"
         icon="pi pi-pause"
         text
-        :disabled="disabled"
         aria-label="Pause"
         v-tooltip="'Pause playing track'"
       />
@@ -36,13 +33,12 @@
         icon="pi pi-play-circle"
         text
         aria-label="Play"
-        :disabled="disabled"
         v-tooltip="'Play track'"
       />
       <Button
         @click="stopTrack"
         icon="pi pi-stop"
-        :disabled="disabled || !isPlaying"
+        :disabled="!isPlaying"
         text
         aria-label="Stop"
         v-tooltip="'Stop playing'"
@@ -51,10 +47,41 @@
 
       <Button
         @click="nextTrack"
-        :disabled="disabled"
         icon="pi pi-forward"
         aria-label="Next track"
         v-tooltip="'Play next track'"
+        text
+      />
+      <Button
+        v-if="musicMode === MusicMode.LOOP"
+        @click="nextMode"
+        icon="pi pi-sync"
+        aria-label="loop"
+        v-tooltip="'Play all tracks on repeat continuously.'"
+        text
+      />
+      <Button
+        v-if="musicMode === MusicMode.LOOP_ONE"
+        @click="nextMode"
+        icon="pi pi-arrow-right-arrow-left"
+        aria-label="loop_one"
+        v-tooltip="'Repeat the current track continuously.'"
+        text
+      />
+      <Button
+        v-if="musicMode === MusicMode.QUEUE"
+        @click="nextMode"
+        icon="pi pi-list"
+        aria-label="queue"
+        v-tooltip="'Play all tracks once in order, without repeating.'"
+        text
+      />
+      <Button
+        v-if="musicMode === MusicMode.SINGLE"
+        @click="nextMode"
+        icon="pi pi-stop-circle"
+        aria-label="single"
+        v-tooltip="'Play the current track once and stop playback.'"
         text
       />
     </div>
@@ -68,12 +95,14 @@ import { useMusicStore } from "@/features/settings/stores";
 import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
 import { useAsyncDebounce } from "@/composables/useDebounce";
+import { MusicMode } from "@/features/settings/stores/music";
 
 const musicStore = useMusicStore();
 
 const currentTrack = computed(() => musicStore.player.track);
 const isPlaying = computed(() => musicStore.player.is_playing);
-const disabled = computed(() => musicStore.trackLoading);
+
+const musicMode = computed(() => musicStore.player.mode);
 
 const duration = computed(() => musicStore.player.duration);
 
@@ -93,6 +122,11 @@ const handlePositionUpdate = useAsyncDebounce(async (value: number) => {
 const togglePlaying = async () => {
   await musicStore.togglePlaying();
 };
+
+const nextMode = async () => {
+  await musicStore.nextMode();
+};
+
 const nextTrack = async () => {
   await musicStore.nextTrack();
 };
