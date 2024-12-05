@@ -223,6 +223,7 @@ class MusicService(metaclass=SingletonMeta):
                 if self.track is None:
                     raise MusicPlayerError("No music track")
                 file_path = self.music_track_to_absolute(self.track)
+                self.pygame.mixer.init()
                 self.pygame.mixer.music.load(file_path)
                 self.pygame.mixer.music.play(start=self.position)
             else:
