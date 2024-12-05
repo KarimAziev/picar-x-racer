@@ -3,7 +3,7 @@
     <ToggleSwitch
       :pt="{ input: { id: 'render_fps' } }"
       v-model="streamStore.data.render_fps"
-      @update:model-value="updateStreamParams"
+      @update:model-value="updateRenderFPS"
     />
   </Field>
   <VideoDeviceSelect />
@@ -50,6 +50,12 @@ const enhancers = computed(() => [
   ...objectKeysToOptions(streamStore.enhancers),
   { label: "None", value: null },
 ]);
+
+const updateRenderFPS = async (newValue: boolean) => {
+  store.data.stream.render_fps = newValue;
+  streamStore.data.render_fps = newValue;
+  await streamStore.updateData(streamStore.data);
+};
 
 const updateStreamParams = useAsyncDebounce(async () => {
   store.data.stream = streamStore.data;
