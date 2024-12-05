@@ -22,7 +22,7 @@
     <VideoSettings />
   </Panel>
 
-  <Music toggleable header="Music" />
+  <Music collapsed toggleable header="Music" />
 </template>
 
 <script setup lang="ts">
