@@ -531,17 +531,11 @@ export const useControllerStore = defineStore("controller", {
 
     async playNextMusicTrack() {
       const musicStore = useMusicStore();
-      if (musicStore.trackLoading) {
-        return;
-      }
       await musicStore.nextTrack();
     },
 
     async playPrevMusicTrack() {
       const musicStore = useMusicStore();
-      if (musicStore.trackLoading) {
-        return;
-      }
       await musicStore.prevTrack();
     },
   },

@@ -29,6 +29,10 @@ export const visibilitySettings = {
 };
 
 export const behaviorSettings = {
+  fullscreen: {
+    description: "Toggle fullscreen",
+    label: "Fullscreen",
+  },
   auto_download_photo: {
     description: "Toggle auto-download of captured photos",
     label: "Auto-download photos",
