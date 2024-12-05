@@ -4,7 +4,10 @@ import { cycleValue } from "@/util/cycleValue";
 import { omit, isObjectEquals } from "@/util/obj";
 import { retrieveError } from "@/util/error";
 import type { ControllerActionName } from "@/features/controller/store";
-import { toggleableSettings } from "@/features/settings/config";
+import {
+  behaviorSettings,
+  visibilitySettings,
+} from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
 import {
   useMessagerStore,
@@ -20,7 +23,7 @@ import { useStore as useBatteryStore } from "@/features/settings/stores/battery"
 import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
 
 export type ToggleableSettings = {
-  [P in keyof typeof toggleableSettings]: boolean;
+  [P in keyof (typeof behaviorSettings & typeof visibilitySettings)]: boolean;
 };
 
 export interface TextItem {

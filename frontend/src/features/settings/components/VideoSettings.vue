@@ -1,11 +1,4 @@
 <template>
-  <Field label="Render FPS">
-    <ToggleSwitch
-      :pt="{ input: { id: 'render_fps' } }"
-      v-model="streamStore.data.render_fps"
-      @update:model-value="updateRenderFPS"
-    />
-  </Field>
   <VideoDeviceSelect />
   <SelectField
     label="Video Quality"
@@ -31,7 +24,6 @@
 
 <script setup lang="ts">
 import { onMounted, computed } from "vue";
-import ToggleSwitch from "primevue/toggleswitch";
 
 import { useSettingsStore, useStreamStore } from "@/features/settings/stores";
 
@@ -40,7 +32,6 @@ import { numberSequence } from "@/util/cycleValue";
 import { objectKeysToOptions } from "@/features/settings/util";
 import VideoDeviceSelect from "@/features/settings/components/VideoDeviceSelect.vue";
 import { useAsyncDebounce } from "@/composables/useDebounce";
-import Field from "@/ui/Field.vue";
 
 const store = useSettingsStore();
 
@@ -50,12 +41,6 @@ const enhancers = computed(() => [
   ...objectKeysToOptions(streamStore.enhancers),
   { label: "None", value: null },
 ]);
-
-const updateRenderFPS = async (newValue: boolean) => {
-  store.data.stream.render_fps = newValue;
-  streamStore.data.render_fps = newValue;
-  await streamStore.updateData(streamStore.data);
-};
 
 const updateStreamParams = useAsyncDebounce(async () => {
   store.data.stream = streamStore.data;

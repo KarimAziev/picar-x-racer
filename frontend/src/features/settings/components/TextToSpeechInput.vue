@@ -107,22 +107,23 @@ watch(
 
 input {
   min-width: 50px;
-  height: 35px;
-
-  @media (min-width: 992px) {
-    margin: 0 0.5rem;
-  }
+  height: 30px;
 
   @media (min-width: 576px) {
+    height: 35px;
     width: 100px;
   }
   @media (min-width: 768px) {
     width: 100px;
   }
   @media (min-width: 992px) {
+    margin: 0 0.5rem;
+  }
+  @media (min-width: 992px) {
     width: 120px;
   }
   @media (min-width: 1200px) {
+    height: 40px;
     width: 140px;
   }
 }

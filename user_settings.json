@@ -10,7 +10,6 @@
   "auto_download_video": true,
   "auto_measure_distance_mode": false,
   "auto_measure_distance_delay_ms": 1000,
-  "autoplay_music": true,
   "virtual_mode": false,
   "show_player": true,
   "show_object_detection_settings": true,

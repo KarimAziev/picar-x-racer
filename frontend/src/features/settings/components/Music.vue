@@ -1,78 +1,78 @@
 <template>
-  <Panel :toggleable="toggleable" :header="header" :collapsed="collapsed">
-    <DataTable :value="files" :loading="loading" @rowReorder="onRowReorder">
-      <template #header>
-        <div class="flex justify-content-between align-items-center">
-          <div class="flex gap-4">
-            <SelectField
-              field="settings.music.mode"
-              label="Default Mode"
-              :options="musicModes"
-              v-model="musicStore.player.mode"
-              @update:model-value="handleUpdateMusicMode"
-            />
-          </div>
+  <DataTable :value="files" :loading="loading" @rowReorder="onRowReorder">
+    <template #header>
+      <div class="flex justify-content-between align-items-center">
+        <div class="flex gap-4">
+          <SelectField
+            field="settings.music.mode"
+            label="Default Mode"
+            class="mode-select"
+            :options="musicModes"
+            v-model="musicStore.player.mode"
+            @update:model-value="handleUpdateMusicMode"
+          />
         </div>
+      </div>
+    </template>
+    <Column rowReorder headerStyle="width: 3rem" :reorderableColumn="false" />
+    <Column class="track-col" field="track" header="Track"></Column>
+    <Column field="duration" header="Duration">
+      <template #body="slotProps">
+        {{ secondsToReadableString(slotProps.data.duration) }}
       </template>
-      <Column rowReorder headerStyle="width: 3rem" :reorderableColumn="false" />
-      <Column class="track-col" field="track" header="Track"></Column>
-      <Column field="duration" header="Duration">
-        <template #body="slotProps">
-          {{ secondsToReadableString(slotProps.data.duration) }}
-        </template>
-      </Column>
+    </Column>
 
-      <Column :exportable="false" header="Actions">
-        <template #body="slotProps">
-          <ButtonGroup>
-            <Button
-              v-if="isPlaying(slotProps.data.track)"
-              @click="pauseTrack"
-              icon="pi pi-pause"
-              text
-              aria-label="Pause"
-            />
-            <Button
-              @click="playTrack(slotProps.data.track)"
-              v-else
-              icon="pi pi-play-circle"
-              text
-              aria-label="Play"
-            />
-            <Button
-              rounded
-              v-tooltip="'Download file'"
-              severity="secondary"
-              text
-              icon="pi pi-download"
-              @click="handleDownloadFile(slotProps.data.track)"
-            >
-            </Button>
-            <Button
-              v-if="slotProps.data.removable"
-              icon="pi pi-trash"
-              severity="danger"
-              text
-              @click="handleRemove(slotProps.data.track)"
-            />
-          </ButtonGroup>
-        </template>
-      </Column>
-    </DataTable>
-    <FileUpload
-      :auto="true"
-      :disabled="loading"
-      mode="basic"
-      size="small"
-      name="file"
-      @upload="onUpload($event)"
-      chooseLabel="Add"
-      :url="apiURL"
-      :multiple="false"
-      accept="audio/*"
-    >
-    </FileUpload>
-  </Panel>
+    <Column :exportable="false" header="Actions">
+      <template #body="slotProps">
+        <ButtonGroup>
+          <Button
+            v-if="isPlaying(slotProps.data.track)"
+            @click="pauseTrack"
+            icon="pi pi-pause"
+            text
+            aria-label="Pause"
+          />
+          <Button
+            @click="playTrack(slotProps.data.track)"
+            v-else
+            icon="pi pi-play-circle"
+            text
+            aria-label="Play"
+          />
+          <Button
+            rounded
+            v-tooltip="'Download file'"
+            severity="secondary"
+            text
+            icon="pi pi-download"
+            @click="handleDownloadFile(slotProps.data.track)"
+          >
+          </Button>
+          <Button
+            v-if="slotProps.data.removable"
+            icon="pi pi-trash"
+            severity="danger"
+            text
+            @click="handleRemove(slotProps.data.track)"
+          />
+        </ButtonGroup>
+      </template>
+    </Column>
+  </DataTable>
+  <FileUpload
+    class="upload-btn"
+    :auto="true"
+    :disabled="loading"
+    mode="basic"
+    size="small"
+    name="file"
+    @upload="onUpload($event)"
+    chooseLabel="Add"
+    :url="apiURL"
+    :multiple="false"
+    accept="audio/*"
+  >
+  </FileUpload>
 </template>
 
 <script setup lang="ts">
@@ -84,7 +84,6 @@ import {
 import { computed } from "vue";
 import type { DataTableRowReorderEvent } from "primevue/datatable";
 import type { FileUploadUploadEvent } from "primevue/fileupload";
-import Panel from "@/ui/Panel.vue";
 import FileUpload from "primevue/fileupload";
 import ButtonGroup from "primevue/buttongroup";
 import SelectField from "@/ui/SelectField.vue";
@@ -175,5 +174,14 @@ const onUpload = async (_event: FileUploadUploadEvent) => {
       max-width: 300px;
     }
   }
+}
+
+.mode-select {
+  width: 100%;
+  min-width: 200px;
+}
+
+.upload-btn {
+  margin-top: 1rem;
 }
 </style>

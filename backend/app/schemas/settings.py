@@ -98,7 +98,6 @@ class Settings(TTSSettings):
     auto_download_video: Optional[bool] = None
     auto_measure_distance_mode: Optional[bool] = None
     auto_measure_distance_delay_ms: Optional[int] = None
-    autoplay_music: Optional[bool] = None
     virtual_mode: Optional[bool] = None
     show_player: Optional[bool] = None
     text_to_speech_input: Optional[bool] = None

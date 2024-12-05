@@ -1,54 +1,49 @@
 import { generateMultiplesOf32 } from "@/util/number";
 import { SettingsTab } from "@/features/settings/enums";
 
-export const toggleableSettings = {
-  fullscreen: {
-    description: "Toggle fullscreen",
-    label: "Fullscreen",
-  },
+export const visibilitySettings = {
   text_info_view: {
     description: "Toggles text information on or off",
-    label: "Show gauges view",
+    label: "Gauges view",
   },
   speedometer_view: {
-    label: "Show speedometer",
+    label: "Speedometer",
     description: "Toggle the speedometer display on or off",
   },
   car_model_view: {
     description: "Toggles the 3D view of the car on or off",
-    label: "Show 3D view of the car",
-  },
-  virtual_mode: {
-    description: "Toggle replacing camera view with a 3D model",
-    label: "Hide camera and focus on 3D model",
-  },
-  auto_download_photo: {
-    description: "Toggle auto-download of captured photos",
-    label: "Auto-download of captured photos",
-  },
-  auto_download_video: {
-    description: "Toggle auto-download of recorded videos",
-    label: "Auto-download of recordered videos",
-  },
-  auto_measure_distance_mode: {
-    description: "Toggle auto-measure distance mode",
-    label: "Auto-measure distance mode",
-  },
-  autoplay_music: {
-    description: "Toggle auto playing music",
-    label: "Autoplay music",
+    label: "3D view of the car",
   },
   text_to_speech_input: {
     description: "Toggle showing input for text to speech",
-    label: "Show text to speech input",
+    label: "Text to speech input",
   },
   show_player: {
     description: "Toggle showing music player",
-    label: "Show music player",
+    label: "Music player",
   },
   show_object_detection_settings: {
     description: "Toggle showing object detection settings",
-    label: "Show object detection",
+    label: "Object detection panel",
+  },
+};
+
+export const behaviorSettings = {
+  auto_download_photo: {
+    description: "Toggle auto-download of captured photos",
+    label: "Auto-download photos",
+  },
+  auto_download_video: {
+    description: "Toggle auto-download of recorded videos",
+    label: "Auto-download videos",
+  },
+  auto_measure_distance_mode: {
+    description: "Toggle auto-measure distance mode",
+    label: "Auto-measure distance",
+  },
+  virtual_mode: {
+    description: "Toggle replacing camera view with a 3D model",
+    label: "Virtual 3D mode",
   },
 };
 

@@ -4,10 +4,7 @@
   <Messager v-if="!isMobile" />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
     <Recording />
-    <ToggleableView
-      setting="show_object_detection_settings"
-      v-if="!isPopupOpen"
-    >
+    <ToggleableView setting="show_object_detection_settings">
       <ObjectDetectionSwitch />
     </ToggleableView>
     <CalibrationModeInfo />
@@ -33,18 +30,16 @@ import { RouterView } from "vue-router";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import Messager from "@/features/messager/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
-import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
+import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer/store";
 
-const popupStore = usePopupStore();
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();
 
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
-const isPopupOpen = computed(() => popupStore.isOpen);
 
 const Distance = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Distance.vue"),
