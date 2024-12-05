@@ -13,19 +13,68 @@ command_exists() {
   command -v "$1" > /dev/null 2>&1
 }
 
-if ! command_exists apt-get; then
-  log_error "This script requires 'apt-get', but it was not found. Aborting."
-  exit 1
-fi
+# ffmpeg is needed for pydub
 
-log_info "Installing ffmpeg..."
-if [ "$(id -u)" -ne 0 ]; then
-  SUDO="sudo"
+install_ffmpeg_with_apt() {
+  log_info "Using apt-get to install ffmpeg..."
+  if [ "$(id -u)" -ne 0 ]; then
+    SUDO="sudo"
+  else
+    SUDO=""
+  fi
+  $SUDO apt-get update
+  $SUDO apt-get install -y ffmpeg libavcodec-extra
+}
+
+install_ffmpeg_with_yum() {
+  log_info "Using yum to install ffmpeg..."
+  if [ "$(id -u)" -ne 0 ]; then
+    SUDO="sudo"
+  else
+    SUDO=""
+  fi
+  $SUDO yum install -y epel-release
+  $SUDO yum install -y ffmpeg ffmpeg-devel
+}
+
+install_ffmpeg_with_dnf() {
+  log_info "Using dnf to install ffmpeg..."
+  if [ "$(id -u)" -ne 0 ]; then
+    SUDO="sudo"
+  else
+    SUDO=""
+  fi
+  $SUDO dnf install -y ffmpeg ffmpeg-devel
+}
+
+install_ffmpeg_with_brew() {
+  log_info "Using Homebrew to install ffmpeg..."
+  brew install ffmpeg
+}
+
+if command_exists ffmpeg; then
+  log_info "ffmpeg is already installed."
 else
-  SUDO=""
+  log_warn "ffmpeg is not installed. Attempting to install it..."
+
+  if command_exists apt-get; then
+    install_ffmpeg_with_apt || log_warn "Failed to install ffmpeg with apt-get."
+  elif command_exists yum; then
+    install_ffmpeg_with_yum || log_warn "Failed to install ffmpeg with yum."
+  elif command_exists dnf; then
+    install_ffmpeg_with_dnf || log_warn "Failed to install ffmpeg with dnf."
+  elif command_exists brew; then
+    install_ffmpeg_with_brew || log_warn "Failed to install ffmpeg with Homebrew."
+  else
+    log_warn "No supported package manager found to install 'ffmpeg'. Continuing without it."
+  fi
+
+  if command_exists ffmpeg; then
+    log_info "ffmpeg installation process completed successfully!"
+  else
+    log_warn "ffmpeg could not be installed. Some functionality may not work properly."
+  fi
 fi
-$SUDO apt-get update
-$SUDO apt-get install -y ffmpeg
 
 if ! command_exists python3; then
   log_error "Python 3 is not installed or not in PATH. Please install it and try again."
@@ -52,7 +101,7 @@ if [ ! -f "requirements.txt" ]; then
 fi
 
 log_info "Installing dependencies from requirements.txt..."
-pip install --quiet -r requirements.txt
+pip install -r requirements.txt
 
 is_raspberry_pi() {
   if [ -f /proc/device-tree/model ]; then
@@ -72,7 +121,7 @@ else
     exit 1
   fi
   log_info "Installing development dependencies from requirements-dev.txt..."
-  pip install --quiet -r requirements-dev.txt
+  pip install -r requirements-dev.txt
   log_info "IDE environment setup completed."
 fi
 
