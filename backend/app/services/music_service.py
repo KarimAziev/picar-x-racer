@@ -227,6 +227,7 @@ class MusicService(metaclass=SingletonMeta):
                 self.pygame.mixer.music.load(file_path)
                 self.pygame.mixer.music.play(start=self.position)
             else:
+                self.pygame.mixer.init()
                 self.pygame.mixer.music.unpause()
 
         self.is_playing = not self.is_playing
@@ -347,6 +348,7 @@ class MusicService(metaclass=SingletonMeta):
             raise MusicPlayerError("No music track")
 
         file_path = self.music_track_to_absolute(self.track)
+        self.pygame.mixer.init()
         self.pygame.mixer.music.load(file_path)
         self.pygame.mixer.music.play()
         self.position = 0
