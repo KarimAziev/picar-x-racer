@@ -1,5 +1,4 @@
 <template>
-  <FullscreenToggle />
   <ResizableContainer
     :isResizable="isResizable && !isMobile"
     :fullscreen="fullscreen"
@@ -16,7 +15,6 @@ import {
   useSettingsStore,
   useCameraStore,
 } from "@/features/settings/stores";
-import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
 import ResizableContainer from "@/ui/ResizableContainer.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 

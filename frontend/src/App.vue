@@ -2,6 +2,7 @@
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
+  <ClientsCount />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
     <Recording />
     <ToggleableView setting="show_object_detection_settings">
@@ -34,6 +35,7 @@ import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer/store";
+import ClientsCount from "@/features/syncer/ClientsCount.vue";
 
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();

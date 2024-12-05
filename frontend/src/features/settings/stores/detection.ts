@@ -127,7 +127,9 @@ export const useStore = defineStore("detection-settings", {
           messager.info(msg.closing);
         },
         onError: () => {
-          messager.error(msg.error);
+          if (this.data.active) {
+            messager.error(msg.error);
+          }
           this.detection_result = [];
         },
         isRetryable: () =>

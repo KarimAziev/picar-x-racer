@@ -36,6 +36,7 @@ async def app_synchronizer(
             "camera": camera_service.camera_settings.model_dump(),
             "stream": camera_service.stream_settings.model_dump(),
             "detection": detection_service.detection_settings.model_dump(),
+            "active_connections": len(connection_manager.active_connections),
         }
         for key, value in data.items():
             await connection_manager.broadcast_json({"type": key, "payload": value})
@@ -60,6 +61,7 @@ async def app_synchronizer(
 
     except WebSocketDisconnect:
         logger.info("Synchronization WebSocket Disconnected")
+        connection_manager.remove(websocket)
     except asyncio.CancelledError:
         logger.info("Gracefully shutting down Synchronization WebSocket connection")
         await connection_manager.disconnect(websocket)
@@ -68,3 +70,9 @@ async def app_synchronizer(
         await connection_manager.disconnect(websocket)
     finally:
         connection_manager.remove(websocket)
+        await connection_manager.broadcast_json(
+            {
+                "type": "active_connections",
+                "payload": len(connection_manager.active_connections),
+            }
+        )

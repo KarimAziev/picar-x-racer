@@ -17,10 +17,12 @@ import { startCase } from "@/util/str";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
+  active_connections: number;
 }
 
 const defaultState: StoreState = {
   model: null,
+  active_connections: 0,
 } as const;
 
 export interface WSMessageData {
@@ -66,6 +68,10 @@ export const useAppSyncStore = defineStore("syncer", {
             musicStore.volume = payload;
             break;
           }
+          case "active_connections": {
+            this.active_connections = payload;
+            break;
+          }
           case "uploaded":
           case "removed": {
             const mediaType: string = payload.type;
@@ -82,7 +88,6 @@ export const useAppSyncStore = defineStore("syncer", {
             break;
           }
           case "battery": {
-            diffMsg = `${payload}`;
             batteryStore.voltage = payload;
             break;
           }
@@ -131,6 +136,7 @@ export const useAppSyncStore = defineStore("syncer", {
             break;
 
           case "stream":
+            diffMsg = formatObjectDiff(streamStore.data, payload);
             streamStore.data = payload;
             break;
         }
