@@ -1,3 +1,4 @@
+import os
 import re
 import subprocess
 from typing import Union
@@ -6,6 +7,8 @@ from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from pydub import AudioSegment
+
+debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
 
 
 class AudioService(metaclass=SingletonMeta):
@@ -45,8 +48,8 @@ class AudioService(metaclass=SingletonMeta):
         try:
             result = subprocess.run(
                 ["amixer", "get", "Master"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE if not debug else subprocess.DEVNULL,
+                stderr=subprocess.STDOUT if not debug else subprocess.DEVNULL,
             )
 
             output = result.stdout.decode("utf-8")
@@ -84,8 +87,10 @@ class AudioService(metaclass=SingletonMeta):
             subprocess.run(
                 ["amixer", "sset", "Master", f"{volume_percentage}%"],
                 check=True,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE if not debug else subprocess.DEVNULL,
+                stderr=subprocess.STDOUT if not debug else subprocess.DEVNULL,
             )
+
         except FileNotFoundError:
             self.logger.warning("'amixer' is not installed on your system.")
             raise AmixerNotInstalled("'amixer' is not installed on the system!")
