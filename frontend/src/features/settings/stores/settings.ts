@@ -12,7 +12,10 @@ import {
 } from "@/features/messager/store";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
-import { useStore as useMusicStore } from "@/features/settings/stores/music";
+import {
+  useStore as useMusicStore,
+  MusicMode,
+} from "@/features/settings/stores/music";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
 
@@ -107,6 +110,11 @@ export interface DetectionSettings {
   labels: string[] | null;
 }
 
+export interface MusicSettings {
+  mode?: MusicMode;
+  order: string[];
+}
+
 export interface CameraOpenRequestParams {
   camera: CameraSettings;
   detection: DetectionSettings;
@@ -116,10 +124,11 @@ export interface CameraOpenRequestParams {
 export interface Settings
   extends Partial<ToggleableSettings>,
     CameraOpenRequestParams {
-  default_music?: string;
+  music: MusicSettings;
   default_tts_language: string;
   keybindings: Partial<Record<ControllerActionName, string[] | null>>;
   battery_full_voltage: number;
+  max_speed: number;
   auto_measure_distance_delay_ms: number;
   texts: TextItem[];
 }
@@ -142,10 +151,14 @@ export const defaultState: State = {
     fullscreen: true,
     keybindings: {},
     default_tts_language: "en",
+    max_speed: 80,
     texts: [],
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
     camera: {},
+    music: {
+      order: [],
+    },
     detection: {
       active: false,
       confidence: 0.4,
@@ -181,17 +194,36 @@ export const useStore = defineStore("settings", {
     },
 
     generalSettings({ data }) {
-      const excludedKeys: (keyof Settings)[] = [
-        "keybindings",
-        "texts",
-        "default_tts_language",
-        "detection",
-      ];
-      return omit(excludedKeys, data);
+      const musicStore = useMusicStore();
+      const settingsData = omit(
+        ["keybindings", "texts", "default_tts_language", "detection"],
+        data,
+      );
+      return {
+        ...settingsData,
+        music: {
+          ...settingsData.music,
+          mode: musicStore.player.mode,
+        },
+      } as Partial<Settings>;
     },
   },
 
   actions: {
+    getGeneralSettings() {
+      const musicStore = useMusicStore();
+      const settingsData = omit(
+        ["keybindings", "texts", "default_tts_language", "detection"],
+        this.data,
+      );
+      return {
+        ...settingsData,
+        music: {
+          ...settingsData.music,
+          mode: musicStore.player.mode,
+        },
+      };
+    },
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
@@ -235,7 +267,7 @@ export const useStore = defineStore("settings", {
         messager.remove((m) => m.text === errText);
       }
     },
-    getCurrentTabSettings() {
+    getCurrentTabSettings(): Partial<Settings> | null {
       const popupStore = usePopupStore();
       const currentTab = popupStore.tab;
       const detectionStore = useDetectionStore();
@@ -247,7 +279,9 @@ export const useStore = defineStore("settings", {
         case SettingsTab.TTS:
           return this.tts;
         case SettingsTab.MODELS:
-          return detectionStore.data;
+          return {
+            detection: detectionStore.data,
+          };
         default:
           return null;
       }

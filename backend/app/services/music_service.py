@@ -61,7 +61,11 @@ class MusicService(metaclass=SingletonMeta):
         self.duration: float = (
             0.0 if self.track is None else self.get_track_duration(self.track)
         )  # total duration of current track in seconds
-        self.mode: MusicPlayerMode = MusicPlayerMode.LOOP
+        self.mode: MusicPlayerMode = (
+            self.file_manager.load_settings()
+            .get("music", {"mode": MusicPlayerMode.LOOP})
+            .get('mode', MusicPlayerMode.LOOP)
+        )
         self.position = 0  # position in seconds
         self.is_playing = False
         self.last_update_time = time.time()
@@ -146,7 +150,7 @@ class MusicService(metaclass=SingletonMeta):
         """
         data = {
             "track": self.track,
-            "position": self.get_current_position(),
+            "position": round(self.get_current_position()),
             "is_playing": self.is_playing,
             "duration": self.duration,
             "mode": self.mode,
@@ -192,6 +196,9 @@ class MusicService(metaclass=SingletonMeta):
             if self.track == track and self.is_playing:
                 self.stop_playing()
                 self.track = new_tracks[0] if len(new_tracks) > 0 else None
+        elif not self.is_playing:
+            self.track = new_tracks[0] if len(new_tracks) > 0 else None
+            self.position = 0
 
         self.playlist = new_tracks
         self.file_manager.save_custom_music_order(new_tracks)
@@ -363,7 +370,9 @@ class MusicService(metaclass=SingletonMeta):
         """
         while not self.stop_event.is_set():
             if self.is_playing:
-                if self.pygame.mixer.music.get_busy() == 0:
+                curr_pos = self.get_current_position()
+                is_the_end = curr_pos + 0.100 >= self.duration
+                if is_the_end:
                     if self.mode == MusicPlayerMode.LOOP_ONE:
                         self.start_playing_current_track()
                     elif self.mode == MusicPlayerMode.SINGLE:

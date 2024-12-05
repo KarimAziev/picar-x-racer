@@ -107,6 +107,7 @@ watch(
 
 input {
   min-width: 50px;
+  height: 35px;
 
   @media (min-width: 992px) {
     margin: 0 0.5rem;

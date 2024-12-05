@@ -15,9 +15,9 @@ export interface FileDetail {
 
 export enum MusicMode {
   LOOP = "loop",
+  LOOP_ONE = "loop_one",
   QUEUE = "queue",
   SINGLE = "single",
-  LOOP_ONE = "loop_one",
 }
 
 export interface MusicPlayerInfo {
@@ -40,7 +40,6 @@ export interface State {
   loading: boolean;
   volume?: number;
   timer?: NodeJS.Timeout;
-  trackLoading?: boolean;
   player: MusicPlayerInfo;
 }
 

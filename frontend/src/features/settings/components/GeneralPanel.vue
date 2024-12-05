@@ -11,7 +11,8 @@
     />
     <VideoSettings />
   </Panel>
-  <Music collapsed toggleable header="Music" />
+
+  <Music toggleable header="Music" />
 </template>
 
 <script setup lang="ts">
@@ -25,11 +26,3 @@ import NumberField from "@/ui/NumberField.vue";
 
 const store = useSettingsStore();
 </script>
-
-<style scoped lang="scss">
-.field {
-  label {
-    display: block;
-  }
-}
-</style>

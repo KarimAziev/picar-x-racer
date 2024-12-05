@@ -145,4 +145,10 @@ const nodes = computed(() => [
   font-weight: bold;
   text-align: left;
 }
+
+:deep(.p-treeselect) {
+  height: 35px;
+  display: flex;
+  align-items: center;
+}
 </style>

@@ -298,7 +298,8 @@ class FilesService(metaclass=SingletonMeta):
             List[str]: List of filenames in the specified custom order.
         """
         settings = self.load_settings()
-        return settings.get("music_order", [])
+
+        return settings.get("music", {"order": []}).get("order", [])
 
     def save_custom_music_order(self, order: List[str]) -> None:
         """
@@ -307,7 +308,11 @@ class FilesService(metaclass=SingletonMeta):
         Args:
             order (List[str]): The custom track order to save.
         """
-        self.save_settings({"music_order": order})
+        existing_settings = self.load_settings()
+        music_settings = existing_settings.get("music", {})
+        merged_music_settings = {**music_settings, **{"order": order}}
+
+        self.save_settings({"music": merged_music_settings})
 
     def list_default_music(self, full=False) -> List[str]:
         """

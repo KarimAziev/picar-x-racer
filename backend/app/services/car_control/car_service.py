@@ -1,10 +1,13 @@
 import asyncio
 import json
-from typing import TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Any, Dict
 
 from app.adapters.picarx_adapter import PicarxAdapter
+from app.config.paths import CONFIG_USER_DIR, DEFAULT_USER_SETTINGS
 from app.services.car_control.avoid_obstacles_service import AvoidObstaclesService
 from app.services.car_control.calibration_service import CalibrationService
+from app.util.file_util import load_json_file
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import WebSocket
@@ -22,8 +25,17 @@ class CarService(metaclass=SingletonMeta):
             self.px,
         )
         self.calibration = CalibrationService(self.px)
+        self.user_settings_file = os.path.join(
+            CONFIG_USER_DIR, "picar-x-racer", "user_settings.json"
+        )
+        self.settings_file = (
+            self.user_settings_file
+            if os.path.exists(self.user_settings_file)
+            else DEFAULT_USER_SETTINGS
+        )
+        self.settings: Dict[str, Any] = load_json_file(self.settings_file)
         self.speed = 0
-        self.max_speed = 80
+        self.max_speed = self.settings.get("max_speed", 80)
         self.direction = 0
         self.servo_dir_angle = 0
         self.cam_pan_angle = 0

@@ -5,12 +5,11 @@
         <div class="flex justify-content-between align-items-center">
           <div class="flex gap-4">
             <SelectField
-              field="default_music"
-              label="Default Track"
-              :options="files"
-              optionLabel="track"
-              optionValue="track"
-              v-model="settingsStore.data.default_music"
+              field="settings.music.mode"
+              label="Default Mode"
+              :options="musicModes"
+              v-model="musicStore.player.mode"
+              @update:model-value="handleUpdateMusicMode"
             />
           </div>
         </div>
@@ -78,26 +77,28 @@
 
 <script setup lang="ts">
 import {
-  useStore,
   mediaType,
   FileDetail,
+  MusicMode,
 } from "@/features/settings/stores/music";
 import { computed } from "vue";
-import FileUpload from "primevue/fileupload";
 import type { DataTableRowReorderEvent } from "primevue/datatable";
-import Panel from "@/ui/Panel.vue";
-
 import type { FileUploadUploadEvent } from "primevue/fileupload";
-
+import Panel from "@/ui/Panel.vue";
+import FileUpload from "primevue/fileupload";
 import ButtonGroup from "primevue/buttongroup";
-import { secondsToReadableString } from "@/util/time";
 import SelectField from "@/ui/SelectField.vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useMusicStore } from "@/features/settings/stores";
+import { secondsToReadableString } from "@/util/time";
+import { startCase } from "@/util/str";
 
 const apiURL = `/api/files/upload/${mediaType}`;
 
-const settingsStore = useSettingsStore();
-const musicStore = useStore();
+const musicStore = useMusicStore();
+const musicModes = Object.values(MusicMode).map((value) => ({
+  value,
+  label: startCase(value),
+}));
 
 const files = computed(() => musicStore.data);
 const loading = computed(() => musicStore.loading);
@@ -109,14 +110,21 @@ const playTrack = async (track: string) => {
   await musicStore.playTrack(track);
 };
 
+const handleUpdateMusicMode = async (mode: MusicMode) => {
+  await musicStore.updateMode(mode);
+};
+
 const pauseTrack = async () => {
   await musicStore.togglePlaying();
+};
+const handleUpdateOrder = async (files: FileDetail[]) => {
+  const tracks = files.map(({ track }) => track);
+  await musicStore.updateMusicOrder(tracks);
 };
 
 const onRowReorder = async (e: DataTableRowReorderEvent) => {
   const files: FileDetail[] = e.value;
-  const tracks = files.map(({ track }) => track);
-  await musicStore.updateMusicOrder(tracks);
+  await handleUpdateOrder(files);
 };
 
 const handleRemove = async (track: string) => {
@@ -136,6 +144,7 @@ defineProps<{
 
 const onUpload = async (_event: FileUploadUploadEvent) => {
   await musicStore.fetchData();
+  await handleUpdateOrder(musicStore.data);
 };
 </script>
 <style scoped lang="scss">

@@ -52,7 +52,7 @@ async def toggle_play_music(
     - HTTPException (500): If an unexpected error occurs.
     """
     try:
-        music_player.toggle_playing()
+        await asyncio.to_thread(music_player.toggle_playing)
         await music_player.broadcast_state()
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
@@ -93,7 +93,7 @@ async def play_track(
         - HTTPException (500): If an unexpected error occurs.
     """
     try:
-        music_player.play_track(payload.track)
+        await asyncio.to_thread(music_player.play_track, payload.track)
         await music_player.broadcast_state()
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
@@ -132,7 +132,7 @@ async def stop_playing(
     - HTTPException (500): If an unexpected error occurs.
     """
     try:
-        music_player.stop_playing()
+        await asyncio.to_thread(music_player.stop_playing)
         await music_player.broadcast_state()
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
@@ -173,7 +173,7 @@ async def update_position(
     next_pos = float(payload.position)
     logger.info(f"seeking track %s", next_pos)
     try:
-        music_player.update_position(next_pos)
+        await asyncio.to_thread(music_player.update_position, next_pos)
         await music_player.broadcast_state()
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
@@ -211,7 +211,7 @@ async def update_mode(
     - HTTPException (500): If an unexpected error occurs.
     """
     try:
-        music_player.update_mode(payload.mode)
+        await asyncio.to_thread(music_player.update_mode, payload.mode)
         await music_player.broadcast_state()
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
@@ -247,7 +247,7 @@ async def next_track(
     - HTTPException (500): If an unexpected error occurs.
     """
     try:
-        music_player.next_track()
+        await asyncio.to_thread(music_player.next_track)
         await music_player.broadcast_state()
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
@@ -285,7 +285,7 @@ async def prev_track(
     - HTTPException (500): If an unexpected error occurs.
     """
     try:
-        music_player.prev_track()
+        await asyncio.to_thread(music_player.prev_track)
         await music_player.broadcast_state()
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
@@ -328,10 +328,12 @@ async def save_music_order(
     connection_manager: "ConnectionService" = request.app.state.app_manager
     try:
         await asyncio.to_thread(music_player.update_tracks, order)
+        await music_player.broadcast_state()
         files = await asyncio.to_thread(file_manager.list_all_music_with_details)
+        settings = await asyncio.to_thread(file_manager.load_settings)
         await connection_manager.broadcast_json({"type": "music", "payload": files})
         await connection_manager.broadcast_json(
-            {"type": "settings", "payload": {"music_order": order}}
+            {"type": "settings", "payload": {"music": settings.get("music")}}
         )
         return {"message": "Custom music order saved successfully!"}
     except Exception as err:
@@ -359,7 +361,7 @@ async def get_music_tracks(
     --------------
     - HTTPException (404): If there is an error while retrieving the music tracks.
     """
-    music_volume = audio_manager.get_volume()
+    music_volume = await asyncio.to_thread(audio_manager.get_volume)
     try:
         files = file_manager.list_all_music_with_details()
         return {

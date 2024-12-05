@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from app.schemas.camera import CameraSettings
+from app.schemas.music import MusicPlayerMode
 from app.schemas.stream import StreamSettings
 from app.services.detection_service import DetectionSettings
 from pydantic import BaseModel
@@ -72,16 +73,22 @@ class Keybindings(BaseModel):
     toggleVideoRecord: Optional[List[str]] = None
 
 
-class Settings(BaseModel):
+class MusicSettings(BaseModel):
+    order: Optional[List] = None
+    mode: Optional[MusicPlayerMode] = None
+
+
+class TTSSettings(BaseModel):
+    default_tts_language: Optional[str] = None
+    texts: Optional[List[TextToSpeechItem]] = None
+
+
+class Settings(TTSSettings):
     """
     A model to represent the application settings.
     """
 
-    default_music: Optional[str] = None
-    default_sound: Optional[str] = None
-    default_tts_language: Optional[str] = None
-    music_order: Optional[List] = None
-    texts: Optional[List[TextToSpeechItem]] = None
+    max_speed: Optional[int] = None
     fullscreen: Optional[bool] = None
     battery_full_voltage: Optional[float] = None
     car_model_view: Optional[bool] = None
@@ -100,6 +107,7 @@ class Settings(BaseModel):
     camera: Optional[CameraSettings] = None
     detection: Optional[DetectionSettings] = None
     stream: Optional[StreamSettings] = None
+    music: Optional[MusicSettings] = None
 
 
 class CalibrationConfig(BaseModel):
