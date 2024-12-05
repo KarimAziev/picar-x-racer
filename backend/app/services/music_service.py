@@ -199,6 +199,8 @@ class MusicService(metaclass=SingletonMeta):
         elif not self.is_playing:
             self.track = new_tracks[0] if len(new_tracks) > 0 else None
             self.position = 0
+            if self.track:
+                self.duration = self.get_track_duration(self.track)
 
         self.playlist = new_tracks
         self.file_manager.save_custom_music_order(new_tracks)
