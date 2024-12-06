@@ -3,11 +3,34 @@ import axios from "axios";
 import { useMessagerStore } from "@/features/messager/store";
 import { constrain } from "@/util/constrain";
 import { cycleValue } from "@/util/cycleValue";
-import {
-  StreamSettings,
-  useStore as useSettingsStore,
-  defaultState as settingsDefaultState,
-} from "@/features/settings/stores/settings";
+import { useStore as useSettingsStore } from "@/features/settings/stores/settings";
+
+export interface StreamSettings {
+  /**
+   * The format of the stream (e.g., '.jpg').
+   */
+  format: string;
+
+  /**
+   * The quality of the stream (0-100).
+   */
+  quality: number;
+
+  /**
+   * The enhancement mode for the stream, if any.
+   */
+  enhance_mode?: string | null;
+
+  /**
+   * Whether video recording is enabled.
+   */
+  video_record?: boolean;
+
+  /**
+   * Whether the frames per second (FPS) should be rendered.
+   */
+  render_fps?: boolean;
+}
 
 export interface State {
   data: StreamSettings;
@@ -15,9 +38,12 @@ export interface State {
   enhancers: string[];
 }
 
-const defaultState: State = {
+export const defaultState: State = {
   loading: false,
-  data: { ...settingsDefaultState.data.stream },
+  data: {
+    format: ".jpg",
+    quality: 100,
+  },
   enhancers: [],
 };
 

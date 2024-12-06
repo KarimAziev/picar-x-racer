@@ -21,7 +21,11 @@ import {
 } from "@/features/settings/stores/music";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
-import { useStore as useStreamStore } from "@/features/settings/stores/stream";
+import {
+  useStore as useStreamStore,
+  StreamSettings,
+  defaultState as defaultStreamState,
+} from "@/features/settings/stores/stream";
 
 export type ToggleableSettings = {
   [P in keyof (typeof behaviorSettings & typeof visibilitySettings)]: boolean;
@@ -58,33 +62,6 @@ export interface CameraSettings {
    * The format for the pixels (e.g., 'RGB', 'GRAY').
    */
   pixel_format?: string;
-}
-
-export interface StreamSettings {
-  /**
-   * The format of the stream (e.g., '.jpg').
-   */
-  format: string;
-
-  /**
-   * The quality of the stream (0-100).
-   */
-  quality: number;
-
-  /**
-   * The enhancement mode for the stream, if any.
-   */
-  enhance_mode?: string | null;
-
-  /**
-   * Whether video recording is enabled.
-   */
-  video_record?: boolean;
-
-  /**
-   * Whether the frames per second (FPS) should be rendered.
-   */
-  render_fps?: boolean;
 }
 
 export interface DetectionSettings {
@@ -152,7 +129,6 @@ export interface State {
 
 export const defaultState: State = {
   data: {
-    fullscreen: true,
     keybindings: {},
     default_tts_language: "en",
     max_speed: 80,
@@ -170,10 +146,7 @@ export const defaultState: State = {
       model: null,
       labels: null,
     },
-    stream: {
-      format: ".jpg",
-      quality: 100,
-    },
+    stream: { ...defaultStreamState.data },
   },
   retryCounter: 0,
   text: null,

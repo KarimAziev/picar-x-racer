@@ -447,10 +447,6 @@ export const useControllerStore = defineStore("controller", {
       popupStore.tab = SettingsTab.GENERAL;
       popupStore.isOpen = true;
     },
-    toggleFullscreen() {
-      const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("fullscreen");
-    },
     toggleTextInfo() {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("text_info_view");

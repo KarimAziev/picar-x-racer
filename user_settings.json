@@ -1,7 +1,6 @@
 {
   "default_tts_language": "en",
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
-  "fullscreen": true,
   "battery_full_voltage": 8.4,
   "car_model_view": true,
   "speedometer_view": true,

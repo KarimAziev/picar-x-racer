@@ -50,7 +50,6 @@ class Keybindings(BaseModel):
     takePhoto: Optional[List[str]] = None
     toggleAvoidObstaclesMode: Optional[List[str]] = None
     toggleCarModelView: Optional[List[str]] = None
-    toggleFullscreen: Optional[List[str]] = None
     toggleSpeedometerView: Optional[List[str]] = None
     toggleTextInfo: Optional[List[str]] = None
     toggleVirtualMode: Optional[List[str]] = None
@@ -89,7 +88,6 @@ class Settings(TTSSettings):
     """
 
     max_speed: Optional[int] = None
-    fullscreen: Optional[bool] = None
     battery_full_voltage: Optional[float] = None
     car_model_view: Optional[bool] = None
     speedometer_view: Optional[bool] = None
