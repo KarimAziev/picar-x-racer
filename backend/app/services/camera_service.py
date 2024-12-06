@@ -65,7 +65,10 @@ class CameraService(metaclass=SingletonMeta):
         return self.camera_settings
 
     def update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
+        should_restart = settings.video_record and not self.stream_settings.video_record
         self.stream_settings = settings
+        if should_restart:
+            self.restart_camera()
         return self.stream_settings
 
     def generate_frame(self) -> Optional[bytes]:
