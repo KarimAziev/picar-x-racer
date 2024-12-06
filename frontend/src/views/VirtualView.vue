@@ -11,32 +11,17 @@
 </template>
 
 <script setup lang="ts">
-import {
-  onMounted,
-  onBeforeUnmount,
-  defineAsyncComponent,
-  watch,
-  onBeforeMount,
-} from "vue";
+import { defineAsyncComponent, watch, onBeforeMount } from "vue";
 import { useRouter } from "vue-router";
 import FullscreenContent from "@/ui/FullscreenContent.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
-
-import { useController } from "@/features/controller/composable";
+import { useCarController } from "@/features/controller/composable";
 import { useControllerStore } from "@/features/controller/store";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const controllerStore = useControllerStore();
-const {
-  addKeyEventListeners,
-  removeKeyEventListeners,
-  connectWS,
-  cleanupGameLoop,
-  gameLoop,
-  cleanup,
-} = useController(controllerStore, settingsStore, popupStore);
 
 const router = useRouter();
 
@@ -62,16 +47,7 @@ onBeforeMount(() => {
   }
 });
 
-onMounted(() => {
-  connectWS();
-  addKeyEventListeners();
-  gameLoop();
-});
-onBeforeUnmount(() => {
-  cleanupGameLoop();
-  removeKeyEventListeners();
-  cleanup();
-});
+useCarController(controllerStore, settingsStore, popupStore);
 </script>
 <style scoped lang="scss">
 .wrapper {
