@@ -4,6 +4,7 @@
   <Messager v-if="!isMobile" />
   <ActiveConnectionsIndicator />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+    <AudioStream />
     <Recording />
     <ToggleableView setting="show_object_detection_settings">
       <DetectionControls />
@@ -35,6 +36,7 @@ import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer/store";
+import AudioStream from "@/ui/AudioStream.vue";
 
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();

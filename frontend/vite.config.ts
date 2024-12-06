@@ -62,6 +62,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/ws/audio-stream": {
+        target: `ws://127.0.0.1:${mainAppPort}/`,
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });

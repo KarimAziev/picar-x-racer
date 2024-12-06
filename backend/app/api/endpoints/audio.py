@@ -1,14 +1,22 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_audio_manager
+from app.api.deps import get_audio_manager, get_audio_stream_service
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.schemas.audio import VolumeData
 from app.util.logger import Logger
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
+    from app.services.audio_stream_service import AudioStreamService
     from app.services.connection_service import ConnectionService
 
 router = APIRouter()
@@ -168,3 +176,14 @@ async def get_volume(
     except Exception as err:
         logger.error(f"Unexpected error in get_volume: {err}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(err))
+
+
+@router.websocket("/ws/audio-stream")
+async def audio_stream_ws(
+    websocket: WebSocket,
+    audio_service: "AudioStreamService" = Depends(get_audio_stream_service),
+):
+    """
+    WebSocket endpoint for providing audio stream to a client.
+    """
+    await audio_service.audio_stream_to_ws(websocket)
