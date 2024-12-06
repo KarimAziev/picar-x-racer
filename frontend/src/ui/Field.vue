@@ -60,7 +60,7 @@ const classObject = computed(() => ({
   height: 30px;
 
   @media (min-width: 576px) {
-    height: 40px;
+    height: 35px;
     max-width: 140px;
   }
   @media (min-width: 768px) {
@@ -71,6 +71,7 @@ const classObject = computed(() => ({
     max-width: 210px;
   }
   @media (min-width: 1200px) {
+    height: 40px;
     max-width: 220px;
   }
 
