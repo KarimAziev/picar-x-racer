@@ -1,6 +1,6 @@
 import asyncio
 import threading
-from queue import Empty, Queue
+from queue import Empty, Full, Queue
 from typing import AsyncGenerator, Optional
 
 import sounddevice as sd
@@ -16,18 +16,19 @@ class AudioStreamService(metaclass=SingletonMeta):
 
     def __init__(self):
         self.logger = Logger(name=__name__)
-        self.sample_rate = 44100  # Audio sampling rate in Hz
-        self.channels = 1  # Mono audio
-        self.block_size = 1024  # Number of audio samples per block
-        self.running = False  # Flag to indicate whether audio capture is running
+        self.sample_rate = 44100
+        self.channels = 1
+        self.block_size = 1024
+        self.running = False
         self.audio_thread: Optional[threading.Thread] = None
-        self.audio_queue = Queue(maxsize=100)  # Buffer to store audio chunks
-        self.audio_stream = None  # Sounddevice InputStream object
+        self.audio_queue = Queue(maxsize=100)
+        self.audio_stream = None
         self.active_clients = 0
 
     def _capture_worker(self):
         """
         Background worker to capture audio in real time and push it to the queue.
+        Uses `_enqueue_audio_chunk` to ensure robust queue handling.
         """
         try:
             self.audio_stream = sd.InputStream(
@@ -35,15 +36,15 @@ class AudioStreamService(metaclass=SingletonMeta):
                 channels=self.channels,
                 blocksize=self.block_size,
                 dtype="int16",
-                callback=lambda indata, frames, time, status: self.audio_queue.put_nowait(
-                    indata.copy()
+                callback=lambda indata, frames, time, status: self._enqueue_audio_chunk(
+                    indata
                 ),
             )
             self.audio_stream.start()
             self.logger.info("Audio capture started.")
 
             while self.running:
-                sd.sleep(100)  # Keep stream alive
+                sd.sleep(100)
         except Exception as e:
             self.logger.log_exception("Error in audio capture worker", e)
 
@@ -53,6 +54,20 @@ class AudioStreamService(metaclass=SingletonMeta):
                 self.audio_stream.close()
             self.audio_stream = None
             self.logger.info("Audio capture stopped.")
+
+    def _enqueue_audio_chunk(self, chunk):
+        """
+        Safely enqueue an audio chunk, discarding the oldest data if the queue is full.
+        """
+        try:
+            self.audio_queue.put_nowait(chunk.copy())
+        except Full:
+            self.logger.warning("Audio queue is full; dropping oldest chunk.")
+            try:
+                self.audio_queue.get_nowait()
+                self.audio_queue.put_nowait(chunk.copy())
+            except Empty:
+                self.logger.error("Unexpected: Audio queue was empty during cleanup.")
 
     def start_audio_capture(self):
         """
@@ -88,8 +103,8 @@ class AudioStreamService(metaclass=SingletonMeta):
                 chunk = await asyncio.to_thread(self.audio_queue.get, timeout=1)
                 yield chunk.tobytes()
             except Empty:
-                self.logger.info("No audio chunks available, stopping generator.")
-                break
+                self.logger.warning("Audio queue is empty; waiting for audio.")
+                continue
 
     async def audio_stream_to_ws(self, websocket: WebSocket):
         """
