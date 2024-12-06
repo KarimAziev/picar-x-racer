@@ -14,7 +14,6 @@ defineProps<{
 }>();
 </script>
 <style scoped lang="scss">
-@import "@/assets/animation.scss";
 .info-item {
   display: flex;
   justify-content: space-between;
