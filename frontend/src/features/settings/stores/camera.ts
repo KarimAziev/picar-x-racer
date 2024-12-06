@@ -3,10 +3,6 @@ import axios from "axios";
 import type { TreeNode } from "primevue/treenode";
 import { useMessagerStore } from "@/features/messager/store";
 import { constrain } from "@/util/constrain";
-import {
-  CameraSettings,
-  defaultState as settingsDefaultState,
-} from "@/features/settings/stores/settings";
 
 export const dimensions = [
   [640, 480],
@@ -23,6 +19,33 @@ export const dimensions = [
 ];
 
 const MAX_FPS = 70;
+
+export interface CameraSettings {
+  /**
+   * The ID or name of the camera device.
+   */
+  device?: string;
+
+  /**
+   * The width of the camera frame in pixels.
+   */
+  width?: number;
+
+  /**
+   * The height of the camera frame in pixels.
+   */
+  height?: number;
+
+  /**
+   * The number of frames per second the camera should capture.
+   */
+  fps?: number;
+
+  /**
+   * The format for the pixels (e.g., 'RGB', 'GRAY').
+   */
+  pixel_format?: string;
+}
 
 export interface DeviceSuboption extends TreeNode {
   device: string;
@@ -41,9 +64,9 @@ export interface State {
   devices: DeviceOption[];
 }
 
-const defaultState: State = {
+export const defaultState: State = {
   loading: false,
-  data: { ...settingsDefaultState.data.camera },
+  data: {},
   devices: [],
 };
 

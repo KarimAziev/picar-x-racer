@@ -3,8 +3,34 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import type { TreeNode } from "primevue/treenode";
 import { useMessagerStore } from "@/features/messager/store";
-import { DetectionSettings } from "@/features/settings/stores/settings";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
+
+export interface DetectionSettings {
+  /**
+   * The name or ID of the detection model to be used.
+   */
+  model: string | null;
+
+  /**
+   * The confidence threshold for detections (e.g., a value between 0 and 1).
+   */
+  confidence: number;
+
+  /**
+   * Indicates whether detection is active.
+   */
+  active: boolean;
+
+  /**
+   * The size of the image for detection (default is 640).
+   */
+  img_size: number;
+
+  /**
+   * A list of labels (e.g., object categories) to filter detections.
+   */
+  labels: string[] | null;
+}
 
 export interface DetectionResponse {
   detection_result: DetectionResult[];
@@ -18,7 +44,7 @@ export interface State extends DetectionResponse {
   connection: ShallowRef<WebSocketModel> | null;
   currentFrameTimestamp?: number;
 }
-const defaultState: State = {
+export const defaultState: State = {
   loading: false,
   data: {
     active: false,

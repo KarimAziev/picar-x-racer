@@ -4,6 +4,9 @@ import { cycleValue } from "@/util/cycleValue";
 import { omit, isObjectEquals } from "@/util/obj";
 import { retrieveError } from "@/util/error";
 import type { ControllerActionName } from "@/features/controller/store";
+import type { DetectionSettings } from "@/features/settings/stores/detection";
+import type { StreamSettings } from "@/features/settings/stores/stream";
+import type { CameraSettings } from "@/features/settings/stores/camera";
 import {
   behaviorSettings,
   visibilitySettings,
@@ -20,12 +23,15 @@ import {
   MusicMode,
 } from "@/features/settings/stores/music";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
-import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
+import {
+  useStore as useDetectionStore,
+  defaultState as detectionDefaultState,
+} from "@/features/settings/stores/detection";
 import {
   useStore as useStreamStore,
-  StreamSettings,
   defaultState as defaultStreamState,
 } from "@/features/settings/stores/stream";
+import { defaultState as defaultCameraState } from "@/features/settings/stores/camera";
 
 export type ToggleableSettings = {
   [P in keyof (typeof behaviorSettings & typeof visibilitySettings)]: boolean;
@@ -35,60 +41,6 @@ export interface TextItem {
   text: string;
   language: string;
   default?: boolean;
-}
-
-export interface CameraSettings {
-  /**
-   * The ID or name of the camera device.
-   */
-  device?: string;
-
-  /**
-   * The width of the camera frame in pixels.
-   */
-  width?: number;
-
-  /**
-   * The height of the camera frame in pixels.
-   */
-  height?: number;
-
-  /**
-   * The number of frames per second the camera should capture.
-   */
-  fps?: number;
-
-  /**
-   * The format for the pixels (e.g., 'RGB', 'GRAY').
-   */
-  pixel_format?: string;
-}
-
-export interface DetectionSettings {
-  /**
-   * The name or ID of the detection model to be used.
-   */
-  model: string | null;
-
-  /**
-   * The confidence threshold for detections (e.g., a value between 0 and 1).
-   */
-  confidence: number;
-
-  /**
-   * Indicates whether detection is active.
-   */
-  active: boolean;
-
-  /**
-   * The size of the image for detection (default is 640).
-   */
-  img_size: number;
-
-  /**
-   * A list of labels (e.g., object categories) to filter detections.
-   */
-  labels: string[] | null;
 }
 
 export interface MusicSettings {
@@ -135,17 +87,11 @@ export const defaultState: State = {
     texts: [],
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
-    camera: {},
+    camera: { ...defaultCameraState.data },
     music: {
       order: [],
     },
-    detection: {
-      active: false,
-      confidence: 0.4,
-      img_size: 640,
-      model: null,
-      labels: null,
-    },
+    detection: { ...detectionDefaultState.data },
     stream: { ...defaultStreamState.data },
   },
   retryCounter: 0,
