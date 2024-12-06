@@ -54,7 +54,7 @@ const videoFeedOptions = numberSequence(10, 100, 10).map((value) => ({
 
 onMounted(async () => {
   if (!streamStore.enhancers.length) {
-    streamStore.fetchEnhancers();
+    await streamStore.fetchEnhancers();
   }
 });
 </script>

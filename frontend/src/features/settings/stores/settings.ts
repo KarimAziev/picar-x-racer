@@ -21,6 +21,7 @@ import {
 } from "@/features/settings/stores/music";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import { useStore as useDetectionStore } from "@/features/settings/stores/detection";
+import { useStore as useStreamStore } from "@/features/settings/stores/stream";
 
 export type ToggleableSettings = {
   [P in keyof (typeof behaviorSettings & typeof visibilitySettings)]: boolean;
@@ -213,26 +214,13 @@ export const useStore = defineStore("settings", {
   },
 
   actions: {
-    getGeneralSettings() {
-      const musicStore = useMusicStore();
-      const settingsData = omit(
-        ["keybindings", "texts", "default_tts_language", "detection"],
-        this.data,
-      );
-      return {
-        ...settingsData,
-        music: {
-          ...settingsData.music,
-          mode: musicStore.player.mode,
-        },
-      };
-    },
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
       const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
       const batteryStore = useBatteryStore();
+      const streamStore = useStreamStore();
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
       }
@@ -243,6 +231,7 @@ export const useStore = defineStore("settings", {
           calibrationStore.fetchData(),
           musicStore.fetchData(),
           batteryStore.fetchBatteryStatus(),
+          streamStore.fetchEnhancers(),
         ]);
         this.data = response.data;
         this.error = undefined;
