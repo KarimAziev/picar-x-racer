@@ -58,6 +58,7 @@ async def update_video_feed_settings(
     --------------
     None
     """
+    logger.info("Video feed update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
     result: StreamSettings = await asyncio.to_thread(
         camera_manager.update_stream_settings, payload

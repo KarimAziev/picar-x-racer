@@ -61,6 +61,7 @@ async def update_camera_settings(
     --------------
     None
     """
+    logger.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
     result: CameraSettings = await asyncio.to_thread(
         camera_manager.update_camera_settings, payload

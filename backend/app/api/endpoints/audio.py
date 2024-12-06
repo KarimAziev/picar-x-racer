@@ -74,7 +74,7 @@ async def set_volume(
     }
     ```
     """
-
+    logger.info("Volume update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
     volume = payload.volume
     int_volume = int(volume)

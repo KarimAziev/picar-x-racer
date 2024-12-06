@@ -59,6 +59,7 @@ async def update_detection_settings(
     - HTTPException (400): If there is an error during model loading or detection.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
+    logger.info("Detection update payload %s", payload)
     try:
         result = await detection_service.update_detection_settings(payload)
         await connection_manager.broadcast_json(

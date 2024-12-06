@@ -42,6 +42,7 @@ async def text_to_speech(
     - HTTPException (400): If Google speech is not available.
     - HTTPException (500): If an unexpected error occurs.
     """
+    logger.info("TTS payload=%s", payload)
     try:
         connection_manager: "ConnectionService" = request.app.state.app_manager
         text = payload.text

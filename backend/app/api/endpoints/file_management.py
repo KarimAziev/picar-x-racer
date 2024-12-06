@@ -106,6 +106,8 @@ async def remove_file(
     handler = handlers.get(media_type)
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
+    logger.info("Removing file %s of type %s", filename, media_type)
+
     if not handler:
         raise HTTPException(status_code=400, detail="Invalid media type")
 

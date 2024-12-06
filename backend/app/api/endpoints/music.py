@@ -325,6 +325,7 @@ async def save_music_order(
     -------------
     - HTTPException (400): If any error occurs while updating the track order.
     """
+    logger.info("Music order update %s", order)
     connection_manager: "ConnectionService" = request.app.state.app_manager
     try:
         await asyncio.to_thread(music_player.update_tracks, order)

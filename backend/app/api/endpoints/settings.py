@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from app.api.deps import get_camera_manager, get_detection_manager, get_file_manager
 from app.schemas.settings import CalibrationConfig, Settings
+from app.util.logger import Logger
 from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
@@ -11,6 +12,7 @@ if TYPE_CHECKING:
     from app.services.detection_service import DetectionService
     from app.services.files_service import FilesService
 
+logger = Logger(__name__)
 
 router = APIRouter()
 
@@ -57,6 +59,7 @@ async def update_settings(
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     data = new_settings.model_dump(exclude_unset=True)
+    logger.info("Settings update data %s", data)
 
     await asyncio.to_thread(file_service.save_settings, data)
 
