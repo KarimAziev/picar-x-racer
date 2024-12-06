@@ -30,6 +30,11 @@ export interface DetectionSettings {
    * A list of labels (e.g., object categories) to filter detections.
    */
   labels: string[] | null;
+  /**
+   * The maximum allowable time difference (in seconds) between the frame
+   *  timestamp and the detection timestamp for overlay drawing to occur.
+   */
+  overlay_draw_threshold: number;
 }
 
 export interface DetectionResponse {
@@ -52,6 +57,7 @@ export const defaultState: State = {
     img_size: 640,
     model: null,
     labels: null,
+    overlay_draw_threshold: 1,
   },
   detectors: [],
   detection_result: [],

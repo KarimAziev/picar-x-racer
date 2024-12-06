@@ -22,6 +22,7 @@ export type NormalizedData = {
 const denormalizers = {
   model: denormalizeValue,
   confidence: (v: number) => (isNumber(v) ? roundNumber(v, 1) : v),
+  overlay_draw_threshold: (v: number) => (isNumber(v) ? roundNumber(v, 1) : v),
 };
 
 export interface FieldsParams {
@@ -37,6 +38,7 @@ export const useDetectionFields = (params?: FieldsParams) => {
     active: detectionStore.data.active,
     confidence: detectionStore.data.confidence,
     labels: detectionStore.data.labels,
+    overlay_draw_threshold: detectionStore.data.overlay_draw_threshold,
   });
 
   const isModified = computed(() =>

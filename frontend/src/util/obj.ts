@@ -242,9 +242,7 @@ export const formatObjDeep = <Obj extends any>(
       .map((v) => formatObjDeep(v, separator, prefix))
       .filter(isString);
     if (result.length) {
-      return prefix
-        ? `${prefix}: ${result.join(separator)}`
-        : `${result.join(separator)}`;
+      return `${result.join(separator)}`;
     }
   }
   if (isPlainObject(obj)) {

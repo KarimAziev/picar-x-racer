@@ -16,7 +16,7 @@ import { computed } from "vue";
 export type FieldLayout = "col" | "row-reverse" | "row" | "col-reverse";
 
 export type Props = {
-  message?: string;
+  message?: string | null;
   label?: string;
   fieldClassName?: string;
   labelClassName?: string;
@@ -38,7 +38,7 @@ const classObject = computed(() => ({
   flex-direction: column;
   .message {
     background-color: transparent;
-    color: var(--red-400);
+    color: var(--color-red);
   }
 }
 @import "./field.scss";
@@ -85,20 +85,4 @@ const classObject = computed(() => ({
     max-width: 240px;
   }
 }
-
-/* :deep(.p-select-label) { */
-/*   padding: 0.2rem 0.4rem; */
-
-/*   @media (min-width: 576px) { */
-/*     padding: 0.25rem 0.7rem; */
-/*   } */
-
-/*   @media (min-width: 768px) { */
-/*     padding: 0.3rem 0.7rem; */
-/*   } */
-
-/*   @media (min-width: 1200px) { */
-/*     padding: 0.4rem 0.7rem; */
-/*   } */
-/* } */
 </style>

@@ -2,7 +2,7 @@
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
-  <ClientsCount />
+  <ActiveConnectionsIndicator />
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
     <Recording />
     <ToggleableView setting="show_object_detection_settings">
@@ -35,13 +35,16 @@ import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer/store";
-import ClientsCount from "@/features/syncer/ClientsCount.vue";
 
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();
 
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
+
+const ActiveConnectionsIndicator = defineAsyncComponent({
+  loader: () => import("@/features/syncer/ActiveConnectionsIndicator.vue"),
+});
 
 const Distance = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Distance.vue"),

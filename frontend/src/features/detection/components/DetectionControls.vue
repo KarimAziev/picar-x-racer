@@ -2,16 +2,15 @@
   <div :class="class" class="wrapper">
     <div class="p-field">
       <div class="flex-column">
-        <div class="flex">
-          <span class="label">Detection:&nbsp;</span>
-          <ToggleSwitch
-            inputId="toggle_detection"
-            v-tooltip="'Toggle Object Detection'"
-            :loading="detectionStore.loading"
-            @update:model-value="updateDebounced"
-            v-model="fields.active"
-          />
-        </div>
+        <ToggleSwitchField
+          label="Detection"
+          layout="row"
+          field="toggle_detection"
+          v-tooltip="'Toggle Object Detection'"
+          :loading="detectionStore.loading"
+          @update:model-value="updateDebounced"
+          v-model="fields.active"
+        />
         <TreeSelect
           inputId="model"
           v-model="fields.model"
@@ -27,7 +26,7 @@
             <i class="pi pi-search" />
           </template>
           <template #header>
-            <div class="font-medium px-3 py-2">Available Models</div>
+            <div class="title">Available Models</div>
           </template>
           <template #footer>
             <div>
@@ -44,7 +43,7 @@
         </TreeSelect>
       </div>
     </div>
-    Models parameters
+
     <div class="flex">
       <SelectField
         inputId="img_size"
@@ -78,13 +77,13 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import ToggleSwitch from "primevue/toggleswitch";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDetectionStore } from "@/features/detection";
 import NumberField from "@/ui/NumberField.vue";
 import { NONE_KEY, imgSizeOptions } from "@/features/settings/config";
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
+import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 defineProps<{ class?: string; label?: string }>();
 
@@ -135,6 +134,7 @@ const nodes = computed(() => [
   display: flex;
   flex-direction: column;
   text-align: left;
+  gap: 5px;
 }
 :deep(.p-inputtext) {
   width: 90px;

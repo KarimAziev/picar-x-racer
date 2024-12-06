@@ -2,7 +2,7 @@
   <DataTable :value="files" :loading="loading" @rowReorder="onRowReorder">
     <template #header>
       <div class="flex justify-content-between align-items-center">
-        <div class="flex gap-4">
+        <div class="flex gap-16">
           <SelectField
             field="settings.music.mode"
             label="Default Mode"
@@ -147,18 +147,6 @@ const onUpload = async (_event: FileUploadUploadEvent) => {
 };
 </script>
 <style scoped lang="scss">
-.flex {
-  display: flex;
-}
-.justify-content-between {
-  justify-content: space-between;
-}
-.align-items-center {
-  align-items: center;
-}
-.gap-4 {
-  gap: 1rem;
-}
 :deep(.track-col) {
   max-width: 100px;
   white-space: nowrap;

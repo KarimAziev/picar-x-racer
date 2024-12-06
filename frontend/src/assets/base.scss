@@ -101,3 +101,28 @@ html {
 *::-webkit-scrollbar {
   display: none;
 }
+
+.flex {
+  display: flex;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.justify-content-between {
+  justify-content: space-between;
+}
+.align-items-center {
+  align-items: center;
+}
+
+@for $i from 1 through 16 {
+  .gap-#{$i} {
+    gap: #{$i}px;
+  }
+}

@@ -18,6 +18,8 @@ const handleToggle = async () => {
 </script>
 
 <style scoped lang="scss">
+@import "@/assets/scss/blink";
+
 .record-indicator {
   color: var(--color-text);
 
@@ -34,15 +36,6 @@ const handleToggle = async () => {
     transition: all 0.3s ease;
     &:hover {
       opacity: 0.7;
-    }
-  }
-  .blink {
-    animation: blink-effect 1s step-start 0s infinite;
-  }
-
-  @keyframes blink-effect {
-    50% {
-      opacity: 0;
     }
   }
 }

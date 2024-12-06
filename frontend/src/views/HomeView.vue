@@ -23,13 +23,15 @@ watch(
   (value) => {
     if (value) {
       router.push("/virtual");
+    } else {
+      router.push("/");
     }
   },
 );
 
 onMounted(async () => {
-  await cameraStore.fetchData();
   await settingsStore.fetchSettingsInitial();
+  await cameraStore.fetchData();
 });
 </script>
 <style scoped lang="scss"></style>

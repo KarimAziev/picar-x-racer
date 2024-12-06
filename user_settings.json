@@ -37,7 +37,8 @@
     "confidence": 0.4,
     "active": false,
     "img_size": 320,
-    "labels": []
+    "labels": [],
+    "overlay_draw_threshold": 1
   },
   "keybindings": {
     "accelerate": ["w"],
