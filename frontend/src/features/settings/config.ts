@@ -1,4 +1,5 @@
 import { generateMultiplesOf32 } from "@/util/number";
+import { numberSequence } from "@/util/cycleValue";
 import { SettingsTab } from "@/features/settings/enums";
 
 export const visibilitySettings = {
@@ -137,3 +138,8 @@ export const saveableTabs = {
 };
 
 export const imgSizeOptions = generateMultiplesOf32(2000);
+
+export const videoQualityOptions = numberSequence(10, 100, 10).map((value) => ({
+  value: value,
+  label: `${value}`,
+}));

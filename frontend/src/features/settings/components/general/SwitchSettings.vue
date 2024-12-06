@@ -23,5 +23,5 @@ import ToggleFields from "@/ui/ToggleFields.vue";
 const store = useSettingsStore();
 </script>
 <style scoped lang="scss">
-@import "./two-column-layout.scss";
+@import "@/assets/scss/two-column-layout.scss";
 </style>

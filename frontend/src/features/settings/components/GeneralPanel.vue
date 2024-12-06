@@ -1,6 +1,8 @@
 <template>
   <Panel header="Appearance" toggleable>
-    <SwitchSettings><FPSToggle /></SwitchSettings>
+    <SwitchSettings>
+      <FPSToggle />
+    </SwitchSettings>
   </Panel>
   <Panel header="Camera/Robot" toggleable>
     <div class="wrapper">
@@ -38,14 +40,13 @@
 
 <script setup lang="ts">
 import { useSettingsStore } from "@/features/settings/stores";
-
-import Music from "@/features/settings/components/Music.vue";
-import SwitchSettings from "@/features/settings/components/SwitchSettings.vue";
-import VideoSettings from "@/features/settings/components/VideoSettings.vue";
+import Music from "@/features/settings/components/general/Music.vue";
+import SwitchSettings from "@/features/settings/components/general/SwitchSettings.vue";
+import VideoSettings from "@/features/settings/components/camera/VideoSettings.vue";
 import Panel from "@/ui/Panel.vue";
 import NumberField from "@/ui/NumberField.vue";
+import FPSToggle from "@/features/settings/components/camera/FPSToggle.vue";
 import { useControllerStore } from "@/features/controller/store";
-import FPSToggle from "@/features/settings/components/FPSToggle.vue";
 
 const store = useSettingsStore();
 const controllerStore = useControllerStore();
@@ -57,5 +58,5 @@ const handleUpdateMaxSpeed = (value: number) => {
 };
 </script>
 <style scoped lang="scss">
-@import "./two-column-layout.scss";
+@import "@/assets/scss/two-column-layout.scss";
 </style>

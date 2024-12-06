@@ -18,7 +18,7 @@
 import { defineAsyncComponent } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-import TextToSpeechInput from "@/features/settings/components/TextToSpeechInput.vue";
+import TextToSpeechInput from "@/ui/tts/TextToSpeechInput.vue";
 import Messages from "@/features/messager/Messages.vue";
 const isMobile = useDeviceWatcher();
 

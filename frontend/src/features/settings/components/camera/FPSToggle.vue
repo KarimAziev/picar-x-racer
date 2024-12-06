@@ -1,17 +1,16 @@
 <template>
-  <Field label="Render FPS" layout="row-reverse">
-    <ToggleSwitch
-      :pt="{ input: { id: 'render_fps' } }"
-      v-model="streamStore.data.render_fps"
-      @update:model-value="updateRenderFPS"
-    />
-  </Field>
+  <ToggleSwitchField
+    label="Render FPS"
+    layout="row-reverse"
+    :pt="{ input: { id: 'render_fps' } }"
+    v-model="streamStore.data.render_fps"
+    @update:model-value="updateRenderFPS"
+  />
 </template>
 
 <script setup lang="ts">
-import ToggleSwitch from "primevue/toggleswitch";
 import { useSettingsStore, useStreamStore } from "@/features/settings/stores";
-import Field from "@/ui/Field.vue";
+import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const settingsStore = useSettingsStore();
 

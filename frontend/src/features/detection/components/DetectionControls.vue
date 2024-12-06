@@ -79,13 +79,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
-import {
-  useSettingsStore,
-  useDetectionStore,
-} from "@/features/settings/stores";
+import { useSettingsStore } from "@/features/settings/stores";
+import { useDetectionStore } from "@/features/detection";
 import NumberField from "@/ui/NumberField.vue";
 import { NONE_KEY, imgSizeOptions } from "@/features/settings/config";
-import { useDetectionFields } from "@/features/settings/composable/useDetectionFields";
+import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
 
 defineProps<{ class?: string; label?: string }>();

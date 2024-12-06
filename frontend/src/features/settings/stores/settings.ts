@@ -1,10 +1,10 @@
-import { defineStore } from "pinia";
 import axios from "axios";
+import { defineStore } from "pinia";
 import { cycleValue } from "@/util/cycleValue";
 import { omit, isObjectEquals } from "@/util/obj";
 import { retrieveError } from "@/util/error";
 import type { ControllerActionName } from "@/features/controller/store";
-import type { DetectionSettings } from "@/features/settings/stores/detection";
+import type { DetectionSettings } from "@/features/detection";
 import type { StreamSettings } from "@/features/settings/stores/stream";
 import type { CameraSettings } from "@/features/settings/stores/camera";
 import {
@@ -24,9 +24,9 @@ import {
 } from "@/features/settings/stores/music";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import {
-  useStore as useDetectionStore,
+  useDetectionStore,
   defaultState as detectionDefaultState,
-} from "@/features/settings/stores/detection";
+} from "@/features/detection";
 import {
   useStore as useStreamStore,
   defaultState as defaultStreamState,

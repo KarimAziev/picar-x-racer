@@ -45,8 +45,9 @@ import ButtonGroup from "primevue/buttongroup";
 
 import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
-import TextToSpeechButton from "@/features/settings/components/TextToSpeechButton.vue";
+
 import { useInputHistory } from "@/composables/useInputHistory";
+import TextToSpeechButton from "@/ui/tts/TextToSpeechButton.vue";
 
 defineProps<{ class?: string }>();
 

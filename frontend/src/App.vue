@@ -6,7 +6,7 @@
   <div class="indicators" v-if="!isMobile && isSettingsLoaded">
     <Recording />
     <ToggleableView setting="show_object_detection_settings">
-      <ObjectDetectionSwitch />
+      <DetectionControls />
     </ToggleableView>
     <CalibrationModeInfo />
     <ToggleableView setting="text_to_speech_input">
@@ -47,13 +47,12 @@ const Distance = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Distance.vue"),
 });
 
-const ObjectDetectionSwitch = defineAsyncComponent({
-  loader: () =>
-    import("@/features/settings/components/ObjectDetectionSwitch.vue"),
+const DetectionControls = defineAsyncComponent({
+  loader: () => import("@/features/detection/components/DetectionControls.vue"),
 });
 
 const TextToSpeechInput = defineAsyncComponent({
-  loader: () => import("@/features/settings/components/TextToSpeechInput.vue"),
+  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
 });
 
 const MusicPlayer = defineAsyncComponent({
@@ -61,7 +60,7 @@ const MusicPlayer = defineAsyncComponent({
 });
 
 const BatteryIndicator = defineAsyncComponent({
-  loader: () => import("@/features/settings/components/BatteryIndicator.vue"),
+  loader: () => import("@/ui/BatteryIndicator.vue"),
 });
 const CalibrationModeInfo = defineAsyncComponent({
   loader: () =>
@@ -69,7 +68,7 @@ const CalibrationModeInfo = defineAsyncComponent({
 });
 const Recording = defineAsyncComponent({
   loader: () =>
-    import("@/features/settings/components/VideoRecordingIndicator.vue"),
+    import("@/features/settings/components/camera/VideoRecordingIndicator.vue"),
 });
 
 useAppHeight();

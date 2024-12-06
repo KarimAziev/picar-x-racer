@@ -39,15 +39,14 @@
       </div>
 
       <div class="flex">
-        <Field label="Detection" class="align-center">
-          <ToggleSwitch
-            inputId="settings.detection.active"
-            @update:model-value="updateDebounced"
-            v-tooltip="'Toggle object detection'"
-            v-model="fields.active"
-          />
-        </Field>
-
+        <ToggleSwitchField
+          label="Detection"
+          class="align-center"
+          field="settings.detection.active"
+          @update:model-value="updateDebounced"
+          v-tooltip="'Toggle object detection'"
+          v-model="fields.active"
+        />
         <SelectField
           inputId="settings.detection.img_size"
           v-model="fields.img_size"
@@ -118,19 +117,15 @@ import ButtonGroup from "primevue/buttongroup";
 import TreeTable, { TreeTableFilterMeta } from "primevue/treetable";
 import InputIcon from "primevue/inputicon";
 import IconField from "primevue/iconfield";
-import ToggleSwitch from "primevue/toggleswitch";
 import NumberField from "@/ui/NumberField.vue";
 import { useMessagerStore } from "@/features/messager/store";
+import { useDetectionStore } from "@/features/detection";
 import { downloadFile, removeFile } from "@/features/settings/api";
-import {
-  useSettingsStore,
-  useDetectionStore,
-} from "@/features/settings/stores";
-
-import Field from "@/ui/Field.vue";
-import { useDetectionFields } from "@/features/settings/composable/useDetectionFields";
+import { useSettingsStore } from "@/features/settings/stores";
+import { useDetectionFields } from "@/features/detection";
 import { imgSizeOptions } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
+import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const store = useSettingsStore();
 const detectionStore = useDetectionStore();

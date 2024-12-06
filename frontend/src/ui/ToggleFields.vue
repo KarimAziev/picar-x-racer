@@ -1,23 +1,19 @@
 <template>
-  <Field
+  <ToggleSwitchField
     v-for="(item, field) in fields"
     :key="field"
     :label="item.label"
     layout="row-reverse"
-  >
-    <ToggleSwitch
-      @update:model-value="onUpdate"
-      :pt="{ input: { id: field } }"
-      v-model="store.data[field]"
-    />
-  </Field>
+    @update:model-value="(value) => onUpdate(field as string, value)"
+    :pt="{ input: { id: field } }"
+    v-model="store.data[field]"
+  />
 
   <slot></slot>
 </template>
 
 <script setup lang="ts">
-import Field from "@/ui/Field.vue";
-import ToggleSwitch from "primevue/toggleswitch";
+import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const emit = defineEmits(["update:modelValue"]);
 

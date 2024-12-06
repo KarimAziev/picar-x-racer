@@ -1,8 +1,8 @@
 import { onMounted, watch, reactive, computed } from "vue";
-import { useDetectionStore } from "@/features/settings/stores";
+import type { DetectionSettings } from "@/features/detection/store";
+import { useStore as useDetectionStore } from "@/features/detection/store";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import { roundNumber } from "@/util/number";
-import { DetectionSettings } from "@/features/settings/stores/settings";
 import { isNumber, isEmpty } from "@/util/guards";
 import { evolve, diffObjects } from "@/util/obj";
 

@@ -13,12 +13,14 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
+export type FieldLayout = "col" | "row-reverse" | "row" | "col-reverse";
+
 export type Props = {
   message?: string;
   label?: string;
   fieldClassName?: string;
   labelClassName?: string;
-  layout?: "col" | "row-reverse" | "row" | "col-reverse";
+  layout?: FieldLayout;
 };
 
 const props = defineProps<Props>();

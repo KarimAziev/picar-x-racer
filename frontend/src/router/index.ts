@@ -13,11 +13,6 @@ const router = createRouter({
       name: "virtual_mode",
       component: () => import("@/views/VirtualView.vue"),
     },
-    {
-      path: "/settings",
-      name: "settings",
-      component: () => import("@/views/SettingsView.vue"),
-    },
   ],
 });
 

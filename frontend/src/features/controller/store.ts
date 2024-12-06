@@ -10,9 +10,9 @@ import {
   useDistanceStore,
   useCameraStore,
   useMusicStore,
-  useDetectionStore,
   useStreamStore,
 } from "@/features/settings/stores";
+import { useDetectionStore } from "@/features/detection";
 import { useMessagerStore } from "@/features/messager/store";
 import { SettingsTab } from "@/features/settings/enums";
 import { takePhoto } from "@/features/controller/api";

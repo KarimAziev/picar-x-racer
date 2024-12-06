@@ -78,11 +78,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
-import Panel from "@/ui/Panel.vue";
 import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Button from "primevue/button";
-import KeyRecorder from "./KeyRecorder.vue";
+import Panel from "@/ui/Panel.vue";
+import KeyRecorder from "@/ui/KeyRecorder.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { allCommandOptions } from "@/features/settings/defaultKeybindings";
 import { splitKeySequence } from "@/util/keyboard-util";

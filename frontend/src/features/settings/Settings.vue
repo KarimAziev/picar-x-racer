@@ -16,7 +16,7 @@
       </TabPanel>
       <TabPanel :value="SettingsTab.MODELS">
         <ScrollPanel class="wrapper">
-          <ModelsTable />
+          <ModelsPanel />
         </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">
@@ -26,17 +26,17 @@
       </TabPanel>
       <TabPanel :value="SettingsTab.CALIBRATION">
         <ScrollPanel class="wrapper">
-          <Calibration />
+          <CalibrationPanel />
         </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.PHOTOS">
         <ScrollPanel class="wrapper">
-          <Images />
+          <PhotosPanel />
         </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.TTS">
         <ScrollPanel class="wrapper">
-          <TTSSettings />
+          <TTSPanel />
         </ScrollPanel>
       </TabPanel>
     </TabPanels>
@@ -49,15 +49,15 @@ import TabList from "primevue/tablist";
 import Tab from "primevue/tab";
 import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
-import TTSSettings from "@/features/settings/components/TTSSettings.vue";
-import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vue";
-import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
 import { SettingsTab } from "@/features/settings/enums";
 import { usePopupStore } from "@/features/settings/stores";
-import Calibration from "@/features/settings/components/Calibration.vue";
-import Images from "@/features/settings/components/Images.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-import ModelsTable from "@/features/settings/components/ModelsTable.vue";
+import TTSPanel from "@/features/settings/components/TTSPanel.vue";
+import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vue";
+import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
+import CalibrationPanel from "@/features/settings/components/CalibrationPanel.vue";
+import PhotosPanel from "@/features/settings/components/PhotosPanel.vue";
+import ModelsPanel from "@/features/settings/components/ModelsPanel.vue";
 
 const popupStore = usePopupStore();
 const isMobile = useDeviceWatcher();

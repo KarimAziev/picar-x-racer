@@ -8,12 +8,12 @@ import {
   useCameraStore,
   useMusicStore,
   useStreamStore,
-  useDetectionStore,
 } from "@/features/settings/stores";
 import { useMessagerStore } from "@/features/messager/store";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import { formatObjectDiff } from "@/util/obj";
 import { startCase } from "@/util/str";
+import { useDetectionStore } from "@/features/detection";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
