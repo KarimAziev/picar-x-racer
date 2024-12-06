@@ -16,7 +16,7 @@ from app.adapters.robot_hat.i2c import I2C
 from app.adapters.robot_hat.pin_descriptions import pin_descriptions
 from app.util.logger import Logger
 
-timer: list[dict[str, int]] = [{"arr": 1}] * 4
+timer: list[dict[str, int]] = [{"arr": 1}] * 7
 
 PRESCALER_SQRT_OFFSET = (
     5  # The offset applied to the square root result in prescaler calculation.
@@ -88,18 +88,24 @@ class PWM(I2C):
     REG_ARR = 0x44
     """Period register prefix"""
 
-    ADDR = [0x14, 0x15]
+    REG_PSC2 = 0x50
+    """Prescaler register prefix"""
+
+    REG_ARR2 = 0x54
+    """Period registor prefix"""
+
+    ADDR = [0x14, 0x15, 0x16]
     """List of possible I2C addresses"""
 
     CLOCK = 72000000.0
     """Clock frequency in Hz"""
 
-    def __init__(self, channel, address=None, *args, **kwargs):
+    def __init__(self, channel: Union[int, str], address=None, *args, **kwargs):
         """
         Initialize the PWM module.
 
         Args:
-            channel (int or str): PWM channel number (0-15 or P0-P15).
+            channel (int or str): PWM channel number (0-19/P0-P19).
             address (Optional[List[int]]): I2C device address or list of addresses.
         """
         if address is None:
@@ -122,12 +128,12 @@ class PWM(I2C):
             if channel.startswith("P"):
                 channel = int(channel[1:])
             else:
-                msg = f'PWM channel should be between [P0, P15], not "{channel}"'
+                msg = f'PWM channel should be between [P0, P19], not "{channel}"'
                 self.logger.error(msg)
                 raise ValueError(msg)
         if isinstance(channel, int):
             if channel > 15 or channel < 0:
-                msg = f'channel must be in range of 0-15, not "{channel}"'
+                msg = f'channel must be in range of 0-19, not "{channel}"'
                 raise ValueError(msg)
 
         if isinstance(self.address, int):
@@ -139,7 +145,14 @@ class PWM(I2C):
             self.logger.warning("PWM address is not found")
 
         self.channel = channel
-        self.timer = int(channel / 4)
+        if channel < 16:
+            self.timer = int(channel / 4)
+        elif channel == 16 or channel == 17:
+            self.timer = 4
+        elif channel == 18:
+            self.timer = 5
+        elif channel == 19:
+            self.timer = 6
         self._pulse_width = 0
         self._freq = 50
         self.freq(50)
@@ -281,7 +294,10 @@ class PWM(I2C):
 
         self._prescaler = round(prescaler)
         self._freq = self.CLOCK / self._prescaler / timer[self.timer]["arr"]
-        reg = self.REG_PSC + self.timer
+        if self.timer < 4:
+            reg = self.REG_PSC + self.timer
+        else:
+            reg = self.REG_PSC2 + self.timer - 4
         self.logger.debug(
             "[%s]: Set prescaler to PWM %s at timer %s to register: %s, global timer: %s",
             self._chan_desc,
@@ -337,7 +353,11 @@ class PWM(I2C):
 
         timer[self.timer]["arr"] = arr
         self._freq = self.CLOCK / self._prescaler / arr
-        reg = self.REG_ARR + self.timer
+
+        if self.timer < 4:
+            reg = self.REG_ARR + self.timer
+        else:
+            reg = self.REG_ARR2 + self.timer - 4
 
         self.logger.debug(
             "[%s]: Set period to PWM %s at timer %s to register: %s, global timer: %s",
