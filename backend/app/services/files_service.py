@@ -12,7 +12,7 @@ import os
 from os import path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from app.adapters.robot_hat.filedb import fileDB
+from app.adapters.robot_hat.filedb import FileDB
 from app.config.paths import (
     CONFIG_USER_DIR,
     DATA_DIR,
@@ -587,7 +587,7 @@ class FilesService(metaclass=SingletonMeta):
         """
 
         if path.exists(PICARX_CONFIG_FILE):
-            calibration_settings = fileDB(PICARX_CONFIG_FILE).get_all_as_json()
+            calibration_settings = FileDB(PICARX_CONFIG_FILE).get_all_as_dict()
             return calibration_settings
         return {}
 

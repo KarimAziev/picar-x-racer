@@ -49,8 +49,7 @@ def ensure_parent_dir_exists(file: str):
     # If "/path/to" does not exist, it will be created.
     """
     directory = path.dirname(file)
-    if not path.exists(directory):
-        os.makedirs(directory)
+    os.makedirs(directory, exist_ok=True)
 
 
 def resolve_absolute_path(file: str, *dir_segmens):

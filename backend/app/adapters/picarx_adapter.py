@@ -1,7 +1,7 @@
 import asyncio
 
 from app.adapters.robot_hat.adc import ADC
-from app.adapters.robot_hat.filedb import fileDB
+from app.adapters.robot_hat.filedb import FileDB
 from app.adapters.robot_hat.grayscale import Grayscale_Module
 from app.adapters.robot_hat.pin import Pin
 from app.adapters.robot_hat.pwm import PWM
@@ -41,15 +41,15 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.logger = Logger(name=__name__)
 
         # Set up the config file
-        self.config_file = fileDB(config)
+        self.config_file = FileDB(config)
 
         # --------- servos init ---------
         self.cam_pan = Servo(servo_pins[0])
         self.cam_tilt = Servo(servo_pins[1])
         self.dir_servo_pin = Servo(servo_pins[2])
         # Get calibration values
-        cali_val = self.config_file.get("picarx_dir_servo")
-        cali_val_float = float(cali_val) if cali_val else 0.0
+        cali_val = self.config_file.get("picarx_dir_servo", 0)
+        cali_val_float = float(cali_val)
         self.dir_cali_val = cali_val_float
         self.logger.debug("Initted dir_cali_val: %s", self.dir_cali_val)
 
@@ -131,7 +131,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         motor_names = {1: "left", 2: "right"}
         motor_name = motor_names.get(motor, "unknown")
 
-        speed = max(-self.MAX_SPEED, min(self.MAX_SPEED, speed))
+        speed = constrain(speed, -self.MAX_SPEED, self.MAX_SPEED)
 
         motor_index = motor - 1
 
@@ -179,7 +179,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         pwm_speed -= calibration_speed_offset
 
-        pwm_speed = max(0, min(100, pwm_speed))
+        pwm_speed = constrain(pwm_speed, 0, 100)
 
         # Set motor direction pin
         if direction == -1:

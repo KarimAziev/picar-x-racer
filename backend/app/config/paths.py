@@ -38,6 +38,7 @@ FONT_PATH = resolve_absolute_path(
 MUSIC_CACHE_FILE_PATH = path.join(CONFIG_USER_DIR, "picar-x-racer/music_cache.json")
 
 PICARX_CONFIG_DIR = path.join(CONFIG_USER_DIR, "picar-x")
+ROBOT_HAT_CONF = path.join(CONFIG_USER_DIR, "robot-hat/robot-hat.conf")
 PICARX_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "picar-x.conf")
 PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
 
