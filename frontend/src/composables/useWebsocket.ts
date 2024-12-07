@@ -1,35 +1,71 @@
-import { ref, Ref } from "vue";
+import { ref } from "vue";
+import type { Ref } from "vue";
 import { makeWebsocketUrl } from "@/util/url";
 
+/**
+ * Options for configuring the WebSocket connection.
+ */
 export interface WebSocketOptions {
+  /** The WebSocket server URL. */
   url: string;
+  /** An optional port number for the WebSocket connection. */
   port?: number;
+  /** A callback invoked when a message is received from the WebSocket. */
   onMessage?: (message: any) => void;
+  /** A callback invoked when the first message is received from the WebSocket. */
   onFirstMessage?: () => void;
+  /** The binary type of the WebSocket (e.g., "arraybuffer"). */
   binaryType?: WebSocket["binaryType"];
+  /** A callback invoked when the WebSocket connection is opened. */
   onOpen?: () => void;
+  /** A callback invoked when the WebSocket connection is closed. */
   onClose?: () => void;
+  /** A callback invoked during the cleanup process. */
   onCleanup?: () => void;
+  /** A callback invoked when an error occurs on the WebSocket. */
   onError?: (error: Event) => void;
+  /** The interval (in milliseconds) to retry the connection if it fails. */
   retryInterval?: number;
+  /** Whether the WebSocket should automatically attempt reconnections. */
   autoReconnect?: boolean;
+  /** A log prefix for identifying WebSocket logs. */
   logPrefix?: string;
+  /** A function that determines whether retries are allowed. */
   isRetryable?: () => Promise<boolean>;
 }
 
+/**
+ * Model representing the WebSocket and associated state/methods.
+ */
 export interface WebSocketModel {
+  /** Initializes the WebSocket connection. */
   initWS: () => void;
+  /** Sends a message through the WebSocket connection. */
   send: (message: any) => void;
+  /** Closes the WebSocket connection. */
   closeWS: () => void;
+  /** Cleans up the WebSocket resources (e.g., closing the connection). */
   cleanup: () => void;
+  /** Attempts to retry the WebSocket connection. */
   retry: () => void;
+  /** Tracks whether the WebSocket is currently connected. */
   connected: Ref<boolean>;
+  /** Tracks whether the WebSocket is actively handling messages. */
   active: Ref<boolean>;
+  /** Tracks whether the WebSocket is in the process of connecting or retrying. */
   loading: Ref<boolean>;
+  /** Indicates whether reconnection attempts are enabled. */
   reconnectEnabled: Ref<boolean>;
+  /** Holds the current WebSocket instance or null if not connected. */
   ws: Ref<WebSocket | null>;
 }
 
+/**
+ * A composable function for managing a WebSocket connection in a Vue application.
+ *
+ * @param options - Configuration options for the WebSocket connection.
+ * @returns The WebSocket model to manage the connection and state.
+ */
 export function useWebSocket(options: WebSocketOptions): WebSocketModel {
   const ws = ref<WebSocket | null>(null);
   const retryTimer = ref<NodeJS.Timeout | null>(null);
