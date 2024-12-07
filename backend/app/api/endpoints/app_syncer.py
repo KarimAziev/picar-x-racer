@@ -33,13 +33,32 @@ async def app_synchronizer(
         await connection_manager.connect(websocket)
         await music_service.broadcast_state()
         data = {
+            "active_connections": len(connection_manager.active_connections),
             "camera": camera_service.camera_settings.model_dump(),
             "stream": camera_service.stream_settings.model_dump(),
-            "detection": detection_service.detection_settings.model_dump(),
-            "active_connections": len(connection_manager.active_connections),
         }
         for key, value in data.items():
             await connection_manager.broadcast_json({"type": key, "payload": value})
+
+        if (
+            detection_service.detection_settings.active
+            and not detection_service.loading
+            and detection_service.detection_process is None
+        ):
+            if detection_service.detection_settings.model is None:
+                detection_service.detection_settings.active = False
+            else:
+                await detection_service.start_detection_process()
+                detection_service.detection_process_task = asyncio.create_task(
+                    detection_service.start_detection_process_task()
+                )
+
+        await connection_manager.broadcast_json(
+            {
+                "type": "detection",
+                "payload": detection_service.detection_settings.model_dump(),
+            }
+        )
 
         while websocket.application_state == WebSocketState.CONNECTED:
             raw_data = await websocket.receive_text()
