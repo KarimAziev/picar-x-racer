@@ -21,6 +21,8 @@ import {
 import { useDetectionStore } from "@/features/detection";
 import { useMessagerStore } from "@/features/messager";
 import { useMusicStore } from "@/features/music";
+import { wait } from "@/util/wait";
+import { roundToNearestTen } from "@/util/number";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;
@@ -277,15 +279,28 @@ export const useControllerStore = defineStore("controller", {
       this.backward(nextSpeed);
     },
 
-    slowdown() {
-      const nextSpeed =
-        this.speed > 0 ? Math.max(this.speed - 10, 0) : this.speed;
-      if (this.speed === 0 && this.direction !== 0) {
+    async slowdown() {
+      const nextSpeed = roundToNearestTen(
+        this.speed > 10
+          ? Math.max(this.speed / 2, 0)
+          : this.speed === 10
+            ? Math.max(this.speed - 10, 0)
+            : this.speed,
+      );
+      if (nextSpeed === 0) {
         this.stop();
       } else if (this.direction === 1) {
         this.forward(nextSpeed);
+        await wait(100);
+        if (nextSpeed === this.speed) {
+          this.stop();
+        }
       } else if (this.direction === -1) {
         this.backward(nextSpeed);
+        await wait(100);
+        if (nextSpeed === this.speed) {
+          this.stop();
+        }
       }
     },
     stop() {
@@ -533,6 +548,10 @@ export const useControllerStore = defineStore("controller", {
     async playPrevMusicTrack() {
       const musicStore = useMusicStore();
       await musicStore.prevTrack();
+    },
+    toggleAudioStreaming() {
+      const musicStore = useMusicStore();
+      musicStore.toggleStreaming();
     },
   },
 });

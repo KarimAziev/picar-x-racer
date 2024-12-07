@@ -20,7 +20,6 @@ export const deferredCommandDict: Partial<{
   right: true,
   accelerate: true,
   decelerate: true,
-  slowdown: true,
   stop: true,
 };
 

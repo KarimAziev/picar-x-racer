@@ -41,11 +41,13 @@ export interface State {
   volume?: number;
   timer?: NodeJS.Timeout;
   player: MusicPlayerInfo;
+  isStreaming: boolean;
 }
 
 const defaultState: State = {
   loading: false,
   data: [],
+  isStreaming: false,
   player: {
     mode: MusicMode.LOOP,
     track: null,
@@ -244,6 +246,9 @@ export const useStore = defineStore("music", {
       } finally {
         this.loading = false;
       }
+    },
+    toggleStreaming() {
+      this.isStreaming = !this.isStreaming;
     },
   },
 });

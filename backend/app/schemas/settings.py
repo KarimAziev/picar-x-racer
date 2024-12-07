@@ -70,6 +70,8 @@ class Keybindings(BaseModel):
     nextText: Optional[List[str]] = None
     prevText: Optional[List[str]] = None
     toggleVideoRecord: Optional[List[str]] = None
+    slowdown: Optional[List[str]] = None
+    toggleAudioStreaming: Optional[List[str]] = None
 
 
 class MusicSettings(BaseModel):

@@ -3,24 +3,51 @@
     <Button
       size="small"
       text
-      @click="startAudio"
+      @click="musicStore.toggleStreaming"
       :disabled="loading"
-      v-if="!connected"
     >
-      {{ connected ? "Audio Streaming Active" : "Start Audio Stream" }}
+      {{ connected ? "Stop Audio Stream" : "Start Audio Stream" }}
     </Button>
-    <Button size="small" text @click="stopAudio" v-if="connected"
-      >Stop Audio Stream</Button
-    >
   </div>
 </template>
 
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, watch } from "vue";
 import { useWebsocketAudio } from "@/composables/useAudioStream";
 import Button from "primevue/button";
+import { useMusicStore } from "@/features/music";
 
-const { startAudio, stopAudio, connected, loading } =
+const musicStore = useMusicStore();
+
+const { startAudio, stopAudio, connected, loading, cleanup } =
   useWebsocketAudio("ws/audio-stream");
+
+watch(
+  () => musicStore.isStreaming,
+  (newVal) => {
+    if (newVal && !connected.value && !loading.value) {
+      startAudio();
+    } else {
+      stopAudio();
+    }
+  },
+);
+
+const handleSocketsCleanup = () => {
+  window.removeEventListener("beforeunload", handleSocketsCleanup);
+  cleanup();
+};
+
+onMounted(() => {
+  window.addEventListener("beforeunload", handleSocketsCleanup);
+  if (musicStore.isStreaming) {
+    startAudio();
+  }
+});
+
+onBeforeUnmount(() => {
+  handleSocketsCleanup();
+});
 </script>
 <style scoped lang="scss">
 .audio-stream {

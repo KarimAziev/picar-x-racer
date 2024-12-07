@@ -6,7 +6,7 @@ const createAudioContext = () => {
 };
 
 export const useWebsocketAudio = (url: string = "ws/audio-stream") => {
-  const audioContext = createAudioContext();
+  const audioContext = ref<AudioContext | null>(null);
   const audioQueue: Float32Array[] = [];
   const isPlaying = ref(false);
 
@@ -34,19 +34,21 @@ export const useWebsocketAudio = (url: string = "ws/audio-stream") => {
     isPlaying.value = true;
 
     const audioBuffer = audioQueue.shift();
-    if (!audioBuffer) return;
+    if (!audioBuffer || !audioContext.value) {
+      return;
+    }
 
-    const audioSource = audioContext.createBufferSource();
-    const audioBufferData = audioContext.createBuffer(
+    const audioSource = audioContext.value.createBufferSource();
+    const audioBufferData = audioContext.value.createBuffer(
       1,
       audioBuffer.length,
-      audioContext.sampleRate,
+      audioContext.value.sampleRate,
     );
 
     audioBufferData.copyToChannel(audioBuffer, 0);
     audioSource.buffer = audioBufferData;
 
-    audioSource.connect(audioContext.destination);
+    audioSource.connect(audioContext.value.destination);
     audioSource.onended = processAudioQueue;
     audioSource.start();
   };
@@ -56,16 +58,26 @@ export const useWebsocketAudio = (url: string = "ws/audio-stream") => {
       url,
       binaryType: "arraybuffer",
       onMessage: handleOnMessage,
+      onClose: async () => {
+        if (audioContext.value) {
+          await audioContext.value.close();
+          audioContext.value = null;
+        }
+      },
     });
 
   const startAudio = async () => {
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
+    if (!audioContext.value) {
+      audioContext.value = createAudioContext();
+    }
+
+    if (audioContext.value.state === "suspended") {
+      await audioContext.value.resume();
     }
     initWS();
   };
 
-  const stopAudio = () => {
+  const stopAudio = async () => {
     closeWS();
     audioQueue.length = 0;
     isPlaying.value = false;
