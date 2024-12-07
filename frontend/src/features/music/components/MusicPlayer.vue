@@ -146,8 +146,16 @@ const stopTrack = async () => {
   padding-left: 1rem;
   position: relative;
   font-size: 0.8rem;
-  width: 300px;
+  width: 150px;
   user-select: none;
+
+  @media (min-width: 992px) and (orientation: portrait) {
+    width: 200px;
+  }
+
+  @media (min-width: 992px) and (orientation: landscape) {
+    width: 300px;
+  }
 }
 .buttons {
   width: 100%;

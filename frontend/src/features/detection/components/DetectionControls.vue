@@ -148,5 +148,9 @@ const nodes = computed(() => [
   height: 35px;
   display: flex;
   align-items: center;
+  max-width: 160px;
+  @media (max-width: 992px) {
+    max-width: 140px;
+  }
 }
 </style>

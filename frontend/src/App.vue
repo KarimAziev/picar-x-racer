@@ -3,21 +3,21 @@
   <LazySettings />
   <Messager v-if="!isMobile" />
   <ActiveConnectionsIndicator />
-  <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+  <div class="indicators" v-if="isSettingsLoaded">
     <AudioStream />
     <Recording />
     <ToggleableView setting="show_object_detection_settings">
       <DetectionControls />
     </ToggleableView>
-    <CalibrationModeInfo />
-    <ToggleableView setting="text_to_speech_input">
+    <CalibrationModeInfo v-if="!isMobile" />
+    <ToggleableView v-if="!isMobile" setting="text_to_speech_input">
       <TextToSpeechInput />
     </ToggleableView>
     <ToggleableView setting="show_player">
       <MusicPlayer />
     </ToggleableView>
-    <Distance />
-    <BatteryIndicator />
+    <Distance v-if="!isMobile" />
+    <BatteryIndicator v-if="!isMobile" />
   </div>
 </template>
 
@@ -92,10 +92,19 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .indicators {
   position: absolute;
-  left: 0;
-  bottom: 0;
+
   z-index: 11;
   text-align: left;
   user-select: none;
+  @media (min-width: 992px) {
+    left: 0;
+    bottom: 0;
+  }
+
+  @media (max-width: 992px) {
+    right: 10px;
+    top: 30px;
+    max-width: 200px;
+  }
 }
 </style>
