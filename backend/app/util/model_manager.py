@@ -48,24 +48,27 @@ class ModelManager:
         Raises:
             FileNotFoundError: If none of the pre-configured model paths exist.
         """
-        from ultralytics import YOLO
-
-        if self.model_path is None:
-            self.model_path = (
-                YOLO_MODEL_EDGE_TPU_PATH
-                if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
-                and is_google_coral_connected()
-                else YOLO_MODEL_PATH
-            )
-
-        logger.info(f"Loading model {self.model_path}")
         try:
-            self.model = YOLO(model=self.model_path, task="detect")
-            logger.info(f"Model {self.model_path} loaded successfully")
-        except Exception as err:
-            logger.log_exception(f"Error loading model {self.model_path}", err)
+            from ultralytics import YOLO
 
-        return self.model
+            if self.model_path is None:
+                self.model_path = (
+                    YOLO_MODEL_EDGE_TPU_PATH
+                    if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
+                    and is_google_coral_connected()
+                    else YOLO_MODEL_PATH
+                )
+
+            logger.info(f"Loading model {self.model_path}")
+            try:
+                self.model = YOLO(model=self.model_path, task="detect")
+                logger.info(f"Model {self.model_path} loaded successfully")
+            except Exception as err:
+                logger.log_exception(f"Error loading model {self.model_path}", err)
+
+            return self.model
+        except KeyboardInterrupt:
+            logger.warning("Detection model context received KeyboardInterrupt.")
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
