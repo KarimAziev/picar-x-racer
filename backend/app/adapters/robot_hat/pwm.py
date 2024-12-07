@@ -132,18 +132,21 @@ class PWM(I2C):
                 self.logger.error(msg)
                 raise ValueError(msg)
         if isinstance(channel, int):
-            if channel > 15 or channel < 0:
+            if channel > 19 or channel < 0:
                 msg = f'channel must be in range of 0-19, not "{channel}"'
                 raise ValueError(msg)
 
         if isinstance(self.address, int):
             self.logger.debug(
-                "Initted PWM at the address {%s}",
+                "Initted PWM at the address %s",
                 hex(self.address),
             )
         else:
             self.logger.warning(
-                "PWM address %s is not found. channel: %s", address, channel
+                "PWM address %s is not found for channel %s (%s)",
+                address,
+                channel,
+                _chan_desc,
             )
 
         self.channel = channel

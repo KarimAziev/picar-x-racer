@@ -157,7 +157,6 @@ class I2C(object):
 
         Returns the first available address or `None` if no valid address is found.
         """
-        self.logger.debug(f"Scanning I2C bus {self._bus} for devices")
         if isinstance(address, list):
             for addr in address:
                 if self.check_address(addr) is not None:
@@ -169,6 +168,7 @@ class I2C(object):
         """
         Check if an I2C address is valid and acknowledged by the device.
         """
+        self.logger.debug("Scanning I2C bus %s for address %s", self._bus, addr)
         try:
             self._smbus.write_byte(
                 addr, 0
