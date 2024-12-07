@@ -142,7 +142,9 @@ class PWM(I2C):
                 hex(self.address),
             )
         else:
-            self.logger.warning("PWM address is not found")
+            self.logger.warning(
+                "PWM address %s is not found. channel: %s", address, channel
+            )
 
         self.channel = channel
         if channel < 16:
