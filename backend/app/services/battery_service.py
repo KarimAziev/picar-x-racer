@@ -46,7 +46,7 @@ class BatteryService(metaclass=SingletonMeta):
                 self.task.cancel()
                 await self.task
             except asyncio.CancelledError:
-                self.logger.info("Music battery task was cancelled")
+                self.logger.info("Battery task was cancelled")
                 self.task = None
             finally:
                 self.stop_event.clear()
