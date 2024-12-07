@@ -12,9 +12,9 @@ if TYPE_CHECKING:
 
 class BatteryService(metaclass=SingletonMeta):
     BATTERY_MIN_LEVEL = 6.0
-    POLL_SHORT_INTERVAL = 5  # 1 minute
+    POLL_SHORT_INTERVAL = 60  # 1 minute
     POLL_LONG_INTERVAL = 5 * 60  # 5 minutes
-    POLL_EXTRA_SHORT_INTERVAL = 1  # 30 seconds
+    POLL_EXTRA_SHORT_INTERVAL = 30  # 30 seconds
 
     def __init__(
         self, file_manager: "FilesService", connection_manager: "ConnectionService"
