@@ -3,7 +3,6 @@
     <ToggleableView setting="text_to_speech_input">
       <TextToSpeechInput class="tts" v-if="isMobile" />
     </ToggleableView>
-
     <ToggleableView setting="text_info_view">
       <TextInfo />
     </ToggleableView>
@@ -19,7 +18,8 @@ import { defineAsyncComponent } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import TextToSpeechInput from "@/ui/tts/TextToSpeechInput.vue";
-import Messages from "@/features/messager/Messages.vue";
+import Messages from "@/features/messager/components/MessageListContainer.vue";
+
 const isMobile = useDeviceWatcher();
 
 defineProps<{ class?: string }>();

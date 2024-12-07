@@ -1,19 +1,19 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
+import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
+import { formatObjectDiff } from "@/util/obj";
+import { startCase } from "@/util/str";
 import {
   useImageStore,
   useSettingsStore,
   useBatteryStore,
   useDistanceStore,
   useCameraStore,
-  useMusicStore,
   useStreamStore,
 } from "@/features/settings/stores";
-import { useMessagerStore } from "@/features/messager/store";
-import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
-import { formatObjectDiff } from "@/util/obj";
-import { startCase } from "@/util/str";
+import { useMessagerStore } from "@/features/messager";
 import { useDetectionStore } from "@/features/detection";
+import { useMusicStore } from "@/features/music";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
@@ -30,7 +30,7 @@ export interface WSMessageData {
   payload: any;
 }
 
-export const useAppSyncStore = defineStore("syncer", {
+export const useStore = defineStore("syncer", {
   state: (): StoreState => ({ ...defaultState }),
   actions: {
     initializeWebSocket() {

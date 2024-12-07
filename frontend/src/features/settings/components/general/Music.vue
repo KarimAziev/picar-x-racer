@@ -76,20 +76,17 @@
 </template>
 
 <script setup lang="ts">
-import {
-  mediaType,
-  FileDetail,
-  MusicMode,
-} from "@/features/settings/stores/music";
+import { mediaType, FileDetail, MusicMode } from "@/features/music";
 import { computed } from "vue";
 import type { DataTableRowReorderEvent } from "primevue/datatable";
 import type { FileUploadUploadEvent } from "primevue/fileupload";
 import FileUpload from "primevue/fileupload";
 import ButtonGroup from "primevue/buttongroup";
 import SelectField from "@/ui/SelectField.vue";
-import { useMusicStore } from "@/features/settings/stores";
+
 import { secondsToReadableString } from "@/util/time";
 import { startCase } from "@/util/str";
+import { useMusicStore } from "@/features/music";
 
 const apiURL = `/api/files/upload/${mediaType}`;
 

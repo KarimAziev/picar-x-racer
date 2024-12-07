@@ -1,6 +1,6 @@
 import axios from "axios";
 import { defineStore } from "pinia";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
 import { downloadFile, removeFile } from "@/features/settings/api";
 import { APIMediaType } from "@/features/settings/interface";
 

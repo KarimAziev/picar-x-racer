@@ -1,6 +1,6 @@
 <template>
   <PreloadMask :loading="true"> </PreloadMask>
-  <CarController />
+  <Controller />
 </template>
 
 <script setup lang="ts">
@@ -10,8 +10,9 @@ import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
 import PreloadMask from "@/ui/PreloadMask.vue";
 
 const cameraStore = useCameraStore();
-const CarController = defineAsyncComponent({
-  loader: () => import("@/features/controller/CarController.vue"),
+
+const Controller = defineAsyncComponent({
+  loader: () => import("@/features/controller/Controller.vue"),
 });
 
 const settingsStore = useSettingsStore();

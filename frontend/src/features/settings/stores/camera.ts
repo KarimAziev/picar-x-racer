@@ -1,7 +1,7 @@
 import axios from "axios";
 import { defineStore } from "pinia";
 import type { TreeNode } from "primevue/treenode";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
 
 export const dimensions = [
@@ -56,6 +56,10 @@ export interface DeviceSuboption extends TreeNode {
 
 export interface DeviceOption extends Pick<DeviceSuboption, "key" | "label"> {
   children: DeviceSuboption[];
+}
+
+export interface PhotoCaptureResponse {
+  file: string;
 }
 
 export interface State {
@@ -176,6 +180,18 @@ export const useStore = defineStore("camera", {
         height: video_feed_height,
         width: video_feed_width,
       });
+    },
+    async capturePhoto() {
+      const messager = useMessagerStore();
+      try {
+        const { data } = await axios.get<PhotoCaptureResponse>(
+          "/api/camera/capture-photo",
+        );
+
+        return data.file;
+      } catch (error) {
+        messager.handleError(error, "Error fetching video feed settings");
+      }
     },
   },
 });

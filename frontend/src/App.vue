@@ -29,14 +29,13 @@ import {
   onMounted,
 } from "vue";
 import { RouterView } from "vue-router";
-import ToggleableView from "@/ui/ToggleableView.vue";
-import Messager from "@/features/messager/Messager.vue";
+import Messager from "@/features/messager/components/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
-import { useAppSyncStore } from "@/features/syncer/store";
-import AudioStream from "@/ui/AudioStream.vue";
+import { useAppSyncStore } from "@/features/syncer";
+import ToggleableView from "@/ui/ToggleableView.vue";
 
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();
@@ -45,7 +44,12 @@ const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
 
 const ActiveConnectionsIndicator = defineAsyncComponent({
-  loader: () => import("@/features/syncer/ActiveConnectionsIndicator.vue"),
+  loader: () =>
+    import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
+});
+
+const AudioStream = defineAsyncComponent({
+  loader: () => import("@/ui/AudioStream.vue"),
 });
 
 const Distance = defineAsyncComponent({
@@ -61,7 +65,7 @@ const TextToSpeechInput = defineAsyncComponent({
 });
 
 const MusicPlayer = defineAsyncComponent({
-  loader: () => import("@/ui/MusicPlayer.vue"),
+  loader: () => import("@/features/music/components/MusicPlayer.vue"),
 });
 
 const BatteryIndicator = defineAsyncComponent({

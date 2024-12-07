@@ -1,5 +1,12 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
+import { SettingsTab } from "@/features/settings/enums";
+import { isNumber, isPlainObject, isString } from "@/util/guards";
+import { constrain } from "@/util/constrain";
+import type {
+  MethodsWithoutParams,
+  ExcludePropertiesWithPrefix,
+} from "@/util/ts-helpers";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import {
   useImageStore,
@@ -9,19 +16,11 @@ import {
   useCalibrationStore,
   useDistanceStore,
   useCameraStore,
-  useMusicStore,
   useStreamStore,
 } from "@/features/settings/stores";
 import { useDetectionStore } from "@/features/detection";
-import { useMessagerStore } from "@/features/messager/store";
-import { SettingsTab } from "@/features/settings/enums";
-import { takePhoto } from "@/features/controller/api";
-import { isNumber, isPlainObject, isString } from "@/util/guards";
-import { constrain } from "@/util/constrain";
-import type {
-  MethodsWithoutParams,
-  ExcludePropertiesWithPrefix,
-} from "@/util/ts-helpers";
+import { useMessagerStore } from "@/features/messager";
+import { useMusicStore } from "@/features/music";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;
@@ -369,15 +368,16 @@ export const useControllerStore = defineStore("controller", {
     async takePhoto() {
       const messager = useMessagerStore();
       const imageStore = useImageStore();
+      const cameraStore = useCameraStore();
       const settingsStore = useSettingsStore();
-      try {
-        const response = await takePhoto();
-        const file = response.data.file;
-        if (file && settingsStore.data.auto_download_photo) {
+      const file = await cameraStore.capturePhoto();
+
+      if (file && settingsStore.data.auto_download_photo) {
+        try {
           await imageStore.downloadFile(file);
+        } catch (error) {
+          messager.handleError(error);
         }
-      } catch (error) {
-        messager.handleError(error);
       }
     },
     toggleAvoidObstaclesMode() {

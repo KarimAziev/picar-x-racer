@@ -34,7 +34,7 @@ const defaultState: State = {
   processing: false,
 };
 
-export const useMessagerStore = defineStore("messager", {
+export const useStore = defineStore("messager", {
   state: () => ({ ...defaultState }),
 
   actions: {

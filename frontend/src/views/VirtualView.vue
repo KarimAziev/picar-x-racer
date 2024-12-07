@@ -15,7 +15,7 @@ import { defineAsyncComponent, watch, onBeforeMount } from "vue";
 import { useRouter } from "vue-router";
 import FullscreenContent from "@/ui/FullscreenContent.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
-import { useCarController } from "@/features/controller/composable";
+import { useKeyboardControlLifecycle } from "@/features/controller/composables/useKeyboardControlLifecycle";
 import { useControllerStore } from "@/features/controller/store";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 
@@ -47,7 +47,7 @@ onBeforeMount(() => {
   }
 });
 
-useCarController(controllerStore, settingsStore, popupStore);
+useKeyboardControlLifecycle(controllerStore, settingsStore, popupStore);
 </script>
 <style scoped lang="scss">
 .wrapper {

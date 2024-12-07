@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import axios from "axios";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
 
 export interface Data {
   [key: string]: string | number | null;

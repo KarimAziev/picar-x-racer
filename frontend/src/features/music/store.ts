@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { constrain } from "@/util/constrain";
 import { downloadFile, removeFile } from "@/features/settings/api";
 import { APIMediaType } from "@/features/settings/interface";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
 import { isNumber } from "@/util/guards";
 import { cycleValue } from "@/util/cycleValue";
 

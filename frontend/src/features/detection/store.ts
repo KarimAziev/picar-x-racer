@@ -2,7 +2,7 @@ import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
 import axios from "axios";
 import type { TreeNode } from "primevue/treenode";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 
 export interface DetectionSettings {
@@ -95,11 +95,7 @@ export const useStore = defineStore("detection-settings", {
 
         await axios.post<DetectionSettings>("/api/detection/settings", payload);
       } catch (error) {
-        if (axios.isCancel(error)) {
-          console.log("Request canceled:", error.message);
-        } else {
-          messager.handleError(error, `Error starting camera`);
-        }
+        messager.handleError(error, `Error starting camera`);
       } finally {
         this.loading = false;
       }

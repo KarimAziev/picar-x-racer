@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import Messages from "@/features/messager/Messages.vue";
+import Messages from "@/features/messager/components/MessageListContainer.vue";
 </script>
 
 <style scoped lang="scss">

@@ -91,11 +91,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Slider from "primevue/slider";
-import { useMusicStore } from "@/features/settings/stores";
 import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
 import { useAsyncDebounce } from "@/composables/useDebounce";
-import { MusicMode } from "@/features/settings/stores/music";
+import { useMusicStore, MusicMode } from "@/features/music";
 
 const musicStore = useMusicStore();
 

@@ -1,34 +1,34 @@
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed } from "vue";
 import { renameKeys } from "rename-obj-map";
-import { useControllerStore } from "@/features/controller/store";
-import { useSettingsStore } from "@/features/settings/stores";
 import type { ControllerActionName } from "@/features/controller/store";
+import { useControllerStore } from "@/features/controller/store";
+import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { formatKeyEventItem, formatKeyboardEvents } from "@/util/keyboard-util";
-import { groupKeys } from "@/features/settings/util";
-import { usePopupStore } from "@/features/settings/stores";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
-import { isMobileDevice } from "@/util/device";
 import { inputHistoryDirectionByKey } from "@/composables/useInputHistory";
+import { groupKeys } from "@/features/settings/util";
 import { isButton, isInput } from "@/util/guards";
 
 const shouldSkip = (event: KeyboardEvent) =>
   (isButton(event.target) || isInput(event.target)) &&
   (event.key.length === 1 || inputHistoryDirectionByKey[event.key]);
 
-export const useController = (
+export const deferredCommandDict: Partial<{
+  [P in ControllerActionName]: boolean;
+}> = {
+  left: true,
+  right: true,
+  accelerate: true,
+  decelerate: true,
+  slowdown: true,
+  stop: true,
+};
+
+export const useKeyboardControls = (
   controllerStore: ReturnType<typeof useControllerStore>,
   settingsStore: ReturnType<typeof useSettingsStore>,
   popupStore: ReturnType<typeof usePopupStore>,
 ) => {
-  const ignored: ControllerActionName[] = [
-    "left",
-    "right",
-    "accelerate",
-    "decelerate",
-    "slowdown",
-    "stop",
-  ];
-
   const settingsKeybindings = computed(() => settingsStore.data.keybindings);
 
   const keybindings = computed(() => {
@@ -71,7 +71,7 @@ export const useController = (
     if (commandName) {
       event.preventDefault();
 
-      if (!ignored.includes(commandName) && controllerStore[commandName]) {
+      if (!deferredCommandDict[commandName] && controllerStore[commandName]) {
         controllerStore[commandName]();
       } else if (!event.repeat) {
         activeKeys.value.add(key);
@@ -141,10 +141,12 @@ export const useController = (
       });
     }
   };
+
   const cleanup = () => {
     window.removeEventListener("beforeunload", cleanup);
     controllerStore.cleanup();
   };
+
   const addKeyEventListeners = () => {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -173,33 +175,4 @@ export const useController = (
     connectWS,
     cleanup,
   };
-};
-
-export const useCarController = (
-  controllerStore: ReturnType<typeof useControllerStore>,
-  settingsStore: ReturnType<typeof useSettingsStore>,
-  popupStore: ReturnType<typeof usePopupStore>,
-) => {
-  const {
-    gameLoop,
-    addKeyEventListeners,
-    removeKeyEventListeners,
-    cleanupGameLoop,
-    connectWS,
-    cleanup,
-  } = useController(controllerStore, settingsStore, popupStore);
-
-  onMounted(() => {
-    connectWS();
-    addKeyEventListeners();
-    if (!isMobileDevice()) {
-      gameLoop();
-    }
-  });
-
-  onBeforeUnmount(() => {
-    cleanupGameLoop();
-    removeKeyEventListeners();
-    cleanup();
-  });
 };

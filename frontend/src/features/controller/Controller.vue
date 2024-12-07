@@ -20,12 +20,12 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
 import { usePopupStore } from "@/features/settings/stores";
-import { useCarController } from "@/features/controller/composable";
+import { useKeyboardControlLifecycle } from "@/features/controller/composables/useKeyboardControlLifecycle";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useControllerStore } from "@/features/controller/store";
-import ToggleableView from "@/ui/ToggleableView.vue";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import ToggleableView from "@/ui/ToggleableView.vue";
 
 const settingsStore = useSettingsStore();
 const isMobile = useDeviceWatcher();
@@ -47,7 +47,7 @@ const VideoBox = defineAsyncComponent({
   loader: () => import("@/features/controller/components/VideoBox.vue"),
 });
 
-useCarController(controllerStore, settingsStore, popupStore);
+useKeyboardControlLifecycle(controllerStore, settingsStore, popupStore);
 </script>
 
 <style scoped lang="scss">

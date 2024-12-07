@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useAppSyncStore } from "@/features/syncer/store";
+import { useAppSyncStore } from "@/features/syncer";
 
 const syncStore = useAppSyncStore();
 

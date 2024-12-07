@@ -1,6 +1,6 @@
 import axios from "axios";
 import { defineStore } from "pinia";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
 import { cycleValue } from "@/util/cycleValue";
 import { useStore as useSettingsStore } from "@/features/settings/stores/settings";

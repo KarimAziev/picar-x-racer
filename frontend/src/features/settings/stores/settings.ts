@@ -12,26 +12,20 @@ import {
   visibilitySettings,
 } from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
-import {
-  useMessagerStore,
-  ShowMessageTypeProps,
-} from "@/features/messager/store";
+import { useMessagerStore, ShowMessageTypeProps } from "@/features/messager";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
-import {
-  useStore as useMusicStore,
-  MusicMode,
-} from "@/features/settings/stores/music";
 import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
-import {
-  useDetectionStore,
-  defaultState as detectionDefaultState,
-} from "@/features/detection";
 import {
   useStore as useStreamStore,
   defaultState as defaultStreamState,
 } from "@/features/settings/stores/stream";
 import { defaultState as defaultCameraState } from "@/features/settings/stores/camera";
+import {
+  useDetectionStore,
+  defaultState as detectionDefaultState,
+} from "@/features/detection";
+import { useStore as useMusicStore, MusicMode } from "@/features/music";
 
 export type ToggleableSettings = {
   [P in keyof (typeof behaviorSettings & typeof visibilitySettings)]: boolean;
@@ -48,7 +42,7 @@ export interface MusicSettings {
   order: string[];
 }
 
-export interface CameraOpenRequestParams {
+export interface CameraStreamSettings {
   camera: CameraSettings;
   detection: DetectionSettings;
   stream: StreamSettings;
@@ -56,7 +50,7 @@ export interface CameraOpenRequestParams {
 
 export interface Settings
   extends Partial<ToggleableSettings>,
-    CameraOpenRequestParams {
+    CameraStreamSettings {
   music: MusicSettings;
   default_tts_language: string;
   keybindings: Partial<Record<ControllerActionName, string[] | null>>;

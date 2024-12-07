@@ -149,7 +149,7 @@ import InputIcon from "primevue/inputicon";
 import IconField from "primevue/iconfield";
 import FieldSet from "primevue/fieldset";
 import NumberField from "@/ui/NumberField.vue";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
 import { useDetectionStore } from "@/features/detection";
 import { downloadFile, removeFile } from "@/features/settings/api";
 import { useSettingsStore } from "@/features/settings/stores";
