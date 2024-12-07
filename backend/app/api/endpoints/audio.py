@@ -5,14 +5,7 @@ from app.api.deps import get_audio_manager, get_audio_stream_service
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.schemas.audio import VolumeData
 from app.util.logger import Logger
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Request,
-    WebSocket,
-    WebSocketDisconnect,
-)
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService

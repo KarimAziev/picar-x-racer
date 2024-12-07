@@ -1,12 +1,11 @@
-import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+from app.api.deps import get_battery_manager
 from app.schemas.battery import BatteryStatusResponse
-from app.util.get_battery_voltage import get_battery_voltage as read_battery_voltage
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 if TYPE_CHECKING:
-    from app.services.connection_service import ConnectionService
+    from app.services.battery_service import BatteryService
 
 router = APIRouter()
 
@@ -16,7 +15,9 @@ router = APIRouter()
     response_model=BatteryStatusResponse,
     summary="Retrieve the current battery status in volts.",
 )
-async def get_battery_voltage(request: Request):
+async def get_battery_voltage(
+    battery_manager: "BatteryService" = Depends(get_battery_manager),
+):
     """
     Read the ADC value and convert it to a voltage.
 
@@ -35,7 +36,8 @@ async def get_battery_voltage(request: Request):
     }
     ```
     """
-    connection_manager: "ConnectionService" = request.app.state.app_manager
-    value: float = await asyncio.to_thread(read_battery_voltage)
-    await connection_manager.broadcast_json({"type": "battery", "payload": value})
-    return {"voltage": value}
+    value: Optional[float] = await battery_manager.broadcast_state()
+    if value is not None:
+        return {"voltage": value}
+    else:
+        raise HTTPException(status_code=500, detail="Error reading voltage")

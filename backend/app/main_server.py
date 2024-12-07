@@ -85,7 +85,7 @@ tags_metadata = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.api.deps import connection_manager, music_manager
+    from app.api.deps import battery_manager, connection_manager, music_manager
     from app.services.connection_service import ConnectionService
 
     app.state.template_folder = TEMPLATE_FOLDER
@@ -100,6 +100,7 @@ async def lifespan(app: FastAPI):
     print_initial_message(browser_url)
     signal_file_path = '/tmp/backend_ready.signal' if mode == "dev" else None
 
+    battery_manager.start_broadcast_task()
     music_manager.start_broadcast_task()
 
     if signal_file_path:
@@ -113,6 +114,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         logger.info("Stopping 🚗 application")
+        await battery_manager.cancel_broadcast_task()
         if music_manager.is_playing:
             try:
                 logger.info("Stopping playing music")

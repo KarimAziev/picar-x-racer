@@ -1,5 +1,6 @@
 from app.services.audio_service import AudioService
 from app.services.audio_stream_service import AudioStreamService
+from app.services.battery_service import BatteryService
 from app.services.camera_service import CameraService
 from app.services.connection_service import ConnectionService
 from app.services.detection_service import DetectionService
@@ -25,35 +26,42 @@ music_manager = MusicService(
 )
 
 tts_manager = TTSService()
+battery_manager = BatteryService(
+    connection_manager=connection_manager, file_manager=file_manager
+)
 
 
-def get_camera_manager() -> "CameraService":
+def get_camera_manager() -> CameraService:
     return camera_manager
 
 
-def get_stream_manager() -> "StreamService":
+def get_stream_manager() -> StreamService:
     return stream_manager
 
 
-def get_audio_manager() -> "AudioService":
+def get_audio_manager() -> AudioService:
     return audio_manager
 
 
-def get_file_manager() -> "FilesService":
+def get_file_manager() -> FilesService:
     return file_manager
 
 
-def get_detection_manager() -> "DetectionService":
+def get_detection_manager() -> DetectionService:
     return detection_manager
 
 
-def get_music_manager() -> "MusicService":
+def get_music_manager() -> MusicService:
     return music_manager
 
 
-def get_tts_manager() -> "TTSService":
+def get_tts_manager() -> TTSService:
     return tts_manager
 
 
-def get_audio_stream_service() -> "AudioStreamService":
+def get_audio_stream_service() -> AudioStreamService:
     return audio_stream_manager
+
+
+def get_battery_manager() -> BatteryService:
+    return battery_manager

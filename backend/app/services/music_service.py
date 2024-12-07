@@ -36,7 +36,6 @@ class MusicService(metaclass=SingletonMeta):
         is_playing (bool): True if the music is currently playing, False otherwise.
         stop_event (asyncio.Event): Event to signal cancellation of broadcast tasks.
         play_task (Optional[asyncio.Task]): The currently running broadcast task.
-        lock (asyncio.Event): Lock for managing asynchronous operations.
         pygame (pygame): The pygame library instance for music playback.
     """
 
@@ -71,7 +70,6 @@ class MusicService(metaclass=SingletonMeta):
         self.last_update_time = time.time()
         self.stop_event = asyncio.Event()
         self.play_task: Optional[asyncio.Task] = None
-        self.lock = asyncio.Event()
         self.pygame = pygame
         self.pygame.mixer.init()
 

@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onBeforeUnmount, onMounted } from "vue";
+import { computed, onMounted } from "vue";
 
 import { isNumber } from "@/util/guards";
 import { useSettingsStore, useBatteryStore } from "@/features/settings/stores";
@@ -30,12 +30,8 @@ const BATTERY_ONE_LEDS_LEVEL = 7.15;
 const BATTERY_DANGER_LEVEL = 6.5;
 const BATTERY_MIN_LEVEL = 6.0;
 
-const POLL_SHORT_INTERVAL_MS = 60000; // 1 minute
-const POLL_LONG_INTERVAL_MS = 60000 * 10; // 10 minutes
-
 const batteryStore = useBatteryStore();
 const settingsStore = useSettingsStore();
-const intervalId = ref<NodeJS.Timeout>();
 
 const batteryTotalVoltage = computed(
   () => settingsStore.data.battery_full_voltage || 8.4,
@@ -90,35 +86,7 @@ const className = computed(() => {
   }
 });
 
-const getPollInterval = (batteryPercentage: number) => {
-  // Poll more frequently if battery is below 20%
-  if (batteryPercentage < 20) {
-    return POLL_SHORT_INTERVAL_MS;
-  } else {
-    // Poll less frequently otherwise
-    return POLL_LONG_INTERVAL_MS;
-  }
-};
-
-const fetchAndScheduleNext = async () => {
-  await batteryStore.fetchBatteryStatus();
-  const interval = getPollInterval(Number(percentageAdjusted.value));
-  if (intervalId.value) {
-    clearInterval(intervalId.value);
-  }
-  intervalId.value = setInterval(fetchAndScheduleNext, interval);
-};
-
-onMounted(() => {
-  const interval = getPollInterval(Number(percentageAdjusted.value));
-  intervalId.value = setInterval(fetchAndScheduleNext, interval);
-});
-
-onBeforeUnmount(() => {
-  if (intervalId.value) {
-    clearInterval(intervalId.value);
-  }
-});
+onMounted(batteryStore.fetchBatteryStatus);
 </script>
 
 <style scoped lang="scss">
