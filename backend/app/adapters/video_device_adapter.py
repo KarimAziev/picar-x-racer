@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 import cv2
 from app.util.device import CameraInfo, list_camera_devices, try_video_path
@@ -30,13 +30,14 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         self.video_devices: List[CameraInfo] = []
         self.failed_camera_devices: List[str] = []
 
-    def find_camera_device(self):
+    def find_camera_device(
+        self,
+    ) -> Union[Tuple[cv2.VideoCapture, str, str], Tuple[None, None, None]]:
         """
         Finds an available and operational camera device among the listed devices.
         Attempts to open each device and returns the first successful one.
 
         Returns:
-            Tuple[Optional[object], Optional[str], Optional[str]]:
             A tuple containing the video capture object, the device path, and its information.
             Returns (None, None, None) if no operational device is found.
         """
@@ -56,32 +57,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 return (cap, device_path, device_info)
         return (None, None, None)
 
-    def find_camera_device_by_path(self, path):
-        """
-        Finds an available and operational camera device among the listed devices.
-        Attempts to open each device and returns the first successful one.
-
-        Returns:
-            Tuple[Optional[object], Optional[str], Optional[str]]:
-            A tuple containing the video capture object, the device path, and its information.
-            Returns (None, None, None) if no operational device is found.
-        """
-        self.video_devices = list_camera_devices()
-
-        for device_path, device_info in self.video_devices:
-            if device_path == path:
-                cap = try_video_path(device_path)
-                if not cap:
-                    self.logger.warning(
-                        f"Error trying camera {device_path} ({device_info or 'Unknown category'})"
-                    )
-                    self.failed_camera_devices.append(device_path)
-                else:
-                    return (cap, device_path, device_info)
-
-        return (None, None, None)
-
-    def update_device(self, device: str):
+    def update_device(self, device: str) -> Optional[Tuple[str, str]]:
         self.logger.info(f"Update device {device}")
         self.video_devices = list_camera_devices()
         for device_path, device_info in self.video_devices:
@@ -90,7 +66,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 self.video_device = (device_path, device_info)
                 return (device, device_info)
 
-    def setup_video_capture(self) -> cv2.VideoCapture | None:
+    def setup_video_capture(self) -> Optional[cv2.VideoCapture]:
         """
         Sets up and returns a video capture object associated with an available camera device.
         If a device is already set up successfully, it attempts to reuse it.

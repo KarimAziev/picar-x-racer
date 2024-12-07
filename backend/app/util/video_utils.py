@@ -1,4 +1,5 @@
-from typing import Callable, Optional, Sequence
+import collections
+from typing import Callable, Optional, Sequence, Union
 
 import cv2
 import numpy as np
@@ -120,3 +121,55 @@ def resize_to_fixed_height(frame: np.ndarray, base_size=256):
     )
     frame = cv2.resize(frame, (resized_width, resized_height))
     return (frame, original_width, original_height, resized_width, resized_height)
+
+
+def calc_fps(
+    frame_timestamps: Union[collections.deque, list[float]], round_result: bool = False
+) -> Optional[Union[float, int]]:
+    """
+    Calculate frames per second (FPS) based on a list or deque of frame timestamps.
+
+    This function computes the average frame rate by determining the
+    difference between consecutive timestamps in the provided `frame_timestamps`.
+    The FPS is calculated as the reciprocal of the average time difference between frames.
+
+    Args:
+        `frame_timestamps`: A deque or list of timestamps (in seconds) representing the time
+            when each frame was recorded. Must contain at least two timestamps.
+
+        `round_result`: If True, the FPS result will be rounded to the nearest integer.
+            Defaults to False.
+
+    Returns:
+            The calculated FPS as a float or an integer if `round_result` is True.
+            Returns None if the average time difference is zero or the input is insufficient
+            (less than two timestamps).
+
+    Example:
+        >>> from collections import deque
+        >>> timestamps = deque([0.0, 0.033, 0.067, 0.100])
+        >>> calc_fps(timestamps)
+        30.303030303030305
+
+        >>> calc_fps(timestamps, round_result=True)
+        30
+
+    Notes:
+        - If `frame_timestamps` contains fewer than two timestamps, the function
+          immediately returns None as it cannot calculate FPS.
+        - The function makes no assumptions about the uniformity of time intervals
+          between frames; it computes the average difference over all available
+          timestamps.
+
+    """
+    if len(frame_timestamps) >= 2:
+        time_diffs = [
+            t2 - t1 for t1, t2 in zip(frame_timestamps, list(frame_timestamps)[1:])
+        ]
+        avg_time_diff = sum(time_diffs) / len(time_diffs)
+
+        fps = 1.0 / avg_time_diff if avg_time_diff > 0 else None
+        if fps is None:
+            return None
+
+        return round(fps) if round_result else int(fps * 10) / 10

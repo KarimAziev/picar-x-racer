@@ -17,7 +17,7 @@ from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
-from app.util.video_utils import encode, resize_to_fixed_height
+from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
     from app.services.detection_service import DetectionService
@@ -122,13 +122,8 @@ class CameraService(metaclass=SingletonMeta):
             - `self.camera_settings.height`: Height of the video frame.
             - `self.camera_settings.pixel_format`: Pixel format based on device information.
         """
-        if self.video_writer is not None:
-            try:
-                self.stop_video_recording()
-            except Exception as e:
-                self.logger.error(
-                    f"Exception occurred while stopping camera recording capture", e
-                )
+
+        self.stop_video_recording()
 
         if self.cap is not None:
             info = self.video_device_adapter.video_device or (None, None)
@@ -169,7 +164,14 @@ class CameraService(metaclass=SingletonMeta):
             self.camera_settings.fps = fps
 
             if self.stream_settings.video_record:
-                self.start_video_recording()
+                try:
+                    self.start_video_recording()
+                except CameraRecordingError as e:
+                    self.logger.error(str(e))
+                except Exception:
+                    self.logger.error(
+                        "Unhandled error while starting video recording", exc_info=True
+                    )
 
             self.logger.info(
                 "Updated size: %sx%s, FPS: %s",
@@ -193,12 +195,32 @@ class CameraService(metaclass=SingletonMeta):
         try:
             if self.cap and self.cap.isOpened():
                 self.cap.release()
-        except Exception as e:
+        except Exception:
             self.logger.log_exception(
-                f"Exception occurred while stopping camera capture", e
+                "Exception occurred while stopping camera capture"
             )
         finally:
             self.cap = None
+
+    def _retry_cap(self):
+        (video_device, _) = self.video_device_adapter.video_device or (
+            None,
+            None,
+        )
+        if video_device:
+            self.video_device_adapter.failed_camera_devices.append(video_device)
+
+        if self.cap:
+            try:
+                self.cap.release()
+            except Exception:
+                self.logger.error("Error releasing failed video capture", exc_info=True)
+
+        self.cap = self.video_device_adapter.setup_video_capture()
+
+        if self.cap is not None:
+            self.setup_camera_props()
+        return self.cap
 
     def _camera_thread_func(self) -> None:
         """
@@ -209,6 +231,7 @@ class CameraService(metaclass=SingletonMeta):
         """
 
         self._release_cap_safe()
+
         self.cap = self.video_device_adapter.setup_video_capture()
 
         if not self.cap:
@@ -218,11 +241,11 @@ class CameraService(metaclass=SingletonMeta):
         self.setup_camera_props()
 
         failed_counter = 0
-
         max_failed_attempt_count = 10
+
         prev_fps = 0.0
 
-        self.frame_timestamps = collections.deque(maxlen=30)
+        self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
 
         try:
             while self.camera_run and self.cap:
@@ -233,60 +256,22 @@ class CameraService(metaclass=SingletonMeta):
                         failed_counter += 1
                         self.logger.error("Failed to read frame from camera.")
                         continue
-                    else:
-                        (video_device, _) = self.video_device_adapter.video_device or (
-                            None,
-                            None,
-                        )
-                        if video_device:
-                            self.video_device_adapter.failed_camera_devices.append(
-                                video_device
-                            )
-
-                        if self.cap:
-                            self.cap.release()
-
-                        cap = self.video_device_adapter.setup_video_capture()
-                        if cap is None:
-                            break
-
-                        self.cap = cap
-                        self.logger.info(
-                            "Setting size to: %sx%s",
-                            self.camera_settings.width,
-                            self.camera_settings.height,
-                        )
-                        self.setup_camera_props()
-                        self.logger.info(
-                            "Updated size: %sx%s",
-                            self.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
-                            self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
-                        )
+                    elif self._retry_cap():
                         continue
+                    else:
+                        break
                 else:
                     failed_counter = 0
 
                     self.frame_timestamps.append(frame_start_time)
-                    if len(self.frame_timestamps) >= 2:
-                        time_diffs = [
-                            t2 - t1
-                            for t1, t2 in zip(
-                                self.frame_timestamps, list(self.frame_timestamps)[1:]
-                            )
-                        ]
-                        avg_time_diff = sum(time_diffs) / len(time_diffs)
-                        self.actual_fps = (
-                            1.0 / avg_time_diff if avg_time_diff > 0 else None
-                        )
 
-                        if self.actual_fps is not None:
-                            diff = self.actual_fps - prev_fps
-                            if abs(diff) >= 2:
-                                self.logger.info(
-                                    "Real FPS %s",
-                                    self.actual_fps,
-                                )
-                                prev_fps = self.actual_fps
+                    self.actual_fps = calc_fps(self.frame_timestamps)
+                    if (
+                        self.actual_fps is not None
+                        and abs(self.actual_fps - prev_fps) > 1
+                    ):
+                        self.logger.info("FPS: %s", self.actual_fps)
+                        prev_fps = self.actual_fps
 
                 enhance_mode = self.stream_settings.enhance_mode
                 frame_enhancer = (
@@ -328,20 +313,14 @@ class CameraService(metaclass=SingletonMeta):
 
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
-        except asyncio.CancelledError:
-            self.logger.info("Camera loop is cancelled")
-        except Exception as e:
-            self.logger.log_exception("Exception occurred in camera loop", e)
+        except Exception:
+            self.logger.error(
+                "Unhandled exception occurred in camera loop", exc_info=True
+            )
         finally:
             self._release_cap_safe()
             self.stream_img = None
-            if self.video_writer is not None:
-                try:
-                    self.stop_video_recording()
-                except Exception as e:
-                    self.logger.error(
-                        f"Exception occurred while stopping camera recording capture", e
-                    )
+            self.stop_video_recording()
             self.logger.info("Camera loop terminated and camera released.")
 
     def start_camera(self) -> None:
@@ -377,7 +356,7 @@ class CameraService(metaclass=SingletonMeta):
                 break
             if counter <= 1:
                 self.logger.debug("waiting for stream img")
-            counter += 1
+                counter += 1
             await asyncio.sleep(0.1)
 
     def stop_camera(self) -> None:
@@ -460,9 +439,16 @@ class CameraService(metaclass=SingletonMeta):
         Stops recording video and releases resources.
         """
         if self.video_writer is not None:
-            self.video_writer.release()
-            self.video_writer = None
-            self.logger.info("Stopped video recording")
+            self.logger.info("Stopping video recording")
+            try:
+                self.video_writer.release()
+                self.video_writer = None
+                self.logger.info("Stopped video recording")
+            except Exception:
+                self.logger.error(
+                    "Exception occurred while stopping camera recording capture",
+                    exc_info=True,
+                )
 
     def restart_camera(self) -> None:
         cam_running = self.camera_run
