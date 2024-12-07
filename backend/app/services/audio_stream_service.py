@@ -22,10 +22,10 @@ class AudioStreamService(metaclass=SingletonMeta):
         self.running = False
         self.audio_thread: Optional[threading.Thread] = None
         self.audio_queue = Queue(maxsize=100)
-        self.audio_stream = None
+        self.audio_stream: Optional[sd.InputStream] = None
         self.active_clients = 0
 
-    def _capture_worker(self):
+    def _capture_worker(self) -> None:
         """
         Background worker to capture audio in real time and push it to the queue.
         Uses `_enqueue_audio_chunk` to ensure robust queue handling.
@@ -55,7 +55,7 @@ class AudioStreamService(metaclass=SingletonMeta):
             self.audio_stream = None
             self.logger.info("Audio capture stopped.")
 
-    def _enqueue_audio_chunk(self, chunk):
+    def _enqueue_audio_chunk(self, chunk) -> None:
         """
         Safely enqueue an audio chunk, discarding the oldest data if the queue is full.
         """
@@ -69,7 +69,7 @@ class AudioStreamService(metaclass=SingletonMeta):
             except Empty:
                 self.logger.error("Unexpected: Audio queue was empty during cleanup.")
 
-    def start_audio_capture(self):
+    def start_audio_capture(self) -> None:
         """
         Start audio capture in a background thread.
         """
@@ -80,7 +80,7 @@ class AudioStreamService(metaclass=SingletonMeta):
         self.audio_thread = threading.Thread(target=self._capture_worker, daemon=True)
         self.audio_thread.start()
 
-    def stop_audio_capture(self):
+    def stop_audio_capture(self) -> None:
         """
         Stop the audio capture process and clean up resources.
         """
@@ -106,7 +106,7 @@ class AudioStreamService(metaclass=SingletonMeta):
                 self.logger.warning("Audio queue is empty; waiting for audio.")
                 continue
 
-    async def audio_stream_to_ws(self, websocket: WebSocket):
+    async def audio_stream_to_ws(self, websocket: WebSocket) -> None:
         """
         Handles an incoming WebSocket connection for audio streaming.
 
