@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional, Union
 
 from app.schemas.audio import VolumeData
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field
 
 
 class MusicDetail(BaseModel):

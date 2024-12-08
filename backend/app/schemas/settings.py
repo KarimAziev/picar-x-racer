@@ -66,14 +66,14 @@ class Settings(TTSSettings):
     """
 
     max_speed: Optional[int] = Field(
-        ...,
+        None,
         ge=10,
         le=100,
         description="The maximum speed",
         examples=[50, 60, 70, 80, 90, 100],
     )
     battery_full_voltage: Optional[float] = Field(
-        ...,
+        None,
         ge=6.1,
         description="The battery full voltage",
         examples=[8.4, 10.2],
@@ -85,7 +85,7 @@ class Settings(TTSSettings):
     auto_download_video: Optional[bool] = None
     auto_measure_distance_mode: Optional[bool] = None
     auto_measure_distance_delay_ms: Optional[int] = Field(
-        ...,
+        None,
         ge=500,
         description=f"The interval (milliseconds) between auto measuring distance."
         "Auto measuring happens only if auto_measure_distance_mode=true",
