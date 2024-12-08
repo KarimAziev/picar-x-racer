@@ -1,9 +1,3 @@
-import os
-
-from app.config.paths import DATA_DIR
-from app.util.file_util import get_directory_structure
-from app.util.google_coral import is_google_coral_connected
-
 yolo_descriptions = {
     'yolov5nu.pt': 'Nano version of YOLOv5 for balanced speed and accuracy in resource-constrained devices.',
     'yolov5su.pt': 'Small variant of YOLOv5 offering enhanced accuracy with moderate speed trade-off.',
