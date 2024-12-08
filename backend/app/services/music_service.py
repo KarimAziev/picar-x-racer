@@ -139,6 +139,22 @@ class MusicService(metaclass=SingletonMeta):
         else:
             self.logger.info("Skipping cancelling music player task")
 
+    @property
+    def current_state(self):
+        """
+        Returns key metrics of the current state as a dictionary.
+
+        The state includes details such as the currently playing track, playback position,
+        playback mode, and whether or not music is playing.
+        """
+        return {
+            "track": self.track,
+            "position": round(self.get_current_position()),
+            "is_playing": self.is_playing,
+            "duration": self.duration,
+            "mode": self.mode,
+        }
+
     async def broadcast_state(self) -> None:
         """
         Broadcasts the current player state to all connected clients.
@@ -146,15 +162,8 @@ class MusicService(metaclass=SingletonMeta):
         The state includes details such as the currently playing track, playback position,
         playback mode, and whether or not music is playing.
         """
-        data = {
-            "track": self.track,
-            "position": round(self.get_current_position()),
-            "is_playing": self.is_playing,
-            "duration": self.duration,
-            "mode": self.mode,
-        }
         await self.connection_manager.broadcast_json(
-            {"type": "player", "payload": data}
+            {"type": "player", "payload": self.current_state}
         )
 
     def remove_music_track(self, track: str) -> bool:

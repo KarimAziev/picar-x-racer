@@ -42,12 +42,14 @@ export interface State {
   timer?: NodeJS.Timeout;
   player: MusicPlayerInfo;
   isStreaming: boolean;
+  inhibitPlayerSync: boolean;
 }
 
 const defaultState: State = {
   loading: false,
   data: [],
   isStreaming: false,
+  inhibitPlayerSync: false,
   player: {
     mode: MusicMode.LOOP,
     track: null,
@@ -149,7 +151,11 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        await axios.post("/api/music/position", { position });
+        const { data } = await axios.post<MusicPlayerInfo>(
+          "/api/music/position",
+          { position },
+        );
+        this.player = data;
       } catch (error) {
         messager.handleError(error, `Error seeking music`);
       } finally {

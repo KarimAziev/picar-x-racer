@@ -3,8 +3,14 @@
     <div>
       <div class="title">{{ currentTrack }}</div>
       <Slider
-        @change="handlePositionUpdate"
         v-model="musicStore.player.position"
+        @slideend="handleSavePosition"
+        @keyup.stop="handleSavePosition"
+        @mouseup="handleSavePosition"
+        @mousedown="handleModelValueUpdate"
+        @keydown.stop="handleModelValueUpdate"
+        @change="handleModelValueUpdate"
+        @update:model-value="handleModelValueUpdate"
         :max="duration"
         v-if="duration"
       />
@@ -89,17 +95,45 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed } from "vue";
 import Slider from "primevue/slider";
 import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
-import { useAsyncDebounce } from "@/composables/useDebounce";
 import { useMusicStore, MusicMode } from "@/features/music";
+import { useAsyncDebounce } from "@/composables/useDebounce";
 
 const musicStore = useMusicStore();
 
 const currentTrack = computed(() => musicStore.player.track);
 const isPlaying = computed(() => musicStore.player.is_playing);
+const track = ref<string | null>();
+
+const handleSavePosition = useAsyncDebounce(async (value: unknown) => {
+  if (track.value && track.value !== currentTrack.value) {
+    track.value = null;
+    musicStore.inhibitPlayerSync = false;
+    return;
+  }
+
+  if (isNumber(value)) {
+    musicStore.player.position = value;
+    await musicStore.updatePosition(value);
+  } else {
+    await musicStore.updatePosition(musicStore.player.position);
+  }
+
+  track.value = null;
+  musicStore.inhibitPlayerSync = false;
+}, 50);
+
+const handleModelValueUpdate = async (value: number) => {
+  track.value = musicStore.player.track;
+  if (isNumber(value)) {
+    musicStore.inhibitPlayerSync = true;
+    musicStore.player.position = value;
+    await handleSavePosition(value);
+  }
+};
 
 const musicMode = computed(() => musicStore.player.mode);
 
@@ -113,10 +147,6 @@ const durationLabel = computed(() =>
       ].join(" / ")
     : "00:00 / 00:00",
 );
-
-const handlePositionUpdate = useAsyncDebounce(async (value: number) => {
-  await musicStore.updatePosition(value);
-}, 50);
 
 const togglePlaying = async () => {
   await musicStore.togglePlaying();

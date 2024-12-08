@@ -5,6 +5,7 @@ from app.api.deps import get_audio_manager, get_file_manager, get_music_manager
 from app.exceptions.music import MusicPlayerError
 from app.schemas.music import (
     MusicModePayload,
+    MusicPlayerState,
     MusicPositionPayload,
     MusicResponse,
     MusicTrackPayload,
@@ -142,7 +143,7 @@ async def stop_playing(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
 
 
-@router.post("/api/music/position")
+@router.post("/api/music/position", response_model=MusicPlayerState)
 async def update_position(
     payload: MusicPositionPayload,
     music_player: "MusicService" = Depends(get_music_manager),
@@ -163,8 +164,9 @@ async def update_position(
 
     Returns:
     --------------
-    None: If successful, no additional payload is returned.
-    All connected clients are notified asynchronously via WebSocket.
+    MusicPlayerState: Details such as the currently playing track, playback
+    position, playback mode, and whether or not music is playing.
+    Also, all connected clients are notified asynchronously via WebSocket.
 
     Raises:
     - HTTPException (400): If there is a `MusicPlayerError`.
@@ -175,6 +177,7 @@ async def update_position(
     try:
         await asyncio.to_thread(music_player.update_position, next_pos)
         await music_player.broadcast_state()
+        return music_player.current_state
     except MusicPlayerError as err:
         logger.error(f"MusicPlayerError: {err}")
         raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
@@ -295,7 +298,19 @@ async def prev_track(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
 
 
-@router.post("/api/music/order")
+@router.post(
+    "/api/music/order",
+    responses={
+        200: {
+            "description": "Success message",
+            "content": {
+                "application/json": {
+                    "message": "Custom music order saved successfully!"
+                }
+            },
+        },
+    },
+)
 async def save_music_order(
     request: Request,
     order: List[str],

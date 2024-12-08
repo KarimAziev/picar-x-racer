@@ -56,13 +56,21 @@ export const useStore = defineStore("syncer", {
         let diffMsg: string | undefined;
 
         switch (type) {
-          case "player":
+          case "player": {
             msgPrefix = null;
-            musicStore.player = payload;
+            const inhibitSync =
+              musicStore.inhibitPlayerSync &&
+              musicStore.player.track === payload.track;
+
+            if (!inhibitSync) {
+              musicStore.player = payload;
+            }
             break;
-          case "music":
+          }
+          case "music": {
             musicStore.data = payload;
             break;
+          }
           case "volume": {
             diffMsg = `${payload}`;
             musicStore.volume = payload;
@@ -115,30 +123,35 @@ export const useStore = defineStore("syncer", {
             break;
           }
 
-          case "distance":
+          case "distance": {
             distanceStore.distance = payload;
             break;
+          }
 
-          case "info":
+          case "info": {
             messager.info(payload, {
               immediately: true,
             });
             break;
+          }
 
-          case "error":
+          case "error": {
             messager.error(payload, {
               immediately: true,
             });
             break;
+          }
 
-          case "image":
+          case "image": {
             imageStore.data = payload;
             break;
+          }
 
-          case "stream":
+          case "stream": {
             diffMsg = formatObjectDiff(streamStore.data, payload);
             streamStore.data = payload;
             break;
+          }
         }
 
         if (diffMsg) {
