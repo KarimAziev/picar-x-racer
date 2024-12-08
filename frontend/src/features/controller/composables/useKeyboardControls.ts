@@ -5,13 +5,9 @@ import { useControllerStore } from "@/features/controller/store";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { formatKeyEventItem, formatKeyboardEvents } from "@/util/keyboard-util";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
-import { inputHistoryDirectionByKey } from "@/composables/useInputHistory";
 import { groupKeys } from "@/features/settings/util";
-import { isButton, isInput } from "@/util/guards";
 
-const shouldSkip = (event: KeyboardEvent) =>
-  (isButton(event.target) || isInput(event.target)) &&
-  (event.key.length === 1 || inputHistoryDirectionByKey[event.key]);
+export type KeyboardEventPred = (event: KeyboardEvent) => boolean;
 
 export const deferredCommandDict: Partial<{
   [P in ControllerActionName]: boolean;
@@ -27,6 +23,7 @@ export const useKeyboardControls = (
   controllerStore: ReturnType<typeof useControllerStore>,
   settingsStore: ReturnType<typeof useSettingsStore>,
   popupStore: ReturnType<typeof usePopupStore>,
+  keyboardEventPred?: KeyboardEventPred,
 ) => {
   const settingsKeybindings = computed(() => settingsStore.data.keybindings);
 
@@ -50,7 +47,7 @@ export const useKeyboardControls = (
     keys && keys.find((k) => inactiveKeys.value.has(k));
 
   const handleKeyUp = (event: KeyboardEvent) => {
-    if (shouldSkip(event)) {
+    if (keyboardEventPred && !keyboardEventPred(event)) {
       return;
     }
     const key = formatKeyEventItem(event);
@@ -61,7 +58,7 @@ export const useKeyboardControls = (
     if (popupStore.isOpen || settingsStore.inhibitKeyHandling) {
       return;
     }
-    if (shouldSkip(event)) {
+    if (keyboardEventPred && !keyboardEventPred(event)) {
       return;
     }
     const key = formatKeyboardEvents([event]);

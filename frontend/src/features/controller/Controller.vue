@@ -1,9 +1,7 @@
 <template>
   <div class="wrapper">
-    <JoysticZone v-if="isMobile" />
     <div class="content">
       <VideoBox />
-
       <GaugesBlock class="gauges">
         <ToggleableView setting="car_model_view" v-if="!isMobile">
           <CarModelViewer
@@ -19,18 +17,11 @@
 </template>
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
-import { usePopupStore } from "@/features/settings/stores";
-import { useKeyboardControlLifecycle } from "@/features/controller/composables/useKeyboardControlLifecycle";
-import { useSettingsStore } from "@/features/settings/stores";
-import { useControllerStore } from "@/features/controller/store";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import ToggleableView from "@/ui/ToggleableView.vue";
 
-const settingsStore = useSettingsStore();
 const isMobile = useDeviceWatcher();
-const controllerStore = useControllerStore();
-const popupStore = usePopupStore();
 
 const CarModelViewer = defineAsyncComponent({
   loader: () =>
@@ -39,15 +30,9 @@ const CarModelViewer = defineAsyncComponent({
     ),
 });
 
-const JoysticZone = defineAsyncComponent({
-  loader: () => import("@/features/joystick/components/JoysticZone.vue"),
-});
-
 const VideoBox = defineAsyncComponent({
   loader: () => import("@/features/controller/components/VideoBox.vue"),
 });
-
-useKeyboardControlLifecycle(controllerStore, settingsStore, popupStore);
 </script>
 
 <style scoped lang="scss">

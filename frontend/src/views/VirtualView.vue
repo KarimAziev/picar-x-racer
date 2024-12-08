@@ -14,14 +14,10 @@
 import { defineAsyncComponent, watch, onBeforeMount } from "vue";
 import { useRouter } from "vue-router";
 import FullscreenContent from "@/ui/FullscreenContent.vue";
-import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
-import { useKeyboardControlLifecycle } from "@/features/controller/composables/useKeyboardControlLifecycle";
-import { useControllerStore } from "@/features/controller/store";
+import { useSettingsStore } from "@/features/settings/stores";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 
 const settingsStore = useSettingsStore();
-const popupStore = usePopupStore();
-const controllerStore = useControllerStore();
 
 const router = useRouter();
 
@@ -46,8 +42,6 @@ onBeforeMount(() => {
     settingsStore.data.virtual_mode = true;
   }
 });
-
-useKeyboardControlLifecycle(controllerStore, settingsStore, popupStore);
 </script>
 <style scoped lang="scss">
 .wrapper {

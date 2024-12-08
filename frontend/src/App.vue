@@ -1,4 +1,6 @@
 <template>
+  <KeyboardHandler v-if="!isMobile && isSettingsLoaded" />
+  <JoysticZone v-if="isMobile && isSettingsLoaded" />
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
@@ -48,6 +50,10 @@ const ActiveConnectionsIndicator = defineAsyncComponent({
     import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
 });
 
+const KeyboardHandler = defineAsyncComponent({
+  loader: () => import("@/features/controller/components/KeyboardHandler.vue"),
+});
+
 const AudioStream = defineAsyncComponent({
   loader: () => import("@/ui/AudioStream.vue"),
 });
@@ -78,6 +84,10 @@ const CalibrationModeInfo = defineAsyncComponent({
 const Recording = defineAsyncComponent({
   loader: () =>
     import("@/features/settings/components/camera/VideoRecordingIndicator.vue"),
+});
+
+const JoysticZone = defineAsyncComponent({
+  loader: () => import("@/features/joystick/components/JoysticZone.vue"),
 });
 
 useAppHeight();
