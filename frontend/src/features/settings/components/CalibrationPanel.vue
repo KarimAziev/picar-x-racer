@@ -5,7 +5,7 @@
       <InputText
         class="text-input"
         size="small"
-        :id="field"
+        :id="field as string"
         v-model="store.data[field]"
         disabled
       />

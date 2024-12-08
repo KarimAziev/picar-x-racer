@@ -45,3 +45,5 @@ export type ExcludePropertiesWithPrefix<
 > = {
   [K in keyof T as K extends `${Prefix}${string}` ? never : K]: T[K];
 };
+
+export declare type Nullable<T = void> = T | null | undefined;

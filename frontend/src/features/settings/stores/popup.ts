@@ -3,7 +3,7 @@ import { SettingsTab } from "@/features/settings/enums";
 
 export interface State {
   isOpen: boolean;
-  tab?: SettingsTab;
+  tab: SettingsTab;
   isKeyRecording?: boolean;
   isPreviewImageOpen: boolean;
 }

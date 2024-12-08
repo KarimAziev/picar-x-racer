@@ -126,7 +126,7 @@ const handleSavePosition = useAsyncDebounce(async (value: unknown) => {
   musicStore.inhibitPlayerSync = false;
 }, 50);
 
-const handleModelValueUpdate = async (value: number) => {
+const handleModelValueUpdate = async (value: number | number[]) => {
   track.value = musicStore.player.track;
   if (isNumber(value)) {
     musicStore.inhibitPlayerSync = true;

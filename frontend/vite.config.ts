@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Components from "unplugin-vue-components/vite";
-import { PrimeVueResolver } from "unplugin-vue-components/resolvers";
+import { PrimeVueResolver } from "@primevue/auto-import-resolver";
 
 const mainAppPort = process.env.VITE_MAIN_APP_PORT || 8000;
 const wsAppPort = process.env.VITE_WS_APP_PORT || 8001;
