@@ -1,8 +1,8 @@
 from enum import Enum
-from typing import List, Union
+from typing import List, Optional, Union
 
 from app.schemas.audio import VolumeData
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, RootModel
 
 
 class MusicDetail(BaseModel):
@@ -14,31 +14,38 @@ class MusicDetail(BaseModel):
     - `duration` (float): The duration of the track in seconds.
     """
 
-    track: str
-    duration: float
+    track: str = Field(
+        ...,
+        min_length=1,
+        description="The name of the track.",
+        examples=["my-song.mp3"],
+    )
+    duration: float = Field(
+        ...,
+        gt=0,
+        description="The duration of the track in seconds. Must be greater than 0.",
+        examples=[149.722],
+    )
 
 
 class MusicDetailItem(MusicDetail):
     """
     A model to represent the details of a music track including its removability.
-
-    Attributes:
-    - `removable` (bool): Indicator if the music track can be removed.
     """
 
-    removable: bool
+    removable: bool = Field(
+        ..., description="Indicates whether the music track can be removed."
+    )
 
 
 class MusicResponse(VolumeData):
     """
     A model to represent the response containing available music tracks and volume levels.
-
-    Attributes:
-    - `files` (List[MusicDetailItem]): A list of available music tracks with details.
-    - `volume` (str | Any): The system volume level.
     """
 
-    files: List[MusicDetailItem]
+    files: List[MusicDetailItem] = Field(
+        ..., description="A list of available music tracks with detailed information."
+    )
 
 
 class MusicPlayerMode(str, Enum):
@@ -63,10 +70,14 @@ class MusicPositionPayload(BaseModel):
     A model to represent payload information for updating the playback position.
 
     Attributes:
-    - `position` (Union[float, int]): The playback position, in seconds, to set for the current track.
+    - `position`: The playback position, in seconds, to set for the current track.
     """
 
-    position: Union[float, int]
+    position: Union[float, int] = Field(
+        ...,
+        ge=0,
+        description="The playback position, in seconds, to set for the current track",
+    )
 
 
 class MusicModePayload(BaseModel):
@@ -74,10 +85,12 @@ class MusicModePayload(BaseModel):
     A model to represent payload information for setting the player's playback mode.
 
     Attributes:
-    - `mode` (MusicPlayerMode): The desired playback mode for the music player.
+    - `mode`: The desired playback mode for the music player.
     """
 
-    mode: MusicPlayerMode
+    mode: MusicPlayerMode = Field(
+        ..., description="The desired playback mode for the music player."
+    )
 
 
 class MusicTrackPayload(BaseModel):
@@ -85,7 +98,59 @@ class MusicTrackPayload(BaseModel):
     A model to represent payload information for selecting or interacting with a specific music track.
 
     Attributes:
-    - `track` (str): The identifier or name of the specific track being targeted.
+    - `track`: The name of the specific track being targeted.
     """
 
-    track: str
+    track: str = Field(
+        ...,
+        min_length=1,
+        description="The name of the track.",
+        examples=["my-song.mp3"],
+    )
+
+
+class MusicPlayerState(BaseModel):
+    """
+    A model to represent the music player state.
+
+    Attributes:
+    - `track`: The name of the current track.
+    - `position`: The position in seconds of the current track.
+    - `is_playing`: A boolean indicating whether the track is currently playing.
+    - `duration`: The duration in seconds of the current track.
+    - `mode`: The playback mode for the music player.
+    """
+
+    track: Optional[str] = Field(
+        None, description="The name of the current track.", examples=["my-song.mp3"]
+    )
+    position: int = Field(
+        ...,
+        ge=0,
+        description="The position in seconds of the current track.",
+        examples=[30],
+    )
+    is_playing: bool = Field(
+        ..., description="A boolean indicating whether the track is currently playing."
+    )
+    duration: Union[float, int] = Field(
+        ...,
+        ge=0,
+        description="The duration in seconds of the current track.",
+        examples=[149.722],
+    )
+    mode: MusicPlayerMode = Field(
+        ..., description="The playback mode for the music player."
+    )
+
+
+class MusicOrder(BaseModel):
+    order: Optional[List[str]] = Field(
+        ...,
+        description="The order of tracks",
+        examples=[["my-song.wav", "Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3"]],
+    )
+
+
+class MusicSettings(MusicOrder):
+    mode: Optional[MusicPlayerMode] = None

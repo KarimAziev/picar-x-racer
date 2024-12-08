@@ -1,25 +1,11 @@
 from typing import List, Optional
 
 from app.schemas.camera import CameraSettings
-from app.schemas.music import MusicPlayerMode
+from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
+from app.schemas.tts import TTSSettings
 from app.services.detection_service import DetectionSettings
-from pydantic import BaseModel
-
-
-class TextToSpeechItem(BaseModel):
-    """
-    A model to represent a text to speech item in multiple languages.
-
-    Attributes:
-    - `text`: The content of the text.
-    - `language`: The language in which the text is written.
-    - `default`: Indicator if this text is the default one. Defaults to None.
-    """
-
-    text: str
-    language: str
-    default: Optional[bool] = None
+from pydantic import BaseModel, Field
 
 
 class Keybindings(BaseModel):
@@ -74,30 +60,37 @@ class Keybindings(BaseModel):
     toggleAudioStreaming: Optional[List[str]] = None
 
 
-class MusicSettings(BaseModel):
-    order: Optional[List] = None
-    mode: Optional[MusicPlayerMode] = None
-
-
-class TTSSettings(BaseModel):
-    default_tts_language: Optional[str] = None
-    texts: Optional[List[TextToSpeechItem]] = None
-
-
 class Settings(TTSSettings):
     """
     A model to represent the application settings.
     """
 
-    max_speed: Optional[int] = None
-    battery_full_voltage: Optional[float] = None
+    max_speed: Optional[int] = Field(
+        ...,
+        ge=10,
+        le=100,
+        description="The maximum speed",
+        examples=[50, 60, 70, 80, 90, 100],
+    )
+    battery_full_voltage: Optional[float] = Field(
+        ...,
+        ge=6.1,
+        description="The battery full voltage",
+        examples=[8.4, 10.2],
+    )
     car_model_view: Optional[bool] = None
     speedometer_view: Optional[bool] = None
     text_info_view: Optional[bool] = None
     auto_download_photo: Optional[bool] = None
     auto_download_video: Optional[bool] = None
     auto_measure_distance_mode: Optional[bool] = None
-    auto_measure_distance_delay_ms: Optional[int] = None
+    auto_measure_distance_delay_ms: Optional[int] = Field(
+        ...,
+        ge=500,
+        description=f"The interval (milliseconds) between auto measuring distance."
+        "Auto measuring happens only if auto_measure_distance_mode=true",
+        examples=[1000],
+    )
     virtual_mode: Optional[bool] = None
     show_player: Optional[bool] = None
     text_to_speech_input: Optional[bool] = None
@@ -120,7 +113,26 @@ class CalibrationConfig(BaseModel):
     - `picarx_dir_motor`: Direction motor configuration.
     """
 
-    picarx_dir_servo: Optional[str] = None
-    picarx_cam_pan_servo: Optional[str] = None
-    picarx_cam_tilt_servo: Optional[str] = None
-    picarx_dir_motor: Optional[str] = None
+    picarx_dir_servo: Optional[str] = Field(
+        None,
+        description="Direction servo configuration",
+        examples=["6.0"],
+    )
+
+    picarx_cam_pan_servo: Optional[str] = Field(
+        None,
+        description="Camera pan servo configuration",
+        examples=["-0.6"],
+    )
+
+    picarx_cam_tilt_servo: Optional[str] = Field(
+        None,
+        description="Camera tilt servo configuration",
+        examples=["0.2"],
+    )
+
+    picarx_dir_motor: Optional[str] = Field(
+        None,
+        description="Direction motor configuration",
+        examples=["[1, 1]"],
+    )

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BatteryStatusResponse(BaseModel):
@@ -9,4 +9,8 @@ class BatteryStatusResponse(BaseModel):
     - voltage: The voltage of the battery in volts, e.g. '7.8'.
     """
 
-    voltage: float
+    voltage: float = Field(
+        ...,
+        description="The voltage of the battery in volts, e.g. '7.8'",
+        examples=[7.1, 6.4, 8.2],
+    )

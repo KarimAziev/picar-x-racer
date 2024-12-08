@@ -1,9 +1,9 @@
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from app.api.deps import get_detection_manager, get_file_manager
 from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
-from app.schemas.detection import DetectionSettings
+from app.schemas.detection import DetectionSettings, ModelResponse
 from app.util.logger import Logger
 from fastapi import (
     APIRouter,
@@ -155,7 +155,8 @@ async def object_detection(
 @router.get(
     "/api/detection/models",
     summary="Retrieve Available Detection Models",
-    response_description="Returns a list of available object detection models.",
+    response_description="Returns a structed list of available object detection models.",
+    response_model=List[ModelResponse],
 )
 def get_detectors(file_manager: "FilesService" = Depends(get_file_manager)):
     """
@@ -163,6 +164,6 @@ def get_detectors(file_manager: "FilesService" = Depends(get_file_manager)):
 
     Returns:
     -------------
-    List[str]: A list of available detection models that can be used for object detection.
+    List[Dict[str, Any]]: A list of available detection models that can be used for object detection.
     """
     return file_manager.get_available_models()

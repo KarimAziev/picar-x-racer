@@ -22,7 +22,11 @@ class VolumeData(BaseModel):
     """
 
     volume: int = Field(
-        ..., ge=0, le=100, description="Volume must be between 0 and 100 as an integer"
+        ...,
+        ge=0,
+        le=100,
+        description="The system volume level. Volume must be between 0 and 100 as an integer",
+        examples=[76],
     )
 
     @field_validator("volume", mode="before")

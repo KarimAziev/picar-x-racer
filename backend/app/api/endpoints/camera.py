@@ -32,19 +32,6 @@ async def update_camera_settings(
     """
     Update the camera settings.
 
-    Example Payload:
-    --------------
-    ```json
-    {
-        "device": "/dev/video0",
-        "width": 1920,
-        "height": 1080,
-        "fps": 30,
-        "pixel_format": "MJPEG"
-    }
-    ```
-
-
     Args:
     --------------
     - `request` (Request): FastAPI request object used to access app state and components.
@@ -92,18 +79,6 @@ def get_camera_settings(
     """
     Retrieve the current camera settings.
 
-    Example Response:
-    --------------
-    ```json
-    {
-        "device": "/dev/video0",
-        "width": 1920,
-        "height": 1080,
-        "fps": 30,
-        "pixel_format": "MJPEG"
-    }
-    ```
-
     Args:
     --------------
     - `camera_manager` (CameraService): Camera management service for retrieving settings.
@@ -126,32 +101,6 @@ def get_camera_devices():
 
     This endpoint identifies primary and secondary camera devices based on categorized
     rules and available video devices in the system.
-
-    Example Response:
-    --------------
-    ```json
-    {
-        "devices": [
-            {
-                "key": "/dev/video0",
-                "label": "/dev/video0 (Primary Camera)",
-                "selectable": False,
-                "children": [
-                    {"key": "MJPEG", "label": "MJPEG (1920x1080)"},
-                    {"key": "YUYV", "label": "YUYV (640x480)"}
-                ]
-            },
-            {
-                "key": "/dev/video1",
-                "label": "/dev/video1 (Secondary Camera)",
-                "selectable": False,
-                "children": [
-                    {"key": "H264", "label": "H264 (1280x720)"}
-                ]
-            }
-        ]
-    }
-    ```
 
     Returns:
     --------------

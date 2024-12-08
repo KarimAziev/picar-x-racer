@@ -26,6 +26,7 @@ DATA_DIR = path.join(PROJECT_DIR, "data")
 
 DEFAULT_USER_SETTINGS = resolve_absolute_path("user_settings.json", PROJECT_DIR)
 DEFAULT_MUSIC_DIR = resolve_absolute_path("music", PROJECT_DIR)
+DEFAULT_SOUNDS_DIR = resolve_absolute_path("sounds", PROJECT_DIR)
 
 FRONTEND_FOLDER = resolve_absolute_path("frontend", PROJECT_DIR)
 STATIC_FOLDER = resolve_absolute_path("frontend/dist/assets", PROJECT_DIR)

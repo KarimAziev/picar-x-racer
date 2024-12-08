@@ -55,25 +55,6 @@ async def set_volume(
     - `HTTPException` (400): If there is an error while setting the volume.
     - `HTTPException` (500): If an unexpected error occurs.
 
-    Example Request:
-    --------------
-    ```
-    POST /api/volume
-    Content-Type: application/json
-
-    {
-        "volume": 45.6
-    }
-    ```
-
-    Example Response:
-    --------------
-    ```
-    200 OK
-    {
-        "volume": 46
-    }
-    ```
     """
     logger.info("Volume update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
@@ -140,15 +121,6 @@ async def get_volume(
     - `HTTPException` (500): If `amixer` is not installed on the system.
     - `HTTPException` (400): If there is an error while retrieving the volume level.
     - `HTTPException` (500): If an unexpected error occurs.
-
-    Example Response:
-    --------------
-    ```
-    200 OK
-    {
-        "volume": 75
-    }
-    ```
     """
     try:
         current_volume = await asyncio.to_thread(audio_manager.get_volume)
