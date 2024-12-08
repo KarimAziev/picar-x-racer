@@ -71,7 +71,7 @@ class MusicService(metaclass=SingletonMeta):
         self.stop_event = asyncio.Event()
         self.play_task: Optional[asyncio.Task] = None
         self.pygame = pygame
-        self.pygame.mixer.init()
+        self.pygame_mixer_ensure()
 
     def get_current_position(self) -> Union[int, float]:
         """
@@ -218,6 +218,16 @@ class MusicService(metaclass=SingletonMeta):
         """
         self.play_task = asyncio.create_task(self.broadcast_loop())
 
+    def pygame_mixer_ensure(self):
+        """
+        Ensures the pygame mixer is initialized properly.
+
+        This method reinitializes the mixer in case it is not already initialized,
+        to avoid errors during playback operations.
+        """
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+
     def toggle_playing(self) -> None:
         """
         Toggles playback (play or pause) for the current track.
@@ -225,20 +235,17 @@ class MusicService(metaclass=SingletonMeta):
         Raises:
             MusicPlayerError: If no music track is loaded.
         """
+        self.pygame_mixer_ensure()
         if self.is_playing:
-            self.pygame.mixer.init()
             self.pygame.mixer.music.pause()
         else:
-            self.pygame.mixer.init()
             if not self.pygame.mixer.music.get_busy():
                 if self.track is None:
                     raise MusicPlayerError("No music track")
                 file_path = self.music_track_to_absolute(self.track)
-                self.pygame.mixer.init()
                 self.pygame.mixer.music.load(file_path)
                 self.pygame.mixer.music.play(start=self.position)
             else:
-                self.pygame.mixer.init()
                 self.pygame.mixer.music.unpause()
 
         self.is_playing = not self.is_playing
@@ -251,6 +258,7 @@ class MusicService(metaclass=SingletonMeta):
         and updates the playback state to indicate that no music is currently playing.
         """
         if self.is_playing:
+            self.pygame_mixer_ensure()
             self.pygame.mixer.music.stop()
         self.position = 0
         self.is_playing = not self.is_playing
@@ -268,6 +276,7 @@ class MusicService(metaclass=SingletonMeta):
         """
         self.position = position
         if self.is_playing and self.track:
+            self.pygame_mixer_ensure()
             self.pygame.mixer.music.set_pos(self.position)
 
     def update_mode(self, mode: MusicPlayerMode) -> None:
@@ -359,7 +368,7 @@ class MusicService(metaclass=SingletonMeta):
             raise MusicPlayerError("No music track")
 
         file_path = self.music_track_to_absolute(self.track)
-        self.pygame.mixer.init()
+        self.pygame_mixer_ensure()
         self.pygame.mixer.music.load(file_path)
         self.pygame.mixer.music.play()
         self.position = 0
