@@ -226,6 +226,7 @@ class MusicService(metaclass=SingletonMeta):
             MusicPlayerError: If no music track is loaded.
         """
         if self.is_playing:
+            self.pygame.mixer.init()
             self.pygame.mixer.music.pause()
         else:
             if not self.pygame.mixer.music.get_busy():
