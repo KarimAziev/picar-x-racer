@@ -99,6 +99,14 @@
             "
             @update:model-value="updateDebounced"
           />
+          <SelectField
+            inputId="settings.detection.overlay_style"
+            v-model="fields.overlay_style"
+            label="Overlay Style"
+            :loading="loading"
+            @update:model-value="updateDebounced"
+            :options="overlayStyleOptions"
+          />
         </div>
       </FieldSet>
       <div>Click on the row to select the model</div>
@@ -146,7 +154,10 @@ import { useDetectionStore } from "@/features/detection";
 import { downloadFile, removeFile } from "@/features/settings/api";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDetectionFields } from "@/features/detection";
-import { imgSizeOptions } from "@/features/settings/config";
+import {
+  imgSizeOptions,
+  overlayStyleOptions,
+} from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import ChipField from "@/ui/ChipField.vue";

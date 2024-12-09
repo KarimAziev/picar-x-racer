@@ -83,6 +83,45 @@ export const drawDetectionCrosshair = (
   const midY = (y1 + y2) / 2;
 
   ctx.beginPath();
+  ctx.moveTo(x1, midY);
+  ctx.lineTo(x2, midY);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(midX, y1);
+  ctx.lineTo(midX, y2);
+  ctx.stroke();
+  drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+};
+
+/**
+ * Draws crosshair lines (centered) within the bounding box for the detected object of the full canvas width and height.
+ * Calls `drawLabelWithConfidence` to display the label and confidence.
+ * @param ctx - The canvas rendering context.
+ * @param scaleX - Horizontal scaling factor for the bounding box coordinates.
+ * @param scaleY - Vertical scaling factor for the bounding box coordinates.
+ * @param detection - The detection result containing the label, confidence, and bounding box.
+ * @example
+ * drawDetectionCrosshair(ctx, 1, 1, { label: "Dog", confidence: 0.92, bbox: [50, 50, 150, 200] });
+ */
+export const drawFullDetectionCrosshair = (
+  ctx: CanvasRenderingContext2D,
+  scaleX: number,
+  scaleY: number,
+  detection: DetectionResult,
+) => {
+  const { label, confidence, bbox } = detection;
+  let [x1, y1, x2, y2] = bbox;
+
+  x1 = x1 * scaleX;
+  y1 = y1 * scaleY;
+  x2 = x2 * scaleX;
+  y2 = y2 * scaleY;
+
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+
+  ctx.beginPath();
   ctx.moveTo(0, midY);
   ctx.lineTo(ctx.canvas.width, midY);
   ctx.stroke();
@@ -206,5 +245,37 @@ export const drawAimOverlay = (
   img: HTMLImageElement,
   detectionData?: DetectionResult[],
 ) => {
-  return drawDetectionsWith(drawDetectionCrosshair, canvas, img, detectionData);
+  const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+  if (!ctx) {
+    return;
+  }
+
+  detectionData?.forEach((detection, i) => {
+    const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionCrosshair;
+    fn(ctx, scaleX, scaleY, detection);
+  });
+};
+
+/**
+ * Draws crosshair annotations on a canvas for the detected objects.
+ * @param canvas - The canvas element.
+ * @param img - The image element used as a reference.
+ * @param detectionData - An array of detection results.
+ * @example
+ * drawAimOverlay(canvas, img, detectionData);
+ */
+export const drawAimMixedOverlay = (
+  canvas: HTMLCanvasElement,
+  img: HTMLImageElement,
+  detectionData?: DetectionResult[],
+) => {
+  const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+  if (!ctx) {
+    return;
+  }
+
+  detectionData?.forEach((detection, i) => {
+    const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionOverlay;
+    fn(ctx, scaleX, scaleY, detection);
+  });
 };

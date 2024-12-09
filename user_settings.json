@@ -38,7 +38,8 @@
     "active": false,
     "img_size": 320,
     "labels": [],
-    "overlay_draw_threshold": 1
+    "overlay_draw_threshold": 1,
+    "overlay_style": "box"
   },
   "keybindings": {
     "accelerate": ["w"],

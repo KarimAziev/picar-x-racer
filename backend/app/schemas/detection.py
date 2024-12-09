@@ -1,6 +1,22 @@
+from enum import Enum
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+
+
+class OverlayStyle(str, Enum):
+    """
+    An enumeration to represent the detection overlay styles.
+
+    Enum Values:
+    - `BOX`: Draws a bounding box for the detected objects.
+    - `AIM`: Draws crosshair lines within the detected objects.
+    - `MIXED`: Draws crosshair lines within the first detection, and for others, a bounding box.
+    """
+
+    BOX = "box"
+    AIM = "aim"
+    MIXED = "mixed"
 
 
 class DetectionSettings(BaseModel):
@@ -36,7 +52,10 @@ class DetectionSettings(BaseModel):
     img_size: int = Field(
         640,
         ge=1,
-        description="The image resolution size for the detection process. Default is 640.",
+        description=(
+            "The image resolution size for the detection process."
+            "Should be rounded up to the nearest multiple of 32."
+        ),
         examples=[320],
     )
     labels: Optional[List[str]] = Field(
@@ -52,6 +71,16 @@ class DetectionSettings(BaseModel):
             "and the detection timestamp for overlay drawing to occur. Must be greater than 0."
         ),
         examples=[1.0],
+    )
+    overlay_style: OverlayStyle = Field(
+        OverlayStyle.BOX,
+        description=(
+            "The detection overlay style."
+            "- `box`: Draws a bounding box for the detected object."
+            "- `aim`: Draws crosshair lines (centered) within for the detected object."
+            "- `mixed`: Draws crosshair lines within the first detection, and for others, a bounding box."
+        ),
+        examples=[OverlayStyle.AIM.value],
     )
 
 

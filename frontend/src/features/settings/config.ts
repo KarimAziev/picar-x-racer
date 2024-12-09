@@ -1,6 +1,8 @@
 import { generateMultiplesOf32 } from "@/util/number";
 import { numberSequence } from "@/util/cycleValue";
 import { SettingsTab } from "@/features/settings/enums";
+import { OverlayStyle } from "@/features/detection";
+import { startCase } from "@/util/str";
 
 export const visibilitySettings = {
   text_info_view: {
@@ -136,6 +138,10 @@ export const saveableTabs = {
 };
 
 export const imgSizeOptions = generateMultiplesOf32(2000);
+export const overlayStyleOptions = Object.values(OverlayStyle).map((value) => ({
+  value,
+  label: startCase(value),
+}));
 
 export const videoQualityOptions = numberSequence(10, 100, 10).map((value) => ({
   value: value,

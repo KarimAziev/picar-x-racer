@@ -5,6 +5,12 @@ import type { TreeNode } from "primevue/treenode";
 import { useMessagerStore } from "@/features/messager";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 
+export enum OverlayStyle {
+  BOX = "box",
+  AIM = "aim",
+  MIXED = "mixed",
+}
+
 export interface DetectionSettings {
   /**
    * The name or ID of the detection model to be used.
@@ -35,6 +41,10 @@ export interface DetectionSettings {
    *  timestamp and the detection timestamp for overlay drawing to occur.
    */
   overlay_draw_threshold: number;
+  /**
+   * The detection overlay styles
+   */
+  overlay_style: OverlayStyle;
 }
 
 export interface DetectionResponse {
@@ -58,6 +68,7 @@ export const defaultState: State = {
     model: null,
     labels: null,
     overlay_draw_threshold: 1,
+    overlay_style: OverlayStyle.BOX,
   },
   detectors: [],
   detection_result: [],

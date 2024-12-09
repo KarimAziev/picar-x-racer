@@ -39,6 +39,7 @@ export const useDetectionFields = (params?: FieldsParams) => {
     confidence: detectionStore.data.confidence,
     labels: detectionStore.data.labels,
     overlay_draw_threshold: detectionStore.data.overlay_draw_threshold,
+    overlay_style: detectionStore.data.overlay_style,
   });
 
   const isModified = computed(() =>

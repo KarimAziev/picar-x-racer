@@ -28,13 +28,16 @@
 import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { useCameraRotate } from "@/composables/useCameraRotate";
-import { useCameraStore, useStreamStore } from "@/features/settings/stores";
-import { drawOverlay, drawAimOverlay } from "@/util/overlay";
-import { useDetectionStore, useWebsocketStream } from "@/features/detection";
+import { useCameraStore } from "@/features/settings/stores";
+import { drawOverlay } from "@/util/overlay";
+import {
+  useDetectionStore,
+  useWebsocketStream,
+  overlayStyleHandlers,
+} from "@/features/detection";
 
 const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
-const streamStore = useStreamStore();
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
 const listenersAdded = ref(false);
@@ -67,10 +70,7 @@ watch(
       }
       const timeDiff = frameTimeStamp - detectionTimeStamp;
 
-      const handler =
-        streamStore.data.enhance_mode === "robocop_vision"
-          ? drawAimOverlay
-          : drawOverlay;
+      const handler = overlayStyleHandlers[detectionStore.data.overlay_style];
       if (
         timeDiff >= 0 &&
         timeDiff <= detectionStore.data.overlay_draw_threshold
