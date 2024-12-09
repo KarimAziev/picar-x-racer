@@ -30,14 +30,7 @@
           </template>
           <template #footer>
             <div>
-              <FileUpload
-                mode="basic"
-                name="model[]"
-                url="/api/files/upload/data"
-                @upload="detectionStore.fetchModels"
-                :auto="true"
-                chooseLabel="Add"
-              />
+              <ModelUpload />
             </div>
           </template>
         </TreeSelect>
@@ -84,6 +77,7 @@ import { NONE_KEY, imgSizeOptions } from "@/features/settings/config";
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
+import ModelUpload from "@/features/detection/components/ModelUpload.vue";
 
 defineProps<{ class?: string; label?: string }>();
 

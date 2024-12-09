@@ -130,15 +130,7 @@
       </template>
     </Column>
   </TreeTable>
-  <FileUpload
-    class="upload-field"
-    mode="basic"
-    name="model[]"
-    url="/api/upload/data"
-    @upload="detectionStore.fetchModels"
-    :auto="true"
-    chooseLabel="Add model"
-  />
+  <ModelUpload />
 </template>
 
 <script setup lang="ts">
@@ -158,6 +150,7 @@ import { imgSizeOptions } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import ChipField from "@/ui/ChipField.vue";
+import ModelUpload from "@/features/detection/components/ModelUpload.vue";
 
 const store = useSettingsStore();
 const detectionStore = useDetectionStore();
@@ -165,14 +158,14 @@ const { fields, updateDebounced } = useDetectionFields({
   store: detectionStore,
 });
 
-const loading = computed(() => detectionStore.loading || store.loading);
-
 const items = computed(() => detectionStore.detectors);
 const filters = ref<TreeTableFilterMeta>({});
 const doNothing = () => {};
+const messager = useMessagerStore();
+
+const loading = computed(() => detectionStore.loading || store.loading);
 
 const handleRemove = async (key: string) => {
-  const messager = useMessagerStore();
   try {
     await removeFile("data", key);
     await detectionStore.fetchModels();
@@ -213,9 +206,5 @@ onMounted(() => {
   display: flex;
   flex: auto;
   justify-content: flex-end;
-}
-
-:deep(.p-fileupload-basic) {
-  margin: 2rem 0;
 }
 </style>
