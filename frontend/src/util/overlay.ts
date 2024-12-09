@@ -83,14 +83,15 @@ export const drawDetectionCrosshair = (
   const midY = (y1 + y2) / 2;
 
   ctx.beginPath();
-  ctx.moveTo(x1, midY);
-  ctx.lineTo(x2, midY);
+  ctx.moveTo(0, midY);
+  ctx.lineTo(ctx.canvas.width, midY);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(midX, y1);
-  ctx.lineTo(midX, y2);
+  ctx.moveTo(midX, 0);
+  ctx.lineTo(midX, ctx.canvas.height);
   ctx.stroke();
+
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
 };
 
