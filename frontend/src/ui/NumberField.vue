@@ -16,6 +16,7 @@
       v-bind="otherAttrs"
       @update:model-value="onUpdate"
     />
+    <slot></slot>
   </Field>
 </template>
 

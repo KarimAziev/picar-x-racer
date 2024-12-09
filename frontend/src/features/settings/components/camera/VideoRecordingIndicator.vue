@@ -18,7 +18,7 @@ const handleToggle = async () => {
 </script>
 
 <style scoped lang="scss">
-@import "@/assets/scss/blink";
+@use "@/assets/scss/blink";
 
 .record-indicator {
   color: var(--color-text);

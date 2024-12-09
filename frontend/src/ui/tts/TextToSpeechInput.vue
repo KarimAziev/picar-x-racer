@@ -1,7 +1,7 @@
 <template>
-  <div class="flex" :class="class">
+  <div class="container flex align-items-center gap-5" :class="class">
     <SelectField
-      fieldClassName="language"
+      fieldClassName="language opacity-hover"
       field="language"
       filter
       inputClassName="languages-dropdown"
@@ -13,27 +13,28 @@
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
     />
-    <TextInput
-      autocomplete="off"
-      placeholder="Text to Speech"
-      id="tts-text"
-      @keyup.stop="handleKeyUp"
-      @keyup.enter="handleKeyEnter"
-      v-model="inputRef"
-      v-tooltip="'Type the Text To Speech and press Enter to speak'"
-    />
-    <ButtonGroup>
+    <div class="flex textinput">
+      <TextInput
+        class="opacity-hover"
+        autocomplete="off"
+        placeholder="Speak"
+        id="tts-text"
+        @keyup.stop="handleKeyUp"
+        @keyup.enter="handleKeyEnter"
+        v-model="inputRef"
+        v-tooltip="'Type the Text To Speech and press Enter to speak'"
+      />
+
       <Button
+        class="opacity-hover"
         @click="sayText"
         :disabled="!inputRef || inputRef.length === 0"
         icon="pi pi-play-circle"
         text
-        rounded
         aria-label="Speak"
         v-tooltip="'Speak'"
       />
-      <TextToSpeechButton />
-    </ButtonGroup>
+    </div>
   </div>
 </template>
 
@@ -41,13 +42,11 @@
 import { ref, watch } from "vue";
 import TextInput from "primevue/inputtext";
 import { useSettingsStore } from "@/features/settings/stores";
-import ButtonGroup from "primevue/buttongroup";
 
 import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 
 import { useInputHistory } from "@/composables/useInputHistory";
-import TextToSpeechButton from "@/ui/tts/TextToSpeechButton.vue";
 
 defineProps<{ class?: string }>();
 
@@ -89,46 +88,29 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.flex {
-  display: flex;
-  align-items: center;
-  opacity: 0.6;
-  user-select: none;
-  touch-action: manipulation;
-
+.container {
   @media screen and (max-width: 992px) {
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
+    gap: 0;
   }
 }
-.tag {
-  cursor: pointer;
-}
-
 input {
-  min-width: 50px;
+  width: 50px;
   height: 30px;
 
   @media (min-width: 576px) {
-    height: 35px;
-    width: 100px;
-  }
-  @media (min-width: 768px) {
-    width: 100px;
-  }
-  @media (min-width: 992px) {
-    margin: 0 0.5rem;
-  }
-  @media (min-width: 992px) {
     width: 120px;
   }
+
   @media (min-width: 1200px) {
     height: 40px;
     width: 140px;
   }
 }
 .language {
+  width: 50px;
   @media (min-width: 576px) {
     width: 60px;
   }
@@ -136,7 +118,6 @@ input {
     width: 80px;
   }
   @media (min-width: 992px) {
-    width: 100px;
     :deep(.p-select-label) {
       padding: 0.15rem 0.4rem;
 

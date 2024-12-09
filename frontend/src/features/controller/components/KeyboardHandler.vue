@@ -1,6 +1,7 @@
 <template>
   <input
     ref="inputRef"
+    id="keyboard-handler"
     @keyup.stop="handleKeyUp"
     @keydown.stop="handleKeyDown"
     :tabindex="0"

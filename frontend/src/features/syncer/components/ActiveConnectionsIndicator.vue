@@ -21,14 +21,14 @@ const clients = computed(() =>
 </script>
 
 <style scoped lang="scss">
-@import "@/assets/scss/blink";
+@use "@/assets/scss/blink";
 
 .active_connections {
   font-weight: bold;
   position: fixed;
   font-size: 10px;
   right: 2px;
-  top: 10px;
+  top: 1px;
   z-index: 12;
 }
 .disconnected {

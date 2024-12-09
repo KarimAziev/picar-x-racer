@@ -31,6 +31,7 @@ const classObject = computed(() => ({
 }));
 </script>
 <style scoped lang="scss">
+@use "./field.scss";
 .label {
   font-weight: bold;
   position: relative;
@@ -41,7 +42,6 @@ const classObject = computed(() => ({
     color: var(--color-red);
   }
 }
-@import "./field.scss";
 :deep(.p-select-dropdown),
 :deep(.p-treeselect-dropdown) {
   width: 0.8rem;
@@ -62,7 +62,6 @@ const classObject = computed(() => ({
   height: 30px;
 
   @media (min-width: 576px) {
-    height: 35px;
     max-width: 140px;
   }
   @media (min-width: 768px) {

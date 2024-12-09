@@ -102,10 +102,10 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .indicators {
   position: absolute;
-
   z-index: 11;
   text-align: left;
   user-select: none;
+
   @media (min-width: 992px) {
     left: 0;
     bottom: 0;
@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
 
   @media (max-width: 992px) {
     right: 10px;
-    top: 30px;
+    top: 5px;
     max-width: 200px;
   }
 }

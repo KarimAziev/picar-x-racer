@@ -90,7 +90,35 @@ onMounted(batteryStore.fetchBatteryStatus);
 </script>
 
 <style scoped lang="scss">
-@import "@/assets/animation.scss";
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink-caret {
+  from,
+  49% {
+    border-color: var(--color-text);
+  }
+  50%,
+  to {
+    border-color: transparent;
+  }
+}
+
+@keyframes hide-caret {
+  from {
+    border-right-color: var(--color-text);
+  }
+  to {
+    border-right-color: transparent;
+  }
+}
+
 .typed {
   overflow: hidden;
   white-space: nowrap;

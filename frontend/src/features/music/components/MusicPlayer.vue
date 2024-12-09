@@ -1,7 +1,9 @@
 <template>
   <div class="player">
     <div>
-      <div class="title">{{ currentTrack }}</div>
+      <div class="title">
+        {{ currentTrack }}
+      </div>
       <Slider
         v-model="musicStore.player.position"
         @slideend="handleSavePosition"
@@ -16,7 +18,7 @@
       />
     </div>
 
-    <div class="buttons">
+    <div class="buttons flex align-items-center jc-between">
       <Button
         @click="prevTrack"
         icon="pi pi-backward"
@@ -49,8 +51,9 @@
         aria-label="Stop"
         v-tooltip="'Stop playing'"
       />
-      {{ durationLabel }}
-
+      <span class="duration">
+        {{ durationLabel }}
+      </span>
       <Button
         @click="nextTrack"
         icon="pi pi-forward"
@@ -173,10 +176,10 @@ const stopTrack = async () => {
 .player {
   display: flex;
   flex-direction: column;
-  padding-left: 1rem;
   position: relative;
-  font-size: 0.8rem;
-  width: 150px;
+  padding-left: 2px;
+  font-size: 0.7rem;
+  max-width: 400px;
   user-select: none;
 
   @media (min-width: 992px) and (orientation: portrait) {
@@ -187,14 +190,9 @@ const stopTrack = async () => {
     width: 300px;
   }
 }
-.buttons {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 10px;
+.duration {
+  white-space: nowrap;
 }
-
 .title {
   white-space: nowrap;
   overflow: hidden;
@@ -202,13 +200,13 @@ const stopTrack = async () => {
 }
 
 :deep(.p-button) {
-  padding-top: 0;
+  padding-top: 1px;
 }
 
 :deep(.p-slider) {
   cursor: pointer;
   .p-slider-handle {
-    transform: scale(0.6);
+    transform: scale(0.5);
   }
 }
 </style>

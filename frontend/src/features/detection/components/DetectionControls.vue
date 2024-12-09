@@ -1,23 +1,25 @@
 <template>
-  <div :class="class" class="wrapper">
-    <div class="p-field">
-      <div class="flex-column">
+  <div :class="class" class="flex flex-col">
+    <div class="p-field max-w-160">
+      <div class="flex flex-col gap-5 text-align-left">
         <ToggleSwitchField
+          fieldClassName="opacity-hover"
           label="Detection"
           layout="row"
           field="toggle_detection"
           v-tooltip="'Toggle Object Detection'"
-          :loading="detectionStore.loading"
+          :disabled="detectionStore.loading || !detectionStore.data.model"
           @update:model-value="updateDebounced"
           v-model="fields.active"
         />
         <TreeSelect
+          class="opacity-hover"
           inputId="model"
           v-model="fields.model"
           :options="nodes"
           placeholder="Model"
           filter
-          :loading="detectionStore.loading"
+          :disabled="detectionStore.loading"
           @before-show="handleSelectBeforeShow"
           @before-hide="handleSelectBeforeHide"
           @update:model-value="updateDebounced"
@@ -29,38 +31,55 @@
             <div class="title">Available Models</div>
           </template>
           <template #footer>
-            <div>
-              <ModelUpload />
-            </div>
+            <ModelUpload />
           </template>
         </TreeSelect>
       </div>
     </div>
 
-    <div class="flex">
+    <div class="flex align-items-end gap-5 jc-around max-w-200">
       <SelectField
+        fieldClassName="img-size opacity-hover"
         inputId="img_size"
         v-model="fields.img_size"
         placeholder="Img size"
         label="Img size"
         filter
         simple-options
-        :loading="detectionStore.loading"
+        :disabled="detectionStore.loading"
         @before-show="handleSelectBeforeShow"
         @before-hide="handleSelectBeforeHide"
         @update:model-value="updateDebounced"
         :options="imgSizeOptions"
       />
       <NumberField
+        fieldClassName="opacity-hover"
         @keydown.stop="doNothing"
         @keyup.stop="doNothing"
         @keypress.stop="doNothing"
         field="confidence"
         label="Confidence"
         v-model="fields.confidence"
-        :loading="detectionStore.loading"
+        :disabled="detectionStore.loading"
         :min="0.1"
         :max="1.0"
+        :step="0.1"
+        @update:model-value="updateDebounced"
+      />
+      <NumberField
+        fieldClassName="opacity-hover"
+        @keydown.stop="doNothing"
+        @keyup.stop="doNothing"
+        @keypress.stop="doNothing"
+        v-tooltip="
+          'The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.'
+        "
+        field="overlay_draw_threshold"
+        label="Threshold"
+        v-model="fields.overlay_draw_threshold"
+        :disabled="detectionStore.loading"
+        :min="0.1"
+        :max="10.0"
         :step="0.1"
         @update:model-value="updateDebounced"
       />
@@ -73,7 +92,7 @@ import { computed } from "vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDetectionStore } from "@/features/detection";
 import NumberField from "@/ui/NumberField.vue";
-import { NONE_KEY, imgSizeOptions } from "@/features/settings/config";
+import { imgSizeOptions } from "@/features/settings/config";
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
@@ -95,19 +114,17 @@ const handleSelectBeforeHide = () => {
   store.inhibitKeyHandling = false;
 };
 
-const nodes = computed(() => [
-  { key: NONE_KEY, label: "None", selectable: true },
-  ...detectionStore.detectors,
-]);
+const nodes = computed(() => detectionStore.detectors);
 </script>
 <style scoped lang="scss">
-@import "src/ui/field.scss";
-.wrapper {
-  max-width: 160px;
-}
+@use "@/ui/field.scss";
+
 .p-field {
   margin: 0rem 0rem;
-  max-width: 160px;
+}
+
+.title {
+  padding: 0.5rem;
 }
 .label {
   font-weight: bold;
@@ -116,35 +133,22 @@ const nodes = computed(() => [
   flex-direction: column;
 }
 
-.wrapper {
-  display: flex;
-  flex-direction: column;
-}
-.flex {
-  display: flex;
-  align-items: center;
-}
-.flex-column {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  gap: 5px;
-}
-:deep(.p-inputtext) {
-  width: 90px;
-}
-.bold {
-  font-weight: bold;
-  text-align: left;
+:deep(.p-inputtext),
+:deep(.img-size) {
+  width: 70px;
 }
 
 :deep(.p-treeselect) {
-  height: 35px;
+  height: 30px;
   display: flex;
   align-items: center;
-  max-width: 160px;
-  @media (max-width: 992px) {
+  width: 150px;
+  @media (min-width: 576px) {
     max-width: 140px;
+  }
+  @media (min-width: 1200px) {
+    height: 40px;
+    max-width: 220px;
   }
 }
 </style>

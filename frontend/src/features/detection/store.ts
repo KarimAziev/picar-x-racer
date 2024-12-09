@@ -89,10 +89,8 @@ export const useStore = defineStore("detection-settings", {
   actions: {
     async updateData(payload: DetectionSettings) {
       const messager = useMessagerStore();
-
       try {
         this.loading = true;
-
         await axios.post<DetectionSettings>("/api/detection/settings", payload);
       } catch (error) {
         messager.handleError(error, `Error starting camera`);

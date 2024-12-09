@@ -1,7 +1,7 @@
 <template>
   <DataTable :value="files" :loading="loading" @rowReorder="onRowReorder">
     <template #header>
-      <div class="flex justify-content-between align-items-center">
+      <div class="flex jc-between align-items-center">
         <div class="flex gap-16">
           <SelectField
             field="settings.music.mode"

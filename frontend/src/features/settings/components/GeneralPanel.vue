@@ -58,5 +58,5 @@ const handleUpdateMaxSpeed = (value: number) => {
 };
 </script>
 <style scoped lang="scss">
-@import "@/assets/scss/two-column-layout.scss";
+@use "@/assets/scss/two-column-layout.scss";
 </style>

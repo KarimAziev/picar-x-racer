@@ -126,8 +126,6 @@ export const ttsLanguages = [
   { label: "Chinese (Traditional)", value: "zh-tw" },
 ];
 
-export const NONE_KEY = "NONE";
-
 export const saveableTabs = {
   [SettingsTab.GENERAL]: true,
   [SettingsTab.KEYBINDINGS]: false,

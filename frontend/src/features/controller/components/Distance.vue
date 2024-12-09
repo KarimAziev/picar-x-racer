@@ -1,6 +1,6 @@
 <template>
   <div class="distance" v-if="isLoaded">
-    <button @click="handleToggle" text class="btn">{{ distanceLabel }}:</button>
+    <button @click="handleToggle" class="btn">{{ distanceLabel }}:</button>
     &nbsp;
     <samp>{{ distance }}</samp>
   </div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="gauges-block" :class="class">
+  <div class="gauges-block gap-5" :class="class">
     <ToggleableView setting="text_to_speech_input">
       <TextToSpeechInput class="tts" v-if="isMobile" />
     </ToggleableView>
@@ -48,7 +48,7 @@ const Speedometer = defineAsyncComponent({
 
   @media screen and (max-width: 992px) and (orientation: portrait) {
     left: 10px;
-    top: 50px;
+    top: 20px;
   }
 
   @media screen and (max-width: 992px) and (orientation: landscape) {
