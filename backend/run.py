@@ -1,4 +1,3 @@
-import multiprocessing as mp
 import os
 import time
 
@@ -6,6 +5,8 @@ from app.util.proc import terminate_processes
 
 
 def main():
+    import multiprocessing as mp
+
     try:
         mp.set_start_method("spawn")
     except RuntimeError:
