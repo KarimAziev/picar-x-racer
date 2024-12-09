@@ -29,10 +29,14 @@ def try_video_path(path: str | int):
     cap = None
 
     try:
-        cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
+        logger.debug("Trying camera %s", path)
+        cap = cv2.VideoCapture(path)
         result, _ = cap.read()
+        if not result:
+            logger.debug("Camera failed %s", path)
+
     except Exception as err:
-        logger.log_exception("Camera Error:", err)
+        logger.debug("Camera Error: %s", err)
         if cap and cap.isOpened():
             cap.release()
 
