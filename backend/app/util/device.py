@@ -30,7 +30,7 @@ def try_video_path(path: str | int):
 
     try:
         logger.debug("Trying camera %s", path)
-        cap = cv2.VideoCapture(path)
+        cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
         result, _ = cap.read()
         if not result:
             logger.debug("Camera failed %s", path)
