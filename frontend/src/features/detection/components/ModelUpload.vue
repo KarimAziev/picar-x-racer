@@ -1,21 +1,32 @@
 <template>
   <FileUpload
     mode="basic"
+    multiple
     name="file"
     accept=".pt,.tflite"
     :auto="true"
     chooseLabel="Add model"
-    @upload="handleUpload"
     :customUpload="true"
-    @error="handleError"
     @uploader="uploader"
   />
 </template>
 
 <script setup lang="ts">
-import { useModelUpload } from "@/features/detection/composables/useModelUpload";
+import { useFileUploader } from "@/composables/useFileUploader";
+import { useDetectionStore } from "@/features/detection";
 
-const { uploader, handleUpload, handleError } = useModelUpload();
+const store = useDetectionStore();
+const mediaType = "data";
+
+const { uploader } = useFileUploader({
+  url: `/api/files/upload/${mediaType}`,
+  onBeforeStart: () => {
+    store.loading = true;
+  },
+  onFinish: () => {
+    store.loading = false;
+  },
+});
 </script>
 
 <style scoped lang="scss">

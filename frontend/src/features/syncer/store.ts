@@ -83,7 +83,7 @@ export const useStore = defineStore("syncer", {
           case "uploaded":
           case "removed": {
             const mediaType: string = payload.type;
-            msgPrefix = `${startCase(type)} ${mediaType} file `;
+            msgPrefix = `${startCase(type)} `;
             diffMsg = `${payload.file}`;
             const mediaTypeRefreshers: { [key: string]: Function } = {
               music: musicStore.fetchData,

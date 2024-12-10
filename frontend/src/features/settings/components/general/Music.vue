@@ -66,11 +66,12 @@
     mode="basic"
     size="small"
     name="file"
-    @upload="onUpload($event)"
     chooseLabel="Add"
     :url="apiURL"
     :multiple="false"
     accept="audio/*"
+    :customUpload="true"
+    @uploader="uploader"
   >
   </FileUpload>
 </template>
@@ -79,10 +80,10 @@
 import { mediaType, FileDetail, MusicMode } from "@/features/music";
 import { computed } from "vue";
 import type { DataTableRowReorderEvent } from "primevue/datatable";
-import type { FileUploadUploadEvent } from "primevue/fileupload";
 import FileUpload from "primevue/fileupload";
 import ButtonGroup from "primevue/buttongroup";
 import SelectField from "@/ui/SelectField.vue";
+import { useFileUploader } from "@/composables/useFileUploader";
 
 import { secondsToReadableString } from "@/util/time";
 import { startCase } from "@/util/str";
@@ -95,6 +96,18 @@ const musicModes = Object.values(MusicMode).map((value) => ({
   value,
   label: startCase(value),
 }));
+
+const { uploader } = useFileUploader({
+  url: apiURL,
+  onBeforeStart: () => {
+    musicStore.loading = true;
+  },
+  onFinish: async () => {
+    await musicStore.fetchData();
+    await handleUpdateOrder(musicStore.data);
+    musicStore.loading = false;
+  },
+});
 
 const files = computed(() => musicStore.data);
 const loading = computed(() => musicStore.loading);
@@ -125,16 +138,10 @@ const onRowReorder = async (e: DataTableRowReorderEvent) => {
 
 const handleRemove = async (track: string) => {
   await musicStore.removeFile(track);
-  await musicStore.fetchData();
 };
 
 const handleDownloadFile = (track: string) => {
   musicStore.downloadFile(track);
-};
-
-const onUpload = async (_event: FileUploadUploadEvent) => {
-  await musicStore.fetchData();
-  await handleUpdateOrder(musicStore.data);
 };
 </script>
 <style scoped lang="scss">
