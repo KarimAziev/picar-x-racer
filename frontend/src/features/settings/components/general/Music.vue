@@ -132,12 +132,6 @@ const handleDownloadFile = (track: string) => {
   musicStore.downloadFile(track);
 };
 
-defineProps<{
-  header?: string;
-  toggleable?: boolean;
-  collapsed?: boolean;
-}>();
-
 const onUpload = async (_event: FileUploadUploadEvent) => {
   await musicStore.fetchData();
   await handleUpdateOrder(musicStore.data);
