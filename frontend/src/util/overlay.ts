@@ -21,8 +21,8 @@ export const drawLabelWithConfidence = (
 ) => {
   ctx.fillText(
     `${label.toUpperCase()}: ${(confidence * 100).toFixed(1)}%`,
-    x1,
-    y1 - 10,
+    x1 + 5,
+    y1 + 25,
   );
 };
 
