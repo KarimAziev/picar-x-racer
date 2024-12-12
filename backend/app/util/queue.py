@@ -1,13 +1,15 @@
-import multiprocessing as mp
 from queue import Empty, Full, Queue
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
+
+if TYPE_CHECKING:
+    import multiprocessing as mp
 
 from app.util.logger import Logger
 
 logger = Logger(__name__)
 
 
-def clear_queue(qitem: Optional[Union[Queue, mp.Queue]]):
+def clear_queue(qitem: Optional[Union[Queue, "mp.Queue"]]):
     if qitem is None:
         return None
     messages = []
@@ -23,7 +25,7 @@ def clear_queue(qitem: Optional[Union[Queue, mp.Queue]]):
     return messages
 
 
-def get_last_message(qitem: Optional[Union[Queue, mp.Queue]]):
+def get_last_message(qitem: Optional[Union[Queue, "mp.Queue"]]):
     messages = clear_queue(qitem)
 
     if isinstance(messages, list) and len(messages) > 0:
@@ -31,7 +33,7 @@ def get_last_message(qitem: Optional[Union[Queue, mp.Queue]]):
 
 
 def put_to_queue(
-    qitem: Optional[Union[Queue, mp.Queue]],
+    qitem: Optional[Union[Queue, "mp.Queue"]],
     item,
     block=False,
     timeout: Optional[int] = None,
@@ -52,7 +54,7 @@ def put_to_queue(
 
 
 def clear_and_put(
-    qitem: Optional[Union[Queue, mp.Queue]],
+    qitem: Optional[Union[Queue, "mp.Queue"]],
     item,
     block=False,
     timeout: Optional[int] = None,

@@ -1,23 +1,26 @@
-import multiprocessing as mp
 import queue
 import time
-from multiprocessing.synchronize import Event
+from typing import TYPE_CHECKING
 
 from app.util.logger import Logger
 from app.util.model_manager import ModelManager
 from app.util.object_detection import perform_detection
 from app.util.queue import put_to_queue
 
+if TYPE_CHECKING:
+    import multiprocessing as mp
+    from multiprocessing.synchronize import Event
+
 logger = Logger(name=__name__)
 
 
 def detection_process_func(
     model: str,
-    stop_event: Event,
-    frame_queue: mp.Queue,
-    detection_queue: mp.Queue,
-    control_queue: mp.Queue,
-    out_queue: mp.Queue,
+    stop_event: "Event",
+    frame_queue: "mp.Queue",
+    detection_queue: "mp.Queue",
+    control_queue: "mp.Queue",
+    out_queue: "mp.Queue",
 ):
     """
     A function that runs in a separate multiprocessing process to perform object detection on input frames.
