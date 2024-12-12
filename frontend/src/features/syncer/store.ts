@@ -176,6 +176,7 @@ export const useStore = defineStore("syncer", {
         onClose: () => {
           musicStore.isStreaming = false;
           musicStore.player.is_playing = false;
+          detectionStore.data.active = false;
         },
         logPrefix: "sync",
         isRetryable: () =>
