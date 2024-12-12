@@ -100,8 +100,7 @@ class DetectionService(metaclass=SingletonMeta):
             self.detection_process_task = asyncio.create_task(
                 self.start_detection_process_task()
             )
-
-        if detection_action is None and len(runtime_data.items()) > 0:
+        elif detection_action is None and len(runtime_data.items()) > 0:
             async with self.lock:
                 if (
                     self.detection_process is not None
@@ -115,6 +114,121 @@ class DetectionService(metaclass=SingletonMeta):
                     )
 
         return self.detection_settings
+
+    async def start_detection_process(self) -> None:
+        """
+        Starts the detection process as a multiprocessing subprocess.
+
+        Behavior:
+            - Ensures the model is loaded and initializes required resources.
+            - Configures the detection subprocess and provides the necessary queues.
+            - Broadcasts updates to connected clients regarding the operational status.
+
+        Raises:
+            DetectionModelLoadError: If the detection model fails to load.
+            Exception: For unhandled errors during initialization.
+        """
+        try:
+            async with self.lock:
+                if self.detection_settings.model is None:
+                    await self.connection_manager.info(
+                        f"No model, skipping starting model"
+                    )
+                    return
+                if (
+                    self.detection_process is None
+                    or not self.detection_process.is_alive()
+                ):
+
+                    self.loading = True
+                    self.detection_process = mp.Process(
+                        target=detection_process_func,
+                        args=(
+                            resolve_absolute_path(
+                                self.detection_settings.model, DATA_DIR
+                            ),
+                            self.stop_event,
+                            self.frame_queue,
+                            self.detection_queue,
+                            self.control_queue,
+                            self.out_queue,
+                        ),
+                    )
+                    self.detection_process.start()
+                    self.logger.info("Detection process has been started")
+                else:
+                    self.logger.info(
+                        "Skipping starting of detection process: already alive"
+                    )
+
+                command = {
+                    "command": "set_detect_mode",
+                    "confidence": self.detection_settings.confidence,
+                    "labels": self.detection_settings.labels,
+                }
+                self.logger.info(
+                    "Waiting for model %s", {self.detection_settings.model}
+                )
+                await self.connection_manager.info(
+                    f"Loading model {self.detection_settings.model}"
+                )
+                msg = await asyncio.to_thread(self.out_queue.get)
+                self.logger.info("Received %s", msg)
+                if msg.get('error') is not None:
+                    raise DetectionModelLoadError(
+                        f"Model {self.detection_settings.model} failed to load"
+                    )
+
+                await asyncio.to_thread(clear_and_put, self.control_queue, command)
+                msg = f"Detection is running with {self.detection_settings.model}"
+                await self.connection_manager.info(msg)
+                self.logger.info(msg)
+        except DetectionModelLoadError as e:
+            await self.connection_manager.error(str(e))
+            raise DetectionModelLoadError from e
+        except Exception as e:
+            self.logger.exception(f"Unhandled exception in detection process: {e}")
+            await self.connection_manager.error(f"Detection process error: {str(e)}")
+            raise e
+        finally:
+            self.loading = False
+
+    async def stop_detection_process(self) -> None:
+        """
+        Stops the currently running detection process.
+
+        Behavior:
+            - Signals the process to stop using the `stop_event`.
+            - Waits for the process to terminate, forcibly closing it if required.
+            - Cleans up shared resources like queues and resets state.
+        """
+        async with self.lock:
+            if self.detection_process is None:
+                self.logger.info("Detection process is None, skipping stop")
+            else:
+                await self.connection_manager.info("Stopping detection process")
+                self.stop_event.set()
+
+                self.logger.info("Detection process setted stop_event")
+                await asyncio.to_thread(self.detection_process.join, 10)
+                self.logger.info("Detection process has been joined")
+                if self.detection_process.is_alive():
+                    self.logger.warning(
+                        "Force terminating detection process since it's still alive."
+                    )
+                    self.detection_process.terminate()
+                    await asyncio.to_thread(self.detection_process.join, 5)
+                    self.detection_process.close()
+            await asyncio.to_thread(self._cleanup_queues)
+            self.logger.info("Clearing stop event")
+            self.stop_event.clear()
+            self.logger.info("Stop event cleared")
+
+            self.detection_result = None
+
+            if self.detection_process:
+                self.detection_process = None
+                self.logger.info("Detection process has been stopped successfully.")
 
     async def start_detection_process_task(self) -> None:
         """
@@ -168,120 +282,6 @@ class DetectionService(metaclass=SingletonMeta):
                 self.detection_process_task = None
             finally:
                 self.task_event.clear()
-
-    async def start_detection_process(self) -> None:
-        """
-        Starts the detection process as a multiprocessing subprocess.
-
-        Behavior:
-            - Ensures the model is loaded and initializes required resources.
-            - Configures the detection subprocess and provides the necessary queues.
-            - Broadcasts updates to connected clients regarding the operational status.
-
-        Raises:
-            DetectionModelLoadError: If the detection model fails to load.
-            Exception: For unhandled errors during initialization.
-        """
-        try:
-            async with self.lock:
-                if self.detection_settings.model is None:
-                    await self.connection_manager.info(
-                        f"No model, skipping starting model"
-                    )
-                    return
-                if (
-                    self.detection_process is None
-                    or not self.detection_process.is_alive()
-                ):
-
-                    self.loading = True
-                    self.detection_process = mp.Process(
-                        target=detection_process_func,
-                        args=(
-                            resolve_absolute_path(
-                                self.detection_settings.model, DATA_DIR
-                            ),
-                            self.stop_event,
-                            self.frame_queue,
-                            self.detection_queue,
-                            self.control_queue,
-                            self.out_queue,
-                        ),
-                    )
-                    self.detection_process.start()
-                    self.logger.info("Detection process has been started")
-                else:
-                    self.logger.info(
-                        "Skipping starting of detection process: already alive"
-                    )
-
-                command = {
-                    "command": "set_detect_mode",
-                    "confidence": self.detection_settings.confidence,
-                    "labels": self.detection_settings.labels,
-                }
-                self.logger.info("Waiting for loading model")
-                await self.connection_manager.info(
-                    f"Loading model {self.detection_settings.model}"
-                )
-                msg = await asyncio.to_thread(self.out_queue.get)
-                self.logger.info("Received %s", msg)
-                if msg.get('error') is not None:
-                    raise DetectionModelLoadError(
-                        f"Model {self.detection_settings.model} failed to load"
-                    )
-
-                await asyncio.to_thread(clear_and_put, self.control_queue, command)
-                await self.connection_manager.info(
-                    f"Detection process is started with {self.detection_settings.model}"
-                )
-                self.logger.info("Detection process is started")
-        except DetectionModelLoadError as e:
-            await self.connection_manager.error(str(e))
-            raise DetectionModelLoadError from e
-        except Exception as e:
-            self.logger.exception(f"Unhandled exception in detection process: {e}")
-            await self.connection_manager.error(f"Detection process error: {str(e)}")
-            raise e
-        finally:
-            self.loading = False
-
-    async def stop_detection_process(self) -> None:
-        """
-        Stops the currently running detection process.
-
-        Behavior:
-            - Signals the process to stop using the `stop_event`.
-            - Waits for the process to terminate, forcibly closing it if required.
-            - Cleans up shared resources like queues and resets state.
-        """
-        async with self.lock:
-            if self.detection_process is None:
-                self.logger.info("Detection process is None, skipping stop")
-            else:
-                await self.connection_manager.info("Stopping detection process")
-                self.stop_event.set()
-
-                self.logger.info("Detection process setted stop_event")
-                await asyncio.to_thread(self.detection_process.join, 10)
-                self.logger.info("Detection process has been joined")
-                if self.detection_process.is_alive():
-                    self.logger.warning(
-                        "Force terminating detection process since it's still alive."
-                    )
-                    self.detection_process.terminate()
-                    await asyncio.to_thread(self.detection_process.join, 5)
-                    self.detection_process.close()
-            await asyncio.to_thread(self._cleanup_queues)
-            self.logger.info("Clearing stop event")
-            self.stop_event.clear()
-            self.logger.info("Stop event cleared")
-
-            self.detection_result = None
-
-            if self.detection_process:
-                self.detection_process = None
-                self.logger.info("Detection process has been stopped successfully.")
 
     def _cleanup_queues(self) -> None:
         """

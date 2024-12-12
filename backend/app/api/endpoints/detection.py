@@ -61,6 +61,9 @@ async def update_detection_settings(
     connection_manager: "ConnectionService" = request.app.state.app_manager
     logger.info("Detection update payload %s", payload)
     try:
+        await connection_manager.broadcast_json(
+            {"type": "detection-loading", "payload": True}
+        )
         result = await detection_service.update_detection_settings(payload)
         await connection_manager.broadcast_json(
             {"type": "detection", "payload": result.model_dump()}
@@ -84,6 +87,10 @@ async def update_detection_settings(
             }
         )
         raise HTTPException(status_code=400, detail=f"Detection error {e}")
+    finally:
+        await connection_manager.broadcast_json(
+            {"type": "detection-loading", "payload": False}
+        )
 
 
 @router.get(

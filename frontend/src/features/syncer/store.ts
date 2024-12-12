@@ -107,6 +107,11 @@ export const useStore = defineStore("syncer", {
             break;
           }
 
+          case "detection-loading": {
+            detectionStore.loading = payload;
+            break;
+          }
+
           case "detection": {
             diffMsg = formatObjectDiff({ ...detectionStore.data }, payload);
             detectionStore.data = payload;
