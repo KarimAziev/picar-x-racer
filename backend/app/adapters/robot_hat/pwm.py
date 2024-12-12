@@ -146,7 +146,7 @@ class PWM(I2C):
                 "PWM address %s is not found for channel %s (%s)",
                 address,
                 channel,
-                _chan_desc,
+                self._chan_desc,
             )
 
         self.channel = channel
