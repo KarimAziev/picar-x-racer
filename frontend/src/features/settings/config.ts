@@ -6,7 +6,8 @@ import { startCase } from "@/util/str";
 
 export const visibilitySettings = {
   text_info_view: {
-    description: "Toggles text information on or off",
+    description:
+      "Toggles text information (camera tilt, camera pan, servo dir, etc.) on or off",
     label: "Gauges view",
   },
   speedometer_view: {
@@ -18,7 +19,7 @@ export const visibilitySettings = {
     label: "3D view of the car",
   },
   text_to_speech_input: {
-    description: "Toggle showing input for text to speech",
+    description: "Toggle showing input for text to speech on the main screen",
     label: "Text to speech input",
   },
   show_player: {
@@ -26,7 +27,7 @@ export const visibilitySettings = {
     label: "Music player",
   },
   show_object_detection_settings: {
-    description: "Toggle showing object detection settings",
+    description: "Toggle showing object detection panel on the main screen",
     label: "Object detection panel",
   },
 };
@@ -41,7 +42,7 @@ export const behaviorSettings = {
     label: "Auto-download videos",
   },
   auto_measure_distance_mode: {
-    description: "Toggle auto-measure distance mode",
+    description: "Toggle auto-measuring with ultrasonic",
     label: "Auto-measure distance",
   },
   virtual_mode: {
