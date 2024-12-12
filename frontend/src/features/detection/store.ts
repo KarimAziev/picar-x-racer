@@ -168,7 +168,7 @@ export const useStore = defineStore("detection-settings", {
         },
         isRetryable: () =>
           new Promise((res) => {
-            res(!!this.data.active);
+            res(this.data.active);
           }),
       });
 
