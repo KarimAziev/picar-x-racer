@@ -95,6 +95,9 @@ class ConnectionService:
                 await connection.send_json(data, mode)
             except WebSocketDisconnect:
                 disconnected_clients.append(connection)
+            except RuntimeError as e:
+                self.logger.error("Broadcast runtime error %s", e)
+                disconnected_clients.append(connection)
 
         for connection in disconnected_clients:
             await self.disconnect(connection)
