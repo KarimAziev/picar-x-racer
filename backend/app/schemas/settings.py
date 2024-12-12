@@ -78,12 +78,66 @@ class Settings(TTSSettings):
         description="The battery full voltage",
         examples=[8.4, 10.2],
     )
-    car_model_view: Optional[bool] = None
-    speedometer_view: Optional[bool] = None
-    text_info_view: Optional[bool] = None
-    auto_download_photo: Optional[bool] = None
-    auto_download_video: Optional[bool] = None
-    auto_measure_distance_mode: Optional[bool] = None
+    speedometer_view: Optional[bool] = Field(
+        None,
+        description="Enables or disables the speedometer display.",
+        examples=[True, False],
+    )
+    text_info_view: Optional[bool] = Field(
+        None,
+        description="Toggles the visibility of text-based information, such as camera tilt, "
+        "camera pan, and servo direction.",
+        examples=[True, False],
+    )
+    auto_download_photo: Optional[bool] = Field(
+        None,
+        description="Enables or disables the automatic downloading of captured photos.",
+        examples=[True, False],
+    )
+    auto_download_video: Optional[bool] = Field(
+        None,
+        description="Enables or disables the automatic downloading of recorded videos.",
+        examples=[True, False],
+    )
+    auto_measure_distance_mode: Optional[bool] = Field(
+        None,
+        description="Enables or disables automatic measurement of distances using ultrasonic sensors.",
+        examples=[True, False],
+    )
+    auto_measure_distance_delay_ms: Optional[int] = Field(
+        None,
+        ge=500,
+        description="The time interval between successive auto distance measurements in milliseconds. "
+        "This is applicable only when `auto_measure_distance_mode` is enabled. "
+        "The value must be at least 500 ms.",
+        examples=[1000, 2000],
+    )
+    virtual_mode: Optional[bool] = Field(
+        None,
+        description="Replaces the live camera feed with a 3D virtual model when enabled.",
+        examples=[True, False],
+    )
+    show_player: Optional[bool] = Field(
+        None,
+        description="Toggles the visibility of the music player interface.",
+        examples=[True, False],
+    )
+    text_to_speech_input: Optional[bool] = Field(
+        None,
+        description="Shows or hides the input field for the text-to-speech feature.",
+        examples=[True, False],
+    )
+    show_object_detection_settings: Optional[bool] = Field(
+        None,
+        description="Toggles the visibility of the object detection settings panel on the main screen.",
+        examples=[True, False],
+    )
+    car_model_view: Optional[bool] = Field(
+        None,
+        description="Toggles the 3D view of the car model on or off.",
+        examples=[True, False],
+    )
+
     auto_measure_distance_delay_ms: Optional[int] = Field(
         None,
         ge=500,
@@ -91,15 +145,36 @@ class Settings(TTSSettings):
         "Auto measuring happens only if auto_measure_distance_mode=true",
         examples=[1000],
     )
-    virtual_mode: Optional[bool] = None
-    show_player: Optional[bool] = None
-    text_to_speech_input: Optional[bool] = None
-    show_object_detection_settings: Optional[bool] = True
-    keybindings: Optional[Keybindings] = None
-    camera: Optional[CameraSettings] = None
-    detection: Optional[DetectionSettings] = None
-    stream: Optional[StreamSettings] = None
-    music: Optional[MusicSettings] = None
+    camera: Optional[CameraSettings] = Field(
+        None,
+        description="Configuration settings for the camera, including resolution, FPS, and device input.",
+    )
+    detection: Optional[DetectionSettings] = Field(
+        None,
+        description="Settings for the object detection module, including model choice, thresholds, and parameters.",
+    )
+    stream: Optional[StreamSettings] = Field(
+        None,
+        description="Settings defining the video stream output, such as format, quality, and enhancement modes.",
+    )
+    music: Optional[MusicSettings] = Field(
+        None,
+        description="Settings for the music playback system, including configurations for track control and playback behavior.",
+    )
+    keybindings: Optional[Keybindings] = Field(
+        None,
+        description="A collection of custom keybindings for various user actions.",
+        examples=[
+            [
+                {
+                    "accelerate": ["w"],
+                    "decelerate": ["s"],
+                    "decreaseCamPan": ["ArrowLeft"],
+                    "decreaseCamTilt": ["ArrowDown"],
+                }
+            ]
+        ],
+    )
 
 
 class CalibrationConfig(BaseModel):
