@@ -91,7 +91,6 @@ watch(
 watch(
   () => imgRef.value,
   (el) => {
-    console.log("watching imgRef.value", el);
     if (el && !listenersAdded.value) {
       addCameraRotateListeners();
       listenersAdded.value = true;
@@ -122,7 +121,7 @@ onMounted(async () => {
   if (detectionStore.data.active) {
     detectionStore.initializeWebSocket();
   }
-  console.log("imgRef.value", imgRef.value);
+
   if (imgRef.value) {
     addCameraRotateListeners();
     listenersAdded.value = true;
