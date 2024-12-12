@@ -6,6 +6,7 @@
       :options="devices"
       :disabled="loading"
       :loading="loading"
+      @update:model-value="updateDevice"
   /></Field>
 </template>
 
@@ -13,15 +14,16 @@
 import TreeSelect from "primevue/treeselect";
 import { ref, onMounted, computed, watch } from "vue";
 
-import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
+import { useCameraStore } from "@/features/settings/stores";
 
 import { isString, isNumber } from "@/util/guards";
 import Field from "@/ui/Field.vue";
 import { DeviceSuboption } from "@/features/settings/stores/camera";
 
-const store = useSettingsStore();
 const camStore = useCameraStore();
 const devices = computed(() => camStore.devices);
+
+type DeviceTreeValue = { [key: string]: boolean };
 
 const hashData = computed(() =>
   [...camStore.devices]
@@ -37,7 +39,6 @@ const hashData = computed(() =>
 
 const loading = computed(() => camStore.loading);
 
-const isReady = ref(false);
 const getInitialValue = () => {
   if (
     !isString(camStore.data.device) ||
@@ -59,7 +60,7 @@ const getInitialValue = () => {
   };
 };
 
-const selectedDevice = ref<{ [key: string]: boolean }>(getInitialValue());
+const selectedDevice = ref<DeviceTreeValue>(getInitialValue());
 const label = computed(() => {
   const val = Object.keys(selectedDevice.value)[0];
 
@@ -76,44 +77,29 @@ onMounted(async () => {
 watch(
   () => camStore.data,
   () => {
-    isReady.value = false;
     selectedDevice.value = getInitialValue();
   },
 );
 
-watch(
-  () => selectedDevice.value,
-  async (newValObj) => {
-    const newVal = Object.keys(newValObj)[0];
-    if (!isString(newVal)) {
-      return;
-    }
-    if (!isReady.value) {
-      isReady.value = true;
-      return;
-    }
-    const itemData = hashData.value[newVal];
-    if (!itemData) {
-      return itemData;
-    }
-    const { pixel_format, fps, size, device } = itemData;
+const updateDevice = async (newValObj: DeviceTreeValue) => {
+  const newVal = Object.keys(newValObj)[0];
+  if (!isString(newVal)) {
+    return;
+  }
+  const itemData = hashData.value[newVal];
+  if (!itemData) {
+    return itemData;
+  }
+  const { pixel_format, fps, size, device } = itemData;
 
-    const [width, height] = size.split("x");
-
-    store.data.camera.device = device;
-    store.data.camera.width = +width;
-    store.data.camera.height = +height;
-    store.data.camera.pixel_format = pixel_format;
-    store.data.camera.fps = +fps;
-
-    await camStore.updateData({
-      device: device,
-      pixel_format: pixel_format,
-      width: +width,
-      height: +height,
-      fps: +fps,
-    });
-  },
-);
+  const [width, height] = size.split("x");
+  await camStore.updateData({
+    device: device,
+    pixel_format: pixel_format,
+    width: +width,
+    height: +height,
+    fps: +fps,
+  });
+};
 </script>
 <style scoped lang="scss"></style>

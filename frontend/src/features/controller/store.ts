@@ -524,8 +524,9 @@ export const useControllerStore = defineStore("controller", {
       await streamStore.prevEnhanceMode();
     },
     async toggleVideoRecord() {
+      const settingsStore = useSettingsStore();
       const streamStore = useStreamStore();
-      await streamStore.toggleRecording();
+      await streamStore.toggleRecording(settingsStore.data.auto_download_video);
     },
     async increaseVolume() {
       const musicStore = useMusicStore();

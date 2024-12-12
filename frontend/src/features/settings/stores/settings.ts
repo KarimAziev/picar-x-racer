@@ -20,7 +20,10 @@ import {
   useStore as useStreamStore,
   defaultState as defaultStreamState,
 } from "@/features/settings/stores/stream";
-import { defaultState as defaultCameraState } from "@/features/settings/stores/camera";
+import {
+  defaultState as defaultCameraState,
+  useStore as useCameraStore,
+} from "@/features/settings/stores/camera";
 import {
   useDetectionStore,
   defaultState as detectionDefaultState,
@@ -112,12 +115,23 @@ export const useStore = defineStore("settings", {
 
     generalSettings({ data }) {
       const musicStore = useMusicStore();
+      const cameraStore = useCameraStore();
+      const streamStore = useStreamStore();
       const settingsData = omit(
-        ["keybindings", "texts", "default_tts_language", "detection"],
+        [
+          "keybindings",
+          "texts",
+          "default_tts_language",
+          "detection",
+          "camera",
+          "stream",
+        ],
         data,
       );
       return {
         ...settingsData,
+        camera: cameraStore.data,
+        stream: streamStore.data,
         music: {
           ...settingsData.music,
           mode: musicStore.player.mode,

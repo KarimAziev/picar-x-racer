@@ -3,7 +3,6 @@ import { defineStore } from "pinia";
 import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
 import { cycleValue } from "@/util/cycleValue";
-import { useStore as useSettingsStore } from "@/features/settings/stores/settings";
 
 export interface StreamSettings {
   /**
@@ -122,8 +121,7 @@ export const useStore = defineStore("stream", {
       });
     },
     async increaseQuality() {
-      const settings = useSettingsStore();
-      const currentValue = this.data.quality || settings.data.stream.quality;
+      const currentValue = this.data.quality;
       const newValue = constrain(10, 100, currentValue + 10);
       await this.updateData({
         ...this.data,
@@ -131,23 +129,21 @@ export const useStore = defineStore("stream", {
       });
     },
     async decreaseQuality() {
-      const settings = useSettingsStore();
-      const currentValue = this.data.quality || settings.data.stream.quality;
+      const currentValue = this.data.quality;
       const newValue = constrain(10, 100, currentValue - 10);
       await this.updateData({
         ...this.data,
         quality: newValue,
       });
     },
-    async toggleRecording() {
-      const settings = useSettingsStore();
+    async toggleRecording(download?: boolean) {
       const messager = useMessagerStore();
       await this.updateData({
         ...this.data,
         video_record: !this.data.video_record,
       });
 
-      if (!this.data.video_record && settings.data.auto_download_video) {
+      if (!this.data.video_record && download) {
         try {
           const response = await axios.get(`/api/files/download-last-video`, {
             responseType: "blob",

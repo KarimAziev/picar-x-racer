@@ -15,11 +15,10 @@
 <script setup lang="ts">
 import { onMounted, computed } from "vue";
 import SelectField from "@/ui/SelectField.vue";
-import { useSettingsStore, useStreamStore } from "@/features/settings/stores";
+import { useStreamStore } from "@/features/settings/stores";
 import { objectKeysToOptions } from "@/features/settings/util";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 
-const settingsStore = useSettingsStore();
 const streamStore = useStreamStore();
 
 const enhancers = computed(() => [
@@ -28,7 +27,6 @@ const enhancers = computed(() => [
 ]);
 
 const updateStreamParams = useAsyncDebounce(async () => {
-  settingsStore.data.stream = streamStore.data;
   await streamStore.updateData(streamStore.data);
 }, 2000);
 
