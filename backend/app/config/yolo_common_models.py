@@ -1,4 +1,5 @@
 yolo_descriptions = {
+    "yolov3u.pt": "Enhanced version of YOLOv3 with updated features and improved performance for diverse object detection tasks.",
     'yolov5nu.pt': 'Nano version of YOLOv5 for balanced speed and accuracy in resource-constrained devices.',
     'yolov5su.pt': 'Small variant of YOLOv5 offering enhanced accuracy with moderate speed trade-off.',
     'yolov5mu.pt': 'Medium-sized YOLOv5 model providing a good balance between speed and precision.',
@@ -9,11 +10,6 @@ yolo_descriptions = {
     'yolov5m6u.pt': 'Medium version applied to higher-resolution inputs, balancing speed and accuracy.',
     'yolov5l6u.pt': 'Large model trained for high resolution, provides improved detection capabilities with a speed compromise.',
     'yolov5x6u.pt': 'Extra-large model optimized for high-resolution input, delivering maximum accuracy.',
-    'yolov6n.pt': 'Nano variant intended for tasks requiring low computational resources, such as autonomous robotics.',
-    'yolov6s.pt': 'Small variant tailored for edge AI and real-time applications such as drones or delivery robots.',
-    'yolov6m.pt': 'Mid-tier model designed for applications with moderate computational power consumption and high efficiency.',
-    'yolov6l.pt': 'Large model offering excellent detection performance at the cost of slower inference times.',
-    'yolov6l6.pt': 'High-resolution version of the YOLOv6-L for tasks that require processing in greater detail.',
     'yolov8n.pt': 'Highly optimized nano version of YOLOv8 for real-time object detection tasks.',
     'yolov8s.pt': 'Small variant of YOLOv8, trading some speed for improved accuracy while maintaining efficiency.',
     'yolov8m.pt': 'Medium YOLOv8 model catering to general-purpose detection tasks with balanced speed and performance.',
