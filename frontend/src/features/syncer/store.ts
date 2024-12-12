@@ -52,7 +52,8 @@ export const useStore = defineStore("syncer", {
           return;
         }
         const { type, payload } = data;
-        let msgPrefix: null | string = `${type}:`;
+        let msgPrefix: null | string =
+          `${settingsStore.loaded ? "Updated " : ""} ${type}:`.trim();
         let diffMsg: string | undefined;
 
         switch (type) {
@@ -93,6 +94,11 @@ export const useStore = defineStore("syncer", {
             if (mediaType && mediaTypeRefreshers[mediaType]) {
               mediaTypeRefreshers[mediaType]();
             }
+            break;
+          }
+          case "stream": {
+            diffMsg = formatObjectDiff(streamStore.data, payload);
+            streamStore.data = payload;
             break;
           }
           case "battery": {
@@ -151,12 +157,6 @@ export const useStore = defineStore("syncer", {
             imageStore.data = payload;
             break;
           }
-
-          case "stream": {
-            diffMsg = formatObjectDiff(streamStore.data, payload);
-            streamStore.data = payload;
-            break;
-          }
         }
 
         if (diffMsg) {
@@ -170,7 +170,14 @@ export const useStore = defineStore("syncer", {
       this.model = useWebSocket({
         url: "ws/sync",
         onMessage: handleMessage,
+        onOpen: async () => {
+          await settingsStore.fetchSettingsInitial();
+        },
         logPrefix: "sync",
+        isRetryable: () =>
+          new Promise((res) => {
+            res(true);
+          }),
       });
       this.model.initWS();
     },

@@ -155,13 +155,10 @@ export const useStore = defineStore("detection-settings", {
           }
         },
         onOpen: () => {
-          messager.remove((m) =>
-            [msg.closing, msg.retry, msg.error].includes(m.text),
-          );
+          messager.remove((m) => [msg.retry, msg.error].includes(m.text));
         },
         onClose: () => {
           this.detection_result = [];
-          messager.info(msg.closing);
         },
         onError: () => {
           if (this.data.active) {

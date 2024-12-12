@@ -4,12 +4,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, defineAsyncComponent, watch } from "vue";
+import { defineAsyncComponent, watch } from "vue";
 import { useRouter } from "vue-router";
-import { useSettingsStore, useCameraStore } from "@/features/settings/stores";
+import { useSettingsStore } from "@/features/settings/stores";
 import PreloadMask from "@/ui/PreloadMask.vue";
-
-const cameraStore = useCameraStore();
 
 const Controller = defineAsyncComponent({
   loader: () => import("@/features/controller/Controller.vue"),
@@ -29,10 +27,5 @@ watch(
     }
   },
 );
-
-onMounted(async () => {
-  await settingsStore.fetchSettingsInitial();
-  await cameraStore.fetchData();
-});
 </script>
 <style scoped lang="scss"></style>
