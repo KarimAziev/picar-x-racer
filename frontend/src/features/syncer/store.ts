@@ -173,6 +173,10 @@ export const useStore = defineStore("syncer", {
         onOpen: async () => {
           await settingsStore.fetchSettingsInitial();
         },
+        onClose: () => {
+          musicStore.isStreaming = false;
+          musicStore.player.is_playing = false;
+        },
         logPrefix: "sync",
         isRetryable: () =>
           new Promise((res) => {
