@@ -117,6 +117,13 @@ def list_camera_devices() -> List[CameraInfo]:
     return [(device, "") for device in dev_video_files]
 
 
+def find_device_info(device) -> Optional[CameraInfo]:
+    devices = list_camera_devices()
+    for device_path, device_info in devices:
+        if device_path == device:
+            return (device, device_info)
+
+
 def list_available_camera_devices():
     result: List[Dict[str, Union[str, bool, List[Dict[str, str]]]]] = []
     for key, category in list_camera_devices():

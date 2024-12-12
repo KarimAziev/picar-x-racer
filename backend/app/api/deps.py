@@ -19,6 +19,7 @@ detection_manager = DetectionService(
 camera_manager = CameraService(
     detection_service=detection_manager,
     file_manager=file_manager,
+    connection_manager=connection_manager,
 )
 stream_manager = StreamService(camera_service=camera_manager)
 music_manager = MusicService(

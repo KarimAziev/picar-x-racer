@@ -1,5 +1,6 @@
 import asyncio
 
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.services.camera_service import CameraService
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -41,7 +42,6 @@ class StreamService(metaclass=SingletonMeta):
             Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
         """
 
-        await self.camera_service.start_camera_and_wait_for_stream_img()
         skip_count = 0
         while True:
             encoded_frame = await asyncio.to_thread(self.camera_service.generate_frame)
@@ -87,7 +87,12 @@ class StreamService(metaclass=SingletonMeta):
         self.active_clients += 1
 
         try:
+            await self.camera_service.start_camera_and_wait_for_stream_img()
             await self.generate_video_stream_for_websocket(websocket)
+        except (CameraDeviceError, CameraNotFoundError) as e:
+            self.logger.error("Error starting camera %s", e, exc_info=True)
+            if websocket.application_state == WebSocketState.CONNECTED:
+                await websocket.close()
         except WebSocketDisconnect:
             self.logger.info(f"WebSocket Disconnected {websocket.client}")
         except asyncio.CancelledError:

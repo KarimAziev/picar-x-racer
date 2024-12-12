@@ -1,4 +1,3 @@
-import asyncio
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_camera_manager, get_stream_manager
@@ -60,9 +59,7 @@ async def update_video_feed_settings(
     """
     logger.info("Video feed update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
-    result: StreamSettings = await asyncio.to_thread(
-        camera_manager.update_stream_settings, payload
-    )
+    result: StreamSettings = await camera_manager.update_stream_settings(payload)
     await connection_manager.broadcast_json(
         {"type": "stream", "payload": result.model_dump()}
     )

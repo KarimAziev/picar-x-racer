@@ -1,7 +1,13 @@
 from typing import List, Optional, Tuple, Union
 
 import cv2
-from app.util.device import CameraInfo, list_camera_devices, try_video_path
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.util.device import (
+    CameraInfo,
+    find_device_info,
+    list_camera_devices,
+    try_video_path,
+)
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 
@@ -57,14 +63,26 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 return (cap, device_path, device_info)
         return (None, None, None)
 
-    def update_device(self, device: str) -> Optional[Tuple[str, str]]:
+    def update_device(self, device: str) -> cv2.VideoCapture:
         self.logger.info(f"Update device {device}")
         self.video_devices = list_camera_devices()
-        for device_path, device_info in self.video_devices:
-            self.logger.info(f"searching for {device} is {device_path}")
-            if device_path == device:
-                self.video_device = (device_path, device_info)
-                return (device, device_info)
+        self.video_device = find_device_info(device)
+        if self.video_device is None:
+            raise CameraDeviceError("Video device not found")
+        else:
+            (device_path, _) = self.video_device
+            cap = try_video_path(device_path) if device_path else None
+            if cap is None:
+                raise CameraDeviceError("Video capture failed")
+            else:
+                return cap
+
+    def find_and_setup_device_cap(self) -> cv2.VideoCapture:
+        self.cap = self.setup_video_capture()
+        if self.cap is None:
+            raise CameraNotFoundError("Couldn't find video device")
+        else:
+            return self.cap
 
     def setup_video_capture(self) -> Optional[cv2.VideoCapture]:
         """
