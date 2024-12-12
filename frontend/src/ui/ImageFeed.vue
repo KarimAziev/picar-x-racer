@@ -1,6 +1,6 @@
 <template>
   <ScanLines
-    v-if="!active"
+    v-if="!isVideoStreamActive"
     class="scan"
     :class="{
       'scan-full': !imgInitted,
@@ -18,7 +18,7 @@
     alt="Video"
   />
   <canvas
-    v-if="objectDetectionIsOn && active"
+    v-if="isOverlayEnabled"
     ref="overlayCanvas"
     class="overlay-canvas"
   ></canvas>
@@ -42,19 +42,24 @@ const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
 const listenersAdded = ref(false);
 
-const objectDetectionIsOn = computed(() => detectionStore.data.active);
-
 const {
-  initWS,
-  cleanup,
+  initWS: initVideoStreamWS,
+  cleanup: cleanupVideoStreamWS,
   imgRef,
   handleImageOnLoad,
   imgLoading,
-  active,
+  active: isVideoStreamActive,
   imgInitted,
 } = useWebsocketStream({ url: "ws/video-stream" });
 
-const { addListeners, removeListeners } = useCameraRotate(imgRef);
+const isOverlayEnabled = computed(
+  () => detectionStore.data.active && isVideoStreamActive.value,
+);
+
+const {
+  addListeners: addCameraRotateListeners,
+  removeListeners: removeCameraRotateListeners,
+} = useCameraRotate(imgRef);
 
 watch(
   () => detectionStore.detection_result,
@@ -86,8 +91,9 @@ watch(
 watch(
   () => imgRef.value,
   (el) => {
+    console.log("watching imgRef.value", el);
     if (el && !listenersAdded.value) {
-      addListeners();
+      addCameraRotateListeners();
       listenersAdded.value = true;
     }
   },
@@ -107,22 +113,26 @@ watch(
 const handleSocketsCleanup = () => {
   window.removeEventListener("beforeunload", handleSocketsCleanup);
   detectionStore.cleanup();
-  cleanup();
+  cleanupVideoStreamWS();
 };
 
 onMounted(async () => {
   await camStore.fetchAllCameraSettings();
-  initWS();
+  initVideoStreamWS();
   if (detectionStore.data.active) {
     detectionStore.initializeWebSocket();
   }
-  addListeners();
+  console.log("imgRef.value", imgRef.value);
+  if (imgRef.value) {
+    addCameraRotateListeners();
+    listenersAdded.value = true;
+  }
   window.addEventListener("beforeunload", handleSocketsCleanup);
 });
 
 onBeforeUnmount(() => {
   listenersAdded.value = false;
-  removeListeners();
+  removeCameraRotateListeners();
   handleSocketsCleanup();
 });
 </script>

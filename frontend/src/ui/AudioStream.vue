@@ -62,6 +62,11 @@ const iconName = computed(
   () => `pi ${connected.value ? "pi-volume-up" : "pi-volume-off"}`,
 );
 
+const handleSocketsCleanup = () => {
+  window.removeEventListener("beforeunload", handleSocketsCleanup);
+  cleanup();
+};
+
 watch(
   () => musicStore.isStreaming,
   (newVal) => {
@@ -72,11 +77,6 @@ watch(
     }
   },
 );
-
-const handleSocketsCleanup = () => {
-  window.removeEventListener("beforeunload", handleSocketsCleanup);
-  cleanup();
-};
 
 watch(
   () => musicStore.volume,
