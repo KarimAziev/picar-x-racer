@@ -2,6 +2,7 @@
   "default_tts_language": "en",
   "texts": [{ "text": "Target identified", "language": "en", "default": true }],
   "battery_full_voltage": 8.4,
+  "battery_auto_measure_seconds": 60,
   "car_model_view": true,
   "speedometer_view": true,
   "text_info_view": true,

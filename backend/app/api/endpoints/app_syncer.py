@@ -2,12 +2,18 @@ import asyncio
 import json
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_camera_manager, get_detection_manager, get_music_manager
+from app.api.deps import (
+    get_battery_manager,
+    get_camera_manager,
+    get_detection_manager,
+    get_music_manager,
+)
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
+    from app.services.battery_service import BatteryService
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
@@ -26,11 +32,14 @@ async def app_synchronizer(
     detection_service: "DetectionService" = Depends(get_detection_manager),
     camera_service: "CameraService" = Depends(get_camera_manager),
     music_service: "MusicService" = Depends(get_music_manager),
+    battery_manager: "BatteryService" = Depends(get_battery_manager),
 ):
     connection_manager: "ConnectionService" = websocket.app.state.app_manager
 
     try:
         await connection_manager.connect(websocket)
+        if len(connection_manager.active_connections) > 1:
+            await battery_manager.broadcast_state()
         await music_service.broadcast_state()
         data = {
             "active_connections": len(connection_manager.active_connections),
@@ -80,7 +89,7 @@ async def app_synchronizer(
 
     except WebSocketDisconnect:
         logger.info("Synchronization WebSocket Disconnected")
-        connection_manager.remove(websocket)
+        await connection_manager.disconnect(websocket, should_close=False)
     except asyncio.CancelledError:
         logger.info("Gracefully shutting down Synchronization WebSocket connection")
         await connection_manager.disconnect(websocket)
@@ -88,7 +97,6 @@ async def app_synchronizer(
         logger.info("Synchronization WebSocket interrupted")
         await connection_manager.disconnect(websocket)
     finally:
-        connection_manager.remove(websocket)
         await connection_manager.broadcast_json(
             {
                 "type": "active_connections",

@@ -35,7 +35,7 @@ class CameraSettings(BaseModel):
     device: Optional[str] = Field(
         None,
         title="Device",
-        description="The ID or name of the camera device.",
+        description="The path of the camera device.",
         examples=["/dev/video0", "/dev/video1"],
     )
     width: Optional[int] = Field(

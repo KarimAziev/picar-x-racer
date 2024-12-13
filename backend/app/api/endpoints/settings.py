@@ -1,12 +1,18 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_camera_manager, get_detection_manager, get_file_manager
+from app.api.deps import (
+    get_battery_manager,
+    get_camera_manager,
+    get_detection_manager,
+    get_file_manager,
+)
 from app.schemas.settings import CalibrationConfig, Settings
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
+    from app.services.battery_service import BatteryService
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
@@ -38,21 +44,10 @@ async def update_settings(
     request: Request,
     new_settings: Settings,
     file_service: "FilesService" = Depends(get_file_manager),
-    camera_manager: "CameraService" = Depends(get_camera_manager),
-    detection_manager: "DetectionService" = Depends(get_detection_manager),
+    battery_manager: "BatteryService" = Depends(get_battery_manager),
 ):
     """
     Update the application settings.
-
-    Args:
-    --------------
-    - request (Request): The incoming HTTP request.
-    - new_settings (Settings): The new settings to apply.
-    - file_service (FilesService): The file service for managing settings.
-    - camera_manager (CameraService): The camera service for managing the camera settings.
-    - detection_manager (DetectionService): The detection service for managing the detection settings.
-
-
     Returns:
     --------------
     - `Settings`: The updated settings of the application.
@@ -66,12 +61,8 @@ async def update_settings(
     await connection_manager.broadcast_json({"type": "settings", "payload": data})
 
     for key, value in data.items():
-        if hasattr(camera_manager, key) and getattr(camera_manager, key) != value:
-            setattr(camera_manager, key, value)
-        elif (
-            hasattr(detection_manager, key) and getattr(detection_manager, key) != value
-        ):
-            setattr(detection_manager, key, value)
+        if hasattr(battery_manager, key) and getattr(battery_manager, key) != value:
+            setattr(battery_manager, key, value)
 
     return new_settings
 

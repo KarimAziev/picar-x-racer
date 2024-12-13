@@ -78,6 +78,11 @@ class Settings(TTSSettings):
         description="The battery full voltage",
         examples=[8.4, 10.2],
     )
+    battery_auto_measure_seconds: Optional[float] = Field(
+        None,
+        description="The interval in seconds between automatically measuring the ADC battery level",
+        examples=[30, 60, 90],
+    )
     speedometer_view: Optional[bool] = Field(
         None,
         description="Enables or disables the speedometer display.",
@@ -138,13 +143,6 @@ class Settings(TTSSettings):
         examples=[True, False],
     )
 
-    auto_measure_distance_delay_ms: Optional[int] = Field(
-        None,
-        ge=500,
-        description=f"The interval (milliseconds) between auto measuring distance."
-        "Auto measuring happens only if auto_measure_distance_mode=true",
-        examples=[1000],
-    )
     camera: Optional[CameraSettings] = Field(
         None,
         description="Configuration settings for the camera, including resolution, FPS, and device input.",
