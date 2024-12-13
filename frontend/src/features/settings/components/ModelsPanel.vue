@@ -10,7 +10,7 @@
     filterMode="lenient"
     :filters="filters"
     @update:selectionKeys="updateDebounced"
-    scrollHeight="400px"
+    scrollHeight="350px"
     :virtualScrollerOptions="{
       itemSize: 30,
       lazy: true,
