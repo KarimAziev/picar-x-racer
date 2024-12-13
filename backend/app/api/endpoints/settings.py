@@ -1,21 +1,14 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.api.deps import (
-    get_battery_manager,
-    get_camera_manager,
-    get_detection_manager,
-    get_file_manager,
-)
+from app.api.deps import get_battery_manager, get_file_manager
 from app.schemas.settings import CalibrationConfig, Settings
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
     from app.services.battery_service import BatteryService
-    from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
-    from app.services.detection_service import DetectionService
     from app.services.files_service import FilesService
 
 logger = Logger(__name__)
