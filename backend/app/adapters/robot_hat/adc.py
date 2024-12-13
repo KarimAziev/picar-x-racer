@@ -72,7 +72,10 @@ class ADC(I2C):
             super().__init__(address, *args, **kwargs)
         else:
             super().__init__(self.ADDR, *args, **kwargs)
-        self.logger.debug(f"ADC device address: 0x{self.address:02X}")
+        if self.address is not None:
+            self.logger.debug(f"ADC device address: 0x{self.address:02X}")
+        else:
+            self.logger.error("ADC device address not found")
 
         if isinstance(chn, str):
             # If chn is a string, assume it's a pin name, remove "A" and convert to int
