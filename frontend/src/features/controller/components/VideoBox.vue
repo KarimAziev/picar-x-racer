@@ -1,8 +1,7 @@
 <template>
-  <FullscreenToggle />
   <ResizableContainer
     :isResizable="isResizable && !isMobile"
-    :fullscreen="fullscreen"
+    fullscreen
     :default-width="defaultWidth"
     :default-height="defaultHeight"
   >
@@ -11,12 +10,7 @@
 </template>
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from "vue";
-import {
-  usePopupStore,
-  useSettingsStore,
-  useCameraStore,
-} from "@/features/settings/stores";
-import FullscreenToggle from "@/features/controller/components/FullscreenToggle.vue";
+import { usePopupStore, useCameraStore } from "@/features/settings/stores";
 import ResizableContainer from "@/ui/ResizableContainer.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 
@@ -27,12 +21,10 @@ const ImageFeed = defineAsyncComponent({
 });
 
 const popupStore = usePopupStore();
-const settingsStore = useSettingsStore();
 const cameraStore = useCameraStore();
 
-const fullscreen = computed(() => settingsStore.settings.fullscreen);
-const defaultWidth = computed(() => cameraStore.data.video_feed_width);
-const defaultHeight = computed(() => cameraStore.data.video_feed_height);
+const defaultWidth = computed(() => cameraStore.data.width);
+const defaultHeight = computed(() => cameraStore.data.height);
 
 const isResizable = computed(() => !popupStore.isOpen);
 </script>

@@ -34,7 +34,7 @@ const defaultState: State = {
   processing: false,
 };
 
-export const useMessagerStore = defineStore("messager", {
+export const useStore = defineStore("messager", {
   state: () => ({ ...defaultState }),
 
   actions: {
@@ -62,7 +62,7 @@ export const useMessagerStore = defineStore("messager", {
       this.processing = false;
     },
 
-    show(text: any, props?: ShowMessageProps) {
+    show(text: string, props?: ShowMessageProps) {
       const type = props?.type || "info";
       const id = new Date().getTime();
       const params = { text: `${text}`, delay: 10000, ...props, type, id };

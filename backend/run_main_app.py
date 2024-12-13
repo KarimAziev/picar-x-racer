@@ -1,4 +1,3 @@
-import multiprocessing as mp
 from typing import Union
 
 import uvicorn
@@ -17,6 +16,8 @@ def start_main_app(port: Union[str, int], log_level: str):
 
 
 def main():
+    import multiprocessing as mp
+
     try:
         mp.set_start_method("spawn")
     except RuntimeError:

@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.services.car_control.car_service import CarService
-from app.services.car_control.connection_service import ConnectionService
+from app.services.connection_service import ConnectionService
 from app.util.logger import Logger
 
 description = """
@@ -28,9 +28,8 @@ This server runs in a separate process from the main server to ensure that contr
 Logger.setup_from_env()
 
 logger = Logger(name=__name__, app_name="px-control")
-
-car_manager = CarService()
-connection_manager = ConnectionService(car_manager=car_manager)
+connection_manager = ConnectionService(app_name="px-control")
+car_manager = CarService(connection_manager=connection_manager)
 
 
 @asynccontextmanager

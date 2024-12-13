@@ -1,21 +1,11 @@
-from typing import Dict, List, Optional, Union
+from typing import List, Optional
 
-from pydantic import BaseModel
-
-
-class TextToSpeechItem(BaseModel):
-    """
-    A model to represent a text to speech item in multiple languages.
-
-    Attributes:
-    - `text`: The content of the text.
-    - `language`: The language in which the text is written.
-    - `default`: Indicator if this text is the default one. Defaults to None.
-    """
-
-    text: str
-    language: str
-    default: Optional[bool] = None
+from app.schemas.camera import CameraSettings
+from app.schemas.music import MusicSettings
+from app.schemas.stream import StreamSettings
+from app.schemas.tts import TTSSettings
+from app.services.detection_service import DetectionSettings
+from pydantic import BaseModel, Field
 
 
 class Keybindings(BaseModel):
@@ -39,7 +29,6 @@ class Keybindings(BaseModel):
     openGeneralSettings: Optional[List[str]] = None
     openShortcutsSettings: Optional[List[str]] = None
     playMusic: Optional[List[str]] = None
-    playSound: Optional[List[str]] = None
     resetCameraRotate: Optional[List[str]] = None
     right: Optional[List[str]] = None
     sayText: Optional[List[str]] = None
@@ -47,7 +36,6 @@ class Keybindings(BaseModel):
     takePhoto: Optional[List[str]] = None
     toggleAvoidObstaclesMode: Optional[List[str]] = None
     toggleCarModelView: Optional[List[str]] = None
-    toggleFullscreen: Optional[List[str]] = None
     toggleSpeedometerView: Optional[List[str]] = None
     toggleTextInfo: Optional[List[str]] = None
     toggleVirtualMode: Optional[List[str]] = None
@@ -60,8 +48,7 @@ class Keybindings(BaseModel):
     decreaseDimension: Optional[List[str]] = None
     nextEnhanceMode: Optional[List[str]] = None
     prevEnhanceMode: Optional[List[str]] = None
-    nextDetectMode: Optional[List[str]] = None
-    prevDetectMode: Optional[List[str]] = None
+    toggleDetection: Optional[List[str]] = None
     increaseVolume: Optional[List[str]] = None
     decreaseVolume: Optional[List[str]] = None
     playNextMusicTrack: Optional[List[str]] = None
@@ -69,119 +56,123 @@ class Keybindings(BaseModel):
     nextText: Optional[List[str]] = None
     prevText: Optional[List[str]] = None
     toggleVideoRecord: Optional[List[str]] = None
+    slowdown: Optional[List[str]] = None
+    toggleAudioStreaming: Optional[List[str]] = None
 
 
-class VideoFeedUpdateSettings(BaseModel):
-    """
-    A model to represent the video feed update settings.
-
-    Attributes:
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_width`: Width of the video feed.
-    - `video_feed_height`: Height of the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `video_feed_record`: Flag to record the video.
-    - `video_feed_render_fps`: Flag to render actual FPS.
-    """
-
-    video_feed_detect_mode: Union[str, None] = None
-    video_feed_enhance_mode: Union[str, None] = None
-    video_feed_format: Union[str, None] = None
-    video_feed_quality: Union[int, None] = None
-    video_feed_width: Union[int, None] = None
-    video_feed_height: Union[int, None] = None
-    video_feed_fps: Union[int, None] = None
-    video_feed_confidence: Union[float, None] = None
-    video_feed_record: Union[bool, None] = None
-    video_feed_device: Union[str, None] = None
-    video_feed_pixel_format: Optional[str] = None
-    video_feed_render_fps: Optional[bool] = None
-
-
-class Settings(VideoFeedUpdateSettings):
+class Settings(TTSSettings):
     """
     A model to represent the application settings.
-
-    Attributes:
-    - `default_music`: The default music to play.
-    - `default_sound`: The default sound to play.
-    - `default_tts_language`: The default language to use in text-to-speech.
-    - `texts`: A list of text to speech items.
-    - `fullscreen`: Indicator if fullscreen mode is enabled.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `battery_full_voltage`: Voltage level considered as full battery.
-    - `car_model_view`: Indicator if the car model view is enabled.
-    - `speedometer_view`: Indicator if the speedometer view is enabled.
-    - `text_info_view`: Indicator if the text information view is enabled.
-    - `auto_download_photo`: Indicator if photos are automatically downloaded.
-    - `auto_measure_distance_mode`: Indicator if automatic distance measurement mode is enabled.
-    - `auto_measure_distance_delay_ms`: Delay in milliseconds for automatic distance measurement.
-    - `autoplay_music`: Indicator if music should autoplay.
-    - `virtual_mode`: Indicator if virtual mode is enabled. It hides a video stream view and focuses on controlling the car using just a 3D model visualization.
-    - `show_player`: Indicator if the player should be shown.
-    - `text_to_speech_input`: Indicator if text-to-speech input is enabled.
-    - `keybindings`: A list of keybindings.
     """
 
-    default_music: Optional[str] = None
-    default_sound: Optional[str] = None
-    default_tts_language: Optional[str] = None
-    texts: Optional[List[TextToSpeechItem]] = None
-    fullscreen: Optional[bool] = None
-    battery_full_voltage: Optional[float] = None
-    car_model_view: Optional[bool] = None
-    speedometer_view: Optional[bool] = None
-    text_info_view: Optional[bool] = None
-    auto_download_photo: Optional[bool] = None
-    auto_download_video: Optional[bool] = None
-    auto_measure_distance_mode: Optional[bool] = None
-    auto_measure_distance_delay_ms: Optional[int] = None
-    autoplay_music: Optional[bool] = None
-    virtual_mode: Optional[bool] = None
-    show_player: Optional[bool] = None
-    text_to_speech_input: Optional[bool] = None
-    keybindings: Optional[Keybindings] = None
+    max_speed: Optional[int] = Field(
+        None,
+        ge=10,
+        le=100,
+        description="The maximum speed",
+        examples=[50, 60, 70, 80, 90, 100],
+    )
+    battery_full_voltage: Optional[float] = Field(
+        None,
+        ge=6.1,
+        description="The battery full voltage",
+        examples=[8.4, 10.2],
+    )
+    battery_auto_measure_seconds: Optional[float] = Field(
+        None,
+        description="The interval in seconds between automatically measuring the ADC battery level",
+        examples=[30, 60, 90],
+    )
+    speedometer_view: Optional[bool] = Field(
+        None,
+        description="Enables or disables the speedometer display.",
+        examples=[True, False],
+    )
+    text_info_view: Optional[bool] = Field(
+        None,
+        description="Toggles the visibility of text-based information, such as camera tilt, "
+        "camera pan, and servo direction.",
+        examples=[True, False],
+    )
+    auto_download_photo: Optional[bool] = Field(
+        None,
+        description="Enables or disables the automatic downloading of captured photos.",
+        examples=[True, False],
+    )
+    auto_download_video: Optional[bool] = Field(
+        None,
+        description="Enables or disables the automatic downloading of recorded videos.",
+        examples=[True, False],
+    )
+    auto_measure_distance_mode: Optional[bool] = Field(
+        None,
+        description="Enables or disables automatic measurement of distances using ultrasonic sensors.",
+        examples=[True, False],
+    )
+    auto_measure_distance_delay_ms: Optional[int] = Field(
+        None,
+        ge=500,
+        description="The time interval between successive auto distance measurements in milliseconds. "
+        "This is applicable only when `auto_measure_distance_mode` is enabled. "
+        "The value must be at least 500 ms.",
+        examples=[1000, 2000],
+    )
+    virtual_mode: Optional[bool] = Field(
+        None,
+        description="Replaces the live camera feed with a 3D virtual model when enabled.",
+        examples=[True, False],
+    )
+    show_player: Optional[bool] = Field(
+        None,
+        description="Toggles the visibility of the music player interface.",
+        examples=[True, False],
+    )
+    text_to_speech_input: Optional[bool] = Field(
+        None,
+        description="Shows or hides the input field for the text-to-speech feature.",
+        examples=[True, False],
+    )
+    show_object_detection_settings: Optional[bool] = Field(
+        None,
+        description="Toggles the visibility of the object detection settings panel on the main screen.",
+        examples=[True, False],
+    )
+    car_model_view: Optional[bool] = Field(
+        None,
+        description="Toggles the 3D view of the car model on or off.",
+        examples=[True, False],
+    )
 
-
-class DetectorsResponse(BaseModel):
-    """
-    A model to represent the response for available object detectors.
-
-    Attributes:
-    - detectors: A list of video detectors.
-    """
-
-    detectors: List[str]
-
-
-class EnhancersResponse(BaseModel):
-    """
-    A model to represent the response for video enhancers.
-
-    Attributes:
-    - enhancers: A list of video enhancer names.
-    """
-
-    enhancers: List[str]
-
-
-class VideoModesResponse(DetectorsResponse, EnhancersResponse):
-    """
-    A model to represent the response for both detectors and enhancers.
-
-    Inherits from `DetectorsResponse` and `EnhancersResponse`.
-    """
-
-    pass
+    camera: Optional[CameraSettings] = Field(
+        None,
+        description="Configuration settings for the camera, including resolution, FPS, and device input.",
+    )
+    detection: Optional[DetectionSettings] = Field(
+        None,
+        description="Settings for the object detection module, including model choice, thresholds, and parameters.",
+    )
+    stream: Optional[StreamSettings] = Field(
+        None,
+        description="Settings defining the video stream output, such as format, quality, and enhancement modes.",
+    )
+    music: Optional[MusicSettings] = Field(
+        None,
+        description="Settings for the music playback system, including configurations for track control and playback behavior.",
+    )
+    keybindings: Optional[Keybindings] = Field(
+        None,
+        description="A collection of custom keybindings for various user actions.",
+        examples=[
+            [
+                {
+                    "accelerate": ["w"],
+                    "decelerate": ["s"],
+                    "decreaseCamPan": ["ArrowLeft"],
+                    "decreaseCamTilt": ["ArrowDown"],
+                }
+            ]
+        ],
+    )
 
 
 class CalibrationConfig(BaseModel):
@@ -195,47 +186,26 @@ class CalibrationConfig(BaseModel):
     - `picarx_dir_motor`: Direction motor configuration.
     """
 
-    picarx_dir_servo: Optional[str] = None
-    picarx_cam_pan_servo: Optional[str] = None
-    picarx_cam_tilt_servo: Optional[str] = None
-    picarx_dir_motor: Optional[str] = None
+    picarx_dir_servo: Optional[str] = Field(
+        None,
+        description="Direction servo configuration",
+        examples=["6.0"],
+    )
 
+    picarx_cam_pan_servo: Optional[str] = Field(
+        None,
+        description="Camera pan servo configuration",
+        examples=["-0.6"],
+    )
 
-class VideoFeedSettings(BaseModel):
-    """
-    A model to represent the video feed settings.
+    picarx_cam_tilt_servo: Optional[str] = Field(
+        None,
+        description="Camera tilt servo configuration",
+        examples=["0.2"],
+    )
 
-    Attributes:
-    - `video_feed_confidence`: Confidence level for video feed detection.
-    - `video_feed_detect_mode`: Detection mode for the video feed.
-    - `video_feed_enhance_mode`: Enhancement mode for the video feed.
-    - `video_feed_fps`: Frames per second for the video feed.
-    - `video_feed_quality`: Quality level of the video feed.
-    - `video_feed_format`: Format of the video feed.
-    - `video_feed_width`: Width of the video feed.
-    - `video_feed_height`: Height of the video feed.
-    - `video_feed_record`: Flag to record the video.
-    - `video_feed_device`: Device to use.
-    - `video_feed_render_fps`: Flag to render actual FPS.
-    """
-
-    video_feed_width: Optional[int] = None
-    video_feed_height: Optional[int] = None
-    video_feed_fps: int
-    video_feed_detect_mode: str | None
-    video_feed_enhance_mode: str | None
-    video_feed_quality: int
-    video_feed_format: str
-    video_feed_confidence: float
-    video_feed_record: bool
-    video_feed_device: Optional[str] = None
-    video_feed_pixel_format: Optional[str] = None
-    video_feed_render_fps: Optional[bool] = None
-
-
-class CameraDevicesResponse(BaseModel):
-    devices: List[Dict[str, Union[str, List[Dict[str, str]]]]]
-
-
-class UpdateCameraDevice(BaseModel):
-    device: str
+    picarx_dir_motor: Optional[str] = Field(
+        None,
+        description="Direction motor configuration",
+        examples=["[1, 1]"],
+    )

@@ -1,4 +1,13 @@
+import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
+import { SettingsTab } from "@/features/settings/enums";
+import { isNumber, isPlainObject, isString } from "@/util/guards";
+import { constrain } from "@/util/constrain";
+import type {
+  MethodsWithoutParams,
+  ExcludePropertiesWithPrefix,
+} from "@/util/ts-helpers";
+import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import {
   useImageStore,
   useSettingsStore,
@@ -7,16 +16,13 @@ import {
   useCalibrationStore,
   useDistanceStore,
   useCameraStore,
-  useMusicStore,
-  useSoundStore,
+  useStreamStore,
 } from "@/features/settings/stores";
-import { MethodsWithoutParams } from "@/util/ts-helpers";
-import { SettingsTab } from "@/features/settings/enums";
-import { useMessagerStore } from "@/features/messager/store";
-import { isNumber, isPlainObject, isString } from "@/util/guards";
-import { constrain } from "@/util/constrain";
-import { takePhoto } from "@/features/controller/api";
-import { makeWebsocketUrl } from "@/util/url";
+import { useDetectionStore } from "@/features/detection";
+import { useMessagerStore } from "@/features/messager";
+import { useMusicStore } from "@/features/music";
+import { wait } from "@/util/wait";
+import { roundToNearestTen } from "@/util/number";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;
@@ -65,30 +71,7 @@ export interface Gauges {
 }
 
 export interface StoreState extends Gauges, Modes {
-  /**
-   * Whether the WebSocket is loading.
-   */
-  loading: boolean;
-  /**
-   * Whether the WebSocket connection is opened.
-   */
-  connected: boolean;
-  /**
-   * Current WebSocket instance
-   */
-  websocket?: WebSocket;
-  /**
-   * The WebSocket messages queue
-   */
-  messageQueue: string[];
-  /**
-   * The WebSocket URL
-   */
-  url: string;
-  /**
-   * Whether WebSocket is allowed to reconnect.
-   */
-  reconnectedEnabled?: boolean;
+  model: ShallowRef<WebSocketModel> | null;
 }
 
 const defaultGauges: Gauges = {
@@ -108,179 +91,139 @@ const modes: Modes = {
 const defaultState: StoreState = {
   ...defaultGauges,
   ...modes,
-  connected: false,
-  reconnectedEnabled: true,
-  messageQueue: [],
-  loading: false,
-  url: makeWebsocketUrl("px/ws", 8001),
+  model: null,
 } as const;
+
+export interface WSMessageData {
+  type: string;
+  payload: any;
+  error?: string;
+}
 
 export const useControllerStore = defineStore("controller", {
   state: (): StoreState => ({ ...defaultState }),
   actions: {
-    initializeWebSocket(url: string) {
+    initializeWebSocket() {
+      if (this.model?.connected || this.model?.loading) {
+        return;
+      }
       const messager = useMessagerStore();
       const distanceStore = useDistanceStore();
       const calibrationStore = useCalibrationStore();
-      this.url = url;
+      const handleMessage = (data: WSMessageData) => {
+        if (!data) {
+          return;
+        }
+        const { type, payload, error } = data;
 
-      this.websocket = new WebSocket(url);
-      this.loading = true;
-      this.websocket!.onopen = () => {
-        this.loading = false;
-        messager.remove((m) =>
-          ["Retrying connection...", "WebSocket error"].includes(m.text),
-        );
-        console.log(`WebSocket connection established with URL: ${url}`);
-        messager.info("Connection status: Open");
-        this.connected = true;
-        while (this.messageQueue.length > 0) {
-          this.websocket!.send(this.messageQueue.shift()!);
+        switch (type) {
+          case "getDistance":
+            if (error) {
+              messager.error(error, "distance error");
+            } else {
+              distanceStore.distance = payload;
+            }
+
+            break;
+          case "stop":
+            this.direction = 0;
+            this.speed = 0;
+            break;
+
+          case "setServoDirAngle":
+            this.servoAngle = payload;
+            break;
+
+          case "setCamPanAngle":
+            this.camPan = payload;
+            break;
+
+          case "setCamTiltAngle":
+            this.camTilt = payload;
+            break;
+
+          case "avoidObstacles":
+            this.avoidObstacles = payload;
+            messager.info(`Avoid Obstacles: ${payload}`, {
+              immediately: true,
+            });
+            break;
+
+          case "updateCalibration":
+            calibrationStore.data = payload;
+            break;
+
+          case "saveCalibration":
+            calibrationStore.data = payload;
+            this.calibrationMode = false;
+            messager.info(`Calibration saved`);
+            break;
+
+          default:
+            if (data.error) {
+              messager.error(data.error);
+            } else if (isPlainObject(payload)) {
+              Object.entries(payload).forEach(([k, value]) => {
+                if (k in defaultGauges && isNumber(value)) {
+                  this[k as keyof Gauges] = value as Gauges[keyof Gauges];
+                } else if (k in modes && (value === false || value === true)) {
+                  const mode = k as keyof typeof modes;
+                  const currMode = this[mode];
+                  if (currMode !== value) {
+                    this[mode] = value as boolean;
+                    messager.info(`${k}: ${value}`, {
+                      immediately: true,
+                    });
+                  }
+                }
+              });
+            } else if (
+              isNumber(payload) &&
+              isString(type) &&
+              type in defaultGauges
+            ) {
+              this[type as keyof Gauges] = payload;
+            }
         }
       };
 
-      this.websocket.onmessage = (msg) => {
-        let data;
-        try {
-          data = JSON.parse(msg.data);
-          if (!isPlainObject(data)) {
-            return;
-          }
-          const { type, payload, error } = data;
-
-          switch (type) {
-            case "getDistance":
-              if (error) {
-                messager.error(error, "distance error");
-              } else {
-                distanceStore.distance = payload;
-              }
-
-              break;
-            case "stop":
-              this.direction = 0;
-              this.speed = 0;
-              break;
-
-            case "setServoDirAngle":
-              this.servoAngle = payload;
-              break;
-
-            case "setCamPanAngle":
-              this.camPan = payload;
-              break;
-
-            case "setCamTiltAngle":
-              this.camTilt = payload;
-              break;
-
-            case "avoidObstacles":
-              this.avoidObstacles = payload;
-              messager.info(`Avoid Obstacles: ${payload}`, {
-                immediately: true,
-              });
-              break;
-
-            case "updateCalibration":
-              calibrationStore.data = payload;
-              break;
-
-            case "saveCalibration":
-              calibrationStore.data = payload;
-              this.calibrationMode = false;
-              messager.info(`Calibration saved`);
-              break;
-
-            default:
-              if (data.error) {
-                messager.error(data.error);
-              } else if (isPlainObject(payload)) {
-                Object.entries(payload).forEach(([k, value]) => {
-                  if (k in defaultGauges && isNumber(value)) {
-                    this[k as keyof Gauges] = value as Gauges[keyof Gauges];
-                  } else if (
-                    k in modes &&
-                    (value === false || value === true)
-                  ) {
-                    this[k as keyof typeof modes] = value as boolean;
-                  }
-                });
-              } else if (
-                isNumber(payload) &&
-                isString(type) &&
-                type in defaultGauges
-              ) {
-                this[type as keyof Gauges] = payload;
-              }
-          }
-        } catch (error) {}
-      };
-
-      this.websocket.onerror = (error) => {
-        console.error(`WebSocket error: ${error.type}`);
-        messager.error("WebSocket error");
-        this.loading = false;
-        this.connected = false;
-      };
-
-      this.websocket.onclose = () => {
-        console.log("WebSocket connection closed");
-
-        this.connected = false;
-        this.loading = false;
-        this.retryConnection();
-      };
+      this.model = useWebSocket({
+        url: "px/ws",
+        port: 8001,
+        onMessage: handleMessage,
+        logPrefix: "px",
+      });
+      this.model.initWS();
     },
 
-    retryConnection() {
-      const messager = useMessagerStore();
-      if (this.reconnectedEnabled && !this.connected) {
-        setTimeout(() => {
-          console.log("Retrying WebSocket connection...");
-          messager.info("Retrying connection...");
-          if (this.url) {
-            this.initializeWebSocket(this.url);
-          }
-        }, 5000);
+    cleanup() {
+      if (this.speed !== 0) {
+        this.stop();
       }
+
+      if (this.servoAngle !== 0) {
+        this.resetDirServoAngle();
+      }
+
+      if (this.camPan !== 0) {
+        this.resetCamPan();
+      }
+      if (this.camTilt !== 0) {
+        this.resetCamTilt();
+      }
+
+      this.model?.cleanup();
+      this.model = null;
     },
 
     sendMessage(message: any): void {
-      const msgString = JSON.stringify(message);
-      if (this.connected) {
-        this.websocket!.send(msgString);
-      } else {
-        this.messageQueue.push(msgString);
-      }
-    },
-
-    close() {
-      const messager = useMessagerStore();
-      messager.info("Closing connection...");
-      this.websocket?.close();
-    },
-    cleanup() {
-      this.reconnectedEnabled = false;
-
-      this.stop();
-      this.resetDirServoAngle();
-      this.resetCameraRotate();
-      this.close();
-
-      this.loading = false;
-      this.messageQueue = [];
+      this.model?.send(message);
     },
     // command workers
     setMaxSpeed(value: number) {
       const newValue = constrain(MIN_SPEED, MAX_SPEED, value);
       if (newValue !== this.maxSpeed) {
-        this.maxSpeed = newValue;
-      }
-      if (this.speed >= newValue) {
-        this.move(
-          constrain(MIN_SPEED, newValue, newValue - ACCELERATION),
-          this.direction,
-        );
+        this.sendMessage({ action: "setMaxSpeed", payload: newValue });
       }
     },
     setCamTiltAngle(angle: number): void {
@@ -336,15 +279,28 @@ export const useControllerStore = defineStore("controller", {
       this.backward(nextSpeed);
     },
 
-    slowdown() {
-      const nextSpeed =
-        this.speed > 0 ? Math.max(this.speed - 10, 0) : this.speed;
-      if (this.speed === 0 && this.direction !== 0) {
+    async slowdown() {
+      const nextSpeed = roundToNearestTen(
+        this.speed > 10
+          ? Math.max(this.speed / 2, 0)
+          : this.speed === 10
+            ? Math.max(this.speed - 10, 0)
+            : this.speed,
+      );
+      if (nextSpeed === 0) {
         this.stop();
       } else if (this.direction === 1) {
         this.forward(nextSpeed);
+        await wait(100);
+        if (nextSpeed === this.speed) {
+          this.stop();
+        }
       } else if (this.direction === -1) {
         this.backward(nextSpeed);
+        await wait(100);
+        if (nextSpeed === this.speed) {
+          this.stop();
+        }
       }
     },
     stop() {
@@ -390,22 +346,13 @@ export const useControllerStore = defineStore("controller", {
     resetDirServoAngle(): void {
       this.setDirServoAngle(0);
     },
-    async playSound() {
-      const soundStore = useSoundStore();
-      const settingsStore = useSettingsStore();
-      const name = settingsStore.settings.default_sound;
-
-      if (name) {
-        await soundStore.playSound(name);
-      }
-    },
 
     async sayText() {
       const settingsStore = useSettingsStore();
       if (!settingsStore.text) {
         const item =
-          settingsStore.settings.texts.find((item) => item.default) ||
-          settingsStore.settings.texts[0];
+          settingsStore.data.texts.find((item) => item.default) ||
+          settingsStore.data.texts[0];
         settingsStore.text = item.text;
         settingsStore.language = item.language;
       }
@@ -436,15 +383,16 @@ export const useControllerStore = defineStore("controller", {
     async takePhoto() {
       const messager = useMessagerStore();
       const imageStore = useImageStore();
+      const cameraStore = useCameraStore();
       const settingsStore = useSettingsStore();
-      try {
-        const response = await takePhoto();
-        const file = response.data.file;
-        if (file && settingsStore.settings.auto_download_photo) {
+      const file = await cameraStore.capturePhoto();
+
+      if (file && settingsStore.data.auto_download_photo) {
+        try {
           await imageStore.downloadFile(file);
+        } catch (error) {
+          messager.handleError(error);
         }
-      } catch (error) {
-        messager.handleError(error);
       }
     },
     toggleAvoidObstaclesMode() {
@@ -514,10 +462,6 @@ export const useControllerStore = defineStore("controller", {
       popupStore.tab = SettingsTab.GENERAL;
       popupStore.isOpen = true;
     },
-    toggleFullscreen() {
-      const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("fullscreen");
-    },
     toggleTextInfo() {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("text_info_view");
@@ -559,32 +503,30 @@ export const useControllerStore = defineStore("controller", {
       await camStore.decreaseDimension();
     },
     async increaseQuality() {
-      const camStore = useCameraStore();
-      await camStore.increaseQuality();
+      const streamStore = useStreamStore();
+      await streamStore.increaseQuality();
     },
     async decreaseQuality() {
-      const camStore = useCameraStore();
-      await camStore.decreaseQuality();
+      const streamStore = useStreamStore();
+      await streamStore.decreaseQuality();
     },
-    async nextDetectMode() {
-      const camStore = useCameraStore();
-      await camStore.nextDetectMode();
+    async toggleDetection() {
+      const detectionStore = useDetectionStore();
+      await detectionStore.toggleDetection();
     },
     async nextEnhanceMode() {
-      const camStore = useCameraStore();
-      await camStore.nextEnhanceMode();
+      const streamStore = useStreamStore();
+      await streamStore.nextEnhanceMode();
     },
-    async prevDetectMode() {
-      const camStore = useCameraStore();
-      await camStore.prevDetectMode();
-    },
+
     async prevEnhanceMode() {
-      const camStore = useCameraStore();
-      await camStore.prevEnhanceMode();
+      const streamStore = useStreamStore();
+      await streamStore.prevEnhanceMode();
     },
     async toggleVideoRecord() {
-      const camStore = useCameraStore();
-      await camStore.toggleRecording();
+      const settingsStore = useSettingsStore();
+      const streamStore = useStreamStore();
+      await streamStore.toggleRecording(settingsStore.data.auto_download_video);
     },
     async increaseVolume() {
       const musicStore = useMusicStore();
@@ -595,38 +537,22 @@ export const useControllerStore = defineStore("controller", {
       await musicStore.decreaseVolume();
     },
     async playMusic() {
-      const settingsStore = useSettingsStore();
       const musicStore = useMusicStore();
-
-      if (musicStore.trackLoading) {
-        return;
-      }
-      if (musicStore.playing) {
-        musicStore.start = 0.0;
-        await musicStore.stopMusic();
-      } else {
-        await musicStore.playMusic(
-          musicStore.track || settingsStore.settings.default_music || null,
-          false,
-          0.0,
-        );
-      }
+      await musicStore.togglePlaying();
     },
 
     async playNextMusicTrack() {
       const musicStore = useMusicStore();
-      if (musicStore.trackLoading) {
-        return;
-      }
       await musicStore.nextTrack();
     },
 
     async playPrevMusicTrack() {
       const musicStore = useMusicStore();
-      if (musicStore.trackLoading) {
-        return;
-      }
       await musicStore.prevTrack();
+    },
+    toggleAudioStreaming() {
+      const musicStore = useMusicStore();
+      musicStore.toggleStreaming();
     },
   },
 });
@@ -636,5 +562,9 @@ export type ControllerState = Omit<
   keyof ReturnType<typeof defineStore>
 >;
 
-export type ControllerActions = MethodsWithoutParams<ControllerState>;
+export type ControllerActions = Omit<
+  ExcludePropertiesWithPrefix<"$", MethodsWithoutParams<ControllerState>>,
+  "initializeWebSocket" | "cleanup"
+>;
+
 export type ControllerActionName = keyof ControllerActions;

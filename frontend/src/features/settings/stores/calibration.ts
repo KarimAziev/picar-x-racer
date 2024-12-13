@@ -1,9 +1,10 @@
 import { defineStore } from "pinia";
 import axios from "axios";
-import { useMessagerStore } from "@/features/messager/store";
+import { useMessagerStore } from "@/features/messager";
+import type { Nullable } from "@/util/ts-helpers";
 
 export interface Data {
-  [key: string]: string | number | null;
+  [key: string]: Nullable<string>;
 }
 export interface State {
   data: Data;
@@ -27,10 +28,10 @@ export const useStore = defineStore("calibration", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const response = await axios.get("/api/calibration");
+        const response = await axios.get<Data>("/api/settings/calibration");
         Object.entries(response.data).forEach(([key, value]) => {
           messager.info(`${value}`, key);
-          this.data[key] = value as string | number | null;
+          this.data[key] = value;
         });
       } catch (error) {
         messager.handleError(error, `Error fetching calibration settings`);

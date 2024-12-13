@@ -141,16 +141,47 @@ class I2C(object):
         self._bus = bus
         self._smbus = SMBus(self._bus)
 
+        self.address = self.find_address(address)
+
+    def find_address(
+        self,
+        address: Optional[Union[int, List[int]]] = None,
+    ) -> Optional[int]:
+        """
+        Determine the appropriate I2C address for communication by either
+        scanning for connected devices or verifying a given address.
+
+        If a list of addresses is provided, scan them sequentially to find the first valid one.
+
+        If a single address is provided, validate its availability.
+
+        Returns the first available address or `None` if no valid address is found.
+        """
         if isinstance(address, list):
-            connected_devices = self.scan()
-            for _addr in address:
-                if _addr in connected_devices:
-                    self.address = _addr
-                    break
-            else:
-                self.address = address[0]
-        else:
-            self.address = address
+            for addr in address:
+                if self.check_address(addr) is not None:
+                    return addr
+        elif address is not None and self.check_address(address):
+            return address
+
+    def check_address(self, addr: int):
+        """
+        Check if an I2C address is valid and acknowledged by the device.
+        """
+        self.logger.debug("Scanning I2C bus %s for address %s", self._bus, addr)
+        try:
+            self._smbus.write_byte(
+                addr, 0
+            )  # Attempt to write a dummy byte to the address
+            self.logger.debug("Found I2C device at 0x%02x", addr)
+            return addr
+        except OSError as e:
+            # Ignore devices that don't acknowledge (errno corresponds to "No such device or address")
+            if e.errno != errno.EREMOTEIO:
+                self.logger.debug(f"OSError at I2C address 0x{addr:02x}: {e}")
+        except Exception as e:
+            self.logger.error("Unexpected error at I2C address 0x%02x: %s", addr, e)
+            return None
 
     @_retry_wrapper
     def _write_byte(self, data: int) -> Optional[int]:

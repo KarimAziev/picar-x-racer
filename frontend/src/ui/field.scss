@@ -1,14 +1,25 @@
 .p-field {
   display: flex;
-  flex-direction: column;
-  margin: 1rem 0;
-  max-width: 250px;
+  position: relative;
+  margin: 0.5rem 0;
 
-  .input-number,
-  textarea,
-  input,
-  select {
-    max-width: 250px;
-    font-size: 0.6rem;
+  &.col {
+    flex-direction: column;
+  }
+  &.col-reverse {
+    flex-direction: column-reverse;
+  }
+
+  &.row,
+  &.row-reverse {
+    align-items: center;
+    gap: 10px;
+  }
+  &.row {
+    flex-direction: row;
+  }
+  &.row-reverse {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
   }
 }

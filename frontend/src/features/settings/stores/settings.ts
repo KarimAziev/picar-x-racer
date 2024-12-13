@@ -1,25 +1,36 @@
-import { defineStore } from "pinia";
 import axios from "axios";
-import { defaultKeybindinds } from "@/features/settings/defaultKeybindings";
+import { defineStore } from "pinia";
+import { cycleValue } from "@/util/cycleValue";
+import { omit, isObjectEquals } from "@/util/obj";
+import { retrieveError } from "@/util/error";
+import type { ControllerActionName } from "@/features/controller/store";
+import type { DetectionSettings } from "@/features/detection";
+import type { StreamSettings } from "@/features/settings/stores/stream";
+import type { CameraSettings } from "@/features/settings/stores/camera";
 import {
-  useMessagerStore,
-  ShowMessageTypeProps,
-} from "@/features/messager/store";
-
-import { toggleableSettings } from "@/features/settings/config";
+  behaviorSettings,
+  visibilitySettings,
+} from "@/features/settings/config";
 import { SettingsTab } from "@/features/settings/enums";
+import { useMessagerStore, ShowMessageTypeProps } from "@/features/messager";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
-import { omit } from "@/util/obj";
-import type { ControllerActionName } from "@/features/controller/store";
-import { retrieveError } from "@/util/error";
-import { useStore as useMusicStore } from "@/features/settings/stores/music";
-import { useStore as useSoundStore } from "@/features/settings/stores/sounds";
-import { cycleValue } from "@/util/cycleValue";
-import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
+import {
+  useStore as useStreamStore,
+  defaultState as defaultStreamState,
+} from "@/features/settings/stores/stream";
+import {
+  defaultState as defaultCameraState,
+  useStore as useCameraStore,
+} from "@/features/settings/stores/camera";
+import {
+  useDetectionStore,
+  defaultState as detectionDefaultState,
+} from "@/features/detection";
+import { useStore as useMusicStore, MusicMode } from "@/features/music";
 
 export type ToggleableSettings = {
-  [P in keyof typeof toggleableSettings]: boolean;
+  [P in keyof (typeof behaviorSettings & typeof visibilitySettings)]: boolean;
 };
 
 export interface TextItem {
@@ -28,30 +39,27 @@ export interface TextItem {
   default?: boolean;
 }
 
-export interface CameraOpenRequestParams {
-  video_feed_fps?: number;
-  video_feed_format?: string;
-  video_feed_enhance_mode: string | null;
-  video_feed_detect_mode: string | null;
-  video_feed_quality?: number;
-  video_feed_height: number;
-  video_feed_width: number;
-  video_feed_confidence?: number | null;
-  video_feed_record?: boolean;
-  video_feed_device: string | null;
-  video_feed_pixel_format: string | null;
+export interface MusicSettings {
+  mode?: MusicMode;
+  order: string[];
+}
+
+export interface CameraStreamSettings {
+  camera: CameraSettings;
+  detection: DetectionSettings;
+  stream: StreamSettings;
 }
 
 export interface Settings
   extends Partial<ToggleableSettings>,
-    CameraOpenRequestParams {
-  default_sound: string;
-  default_music?: string;
+    CameraStreamSettings {
+  music: MusicSettings;
   default_tts_language: string;
-  keybindings: Partial<Record<ControllerActionName, string[]>>;
+  keybindings: Partial<Record<ControllerActionName, string[] | null>>;
   battery_full_voltage: number;
+  battery_auto_measure_seconds: number;
+  max_speed: number;
   auto_measure_distance_delay_ms: number;
-  video_feed_quality: number;
   texts: TextItem[];
 }
 
@@ -59,7 +67,7 @@ export interface State {
   loading?: boolean;
   loaded?: boolean;
   saving?: boolean;
-  settings: Settings;
+  data: Settings;
   error?: string;
   retryTimer?: NodeJS.Timeout;
   retryCounter: number;
@@ -68,27 +76,22 @@ export interface State {
   inhibitKeyHandling: boolean;
 }
 
-const defaultState: State = {
-  settings: {
-    fullscreen: true,
+export const defaultState: State = {
+  data: {
     keybindings: {},
-    default_sound: "",
     default_tts_language: "en",
+    battery_auto_measure_seconds: 30,
+    max_speed: 80,
     texts: [],
     battery_full_voltage: 8.4,
     auto_measure_distance_delay_ms: 1000,
-    video_feed_quality: 100,
-    video_feed_fps: 30,
-    video_feed_format: ".jpg",
-    video_feed_detect_mode: null,
-    video_feed_confidence: null,
-    video_feed_enhance_mode: null,
-    video_feed_height: 600,
-    video_feed_width: 800,
-    video_feed_device: null,
-    video_feed_pixel_format: null,
+    camera: { ...defaultCameraState.data },
+    music: {
+      order: [],
+    },
+    detection: { ...detectionDefaultState.data },
+    stream: { ...defaultStreamState.data },
   },
-
   retryCounter: 0,
   text: null,
   language: null,
@@ -97,61 +100,66 @@ const defaultState: State = {
 
 export const useStore = defineStore("settings", {
   state: () => ({ ...defaultState }),
+  getters: {
+    detection({ data: { detection } }) {
+      return detection;
+    },
+    tts({ data: { texts, default_tts_language } }) {
+      return {
+        default_tts_language,
+        texts: texts.filter((item) => !!item.text.length),
+      };
+    },
+    keybindings({ data: { keybindings } }) {
+      return { keybindings };
+    },
+
+    generalSettings({ data }) {
+      const musicStore = useMusicStore();
+      const cameraStore = useCameraStore();
+      const streamStore = useStreamStore();
+      const settingsData = omit(
+        [
+          "keybindings",
+          "texts",
+          "default_tts_language",
+          "detection",
+          "camera",
+          "stream",
+        ],
+        data,
+      );
+      return {
+        ...settingsData,
+        camera: cameraStore.data,
+        stream: streamStore.data,
+        music: {
+          ...settingsData.music,
+          mode: musicStore.player.mode,
+        },
+      } as Partial<Settings>;
+    },
+  },
 
   actions: {
-    async fetchSettings() {
-      const messager = useMessagerStore();
-      const musicStore = useMusicStore();
-      try {
-        this.loading = true;
-        const response = await axios.get("/api/settings");
-        const resData = response.data;
-
-        const data = {
-          ...this.settings,
-          keybindings: { ...defaultKeybindinds },
-          ...resData,
-        };
-        this.settings = data;
-        musicStore.autoplay = this.settings.autoplay_music || false;
-        this.error = undefined;
-        messager.info("System status: OK");
-      } catch (error) {
-        this.error = retrieveError(error).text;
-        messager.handleError(error, "Error fetching settings");
-      } finally {
-        this.loading = false;
-      }
-    },
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
       const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
-      const soundStore = useSoundStore();
-      const batteryStore = useBatteryStore();
+      const streamStore = useStreamStore();
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
       }
       try {
         this.loading = true;
-        const response = await axios.get("/api/settings");
-
-        const data = {
-          ...this.settings,
-          keybindings: { ...defaultKeybindinds },
-          ...response.data,
-        };
-        this.settings = data;
-        await Promise.all([
+        const [response] = await Promise.all([
+          axios.get<Settings>("/api/settings"),
           calibrationStore.fetchData(),
           musicStore.fetchData(),
-          musicStore.getCurrentStatus(),
-          soundStore.fetchDefaultData(),
-          soundStore.fetchData(),
-          batteryStore.fetchBatteryStatus(),
+          streamStore.fetchEnhancers(),
         ]);
-        musicStore.autoplay = this.settings.autoplay_music || false;
+        this.data = response.data;
         this.error = undefined;
       } catch (error) {
         this.error = retrieveError(error).text;
@@ -177,56 +185,45 @@ export const useStore = defineStore("settings", {
         messager.remove((m) => m.text === errText);
       }
     },
-    async saveSettings() {
-      const messager = useMessagerStore();
+    getCurrentTabSettings(): Partial<Settings> | null {
       const popupStore = usePopupStore();
-      if (popupStore.tab === SettingsTab.TTS) {
-        return await this.saveTexts();
-      }
-      const isPrimarySettigns = popupStore.tab === SettingsTab.GENERAL;
-
-      const data = isPrimarySettigns
-        ? omit(["keybindings"], this.settings)
-        : { keybindings: this.settings.keybindings };
-
-      this.saving = true;
-      try {
-        await axios.post("/api/settings", data);
-        messager.success("Settings saved");
-      } catch (error) {
-        messager.handleError(error, "Error saving settings");
-      } finally {
-        this.saving = false;
+      const currentTab = popupStore.tab;
+      const detectionStore = useDetectionStore();
+      switch (currentTab) {
+        case SettingsTab.GENERAL:
+          return this.generalSettings;
+        case SettingsTab.KEYBINDINGS:
+          return this.keybindings;
+        case SettingsTab.TTS:
+          return this.tts;
+        case SettingsTab.MODELS:
+          return {
+            detection: detectionStore.data,
+          };
+        default:
+          return null;
       }
     },
-    async saveTexts() {
-      const messager = useMessagerStore();
-
-      this.saving = true;
-      try {
-        await axios.post("/api/settings", {
-          texts: this.settings.texts.filter((item) => !!item.text.length),
-          default_tts_language: this.settings.default_tts_language,
-        });
-
-        messager.success("Settings saved");
-      } catch (error) {
-        messager.handleError(error, "Error saving settings");
-      } finally {
-        this.saving = false;
+    isSaveButtonDisabled() {
+      const popupStore = usePopupStore();
+      const currentTab = popupStore.tab;
+      const detectionStore = useDetectionStore();
+      switch (currentTab) {
+        case SettingsTab.MODELS:
+          return isObjectEquals(detectionStore.data, this.data.detection);
+        default:
+          return false;
       }
     },
-    async saveAllSettings() {
+    async saveSettings() {
+      const data = this.getCurrentTabSettings();
+
       const messager = useMessagerStore();
-      this.saving = true;
-      try {
-        await axios.post("/api/settings", this.settings);
-        messager.success("Settings saved");
-      } catch (error) {
-        messager.handleError(error, "Error saving settings");
-      } finally {
-        this.saving = false;
+      if (!data) {
+        messager.error("Nothing to save");
+        return;
       }
+      await this.saveData(data);
     },
 
     async saveData(data: Partial<Settings>) {
@@ -234,7 +231,6 @@ export const useStore = defineStore("settings", {
       this.saving = true;
       try {
         await axios.post("/api/settings", data);
-        messager.success("Settings saved");
       } catch (error) {
         messager.handleError(error, "Error saving settings");
       } finally {
@@ -248,8 +244,8 @@ export const useStore = defineStore("settings", {
       msgParams?: ShowMessageTypeProps | string,
     ) {
       const messager = useMessagerStore();
-      const nextValue = !this.settings[prop];
-      this.settings[prop] = nextValue;
+      const nextValue = !this.data[prop];
+      this.data[prop] = nextValue;
       if (showMsg) {
         messager.info(`${prop}: ${nextValue}`, msgParams);
       }
@@ -258,13 +254,10 @@ export const useStore = defineStore("settings", {
     async speakText(text: string, language?: string) {
       const messager = useMessagerStore();
       try {
-        const response = await axios.post(`/api/play-tts`, {
+        await axios.post(`/api/tts/speak`, {
           text: text,
           lang: language,
         });
-        const data = response.data;
-        const msg = data.status ? `Speaking: ${text}` : "Not speaking";
-        messager.info(msg);
       } catch (error) {
         messager.handleError(error);
       }
@@ -273,18 +266,14 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       if (!this.text) {
         const item =
-          this.settings.texts.find((item) => item.default) ||
-          this.settings.texts[0];
+          this.data.texts.find((item) => item.default) || this.data.texts[0];
         this.text = item.text;
         this.language = item.language;
-        messager.info(
-          `Text to speech: ${this.text}, language: ${this.language}`,
-        );
         return;
       }
       const nextTrack = cycleValue(
         (v) => v.text === this.text,
-        this.settings.texts,
+        this.data.texts,
         direction,
       );
       if (!nextTrack) {
@@ -294,7 +283,6 @@ export const useStore = defineStore("settings", {
 
       this.text = nextTrack.text;
       this.language = nextTrack.language;
-      messager.info(`Text to speech: ${this.text}, language: ${this.language}`);
     },
     nextText() {
       this.cycleText(1);

@@ -1,151 +1,161 @@
 import os
-from time import sleep
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, TypeVar, Union
+
+from app.util.file_util import Dict
+from app.util.logger import Logger
+
+T = TypeVar('T')
+
+logger = Logger(__name__)
 
 
-class fileDB(object):
-    """A file based database.
+@dataclass
+class FileDB(object):
+    """
+    A lightweight file-based key-value database.
 
-    A file based database, read and write arguments in the specific file.
+    This class provides an easy way to store, retrieve, and manage key-value
+    pairs in a simple text file. It's convenient for handling configuration
+    files and calibration values for robots or similar applications.
+
+    Example file format:
+        # robot-hat configuration file
+        speed = 100
+        calibration = 1.23
     """
 
-    def __init__(self, db: str):
-        """
-        Init the db_file is a file to save the datas.
+    db: str
 
-        :param db: the file to save the datas.
-        :type db: str
-        :param mode: the mode of the file.
-        :type mode: str
-        :param owner: the owner of the file.
-        :type owner: str
+    def __post_init__(self):
         """
+        Ensures that the database file exists when the class is initialized.
 
-        self.db = db
-        # Check if db_file is existed, otherwise create one
-        if self.db != None:
-            self.file_check_create(db)
-        else:
+        If the file doesn't exist, it will be created, along with necessary
+        parent directories. A default comment header will also be written.
+        """
+        if not self.db:
             raise ValueError("db: Missing file path parameter.")
+        FileDB.file_check_create(self.db)
 
+    @staticmethod
     def file_check_create(
-        self,
-        file_path: str,
-    ):
+        file: str,
+    ) -> None:
         """
-        Check if file is existed, otherwise create one.
+        Ensures the specified file exists.
 
-        :param file_path: the file to check
-        :type file_path: str
-        :param mode: the mode of the file.
-        :type mode: str
-        :param owner: the owner of the file.
-        :type owner: str
+        If the file doesn't exist, it creates the file and its parent directories
+        as needed. Adds a simple header to newly created files. If something
+        already exists with the same name but it's a directory, raises an error.
         """
-        dir = file_path.rsplit("/", 1)[0]
+        logger.debug("Checking file %s", file)
+        file_path = Path(file)
+        if file_path.exists():
+            if file_path.is_dir():
+                raise IsADirectoryError(
+                    f"Could not create file %s, there is a folder with the same name",
+                    file,
+                )
+        else:
+            try:
+                file_path.parent.mkdir(exist_ok=True, parents=True)
+                file_path.write_text(
+                    "# robot-hat config and calibration value of robots\n\n"
+                )
+            except Exception as e:
+                logger.error("Error creating file", exc_info=True)
+                raise e
+
+    def get(self, name: str, default_value: T) -> Union[T, str]:
+        """
+        Retrieves the value for a given key from the database file.
+
+        If the key is missing, returns the provided default value instead.
+        Skips malformed lines (those without an "=").
+
+        Example:
+            speed = db.get("speed", 50)  # Returns 50 if "speed" isn't present.
+        """
+        for line in self.parse_file():
+            if "=" not in line:
+                logger.warning("Skipping malformed line: '%s'", line)
+                continue
+            key, _, val = line.partition("=")
+            if key.strip() == name:
+                return val.replace(" ", "").strip()
+        return default_value
+
+    def parse_file(self) -> List[str]:
+        """
+        Reads and parses the database file, ignoring comments and blank lines.
+
+        Returns a list of lines with the format "key = value". Lines that are
+        empty or begin with "#" are excluded.
+        """
         try:
-            if os.path.exists(file_path):
-                if not os.path.isfile(file_path):
-                    print("Could not create file, there is a folder with the same name")
-                    return
-            else:
-                if os.path.exists(dir):
-                    if not os.path.isdir(dir):
-                        print(
-                            "Could not create directory, there is a file with the same name"
-                        )
-                        return
-                else:
-                    os.makedirs(name=dir, mode=0o754, exist_ok=True)
-                    sleep(0.001)
-
-                with open(file_path, "w") as f:
-                    f.write("# robot-hat config and calibration value of robots\n\n")
-
-        except Exception as e:
-            raise (e)
-
-    def get(self, name: str, default_value=None):
-        """
-        Get value with data's name
-
-        :param name: the name of the arguement
-        :type name: str
-        :param default_value: the default value of the arguement
-        :type default_value: str
-        :return: the value of the arguement
-        :rtype: str
-        """
-        try:
-            value = None  # Initialize value to handle potential unbound variable
             with open(self.db, "r") as conf:
-                lines = conf.readlines()
-
-            file_len = len(lines) - 1
-            flag = False
-
-            for i in range(file_len):
-                if lines[i][0] != "#":
-                    if lines[i].split("=")[0].strip() == name:
-                        value = lines[i].split("=")[1].replace(" ", "").strip()
-                        flag = True
-                        break
-
-            return value if flag else default_value
-
+                return [
+                    line.strip() for line in conf if line.strip() and line[0] != "#"
+                ]
         except FileNotFoundError:
             with open(self.db, "w") as conf:
                 conf.write("")
-            return default_value
-        except Exception:
-            return default_value
+            return []
 
-    def set(self, name, value):
+    def set(self, name: str, value: str) -> None:
         """
-        Set value by with name. Or create one if the arguement does not exist
+        Sets or updates a key-value pair in the database file.
 
-        :param name: the name of the arguement
-        :type name: str
-        :param value: the value of the arguement
-        :type value: str
+        If the key already exists, its value will be updated; otherwise, the
+        key-value pair will be appended to the end of the file. If the file
+        write operation fails, the original file remains unchanged because of
+        the atomic file-writing mechanism.
+
+        Raises a ValueError if the key is empty, contains "=", or the value
+        contains newline characters.
         """
-        # Read the file
-        conf = open(self.db, "r")
-        lines = conf.readlines()
-        conf.close()
+        if not name or "=" in name:
+            raise ValueError(f"Invalid name: '{name}' cannot be empty or contain '='")
+        if "\n" in value:
+            raise ValueError("Value cannot contain newline characters")
+
+        lines = []
+
+        with open(self.db, "r") as conf:
+            lines = conf.readlines()
+
         file_len = len(lines) - 1
         flag = False
-        # Find the arguement and set the value
+
         for i in range(file_len):
             if lines[i][0] != "#":
                 if lines[i].split("=")[0].strip() == name:
-                    lines[i] = "%s = %s\n" % (name, value)
+                    lines[i] = f"{name} = {value}\n"
                     flag = True
-        # If arguement does not exist, create one
+
         if not flag:
-            lines.append("%s = %s\n\n" % (name, value))
+            lines.append(f"{name} = {value}\n")
 
-        # Save the file
-        conf = open(self.db, "w")
-        conf.writelines(lines)
-        conf.close()
+        with open(f"{self.db}.tmp", "w") as tmp:
+            tmp.writelines(lines)
 
-    def get_all_as_json(self):
+        os.rename(f"{self.db}.tmp", self.db)
+
+    def get_all_as_dict(self) -> Dict[str, str]:
         """
-        Get all key-value pairs as a JSON string.
+        Returns all key-value pairs from the database file as a dictionary.
 
-        :return: the key-value pairs in JSON format
-        :rtype: str
+        Keys and values are stripped of extraneous whitespace. Malformed lines
+        are skipped, and comments are ignored.
+
+        Example:
+            config = db.get_all_as_dict()
+            print(config)  # {'speed': '100', 'calibration': '1.23'}
         """
-        try:
-            data = {}
-            with open(self.db, "r") as conf:
-                lines = conf.readlines()
-
-            for line in lines:
-                if line.strip() and line[0] != "#":
-                    key, value = line.split("=")
-                    data[key.strip()] = value.replace(" ", "").strip()
-
-            return data
-        except Exception as e:
-            raise Exception(f"Failed to parse database file: {e}")
+        data = {}
+        for line in self.parse_file():
+            key, _, val = line.partition("=")
+            data[key.strip()] = val.replace(" ", "").strip()
+        return data

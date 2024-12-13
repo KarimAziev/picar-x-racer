@@ -12,9 +12,6 @@ PX_PHOTO_DIR = getenv("PX_PHOTO_DIR", "%s/Pictures/picar-x-racer/" % USER_HOME)
 # where to save recordered videos
 PX_VIDEO_DIR = getenv("PX_VIDEO_DIR", "%s/Videos/picar-x-racer/" % USER_HOME)
 
-# where to save uploaded sounds
-PX_SOUND_DIR = getenv("PX_SOUND_DIR", "%s/Music/picar-x-racer/sounds/" % USER_HOME)
-
 # where to save uploaded music
 PX_MUSIC_DIR = getenv("PX_MUSIC_DIR", "%s/Music/picar-x-racer/music/" % USER_HOME)
 
@@ -29,7 +26,7 @@ DATA_DIR = path.join(PROJECT_DIR, "data")
 
 DEFAULT_USER_SETTINGS = resolve_absolute_path("user_settings.json", PROJECT_DIR)
 DEFAULT_MUSIC_DIR = resolve_absolute_path("music", PROJECT_DIR)
-DEFAULT_SOUND_DIR = resolve_absolute_path("sounds", PROJECT_DIR)
+DEFAULT_SOUNDS_DIR = resolve_absolute_path("sounds", PROJECT_DIR)
 
 FRONTEND_FOLDER = resolve_absolute_path("frontend", PROJECT_DIR)
 STATIC_FOLDER = resolve_absolute_path("frontend/dist/assets", PROJECT_DIR)
@@ -42,6 +39,7 @@ FONT_PATH = resolve_absolute_path(
 MUSIC_CACHE_FILE_PATH = path.join(CONFIG_USER_DIR, "picar-x-racer/music_cache.json")
 
 PICARX_CONFIG_DIR = path.join(CONFIG_USER_DIR, "picar-x")
+ROBOT_HAT_CONF = path.join(CONFIG_USER_DIR, "robot-hat/robot-hat.conf")
 PICARX_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "picar-x.conf")
 PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
 

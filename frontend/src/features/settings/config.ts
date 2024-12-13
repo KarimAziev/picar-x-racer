@@ -1,51 +1,53 @@
-export const toggleableSettings = {
-  fullscreen: {
-    description: "Toggle fullscreen",
-    label: "Fullscreen",
-  },
+import { generateMultiplesOf32 } from "@/util/number";
+import { numberSequence } from "@/util/cycleValue";
+import { SettingsTab } from "@/features/settings/enums";
+import { OverlayStyle } from "@/features/detection";
+import { startCase } from "@/util/str";
+
+export const visibilitySettings = {
   text_info_view: {
-    description: "Toggles text information on or off",
-    label: "Show gauges view",
+    description:
+      "Toggles text information (camera tilt, camera pan, servo dir, etc.) on or off",
+    label: "Gauges view",
   },
   speedometer_view: {
-    label: "Show speedometer",
+    label: "Speedometer",
     description: "Toggle the speedometer display on or off",
   },
   car_model_view: {
     description: "Toggles the 3D view of the car on or off",
-    label: "Show 3D view of the car",
-  },
-  virtual_mode: {
-    description: "Toggle replacing camera view with a 3D model",
-    label: "Hide camera and focus on 3D model",
-  },
-  auto_download_photo: {
-    description: "Toggle auto-download of captured photos",
-    label: "Auto-download of captured photos",
-  },
-  auto_download_video: {
-    description: "Toggle auto-download of recorded videos",
-    label: "Auto-download of recordered videos",
-  },
-  auto_measure_distance_mode: {
-    description: "Toggle auto-measure distance mode",
-    label: "Auto-measure distance mode",
-  },
-  autoplay_music: {
-    description: "Toggle auto playing music",
-    label: "Autoplay music",
+    label: "3D view of the car",
   },
   text_to_speech_input: {
-    description: "Toggle showing input for text to speech",
-    label: "Show text to speech input",
+    description: "Toggle showing input for text to speech on the main screen",
+    label: "Text to speech input",
   },
   show_player: {
     description: "Toggle showing music player",
-    label: "Show music player",
+    label: "Music player",
   },
-  video_feed_render_fps: {
-    description: "Toggle rendering FPS",
-    label: "Show FPS",
+  show_object_detection_settings: {
+    description: "Toggle showing object detection panel on the main screen",
+    label: "Object detection panel",
+  },
+};
+
+export const behaviorSettings = {
+  auto_download_photo: {
+    description: "Toggle auto-download of captured photos",
+    label: "Auto-download photos",
+  },
+  auto_download_video: {
+    description: "Toggle auto-download of recorded videos",
+    label: "Auto-download videos",
+  },
+  auto_measure_distance_mode: {
+    description: "Toggle auto-measuring with ultrasonic",
+    label: "Auto-measure distance",
+  },
+  virtual_mode: {
+    description: "Toggle replacing camera view with a 3D model",
+    label: "Virtual 3D mode",
   },
 };
 
@@ -126,3 +128,23 @@ export const ttsLanguages = [
   { label: "Chinese (Simplified)", value: "zh-cn" },
   { label: "Chinese (Traditional)", value: "zh-tw" },
 ];
+
+export const saveableTabs = {
+  [SettingsTab.GENERAL]: true,
+  [SettingsTab.KEYBINDINGS]: false,
+  [SettingsTab.CALIBRATION]: false,
+  [SettingsTab.TTS]: false,
+  [SettingsTab.PHOTOS]: false,
+  [SettingsTab.MODELS]: true,
+};
+
+export const imgSizeOptions = generateMultiplesOf32(2000);
+export const overlayStyleOptions = Object.values(OverlayStyle).map((value) => ({
+  value,
+  label: startCase(value),
+}));
+
+export const videoQualityOptions = numberSequence(10, 100, 10).map((value) => ({
+  value: value,
+  label: `${value}`,
+}));

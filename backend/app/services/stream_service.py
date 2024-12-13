@@ -1,5 +1,6 @@
 import asyncio
 
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.services.camera_service import CameraService
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -15,7 +16,6 @@ class StreamService(metaclass=SingletonMeta):
 
     Attributes:
         camera_service (CameraService): An instance of `CameraService` to manage camera operations.
-        server (Optional[websockets.server.Serve]): The WebSocket server instance.
     """
 
     def __init__(self, camera_service: CameraService):
@@ -24,12 +24,10 @@ class StreamService(metaclass=SingletonMeta):
 
         Args:
             camera_service (CameraService): An instance of `CameraService` to manage camera operations.
-            **kwargs: Additional keyword arguments passed to the base `Logger` class.
         """
         self.logger = Logger(name=__name__)
 
         self.camera_service = camera_service
-        self.server = None
         self.active_clients = 0
 
     async def generate_video_stream_for_websocket(self, websocket: WebSocket):
@@ -44,39 +42,31 @@ class StreamService(metaclass=SingletonMeta):
             Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
         """
 
-        await self.camera_service.start_camera_and_wait_for_stream_img()
         skip_count = 0
-        log_count = 0
-        try:
-            while True:
-                encoded_frame = await self.camera_service.generate_frame(log_count < 3)
-                if log_count < 3:
-                    log_count += 1
-                if encoded_frame:
-                    try:
-                        if websocket.application_state == WebSocketState.CONNECTED:
-                            await websocket.send_bytes(encoded_frame)
-                        else:
-                            self.logger.info(
-                                f"WebSocket connection state is no longer connected: {websocket.client}"
-                            )
-                            break
-                    except (
-                        WebSocketDisconnect,
-                        ConnectionResetError,
-                    ):
+        while True:
+            encoded_frame = await asyncio.to_thread(self.camera_service.generate_frame)
+            if encoded_frame:
+                skip_count = 0
+                try:
+                    if websocket.application_state == WebSocketState.CONNECTED:
+                        await websocket.send_bytes(encoded_frame)
+                    else:
                         self.logger.info(
-                            f"WebSocket connection lost: {websocket.client}"
+                            f"WebSocket connection state is no longer connected: {websocket.client}"
                         )
                         break
-                else:
-                    if skip_count < 1:
-                        self.logger.debug("No encoded frame, waiting.")
-                        skip_count += 1
+                except (
+                    WebSocketDisconnect,
+                    ConnectionResetError,
+                ):
+                    self.logger.info(f"WebSocket connection lost: {websocket.client}")
+                    break
+            else:
+                if skip_count < 1:
+                    self.logger.debug("No encoded frame, waiting.")
+                    skip_count += 1
 
-                await asyncio.sleep(0)
-        except Exception as e:
-            self.logger.log_exception("Error in stream", e)
+            await asyncio.sleep(0)
 
     async def video_stream(self, websocket: WebSocket):
         """
@@ -97,15 +87,26 @@ class StreamService(metaclass=SingletonMeta):
         self.active_clients += 1
 
         try:
+            await self.camera_service.start_camera_and_wait_for_stream_img()
             await self.generate_video_stream_for_websocket(websocket)
+        except (CameraDeviceError, CameraNotFoundError) as e:
+            self.logger.error("Error starting camera %s", e, exc_info=True)
+            if websocket.application_state == WebSocketState.CONNECTED:
+                await websocket.close()
         except WebSocketDisconnect:
             self.logger.info(f"WebSocket Disconnected {websocket.client}")
-        except Exception as e:
-            self.logger.log_exception("An error occurred", e)
+        except asyncio.CancelledError:
+            self.logger.info("Gracefully shutting down WebSocket stream connection")
+        except Exception:
+            self.logger.log_exception("An error occurred in video stream")
         finally:
             self.active_clients -= 1
-            self.logger.info(
-                f"WebSocket connection closed: {websocket.client}, Active clients: {self.active_clients}"
-            )
             if self.active_clients == 0:
+                self.logger.info(
+                    f"WebSocket connection closed: {websocket.client}, Active clients: {self.active_clients}"
+                )
                 self.camera_service.stop_camera()
+            else:
+                self.logger.info(
+                    f"WebSocket connection closed: {websocket.client}, Active clients: {self.active_clients}"
+                )

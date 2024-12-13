@@ -1,6 +1,6 @@
+import axios from "axios";
 import { defineStore } from "pinia";
 import { retrieveError } from "@/util/error";
-import axios from "axios";
 
 export interface State {
   loading?: boolean;

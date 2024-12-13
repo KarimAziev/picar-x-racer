@@ -2,7 +2,8 @@
   <Tabs v-model:value="popupStore.tab" class="robo-tabs" lazy>
     <TabList>
       <Tab :value="SettingsTab.GENERAL">General</Tab>
-      <Tab :value="SettingsTab.KEYBINDINGS">Keybindings</Tab>
+      <Tab :value="SettingsTab.MODELS">Models</Tab>
+      <Tab :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">Keybindings</Tab>
       <Tab :value="SettingsTab.CALIBRATION">Calibration</Tab>
       <Tab :value="SettingsTab.PHOTOS">Photos</Tab>
       <Tab :value="SettingsTab.TTS">TTS</Tab>
@@ -13,24 +14,29 @@
           <GeneralPanel />
         </ScrollPanel>
       </TabPanel>
-      <TabPanel :value="SettingsTab.KEYBINDINGS">
+      <TabPanel :value="SettingsTab.MODELS">
+        <ScrollPanel class="wrapper">
+          <ModelsPanel />
+        </ScrollPanel>
+      </TabPanel>
+      <TabPanel :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">
         <ScrollPanel class="wrapper">
           <KeybindingsPanel />
         </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.CALIBRATION">
         <ScrollPanel class="wrapper">
-          <Calibration />
+          <CalibrationPanel />
         </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.PHOTOS">
         <ScrollPanel class="wrapper">
-          <Images />
+          <PhotosPanel />
         </ScrollPanel>
       </TabPanel>
       <TabPanel :value="SettingsTab.TTS">
         <ScrollPanel class="wrapper">
-          <TTSSettings />
+          <TTSPanel />
         </ScrollPanel>
       </TabPanel>
     </TabPanels>
@@ -43,15 +49,18 @@ import TabList from "primevue/tablist";
 import Tab from "primevue/tab";
 import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
-import TTSSettings from "@/features/settings/components/TTSSettings.vue";
-import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vue";
-import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
 import { SettingsTab } from "@/features/settings/enums";
 import { usePopupStore } from "@/features/settings/stores";
-import Calibration from "@/features/settings/components/Calibration.vue";
-import Images from "@/features/settings/components/Images.vue";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import TTSPanel from "@/features/settings/components/TTSPanel.vue";
+import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vue";
+import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
+import CalibrationPanel from "@/features/settings/components/CalibrationPanel.vue";
+import PhotosPanel from "@/features/settings/components/PhotosPanel.vue";
+import ModelsPanel from "@/features/settings/components/ModelsPanel.vue";
 
 const popupStore = usePopupStore();
+const isMobile = useDeviceWatcher();
 </script>
 <style scoped lang="scss">
 .robo-tabs {
@@ -60,8 +69,16 @@ const popupStore = usePopupStore();
 .wrapper {
   width: 98%;
   margin: auto;
-  max-width: 600px;
-  min-width: 340px;
+
+  @media (min-width: 360px) {
+    width: 300px;
+  }
+
+  @media (min-width: 360px) {
+    max-width: 600px;
+    min-width: 340px;
+    width: 350px;
+  }
 
   @media (min-width: 480px) {
     width: 450px;

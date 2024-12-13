@@ -7,6 +7,7 @@ from app.config.platform import is_os_raspberry
 def setup_env():
 
     os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio" if is_os_raspberry else "mock"
+    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
     parser = argparse.ArgumentParser(description="Run the application.")
 

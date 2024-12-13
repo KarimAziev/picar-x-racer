@@ -3,22 +3,24 @@ import os
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
-main_router = APIRouter()
+router = APIRouter()
 
 
-@main_router.get("/", response_class=FileResponse)
+@router.get("/", response_class=FileResponse)
 def root(request: Request):
     """
     Serve the root HTML page of the frontend application.
 
     Args:
+    --------------
     - request (Request): The incoming request object.
 
     Returns:
-
-        FileResponse: The response containing the `index.html` file.
+    --------------
+    FileResponse: The response containing the `index.html` file.
 
     Raises:
+    --------------
     - ValueError: If the template folder path is invalid.
     - FileNotFoundError: If the `index.html` file is not found in the template folder.
     """
@@ -35,21 +37,24 @@ def root(request: Request):
     return file_path
 
 
-@main_router.get("/{path:path}")
+@router.get("/{path:path}")
 def catch_all(request: Request, path: str):
     """
     Serve any requested file or fallback to the `index.html` for the frontend application.
 
     Args:
+    --------------
     - request (Request): The incoming request object.
     - path (str): The path of the requested file.
 
     Returns:
-        `FileResponse`: The response containing the requested file or the `index.html` file.
+    --------------
+    `FileResponse`: The response containing the requested file or the `index.html` file.
 
     Raises:
+    --------------
 
-        HTTPException (404): If the requested file or `index.html` is not found.
+    HTTPException (404): If the requested file or `index.html` is not found.
     """
     template_folder = request.app.state.template_folder
     file_path = os.path.join(template_folder, path)

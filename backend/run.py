@@ -1,4 +1,3 @@
-import multiprocessing as mp
 import os
 import time
 
@@ -6,6 +5,8 @@ from app.util.proc import terminate_processes
 
 
 def main():
+    import multiprocessing as mp
+
     try:
         mp.set_start_method("spawn")
     except RuntimeError:
@@ -34,10 +35,15 @@ def main():
 
     reset_mcu_sync()
     main_app_process = mp.Process(
-        target=start_main_app, args=(px_main_app_port, px_log_level)
+        target=start_main_app,
+        args=(px_main_app_port, px_log_level),
+        name="px_main_server",
     )
     websocket_app_process = mp.Process(
-        target=start_control_app, args=(px_control_app_port, px_log_level), daemon=True
+        target=start_control_app,
+        args=(px_control_app_port, px_log_level),
+        daemon=True,
+        name="px_control_server",
     )
 
     main_app_process.start()
@@ -59,13 +65,16 @@ def main():
 
         def restart_app():
             nonlocal main_app_process, websocket_app_process
-            terminate_processes([main_app_process, websocket_app_process])
+            terminate_processes([websocket_app_process, main_app_process])
             main_app_process = mp.Process(
-                target=start_main_app, args=(px_main_app_port, px_log_level)
+                target=start_main_app,
+                args=(px_main_app_port, px_log_level),
+                name="px_main_server",
             )
             websocket_app_process = mp.Process(
                 target=start_control_app,
                 args=(px_control_app_port, px_log_level),
+                name="px_control_server",
                 daemon=True,
             )
             main_app_process.start()
@@ -75,7 +84,9 @@ def main():
         app_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "app")
 
         ignore_patterns = ['*.log', 'tmp/*', ".venv", ".pyc", "temp.py"]
-        reload_handler = ReloadHandler(restart_app, ignore_patterns=ignore_patterns)
+        reload_handler = ReloadHandler(
+            restart_app, ignore_patterns=ignore_patterns, debounce_duration=2
+        )
         observer = Observer()
         observer.schedule(
             reload_handler,
@@ -108,7 +119,7 @@ def main():
             frontend_dev_process.terminate()
             frontend_dev_process.join()
             frontend_dev_process.close()
-        terminate_processes([main_app_process, websocket_app_process])
+        terminate_processes([websocket_app_process, main_app_process])
 
 
 if __name__ == '__main__':

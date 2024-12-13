@@ -103,6 +103,10 @@ onMounted(() => {
   color: var(--color-text);
 }
 
+.warning {
+  color: var(--color-warn);
+}
+
 .error {
   color: var(--color-red);
   .caret {

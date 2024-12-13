@@ -1,263 +1,99 @@
+import os
 import re
 import subprocess
-import time
-from os import path
-from typing import Any, Optional
+from typing import Union
 
-from app.adapters.robot_hat.music import Music
-from app.util.constrain import constrain
+from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+from pydub import AudioSegment
 
-try:
-    from google_speech import Speech
-
-    google_speech_available = True
-except ImportError:
-    google_speech_available = False
-    Speech = None
+debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
 
 
 class AudioService(metaclass=SingletonMeta):
     """
-    The AudioService class provides methods for controlling audio playback,
-    including music, sounds, and text-to-speech functionality.
+    Service to handle audio playback volume adjustments and interactions with audio files.
 
-    It ensures that only one instance of the class exists, using the Singleton design pattern.
+    This class is responsible for interacting with the system's `amixer` tool to
+    retrieve and modify the playback device's volume level.
     """
 
     def __init__(self):
-        """
-        Initializes the AudioService instance.
-
-        Attributes:
-            music (Music): An instance of the Music class for handling music operations.
-            logger (Logger): An instance of the Logger class for logging information.
-            google_speech_available (bool): Indicates whether the google_speech module is available.
-            sound_playing (bool): A flag indicating if a sound is currently playing.
-            sound_end_time (float or None): The time when the currently playing sound will end, or None if no sound is playing.
-        """
-        self.music = Music()
         self.logger = Logger(__name__)
-        self.google_speech_available = google_speech_available
-        self.music.music_set_volume(100)
-        self.sound_playing = False
-        self.sound_end_time = None
-        self.last_response: Optional[dict[str, Any]] = None
-        self.last_track: Optional[str] = None
 
-    def get_amixer_volume(self):
+    def get_audio_duration(self, filename: str):
+        """
+        Get the duration of an audio file in seconds.
+        """
+        audio = AudioSegment.from_file(filename)
+        secs = len(audio) / 1000.0
+        return secs
+
+    def get_volume(self):
+        """
+        Retrieves the current playback volume level.
+
+        This method uses the `amixer` tool to fetch the volume of the "Master" device.
+
+        Returns:
+        --------------
+        - `int`: The current volume as a percentage.
+
+        Raises:
+        --------------
+        - `AmixerNotInstalled`: If `amixer` is not installed on the system.
+        - `AudioVolumeError`: If an error occurs while retrieving the volume.
+        """
         try:
-            result = subprocess.run(["amixer", "get", "Master"], stdout=subprocess.PIPE)
+            result = subprocess.run(
+                ["amixer", "get", "Master"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT if not debug else subprocess.DEVNULL,
+            )
 
             output = result.stdout.decode("utf-8")
 
             match = re.search(r"\[(\d+%)\]", output)
 
             if match:
-                return match.group(1)
+                return int(match.group(1).rstrip("%"))
             else:
                 return "Volume information not found"
-        except Exception as e:
-            return f"An error occurred: {e}"
+        except FileNotFoundError:
+            self.logger.warning("'amixer' is not installed on your system.")
+            raise AmixerNotInstalled("'amixer' is not installed on the system!")
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Amixer error:", e)
+            raise AudioVolumeError("Error getting the volume") from e
 
-    def set_volume(self, volume: int):
+    def set_volume(self, volume_percentage: Union[int, float]):
         """
-        Set the music volume.
+        Sets the playback volume to the specified level.
+
+        This method uses the `amixer` tool to adjust the volume of the "Master" device.
 
         Args:
-            volume (int): The volume level (0-100).
-
-        Returns:
-            None
-        """
-        self.music.music_set_volume(constrain(volume, 0, 100))
-
-    def get_volume(self):
-        """
-        Get the current music volume level.
-
-        Returns:
-            int: The current volume level (0-100).
-        """
-        return self.music.music_get_volume()
-
-    def text_to_speech(self, words: str, lang="en"):
-        """
-        Convert the given text to speech and play it.
-
-        Args:
-            words (str): The text to convert to speech.
-            lang (str): The language of the text. Default is "en".
-
-        Returns:
-            True or None
-        """
-
-        if google_speech_available and Speech is not None:
-            try:
-                self.logger.info(f"text-to-speech: {words} lang {lang}")
-                speech = Speech(words, lang)
-                speech.play()
-                return True
-            except Exception as e:
-                self.logger.log_exception("Error playing text-to-speech audio", e)
-        else:
-            self.logger.warning("google_speech is not available")
-
-    def play_music(
-        self, track_path: str, force: bool, start=0.0, volume: Optional[int] = None
-    ) -> dict[str, Any]:
-        """
-        Play a music track.
-
-        Args:
-            track_path (str): The file path of the music track to play.
-            force (bool): Whether to force the playback if something else is currently playing.
-
-        Returns:
-            dict: Information about the music track being played, including whether it is playing, its duration, and its file name.
+        --------------
+        - `volume_percentage` (int | float): Target volume (0 to 100).
 
         Raises:
-            FileNotFoundError: If the specified track file does not exist.
+        --------------
+        - `AmixerNotInstalled`: If `amixer` is not installed on the system.
+        - `AudioVolumeError`: If an error occurs while setting the volume.
         """
+        volume_percentage = int(max(0, min(100, volume_percentage)))
+        try:
+            subprocess.run(
+                ["amixer", "sset", "Master", f"{volume_percentage}%"],
+                check=True,
+                stdout=subprocess.PIPE if not debug else subprocess.DEVNULL,
+                stderr=subprocess.STDOUT if not debug else subprocess.DEVNULL,
+            )
 
-        if path.exists(track_path):
-            track = path.basename(track_path)
-            is_playing = self.is_sound_playing()
-            if is_playing and not force:
-                self.logger.info(f"Stopping currently playing music")
-                self.stop_music()
-                self.last_response = {
-                    "playing": self.is_music_playing(),
-                    "track": track,
-                    "start": start,
-                }
-                return self.last_response
-            else:
-                if is_playing:
-                    self.stop_music()
-                if self.is_sound_playing():
-                    self.logger.info(f"Stopping currently playing sound")
-                    self.stop_sound()
-                self.logger.info(f"Playing music {track_path}")
-                self.music.music_play(filename=track_path, start=start, volume=volume)
-                self.last_response = {
-                    "playing": self.is_music_playing(),
-                    "track": track,
-                    "start": start,
-                }
-                return self.last_response
-        else:
-            text = f"The music file {track_path} is missing."
-            self.logger.error(text)
-            raise FileNotFoundError(f"No such file or directory: '{text}'")
-
-    def get_music_play_status(self):
-        if self.last_response:
-            self.last_response["playing"] = self.is_music_playing()
-            self.last_response["start"] = self.get_music_pos()
-            return self.last_response
-
-    def stop_music(self):
-        """
-        Stop the currently playing music.
-
-        Returns:
-            None
-        """
-
-        self.music.music_stop()
-
-    def is_music_playing(self):
-        """
-        Check if music is currently playing.
-
-        Returns:
-            bool: True if music is playing, False otherwise.
-        """
-
-        return self.music.pygame.mixer.music.get_busy()
-
-    def get_music_pos(self):
-        miliseconds = self.music.pygame.mixer.music.get_pos()
-        seconds = max(0.0, miliseconds / 1000)
-        return seconds
-
-    def play_sound(self, sound_path: str, force: bool) -> dict[str, Any]:
-        """
-        Play a sound effect.
-
-        Args:
-            sound_path (str): The file path of the sound effect to play.
-            force (bool): Whether to force the playback if something else is currently playing.
-
-        Returns:
-            dict: Information about the sound effect being played, including whether it is playing, its duration, and its file name.
-
-        Raises:
-            FileNotFoundError: If the specified sound file does not exist.
-        """
-
-        if path.exists(sound_path):
-            duration = self.music.music_get_duration(sound_path)
-            track = path.basename(sound_path)
-            is_playing = self.is_sound_playing()
-            if is_playing and not force:
-                self.logger.info(f"Stopping currently playing sound")
-                self.stop_sound()
-                return {
-                    "playing": False,
-                    "duration": duration,
-                    "track": track,
-                }
-            else:
-                if is_playing and force:
-                    self.logger.info(f"Stopping currently playing sound")
-                    self.stop_sound()
-                if self.is_music_playing():
-                    self.logger.info(f"Stopping currently playing music")
-                    self.stop_music()
-                sound_length = self.music.sound_length(sound_path)
-                self.logger.info(
-                    f"Playing sound {sound_path} with duration {duration} and length {sound_length}"
-                )
-                self.music.sound_play_threading(sound_path)
-                self.sound_playing = True
-                self.sound_end_time = time.time() + sound_length
-                return {
-                    "playing": True,
-                    "duration": duration,
-                    "track": track,
-                }
-        else:
-            text = f"The sound file {sound_path} is missing."
-            self.logger.error(text)
-            raise FileNotFoundError(f"No such file or directory: '{text}'")
-
-    def is_sound_playing(self):
-        """
-        Check if a sound effect is currently playing.
-
-        Returns:
-            bool: True if a sound effect is playing, False otherwise.
-        """
-
-        if (
-            self.sound_playing
-            and self.sound_end_time is not None
-            and time.time() >= self.sound_end_time
-        ):
-            self.sound_playing = False
-        return self.sound_playing
-
-    def stop_sound(self):
-        """
-        Stop the currently playing sound effect.
-
-        Returns:
-            None
-        """
-
-        self.sound_playing = False
-        self.music.pygame.mixer.stop()
+        except FileNotFoundError:
+            self.logger.warning("'amixer' is not installed on your system.")
+            raise AmixerNotInstalled("'amixer' is not installed on the system!")
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Amixer error:", e)
+            raise AudioVolumeError("Amixer error") from e

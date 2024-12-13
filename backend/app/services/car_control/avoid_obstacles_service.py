@@ -21,9 +21,6 @@ class AvoidObstaclesService:
     async def toggle_avoid_obstacles_mode(self):
         """
         Toggles the mode for avoiding obstacles.
-
-        Args:
-            websocket (WebSocket): WebSocket connection instance.
         """
         now = datetime.now(timezone.utc)
         if (

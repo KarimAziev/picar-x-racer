@@ -11,13 +11,15 @@ export const objectKeysToOptions = (
   }));
 
 export const groupKeys = (
-  data: Partial<Record<ControllerActionName, string[]>>,
+  data: Partial<Record<ControllerActionName, string[] | null>>,
 ) =>
   Object.entries(data).reduce(
     (acc, [command, keys]) => {
-      keys.forEach((k) => {
-        acc[k] = command as ControllerActionName;
-      });
+      if (keys) {
+        keys.forEach((k) => {
+          acc[k] = command as ControllerActionName;
+        });
+      }
       return acc;
     },
     {} as Record<string, ControllerActionName>,

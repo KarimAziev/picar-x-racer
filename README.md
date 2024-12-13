@@ -1,3 +1,5 @@
+![Python](https://img.shields.io/badge/python-3.10-blue) ![Raspberry Pi](https://img.shields.io/badge/platform-RaspberryPi-lightgrey) ![License](https://img.shields.io/github/license/KarimAziev/picar-x-racer)
+
 # Picar-X Racer
 
 `Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games. It integrates both frontend and backend components to manage the car's movement, camera, object detection with AI, and other functionalities. The new interface includes a speedometer, live camera feed, and multimedia controls.
@@ -30,20 +32,27 @@
 >     - [Installation](#installation)
 >     - [Usage](#usage)
 >   - [Settings](#settings)
->     - [Default Keybindings](#default-keybindings)
->   - [Modes](#modes)
->     - [Object Detection](#object-detection)
->       - [Available Detection Modes](#available-detection-modes)
->         - [How to Use](#how-to-use)
+>     - [General](#general)
+>       - [Appearance](#appearance)
+>       - [Music](#music)
+>     - [Models](#models)
+>     - [Keybindings](#keybindings)
+>     - [Calibration](#calibration)
+>     - [Photos](#photos)
+>     - [Text-to-Speech (TTS)](#text-to-speech-tts)
+>   - [Object Detection](#object-detection)
+>     - [Flexible Model Management](#flexible-model-management)
+>       - [Configurable UI Features](#configurable-ui-features)
+>       - [How to Use](#how-to-use)
 >         - [Using Custom Models](#using-custom-models)
 >         - [Using Google Coral Accelerator](#using-google-coral-accelerator)
 >         - [Google Coral Troubleshooting](#google-coral-troubleshooting)
->     - [Video Enhancers](#video-enhancers)
->       - [Available Enhancement Modes](#available-enhancement-modes)
->       - [How to Use](#how-to-use-1)
->       - [Applications](#applications)
->     - [Avoid Obstacles Mode](#avoid-obstacles-mode)
->     - [Calibration Mode](#calibration-mode)
+>   - [Video Enhancers](#video-enhancers)
+>     - [Available Enhancement Modes](#available-enhancement-modes)
+>     - [How to Use](#how-to-use-1)
+>     - [Applications](#applications)
+>   - [Avoid Obstacles Mode](#avoid-obstacles-mode)
+>   - [Calibration Mode](#calibration-mode)
 >     - [3D Virtual Mode](#3d-virtual-mode)
 >   - [Development on Non-Raspberry OS](#development-on-non-raspberry-os)
 >     - [Backend](#backend)
@@ -150,142 +159,136 @@ After navigating to the control interface, you can customize your experience via
 
 ## Settings
 
-To access settings, press the icon in the top right corner, or press `h` to open the general settings, or `?` to open keybindings settings.
+The **Settings** menu enables you to manage every aspect of your Picar-X Racer experience. It provides extensive customization for multimedia, object detection, keybindings, and much more.
 
-![Alt text](./demo/settings-appearance.png)
+To access settings:
 
-- **Text-to-Speech**: Configure the default text that will be converted into speech.
-- **Default Sound**: Select a default sound from the available list to play during specific events.
-- **Sounds**: Upload new sound files and manage existing ones.
-- **Default Music**: Choose default background music from the available list.
-- **Music**: Upload new music files and manage existing ones.
-- **Photos**: Manage and download photos captured by the Picar-X camera.
-- **Keybindings**: Change all keybindings.
-- **Calibration**: Start calibration mode.
+1. Click on the settings icon in the top-left corner of the UI.
+2. Alternatively, press:
+   - `h` to open general settings.
+   - `?` to directly access the keybindings menu.
 
-![Alt text](./demo/settings-keybindings.png)
+Here are the key sections of the **Settings** menu:
 
-### Default Keybindings
+### General
 
-In the browser, you can control your Picar-X with the following keys (all the keys can be changed in the settings).
+![Settings Menu](./demo/settings-appearance.png)
 
-| Label                             | Default Key  | Description                                                                            |     |
-| --------------------------------- | ------------ | -------------------------------------------------------------------------------------- | --- |
-| Move Forward                      | `w`          | Accelerates the car forward.                                                           |     |
-| Move Backward                     | `s`          | Accelerates the car backward.                                                          |     |
-| Move Left                         | `a`          | Turns the car left.                                                                    |     |
-| Move Right                        | `d`          | Turns the car right.                                                                   |     |
-| Stop                              | `Space`      | Stops the car.                                                                         |     |
-| Camera Left                       | `ArrowLeft`  | Pans the camera to the left.                                                           |     |
-| Camera Down                       | `ArrowDown`  | Tilts the camera downward.                                                             |     |
-| Camera Right                      | `ArrowRight` | Pans the camera to the right.                                                          |     |
-| Camera Up                         | `ArrowUp`    | Tilts the camera upward.                                                               |     |
-| Decrease Max Speed                | `-`          | Decreases the car's maximum speed.                                                     |     |
-| Increase Max Speed                | `=`          | Increases the car's maximum speed.                                                     |     |
-| Measure Distance                  | `u`          | Measures the distance to obstacles.                                                    |     |
-| Play Music                        | `m`          | Plays music.                                                                           |     |
-| Play Next Music Track             | `2`          | Plays the next music track.                                                            |     |
-| Play Previous Music Track         | `1`          | Plays the previous music track.                                                        |     |
-| Play Sound                        | `o`          | Plays a sound.                                                                         |     |
-| Reset Camera Orientation          | `0`          | Resets the camera's pan and tilt to the default orientation.                           |     |
-| Say Text                          | `k`          | Speaks a predefined text.                                                              |     |
-| Next Text                         | `4`          | Selects the next saved text for speech without speaking.                               |     |
-| Previous Text                     | `3`          | Selects the previous saved text for speech without speaking.                           |     |
-| Take Photo                        | `t`          | Captures a photo using the camera.                                                     |     |
-| Next Enhance Mode                 | `e`          | Cycles to the next video enhancement mode. [See details](#video-enhancers)             |     |
-| Previous Enhance Mode             | `E`          | Cycles to the previous video enhancement mode. [See details](#video-enhancers)         |     |
-| Next Detect Mode                  | `r`          | Cycles to the next AI detection mode. [See details](#object-detection)                 |     |
-| Previous Detect Mode              | `R`          | Cycles to the previous AI detection mode. [See details](#object-detection)             |     |
-| Show Battery Voltage              | `b`          | Displays the current battery voltage.                                                  |     |
-| Toggle Fullscreen                 | `f`          | Enters or exits full-screen mode.                                                      |     |
-| Open Shortcuts Settings           | `?`          | Opens the settings menu for keyboard shortcuts.                                        |     |
-| Open General Settings             | `h`          | Opens the general settings menu.                                                       |     |
-| Increase Video Quality            | `.`          | Increases the video quality.                                                           |     |
-| Decrease Video Quality            | `,`          | Decreases the video quality.                                                           |     |
-| Increase Video Quality            | `PageUp`     | Increases the video quality.                                                           |     |
-| Decrease Video Quality            | `PageDown`   | Decreases the video quality.                                                           |     |
-| Toggle Speedometer View           | `N`          | Toggles the speedometer display on or off.                                             |     |
-| Toggle 3D Car View                | `M`          | Toggles the 3D view of the car on or off.                                              |     |
-| Toggle Text Info                  | `I`          | Toggles text information on or off.                                                    |     |
-| Toggle Calibration Mode           | `C`          | Toggles calibration mode. [See details](#calibration-mode)                             |     |
-| Toggle Auto Downloading Photo     | `P`          | Toggles automatic downloading of captured photos.                                      |     |
-| Toggle 3D Virtual Mode            | `*`          | Activates virtual mode. [See details](#3d-virtual-mode)                                |     |
-| Toggle Auto Measure Distance Mode | `U`          | Toggles automatic distance measurement.                                                |     |
-| Increase FPS                      | `F`          | Increases the frames per second.                                                       |     |
-| Decrease FPS                      | `S`          | Decreases the frames per second.                                                       |     |
-| Increase Dimension                | `]`          | Increases the display dimensions.                                                      |     |
-| Decrease Dimension                | `[`          | Decreases the display dimensions.                                                      |     |
-| Increase Volume                   | `PageUp`     | Increases the audio volume.                                                            |     |
-| Decrease Volume                   | `PageDown`   | Decreases the audio volume.                                                            |     |
-| Toggle Avoid Obstacles Mode       | `O`          | Toggles a mode to automatically avoid obstacles. [See details](#avoid-obstacles-mode). |     |
+#### Appearance
 
-## Modes
+- Toggle visibility of interface components: gauges, speedometer, 3D car view, object detection panel, etc.
+- Configure camera parameters: distance measure delay, video quality, and more.
+- Enable or disable advanced features, such as automatic photo downloading and distance measurement.
 
-### Object Detection
+#### Music
+
+**Music** and **Sound Settings**:
+
+- Upload background tracks or sound effects.
+- Manage existing multimedia files via the interface.
+- Choose default background music to be played while operating the car.
+
+### Models
+
+**Advanced Model Management**:
+Users can dynamically manage models directly through the settings menu, leveraging YOLO-based and custom-trained models for object detection. Here's what's possible:
+
+![Settings Menu](./demo/settings-models.png)
+
+- Load new models on the fly.
+- Export models using `export_model.py` and specify required parameters (e.g., resolution).
+- Switch between YOLO models (e.g., `YOLOv8`, `.pt`) or Google Coral `.tflite` models without restarting the server.
+
+**Model Customization**:
+
+On the **Quick Panel**, parameters like image size, detection confidence, and custom threshold values can be set directly:
+
+- **Threshold**: Maximum allowable time difference (in seconds) between the frame's timestamp and the detection's timestamp, determining the overlay accuracy.
+- **Style**: Choose how object detection visuals appear on the live camera feed:
+  - **Box**: Shows bounding boxes around detected objects.
+  - **Aim**: Displays crosshairs for minimalistic visualization.
+  - **Mixed**: Combines both styles.
+
+### Keybindings
+
+Customize control keys to suit your preferences. Every function of the car and interface can be mapped to specific keys.
+
+- Default values are provided, but you can edit any setting directly from this tab.
+- Alternatively, use the "Shortcuts Settings Menu" on screen (`?`).
+
+![Keybindings Menu](./demo/settings-keybindings.png)
+
+### Calibration
+
+**Calibration Mode** allows you to fine-tune angles for:
+
+- Servo direction
+- Camera pan
+- Camera tilt
+
+Switching to Calibration Mode remaps movement controls to allow for precise adjustments.
+
+### Photos
+
+![Settings Menu](./demo/settings-models.png)
+
+Manage and download photos taken with the Picar-X into your local environment.
+
+### Text-to-Speech (TTS)
+
+Set up predefined language packs and save custom lines of text for real-time conversion to speech. Ideal for interacting with the car dynamically.
+
+## Object Detection
+
+Leverage AI-powered object detection to enhance your driving and monitoring experience. The Picar-X Racer integrates object detection capabilities using custom and pretrained machine learning models, allowing users to identify and track specific objects in real time.
 
 ![Alt text](./demo/object-detection.png)
 
-Leverage AI-powered object detection modes to enhance your driving and monitoring experience. The Picar-X Racer integrates object detection capabilities using machine learning models to identify and track specific objects in real-time.
+The UI empowers users with advanced model management and detection configurations, enabling seamless customization of object detection tasks.
 
-#### Available Detection Modes
+### Flexible Model Management
 
-- **None**: Detection is disabled. The car streams the standard video feed without any overlays.
-- **All**: Detects all objects recognized by the AI model and overlays bounding boxes with labels.
-- **Person**: Specifically detects human figures and tracks them.
-- **Cat**: Specifically detects cats and tracks them.
+The object detection system now provides a highly customizable interface, allowing users to:
 
-##### How to Use
+- **Dynamically load and select YOLO-based models** directly through the interface. Models can be added and configured via the "Available Models" panel.
+- Set **confidence thresholds**, **detection styles**, and **labels** flexibly using the detection panel's UI settings.
+- Use **Google Coral Accelerator** for better performance on edge devices.
+- Export models with different image sizes and specify these sizes in the interface, removing the limitation on model export resolutions.
 
-- **Switch Detection Modes**: Use the keybindings `r` (Next Detect Mode) and `R` (Previous Detect Mode) to cycle through the available detection modes.
-- **Overlay Information**: When a detection mode is active, the live video feed will display bounding boxes and labels around the detected objects.
-- **Applications**: Use object detection to avoid obstacles, follow subjects, or gather data about the environment.
+By default, no model is preloaded. Users can select one via the dynamically generated UI menu.
 
-In the settings, you can specify the desired confidence level of the model.
+#### Configurable UI Features
+
+- **Quick Panel**: Directly adjust detection parameters on the screen, including:
+  - **Image size**: Specify the size (e.g., `320`, `640`, dependent on the model).
+  - **Confidence Threshold**: Set detection confidence (ranges from `0.0` to `1.0`).
+  - **Labels**: Enter specific object classes to detect or leave blank for all classes.
+  - **Style**: Choose how detection overlays are drawn on frames.
+    - **Box**: Bounding boxes with class labels and confidence.
+    - **Aim**: A minimalistic crosshair over detected objects.
+    - **Mixed**: A combination of box annotations and aim visuals.
+  - **Threshold**: Specify the maximum allowable time difference (in seconds) between the frame timestamp and detection timestamp for overlays.
+
+#### How to Use
+
+Follow these steps to enable real-time object detection:
+
+1. Access the **Detection Panel** from the left side of your interface.
+2. Use the **"Available Models"** dropdown to select or load your YOLO model.
+3. Configure the detection panel with appropriate parameters:
+   - **Image size**: Match the size your model expects (e.g., `320`, `640`).
+   - **Threshold**: Control overlay synchronization (e.g., `1.2` seconds).
+4. Select the **Style** you want for detection overlays and start detection.
+5. Toggle switch to activate detection.
+
+Output results, such as bounding boxes and labels, will immediately appear on the live camera feed.
 
 ##### Using Custom Models
 
-By default, the object detection feature uses the `YOLOv8n` model, which is optimized for real-time processing on devices like the Raspberry Pi. However, you can specify custom model paths using environment variables, enabling greater flexibility.
+Users can upload pre-trained YOLO `.pt` or TFLite models for Edge TPU via the UI. Simply click **Add Model**, browse for your file, and verify that the settings correspond to your model's requirements.
 
-**Using Terminal:**
-
-To set a custom model, specify the `YOLO_MODEL_PATH` environment variable with the path to the model.
-
-If you are using a **relative path**, your model path will be resolved to the `data/` directory within the project root directory. For example:
-
-```sh
-export YOLO_MODEL_PATH=my_custom_model.pt
-```
-
-This will resolve to:
-`/path-to-repo/data/my_custom_model.pt`
-
-On the other hand, **absolute paths** can be provided directly and will be used as-is:
-
-```sh
-export YOLO_MODEL_PATH=/path/to/your/custom_model.pt
-```
-
-Similarly, if using a **model optimized for the Coral Edge TPU**, you can set the `YOLO_MODEL_EDGE_TPU_PATH` environment variable to point to the `.tflite` model file:
-
-```sh
-export YOLO_MODEL_EDGE_TPU_PATH=/path/to/your/custom_edgetpu_model.tflite
-```
-
-**Using `.env` file**
-
-You can also configure these environment variables using a `.env` file in the backend directory of this repository. This method is useful for maintaining persistent configurations. See the [.env.example](./backend/.env.example) file provided in the repository for guidance.
-
-For example:
-
-```sh
-# In your .env file:
-YOLO_MODEL_PATH=my_custom_model.pt
-YOLO_MODEL_EDGE_TPU_PATH=/path/to/your_custom_edgetpu_model.tflite
-```
-
-Any relative model paths mentioned here will also be resolved within the `data/` directory.
-
----
+> [!NOTE]
+> Ensure the configuration (e.g., image size) matches your model during export or detection.
 
 ##### Using Google Coral Accelerator
 
@@ -399,11 +402,11 @@ sudo usermod -aG plugdev $USER
 
 Then reboot.
 
-### Video Enhancers
+## Video Enhancers
 
 Enhance your video streaming experience with real-time video enhancement modes.
 
-#### Available Enhancement Modes
+### Available Enhancement Modes
 
 - **None**: No enhancement is applied. The standard video feed is displayed.
 - **RoboCop Vision**: Simulates the visual effects seen in the RoboCop movies, including grayscale conversion, edge detection, scan lines, targeting reticles, and a heads-up display (HUD) overlay.
@@ -411,22 +414,22 @@ Enhance your video streaming experience with real-time video enhancement modes.
 - **Infrared Vision**: Highlights warmer areas in the image to simulate infrared imaging, useful for detecting heat sources.
 - **Ultrasonic Vision**: Creates a monochromatic sonar effect by applying edge detection and a bone color map, simulating ultrasonic imaging.
 
-#### How to Use
+### How to Use
 
 - **Switch Enhancement Modes**: Use the keybindings `e` (Next Enhance Mode) and `E` (Previous Enhance Mode) to cycle through the available video enhancer modes.
 - **Real-time Application**: Enhancements are applied in real-time to the live video feed, providing immediate visual feedback.
 
-#### Applications
+### Applications
 
 - **Improved Visibility**: Enhance video feed visibility in low-light conditions or high-contrast environments.
 - **Edge Detection for Navigation**: Use edge detection modes to assist with navigation and obstacle avoidance.
 - **Educational and Research**: Experiment with different image processing techniques for educational purposes or computer vision research.
 
-### Avoid Obstacles Mode
+## Avoid Obstacles Mode
 
 Activates a mode where the car automatically adjusts its movements to avoid obstacles based on distance measurements from a sensor.
 
-### Calibration Mode
+## Calibration Mode
 
 Activates a mode for calibration. In this mode, you can adjust the angle for servo direction, camera pan, and camera tilt. Some commands are remapped:
 

@@ -1,4 +1,7 @@
-class SingletonMeta(type):
+from abc import ABCMeta
+
+
+class SingletonMeta(ABCMeta):
     """
     This is a thread-safe implementation of Singleton.
     """

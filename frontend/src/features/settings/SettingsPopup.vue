@@ -3,7 +3,7 @@
     severity="secondary"
     icon="pi pi-bars"
     v-tooltip="'Open settings'"
-    @click="popupStore.isOpen = true"
+    @click="handleShow"
     class="drawer-button"
   />
   <Dialog
@@ -11,25 +11,20 @@
     header="Settings"
     dismissableMask
     modal
-    :closable="!popupStore.isKeyRecording"
-    :closeOnEscape="
-      !popupStore.isKeyRecording && !popupStore.isPreviewImageOpen
-    "
+    :closable="isClosable"
+    :closeOnEscape="isEscapeOnCloseEnabled"
   >
     <Settings />
     <div class="footer">
       <Button
+        v-if="isCurrentTabSaveable"
         type="button"
         label="Save"
+        :disabled="isSaveDisabled"
         :loading="isSaving"
         @click="saveSettings"
       ></Button>
-      <Button
-        type="button"
-        outlined
-        label="Close"
-        @click="popupStore.isOpen = false"
-      ></Button>
+      <Button type="button" outlined label="Close" @click="handleHide"></Button>
     </div>
   </Dialog>
 </template>
@@ -40,10 +35,30 @@ import Dialog from "primevue/dialog";
 import { computed } from "vue";
 import Settings from "@/features/settings/Settings.vue";
 import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
+import { saveableTabs } from "@/features/settings/config";
 
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 const isSaving = computed(() => settingsStore.saving);
+const isSaveDisabled = computed(() => settingsStore.isSaveButtonDisabled());
+
+const isClosable = computed(() => !popupStore.isKeyRecording);
+
+const isEscapeOnCloseEnabled = computed(
+  () => !popupStore.isKeyRecording && !popupStore.isPreviewImageOpen,
+);
+
+const isCurrentTabSaveable = computed(
+  () => popupStore.tab && saveableTabs[popupStore.tab],
+);
+
+const handleHide = () => {
+  popupStore.isOpen = false;
+};
+
+const handleShow = () => {
+  popupStore.isOpen = true;
+};
 
 const saveSettings = async () => {
   await settingsStore.saveSettings();

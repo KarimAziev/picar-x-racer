@@ -14,7 +14,8 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
 
     Args:
         frame (np.ndarray): The current video frame.
-        detection_result (Any): The detection results obtained from the detection process.
+        detection_result (Any): The detection results obtained from the detection process, e.g.:
+       [{'bbox': [114, 43, 435, 475], 'label': 'person', 'confidence': 0.9343094825744629}]
 
     Returns:
         np.ndarray: The frame with detection overlays.

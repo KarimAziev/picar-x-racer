@@ -1,17 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel
-
-
-class FilesResponse(BaseModel):
-    """
-    A model to represent a response containing a list of files.
-
-    Attributes:
-    - `files` (List[str]): A list of file names.
-    """
-
-    files: List[str]
+from pydantic import BaseModel, Field
 
 
 class UploadFileResponse(BaseModel):
@@ -23,8 +12,14 @@ class UploadFileResponse(BaseModel):
     - `filename` (str): The name of the uploaded file.
     """
 
-    success: bool
-    filename: str
+    success: bool = Field(
+        ..., description="Indicator of whether the upload was successful"
+    )
+    filename: str = Field(
+        ...,
+        description="The name of the uploaded file",
+        examples=["my-song.mp3"],
+    )
 
 
 class RemoveFileResponse(BaseModel):
@@ -36,8 +31,12 @@ class RemoveFileResponse(BaseModel):
     - `filename` (str): The name of the removed file.
     """
 
-    success: bool
-    filename: str
+    success: bool = Field(..., description="Indicator of whether the file was removed")
+    filename: str = Field(
+        ...,
+        description="The name of the removed file",
+        examples=["photo_2024-12-04-17-35-36.jpg"],
+    )
 
 
 class PhotoItem(BaseModel):
@@ -50,9 +49,21 @@ class PhotoItem(BaseModel):
     - `url` (str): Preview URL.
     """
 
-    name: str
-    path: str
-    url: str
+    name: str = Field(
+        ...,
+        description="The name of the filename without directory, but with extension",
+        examples=["photo_2024-12-04-17-35-36.jpg"],
+    )
+    path: str = Field(
+        ...,
+        description="Full path of file",
+        examples=["/home/pi/Pictures/picar-x-racer/photo_2024-12-04-17-35-36.jpg"],
+    )
+    url: str = Field(
+        ...,
+        description="Preview URL",
+        examples=["/api/files/preview/photo_2024-12-04-17-35-36.jpg"],
+    )
 
 
 class PhotosResponse(BaseModel):

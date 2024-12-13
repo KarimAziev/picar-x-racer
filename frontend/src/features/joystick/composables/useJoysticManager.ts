@@ -119,6 +119,7 @@ export const useJoystickControl = (
   };
 
   onMounted(() => {
+    controllerStore.initializeWebSocket();
     window.addEventListener("resize", restartJoysticManager);
     window.addEventListener("orientationchange", restartJoysticManager);
     handleCreateJoysticManager(optionsParams.value);
@@ -128,6 +129,7 @@ export const useJoystickControl = (
     window.removeEventListener("resize", restartJoysticManager);
     window.removeEventListener("orientationchange", restartJoysticManager);
     handleDestroyJoysticManager();
+    controllerStore.cleanup();
   });
 
   return {

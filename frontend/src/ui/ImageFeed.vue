@@ -1,6 +1,6 @@
 <template>
   <ScanLines
-    v-if="!connected"
+    v-if="!isVideoStreamActive"
     class="scan"
     :class="{
       'scan-full': !imgInitted,
@@ -17,58 +17,122 @@
     }"
     alt="Video"
   />
+  <canvas
+    v-if="isOverlayEnabled"
+    ref="overlayCanvas"
+    class="overlay-canvas"
+  ></canvas>
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount, watch, onMounted } from "vue";
+import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
-import { makeWebsocketUrl } from "@/util/url";
-import { useWebsocketStream } from "@/composables/useWebsocketStream";
-import { useCameraStore } from "@/features/settings/stores";
 import { useCameraRotate } from "@/composables/useCameraRotate";
+import { useCameraStore } from "@/features/settings/stores";
+import { drawOverlay } from "@/util/overlay";
+import {
+  useDetectionStore,
+  useWebsocketStream,
+  overlayStyleHandlers,
+} from "@/features/detection";
 
 const camStore = useCameraStore();
-
-const fetchSettings = async () => {
-  await camStore.fetchCurrentSettings();
-};
+const detectionStore = useDetectionStore();
+const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
 const listenersAdded = ref(false);
 
 const {
-  initWS,
-  closeWS,
+  initWS: initVideoStreamWS,
+  cleanup: cleanupVideoStreamWS,
   imgRef,
   handleImageOnLoad,
   imgLoading,
-  connected,
+  active: isVideoStreamActive,
   imgInitted,
-} = useWebsocketStream(makeWebsocketUrl("ws/video-stream"));
+} = useWebsocketStream({ url: "ws/video-stream" });
 
-const { addListeners, removeListeners } = useCameraRotate(imgRef);
+const isOverlayEnabled = computed(
+  () => detectionStore.data.active && isVideoStreamActive.value,
+);
+
+const {
+  addListeners: addCameraRotateListeners,
+  removeListeners: removeCameraRotateListeners,
+} = useCameraRotate(imgRef);
+
+watch(
+  () => detectionStore.detection_result,
+  (newResults) => {
+    if (overlayCanvas.value && imgRef.value) {
+      const frameTimeStamp = detectionStore.currentFrameTimestamp;
+      const detectionTimeStamp = detectionStore.timestamp;
+
+      const enabled = detectionTimeStamp && frameTimeStamp;
+
+      if (!enabled) {
+        return drawOverlay(overlayCanvas.value, imgRef.value, []);
+      }
+      const timeDiff = frameTimeStamp - detectionTimeStamp;
+
+      const handler = overlayStyleHandlers[detectionStore.data.overlay_style];
+      if (
+        timeDiff >= 0 &&
+        timeDiff <= detectionStore.data.overlay_draw_threshold
+      ) {
+        handler(overlayCanvas.value, imgRef.value, newResults);
+      } else {
+        handler(overlayCanvas.value, imgRef.value, []);
+      }
+    }
+  },
+);
 
 watch(
   () => imgRef.value,
   (el) => {
     if (el && !listenersAdded.value) {
-      addListeners();
+      addCameraRotateListeners();
       listenersAdded.value = true;
     }
   },
 );
 
-onMounted(() => {
-  fetchSettings();
-  initWS();
-  addListeners();
-  window.addEventListener("beforeunload", closeWS);
+watch(
+  () => detectionStore.data.active,
+  (mode) => {
+    if (mode && !detectionStore.connecting && !detectionStore.connected) {
+      detectionStore.initializeWebSocket();
+    } else if (!mode) {
+      detectionStore.cleanup();
+    }
+  },
+);
+
+const handleSocketsCleanup = () => {
+  window.removeEventListener("beforeunload", handleSocketsCleanup);
+  detectionStore.cleanup();
+  cleanupVideoStreamWS();
+};
+
+onMounted(async () => {
+  await camStore.fetchAllCameraSettings();
+  initVideoStreamWS();
+  if (detectionStore.data.active) {
+    detectionStore.initializeWebSocket();
+  }
+
+  if (imgRef.value) {
+    addCameraRotateListeners();
+    listenersAdded.value = true;
+  }
+  window.addEventListener("beforeunload", handleSocketsCleanup);
 });
 
 onBeforeUnmount(() => {
   listenersAdded.value = false;
-  removeListeners();
-  window.removeEventListener("beforeunload", closeWS);
-  closeWS();
+  removeCameraRotateListeners();
+  handleSocketsCleanup();
 });
 </script>
 
@@ -91,5 +155,11 @@ onBeforeUnmount(() => {
 }
 .scan-full {
   height: 90%;
+}
+.overlay-canvas {
+  position: absolute;
+  left: 0;
+  height: 99%;
+  pointer-events: none;
 }
 </style>

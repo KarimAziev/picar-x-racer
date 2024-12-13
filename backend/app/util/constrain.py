@@ -1,9 +1,9 @@
-from typing import Union
+from typing import TypeVar
+
+T = TypeVar('T', int, float)
 
 
-def constrain(
-    x: Union[int, float], min_val: Union[int, float], max_val: Union[int, float]
-):
+def constrain(x: T, min_val: T, max_val: T):
     """
     Constrains value to be within a range.
     """

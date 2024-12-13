@@ -1,7 +1,7 @@
 import asyncio
 import collections
 import os
-import queue
+import struct
 import threading
 import time
 from typing import TYPE_CHECKING, Optional, Union
@@ -10,14 +10,22 @@ import cv2
 import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapater
 from app.config.video_enhancers import frame_enhancers
-from app.services.detection_service import DetectionService
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraRecordingError,
+)
+from app.schemas.camera import CameraSettings
+from app.schemas.stream import StreamSettings
 from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
-from app.util.overlay_detecton import overlay_detection, overlay_fps_render
+from app.util.overlay_detecton import overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
-from app.util.video_utils import encode, resize_to_fixed_height
+from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
+    from app.services.connection_service import ConnectionService
+    from app.services.detection_service import DetectionService
     from app.services.files_service import FilesService
 
 
@@ -30,51 +38,27 @@ class CameraService(metaclass=SingletonMeta):
     """
 
     def __init__(
-        self, detection_service: DetectionService, file_manager: "FilesService"
+        self,
+        detection_service: "DetectionService",
+        file_manager: "FilesService",
+        connection_manager: "ConnectionService",
     ):
         """
         Initializes the `CameraService` singleton instance.
-
-        Args:
-            detection_service: DetectionService
         """
         self.logger = Logger(name=__name__)
         self.file_manager = file_manager
         self.detection_service = detection_service
+        self.camera_settings = CameraSettings(
+            **self.file_manager.settings.get("camera", {})
+        )
+        self.stream_settings = StreamSettings(
+            **self.file_manager.settings.get("stream", {})
+        )
         self.video_device_adapter = VideoDeviceAdapater()
-        self.video_feed_fps = self.file_manager.settings.get("video_feed_fps", 30)
-        self.video_feed_render_fps: Optional[str] = self.file_manager.settings.get(
-            "video_feed_render_fps"
-        )
-        self.video_feed_enhance_mode: Optional[str] = self.file_manager.settings.get(
-            "video_feed_enhance_mode"
-        )
-        self.video_feed_quality = self.file_manager.settings.get(
-            "video_feed_quality", 100
-        )
+        self.connection_manager = connection_manager
 
-        self.video_feed_format = self.file_manager.settings.get(
-            "video_feed_format", ".jpg"
-        )
-
-        self.video_feed_pixel_format: Optional[str] = self.file_manager.settings.get(
-            "video_feed_pixel_format"
-        )
-
-        self.video_feed_device: Optional[str] = self.file_manager.settings.get(
-            "video_feed_device"
-        )
-
-        self._video_feed_record = self.file_manager.settings.get(
-            "video_feed_record", False
-        )
-
-        self.video_feed_width: int = self.file_manager.settings.get(
-            "video_feed_width", 1280
-        )
-        self.video_feed_height: int = self.file_manager.settings.get(
-            "video_feed_height", 720
-        )
+        self.current_frame_timestamp = None
 
         self.video_writer: Optional[cv2.VideoWriter] = None
         self.actual_fps = None
@@ -83,90 +67,177 @@ class CameraService(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[cv2.VideoCapture, None] = None
-        self.last_detection_result = None
+        self.cap_lock = threading.Lock()
+        self.asyncio_cap_lock = asyncio.Lock()
 
-    async def generate_frame(self, log: Optional[bool] = False):
+    async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
-        Generates a video frame for streaming.
+        Updates the camera's settings and handles device initialization with retries.
 
-        Retrieves the latest detection results, overlays detection annotations onto the frame,
-        applies any video enhancements, encodes the frame in the specified format, and returns
-        it as a byte array ready for streaming.
+        This method adjusts the camera settings such as resolution, FPS, or pixel format based
+        on the provided `settings`. If the specified `device` in the new settings fails during
+        initialization, the method attempts to find and configure an alternate device. The updated
+        settings, including any fallback device, are then applied.
+
+        Key Behaviors:
+        - If the incoming `settings.device` is invalid or fails, the service resets the `device` field
+          to `None` and attempts to initialize an alternate available camera device.
+          Upon success, `self.camera_settings.device` is updated with the new device.
+        - The camera is restarted (stopped and reinitialized) to apply the updated settings.
+
+        Broadcast Behavior:
+        - The updated `self.camera_settings` is provided as the return value to allow the caller
+          (e.g., an external service or API endpoint) to broadcast the new settings to connected clients.
+        - In the case of a fallback or retry (where the specified device fails and another device is found),
+          the updated settings — including the new fallback device — will reflect this change.
+
+        Workflow:
+        1. Updates the internal `self.camera_settings` with the new settings.
+        2. Attempts to restart the camera to apply the updated settings.
+        3. If `settings.device` fails during initialization:
+           - Resets `settings.device` to `None`.
+           - Searches for and configures another available device.
+           - Updates `self.camera_settings.device` with the alternate device if initialization succeeds.
+        4. Returns the finalized and applied `self.camera_settings`.
 
         Args:
-            log (Optional[bool]): Indicates whether to log the detection result (default is False).
+            settings (CameraSettings): The new camera settings to apply.
 
         Returns:
-            Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
+            CameraSettings: The fully updated camera settings, including any modified `device`
+            if a fallback occurred.
+
+        Raises:
+            CameraDeviceError: If the specified camera device cannot be initialized, and no alternate
+                               device is available.
+            Exception: If camera restart or other operations fail unexpectedly.
         """
+        self.camera_settings = settings
+        await self.restart_camera()
+        return self.camera_settings
 
-        latest_detection = None
-        if self.detection_service.detection_queue:
-            while True:
-                try:
-                    detection_data = self.detection_service.detection_queue.get_nowait()
-                    detection_timestamp = detection_data["timestamp"]
-                    if detection_timestamp <= self.current_frame_timestamp:
-                        latest_detection = detection_data["detection_result"]
-                    else:
-                        self.detection_service.detection_queue.put_nowait(
-                            detection_data
-                        )
-                        break
-                except queue.Empty:
-                    break
+    async def update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
+        """
+        Updates the stream settings and handles camera restarts if necessary.
 
-            self.last_detection_result = latest_detection
+        This method modifies various stream settings such as file format, quality,
+        frame enhancers, and video recording preferences. If video recording is enabled in
+        the new settings while it was previously disabled, the camera is restarted to
+        apply the new configuration properly.
 
-            if log and self.video_feed_enhance_mode:
-                self.logger.info(
-                    "Detection result: %s",
-                    self.last_detection_result,
-                )
+        Key Behaviors:
+        - Updates the internal `self.stream_settings` with the provided settings.
+        - Detects changes requiring a camera restart — specifically if `video_record` is
+          enabled in the new settings but was previously disabled.
+        - Avoids unnecessary restarts for other settings changes, ensuring minimal disruption.
 
+        Workflow:
+        1. Evaluates whether the `video_record` field has transitioned from `False` to `True`.
+           - If true, a camera restart is triggered to ensure the recording configuration
+             is applied correctly.
+        2. The method applies the new stream settings by updating `self.stream_settings`.
+        3. Returns the updated `self.stream_settings` to allow broadcasting to connected clients.
+
+        Broadcast Behavior:
+        - While this method does not directly perform broadcasting, the updated
+          `self.stream_settings` data can be returned to external services or
+          APIs (e.g., via `ConnectionService`) for broadcasting to clients.
+        - Any subsequent changes to the stream settings will reflect these updates.
+
+        Args:
+            settings (StreamSettings): The new streaming configuration to apply.
+
+        Returns:
+            StreamSettings: The updated streaming settings.
+
+        Raises:
+            Exception: If the camera restart fails or unexpected issues occur during configuration.
+        """
+        should_restart = settings.video_record and not self.stream_settings.video_record
+        self.stream_settings = settings
+        if should_restart:
+            await self.restart_camera()
+        return self.stream_settings
+
+    def generate_frame(self) -> Optional[bytes]:
+        """
+        Generates a video frame for streaming, including an embedded timestamp.
+
+        Retrieves the latest detection results, optionally overlays FPS rendering on the frame,
+        encodes the frame in the specified format, and returns it as a byte array along with the
+        timestamp.
+
+        The timestamp is packed in binary format (double-precision float), and it is prepended to the encoded frame.
+
+        Returns:
+            Optional[bytes]: The encoded video frame as a byte array, prefixed by the frame's
+                             timestamp (as double-precision floating point format), or None if no
+                             frame is available.
+        """
         if self.stream_img is not None:
-            format = self.video_feed_format
-
-            video_feed_quality = self.video_feed_quality
-            frame = self.stream_img.copy()
-            if (
-                self.last_detection_result is not None
-                and self.detection_service.video_feed_detect_mode is not None
-            ):
-                frame = overlay_detection(frame, self.last_detection_result)
-
-            if self.video_feed_render_fps and self.actual_fps:
-                frame = overlay_fps_render(frame, self.actual_fps)
+            frame = (
+                overlay_fps_render(self.stream_img, self.actual_fps)
+                if self.stream_settings.render_fps and self.actual_fps
+                else self.stream_img
+            )
 
             encode_params = (
-                [cv2.IMWRITE_JPEG_QUALITY, video_feed_quality]
-                if format == ".jpg"
+                [cv2.IMWRITE_JPEG_QUALITY, self.stream_settings.quality]
+                if self.stream_settings.format == ".jpg"
                 else []
             )
 
-            encoded_frame = encode(frame, format, encode_params)
+            encoded_frame = encode(frame, self.stream_settings.format, encode_params)
 
-            return encoded_frame
+            timestamp = self.current_frame_timestamp or time.time()
+            timestamp_bytes = struct.pack('d', timestamp)
 
-    def setup_camera_props(self):
+            return timestamp_bytes + encoded_frame
+
+    def setup_camera_props(self) -> None:
+        """
+        Configure the camera properties such as FPS, resolution (width and height),
+        and pixel format based on the current settings and device information.
+
+        This method initializes and sets key camera parameters, including:
+        - Pixel format if provided.
+        - Frame width and height.
+        - Frame rate (FPS).
+
+        Updates:
+            - `self.camera_settings.fps`: Frames per second setting of the video feed.
+            - `self.camera_settings.width`: Width of the video frame.
+            - `self.camera_settings.height`: Height of the video frame.
+            - `self.camera_settings.pixel_format`: Pixel format based on device information.
+        """
+
+        self.stop_video_recording()
+
         if self.cap is not None:
             info = self.video_device_adapter.video_device or (None, None)
-            (self.video_feed_device, _) = info
-            self.logger.info(
-                "Setting FPS: %s, size: %sx%s, pixel format: %s",
-                self.video_feed_fps,
-                self.video_feed_width,
-                self.video_feed_height,
-                self.video_feed_pixel_format,
-            )
-            if self.video_feed_pixel_format:
+            (self.camera_settings.device, _) = info
+
+            for field_name, field_value in self.camera_settings.model_dump(
+                exclude_unset=True
+            ).items():
+                field_info = self.camera_settings.model_fields[field_name]
+                field_title = field_info.title if field_info.title else field_name
+                self.logger.info(f"Updating {field_title}: {field_value}")
+
+            if self.camera_settings.pixel_format:
                 self.cap.set(
                     cv2.CAP_PROP_FOURCC,
-                    cv2.VideoWriter.fourcc(*self.video_feed_pixel_format),
+                    cv2.VideoWriter.fourcc(*self.camera_settings.pixel_format),
                 )
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_feed_width)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_feed_height)
-            self.cap.set(cv2.CAP_PROP_FPS, self.video_feed_fps)
+
+            if self.camera_settings.width is not None:
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera_settings.width)
+
+            if self.camera_settings.height is not None:
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera_settings.height)
+
+            if self.camera_settings.fps is not None:
+                self.cap.set(cv2.CAP_PROP_FPS, float(self.camera_settings.fps))
 
             width, height, fps = (
                 int(self.cap.get(x))
@@ -176,9 +247,19 @@ class CameraService(metaclass=SingletonMeta):
                     cv2.CAP_PROP_FPS,
                 )
             )
-            self.video_feed_width = width
-            self.video_feed_height = height
-            self.video_feed_fps = fps
+            self.camera_settings.width = width
+            self.camera_settings.height = height
+            self.camera_settings.fps = fps
+
+            if self.stream_settings.video_record:
+                try:
+                    self.start_video_recording()
+                except CameraRecordingError as e:
+                    self.logger.error(str(e))
+                except Exception:
+                    self.logger.error(
+                        "Unhandled error while starting video recording", exc_info=True
+                    )
 
             self.logger.info(
                 "Updated size: %sx%s, FPS: %s",
@@ -186,42 +267,74 @@ class CameraService(metaclass=SingletonMeta):
                 height,
                 fps,
             )
-            if self.video_feed_device:
-                data = parse_v4l2_device_info(self.video_feed_device)
-                self.video_feed_pixel_format = data.get(
-                    "pixel_format", self.video_feed_pixel_format
+            if self.camera_settings.device:
+                data = parse_v4l2_device_info(self.camera_settings.device)
+                self.camera_settings.pixel_format = data.get(
+                    "pixel_format", self.camera_settings.pixel_format
                 )
 
-    def camera_thread_func(self):
+    def _release_cap_safe(self) -> None:
+        """
+        Safely releases the camera resource represented by `self.cap`.
+        """
+        try:
+            if self.cap and self.cap.isOpened():
+                self.cap.release()
+        except Exception:
+            self.logger.log_exception(
+                "Exception occurred while stopping camera capture"
+            )
+        finally:
+            self.cap = None
+
+    def _retry_cap(self) -> Optional[cv2.VideoCapture]:
+        """
+        Attempts to reinitialize the camera by retrying the video capture setup.
+
+        This method is called when the current video capture device (`self.cap`) encounters an error
+        or fails to read frames. It performs the following operations:
+        - Marks the current camera device as "failed" and appends it to a list of failed devices.
+        - Releases the current video capture device (`self.cap`) safely to free resources.
+        - Attempts to find and set up another available camera device using `VideoDeviceAdapter`.
+
+        If a new camera device is successfully initialized, its properties are configured using
+        `setup_camera_props`. If no valid camera device is found, the method returns `None`.
+
+        Returns:
+            Optional[cv2.VideoCapture]: A new valid video capture object if setup succeeds, or `None`.
+        """
+        (video_device, _) = self.video_device_adapter.video_device or (
+            None,
+            None,
+        )
+        if video_device:
+            self.video_device_adapter.failed_camera_devices.append(video_device)
+
+        if self.cap:
+            try:
+                self.cap.release()
+            except Exception:
+                self.logger.error("Error releasing failed video capture", exc_info=True)
+
+        self.cap = self.video_device_adapter.setup_video_capture()
+
+        if self.cap is not None:
+            self.setup_camera_props()
+        return self.cap
+
+    def _camera_thread_func(self) -> None:
         """
         Camera capture loop function.
 
         Manages the process of capturing video frames, enhancing them, and
         pushing them to the detection service. Handles errors and device resets.
         """
-
-        try:
-            if self.cap and self.cap.isOpened():
-                self.cap.release()
-        except Exception as e:
-            self.logger.log_exception(
-                f"Exception occurred while stopping camera capture", e
-            )
-        finally:
-            self.cap = None
-
-        self.cap = self.video_device_adapter.setup_video_capture()
-
-        if not self.cap:
-            return
-
-        self.setup_camera_props()
-
         failed_counter = 0
-
         max_failed_attempt_count = 10
+
         prev_fps = 0.0
-        self.frame_timestamps = collections.deque(maxlen=30)
+
+        self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
 
         try:
             while self.camera_run and self.cap:
@@ -232,82 +345,50 @@ class CameraService(metaclass=SingletonMeta):
                         failed_counter += 1
                         self.logger.error("Failed to read frame from camera.")
                         continue
-                    else:
-                        (video_device, _) = self.video_device_adapter.video_device or (
-                            None,
-                            None,
-                        )
-                        if video_device:
-                            self.video_device_adapter.failed_camera_devices.append(
-                                video_device
-                            )
-
-                        if self.cap:
-                            self.cap.release()
-
-                        cap = self.video_device_adapter.setup_video_capture()
-                        if cap is None:
-                            break
-
-                        self.cap = cap
-                        self.logger.info(
-                            "Setting size to: %sx%s",
-                            self.video_feed_width,
-                            self.video_feed_height,
-                        )
-                        self.setup_camera_props()
-                        self.logger.info(
-                            "Updated size: %sx%s",
-                            self.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
-                            self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
-                        )
+                    elif self._retry_cap():
                         continue
+                    else:
+                        break
                 else:
                     failed_counter = 0
 
                     self.frame_timestamps.append(frame_start_time)
-                    if len(self.frame_timestamps) >= 2:
-                        time_diffs = [
-                            t2 - t1
-                            for t1, t2 in zip(
-                                self.frame_timestamps, list(self.frame_timestamps)[1:]
-                            )
-                        ]
-                        avg_time_diff = sum(time_diffs) / len(time_diffs)
-                        self.actual_fps = (
-                            1.0 / avg_time_diff if avg_time_diff > 0 else None
-                        )
 
-                        if self.actual_fps is not None:
-                            diff = self.actual_fps - prev_fps
-                            if abs(diff) >= 2:
-                                self.logger.info(
-                                    "Real FPS %s",
-                                    self.actual_fps,
-                                )
-                                prev_fps = self.actual_fps
+                    self.actual_fps = calc_fps(self.frame_timestamps)
+                    if (
+                        self.actual_fps is not None
+                        and abs(self.actual_fps - prev_fps) > 1
+                    ):
+                        self.logger.info("FPS: %s", self.actual_fps)
+                        prev_fps = self.actual_fps
 
+                enhance_mode = self.stream_settings.enhance_mode
                 frame_enhancer = (
-                    frame_enhancers.get(self.video_feed_enhance_mode)
-                    if self.video_feed_enhance_mode
+                    frame_enhancers.get(enhance_mode)
+                    if enhance_mode is not None
                     else None
                 )
 
                 self.img = frame
                 self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
 
-                if self.video_feed_record and self.video_writer is not None:
+                if self.video_writer is not None:
                     self.video_writer.write(self.stream_img)
-                if self.detection_service.video_feed_detect_mode:
+                if (
+                    self.detection_service.detection_settings.active
+                    and not self.detection_service.loading
+                ):
+                    self.current_frame_timestamp = time.time()
                     (
                         resized_frame,
                         original_width,
                         original_height,
                         resized_width,
                         resized_height,
-                    ) = resize_to_fixed_height(self.stream_img.copy(), base_size=320)
-                    self.current_frame_timestamp = time.time()
-
+                    ) = resize_to_fixed_height(
+                        self.stream_img.copy(),
+                        base_size=self.detection_service.detection_settings.img_size,
+                    )
                     frame_data = {
                         "frame": resized_frame,
                         "timestamp": self.current_frame_timestamp,
@@ -315,52 +396,105 @@ class CameraService(metaclass=SingletonMeta):
                         "original_width": original_width,
                         "resized_height": resized_height,
                         "resized_width": resized_width,
+                        "should_resize": False,
                     }
                     self.detection_service.put_frame(frame_data)
+
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
-        except asyncio.CancelledError:
-            self.logger.info("Camera loop is cancelled")
-        except Exception as e:
-            self.logger.log_exception("Exception occurred in camera loop", e)
+        except Exception:
+            self.logger.error(
+                "Unhandled exception occurred in camera loop", exc_info=True
+            )
         finally:
-            if self.cap is not None:
-                self.cap.release()
-
-            self.cap = None
+            self._release_cap_safe()
             self.stream_img = None
-            if self.video_feed_record:
-                self.video_feed_record = False
-
+            self.stop_video_recording()
             self.logger.info("Camera loop terminated and camera released.")
 
-    def start_camera(self):
+    def _start_camera(self) -> None:
         """
-        Starts the camera capture thread and the detection process.
+        Configures and starts the camera capture thread.
 
-        Checks if the camera is already running and prevents multiple starts.
+        This method initializes the video capture device based on the current
+        settings and prepares it for frame capturing. It ensures that the existing
+        capture resource is released before assigning a new device and thread.
+
+        Actions performed:
+        - Releases any previously active camera device.
+        - Sets up the camera device based on the current configuration.
+        - Applies camera properties like resolution, FPS, and pixel format.
+        - Starts a dedicated thread to run the capture loop.
+
+        Raises:
+            Exception: If an error occurs during setup or thread initialization.
+
+        Returns:
+            None
         """
-        if self.camera_run:
-            self.logger.info("Camera is already running.")
-            return
 
-        self.camera_run = True
-        self.capture_thread = threading.Thread(target=self.camera_thread_func)
-        self.capture_thread.start()
-        if self.detection_service.video_feed_detect_mode:
-            self.detection_service.start_detection_process()
+        with self.cap_lock:
+            if self.camera_run:
+                self.logger.info("Camera is already running.")
+                return
+            self.camera_run = True
+            try:
+                self._release_cap_safe()
+
+                if self.camera_settings.device is not None:
+                    self.cap = self.video_device_adapter.update_device(
+                        self.camera_settings.device
+                    )
+                else:
+                    self.cap = self.video_device_adapter.find_and_setup_device_cap()
+                self.setup_camera_props()
+                self.capture_thread = threading.Thread(target=self._camera_thread_func)
+                self.capture_thread.start()
+
+            except Exception as e:
+                self.camera_run = False
+                raise e
 
     async def start_camera_and_wait_for_stream_img(self):
         """
-        Asynchronously starts the camera and waits until the first frame is available.
+        Starts the camera asynchronously and ensures it is ready for streaming.
 
-        Useful for ensuring that the camera is ready and frames are available before
-        starting operations that depend on the video stream.
+        If a camera device is specified in the settings but fails to initialize, this method resets
+        the device in the settings and makes *one* additional attempt to find another available device
+        and set it in the settings upon success.
 
+        If the specified camera device is invalid, it resets the device and attempts to
+        find and initialize another available device.
+
+        Raises:
+            CameraDeviceError: If the chosen camera encounters initialization errors.
+            CameraNotFoundError: If no valid camera device is found after retries.
+
+        Returns:
+            None
         """
 
-        if not self.camera_run:
-            self.start_camera()
+        async with self.asyncio_cap_lock:
+            if not self.camera_run:
+                try:
+                    await asyncio.to_thread(self._start_camera)
+                except CameraDeviceError as err:
+                    if self.camera_settings.device:
+                        await self.connection_manager.error(
+                            f"Camera device {self.camera_settings.device} error: {err}, trying to find other camera"
+                        )
+                        self.camera_settings.device = None
+                        try:
+                            await asyncio.to_thread(self._start_camera)
+                            await self.connection_manager.broadcast_json(
+                                {
+                                    "type": "camera",
+                                    "payload": self.camera_settings.model_dump(),
+                                }
+                            )
+                        except CameraNotFoundError as e:
+                            await self.connection_manager.error(str(e))
+                            raise e
 
         counter = 0
 
@@ -369,50 +503,29 @@ class CameraService(metaclass=SingletonMeta):
                 break
             if counter <= 1:
                 self.logger.debug("waiting for stream img")
-            counter += 1
+                counter += 1
             await asyncio.sleep(0.1)
 
-    def stop_camera(self):
+    def stop_camera(self) -> None:
         """
-        Stops the camera capture and detection processes.
+        Gracefully stops the camera capture thread and cleans up associated resources.
 
-        Sets `camera_run` to False, waits for the capture thread and detection process
-        to terminate, and performs any necessary cleanup of resources.
+        Returns:
+            None
         """
         if not self.camera_run:
             self.logger.info("Camera is not running.")
             return
+
         self.logger.info("Stopping camera")
-        self.last_detection_result = None
+
         self.camera_run = False
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
 
-    @property
-    def video_feed_record(self) -> bool:
-        """
-        Gets or sets the state of video recording.
-
-        When set to True, video recording starts and video will be saved to the predefined path.
-        When set to False, video recording stops.
-
-        Returns:
-            bool: The current state of video recording.
-        """
-        return self._video_feed_record
-
-    @video_feed_record.setter
-    def video_feed_record(self, value: bool):
-        if self._video_feed_record != value:
-            self._video_feed_record = value
-            if value:
-                self.start_video_recording()
-            else:
-                self.stop_video_recording()
-
-    def start_video_recording(self):
+    def start_video_recording(self) -> None:
         """
         Starts recording video to the specified path. Ensures the directory exists.
         """
@@ -420,8 +533,8 @@ class CameraService(metaclass=SingletonMeta):
             os.makedirs(self.file_manager.user_videos_dir)
 
         fps = (
-            self.video_feed_fps
-            if self.video_feed_fps is not None
+            self.camera_settings.fps
+            if self.camera_settings.fps is not None
             else self.actual_fps or 30.0
         )
         if isinstance(fps, int):
@@ -439,10 +552,16 @@ class CameraService(metaclass=SingletonMeta):
             shape
             if shape is not None
             else (
-                self.video_feed_height,
-                self.video_feed_width,
+                self.camera_settings.height,
+                self.camera_settings.width,
             )
         )
+
+        if height is None or width is None:
+            raise CameraRecordingError(
+                f"Video Recording: invalid height {height} or width {width}"
+            )
+
         self.logger.info(
             "Starting video recording %sx%s with %s at %s",
             width,
@@ -462,57 +581,38 @@ class CameraService(metaclass=SingletonMeta):
             ),
         )
 
-    def stop_video_recording(self):
+    def stop_video_recording(self) -> None:
         """
         Stops recording video and releases resources.
         """
         if self.video_writer is not None:
-            self.video_writer.release()
-            self.video_writer = None
-            self.logger.info("Stopped video recording")
-
-    def restart_camera(self):
-        cam_running = self.camera_run
-        if cam_running:
-            self.stop_camera()
-        if self.video_feed_device:
-            result = self.video_device_adapter.update_device(self.video_feed_device)
-            if result is None:
+            self.logger.info("Stopping video recording")
+            try:
+                self.video_writer.release()
+                self.video_writer = None
+                self.logger.info("Stopped video recording")
+            except Exception:
                 self.logger.error(
-                    "Device %s is not available",
-                    self.video_feed_device,
+                    "Exception occurred while stopping camera recording capture",
+                    exc_info=True,
                 )
-        else:
-            self.video_device_adapter.video_device = None
-        if cam_running:
-            self.start_camera()
 
-    def update_device(self, device: Optional[str]):
+    async def restart_camera(self) -> None:
+        """
+        Restarts the camera by stopping and reinitializing it.
+
+        This method first stops the current camera capture process to release
+        resources and reset the camera's state. It then calls
+        `start_camera_and_wait_for_stream_img` to begin a new capture session.
+
+        It can be used for dynamically changing camera settings or recovering from
+        errors while the system remains operational.
+
+        Returns:
+            None
+        """
         cam_running = self.camera_run
         if cam_running:
-            self.stop_camera()
-        if device:
-            result = self.video_device_adapter.update_device(device)
-            if result is None:
-                self.logger.error(f"Device {device} is not available")
-        else:
-            self.video_device_adapter.video_device = None
+            await asyncio.to_thread(self.stop_camera)
         if cam_running:
-            self.start_camera()
-
-
-if __name__ == "__main__":
-    from app.services.audio_service import AudioService
-    from app.services.detection_service import DetectionService
-    from app.services.files_service import FilesService
-
-    audio_manager = AudioService()
-    file_manager = FilesService(audio_manager=audio_manager)
-    detection_manager = DetectionService(file_manager=file_manager)
-
-    camera_service = CameraService(
-        file_manager=file_manager, detection_service=detection_manager
-    )
-
-    camera_service.camera_run = True
-    camera_service.camera_thread_func()
+            await self.start_camera_and_wait_for_stream_img()

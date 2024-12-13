@@ -1,12 +1,8 @@
-import { defineStore } from "pinia";
 import axios from "axios";
-import { useMessagerStore } from "@/features/messager/store";
+import { defineStore } from "pinia";
+import type { TreeNode } from "primevue/treenode";
+import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
-import { cycleValue } from "@/util/cycleValue";
-import {
-  CameraOpenRequestParams,
-  useStore as useSettingsStore,
-} from "@/features/settings/stores/settings";
 
 export const dimensions = [
   [640, 480],
@@ -22,59 +18,75 @@ export const dimensions = [
   [1920, 1200],
 ];
 
-export const commonDimensionOptions = dimensions.map(
-  ([width, height]) => `${width}/${height}`,
-);
-
 const MAX_FPS = 70;
 
-export interface DeviceOption {
-  value: string;
-  label: string;
-  formats: Omit<DeviceOption, "formats">[];
+export interface CameraSettings {
+  /**
+   * The ID or name of the camera device.
+   */
+  device?: string;
+
+  /**
+   * The width of the camera frame in pixels.
+   */
+  width?: number;
+
+  /**
+   * The height of the camera frame in pixels.
+   */
+  height?: number;
+
+  /**
+   * The number of frames per second the camera should capture.
+   */
+  fps?: number;
+
+  /**
+   * The format for the pixels (e.g., 'RGB', 'GRAY').
+   */
+  pixel_format?: string;
+}
+
+export interface DeviceSuboption extends TreeNode {
+  device: string;
+  size: string;
+  fps: string;
+  pixel_format: string;
+}
+
+export interface DeviceOption extends Pick<DeviceSuboption, "key" | "label"> {
+  children: DeviceSuboption[];
+}
+
+export interface PhotoCaptureResponse {
+  file: string;
 }
 
 export interface State {
-  data: CameraOpenRequestParams;
+  data: CameraSettings;
   loading: boolean;
-  detectors: string[];
-  enhancers: string[];
   devices: DeviceOption[];
 }
 
-const defaultState: State = {
+export const defaultState: State = {
   loading: false,
-  data: {
-    video_feed_enhance_mode: null,
-    video_feed_detect_mode: null,
-    video_feed_height: 600,
-    video_feed_width: 800,
-    video_feed_device: null,
-    video_feed_pixel_format: null,
-  },
-  detectors: [],
-  enhancers: [],
+  data: {},
   devices: [],
 };
 
 export const useStore = defineStore("camera", {
   state: () => ({ ...defaultState }),
   actions: {
-    async updateCameraParams(payload?: Partial<CameraOpenRequestParams>) {
+    async updateData(payload: CameraSettings) {
       const messager = useMessagerStore();
 
       try {
         this.loading = true;
-        const { data } = await axios.post<CameraOpenRequestParams>(
-          "/api/video-feed-settings",
+
+        await axios.post<CameraSettings>(
+          "/api/camera/settings",
           payload || this.data,
         );
-        this.data = data;
-        Object.entries(data).forEach(([key, value]) => {
-          if (payload && key in payload) {
-            messager.info(`${key}: ${value}`, { immediately: true });
-          }
-        });
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
@@ -87,134 +99,58 @@ export const useStore = defineStore("camera", {
       return this.data;
     },
 
-    async fetchCurrentSettings() {
+    async fetchAllCameraSettings() {
+      await Promise.all([this.fetchDevices(), this.fetchData()]);
+    },
+
+    async fetchData() {
+      const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } = await axios.get<CameraOpenRequestParams>(
-          "/api/video-feed-settings",
+        const { data } = await axios.get<CameraSettings>(
+          "/api/camera/settings",
         );
         this.data = data;
       } catch (error) {
-        console.error("Error fetching video modes:", error);
+        messager.handleError(error, "Error fetching video feed settings");
       } finally {
         this.loading = false;
       }
     },
 
     async fetchDevices() {
+      const messager = useMessagerStore();
       try {
         this.loading = true;
         const { data } = await axios.get<{ devices: DeviceOption[] }>(
-          "/api/camera-devices",
+          "/api/camera/devices",
         );
         this.devices = data.devices;
       } catch (error) {
-        console.error("Error fetching camera devices:", error);
+        messager.handleError(error, "Error fetching camera devices");
       } finally {
         this.loading = false;
       }
     },
 
-    async fetchConfig() {
-      try {
-        this.loading = true;
-        const response = await axios.get("/api/video-modes");
-        const data = response.data;
-        this.detectors = data.detectors;
-        this.enhancers = data.enhancers;
-      } catch (error) {
-        console.error("Error fetching video modes:", error);
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    async ensureConfig() {
-      if (!this.loading && !this.detectors.length && !this.enhancers.length) {
-        await this.fetchConfig();
-      }
-    },
     async increaseFPS() {
-      const video_feed_fps = this.data.video_feed_fps || 30;
-      await this.updateCameraParams({
-        video_feed_fps: constrain(10, MAX_FPS, video_feed_fps + 10),
+      const video_feed_fps = this.data.fps || 30;
+      await this.updateData({
+        ...this.data,
+        fps: constrain(10, MAX_FPS, video_feed_fps + 10),
       });
     },
     async decreaseFPS() {
-      const video_feed_fps = this.data.video_feed_fps || 30;
-      await this.updateCameraParams({
-        video_feed_fps: constrain(5, MAX_FPS, Math.max(5, video_feed_fps - 10)),
+      const video_feed_fps = this.data.fps || 30;
+      await this.updateData({
+        ...this.data,
+        fps: constrain(5, MAX_FPS, Math.max(5, video_feed_fps - 10)),
       });
     },
-    async nextDetectMode() {
-      await this.ensureConfig();
-      const currentMode = this.data.video_feed_detect_mode;
-      this.data.video_feed_detect_mode = cycleValue(
-        currentMode,
-        [...this.detectors, null],
-        1,
-      );
 
-      await this.updateCameraParams({
-        video_feed_detect_mode: this.data.video_feed_detect_mode,
-      });
-    },
-    async nextEnhanceMode() {
-      await this.ensureConfig();
-      const currentMode = this.data.video_feed_enhance_mode;
-      const nextMode = cycleValue(currentMode, [...this.enhancers, null], 1);
-
-      await this.updateCameraParams({
-        video_feed_enhance_mode: nextMode,
-      });
-    },
-    async prevDetectMode() {
-      await this.ensureConfig();
-      const currentMode = this.data.video_feed_detect_mode;
-      this.data.video_feed_detect_mode = cycleValue(
-        currentMode,
-        [...this.detectors, null],
-        -1,
-      );
-
-      await this.updateCameraParams({
-        video_feed_detect_mode: this.data.video_feed_detect_mode,
-      });
-    },
-    async prevEnhanceMode() {
-      await this.ensureConfig();
-      const currentMode = this.data.video_feed_enhance_mode;
-      this.data.video_feed_enhance_mode = cycleValue(
-        currentMode,
-        [...this.enhancers, null],
-        -1,
-      );
-
-      await this.updateCameraParams({
-        video_feed_enhance_mode: this.data.video_feed_enhance_mode,
-      });
-    },
-    async increaseQuality() {
-      const settings = useSettingsStore();
-      const currentValue =
-        this.data.video_feed_quality || settings.settings.video_feed_quality;
-      const newValue = constrain(10, 100, currentValue + 10);
-      await this.updateCameraParams({
-        video_feed_quality: newValue,
-      });
-    },
-    async decreaseQuality() {
-      const settings = useSettingsStore();
-      const currentValue =
-        this.data.video_feed_quality || settings.settings.video_feed_quality;
-      const newValue = constrain(10, 100, currentValue - 10);
-      await this.updateCameraParams({
-        video_feed_quality: newValue,
-      });
-    },
     async increaseDimension() {
-      const currHeight = this.data?.video_feed_height;
-      const currWidth = this.data?.video_feed_width;
+      const currHeight = this.data?.height;
+      const currWidth = this.data?.width;
 
       const idx =
         dimensions.findIndex(
@@ -223,14 +159,15 @@ export const useStore = defineStore("camera", {
         ) || 0;
       const [video_feed_width, video_feed_height] =
         dimensions[idx + 1] || dimensions[0];
-      await this.updateCameraParams({
-        video_feed_height,
-        video_feed_width,
+      await this.updateData({
+        ...this.data,
+        height: video_feed_height,
+        width: video_feed_width,
       });
     },
     async decreaseDimension() {
-      const currHeight = this.data?.video_feed_height;
-      const currWidth = this.data?.video_feed_width;
+      const currHeight = this.data?.height;
+      const currWidth = this.data?.width;
 
       const idx =
         dimensions.findIndex(
@@ -239,39 +176,21 @@ export const useStore = defineStore("camera", {
         ) || 0;
       const [video_feed_width, video_feed_height] =
         dimensions[idx - 1] || dimensions[dimensions.length - 1];
-      await this.updateCameraParams({
-        video_feed_height,
-        video_feed_width,
+      await this.updateData({
+        height: video_feed_height,
+        width: video_feed_width,
       });
     },
-    async toggleRecording() {
-      const settings = useSettingsStore();
+    async capturePhoto() {
       const messager = useMessagerStore();
-      await this.updateCameraParams({
-        video_feed_record: !this.data.video_feed_record,
-      });
+      try {
+        const { data } = await axios.get<PhotoCaptureResponse>(
+          "/api/camera/capture-photo",
+        );
 
-      if (
-        !this.data.video_feed_record &&
-        settings.settings.auto_download_video
-      ) {
-        try {
-          const response = await axios.get(`/api/download-last-video`, {
-            responseType: "blob",
-          });
-          const fileName = response.headers["content-disposition"]
-            ? response.headers["content-disposition"].split("filename=")[1]
-            : "picar-x-recording.avi";
-          const url = window.URL.createObjectURL(new Blob([response.data]));
-          const link = document.createElement("a");
-
-          link.href = url;
-          link.setAttribute("download", fileName);
-          document.body.appendChild(link);
-          link.click();
-        } catch (error) {
-          messager.handleError(error);
-        }
+        return data.file;
+      } catch (error) {
+        messager.handleError(error, "Error fetching video feed settings");
       }
     },
   },

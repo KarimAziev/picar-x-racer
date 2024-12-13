@@ -11,31 +11,13 @@
 </template>
 
 <script setup lang="ts">
-import {
-  onMounted,
-  onBeforeUnmount,
-  defineAsyncComponent,
-  watch,
-  onBeforeMount,
-} from "vue";
+import { defineAsyncComponent, watch, onBeforeMount } from "vue";
 import { useRouter } from "vue-router";
 import FullscreenContent from "@/ui/FullscreenContent.vue";
-import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
-
-import { useController } from "@/features/controller/composable";
-import { useControllerStore } from "@/features/controller/store";
+import { useSettingsStore } from "@/features/settings/stores";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
 
 const settingsStore = useSettingsStore();
-const popupStore = usePopupStore();
-const controllerStore = useControllerStore();
-const {
-  addKeyEventListeners,
-  removeKeyEventListeners,
-  connectWS,
-  cleanupGameLoop,
-  gameLoop,
-} = useController(controllerStore, settingsStore, popupStore);
 
 const router = useRouter();
 
@@ -47,7 +29,7 @@ const CarModelViewer = defineAsyncComponent({
 });
 
 watch(
-  () => settingsStore.settings.virtual_mode,
+  () => settingsStore.data.virtual_mode,
   (value) => {
     if (!value) {
       router.push("/");
@@ -56,19 +38,9 @@ watch(
 );
 
 onBeforeMount(() => {
-  if (!settingsStore.settings.virtual_mode) {
-    settingsStore.settings.virtual_mode = true;
+  if (!settingsStore.data.virtual_mode) {
+    settingsStore.data.virtual_mode = true;
   }
-});
-
-onMounted(() => {
-  connectWS();
-  addKeyEventListeners();
-  gameLoop();
-});
-onBeforeUnmount(() => {
-  cleanupGameLoop();
-  removeKeyEventListeners();
 });
 </script>
 <style scoped lang="scss">

@@ -78,11 +78,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
-import Panel from "@/ui/Panel.vue";
 import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Button from "primevue/button";
-import KeyRecorder from "./KeyRecorder.vue";
+import Panel from "@/ui/Panel.vue";
+import KeyRecorder from "@/ui/KeyRecorder.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { allCommandOptions } from "@/features/settings/defaultKeybindings";
 import { splitKeySequence } from "@/util/keyboard-util";
@@ -90,10 +90,11 @@ import { splitKeySequence } from "@/util/keyboard-util";
 const popupStore = usePopupStore();
 
 const store = useSettingsStore();
-const originalKeys = computed(() => store.settings.keybindings);
+
+const originalKeys = computed(() => store.data.keybindings);
 const keyRecorderOpen = computed(() => popupStore.isKeyRecording);
 
-const commandsToOptions = (obj: Record<string, string[]>): Fields => {
+const commandsToOptions = (obj: Record<string, string[] | null>): Fields => {
   const makeKeybindingItem = (key: string): KeybindingField => ({
     label: "Keybinding",
     name: "keybinding",
@@ -117,7 +118,7 @@ const commandsToOptions = (obj: Record<string, string[]>): Fields => {
   );
 
   const res = sortedEntries.flatMap(([cmd, keybindings]) =>
-    keybindings.map((k) => {
+    (keybindings || []).map((k) => {
       const keyItem = makeKeybindingItem(k);
       const cmdItem = makeCommandItem(cmd);
 
@@ -128,7 +129,7 @@ const commandsToOptions = (obj: Record<string, string[]>): Fields => {
   return res;
 };
 const fields = computed(() =>
-  reactive(commandsToOptions(store.settings.keybindings)),
+  reactive(commandsToOptions(store.data.keybindings)),
 );
 
 const invalidKeys = computed(() =>
@@ -280,13 +281,13 @@ const handleSubmit = async () => {
   );
 
   if (!errs.length && validFields.length > 0) {
-    store.settings.keybindings = pairsToConfig(validFields);
+    store.data.keybindings = pairsToConfig(validFields);
     await store.saveSettings();
   }
 };
 
 const handleReset = () => {
-  store.settings.keybindings = originalKeys.value;
+  store.data.keybindings = originalKeys.value;
 };
 
 const validateAll = () => {
