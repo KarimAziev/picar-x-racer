@@ -75,23 +75,6 @@
             :max="1.0"
             :step="0.1"
           />
-          <NumberField
-            @keydown.stop="doNothing"
-            @keyup.stop="doNothing"
-            :normalizeValue="roundToOneDecimalPlace"
-            @keypress.stop="doNothing"
-            v-tooltip="
-              'The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.'
-            "
-            field="settings.detection.overlay_draw_threshold"
-            label="Overlay Threshold"
-            v-model="fields.overlay_draw_threshold"
-            :loading="detectionStore.loading"
-            :min="0.1"
-            :max="10.0"
-            :step="0.1"
-            @update:model-value="updateDebounced"
-          />
           <ChipField
             label="Labels"
             field="settings.detection.labels"
@@ -101,11 +84,28 @@
             "
             @update:model-value="updateDebounced"
           />
+          <NumberField
+            @keydown.stop="doNothing"
+            @keyup.stop="doNothing"
+            :normalizeValue="roundToOneDecimalPlace"
+            @keypress.stop="doNothing"
+            v-tooltip="
+              'The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.'
+            "
+            field="settings.detection.overlay_draw_threshold"
+            label="Threshold"
+            v-model="fields.overlay_draw_threshold"
+            :loading="detectionStore.loading"
+            :min="0.1"
+            :max="10.0"
+            :step="0.1"
+            @update:model-value="updateDebounced"
+          />
           <SelectField
             :filter="false"
             inputId="settings.detection.overlay_style"
             v-model="fields.overlay_style"
-            label="Overlay Style"
+            label="Style"
             :loading="loading"
             @update:model-value="updateDebounced"
             :options="overlayStyleOptions"
@@ -212,7 +212,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 :deep(.p-inputtext) {
-  width: 90px;
+  max-width: 90px;
 }
 :deep(tr:hover) {
   cursor: pointer;
