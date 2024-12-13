@@ -85,6 +85,16 @@
         :step="0.1"
         @update:model-value="updateDebounced"
       />
+      <SelectField
+        fieldClassName="opacity-hover"
+        :filter="false"
+        inputId="overlay_style"
+        v-model="fields.overlay_style"
+        label="Style"
+        :disabled="detectionStore.loading"
+        @update:model-value="updateDebounced"
+        :options="overlayStyleOptions"
+      />
     </div>
   </div>
 </template>
@@ -94,7 +104,10 @@ import { computed } from "vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDetectionStore } from "@/features/detection";
 import NumberField from "@/ui/NumberField.vue";
-import { imgSizeOptions } from "@/features/settings/config";
+import {
+  imgSizeOptions,
+  overlayStyleOptions,
+} from "@/features/settings/config";
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
