@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed } from "vue";
 
 import { isNumber } from "@/util/guards";
 import { useSettingsStore, useBatteryStore } from "@/features/settings/stores";
@@ -34,7 +34,7 @@ const batteryStore = useBatteryStore();
 const settingsStore = useSettingsStore();
 
 const batteryTotalVoltage = computed(
-  () => settingsStore.data.battery_full_voltage || 8.4,
+  () => settingsStore.data.battery_full_voltage,
 );
 
 const batteryTotalVoltageAdjusted = computed(() =>
@@ -85,8 +85,6 @@ const className = computed(() => {
     return "danger";
   }
 });
-
-onMounted(batteryStore.fetchBatteryStatus);
 </script>
 
 <style scoped lang="scss">

@@ -3,6 +3,8 @@ export const roundNumber = (value: number, fractionDigits?: number) => {
   return parseFloat(roundedNumber);
 };
 
+export const roundToOneDecimalPlace = (value: number) => roundNumber(value, 1);
+
 export const roundToNearestTen = (value: number) => Math.round(value / 10) * 10;
 
 export const generateMultiplesOf32 = (limit: number): number[] => {

@@ -57,6 +57,7 @@
         @keydown.stop="doNothing"
         @keyup.stop="doNothing"
         @keypress.stop="doNothing"
+        :normalizeValue="roundToOneDecimalPlace"
         field="confidence"
         label="Confidence"
         v-model="fields.confidence"
@@ -69,6 +70,7 @@
       <NumberField
         fieldClassName="opacity-hover"
         @keydown.stop="doNothing"
+        :normalizeValue="roundToOneDecimalPlace"
         @keyup.stop="doNothing"
         @keypress.stop="doNothing"
         v-tooltip="
@@ -97,6 +99,7 @@ import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import ModelUpload from "@/features/detection/components/ModelUpload.vue";
+import { roundToOneDecimalPlace } from "@/util/number";
 
 defineProps<{ class?: string; label?: string }>();
 
@@ -150,5 +153,14 @@ const nodes = computed(() => detectionStore.detectors);
     height: 40px;
     max-width: 220px;
   }
+}
+:deep(.p-progressspinner),
+.progress {
+  position: absolute;
+  z-index: 2;
+  bottom: 0%;
+  left: 10%;
+  width: 30px;
+  height: 30px;
 }
 </style>

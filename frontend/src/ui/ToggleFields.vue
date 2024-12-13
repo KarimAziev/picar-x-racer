@@ -3,6 +3,7 @@
     v-for="(item, field) in fields"
     :key="field"
     :label="item.label"
+    v-tooltip="item.description"
     layout="row-reverse"
     @update:model-value="(value) => onUpdate(field as string, value)"
     :pt="{ input: { id: field } }"
@@ -17,7 +18,9 @@ import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const emit = defineEmits(["update:modelValue"]);
 
-type ToggleableConfig = { [key: string]: { label?: string } };
+type ToggleableConfig = {
+  [key: string]: { label?: string; description?: string };
+};
 type MappedData = {
   [P in keyof ToggleableConfig]?: unknown;
 };

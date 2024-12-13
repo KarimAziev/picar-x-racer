@@ -15,7 +15,6 @@ import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore, ShowMessageTypeProps } from "@/features/messager";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
 import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
-import { useStore as useBatteryStore } from "@/features/settings/stores/battery";
 import {
   useStore as useStreamStore,
   defaultState as defaultStreamState,
@@ -58,6 +57,7 @@ export interface Settings
   default_tts_language: string;
   keybindings: Partial<Record<ControllerActionName, string[] | null>>;
   battery_full_voltage: number;
+  battery_auto_measure_seconds: number;
   max_speed: number;
   auto_measure_distance_delay_ms: number;
   texts: TextItem[];
@@ -80,6 +80,7 @@ export const defaultState: State = {
   data: {
     keybindings: {},
     default_tts_language: "en",
+    battery_auto_measure_seconds: 30,
     max_speed: 80,
     texts: [],
     battery_full_voltage: 8.4,
@@ -146,7 +147,6 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
-      const batteryStore = useBatteryStore();
       const streamStore = useStreamStore();
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
@@ -157,7 +157,6 @@ export const useStore = defineStore("settings", {
           axios.get<Settings>("/api/settings"),
           calibrationStore.fetchData(),
           musicStore.fetchData(),
-          batteryStore.fetchBatteryStatus(),
           streamStore.fetchEnhancers(),
         ]);
         this.data = response.data;

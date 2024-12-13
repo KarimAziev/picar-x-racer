@@ -66,6 +66,7 @@
             @keypress.stop="doNothing"
             field="settings.detection.confidence"
             label="Confidence"
+            :normalizeValue="roundToOneDecimalPlace"
             @update:model-value="updateDebounced"
             v-model="fields.confidence"
             v-tooltip="'The confidence threshold for detections'"
@@ -77,6 +78,7 @@
           <NumberField
             @keydown.stop="doNothing"
             @keyup.stop="doNothing"
+            :normalizeValue="roundToOneDecimalPlace"
             @keypress.stop="doNothing"
             v-tooltip="
               'The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.'
@@ -100,6 +102,7 @@
             @update:model-value="updateDebounced"
           />
           <SelectField
+            :filter="false"
             inputId="settings.detection.overlay_style"
             v-model="fields.overlay_style"
             label="Overlay Style"
@@ -162,6 +165,7 @@ import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import ChipField from "@/ui/ChipField.vue";
 import ModelUpload from "@/features/detection/components/ModelUpload.vue";
+import { roundToOneDecimalPlace } from "@/util/number";
 
 const store = useSettingsStore();
 const detectionStore = useDetectionStore();

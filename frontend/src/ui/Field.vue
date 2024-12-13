@@ -16,6 +16,7 @@ import { computed } from "vue";
 export type FieldLayout = "col" | "row-reverse" | "row" | "col-reverse";
 
 export type Props = {
+  loading?: boolean;
   message?: string | null;
   label?: string;
   fieldClassName?: string;

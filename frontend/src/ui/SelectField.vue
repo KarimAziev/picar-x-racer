@@ -4,6 +4,7 @@
     :labelClassName="labelClassName"
     :label="label"
     :message="message"
+    :loading="loading"
   >
     <Select
       :pt="{ input: { id: field, name: field } }"
@@ -12,7 +13,6 @@
       :optionValue="optionValue"
       filter
       :class="props.inputClassName"
-      :loading="loading"
       v-model="currentValue"
       :invalid="invalid"
       :disabled="readonly || disabled"

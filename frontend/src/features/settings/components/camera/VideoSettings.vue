@@ -1,7 +1,13 @@
 <template>
-  <VideoDeviceSelect />
-  <VideoQualitySelect />
-  <VideoEnhancerSelect />
+  <VideoDeviceSelect v-tooltip="'The camera device path and settings'" />
+  <VideoQualitySelect
+    v-tooltip="'Quality compression level for frames (0–100)'"
+  />
+  <VideoEnhancerSelect
+    v-tooltip="
+      'Video effect to apply to frames (e.g., `simulate_predator_vision`)'
+    "
+  />
 </template>
 
 <script setup lang="ts">
