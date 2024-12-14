@@ -1,9 +1,10 @@
 import asyncio
+import os
+import sys
 import time
 from os import path
 from typing import TYPE_CHECKING, List, Optional, Union
 
-import pygame
 from app.exceptions.music import MusicPlayerError
 from app.schemas.music import MusicPlayerMode
 from app.util.logger import Logger
@@ -12,6 +13,14 @@ from app.util.singleton_meta import SingletonMeta
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.files_service import FilesService
+
+original_stdout = sys.stdout
+try:
+    sys.stdout = open(os.devnull, 'w')
+    import pygame
+finally:
+    sys.stdout.close()
+    sys.stdout = original_stdout
 
 
 class MusicService(metaclass=SingletonMeta):

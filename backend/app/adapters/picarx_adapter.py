@@ -1,16 +1,11 @@
 import asyncio
 
-from app.adapters.robot_hat.adc import ADC
-from app.adapters.robot_hat.filedb import FileDB
-from app.adapters.robot_hat.grayscale import Grayscale_Module
-from app.adapters.robot_hat.pin import Pin
-from app.adapters.robot_hat.pwm import PWM
-from app.adapters.robot_hat.servo import Servo
-from app.adapters.robot_hat.ultrasonic import Ultrasonic
 from app.config.paths import PICARX_CONFIG_FILE
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+
+from robot_hat import ADC, PWM, FileDB, Grayscale_Module, Pin, Servo, Ultrasonic
 
 
 class PicarxAdapter(metaclass=SingletonMeta):

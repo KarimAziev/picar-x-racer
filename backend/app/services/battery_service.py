@@ -2,16 +2,15 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Optional
 
-from app.adapters.robot_hat.battery import Battery
 from app.config.platform import is_os_raspberry
 from app.schemas.connection import ConnectionEvent
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 
 if is_os_raspberry:
-    from app.adapters.robot_hat.battery import Battery
+    from robot_hat.battery import Battery
 else:
-    from app.adapters.robot_hat.mock.battery import Battery
+    from robot_hat.mock.battery import Battery
 
 
 if TYPE_CHECKING:
