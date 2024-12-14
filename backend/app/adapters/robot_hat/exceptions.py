@@ -1,0 +1,2 @@
+class ADCAddressNotFound(Exception):
+    pass

@@ -9,3 +9,17 @@ from .music import router as music_router
 from .settings import router as settings_router
 from .tts import router as tts_router
 from .video_feed import router as video_feed_router
+
+__all__ = [
+    "video_feed_router",
+    "app_sync_router",
+    "audio_management_router",
+    "battery_router",
+    "camera_feed_router",
+    "detection_router",
+    "file_management_router",
+    "main_router",
+    "music_router",
+    "settings_router",
+    "tts_router",
+]

@@ -1,17 +1,19 @@
-class Battery:
+from app.adapters.robot_hat.battery import Battery as BatteryOrig
+
+
+class Battery(BatteryOrig):
     def __init__(
-        self, initial_voltage_1=4.2, initial_voltage_2=4.2, discharge_rate=0.01
+        self,
+        *args,
+        **kwargs,
     ):
         """
         Initialize two 18650 batteries with initial voltages and a discharge rate.
-
-        :param initial_voltage_1: Initial voltage of the first battery.
-        :param initial_voltage_2: Initial voltage of the second battery.
-        :param discharge_rate: Rate at which the battery discharges per session.
         """
-        self.voltage_1 = initial_voltage_1
-        self.voltage_2 = initial_voltage_2
-        self.discharge_rate = discharge_rate
+        super().__init__(*args, **kwargs)
+        self.voltage_1 = 4.2
+        self.voltage_2 = 4.2
+        self.discharge_rate = 0.01
 
     def get_battery_voltage(self):
         """

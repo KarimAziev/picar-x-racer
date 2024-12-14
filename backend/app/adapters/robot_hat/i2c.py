@@ -21,8 +21,10 @@ from app.adapters.robot_hat.address_descriptions import (
     get_address_description,
     get_value_description,
 )
+from app.adapters.robot_hat.exceptions import ADCAddressNotFound
 from app.config.platform import is_os_raspberry
 from app.util.logger import Logger
+from smbus2 import SMBus
 
 if is_os_raspberry:
     from smbus2 import SMBus
@@ -32,14 +34,15 @@ else:
 
 def _retry_wrapper(func):
     def wrapper(self: "I2C", *args: Any, **kwargs: Any) -> Any:
-        for _ in range(self.RETRY):
+        for i in range(self.RETRY):
+            is_last = i == self.RETRY - 1
+            if is_last:
+                return func(self, *args, **kwargs)
             try:
                 return func(self, *args, **kwargs)
-            except OSError:
-                self.logger.debug(f"OSError: {func.__name__}")
+            except OSError as err:
+                self.logger.debug("OSError: %s %s", func.__name__, err)
                 continue
-        else:
-            return False
 
     return wrapper
 
@@ -55,31 +58,6 @@ class I2C(object):
     - Scan for connected I2C devices.
     - Retry mechanism for robust communication.
 
-    ### Attributes:
-        - `RETRY` (int): Number of retry attempts for communication.
-        - `logger` (Logger): Logger instance for logging messages.
-        - `_bus` (int): I2C bus number (default is 1).
-        - `_smbus` (SMBus): SMBus instance for I2C operations.
-        - `address` (int): I2C device address.
-
-    ### Methods:
-        - `__init__(self, address: Optional[int], bus: int = 1)`: Initialize the I2C bus.
-        - `_write_byte(self, data: int)`: Write a single byte to the I2C device.
-        - `_write_byte_data(self, reg: int, data: int)`: Write a byte of data to a specific register.
-        - `_write_word_data(self, reg: int, data: int)`: Write a word of data to a specific register.
-        - `_write_i2c_block_data(self, reg: int, data: list)`: Write blocks of data to a specific register.
-        - `_read_byte(self)`: Read a single byte from the I2C device.
-        - `_read_byte_data(self, reg: int)`: Read a byte of data from a specific register.
-        - `_read_word_data(self, reg: int)`: Read a word of data from a specific register.
-        - `_read_i2c_block_data(self, reg: int, num: int)`: Read blocks of data from a specific register.
-        - `is_ready(self) -> bool`: Check if the I2C device is ready.
-        - `scan(self) -> list`: Scan the I2C bus for devices.
-        - `write(self, data: Union[int, list, bytearray])`: Write data to the I2C device.
-        - `read(self, length: int = 1) -> list`: Read data from the I2C device.
-        - `mem_write(self, data: Union[int, list, bytearray], memaddr: int)`: Write data to a specific register.
-        - `mem_read(self, length: int, memaddr: int) -> list`: Read data from a specific register.
-        - `is_avaliable(self) -> bool`: Check if the I2C device is available.
-
     #### What is I2C?
     I2C (Inter-Integrated Circuit) is a communication protocol that allows
     multiple integrated circuits (ICs) to communicate with one another using
@@ -91,13 +69,6 @@ class I2C(object):
     - **Master**: The device that initiates and controls the communication.
     - **Slave**: The device that responds to the master's request.
     - Each I2C device has a unique address that allows the master to communicate with specific devices.
-
-    #### Playing with I2C
-    Imagine you have several sensors and devices connected to your Raspberry Pi
-    using I2C. You can easily read and write data to them using the I2C class.
-    For example, you can:
-    - Scan the I2C bus to identify connected devices.
-    - Write data to and read data from specific registers of these devices.
 
     Here's a visual representation of scanning for devices:
 
@@ -122,7 +93,7 @@ class I2C(object):
 
     def __init__(
         self,
-        address: Optional[Union[int, List[int]]] = None,
+        address: Union[int, List[int]],
         bus: int = 1,
         *args: Any,
         **kwargs: Any,
@@ -131,7 +102,7 @@ class I2C(object):
         Initialize the I2C bus.
 
         Args:
-            address (Optional[int]): I2C device address.
+            address: The address or list of addresses of I2C devices.
             bus (int): I2C bus number. Default is 1.
         """
 
@@ -141,11 +112,22 @@ class I2C(object):
         self._bus = bus
         self._smbus = SMBus(self._bus)
 
-        self.address = self.find_address(address)
+        addr = self.find_address(address)
+
+        if addr is None:
+            self.logger.error("I2C address %s not found", address)
+            raise ADCAddressNotFound("I2C address not found")
+
+        self.address: int = addr
+        self.logger.debug(
+            "I2C bus %s opened successfully at device address %s",
+            self._bus,
+            self.address,
+        )
 
     def find_address(
         self,
-        address: Optional[Union[int, List[int]]] = None,
+        address: Union[int, List[int]],
     ) -> Optional[int]:
         """
         Determine the appropriate I2C address for communication by either
@@ -184,7 +166,7 @@ class I2C(object):
             return None
 
     @_retry_wrapper
-    def _write_byte(self, data: int) -> Optional[int]:
+    def _write_byte(self, data: int) -> None:
         """
         Write a single byte to the I2C device.
 
@@ -202,11 +184,10 @@ class I2C(object):
             data,
             description,
         )
-        result = self._smbus.write_byte(self.address, data) if self.address else None
-        return result
+        self._smbus.write_byte(self.address, data)
 
     @_retry_wrapper
-    def _write_byte_data(self, reg: int, data: int) -> Optional[int]:
+    def _write_byte_data(self, reg: int, data: int) -> None:
         """
         Write a byte of data to a specific register.
 
@@ -217,21 +198,20 @@ class I2C(object):
         Returns:
             None
         """
-        if self.address:
-            reg_description = get_address_description(reg)
-            data_description = get_value_description(data)
-            self.logger.debug(
-                "Writing a byte of data on I2C address %s Register: [0x%02X] %s Data: [0x%02X] %s",
-                hex(self.address),
-                reg,
-                reg_description,
-                data,
-                data_description,
-            )
-            return self._smbus.write_byte_data(self.address, reg, data)
+        reg_description = get_address_description(reg)
+        data_description = get_value_description(data)
+        self.logger.debug(
+            "Writing a byte of data on I2C address %s Register: [0x%02X] %s Data: [0x%02X] %s",
+            hex(self.address),
+            reg,
+            reg_description,
+            data,
+            data_description,
+        )
+        return self._smbus.write_byte_data(self.address, reg, data)
 
     @_retry_wrapper
-    def _write_word_data(self, reg: int, data: int) -> Optional[int]:
+    def _write_word_data(self, reg: int, data: int) -> None:
         """
         Write a word of data to a specific register.
 
@@ -243,21 +223,20 @@ class I2C(object):
             None
         """
 
-        if self.address:
-            reg_description = get_address_description(reg)
-            data_description = get_value_description(data)
-            self.logger.debug(
-                "Writing a single word (2 bytes) on I2C address %s Register: [0x%02X] %s Data: [0x%04X] %s",
-                hex(self.address),
-                reg,
-                reg_description,
-                data,
-                data_description,
-            )
-            return self._smbus.write_word_data(self.address, reg, data)
+        reg_description = get_address_description(reg)
+        data_description = get_value_description(data)
+        self.logger.debug(
+            "Writing a single word (2 bytes) on I2C address %s Register: [0x%02X] %s Data: [0x%04X] %s",
+            hex(self.address),
+            reg,
+            reg_description,
+            data,
+            data_description,
+        )
+        return self._smbus.write_word_data(self.address, reg, data)
 
     @_retry_wrapper
-    def _write_i2c_block_data(self, reg: int, data: List[int]) -> Optional[int]:
+    def _write_i2c_block_data(self, reg: int, data: List[int]) -> None:
         """
         Write blocks of data to a specific register.
 
@@ -269,20 +248,19 @@ class I2C(object):
             None
         """
 
-        if self.address:
-            reg_description = get_address_description(reg)
-            data_descriptions = [get_value_description(d) for d in data]
-            self.logger.debug(
-                "Writing blocks of data on I2C address %s Register: [0x%02X] %s Data: %s",
-                hex(self.address),
-                reg,
-                reg_description,
-                [f"0x{i:02X} {descr}" for i, descr in zip(data, data_descriptions)],
-            )
-            return self._smbus.write_i2c_block_data(self.address, reg, data)
+        reg_description = get_address_description(reg)
+        data_descriptions = [get_value_description(d) for d in data]
+        self.logger.debug(
+            "Writing blocks of data on I2C address %s Register: [0x%02X] %s Data: %s",
+            hex(self.address),
+            reg,
+            reg_description,
+            [f"0x{i:02X} {descr}" for i, descr in zip(data, data_descriptions)],
+        )
+        return self._smbus.write_i2c_block_data(self.address, reg, data)
 
     @_retry_wrapper
-    def _read_byte(self) -> Optional[int]:
+    def _read_byte(self) -> int:
         """
         Read a single byte from the I2C device.
 
@@ -290,19 +268,18 @@ class I2C(object):
             int: Byte read from the device, or None if error.
         """
 
-        if self.address:
-            result = self._smbus.read_byte(self.address)
-            description = get_value_description(result)
-            self.logger.debug(
-                "Read a single byte on the I2C address %s Result: [0x%02X] %s",
-                hex(self.address),
-                result,
-                description,
-            )
-            return result
+        result: int = self._smbus.read_byte(self.address)
+        description = get_value_description(result)
+        self.logger.debug(
+            "Read a single byte on the I2C address %s Result: [0x%02X] %s",
+            hex(self.address),
+            result,
+            description,
+        )
+        return result
 
     @_retry_wrapper
-    def _read_byte_data(self, reg: int) -> Optional[int]:
+    def _read_byte_data(self, reg: int) -> int:
         """
         Read a byte of data from a specific register.
 
@@ -313,21 +290,20 @@ class I2C(object):
             int: Byte read from the register, or None if error.
         """
 
-        if self.address:
-            result = self._smbus.read_byte_data(self.address, reg)
-            reg_description = get_address_description(reg)
-            result_description = get_value_description(result)
-            self.logger.debug(
-                "Read a byte of data: [0x%02X] %s [0x%02X] %s",
-                reg,
-                reg_description,
-                result,
-                result_description,
-            )
-            return result
+        result = self._smbus.read_byte_data(self.address, reg)
+        reg_description = get_address_description(reg)
+        result_description = get_value_description(result)
+        self.logger.debug(
+            "Read a byte of data: [0x%02X] %s [0x%02X] %s",
+            reg,
+            reg_description,
+            result,
+            result_description,
+        )
+        return result
 
     @_retry_wrapper
-    def _read_word_data(self, reg: int) -> Optional[List[int]]:
+    def _read_word_data(self, reg: int) -> List[int]:
         """
         Read a word of data from a specific register.
 
@@ -338,24 +314,23 @@ class I2C(object):
             list: Word read from the register in two bytes, or None if error.
         """
 
-        if self.address:
-            result = self._smbus.read_word_data(self.address, reg)
-            result_list = [result & 0xFF, (result >> 8) & 0xFF]
-            reg_description = get_address_description(reg)
-            result_description = get_value_description(result)
+        result: int = self._smbus.read_word_data(self.address, reg)
+        result_list: List[int] = [result & 0xFF, (result >> 8) & 0xFF]
+        reg_description = get_address_description(reg)
+        result_description = get_value_description(result)
 
-            self.logger.debug(
-                "Read a word of data on the I2C address %s Register: [0x%02X] %s Result: [0x%04X] %s",
-                self.address,
-                reg,
-                reg_description,
-                result,
-                result_description,
-            )
-            return result_list
+        self.logger.debug(
+            "Read a word of data on the I2C address %s Register: [0x%02X] %s Result: [0x%04X] %s",
+            self.address,
+            reg,
+            reg_description,
+            result,
+            result_description,
+        )
+        return result_list
 
     @_retry_wrapper
-    def _read_i2c_block_data(self, reg: int, num: int) -> Optional[List[int]]:
+    def _read_i2c_block_data(self, reg: int, num: int) -> List[int]:
         """
         Read blocks of data from a specific register.
 
@@ -364,21 +339,20 @@ class I2C(object):
             num (int): Number of blocks to read.
 
         Returns:
-            list: List of blocks read from the register, or None if error.
+            list: List of blocks read from the register.
         """
 
-        if self.address:
-            result = self._smbus.read_i2c_block_data(self.address, reg, num)
-            reg_description = get_address_description(reg)
-            result_descriptions = [get_value_description(r) for r in result]
-            self.logger.debug(
-                "Read blocks of data on the I2C address %s from a register [0x%02X] %s Result: %s",
-                self.address,
-                reg,
-                reg_description,
-                [f"0x{i:02X} {descr}" for i, descr in zip(result, result_descriptions)],
-            )
-            return result
+        result = self._smbus.read_i2c_block_data(self.address, reg, num)
+        reg_description = get_address_description(reg)
+        result_descriptions = [get_value_description(r) for r in result]
+        self.logger.debug(
+            "Read blocks of data on the I2C address %s from a register [0x%02X] %s Result: %s",
+            self.address,
+            reg,
+            reg_description,
+            [f"0x{i:02X} {descr}" for i, descr in zip(result, result_descriptions)],
+        )
+        return result
 
     @_retry_wrapper
     def is_ready(self) -> bool:
@@ -511,7 +485,7 @@ class I2C(object):
             )  # All bytes after the first are written as block data
             self._write_i2c_block_data(reg, data)
 
-    def read(self, length: int = 1):
+    def read(self, length: int = 1) -> List[int]:
         """
         Read a specified number of bytes from the I2C device.
 
@@ -558,18 +532,10 @@ class I2C(object):
             incomplete results.
         """
 
-        result = []
-        for i in range(length):
-            byte = self._read_byte()
-            if byte is not None:
-                result.append(byte)
-            else:
-                self.logger.warning(
-                    "Read %s byte of (%s) from the I2C address %s is None",
-                    i,
-                    length,
-                    self.address,
-                )
+        result: List[int] = []
+        for _ in range(length):
+            byte: int = self._read_byte()
+            result.append(byte)
         return result
 
     def mem_write(self, data: Union[int, List[int], bytearray], memaddr: int) -> None:
@@ -628,7 +594,7 @@ class I2C(object):
                     data >>= 8  # Shift right to prepare for the next byte
         self._write_i2c_block_data(memaddr, data_all)
 
-    def mem_read(self, length: int, memaddr: int) -> Optional[List[int]]:
+    def mem_read(self, length: int, memaddr: int) -> List[int]:
         """
         Read data from a specific memory address (register) on the I2C device.
 
@@ -642,7 +608,7 @@ class I2C(object):
             memaddr (int): The register (address) from which to read data.
 
         Returns:
-            Optional[List[int]]: Returns a list of bytes read from the register. If an error occurs,
+            List[int]: Returns a list of bytes read from the register. If an error occurs,
                                  this method will log an error and return `None`.
 
         Transfer Details:
@@ -672,7 +638,7 @@ class I2C(object):
             ```
 
         Returns:
-            Optional[List[int]]: A list of bytes read from the specified register, or `None` if an error occurs.
+            A list of bytes read from the specified register.
         """
 
         result = self._read_i2c_block_data(memaddr, length)
@@ -704,4 +670,4 @@ class I2C(object):
             bool: True if the I2C device is available, False otherwise.
         """
 
-        return self.address in self.scan()
+        return True if self.check_address(self.address) else False

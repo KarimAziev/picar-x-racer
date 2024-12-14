@@ -6,46 +6,42 @@ An Analog-to-Digital Converter (ADC) converts an analog signal into a digital si
 This is essential for interpreting analog signals from sensors in digital devices like a Raspberry Pi.
 """
 
-from typing import Optional
+from typing import List, Union
 
 from app.adapters.robot_hat.i2c import I2C
+from app.util.logger import Logger
+
+ADC_DEFAULT_ADDRESSES = [0x14, 0x15]
+
+ADC_MAX_CHAN_VAL = 7
+ADC_ALLOWED_CHANNELS = list(range(0, ADC_MAX_CHAN_VAL))
+ADC_ALLOWED_CHANNELS_PIN_NAMES = [f"A{val}" for val in ADC_ALLOWED_CHANNELS]
+
+ADC_ALLOWED_CHANNELS_DESCRIPTION = "Channel should be one of: " + ", ".join(
+    ADC_ALLOWED_CHANNELS_PIN_NAMES + [f"{num}" for num in ADC_ALLOWED_CHANNELS]
+)
 
 
 class ADC(I2C):
     """
     A class to manage the Analog-to-Digital Converter (ADC) on the Raspberry Pi.
 
-    ### Key Features:
-    - Read analog values from different channels.
-    - Convert analog values to digital and voltage readings.
-
-    ### Attributes:
-        - `ADDR` (list): List of possible I2C addresses for the ADC.
-        - `chn` (int): The specific ADC channel to read from.
-
-    ### Methods:
-        - `__init__(self, chn, address=None, *args, **kwargs)`: Initialize the ADC.
-        - `read(self)`: Read the ADC value (0-4095).
-        - `read_voltage(self)`: Read the ADC value and convert it to voltage.
-
-    #### What is ADC?
     An Analog-to-Digital Converter (ADC) converts an analog signal into a digital signal.
     This is essential for interpreting analog signals from sensors in digital devices like a Raspberry Pi.
 
-    #### How They Work
+    #### Key Concepts:
+
     - **Channel**: Each sensor or input signal is connected to an ADC channel.
     - **Resolution**: Determines how accurately the analog signal is converted to digital. A 12-bit ADC, for instance, could represent an analog signal with a value between 0 and 4095.
     - **MSB (Most Significant Byte)**: The byte in the data that has the highest value, representing the upper part of a numerical value.
     - **LSB (Least Significant Byte)**: The byte in the data that has the lowest value, representing the lower part of a numerical value.
 
     #### Example Usage
-    Imagine you're reading the voltage from a sensor connected to channel A0 on your ADC. This class allows you to retrieve that value and convert it into a readable voltage.
-
     ```python
     from app.adapters.robot_hat.adc import ADC
 
     # Initialize ADC on channel A0
-    adc = ADC(chn="A0")
+    adc = ADC(channel="A4")
 
     # Read the ADC value
     value = adc.read()
@@ -57,62 +53,63 @@ class ADC(I2C):
     ```
     """
 
-    ADDR = [0x14, 0x15]
-    """List of possible I2C addresses for the ADC."""
-
-    def __init__(self, chn, address=None, *args, **kwargs):
+    def __init__(
+        self,
+        channel: Union[str, int],
+        address: Union[int, List[int]] = ADC_DEFAULT_ADDRESSES,
+        *args,
+        **kwargs,
+    ):
         """
         Initialize the ADC.
 
         Args:
-            chn (Union[int, str]): Channel number (0-7 or A0-A7).
-            address (int, optional): I2C device address.
+            channel: Channel number (0-7 or A0-A7).
+            address: The address or list of addresses of I2C devices.
         """
-        if address is not None:
-            super().__init__(address, *args, **kwargs)
-        else:
-            super().__init__(self.ADDR, *args, **kwargs)
+
+        super().__init__(address, *args, **kwargs)
+        self._logger = Logger(__name__)
         if self.address is not None:
-            self.logger.debug(f"ADC device address: 0x{self.address:02X}")
+            self._logger.debug(f"ADC device address: 0x{self.address:02X}")
         else:
-            self.logger.error("ADC device address not found")
+            self._logger.error("ADC device address not found")
 
-        if isinstance(chn, str):
-            # If chn is a string, assume it's a pin name, remove "A" and convert to int
-            if chn.startswith("A"):
-                chn = int(chn[1:])
-            else:
-                raise ValueError(f'ADC channel should be between [A0, A7], not "{chn}"')
+        if (
+            channel not in ADC_ALLOWED_CHANNELS_PIN_NAMES
+            and channel not in ADC_ALLOWED_CHANNELS
+        ):
+            raise ValueError(
+                f'Invalid ADC channel {channel}. ' + ADC_ALLOWED_CHANNELS_DESCRIPTION
+            )
 
-        if chn < 0 or chn > 7:
-            raise ValueError(f'ADC channel should be between [0, 7], not "{chn}"')
-        chn = 7 - chn
+        if isinstance(channel, str):
+            channel = int(channel[1:])
+
+        channel = ADC_MAX_CHAN_VAL - channel
         # Convert to Register value
-        self.chn = chn | 0x10
+        self.channel = channel | 0x10
 
-    def read(self, length: Optional[int] = 2):
+    def read_raw_value(self) -> int:
         """
-        Read the ADC value.
-
-        Args:
-            length (int): This argument is ignored and always set to 2. It is required
-        for compatibility with the parent method.
+        Retrieve and combine the ADC's Most Significant Byte (MSB) and Least Significant Byte (LSB).
 
         Returns:
             int: ADC value (0-4095).
         """
         # Write register address
-        self.write([self.chn, 0, 0])
-        length = 2
-        # Read values
-        msb, lsb = super().read(length)
+        self.write([self.channel, 0, 0])
+        msb, lsb = self.read(2)  # read two bytes
+        self._logger.debug(
+            "ADC Most Significant Byte: '%s', Least Significant Byte: '%s'", msb, lsb
+        )
 
         # Combine MSB (Most Significant Byte) and LSB (Least Significant Byte)
         value = (msb << 8) + lsb
-        self.logger.debug(f"Read value: {value}")
+        self._logger.debug("ADC combined value: '%s'", value)
         return value
 
-    def read_voltage(self):
+    def read_voltage(self) -> float:
         """
         Read the ADC value and convert to voltage.
 
@@ -120,9 +117,9 @@ class ADC(I2C):
             float: Voltage value (0-3.3 V).
         """
         # Read ADC value
-        value = self.read()
+        value = self.read_raw_value()
 
         # Convert to voltage
         voltage = value * 3.3 / 4095
-        self.logger.debug(f"Read voltage: {voltage}")
+        self._logger.debug(f"ADC raw voltage: {voltage}")
         return voltage

@@ -62,7 +62,7 @@ class ADXL345(I2C):
         super().__init__(address=address, bus=bus, *args, **kwargs)
         self.address = address
 
-    def read(
+    def read_axis(
         self, axis: Optional[int] = None
     ) -> Union[float, List[Union[float, None]], None]:
         """

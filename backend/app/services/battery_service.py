@@ -2,10 +2,17 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Optional
 
+from app.adapters.robot_hat.battery import Battery
+from app.config.platform import is_os_raspberry
 from app.schemas.connection import ConnectionEvent
-from app.util.get_battery_voltage import get_battery_voltage as read_battery_voltage
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+
+if is_os_raspberry:
+    from app.adapters.robot_hat.battery import Battery
+else:
+    from app.adapters.robot_hat.mock.battery import Battery
+
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -28,6 +35,7 @@ class BatteryService(metaclass=SingletonMeta):
         """
 
         self._logger = Logger(__name__)
+        self.battery_adapter = Battery("A4")
         self.connection_manager = connection_manager
         self.settings = file_manager.load_settings()
         self.battery_full_voltage = self.settings.get("battery_full_voltage", 8.4)
@@ -76,7 +84,9 @@ class BatteryService(metaclass=SingletonMeta):
         value: Optional[float] = None
         async with self._lock:
             try:
-                value = await asyncio.to_thread(read_battery_voltage)
+                value = await asyncio.to_thread(
+                    self.battery_adapter.get_battery_voltage
+                )
             except Exception:
                 await self.connection_manager.error("Error reading voltage")
 
