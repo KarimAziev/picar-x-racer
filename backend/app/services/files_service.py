@@ -12,7 +12,6 @@ import os
 from os import path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from app.adapters.robot_hat.filedb import FileDB
 from app.config.paths import (
     CONFIG_USER_DIR,
     DATA_DIR,
@@ -37,6 +36,7 @@ from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
+from robot_hat.filedb import FileDB
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService

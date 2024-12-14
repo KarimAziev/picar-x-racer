@@ -21,8 +21,9 @@ def main():
         mp.set_start_method("spawn")
     except RuntimeError:
         pass
+    from robot_hat import reset_mcu_sync
+
     from app.util.logger import Logger
-    from app.util.reset_mcu_sync import reset_mcu_sync
     from app.util.setup_env import setup_env
 
     (

@@ -4,8 +4,7 @@ from app.config.paths import PICARX_CONFIG_FILE
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-
-from robot_hat import ADC, PWM, FileDB, Grayscale_Module, Pin, Servo, Ultrasonic
+from robot_hat import ADC, PWM, FileDB, Grayscale, Pin, Servo, Ultrasonic
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
@@ -87,7 +86,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         # --------- grayscale module init ---------
         adc0, adc1, adc2 = [ADC(pin) for pin in grayscale_pins]
-        self.grayscale = Grayscale_Module(adc0, adc1, adc2)
+        self.grayscale = Grayscale(adc0, adc1, adc2)
         # Get reference
         self.line_reference = self.config_file.get(
             "line_reference", default_value=str(self.DEFAULT_LINE_REF)
