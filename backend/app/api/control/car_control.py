@@ -26,50 +26,23 @@ async def websocket_endpoint(
         websocket (WebSocket): The WebSocket connection for sending and receiving control commands.
 
     Raises:
-        Exception: If there is an error while processing the incoming message.
-        WebSocketDisconnect: If the WebSocket connection disconnects.
+        Exception: If there is an error processing the incoming message.
+        WebSocketDisconnect: If the WebSocket connection is disconnected.
         KeyboardInterrupt: If the WebSocket connection is interrupted.
     """
     car_manager: "CarService" = websocket.app.state.car_manager
     connection_manager: "ConnectionService" = websocket.app.state.connection_manager
-    battery_manager = websocket.app.state.battery_manager
-
     try:
         await connection_manager.connect(websocket)
         await car_manager.broadcast()
-
         while websocket.application_state == WebSocketState.CONNECTED:
-            # Set up asynchronous "race" between receiving a message or a timeout for idle actions
-            raw_data_task = asyncio.create_task(websocket.receive_text())
-            timeout_task = asyncio.create_task(
-                asyncio.sleep(1)
-            )  # 1-second delay for timeout
+            raw_data = await websocket.receive_text()
+            data = json.loads(raw_data)
+            action: str = data.get("action")
+            payload = data.get("payload")
 
-            done, pending = await asyncio.wait(
-                {raw_data_task, timeout_task}, return_when=asyncio.FIRST_COMPLETED
-            )
-
-            # Determine the winner
-            if raw_data_task in done:  # A message was received
-                # Cancel the timeout task since it's no longer needed
-                timeout_task.cancel()
-
-                # Get the received WebSocket message and process it
-                raw_data = await raw_data_task
-                data = json.loads(raw_data)
-                action: str = data.get("action")
-                payload = data.get("payload")
-                logger.debug("%s", data)
-
-                await car_manager.process_action(action, payload, websocket)
-
-            elif timeout_task in done:  # Timeout occurred, perform idle actions
-                # Cancel the raw data task since we will handle the timeout
-                raw_data_task.cancel()
-
-                # Perform idle task (e.g., measuring voltage and sending via WebSocket)
-                voltage_data = await measure_voltage(battery_manager)
-                await websocket.send_text(json.dumps(voltage_data))
+            logger.debug("%s", data)
+            await car_manager.process_action(action, payload, websocket)
 
     except WebSocketDisconnect:
         logger.info("WebSocket Disconnected")
