@@ -1,9 +1,8 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, TypeVar, Union
+from typing import Dict, List, TypeVar, Union
 
-from app.util.file_util import Dict
 from app.util.logger import Logger
 
 T = TypeVar('T')
