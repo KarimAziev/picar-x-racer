@@ -1,17 +1,14 @@
 <template>
   <span v-if="connected" class="bold">{{ clients }}</span>
-  <DisconnectedIndicator v-else />
+  <DisconnectIndicator v-else />
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from "vue";
+import { computed } from "vue";
 import { useAppSyncStore } from "@/features/syncer";
+import DisconnectIndicator from "@/features/syncer/components/DisconnectIndicator.vue";
 
 const syncStore = useAppSyncStore();
-
-const DisconnectedIndicator = defineAsyncComponent({
-  loader: () => import("@/features/syncer/components/DisconnectIndicator.vue"),
-});
 
 const connected = computed(() => syncStore.model?.connected);
 
