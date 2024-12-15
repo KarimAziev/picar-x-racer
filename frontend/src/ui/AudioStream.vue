@@ -62,8 +62,4 @@ onBeforeUnmount(() => {
 </script>
 <style scoped lang="scss">
 @use "@/assets/scss/blink";
-.stream-btn {
-  align-self: normal;
-  padding: 0;
-}
 </style>

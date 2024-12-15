@@ -47,7 +47,7 @@ watch(
 </script>
 <style scoped lang="scss">
 .wrapper {
-  font-size: 10px;
+  font-size: 0.8rem;
 }
 button {
   padding: 0px;

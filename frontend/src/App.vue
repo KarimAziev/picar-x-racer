@@ -15,10 +15,13 @@
       <DetectionControls />
     </ToggleableView>
     <CalibrationModeInfo v-if="!isMobile" />
-    <ToggleableView v-if="!isMobile" setting="text_to_speech_input">
-      <TextToSpeechInput />
-    </ToggleableView>
-
+    <div v-if="!isMobile" class="flex flex-wrap align-items-center">
+      <ToggleableView setting="text_to_speech_input">
+        <TextToSpeechInput />
+      </ToggleableView>
+      <AudioStream />
+      <PhotoButton />
+    </div>
     <ToggleableView setting="show_player">
       <MusicPlayer />
     </ToggleableView>
@@ -40,6 +43,7 @@ import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer";
+
 import ToggleableView from "@/ui/ToggleableView.vue";
 import TopRightPanel from "@/ui/TopRightPanel.vue";
 
@@ -52,6 +56,14 @@ const isSettingsLoaded = computed(() => settingsStore.loaded);
 const ActiveConnectionsIndicator = defineAsyncComponent({
   loader: () =>
     import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
+});
+
+const AudioStream = defineAsyncComponent({
+  loader: () => import("@/ui/AudioStream.vue"),
+});
+
+const PhotoButton = defineAsyncComponent({
+  loader: () => import("@/ui/PhotoButton.vue"),
 });
 
 const KeyboardHandler = defineAsyncComponent({
@@ -114,7 +126,7 @@ onBeforeUnmount(() => {
   @media (max-width: 992px) {
     right: 10px;
     top: 5px;
-    max-width: 200px;
+    max-width: 190px;
   }
 }
 </style>

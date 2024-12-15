@@ -1,41 +1,37 @@
 <template>
-  <div class="container flex align-items-center gap-5" :class="class">
-    <SelectField
-      fieldClassName="language opacity-hover"
-      field="language"
-      filter
-      inputClassName="languages-dropdown"
-      v-model="language"
-      :options="ttsLanguages"
-      optionLabel="label"
-      optionValue="value"
-      v-tooltip="'The language of Text to Speech'"
-      @before-show="handleSelectBeforeShow"
-      @before-hide="handleSelectBeforeHide"
+  <SelectField
+    fieldClassName="language opacity-hover"
+    field="language"
+    filter
+    inputClassName="languages-dropdown"
+    v-model="language"
+    :options="ttsLanguages"
+    optionLabel="label"
+    optionValue="value"
+    v-tooltip="'The language of Text to Speech'"
+    @before-show="handleSelectBeforeShow"
+    @before-hide="handleSelectBeforeHide"
+  />
+  <div class="flex align-items-center">
+    <TextInput
+      class="opacity-hover"
+      autocomplete="off"
+      placeholder="Speak"
+      id="tts-text"
+      @keyup.stop="handleKeyUp"
+      @keyup.enter="handleKeyEnter"
+      v-model="inputRef"
+      v-tooltip="'Type the Text To Speech and press Enter to speak'"
     />
-    <div class="flex align-items-center">
-      <TextInput
-        class="opacity-hover"
-        autocomplete="off"
-        placeholder="Speak"
-        id="tts-text"
-        @keyup.stop="handleKeyUp"
-        @keyup.enter="handleKeyEnter"
-        v-model="inputRef"
-        v-tooltip="'Type the Text To Speech and press Enter to speak'"
-      />
-
-      <Button
-        class="opacity-hover"
-        @click="sayText"
-        :disabled="!inputRef || inputRef.length === 0"
-        icon="pi pi-play-circle"
-        text
-        aria-label="Speak"
-        v-tooltip="'Speak'"
-      />
-      <AudioStream />
-    </div>
+    <Button
+      class="opacity-hover"
+      @click="sayText"
+      :disabled="!inputRef || inputRef.length === 0"
+      icon="pi pi-play-circle"
+      text
+      aria-label="Speak"
+      v-tooltip="'Speak'"
+    />
   </div>
 </template>
 
@@ -48,7 +44,6 @@ import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 
 import { useInputHistory } from "@/composables/useInputHistory";
-import AudioStream from "@/ui/AudioStream.vue";
 
 defineProps<{ class?: string }>();
 
@@ -90,14 +85,6 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.container {
-  @media screen and (max-width: 992px) {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 0;
-  }
-}
 input {
   width: 50px;
   height: 30px;

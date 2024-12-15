@@ -184,9 +184,9 @@ const stopTrack = async () => {
   display: flex;
   flex-direction: column;
   position: relative;
-  padding-left: 2px;
+  padding: 0 4px;
   font-size: 0.7rem;
-  max-width: 400px;
+  width: 180px;
   user-select: none;
 
   @media (min-width: 992px) and (orientation: portrait) {
