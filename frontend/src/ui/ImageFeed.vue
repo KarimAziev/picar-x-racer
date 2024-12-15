@@ -40,17 +40,16 @@ const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
-const listenersAdded = ref(false);
+const imgRef = ref<HTMLImageElement>();
 
 const {
   initWS: initVideoStreamWS,
   cleanup: cleanupVideoStreamWS,
-  imgRef,
   handleImageOnLoad,
   imgLoading,
   active: isVideoStreamActive,
   imgInitted,
-} = useWebsocketStream({ url: "ws/video-stream" });
+} = useWebsocketStream({ url: "ws/video-stream", imgRef });
 
 const isOverlayEnabled = computed(
   () => detectionStore.data.active && isVideoStreamActive.value,
@@ -90,11 +89,8 @@ watch(
 
 watch(
   () => imgRef.value,
-  (el) => {
-    if (el && !listenersAdded.value) {
-      addCameraRotateListeners();
-      listenersAdded.value = true;
-    }
+  () => {
+    addCameraRotateListeners();
   },
 );
 
@@ -124,13 +120,11 @@ onMounted(async () => {
 
   if (imgRef.value) {
     addCameraRotateListeners();
-    listenersAdded.value = true;
   }
   window.addEventListener("beforeunload", handleSocketsCleanup);
 });
 
 onBeforeUnmount(() => {
-  listenersAdded.value = false;
   removeCameraRotateListeners();
   handleSocketsCleanup();
 });

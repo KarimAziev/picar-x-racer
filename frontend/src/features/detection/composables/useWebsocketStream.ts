@@ -1,11 +1,9 @@
-import { ref } from "vue";
+import { ref, Ref } from "vue";
 import { useWebSocket, WebSocketOptions } from "@/composables/useWebsocket";
 import { useDetectionStore } from "@/features/detection";
 
-export interface WebsocketStreamParams {
-  retryInterval?: number;
-  onOpen?: Function;
-  onFirstMessage?: Function;
+export interface WebsocketStreamParams extends WebSocketOptions {
+  imgRef: Ref<HTMLImageElement | undefined>;
 }
 
 const extractFrameWithTimestamp = (data: ArrayBuffer) => {
@@ -20,9 +18,8 @@ const extractFrameWithTimestamp = (data: ArrayBuffer) => {
   return { timestamp, blob };
 };
 
-export const useWebsocketStream = (params: WebSocketOptions) => {
+export const useWebsocketStream = (params: WebsocketStreamParams) => {
   const detectionStore = useDetectionStore();
-  const imgRef = ref<HTMLImageElement>();
   const imgInitted = ref(false);
   const imgLoading = ref(true);
   const currentImageBlobUrl = ref<string>();
@@ -47,8 +44,8 @@ export const useWebsocketStream = (params: WebSocketOptions) => {
     const imageUrl = urlCreator.createObjectURL(blob);
 
     detectionStore.setCurrentFrameTimestamp(timestamp);
-    if (imgRef.value) {
-      imgRef.value.src = imageUrl;
+    if (params.imgRef.value) {
+      params.imgRef.value.src = imageUrl;
       currentImageBlobUrl.value = imageUrl;
       if (imgInitted.value && imgLoading.value) {
         imgLoading.value = false;
@@ -99,7 +96,6 @@ export const useWebsocketStream = (params: WebSocketOptions) => {
     loading,
     reconnectEnabled,
     handleImageOnLoad,
-    imgRef,
     imgInitted,
     imgLoading,
   };
