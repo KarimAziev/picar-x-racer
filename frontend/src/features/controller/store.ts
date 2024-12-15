@@ -23,6 +23,7 @@ import { useMessagerStore } from "@/features/messager";
 import { useMusicStore } from "@/features/music";
 import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
+import { takePhotoEffect } from "@/util/dom";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;
@@ -405,6 +406,7 @@ export const useControllerStore = defineStore("controller", {
       const imageStore = useImageStore();
       const cameraStore = useCameraStore();
       const settingsStore = useSettingsStore();
+      takePhotoEffect();
       const file = await cameraStore.capturePhoto();
 
       if (file && settingsStore.data.auto_download_photo) {
