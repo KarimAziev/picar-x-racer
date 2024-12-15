@@ -8,8 +8,6 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-
-import { isNumber } from "@/util/guards";
 import { useSettingsStore, useBatteryStore } from "@/features/settings/stores";
 import { roundNumber } from "@/util/number";
 
@@ -24,28 +22,24 @@ const batteryTotalVoltage = computed(
   () => settingsStore.data.battery_full_voltage,
 );
 
-const batteryTotalVoltageAdjusted = computed(() =>
-  roundNumber(batteryTotalVoltage.value - BATTERY_MIN_LEVEL),
-);
-
 const batteryVoltage = computed(() => `${batteryStore.voltage || 0}V`);
 
 const batteryVoltageAdjusted = computed(() =>
-  roundNumber(
-    isNumber(batteryStore.voltage)
-      ? Math.max(0, batteryStore.voltage - BATTERY_MIN_LEVEL)
-      : batteryStore.voltage,
-    2,
-  ),
+  roundNumber(batteryStore.voltage - BATTERY_MIN_LEVEL, 2),
+);
+
+const batteryTotalVoltageAdjusted = computed(() =>
+  roundNumber(batteryTotalVoltage.value - BATTERY_MIN_LEVEL, 2),
 );
 
 const percentageAdjusted = computed(() =>
-  (
+  roundNumber(
     Math.max(
       0,
       batteryVoltageAdjusted.value / batteryTotalVoltageAdjusted.value,
-    ) * 100
-  ).toFixed(),
+    ) * 100,
+    1,
+  ),
 );
 
 const className = computed(() => {
