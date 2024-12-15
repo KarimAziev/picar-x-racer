@@ -30,5 +30,9 @@ li {
   list-style: none;
   padding: 0;
   text-transform: uppercase;
+  max-width: 200px;
+  @media (min-width: 992px) {
+    max-width: 300px;
+  }
 }
 </style>
