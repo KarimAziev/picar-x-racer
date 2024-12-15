@@ -5,11 +5,11 @@
   <LazySettings />
   <Messager v-if="!isMobile" />
   <TopRightPanel class="flex flex-col bold text-align-right">
-    <BatteryIndicator />
-    <ActiveConnectionsIndicator v-if="!isMobile" />
+    <BatteryIndicator v-if="isSettingsLoaded" />
+    <ActiveConnectionsIndicator v-if="!isMobile && isSettingsLoaded" />
   </TopRightPanel>
   <div class="indicators" v-if="isSettingsLoaded">
-    <ActiveConnectionsIndicator v-if="isMobile" />
+    <ActiveConnectionsIndicator v-if="isMobile && isSettingsLoaded" />
     <Recording />
     <ToggleableView setting="show_object_detection_settings">
       <DetectionControls />
@@ -56,10 +56,6 @@ const ActiveConnectionsIndicator = defineAsyncComponent({
 
 const KeyboardHandler = defineAsyncComponent({
   loader: () => import("@/features/controller/components/KeyboardHandler.vue"),
-});
-
-const AudioStream = defineAsyncComponent({
-  loader: () => import("@/ui/AudioStream.vue"),
 });
 
 const Distance = defineAsyncComponent({

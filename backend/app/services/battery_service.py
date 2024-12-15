@@ -2,16 +2,10 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Optional
 
-from app.config.platform import is_os_raspberry
 from app.schemas.connection import ConnectionEvent
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-
-if is_os_raspberry:
-    from robot_hat.battery import Battery
-else:
-    from robot_hat.mock.battery import Battery
-
+from robot_hat.battery import Battery
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -24,7 +18,7 @@ class BatteryService(metaclass=SingletonMeta):
     BATTERY_DANGER_LEVEL = 6.5
     BATTERY_MIN_LEVEL = 6.0
 
-    CACHE_SECONDS = 5
+    CACHE_SECONDS = 2
 
     def __init__(
         self, file_manager: "FilesService", connection_manager: "ConnectionService"
@@ -34,7 +28,7 @@ class BatteryService(metaclass=SingletonMeta):
         """
 
         self._logger = Logger(__name__)
-        self.battery_adapter = Battery("A4")
+        self.battery_adapter = Battery()
         self.connection_manager = connection_manager
         self.settings = file_manager.load_settings()
         self.battery_full_voltage = self.settings.get("battery_full_voltage", 8.4)
