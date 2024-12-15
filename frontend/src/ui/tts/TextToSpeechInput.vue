@@ -13,7 +13,7 @@
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
     />
-    <div class="flex textinput">
+    <div class="flex align-items-center">
       <TextInput
         class="opacity-hover"
         autocomplete="off"
@@ -34,6 +34,7 @@
         aria-label="Speak"
         v-tooltip="'Speak'"
       />
+      <AudioStream />
     </div>
   </div>
 </template>
@@ -47,6 +48,7 @@ import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 
 import { useInputHistory } from "@/composables/useInputHistory";
+import AudioStream from "@/ui/AudioStream.vue";
 
 defineProps<{ class?: string }>();
 

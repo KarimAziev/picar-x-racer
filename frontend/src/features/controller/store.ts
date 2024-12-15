@@ -110,6 +110,7 @@ export const useControllerStore = defineStore("controller", {
       const messager = useMessagerStore();
       const distanceStore = useDistanceStore();
       const calibrationStore = useCalibrationStore();
+      const batteryStore = useBatteryStore();
       const handleMessage = (data: WSMessageData) => {
         if (!data) {
           return;
@@ -117,6 +118,25 @@ export const useControllerStore = defineStore("controller", {
         const { type, payload, error } = data;
 
         switch (type) {
+          case "battery": {
+            batteryStore.voltage = payload;
+            break;
+          }
+
+          case "info": {
+            messager.info(payload, {
+              immediately: true,
+            });
+            break;
+          }
+
+          case "error": {
+            messager.error(payload, {
+              immediately: true,
+            });
+            break;
+          }
+
           case "getDistance":
             if (error) {
               messager.error(error, "distance error");

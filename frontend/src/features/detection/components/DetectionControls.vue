@@ -1,101 +1,94 @@
 <template>
-  <div :class="class" class="flex flex-col">
-    <div class="p-field max-w-160">
-      <div class="flex flex-col gap-5 text-align-left">
-        <ToggleSwitchField
-          fieldClassName="opacity-hover"
-          label="Detection"
-          layout="row"
-          field="toggle_detection"
-          v-tooltip="'Toggle Object Detection'"
-          :disabled="detectionStore.loading || !detectionStore.data.model"
-          @update:model-value="updateDebounced"
-          v-model="fields.active"
-        />
-        <TreeSelect
-          class="opacity-hover"
-          inputId="model"
-          v-model="fields.model"
-          :options="nodes"
-          placeholder="Model"
-          filter
-          :disabled="detectionStore.loading"
-          @before-show="handleSelectBeforeShow"
-          @before-hide="handleSelectBeforeHide"
-          @update:model-value="updateDebounced"
-        >
-          <template #dropdownicon>
-            <i class="pi pi-search" />
-          </template>
-          <template #header>
-            <div class="title">Available Models</div>
-          </template>
-          <template #footer>
-            <ModelUpload />
-          </template>
-        </TreeSelect>
-      </div>
-    </div>
-
-    <div class="flex align-items-end gap-5 jc-around max-w-200">
-      <SelectField
-        fieldClassName="img-size opacity-hover"
-        inputId="img_size"
-        v-model="fields.img_size"
-        placeholder="Img size"
-        label="Img size"
-        filter
-        simple-options
-        :disabled="detectionStore.loading"
-        @before-show="handleSelectBeforeShow"
-        @before-hide="handleSelectBeforeHide"
-        @update:model-value="updateDebounced"
-        :options="imgSizeOptions"
-      />
-      <NumberField
-        fieldClassName="opacity-hover"
-        @keydown.stop="doNothing"
-        @keyup.stop="doNothing"
-        @keypress.stop="doNothing"
-        :normalizeValue="roundToOneDecimalPlace"
-        field="confidence"
-        label="Confidence"
-        v-model="fields.confidence"
-        :disabled="detectionStore.loading"
-        :min="0.1"
-        :max="1.0"
-        :step="0.1"
-        @update:model-value="updateDebounced"
-      />
-      <NumberField
-        fieldClassName="opacity-hover"
-        @keydown.stop="doNothing"
-        :normalizeValue="roundToOneDecimalPlace"
-        @keyup.stop="doNothing"
-        @keypress.stop="doNothing"
-        v-tooltip="
-          'The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.'
-        "
-        field="overlay_draw_threshold"
-        label="Threshold"
-        v-model="fields.overlay_draw_threshold"
-        :disabled="detectionStore.loading"
-        :min="0.1"
-        :max="10.0"
-        :step="0.1"
-        @update:model-value="updateDebounced"
-      />
-      <SelectField
-        fieldClassName="opacity-hover"
-        :filter="false"
-        inputId="overlay_style"
-        v-model="fields.overlay_style"
-        label="Style"
-        :disabled="detectionStore.loading"
-        @update:model-value="updateDebounced"
-        :options="overlayStyleOptions"
-      />
-    </div>
+  <div class="flex max-w-200 flex-wrap gap-2">
+    <ToggleSwitchField
+      fieldClassName="opacity-hover"
+      label="Detection"
+      layout="row"
+      field="toggle_detection"
+      v-tooltip="'Toggle Object Detection'"
+      :disabled="detectionStore.loading || !detectionStore.data.model"
+      @update:model-value="updateDebounced"
+      v-model="fields.active"
+    />
+    <TreeSelect
+      class="opacity-hover"
+      inputId="model"
+      v-model="fields.model"
+      :options="nodes"
+      placeholder="Model"
+      filter
+      :disabled="detectionStore.loading"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
+      @update:model-value="updateDebounced"
+    >
+      <template #dropdownicon>
+        <i class="pi pi-search" />
+      </template>
+      <template #header>
+        <div class="title">Available Models</div>
+      </template>
+      <template #footer>
+        <ModelUpload />
+      </template>
+    </TreeSelect>
+    <SelectField
+      fieldClassName="img-size opacity-hover"
+      inputId="img_size"
+      v-model="fields.img_size"
+      placeholder="Img size"
+      label="Img size"
+      filter
+      simple-options
+      :disabled="detectionStore.loading"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
+      @update:model-value="updateDebounced"
+      :options="imgSizeOptions"
+    />
+    <NumberField
+      fieldClassName="opacity-hover w-80"
+      @keydown.stop="doNothing"
+      @keyup.stop="doNothing"
+      @keypress.stop="doNothing"
+      :normalizeValue="roundToOneDecimalPlace"
+      field="confidence"
+      label="Confidence"
+      v-model="fields.confidence"
+      :disabled="detectionStore.loading"
+      :min="0.1"
+      :max="1.0"
+      :step="0.1"
+      @update:model-value="updateDebounced"
+    />
+    <NumberField
+      fieldClassName="opacity-hover"
+      @keydown.stop="doNothing"
+      :normalizeValue="roundToOneDecimalPlace"
+      @keyup.stop="doNothing"
+      @keypress.stop="doNothing"
+      v-tooltip="
+        'The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.'
+      "
+      field="overlay_draw_threshold"
+      label="Threshold"
+      v-model="fields.overlay_draw_threshold"
+      :disabled="detectionStore.loading"
+      :min="0.1"
+      :max="10.0"
+      :step="0.1"
+      @update:model-value="updateDebounced"
+    />
+    <SelectField
+      fieldClassName="opacity-hover w-80"
+      :filter="false"
+      inputId="overlay_style"
+      v-model="fields.overlay_style"
+      label="Style"
+      :disabled="detectionStore.loading"
+      @update:model-value="updateDebounced"
+      :options="overlayStyleOptions"
+    />
   </div>
 </template>
 
@@ -164,16 +157,7 @@ const nodes = computed(() => detectionStore.detectors);
   }
   @media (min-width: 1200px) {
     height: 40px;
-    max-width: 220px;
+    max-width: 150px;
   }
-}
-:deep(.p-progressspinner),
-.progress {
-  position: absolute;
-  z-index: 2;
-  bottom: 0%;
-  left: 10%;
-  width: 30px;
-  height: 30px;
 }
 </style>

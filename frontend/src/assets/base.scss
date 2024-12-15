@@ -203,6 +203,12 @@ html {
 .w-60 {
   width: 60px;
 }
+.w-70 {
+  width: 70px;
+}
+.w-80 {
+  width: 80px;
+}
 .w-90 {
   width: 90px;
 }
@@ -239,3 +245,26 @@ html {
 .w-600 {
   width: 600px;
 }
+
+.color-primary {
+  color: var(--robo-color-primary);
+}
+
+.color-secondary {
+  color: var(--robo-color-secondary);
+}
+.color-warning {
+  color: var(--color-warn);
+}
+.color-error {
+  color: var(--color-red);
+}
+
+.bold {
+  font-weight: bold;
+}
+// .p-fieldset,
+// .p-fieldset-content {
+//   background: transparent !important;
+//   border: none !important;
+// }

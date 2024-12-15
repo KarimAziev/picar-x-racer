@@ -4,9 +4,12 @@
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
-  <ActiveConnectionsIndicator />
+  <TopRightPanel class="flex flex-col bold text-align-right">
+    <BatteryIndicator />
+    <ActiveConnectionsIndicator v-if="!isMobile" />
+  </TopRightPanel>
   <div class="indicators" v-if="isSettingsLoaded">
-    <AudioStream />
+    <ActiveConnectionsIndicator v-if="isMobile" />
     <Recording />
     <ToggleableView setting="show_object_detection_settings">
       <DetectionControls />
@@ -15,11 +18,11 @@
     <ToggleableView v-if="!isMobile" setting="text_to_speech_input">
       <TextToSpeechInput />
     </ToggleableView>
+
     <ToggleableView setting="show_player">
       <MusicPlayer />
     </ToggleableView>
     <Distance v-if="!isMobile" />
-    <BatteryIndicator v-if="!isMobile" />
   </div>
 </template>
 
@@ -38,6 +41,7 @@ import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer";
 import ToggleableView from "@/ui/ToggleableView.vue";
+import TopRightPanel from "@/ui/TopRightPanel.vue";
 
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();
