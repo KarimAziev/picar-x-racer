@@ -1,11 +1,14 @@
 import asyncio
+from typing import TYPE_CHECKING
 
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.services.camera_service import CameraService
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
+
+if TYPE_CHECKING:
+    from app.services.camera_service import CameraService
 
 
 class StreamService(metaclass=SingletonMeta):
@@ -18,7 +21,7 @@ class StreamService(metaclass=SingletonMeta):
         camera_service (CameraService): An instance of `CameraService` to manage camera operations.
     """
 
-    def __init__(self, camera_service: CameraService):
+    def __init__(self, camera_service: "CameraService"):
         """
         Initializes the `StreamService` instance.
 
