@@ -23,8 +23,17 @@ export class CarModelRenderer {
   private tilt: number = 0;
   private distance: number = 0;
   private servoAngle: number = 0;
+  private sceneNeedsUpdate = true;
+  private orbitNeedsUpdate = false;
+  private initted = false;
   private speed: number = 0;
   private direction: number = 0;
+  private prevDistance: number = 0;
+  private prevPan: number = 0;
+  private prevTilt: number = 0;
+  private prevServoAngle: number = 0;
+  private prevSpeed: number = 0;
+  private prevDirection: number = 0;
   private head: THREE.Mesh;
   private neck: THREE.Mesh;
   private body: THREE.Mesh;
@@ -47,6 +56,8 @@ export class CarModelRenderer {
 
   private height: number;
   private width: number;
+  private prevHeight: number;
+  private prevWidth: number;
   private distanceLine: THREE.Line;
   private distanceSpheres: THREE.Mesh[] = [];
   private maxDistance: number = 400;
@@ -93,6 +104,8 @@ export class CarModelRenderer {
   }
 
   public setSize(width: number, height: number) {
+    this.prevHeight = this.height;
+    this.prevWidth = this.width;
     this.height = height;
     this.width = width;
     const w = width;
@@ -104,18 +117,22 @@ export class CarModelRenderer {
   }
 
   public updatePan(pan: number) {
+    this.prevPan = this.pan;
     this.pan = pan;
   }
 
   public updateTilt(tilt: number) {
+    this.prevTilt = this.tilt;
     this.tilt = tilt;
   }
 
   public updateDirection(direction: number) {
+    this.prevDirection = this.direction;
     this.direction = direction;
   }
 
   public updateDistance(value: number) {
+    this.prevDistance = this.distance;
     this.distance = value;
   }
 
@@ -139,10 +156,12 @@ export class CarModelRenderer {
   }
 
   public updateSpeed(speed: number) {
+    this.prevSpeed = this.speed;
     this.speed = speed;
   }
 
   public updateServoDir(angle: number) {
+    this.prevServoAngle = this.servoAngle;
     this.servoAngle = angle;
   }
 
@@ -169,7 +188,6 @@ export class CarModelRenderer {
     this.scene.add(directionalLight);
 
     this.renderer = new THREE.WebGLRenderer({ alpha: true });
-    this.renderer.setSize(this.width, this.height);
     this.rootElement.appendChild(this.renderer.domElement);
 
     this.cameraObject = new THREE.Object3D();
@@ -216,13 +234,22 @@ export class CarModelRenderer {
     this.detectedWall.visible = false;
     this.body.add(this.detectedWall);
 
-    new OrbitControls(this.camera, this.renderer.domElement);
+    new OrbitControls(this.camera, this.renderer.domElement).addEventListener(
+      "change",
+      () => {
+        this.orbitNeedsUpdate = true;
+      },
+    );
+
     this.cameraObject.add(this.body);
     this.scene.add(this.cameraObject);
 
     this.updateTilt(this.tilt);
     this.updateServoDir(this.servoAngle);
     this.updatePan(this.pan);
+    this.setSize(this.width, this.height);
+
+    this.renderer.render(this.scene, this.camera);
 
     requestAnimationFrame(this.animate.bind(this));
   }
@@ -284,17 +311,56 @@ export class CarModelRenderer {
     }
   }
 
-  private updateState() {
-    this.head.rotation.copy(
-      new THREE.Euler(
-        THREE.MathUtils.degToRad(-this.tilt),
-        THREE.MathUtils.degToRad(-this.pan),
-        Math.PI / 2,
-      ),
-    );
-    this.rotateWheels();
-    this.renderDistance();
-    this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(-this.servoAngle);
+  private updateState(force?: boolean) {
+    const shouldUpdate =
+      force ||
+      !![
+        [true, this.initted],
+        [0, this.speed],
+        [this.prevTilt, this.tilt],
+        [this.prevPan, this.pan],
+        [this.prevSpeed, this.speed],
+        [this.prevDirection, this.direction],
+        [this.prevDistance, this.distance],
+        [this.prevServoAngle, this.servoAngle],
+        [this.prevWidth, this.width],
+        [this.prevHeight, this.height],
+      ].find(([a, b]) => a !== b);
+
+    if (shouldUpdate) {
+      this.head.rotation.copy(
+        new THREE.Euler(
+          THREE.MathUtils.degToRad(-this.tilt),
+          THREE.MathUtils.degToRad(-this.pan),
+          Math.PI / 2,
+        ),
+      );
+      this.prevTilt = this.tilt;
+      this.prevPan = this.pan;
+    }
+    if (shouldUpdate) {
+      this.rotateWheels();
+      this.prevSpeed = this.speed;
+      this.prevDirection = this.direction;
+    }
+    if (shouldUpdate) {
+      this.renderDistance();
+      this.prevDistance = this.distance;
+    }
+    if (shouldUpdate) {
+      this.frontWheelAxle.rotation.y = THREE.MathUtils.degToRad(
+        -this.servoAngle,
+      );
+      this.prevServoAngle = this.servoAngle;
+    }
+
+    if (shouldUpdate) {
+      this.initted = true;
+      this.prevWidth = this.width;
+      this.prevHeight = this.height;
+    }
+
+    this.sceneNeedsUpdate = shouldUpdate;
   }
 
   private getColorForDistance(distance: number): THREE.Color {
@@ -315,8 +381,12 @@ export class CarModelRenderer {
   }
 
   private animate() {
-    this.updateState();
-    this.renderer.render(this.scene, this.camera);
+    this.updateState(this.orbitNeedsUpdate);
+    if (this.sceneNeedsUpdate) {
+      this.renderer.render(this.scene, this.camera);
+      this.sceneNeedsUpdate = false;
+      this.orbitNeedsUpdate = false;
+    }
     requestAnimationFrame(this.animate.bind(this));
   }
 
