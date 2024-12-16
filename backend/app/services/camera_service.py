@@ -425,6 +425,8 @@ class CameraService(metaclass=SingletonMeta):
         - Starts a dedicated thread to run the capture loop.
 
         Raises:
+            CameraDeviceError: If the chosen camera encounters initialization errors.
+            CameraNotFoundError: If no valid camera device is found after retries.
             Exception: If an error occurs during setup or thread initialization.
 
         Returns:
@@ -449,7 +451,7 @@ class CameraService(metaclass=SingletonMeta):
                 self.capture_thread = threading.Thread(target=self._camera_thread_func)
                 self.capture_thread.start()
 
-            except CameraNotFoundError as e:
+            except (CameraNotFoundError, CameraDeviceError) as e:
                 self.camera_run = False
                 self.logger.error(str(e))
                 raise
