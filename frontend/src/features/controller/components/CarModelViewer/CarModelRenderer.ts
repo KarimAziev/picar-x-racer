@@ -823,6 +823,10 @@ export class CarModelRenderer {
     return wheel;
   }
 
+  public dispose() {
+    this.renderer.dispose();
+  }
+
   private createHead() {
     const head = MeshFactory.createBox(
       this.calcDimension(0.4),
