@@ -1,4 +1,5 @@
 from app.services.audio_service import AudioService
+from app.adapters.video_device_adapter import VideoDeviceAdapater
 from app.services.audio_stream_service import AudioStreamService
 from app.services.battery_service import BatteryService
 from app.services.camera_service import CameraService
@@ -10,6 +11,7 @@ from app.services.stream_service import StreamService
 from app.services.tts_service import TTSService
 
 connection_manager = ConnectionService()
+video_device_adapter = VideoDeviceAdapater()
 audio_manager = AudioService()
 audio_stream_manager = AudioStreamService()
 file_manager = FileService(audio_manager=audio_manager)
@@ -20,6 +22,7 @@ camera_manager = CameraService(
     detection_service=detection_manager,
     file_manager=file_manager,
     connection_manager=connection_manager,
+    video_device_adapter=video_device_adapter,
 )
 stream_manager = StreamService(camera_service=camera_manager)
 music_manager = MusicService(

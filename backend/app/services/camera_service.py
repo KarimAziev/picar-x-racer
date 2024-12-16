@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import cv2
 import numpy as np
-from app.adapters.video_device_adapter import VideoDeviceAdapater
 from app.config.video_enhancers import frame_enhancers
 from app.exceptions.camera import (
     CameraDeviceError,
@@ -24,6 +23,7 @@ from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
+    from app.adapters.video_device_adapter import VideoDeviceAdapater
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
     from app.services.file_service import FileService
@@ -42,6 +42,7 @@ class CameraService(metaclass=SingletonMeta):
         detection_service: "DetectionService",
         file_manager: "FileService",
         connection_manager: "ConnectionService",
+        video_device_adapter: "VideoDeviceAdapater",
     ):
         """
         Initializes the `CameraService` singleton instance.
@@ -49,15 +50,15 @@ class CameraService(metaclass=SingletonMeta):
         self.logger = Logger(name=__name__)
         self.file_manager = file_manager
         self.detection_service = detection_service
+        self.video_device_adapter = video_device_adapter
+        self.connection_manager = connection_manager
+
         self.camera_settings = CameraSettings(
             **self.file_manager.settings.get("camera", {})
         )
         self.stream_settings = StreamSettings(
             **self.file_manager.settings.get("stream", {})
         )
-        self.video_device_adapter = VideoDeviceAdapater()
-        self.connection_manager = connection_manager
-
         self.current_frame_timestamp = None
 
         self.video_writer: Optional[cv2.VideoWriter] = None
