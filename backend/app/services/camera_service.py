@@ -340,9 +340,8 @@ class CameraService(metaclass=SingletonMeta):
                         failed_counter += 1
                         self.logger.error("Failed to read frame from camera.")
                         continue
-                    elif self._retry_cap():
-                        continue
                     else:
+                        self.camera_run = False
                         break
                 else:
                     failed_counter = 0
@@ -426,7 +425,7 @@ class CameraService(metaclass=SingletonMeta):
 
         Raises:
             CameraDeviceError: If the chosen camera encounters initialization errors.
-            CameraNotFoundError: If no valid camera device is found after retries.
+            CameraNotFoundError: If no valid camera device is found.
             Exception: If an error occurs during setup or thread initialization.
 
         Returns:
