@@ -18,7 +18,7 @@ const settingsStore = useSettingsStore();
 const router = useRouter();
 
 watch(
-  () => settingsStore.data.virtual_mode,
+  () => settingsStore.data.general.virtual_mode,
   (value) => {
     if (value) {
       router.push("/virtual");

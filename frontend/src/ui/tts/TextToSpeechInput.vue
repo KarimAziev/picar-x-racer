@@ -1,37 +1,39 @@
 <template>
-  <SelectField
-    fieldClassName="language opacity-hover"
-    field="language"
-    filter
-    inputClassName="languages-dropdown"
-    v-model="language"
-    :options="ttsLanguages"
-    optionLabel="label"
-    optionValue="value"
-    v-tooltip="'The language of Text to Speech'"
-    @before-show="handleSelectBeforeShow"
-    @before-hide="handleSelectBeforeHide"
-  />
-  <div class="flex align-items-center">
-    <TextInput
-      class="opacity-hover"
-      autocomplete="off"
-      placeholder="Speak"
-      id="tts-text"
-      @keyup.stop="handleKeyUp"
-      @keyup.enter="handleKeyEnter"
-      v-model="inputRef"
-      v-tooltip="'Type the Text To Speech and press Enter to speak'"
+  <div class="wrapper flex flex-wrap align-items-center">
+    <SelectField
+      fieldClassName="language opacity-hover"
+      field="language"
+      filter
+      inputClassName="languages-dropdown"
+      v-model="language"
+      :options="ttsLanguages"
+      optionLabel="label"
+      optionValue="value"
+      v-tooltip="'The language of Text to Speech'"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
     />
-    <Button
-      class="opacity-hover"
-      @click="sayText"
-      :disabled="!inputRef || inputRef.length === 0"
-      icon="pi pi-play-circle"
-      text
-      aria-label="Speak"
-      v-tooltip="'Speak'"
-    />
+    <div class="flex align-items-center">
+      <TextInput
+        class="opacity-hover"
+        autocomplete="off"
+        placeholder="Speak"
+        id="tts-text"
+        @keyup.stop="handleKeyUp"
+        @keyup.enter="handleKeyEnter"
+        v-model="inputRef"
+        v-tooltip="'Type the Text To Speech and press Enter to speak'"
+      />
+      <Button
+        class="opacity-hover"
+        @click="sayText"
+        :disabled="!inputRef || inputRef.length === 0"
+        icon="pi pi-play-circle"
+        text
+        aria-label="Speak"
+        v-tooltip="'Speak'"
+      />
+    </div>
   </div>
 </template>
 
@@ -49,7 +51,7 @@ defineProps<{ class?: string }>();
 
 const store = useSettingsStore();
 
-const language = ref(store.data.default_tts_language);
+const language = ref(store.data.tts.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
@@ -77,7 +79,7 @@ const handleKeyEnter = async () => {
 };
 
 watch(
-  () => store.data.default_tts_language,
+  () => store.data.tts.default_tts_language,
   (newValue) => {
     language.value = newValue;
   },
@@ -85,6 +87,14 @@ watch(
 </script>
 
 <style scoped lang="scss">
+.wrapper {
+  @media (max-width: 992px) {
+    max-width: 240px;
+  }
+  @media (max-width: 768px) {
+    max-width: 200px;
+  }
+}
 input {
   width: 50px;
   height: 30px;

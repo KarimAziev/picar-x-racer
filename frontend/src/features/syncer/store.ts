@@ -53,7 +53,7 @@ export const useStore = defineStore("syncer", {
         }
         const { type, payload } = data;
         let msgPrefix: null | string =
-          `${settingsStore.loaded ? "Updated " : ""} ${type}:`.trim();
+          `${settingsStore.loaded ? "Updated " : ""} ${type}`.trim();
         let diffMsg: string | undefined;
 
         switch (type) {
@@ -107,7 +107,6 @@ export const useStore = defineStore("syncer", {
           }
 
           case "camera": {
-            msgPrefix = "Camera: ";
             diffMsg = formatObjectDiff({ ...cameraStore.data }, payload);
             cameraStore.data = payload;
             break;

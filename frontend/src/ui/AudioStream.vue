@@ -2,7 +2,6 @@
   <Button
     class="stream-btn"
     :class="fieldStreamClass"
-    size="small"
     icon="pi pi-microphone"
     text
     aria-label="audio-stream"

@@ -3,53 +3,79 @@ import { numberSequence } from "@/util/cycleValue";
 import { SettingsTab } from "@/features/settings/enums";
 import { OverlayStyle } from "@/features/detection";
 import { startCase } from "@/util/str";
+import { Settings } from "@/features/settings/interface";
+import { FlattenBooleanObjectKeys } from "@/util/ts-helpers";
 
-export const visibilitySettings = {
+export const generalSwitchSettings: {
+  [P in FlattenBooleanObjectKeys<Settings["general"]>]: {
+    label: string;
+    description: string;
+  };
+} = {
   text_info_view: {
+    label: "Gauges View",
     description:
-      "Toggles text information (camera tilt, camera pan, servo dir, etc.) on or off",
-    label: "Gauges view",
+      "Toggle the display of text information (e.g., camera tilt, camera pan, servo direction, etc.) on or off.",
   },
   speedometer_view: {
     label: "Speedometer",
-    description: "Toggle the speedometer display on or off",
+    description: "Toggle the speedometer display on or off.",
   },
-  car_model_view: {
-    description: "Toggles the 3D view of the car on or off",
-    label: "3D view of the car",
+  robot_3d_view: {
+    label: "3D View of the Car",
+    description: "Toggle the 3D view of the car on or off.",
   },
   text_to_speech_input: {
-    description: "Toggle showing input for text to speech on the main screen",
-    label: "Text to speech input",
+    label: "Text-to-Speech Input",
+    description:
+      "Toggle the display of text-to-speech input on the main screen.",
   },
   show_player: {
-    description: "Toggle showing music player",
-    label: "Music player",
+    label: "Music Player",
+    description: "Toggle the display of the music player.",
   },
   show_object_detection_settings: {
-    description: "Toggle showing object detection panel on the main screen",
-    label: "Object detection panel",
+    label: "Object Detection Panel",
+    description:
+      "Toggle the display of the object detection panel on the main screen.",
   },
-};
-
-export const behaviorSettings = {
   auto_download_photo: {
-    description: "Toggle auto-download of captured photos",
-    label: "Auto-download photos",
+    label: "Auto-Download Photos",
+    description: "Toggle the automatic download of captured photos.",
   },
   auto_download_video: {
-    description: "Toggle auto-download of recorded videos",
-    label: "Auto-download videos",
-  },
-  auto_measure_distance_mode: {
-    description: "Toggle auto-measuring with ultrasonic",
-    label: "Auto-measure distance",
+    label: "Auto-Download Videos",
+    description: "Toggle the automatic download of recorded videos.",
   },
   virtual_mode: {
-    description: "Toggle replacing camera view with a 3D model",
-    label: "Virtual 3D mode",
+    label: "Virtual 3D Mode",
+    description: "Toggle replacing the camera view with a 3D model.",
   },
-};
+  show_battery_indicator: {
+    label: "Battery Level",
+    description: "Toggle the display of the battery level indicator.",
+  },
+  show_connections_indicator: {
+    label: "Connections Counter",
+    description: "Toggle the display of the active connections counter.",
+  },
+  show_auto_measure_distance_button: {
+    label: "Measure Distance Button",
+    description: "Toggle the display of the auto-measure distance button.",
+  },
+  show_audio_stream_button: {
+    label: "Audio Stream Button",
+    description: "Toggle the display of the audio stream icon button.",
+  },
+  show_photo_capture_button: {
+    label: "Photo Capture Button",
+    description: "Toggle the display of the photo capture icon button.",
+  },
+  show_video_record_button: {
+    label: "Video Record Button",
+    description: "Toggle the display of the video record icon button.",
+  },
+} as const;
 
 export const ttsLanguages = [
   { label: "Afrikaans", value: "af" },

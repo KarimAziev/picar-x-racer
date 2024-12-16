@@ -4,28 +4,41 @@
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
-  <TopRightPanel class="flex flex-col bold text-align-right">
-    <BatteryIndicator v-if="isSettingsLoaded" />
-    <ActiveConnectionsIndicator v-if="!isMobile && isSettingsLoaded" />
+  <TopRightPanel
+    class="flex flex-col bold text-align-right"
+    v-if="isSettingsLoaded"
+  >
+    <ToggleableView setting="general.show_battery_indicator">
+      <BatteryIndicator />
+    </ToggleableView>
+    <ToggleableView
+      setting="general.show_connections_indicator"
+      v-if="!isMobile"
+    >
+      <ActiveConnectionsIndicator />
+    </ToggleableView>
   </TopRightPanel>
   <div class="indicators" v-if="isSettingsLoaded">
-    <ActiveConnectionsIndicator v-if="isMobile && isSettingsLoaded" />
-    <Recording />
-    <ToggleableView setting="show_object_detection_settings">
+    <ToggleableView
+      setting="general.show_connections_indicator"
+      v-if="isMobile"
+    >
+      <ActiveConnectionsIndicator />
+    </ToggleableView>
+    <MediaControls v-if="!isMobile" />
+    <ToggleableView setting="general.show_object_detection_settings">
       <DetectionControls />
     </ToggleableView>
     <CalibrationModeInfo v-if="!isMobile" />
-    <div v-if="!isMobile" class="flex flex-wrap align-items-center">
-      <ToggleableView setting="text_to_speech_input">
-        <TextToSpeechInput />
-      </ToggleableView>
-      <AudioStream />
-      <PhotoButton />
-    </div>
-    <ToggleableView setting="show_player">
+    <ToggleableView v-if="!isMobile" setting="general.text_to_speech_input">
+      <TextToSpeechInput />
+    </ToggleableView>
+    <ToggleableView setting="general.show_player">
       <MusicPlayer />
     </ToggleableView>
-    <Distance v-if="!isMobile" />
+    <ToggleableView setting="general.show_auto_measure_distance_button">
+      <Distance v-if="!isMobile" />
+    </ToggleableView>
   </div>
 </template>
 
@@ -58,12 +71,12 @@ const ActiveConnectionsIndicator = defineAsyncComponent({
     import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
 });
 
-const AudioStream = defineAsyncComponent({
-  loader: () => import("@/ui/AudioStream.vue"),
+const TextToSpeechInput = defineAsyncComponent({
+  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
 });
 
-const PhotoButton = defineAsyncComponent({
-  loader: () => import("@/ui/PhotoButton.vue"),
+const MediaControls = defineAsyncComponent({
+  loader: () => import("@/ui/MediaControls.vue"),
 });
 
 const KeyboardHandler = defineAsyncComponent({
@@ -78,10 +91,6 @@ const DetectionControls = defineAsyncComponent({
   loader: () => import("@/features/detection/components/DetectionControls.vue"),
 });
 
-const TextToSpeechInput = defineAsyncComponent({
-  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
-});
-
 const MusicPlayer = defineAsyncComponent({
   loader: () => import("@/features/music/components/MusicPlayer.vue"),
 });
@@ -92,10 +101,6 @@ const BatteryIndicator = defineAsyncComponent({
 const CalibrationModeInfo = defineAsyncComponent({
   loader: () =>
     import("@/features/controller/components/CalibrationModeInfo.vue"),
-});
-const Recording = defineAsyncComponent({
-  loader: () =>
-    import("@/features/settings/components/camera/VideoRecordingIndicator.vue"),
 });
 
 const JoysticZone = defineAsyncComponent({

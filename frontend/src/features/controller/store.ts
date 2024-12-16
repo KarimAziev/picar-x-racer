@@ -372,8 +372,8 @@ export const useControllerStore = defineStore("controller", {
       const settingsStore = useSettingsStore();
       if (!settingsStore.text) {
         const item =
-          settingsStore.data.texts.find((item) => item.default) ||
-          settingsStore.data.texts[0];
+          settingsStore.data.tts.texts.find((item) => item.default) ||
+          settingsStore.data.tts.texts[0];
         settingsStore.text = item.text;
         settingsStore.language = item.language;
       }
@@ -411,7 +411,7 @@ export const useControllerStore = defineStore("controller", {
         takePhotoEffect();
       }
 
-      if (file && settingsStore.data.auto_download_photo) {
+      if (file && settingsStore.data.general.auto_download_photo) {
         await imageStore.downloadFile(file);
       }
     },
@@ -484,27 +484,27 @@ export const useControllerStore = defineStore("controller", {
     },
     toggleTextInfo() {
       const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("text_info_view");
+      settingsStore.toggleSettingsProp("general.text_info_view");
     },
     toggleSpeedometerView() {
       const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("speedometer_view");
+      settingsStore.toggleSettingsProp("general.speedometer_view");
     },
     toggleCarModelView() {
       const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("car_model_view");
+      settingsStore.toggleSettingsProp("general.robot_3d_view");
     },
     toggleAutoDownloadPhoto() {
       const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("auto_download_photo");
+      settingsStore.toggleSettingsProp("general.auto_download_photo");
     },
     toggleAutoMeasureDistanceMode() {
       const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("auto_measure_distance_mode");
+      settingsStore.toggleSettingsProp("robot.auto_measure_distance_mode");
     },
     toggleVirtualMode() {
       const settingsStore = useSettingsStore();
-      settingsStore.toggleSettingsProp("virtual_mode");
+      settingsStore.toggleSettingsProp("general.virtual_mode");
     },
     async increaseFPS() {
       const camStore = useCameraStore();
@@ -546,7 +546,9 @@ export const useControllerStore = defineStore("controller", {
     async toggleVideoRecord() {
       const settingsStore = useSettingsStore();
       const streamStore = useStreamStore();
-      await streamStore.toggleRecording(settingsStore.data.auto_download_video);
+      await streamStore.toggleRecording(
+        settingsStore.data.general.auto_download_video,
+      );
     },
     async increaseVolume() {
       const musicStore = useMusicStore();

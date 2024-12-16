@@ -11,25 +11,24 @@ import { computed } from "vue";
 import { useSettingsStore, useBatteryStore } from "@/features/settings/stores";
 import { roundNumber } from "@/util/number";
 
-const BATTERY_ONE_LEDS_LEVEL = 7.15;
-const BATTERY_DANGER_LEVEL = 6.5;
-const BATTERY_MIN_LEVEL = 6.0;
-
 const batteryStore = useBatteryStore();
 const settingsStore = useSettingsStore();
 
 const batteryTotalVoltage = computed(
-  () => settingsStore.data.battery_full_voltage,
+  () => settingsStore.data.battery.full_voltage,
 );
 
 const batteryVoltage = computed(() => `${batteryStore.voltage || 0}V`);
 
 const batteryVoltageAdjusted = computed(() =>
-  roundNumber(batteryStore.voltage - BATTERY_MIN_LEVEL, 2),
+  roundNumber(batteryStore.voltage - settingsStore.data.battery.min_voltage, 2),
 );
 
 const batteryTotalVoltageAdjusted = computed(() =>
-  roundNumber(batteryTotalVoltage.value - BATTERY_MIN_LEVEL, 2),
+  roundNumber(
+    batteryTotalVoltage.value - settingsStore.data.battery.min_voltage,
+    2,
+  ),
 );
 
 const percentageAdjusted = computed(() =>
@@ -45,11 +44,11 @@ const percentageAdjusted = computed(() =>
 const className = computed(() => {
   const voltage = batteryStore.voltage;
 
-  if (voltage >= BATTERY_ONE_LEDS_LEVEL) {
+  if (voltage >= settingsStore.data.battery.warn_voltage) {
     return "color-primary";
   } else if (
-    voltage < BATTERY_ONE_LEDS_LEVEL &&
-    voltage > BATTERY_DANGER_LEVEL
+    voltage < settingsStore.data.battery.warn_voltage &&
+    voltage > settingsStore.data.battery.danger_voltage
   ) {
     return "color-warning";
   } else {

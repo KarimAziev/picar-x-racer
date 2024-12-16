@@ -14,7 +14,9 @@ const settingsStore = useSettingsStore();
 const isRecording = computed(() => streamStore.data.video_record);
 
 const handleToggle = async () => {
-  await streamStore.toggleRecording(settingsStore.data.auto_download_video);
+  await streamStore.toggleRecording(
+    settingsStore.data.general.auto_download_video,
+  );
 };
 </script>
 
@@ -26,7 +28,7 @@ const handleToggle = async () => {
 
   .btn {
     padding: 0.2rem 0.8rem;
-    font-size: 20px;
+
     letter-spacing: 1px;
     font-family: var(--font-family);
     cursor: pointer;
@@ -38,6 +40,9 @@ const handleToggle = async () => {
     &:hover {
       opacity: 0.7;
     }
+  }
+  @media (min-width: 992px) {
+    font-size: 20px;
   }
 }
 </style>

@@ -1,17 +1,14 @@
 <template>
   <div class="gauges-block gap-5" :class="class">
-    <div v-if="isMobile" class="flex flex-wrap align-items-center max-w-150">
-      <ToggleableView setting="text_to_speech_input">
-        <TextToSpeechInput />
-      </ToggleableView>
-      <AudioStream />
-      <PhotoButton />
-    </div>
-    <ToggleableView setting="text_info_view">
+    <MediaControls v-if="isMobile" />
+    <ToggleableView v-if="isMobile" setting="general.text_to_speech_input">
+      <TextToSpeechInput />
+    </ToggleableView>
+    <ToggleableView setting="general.text_info_view">
       <TextInfo />
     </ToggleableView>
     <slot></slot>
-    <ToggleableView setting="speedometer_view" v-if="!isMobile">
+    <ToggleableView setting="general.speedometer_view" v-if="!isMobile">
       <Speedometer />
     </ToggleableView>
     <Messages v-if="isMobile" class="messages" />
@@ -27,24 +24,19 @@ const isMobile = useDeviceWatcher();
 
 defineProps<{ class?: string }>();
 
-const AudioStream = defineAsyncComponent({
-  loader: () => import("@/ui/AudioStream.vue"),
+const MediaControls = defineAsyncComponent({
+  loader: () => import("@/ui/MediaControls.vue"),
 });
 
-const PhotoButton = defineAsyncComponent({
-  loader: () => import("@/ui/PhotoButton.vue"),
+const TextToSpeechInput = defineAsyncComponent({
+  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
 });
-
 const TextInfo = defineAsyncComponent({
   loader: () => import("@/features/controller/components/TextInfo.vue"),
 });
 
 const Speedometer = defineAsyncComponent({
   loader: () => import("@/features/controller/components/Speedometer.vue"),
-});
-
-const TextToSpeechInput = defineAsyncComponent({
-  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
 });
 </script>
 

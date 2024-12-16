@@ -1,20 +1,40 @@
 {
-  "default_tts_language": "en",
-  "texts": [{ "text": "Target identified", "language": "en", "default": true }],
-  "battery_full_voltage": 8.4,
-  "battery_auto_measure_seconds": 60,
-  "car_model_view": true,
-  "speedometer_view": true,
-  "text_info_view": true,
-  "auto_download_photo": true,
-  "auto_download_video": true,
-  "auto_measure_distance_mode": false,
-  "auto_measure_distance_delay_ms": 1000,
-  "virtual_mode": false,
-  "show_player": true,
-  "show_object_detection_settings": true,
-  "text_to_speech_input": true,
-  "max_speed": 80,
+  "general": {
+    "robot_3d_view": true,
+    "speedometer_view": true,
+    "text_info_view": true,
+    "auto_download_photo": true,
+    "auto_download_video": true,
+    "virtual_mode": false,
+    "show_player": true,
+    "show_object_detection_settings": true,
+    "text_to_speech_input": true,
+    "show_battery_indicator": true,
+    "show_connections_indicator": true,
+    "show_auto_measure_distance_button": true,
+    "show_audio_stream_button": true,
+    "show_photo_capture_button": true,
+    "show_video_record_button": false
+  },
+  "robot": {
+    "max_speed": 80,
+    "auto_measure_distance_mode": false,
+    "auto_measure_distance_delay_ms": 1000
+  },
+  "tts": {
+    "default_tts_language": "en",
+    "texts": [
+      { "text": "Target identified", "language": "en", "default": true }
+    ]
+  },
+  "battery": {
+    "full_voltage": 8.4,
+    "warn_voltage": 7.15,
+    "danger_voltage": 6.5,
+    "min_voltage": 6.0,
+    "auto_measure_seconds": 60,
+    "cache_seconds": 2
+  },
   "music": {
     "mode": "loop",
     "order": []

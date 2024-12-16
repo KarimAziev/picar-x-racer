@@ -1,4 +1,4 @@
-import { Narrow } from "@/util/ts-helpers";
+import { Narrow, FlattenObject } from "@/util/ts-helpers";
 import {
   isEmpty,
   isPlainObject,
@@ -400,3 +400,56 @@ export const diffObjectsDeep = <
   const result = worker(orig, updated);
   return result === noDiffs ? undefined : result;
 };
+
+export const getObjProp = <
+  Obj extends Record<string, any>,
+  Key extends keyof FlattenObject<Obj>,
+  Result extends FlattenObject<Obj>[Key],
+>(
+  key: Key,
+  obj: Obj,
+): Result => {
+  const paths = key.split(".");
+  const result = paths.reduce((acc, path) => acc?.[path], obj as any);
+
+  return result as Result;
+};
+
+export const setObjProp = <
+  Obj extends Record<string, any>,
+  Key extends keyof FlattenObject<Obj>,
+  Value,
+>(
+  obj: Obj,
+  key: Key,
+  value: Value extends FlattenObject<Obj>[Key] ? Value : never,
+): Obj => {
+  const paths = key.split(".");
+
+  const lastKey = paths.pop();
+  const target = paths.reduce((acc, path) => acc?.[path], obj as any);
+
+  if (lastKey !== undefined) {
+    target[lastKey] = value;
+  }
+  return obj;
+};
+
+export function splitObjIntoGroups(
+  count: number,
+  obj: Record<string, any>,
+): Record<string, any>[] {
+  const keys = Object.keys(obj);
+  const values = Object.values(obj);
+  const result: Record<string, any>[] = Array.from(
+    { length: count },
+    () => ({}),
+  );
+
+  keys.forEach((key, index) => {
+    const groupIndex = index % count;
+    result[groupIndex][key] = values[index];
+  });
+
+  return result;
+}

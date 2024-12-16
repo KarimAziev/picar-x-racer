@@ -46,16 +46,16 @@ async def update_settings(
     - `Settings`: The updated settings of the application.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
+
+    if new_settings.battery:
+        battery_manager.update_battery_settings(new_settings.battery)
+
     data = new_settings.model_dump(exclude_unset=True)
     logger.info("Settings update data %s", data)
 
     await asyncio.to_thread(file_service.save_settings, data)
 
     await connection_manager.broadcast_json({"type": "settings", "payload": data})
-
-    for key, value in data.items():
-        if hasattr(battery_manager, key) and getattr(battery_manager, key) != value:
-            setattr(battery_manager, key, value)
 
     return new_settings
 
