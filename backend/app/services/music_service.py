@@ -423,3 +423,16 @@ class MusicService(metaclass=SingletonMeta):
             # Broadcast player state to clients
             await self.broadcast_state()
             await asyncio.sleep(0.5)
+
+    async def cleanup(self):
+        """
+        Shuts down the music service and ensures proper cleanup of resources.
+        """
+        if self.is_playing:
+            try:
+                self.logger.info("Stopping playing music")
+                self.pygame.mixer.music.stop()
+            except Exception:
+                self.logger.error("Failed to stop music", exc_info=True)
+
+        await self.cancel_broadcast_task()

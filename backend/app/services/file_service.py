@@ -128,15 +128,15 @@ class FileService(metaclass=SingletonMeta):
             **existing_settings,
             **new_settings,
         }
-        self.logger.debug(f"New settings {new_settings}")
-        self.logger.debug(f"Merged settings {merged_settings}")
+        self.logger.debug("New settings %s", new_settings)
+        self.logger.debug("Merged settings %s", merged_settings)
         ensure_parent_dir_exists(self.user_settings_file)
 
         with open(self.user_settings_file, "w") as settings_file:
             json.dump(merged_settings, settings_file, indent=2)
 
         self.settings = merged_settings
-        self.logger.debug(f"Settings saved to {self.user_settings_file}")
+        self.logger.info("Settings saved to %s", self.user_settings_file)
         return self.settings
 
     def list_files(self, directory: str, full=False) -> List[str]:

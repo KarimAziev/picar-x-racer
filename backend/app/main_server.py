@@ -6,6 +6,7 @@ from app.config.log_config import LOGGING_CONFIG
 logging.config.dictConfig(LOGGING_CONFIG)
 
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,13 @@ from app.config.paths import FRONTEND_FOLDER, STATIC_FOLDER, TEMPLATE_FOLDER
 from app.util.ansi import print_initial_message
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
+
+if TYPE_CHECKING:
+    from app.services.battery_service import BatteryService
+    from app.services.connection_service import ConnectionService
+    from app.services.detection_service import DetectionService
+    from app.services.music_service import MusicService
+
 
 Logger.setup_from_env()
 
@@ -85,28 +93,36 @@ tags_metadata = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.api.deps import (
-        battery_manager,
-        connection_manager,
-        detection_manager,
-        music_manager,
+    from app.api import deps
+
+    file_manager = deps.get_file_manager(audio_manager=deps.get_audio_manager())
+
+    connection_manager: "ConnectionService" = deps.get_connection_manager()
+    app_manager = connection_manager
+    battery_manager: "BatteryService" = deps.get_battery_manager(
+        connection_manager=connection_manager,
+        file_manager=file_manager,
     )
-    from app.services.connection_service import ConnectionService
+    detection_manager: "DetectionService" = deps.get_detection_manager(
+        file_manager=file_manager, connection_manager=connection_manager
+    )
+    music_manager: "MusicService" = deps.get_music_manager(
+        file_manager=file_manager, connection_manager=connection_manager
+    )
 
     app.state.template_folder = TEMPLATE_FOLDER
-    app_manager = connection_manager
     app.state.app_manager = app_manager
-    app.state.detection_notifier = ConnectionService()
     port = os.getenv("PX_MAIN_APP_PORT")
     mode = os.getenv("PX_APP_MODE")
 
     ip_address = get_ip_address()
     browser_url = f"http://{ip_address}:{port}"
+
     print_initial_message(browser_url)
+
     signal_file_path = '/tmp/backend_ready.signal' if mode == "dev" else None
 
     battery_manager.setup_connection_manager()
-
     music_manager.start_broadcast_task()
 
     if signal_file_path:
@@ -121,15 +137,8 @@ async def lifespan(app: FastAPI):
     finally:
         logger.info("Stopping 🚗 application")
         await battery_manager.cleanup_connection_manager()
-        if music_manager.is_playing:
-            try:
-                logger.info("Stopping playing music")
-                music_manager.pygame.mixer.music.stop()
-            except Exception as e:
-                logger.log_exception("Failed to stop music")
-
         await detection_manager.cleanup()
-        await music_manager.cancel_broadcast_task()
+        await music_manager.cleanup()
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
         logger.info("Application 🚗 stopped")

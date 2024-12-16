@@ -1,7 +1,7 @@
 import asyncio
 from typing import TYPE_CHECKING, List
 
-from app.api.deps import get_detection_manager, get_file_manager
+from app.api import deps
 from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
 from app.schemas.detection import DetectionSettings, ModelResponse
 from app.util.logger import Logger
@@ -35,7 +35,7 @@ router = APIRouter()
 async def update_detection_settings(
     request: Request,
     payload: DetectionSettings,
-    detection_service: "DetectionService" = Depends(get_detection_manager),
+    detection_service: "DetectionService" = Depends(deps.get_detection_manager),
 ):
     """
     Endpoint to update object detection settings.
@@ -100,7 +100,7 @@ async def update_detection_settings(
     response_description="Returns the current detection configuration.",
 )
 def get_detection_settings(
-    detection_service: "DetectionService" = Depends(get_detection_manager),
+    detection_service: "DetectionService" = Depends(deps.get_detection_manager),
 ):
     """
     Endpoint to retrieve the current detection configuration.
@@ -119,44 +119,39 @@ def get_detection_settings(
 @router.websocket("/ws/object-detection")
 async def object_detection(
     websocket: WebSocket,
-    detection_service: "DetectionService" = Depends(get_detection_manager),
+    detection_service: "DetectionService" = Depends(deps.get_detection_manager),
+    detection_notifier: "ConnectionService" = Depends(deps.get_detection_notifier),
 ):
     """
     WebSocket endpoint for real-time object detection updates.
-
-    Args:
-    -------------
-    - websocket (WebSocket): The WebSocket connection for real-time communication.
-    - detection_service (DetectionService): The detection service broadcasting updates.
 
     Behavior:
     -------------
     - Establishes a WebSocket connection for continuous object detection updates.
     - Gracefully handles connection interruptions or shutdowns.
     """
-    connection_manager: "ConnectionService" = websocket.app.state.detection_notifier
     try:
-        await connection_manager.connect(websocket)
+        await detection_notifier.connect(websocket)
         while websocket.application_state == WebSocketState.CONNECTED:
             if detection_service.stop_event.is_set():
-                await connection_manager.disconnect(websocket)
+                await detection_notifier.disconnect(websocket)
                 break
             await asyncio.to_thread(detection_service.get_detection)
             if detection_service.stop_event.is_set():
-                await connection_manager.disconnect(websocket)
+                await detection_notifier.disconnect(websocket)
                 break
-            await connection_manager.broadcast_json(detection_service.current_state)
+            await detection_notifier.broadcast_json(detection_service.current_state)
 
     except WebSocketDisconnect:
         logger.info("Detection WebSocket Disconnected")
     except asyncio.CancelledError:
         logger.info("Gracefully shutting down Detection WebSocket connection")
-        await connection_manager.disconnect(websocket)
+        await detection_notifier.disconnect(websocket)
     except KeyboardInterrupt:
         logger.info("Detection WebSocket interrupted")
-        await connection_manager.disconnect(websocket)
+        await detection_notifier.disconnect(websocket)
     finally:
-        connection_manager.remove(websocket)
+        detection_notifier.remove(websocket)
 
 
 @router.get(
@@ -165,7 +160,7 @@ async def object_detection(
     response_description="Returns a structed list of available object detection models.",
     response_model=List[ModelResponse],
 )
-def get_detectors(file_manager: "FileService" = Depends(get_file_manager)):
+def get_detectors(file_manager: "FileService" = Depends(deps.get_file_manager)):
     """
     Endpoint to retrieve a list of available object detection models.
 
