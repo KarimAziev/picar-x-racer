@@ -12,7 +12,7 @@ from app.util.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 original_stdout = sys.stdout
 try:
@@ -35,7 +35,7 @@ class MusicService(metaclass=SingletonMeta):
 
     Attributes:
         logger (Logger): The logger instance to log messages.
-        file_manager (FilesService): Service instance for managing files and directories.
+        file_manager (FileService): Service instance for managing files and directories.
         connection_manager (ConnectionService): Service instance for managing client connections.
         playlist (List[str]): Ordered list of music tracks in the playlist.
         track (Optional[str]): The currently playing track, if any.
@@ -49,13 +49,13 @@ class MusicService(metaclass=SingletonMeta):
     """
 
     def __init__(
-        self, file_manager: "FilesService", connection_manager: "ConnectionService"
+        self, file_manager: "FileService", connection_manager: "ConnectionService"
     ):
         """
         Initializes the MusicService with required file and connection services.
 
         Args:
-            file_manager (FilesService): The service responsible for file management.
+            file_manager (FileService): The service responsible for file management.
             connection_manager (ConnectionService): The service responsible for managing client connections.
         """
 

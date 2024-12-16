@@ -18,7 +18,7 @@ from starlette.websockets import WebSocketState
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 logger = Logger(__name__)
 
@@ -165,7 +165,7 @@ async def object_detection(
     response_description="Returns a structed list of available object detection models.",
     response_model=List[ModelResponse],
 )
-def get_detectors(file_manager: "FilesService" = Depends(get_file_manager)):
+def get_detectors(file_manager: "FileService" = Depends(get_file_manager)):
     """
     Endpoint to retrieve a list of available object detection models.
 

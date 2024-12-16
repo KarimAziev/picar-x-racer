@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
     from app.services.music_service import MusicService
 
 router = APIRouter()
@@ -315,7 +315,7 @@ async def save_music_order(
     request: Request,
     order: List[str],
     music_player: "MusicService" = Depends(get_music_manager),
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
     Endpoint to save the custom order of music tracks in the playlist.
@@ -325,11 +325,11 @@ async def save_music_order(
     - request (Request): The HTTP request object (for accessing application state).
     - order (List[str]): The new custom order list for tracks.
     - music_player (MusicService): The `MusicService` instance, injected via dependency.
-    - file_manager (FilesService): The `FilesService` instance, injected via dependency.
+    - file_manager (FileService): The `FileService` instance, injected via dependency.
 
     Behavior:
     -------------
-    Updates the order of tracks in the playlist and saves this new order using the FilesService.
+    Updates the order of tracks in the playlist and saves this new order using the FileService.
     Notifies connected clients about the new playlist order.
 
     Returns:
@@ -358,7 +358,7 @@ async def save_music_order(
 
 @router.get("/api/music", response_model=MusicResponse)
 async def get_music_tracks(
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
     audio_manager: "AudioService" = Depends(get_audio_manager),
 ):
     """
@@ -366,7 +366,7 @@ async def get_music_tracks(
 
     Args:
     --------------
-    - file_manager (FilesService): The file service for managing files.
+    - file_manager (FileService): The file service for managing files.
     - audio_manager (AudioService): The audio service for managing audio playback.
 
     Returns:

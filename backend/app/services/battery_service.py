@@ -9,7 +9,7 @@ from robot_hat.battery import Battery
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 
 class BatteryService(metaclass=SingletonMeta):
@@ -21,7 +21,7 @@ class BatteryService(metaclass=SingletonMeta):
     CACHE_SECONDS = 2
 
     def __init__(
-        self, file_manager: "FilesService", connection_manager: "ConnectionService"
+        self, file_manager: "FileService", connection_manager: "ConnectionService"
     ):
         """
         Initializes the BatteryService with required file and connection services.

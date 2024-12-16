@@ -26,7 +26,7 @@ from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 
 class CameraService(metaclass=SingletonMeta):
@@ -40,7 +40,7 @@ class CameraService(metaclass=SingletonMeta):
     def __init__(
         self,
         detection_service: "DetectionService",
-        file_manager: "FilesService",
+        file_manager: "FileService",
         connection_manager: "ConnectionService",
     ):
         """

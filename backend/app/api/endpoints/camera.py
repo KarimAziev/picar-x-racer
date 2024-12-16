@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 if TYPE_CHECKING:
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 router = APIRouter()
 logger = Logger(__name__)
@@ -157,7 +157,7 @@ def get_camera_devices():
 )
 async def take_photo(
     camera_manager: "CameraService" = Depends(get_camera_manager),
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
@@ -165,7 +165,7 @@ async def take_photo(
     Args:
     --------------
     - `camera_manager` (CameraService): Camera management service for interfacing with the hardware.
-    - `file_manager` (FilesService): File management service for determining save locations.
+    - `file_manager` (FileService): File management service for determining save locations.
 
     Returns:
     --------------

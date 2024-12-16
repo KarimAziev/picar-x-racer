@@ -1,10 +1,10 @@
 """
-FilesService Class
+FileService Class
 
 This module handles file operations such as listing, saving, and removing photos, music, and sound files for a user within the application. It also manages user settings and loads audio details using the `AudioService`.
 
 Classes:
-    - FilesService: Handles file-related operations including saving, removing, and listing files from specified directories.
+    - FileService: Handles file-related operations including saving, removing, and listing files from specified directories.
 """
 
 import json
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from app.services.audio_service import AudioService
 
 
-class FilesService(metaclass=SingletonMeta):
+class FileService(metaclass=SingletonMeta):
     """
     Service for managing file operations related to user settings, photos, and music.
 
@@ -90,7 +90,7 @@ class FilesService(metaclass=SingletonMeta):
         return (
             self.user_settings_file
             if os.path.exists(self.user_settings_file)
-            else FilesService.default_user_settings_file
+            else FileService.default_user_settings_file
         )
 
     def load_settings(self) -> Dict[str, Any]:
