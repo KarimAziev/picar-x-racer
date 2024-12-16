@@ -63,7 +63,7 @@ export const useStore = defineStore("stream", {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
         } else {
-          messager.handleError(error, `Error starting camera`);
+          messager.handleError(error, `Camera error`);
         }
       } finally {
         this.loading = false;

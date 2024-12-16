@@ -402,19 +402,17 @@ export const useControllerStore = defineStore("controller", {
     },
 
     async takePhoto() {
-      const messager = useMessagerStore();
       const imageStore = useImageStore();
       const cameraStore = useCameraStore();
       const settingsStore = useSettingsStore();
-      takePhotoEffect();
       const file = await cameraStore.capturePhoto();
 
+      if (file) {
+        takePhotoEffect();
+      }
+
       if (file && settingsStore.data.auto_download_photo) {
-        try {
-          await imageStore.downloadFile(file);
-        } catch (error) {
-          messager.handleError(error);
-        }
+        await imageStore.downloadFile(file);
       }
     },
     toggleAvoidObstaclesMode() {
