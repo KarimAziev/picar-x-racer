@@ -90,7 +90,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         If a device is already set up successfully, it attempts to reuse it.
 
         Returns:
-            Optional[object]: The video capture object if successful, otherwise None.
+            The video capture object if successful, otherwise None.
             If the current device fails to reopen, it recursively tries to set up a capture with another available device.
         """
         if not self.video_device:
