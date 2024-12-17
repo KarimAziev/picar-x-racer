@@ -40,11 +40,14 @@ const stringifyError = (data: any): string => {
 export const retrieveError = <Err>(error: Err) => {
   if (isAxiosError(error)) {
     const data = error.response?.data;
+
     return {
       title: error.response?.statusText
         ? `${error.response?.statusText}: `
         : "",
-      text: stringifyError(data?.error || data || error.message),
+      text: stringifyError(
+        data?.detail || data?.error || data || error.message,
+      ),
     };
   }
 
