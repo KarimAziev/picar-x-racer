@@ -112,7 +112,24 @@ is_raspberry_pi() {
   return 1
 }
 
+install_dbus_python_dependencies() {
+  if [ "$(id -u)" -ne 0 ]; then
+    SUDO="sudo"
+  else
+    SUDO=""
+  fi
+
+  log_info "Installing system dependencies for 'dbus-python' using apt-get..."
+  $SUDO apt-get update
+  $SUDO apt-get install -y libdbus-1-dev libglib2.0-dev build-essential python3-dev meson || {
+    log_error "Failed to install dbus-python system dependencies."
+    exit 1
+  }
+}
+
 if is_raspberry_pi; then
+  log_info "Raspberry Pi detected. Installing system-level dependencies for 'dbus-python'..."
+  install_dbus_python_dependencies
   log_info "Raspberry Pi detected. Standard installation complete."
 else
   log_info "Non-Raspberry Pi system detected. Setting up IDE environment..."
