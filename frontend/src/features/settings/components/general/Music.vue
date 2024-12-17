@@ -68,7 +68,7 @@
     name="file"
     chooseLabel="Add"
     :url="apiURL"
-    :multiple="false"
+    multiple
     accept="audio/*"
     :customUpload="true"
     @uploader="uploader"
