@@ -2,8 +2,9 @@ import asyncio
 import json
 from typing import TYPE_CHECKING
 
+from app.api import robot_deps
 from app.util.logger import Logger
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 logger = Logger(name=__name__, app_name="px-control")
@@ -18,6 +19,10 @@ if TYPE_CHECKING:
 @car_manager_router.websocket("/px/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
+    car_manager: "CarService" = Depends(robot_deps.get_robot_manager),
+    connection_manager: "ConnectionService" = Depends(
+        robot_deps.get_connection_manager
+    ),
 ):
     """
     WebSocket endpoint for controlling the Picar-X vehicle.
@@ -30,8 +35,6 @@ async def websocket_endpoint(
         WebSocketDisconnect: If the WebSocket connection is disconnected.
         KeyboardInterrupt: If the WebSocket connection is interrupted.
     """
-    car_manager: "CarService" = websocket.app.state.car_manager
-    connection_manager: "ConnectionService" = websocket.app.state.connection_manager
     try:
         await connection_manager.connect(websocket)
         await car_manager.broadcast()
