@@ -6,7 +6,9 @@
 # - To display this help: ./setup-service.sh help
 
 SERVICE_NAME="picar_x_racer.service"
-USER=$(whoami)
+USER=$(logname)
+GROUP=$(id -g "$USER")
+USER_ID=$(id -u "$USER")
 PROJECT_DIR=$(pwd)
 LOG_DIR="/var/log/picar_x_racer"
 PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
@@ -118,12 +120,19 @@ case "$COMMAND" in
 Description=Picar-X Racer Backend Service
 After=network-online.target
 Wants=network-online.target
+After=sound.target
+Requires=sound.target
 
 [Service]
 Type=simple
 User=$USER
-WorkingDirectory=$PROJECT_DIR
+Group=$GROUP
+WorkingDirectory=$PROJECT_DIR/backend
 Environment=PYTHONUNBUFFERED=1
+Environment=XDG_RUNTIME_DIR=/run/user/$USER_ID
+Environment=DISPLAY=:0
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_ID/bus
+Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always

@@ -48,7 +48,8 @@ async def shutdown(
         logger.info("Starting the shutdown process...")
         await connection_manager.warning("Powering off the system")
         await battery_manager.cleanup_connection_manager()
-        await detection_manager.cleanup()
+        await detection_manager.cancel_detection_process_task()
+        await detection_manager.stop_detection_process()
         await music_manager.cleanup()
         await asyncio.to_thread(power_off)
         return {"message": "System shutdown initiated successfully."}
@@ -90,10 +91,11 @@ async def restart_system(
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
     try:
-        await connection_manager.warning("Powering off the system")
+        await connection_manager.warning("Restarting the system")
         await battery_manager.cleanup_connection_manager()
-        await detection_manager.cleanup()
         await music_manager.cleanup()
+        await detection_manager.cancel_detection_process_task()
+        await detection_manager.stop_detection_process()
         await asyncio.to_thread(restart)
         return {"message": "System restart initiated successfully."}
     except Exception:
@@ -103,5 +105,5 @@ async def restart_system(
         music_manager.start_broadcast_task()
         raise HTTPException(
             status_code=500,
-            detail="Failed to restart the system due to an internal error.",
+            detail="Failed to restart the system.",
         )
