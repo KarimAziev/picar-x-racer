@@ -9,8 +9,6 @@ logging.config.dictConfig(LOGGING_CONFIG)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.services.car_control.car_service import CarService
-from app.services.connection_service import ConnectionService
 from app.util.logger import Logger
 
 description = """
