@@ -273,5 +273,21 @@ export const useStore = defineStore("settings", {
     prevText() {
       this.cycleText(-1);
     },
+    async shutdown() {
+      const messager = useMessagerStore();
+      try {
+        await axios.get("/api/system/shutdown");
+      } catch (error) {
+        messager.handleError(error);
+      }
+    },
+    async restart() {
+      const messager = useMessagerStore();
+      try {
+        await axios.get("/api/system/restart");
+      } catch (error) {
+        messager.handleError(error);
+      }
+    },
   },
 });

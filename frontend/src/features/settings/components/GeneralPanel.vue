@@ -1,4 +1,10 @@
 <template>
+  <Panel collapsed header="System" toggleable>
+    <div class="flex gap-10">
+      <Restart />
+      <Shutdown />
+    </div>
+  </Panel>
   <Panel header="Appearance" toggleable>
     <SwitchSettings>
       <FPSToggle v-tooltip="'Whether to draw FPS on the top-right corner'" />
@@ -63,6 +69,8 @@ import { useControllerStore } from "@/features/controller/store";
 
 import BatterySettings from "@/features/settings/components/general/BatterySettings.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
+import Shutdown from "@/features/settings/components/system/Shutdown.vue";
+import Restart from "@/features/settings/components/system/Restart.vue";
 
 const store = useSettingsStore();
 const controllerStore = useControllerStore();

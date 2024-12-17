@@ -93,8 +93,9 @@ tags_metadata = [
         "name": "system",
         "description": (
             "Operations and endpoints related to system-level actions. These include "
-            "managing the operating system, such as shutting down."
-            "Use these endpoints with caution as they interact directly with the underlying OS."
+            "managing the operating system, such as shutting down, restarting, or performing "
+            "other system-related functions. Use these endpoints with caution as they "
+            "interact directly with the underlying OS."
         ),
     },
 ]
