@@ -184,7 +184,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
         # Set motor speed using Pulse Width Modulation (PWM)
         self.motor_speed_pins[motor_index].pulse_width_percent(pwm_speed)
 
-        # Log the final PWM speed and direction
         self.logger.debug(
             f"Motor {motor_name} (Motor {motor}) set to PWM speed {pwm_speed} with direction {'reverse' if direction == -1 else 'forward'}"
         )
