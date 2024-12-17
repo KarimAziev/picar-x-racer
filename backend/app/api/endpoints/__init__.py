@@ -7,6 +7,7 @@ from .file_management import router as file_management_router
 from .main import router as main_router
 from .music import router as music_router
 from .settings import router as settings_router
+from .system import router as system_router
 from .tts import router as tts_router
 from .video_feed import router as video_feed_router
 
@@ -22,4 +23,5 @@ __all__ = [
     "music_router",
     "settings_router",
     "tts_router",
+    "system_router",
 ]
