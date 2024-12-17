@@ -24,7 +24,14 @@ PX_PHOTO_DIR = getenv("PX_PHOTO_DIR", path.join(PICTURES_USER_DIR, APP_NAME))
 PX_VIDEO_DIR = getenv("PX_VIDEO_DIR", path.join(VIDEO_USER_DIR, APP_NAME))
 
 # where to save uploaded music
-PX_MUSIC_DIR = getenv("PX_MUSIC_DIR", path.join(MUSIC_USER_DIR, "music", APP_NAME))
+PX_MUSIC_DIR = getenv(
+    "PX_MUSIC_DIR",
+    path.join(
+        MUSIC_USER_DIR,
+        APP_NAME,
+        "music",
+    ),
+)
 
 PX_SETTINGS_FILE = getenv(
     "PX_SETTINGS_FILE", path.join(CONFIG_USER_DIR, APP_NAME, "user_settings.json")
