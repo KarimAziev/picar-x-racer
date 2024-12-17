@@ -385,7 +385,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Returns:
             float: The measured distance in centimeters. Returns -1 if all attempts fail.
         """
-        return await self.ultrasonic.read()
+        return await asyncio.to_thread(self.ultrasonic.read)
 
     def set_grayscale_reference(self, value):
         if not isinstance(value, list) or len(value) != 3:

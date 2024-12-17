@@ -41,6 +41,7 @@ It provides endpoints for:
 - managing settings and files,
 - serving the frontend,
 - reading battery status from ADC.
+- managing the operating system.
 """
 
 tags_metadata = [
@@ -87,6 +88,15 @@ tags_metadata = [
     {
         "name": "serve",
         "description": "General serving endpoints, including serving the frontend application and handling fallback routes.",
+    },
+    {
+        "name": "system",
+        "description": (
+            "Operations and endpoints related to system-level actions. These include "
+            "managing the operating system, such as shutting down, restarting, or performing "
+            "other system-related functions. Use these endpoints with caution as they "
+            "interact directly with the underlying OS."
+        ),
     },
 ]
 
@@ -185,6 +195,7 @@ from app.api.endpoints import (
     main_router,
     music_router,
     settings_router,
+    system_router,
     tts_router,
     video_feed_router,
 )
@@ -199,4 +210,5 @@ app.include_router(settings_router, tags=["settings"])
 app.include_router(video_feed_router, tags=["video-stream"])
 app.include_router(detection_router, tags=["detection"])
 app.include_router(app_sync_router, tags=["sync"])
+app.include_router(system_router, tags=["system"])
 app.include_router(main_router, tags=["serve"])
