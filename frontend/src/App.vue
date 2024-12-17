@@ -4,22 +4,41 @@
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
-  <ActiveConnectionsIndicator />
+  <TopRightPanel
+    class="flex flex-col bold text-align-right"
+    v-if="isSettingsLoaded"
+  >
+    <ToggleableView setting="general.show_battery_indicator">
+      <BatteryIndicator />
+    </ToggleableView>
+    <ToggleableView
+      setting="general.show_connections_indicator"
+      v-if="!isMobile"
+    >
+      <ActiveConnectionsIndicator />
+    </ToggleableView>
+  </TopRightPanel>
   <div class="indicators" v-if="isSettingsLoaded">
-    <AudioStream />
-    <Recording />
-    <ToggleableView setting="show_object_detection_settings">
+    <ToggleableView
+      setting="general.show_connections_indicator"
+      v-if="isMobile"
+    >
+      <ActiveConnectionsIndicator />
+    </ToggleableView>
+    <MediaControls v-if="!isMobile" />
+    <ToggleableView setting="general.show_object_detection_settings">
       <DetectionControls />
     </ToggleableView>
     <CalibrationModeInfo v-if="!isMobile" />
-    <ToggleableView v-if="!isMobile" setting="text_to_speech_input">
+    <ToggleableView v-if="!isMobile" setting="general.text_to_speech_input">
       <TextToSpeechInput />
     </ToggleableView>
-    <ToggleableView setting="show_player">
+    <ToggleableView setting="general.show_player">
       <MusicPlayer />
     </ToggleableView>
-    <Distance v-if="!isMobile" />
-    <BatteryIndicator v-if="!isMobile" />
+    <ToggleableView setting="general.show_auto_measure_distance_button">
+      <Distance v-if="!isMobile" />
+    </ToggleableView>
   </div>
 </template>
 
@@ -37,7 +56,9 @@ import { useSettingsStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer";
+
 import ToggleableView from "@/ui/ToggleableView.vue";
+import TopRightPanel from "@/ui/TopRightPanel.vue";
 
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();
@@ -50,12 +71,16 @@ const ActiveConnectionsIndicator = defineAsyncComponent({
     import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
 });
 
-const KeyboardHandler = defineAsyncComponent({
-  loader: () => import("@/features/controller/components/KeyboardHandler.vue"),
+const TextToSpeechInput = defineAsyncComponent({
+  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
 });
 
-const AudioStream = defineAsyncComponent({
-  loader: () => import("@/ui/AudioStream.vue"),
+const MediaControls = defineAsyncComponent({
+  loader: () => import("@/ui/MediaControls.vue"),
+});
+
+const KeyboardHandler = defineAsyncComponent({
+  loader: () => import("@/features/controller/components/KeyboardHandler.vue"),
 });
 
 const Distance = defineAsyncComponent({
@@ -64,10 +89,6 @@ const Distance = defineAsyncComponent({
 
 const DetectionControls = defineAsyncComponent({
   loader: () => import("@/features/detection/components/DetectionControls.vue"),
-});
-
-const TextToSpeechInput = defineAsyncComponent({
-  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
 });
 
 const MusicPlayer = defineAsyncComponent({
@@ -80,10 +101,6 @@ const BatteryIndicator = defineAsyncComponent({
 const CalibrationModeInfo = defineAsyncComponent({
   loader: () =>
     import("@/features/controller/components/CalibrationModeInfo.vue"),
-});
-const Recording = defineAsyncComponent({
-  loader: () =>
-    import("@/features/settings/components/camera/VideoRecordingIndicator.vue"),
 });
 
 const JoysticZone = defineAsyncComponent({
@@ -114,7 +131,7 @@ onBeforeUnmount(() => {
   @media (max-width: 992px) {
     right: 10px;
     top: 5px;
-    max-width: 200px;
+    max-width: 190px;
   }
 }
 </style>

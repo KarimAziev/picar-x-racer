@@ -1,5 +1,5 @@
 from time import sleep
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -31,7 +31,7 @@ class CalibrationService(metaclass=SingletonMeta):
 
         self.motor_run = False
 
-    def servos_test(self):
+    def servos_test(self) -> None:
         self.px.set_dir_servo_angle(-30)
         sleep(0.5)
         self.px.set_dir_servo_angle(30)
@@ -51,7 +51,7 @@ class CalibrationService(metaclass=SingletonMeta):
         self.px.set_cam_tilt_angle(0)
         sleep(0.5)
 
-    def servos_move(self, servo_num, value):
+    def servos_move(self, servo_num: int, value: int) -> None:
         self.logger.info(f"SERVOS_MOVE servo_num {servo_num} value {value}")
         if servo_num == 0:
             self.logger.debug(f"SERVOS_MOVE set_dir_servo_angle {value}")
@@ -63,7 +63,7 @@ class CalibrationService(metaclass=SingletonMeta):
             self.logger.debug(f"SERVOS_MOVE set_cam_tilt_angle {value}")
             self.px.set_cam_tilt_angle(value)
 
-    def set_servos_offset(self, servo_num, value):
+    def set_servos_offset(self, servo_num: int, value: int) -> None:
         self.logger.debug(f"Setting servos offset {servo_num} to {value}")
         if servo_num == 0:
             self.px.dir_cali_val = value
@@ -75,12 +75,12 @@ class CalibrationService(metaclass=SingletonMeta):
             self.px.cam_tilt_cali_val = value
             self.logger.debug(f"px.cam_tilt_cali_val {self.px.cam_tilt_cali_val}")
 
-    def servos_reset(self):
+    def servos_reset(self) -> Dict[str, str]:
         for i in range(3):
             self.servos_move(i, 0)
         return self.get_calibration_data()
 
-    def increase_servo_angle(self, servo_num: int):
+    def increase_servo_angle(self, servo_num: int) -> None:
         self.servos_offset[servo_num] += self.step
         if self.servos_offset[servo_num] > 20:
             self.servos_offset[servo_num] = 20
@@ -88,7 +88,7 @@ class CalibrationService(metaclass=SingletonMeta):
         self.set_servos_offset(servo_num, self.servos_offset[servo_num])
         self.servos_move(servo_num, 0)
 
-    def decrease_servo_angle(self, servo_num: int):
+    def decrease_servo_angle(self, servo_num: int) -> None:
         self.servos_offset[servo_num] -= self.step
         if self.servos_offset[servo_num] < -20:
             self.servos_offset[servo_num] = -20
@@ -96,31 +96,31 @@ class CalibrationService(metaclass=SingletonMeta):
         self.set_servos_offset(servo_num, self.servos_offset[servo_num])
         self.servos_move(servo_num, 0)
 
-    def increase_servo_dir_angle(self):
+    def increase_servo_dir_angle(self) -> Dict[str, str]:
         self.increase_servo_angle(0)
         return self.get_calibration_data()
 
-    def decrease_servo_dir_angle(self):
+    def decrease_servo_dir_angle(self) -> Dict[str, str]:
         self.decrease_servo_angle(0)
         return self.get_calibration_data()
 
-    def increase_cam_pan_angle(self):
+    def increase_cam_pan_angle(self) -> Dict[str, str]:
         self.increase_servo_angle(1)
         return self.get_calibration_data()
 
-    def decrease_cam_pan_angle(self):
+    def decrease_cam_pan_angle(self) -> Dict[str, str]:
         self.decrease_servo_angle(1)
         return self.get_calibration_data()
 
-    def increase_cam_tilt_angle(self):
+    def increase_cam_tilt_angle(self) -> Dict[str, str]:
         self.increase_servo_angle(2)
         return self.get_calibration_data()
 
-    def decrease_cam_tilt_angle(self):
+    def decrease_cam_tilt_angle(self) -> Dict[str, str]:
         self.decrease_servo_angle(2)
         return self.get_calibration_data()
 
-    def save_calibration(self):
+    def save_calibration(self) -> Dict[str, str]:
         self.px.dir_servo_calibrate(self.servos_offset[0])
         self.px.cam_pan_servo_calibrate(self.servos_offset[1])
         self.px.cam_tilt_servo_calibrate(self.servos_offset[2])
@@ -129,7 +129,7 @@ class CalibrationService(metaclass=SingletonMeta):
         )
         return self.get_calibration_data()
 
-    def get_calibration_data(self):
+    def get_calibration_data(self) -> Dict[str, str]:
         return {
             "picarx_dir_servo": f"{self.px.dir_cali_val}",
             "picarx_cam_pan_servo": f"{self.px.cam_pan_cali_val}",

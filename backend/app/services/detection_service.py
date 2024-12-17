@@ -15,7 +15,7 @@ from app.util.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 logger = Logger(__name__)
 
@@ -28,7 +28,7 @@ class DetectionService(metaclass=SingletonMeta):
     """
 
     def __init__(
-        self, file_manager: "FilesService", connection_manager: "ConnectionService"
+        self, file_manager: "FileService", connection_manager: "ConnectionService"
     ):
         self.lock = asyncio.Lock()
         self.logger = Logger(__name__)

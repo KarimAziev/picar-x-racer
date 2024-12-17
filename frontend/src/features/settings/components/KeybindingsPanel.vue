@@ -333,13 +333,6 @@ const isSubmitDisabled = ref(false);
   }
 }
 
-.select,
-.input-text {
-  height: 30px;
-  max-width: 100%;
-  width: 100%;
-}
-
 .p-button-sm {
   width: fit-content;
   height: 30px;

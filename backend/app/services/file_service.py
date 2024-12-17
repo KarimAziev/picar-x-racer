@@ -1,10 +1,10 @@
 """
-FilesService Class
+FileService Class
 
 This module handles file operations such as listing, saving, and removing photos, music, and sound files for a user within the application. It also manages user settings and loads audio details using the `AudioService`.
 
 Classes:
-    - FilesService: Handles file-related operations including saving, removing, and listing files from specified directories.
+    - FileService: Handles file-related operations including saving, removing, and listing files from specified directories.
 """
 
 import json
@@ -12,9 +12,7 @@ import os
 from os import path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from app.adapters.robot_hat.filedb import FileDB
 from app.config.paths import (
-    CONFIG_USER_DIR,
     DATA_DIR,
     DEFAULT_MUSIC_DIR,
     DEFAULT_USER_SETTINGS,
@@ -22,13 +20,13 @@ from app.config.paths import (
     PICARX_CONFIG_FILE,
     PX_MUSIC_DIR,
     PX_PHOTO_DIR,
+    PX_SETTINGS_FILE,
     PX_VIDEO_DIR,
-    USER_HOME,
 )
 from app.config.yolo_common_models import yolo_descriptions
-from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
+from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
+from app.util.atomic_write import atomic_write
 from app.util.file_util import (
-    ensure_parent_dir_exists,
     get_directory_structure,
     load_json_file,
     resolve_absolute_path,
@@ -37,12 +35,13 @@ from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
+from robot_hat.filedb import FileDB
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
 
 
-class FilesService(metaclass=SingletonMeta):
+class FileService(metaclass=SingletonMeta):
     """
     Service for managing file operations related to user settings, photos, and music.
 
@@ -50,47 +49,58 @@ class FilesService(metaclass=SingletonMeta):
         audio_manager (AudioService): An instance of AudioService to handle audio operations.
     """
 
-    default_user_settings_file = DEFAULT_USER_SETTINGS
-    default_user_music_dir = DEFAULT_MUSIC_DIR
-
-    def __init__(self, audio_manager: "AudioService", *args, **kwargs):
+    def __init__(
+        self,
+        audio_manager: "AudioService",
+        user_videos_dir=PX_VIDEO_DIR,
+        user_music_dir=PX_MUSIC_DIR,
+        user_photos_dir=PX_PHOTO_DIR,
+        user_settings_file=PX_SETTINGS_FILE,
+        music_cache_path=MUSIC_CACHE_FILE_PATH,
+        default_user_settings_file=DEFAULT_USER_SETTINGS,
+        default_user_music_dir=DEFAULT_MUSIC_DIR,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.logger = Logger(name=__name__)
-        self.user_home = USER_HOME
-        self.user_settings_file = path.join(
-            CONFIG_USER_DIR, "picar-x-racer", "user_settings.json"
-        )
-        self.user_photos_dir = PX_PHOTO_DIR
-        self.user_videos_dir = PX_VIDEO_DIR
-        self.user_music_dir = PX_MUSIC_DIR
+
+        self.default_user_settings_file = default_user_settings_file
+        self.default_user_music_dir = default_user_music_dir
+        self.user_settings_file = user_settings_file
+        self.user_photos_dir = user_photos_dir
+        self.user_videos_dir = user_videos_dir
+        self.user_music_dir = user_music_dir
+
+        self.music_cache_path = music_cache_path
 
         self.audio_manager = audio_manager
-        self.cache = self.load_cache()
+
+        self.cache = self.load_music_cache()
 
         self.last_modified_time = None
         self.current_settings_file = None
         self.settings: Dict[str, Any] = self.load_settings()
         self.list_all_music_with_details()
 
-    def load_cache(self) -> Dict:
+    def load_music_cache(self) -> Dict[str, Any]:
         """Load cached audio file data from a persistent file."""
-        if os.path.exists(MUSIC_CACHE_FILE_PATH):
-            with open(MUSIC_CACHE_FILE_PATH, "r") as cache_file:
-                return json.load(cache_file)
-        return {}
+        if os.path.exists(self.music_cache_path):
+            return load_json_file(self.music_cache_path)
+        else:
+            return {}
 
-    def save_cache(self) -> None:
-        """Save the cache to a persistent file."""
-        ensure_parent_dir_exists(MUSIC_CACHE_FILE_PATH)
-        with open(MUSIC_CACHE_FILE_PATH, "w") as cache_file:
-            json.dump(self.cache, cache_file, indent=2)
+    def save_music_cache(self) -> None:
+        """Save the music cache to a persistent file."""
+        with atomic_write(self.music_cache_path) as tmp:
+            json.dump(self.cache, tmp, indent=2)
 
     def get_settings_file(self) -> str:
         """Determines the current settings file to use"""
         return (
             self.user_settings_file
             if os.path.exists(self.user_settings_file)
-            else FilesService.default_user_settings_file
+            else self.default_user_settings_file
         )
 
     def load_settings(self) -> Dict[str, Any]:
@@ -120,23 +130,23 @@ class FilesService(metaclass=SingletonMeta):
         return self.cached_settings
 
     def save_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
-        """Saves new settings to the user settings file."""
+        """
+        Saves new settings to the user settings file.
+        """
         existing_settings = self.load_settings()
+
         self.logger.info(f"Saving settings to {self.user_settings_file}")
 
         merged_settings = {
             **existing_settings,
             **new_settings,
         }
-        self.logger.debug(f"New settings {new_settings}")
-        self.logger.debug(f"Merged settings {merged_settings}")
-        ensure_parent_dir_exists(self.user_settings_file)
-
-        with open(self.user_settings_file, "w") as settings_file:
-            json.dump(merged_settings, settings_file, indent=2)
-
+        self.logger.debug("New settings %s", new_settings)
+        self.logger.debug("Merged settings %s", merged_settings)
+        with atomic_write(self.user_settings_file) as tmp:
+            json.dump(merged_settings, tmp, indent=2)
         self.settings = merged_settings
-        self.logger.debug(f"Settings saved to {self.user_settings_file}")
+        self.logger.info("Settings saved to %s", self.user_settings_file)
         return self.settings
 
     def list_files(self, directory: str, full=False) -> List[str]:
@@ -220,7 +230,7 @@ class FilesService(metaclass=SingletonMeta):
         if len(self.cache) > max_entries:
             # Keeps the N most popular/most recent entries
             self.cache = dict(list(self.cache.items())[-max_entries:])
-            self.save_cache()
+            self.save_music_cache()
 
     def update_track_order_in_cache(self, ordered_tracks: List[str]) -> None:
         """
@@ -235,7 +245,7 @@ class FilesService(metaclass=SingletonMeta):
                     self.logger.debug(f"Updating order for track: {track_filename}")
                     cache_entry["details"]["order"] = idx
                     break
-        self.save_cache()
+        self.save_music_cache()
 
     def _get_audio_file_details(self, file: str) -> Optional[Dict[str, Any]]:
         """
@@ -283,7 +293,7 @@ class FilesService(metaclass=SingletonMeta):
                 "modified_time": file_mod_time,
                 "details": details,
             }
-            self.save_cache()
+            self.save_music_cache()
         return details
 
     def music_track_to_absolute(self, track: str) -> str:
@@ -568,13 +578,13 @@ class FilesService(metaclass=SingletonMeta):
         Returns:
             str: The path of the saved file.
         """
-        if not os.path.exists(directory):
-            os.makedirs(directory)
         filename = file.filename
-        if not isinstance(filename, str):
-            raise ValueError("Invalid filename.")
+        if not filename:
+            raise InvalidFileName("Invalid filename.")
+
         file_path = os.path.join(directory, filename)
-        with open(file_path, "wb") as buffer:
+
+        with atomic_write(file_path, mode="wb") as buffer:
             buffer.write(file.file.read())
         return file_path
 

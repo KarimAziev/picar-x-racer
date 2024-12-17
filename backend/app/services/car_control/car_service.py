@@ -3,31 +3,33 @@ import json
 import os
 from typing import TYPE_CHECKING, Any, Dict
 
-from app.adapters.picarx_adapter import PicarxAdapter
-from app.config.paths import CONFIG_USER_DIR, DEFAULT_USER_SETTINGS
-from app.services.car_control.avoid_obstacles_service import AvoidObstaclesService
-from app.services.car_control.calibration_service import CalibrationService
+from app.config.paths import DEFAULT_USER_SETTINGS, PX_SETTINGS_FILE
 from app.util.file_util import load_json_file
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import WebSocket
 
 if TYPE_CHECKING:
+    from app.adapters.picarx_adapter import PicarxAdapter
+    from app.services.car_control.avoid_obstacles_service import AvoidObstaclesService
+    from app.services.car_control.calibration_service import CalibrationService
     from app.services.connection_service import ConnectionService
 
 
 class CarService(metaclass=SingletonMeta):
-    def __init__(self, connection_manager: "ConnectionService"):
+    def __init__(
+        self,
+        px: "PicarxAdapter",
+        avolid_obstacles_service: "AvoidObstaclesService",
+        calibration_service: "CalibrationService",
+        connection_manager: "ConnectionService",
+    ):
         self.logger = Logger(name=__name__)
-        self.px = PicarxAdapter()
+        self.px = px
         self.connection_manager = connection_manager
-        self.avoid_obstacles_service = AvoidObstaclesService(
-            self.px,
-        )
-        self.calibration = CalibrationService(self.px)
-        self.user_settings_file = os.path.join(
-            CONFIG_USER_DIR, "picar-x-racer", "user_settings.json"
-        )
+        self.avoid_obstacles_service = avolid_obstacles_service
+        self.calibration = calibration_service
+        self.user_settings_file = PX_SETTINGS_FILE
         self.settings_file = (
             self.user_settings_file
             if os.path.exists(self.user_settings_file)

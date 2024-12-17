@@ -2,7 +2,7 @@ from time import localtime, strftime
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_camera_manager, get_file_manager
-from app.exceptions.camera import CameraDeviceError
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.util.device import list_available_camera_devices
 from app.util.logger import Logger
@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 if TYPE_CHECKING:
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 router = APIRouter()
 logger = Logger(__name__)
@@ -83,7 +83,7 @@ async def update_camera_settings(
             {"type": "camera", "payload": result.model_dump()}
         )
         return result
-    except CameraDeviceError as err:
+    except (CameraDeviceError, CameraNotFoundError) as err:
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": camera_manager.camera_settings.model_dump()}
         )
@@ -157,7 +157,7 @@ def get_camera_devices():
 )
 async def take_photo(
     camera_manager: "CameraService" = Depends(get_camera_manager),
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
@@ -165,7 +165,7 @@ async def take_photo(
     Args:
     --------------
     - `camera_manager` (CameraService): Camera management service for interfacing with the hardware.
-    - `file_manager` (FilesService): File management service for determining save locations.
+    - `file_manager` (FileService): File management service for determining save locations.
 
     Returns:
     --------------

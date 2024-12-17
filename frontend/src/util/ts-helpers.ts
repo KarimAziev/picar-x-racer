@@ -47,3 +47,50 @@ export type ExcludePropertiesWithPrefix<
 };
 
 export declare type Nullable<T = void> = T | null | undefined;
+
+export type RecoursiveRequired<T> = {
+  [K in keyof Required<T> as K]: Required<T>[K] extends object
+    ? RecoursiveRequired<Required<T>[K]>
+    : T[K];
+};
+
+export type FlattenObjectKeys<
+  T extends Record<string, any>,
+  Key = keyof T,
+> = Key extends string
+  ? Required<T>[Key] extends Record<string, any>
+    ? `${Key}.${FlattenObjectKeys<Required<T>[Key]>}`
+    : `${Key}`
+  : never;
+
+export type NonFlattenObjectKeys<
+  T extends Record<string, any>,
+  Key = keyof T,
+> = Key extends string
+  ? Required<T>[Key] extends Record<string, any>
+    ? never
+    : `${Key}`
+  : never;
+
+export type FlattenObject<T extends Record<string, any>> = {
+  [K in FlattenObjectKeys<T>]: K extends `${infer Key}.${infer Rest}`
+    ? Key extends keyof T
+      ? Rest extends FlattenObjectKeys<T[Key]>
+        ? FlattenObject<T[Key]>[Rest]
+        : never
+      : never
+    : K extends keyof T
+      ? T[K]
+      : never;
+};
+
+export type FlattenBooleanObjectKeys<
+  T extends Record<string, any>,
+  Key = keyof T & string, // Force only string-based keys
+> = Key extends string
+  ? T[Key] extends Record<string, any>
+    ? `${Key}.${FlattenBooleanObjectKeys<T[Key]>}`
+    : T[Key] extends boolean
+      ? `${Key}`
+      : never
+  : never;

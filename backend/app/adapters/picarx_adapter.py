@@ -1,16 +1,10 @@
 import asyncio
 
-from app.adapters.robot_hat.adc import ADC
-from app.adapters.robot_hat.filedb import FileDB
-from app.adapters.robot_hat.grayscale import Grayscale_Module
-from app.adapters.robot_hat.pin import Pin
-from app.adapters.robot_hat.pwm import PWM
-from app.adapters.robot_hat.servo import Servo
-from app.adapters.robot_hat.ultrasonic import Ultrasonic
 from app.config.paths import PICARX_CONFIG_FILE
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+from robot_hat import ADC, PWM, FileDB, Grayscale, Pin, Servo, Ultrasonic
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
@@ -92,7 +86,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         # --------- grayscale module init ---------
         adc0, adc1, adc2 = [ADC(pin) for pin in grayscale_pins]
-        self.grayscale = Grayscale_Module(adc0, adc1, adc2)
+        self.grayscale = Grayscale(adc0, adc1, adc2)
         # Get reference
         self.line_reference = self.config_file.get(
             "line_reference", default_value=str(self.DEFAULT_LINE_REF)
@@ -190,7 +184,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
         # Set motor speed using Pulse Width Modulation (PWM)
         self.motor_speed_pins[motor_index].pulse_width_percent(pwm_speed)
 
-        # Log the final PWM speed and direction
         self.logger.debug(
             f"Motor {motor_name} (Motor {motor}) set to PWM speed {pwm_speed} with direction {'reverse' if direction == -1 else 'forward'}"
         )

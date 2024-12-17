@@ -1,5 +1,6 @@
 import { ref, Ref } from "vue";
 import { useControllerStore } from "@/features/controller/store";
+import { showDirectionalIndicator } from "@/util/dom";
 
 export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
   const controllerStore = useControllerStore();
@@ -29,6 +30,8 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
     lastY.value = clientY;
 
     adjustCamera(deltaX, deltaY);
+
+    showDirectionalIndicator(deltaX, deltaY);
   };
 
   const adjustCamera = (deltaX: number, deltaY: number) => {

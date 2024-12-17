@@ -3,7 +3,7 @@ BACKEND_DIR := backend
 VENV_DIR := $(BACKEND_DIR)/.venv
 
 # Phony targets
-.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build backend-venv-install clean clean-pyc help backend-venv-run-debug backend-venv-run-warning
+.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build backend-venv-install clean clean-pyc help backend-venv-run-debug backend-venv-run-warning update-robot-hat
 
 # Default target
 all: build-all-no-sudo
@@ -19,6 +19,9 @@ dev-without-install:
 	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --dev"
 
 dev-with-install: frontend-install backend-venv-install dev-without-install
+
+update-robot-hat:
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && pip install git+https://github.com/KarimAziev/robot-hat.git@main#egg=robot_hat"
 
 # Frontend installation and build
 frontend-install:

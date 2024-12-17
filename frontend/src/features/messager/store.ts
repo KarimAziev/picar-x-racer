@@ -6,7 +6,7 @@ export interface MessageItemParams {
   title?: string;
   text: string;
   delay?: number;
-  type: "success" | "info" | "error";
+  type: "success" | "info" | "error" | "warning";
   immediately?: boolean;
 }
 
@@ -14,7 +14,7 @@ export interface MessageItem {
   title?: string;
   text: string;
   delay: number;
-  type: "success" | "info" | "error";
+  type: MessageItemParams["type"];
   id: number;
   immediately?: boolean;
 }
@@ -73,29 +73,30 @@ export const useStore = defineStore("messager", {
         this.processQueue();
       }
     },
-
-    error(text: any, props?: ShowMessageTypeProps | string) {
-      const type = "error";
+    _show_type(
+      type: MessageItemParams["type"],
+      text: any,
+      props?: ShowMessageTypeProps | string,
+    ) {
       if (isString(props)) {
         return this.show(text, { title: props, type });
       }
       return this.show(text, { ...props, type });
+    },
+    error(text: any, props?: ShowMessageTypeProps | string) {
+      return this._show_type("error", text, props);
     },
 
     info(text: any, props?: ShowMessageTypeProps | string) {
-      const type = "info";
-      if (isString(props)) {
-        return this.show(text, { title: props, type });
-      }
-      return this.show(text, { ...props, type });
+      return this._show_type("info", text, props);
     },
 
     success(text: any, props?: ShowMessageTypeProps | string) {
-      const type = "success";
-      if (isString(props)) {
-        return this.show(text, { title: props, type });
-      }
-      return this.show(text, { ...props, type });
+      return this._show_type("success", text, props);
+    },
+
+    warning(text: any, props?: ShowMessageTypeProps | string) {
+      return this._show_type("warning", text, props);
     },
 
     handleError<Err>(error: Err, title?: string) {

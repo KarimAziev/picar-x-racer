@@ -3,7 +3,11 @@ from typing import TYPE_CHECKING
 
 from app.api.deps import get_file_manager, get_music_manager
 from app.config.paths import DATA_DIR
-from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
+from app.exceptions.file_exceptions import (
+    DefaultFileRemoveAttempt,
+    InvalidFileName,
+    InvalidMediaType,
+)
 from app.schemas.file_management import (
     PhotosResponse,
     RemoveFileResponse,
@@ -16,7 +20,7 @@ from starlette.responses import FileResponse
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
     from app.services.music_service import MusicService
 
 router = APIRouter()
@@ -28,7 +32,7 @@ async def upload_file(
     request: Request,
     media_type: str,
     file: UploadFile = File(...),
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
     Upload a file of a specific media type.
@@ -37,7 +41,7 @@ async def upload_file(
     --------------
     - media_type (str): The type of media to upload ('music', 'image', 'data' etc).
     - file (UploadFile): The file to upload.
-    - file_manager (FilesService): The file management service.
+    - file_manager (FileService): The file management service.
 
     Returns:
     --------------
@@ -48,25 +52,40 @@ async def upload_file(
     `HTTPException`: If no file is selected or the media type is invalid.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
-    if file.filename == "":
-        raise HTTPException(status_code=400, detail="No selected file")
-
     handlers = {
         "music": file_manager.save_music,
         "image": file_manager.save_photo,
         "data": file_manager.save_data,
     }
-    handler = handlers.get(media_type)
 
-    if not handler:
-        raise HTTPException(status_code=400, detail="Invalid media type")
-
-    result = await asyncio.to_thread(handler, file)
-    if result:
-        await connection_manager.broadcast_json(
-            {"type": "uploaded", "payload": {"file": file.filename, "type": media_type}}
+    try:
+        handler = handlers.get(media_type)
+        if not handler:
+            raise InvalidMediaType("Invalid media type.")
+        result = await asyncio.to_thread(handler, file)
+        if result:
+            await connection_manager.broadcast_json(
+                {
+                    "type": "uploaded",
+                    "payload": {"file": file.filename, "type": media_type},
+                }
+            )
+        return {"success": True, "filename": file.filename}
+    except InvalidFileName:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    except InvalidMediaType:
+        logger.error(f"Invalid media type '{media_type}' for '{file.filename}'")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid media type {media_type}. Should be one of "
+            + ", ".join(list(handlers.keys())),
         )
-    return {"success": True, "filename": file.filename}
+    except Exception:
+        logger.error("Unhandled exception during file upload", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal Server Error",
+        )
 
 
 @router.delete(
@@ -76,7 +95,7 @@ async def remove_file(
     request: Request,
     media_type: str,
     filename: str,
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
@@ -86,7 +105,7 @@ async def remove_file(
     --------------
     - media_type (str): The type of media ('music', 'video', 'image', 'data').
     - filename (str): The name of the file to remove.
-    - file_manager (FilesService): The file management service.
+    - file_manager (FileService): The file management service.
 
     Returns:
     --------------
@@ -106,25 +125,33 @@ async def remove_file(
     handler = handlers.get(media_type)
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
-    logger.info("Removing file %s of type %s", filename, media_type)
-
-    if not handler:
-        raise HTTPException(status_code=400, detail="Invalid media type")
-
+    logger.info("Removing file '%s' of type '%s'", filename, media_type)
     try:
+        if not handler:
+            raise InvalidMediaType("Invalid media type.")
         result = await asyncio.to_thread(handler, filename)
         if result:
             await connection_manager.broadcast_json(
                 {"type": "removed", "payload": {"file": filename, "type": media_type}}
             )
         return {"success": result, "filename": filename}
+    except InvalidMediaType:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid media type {media_type}. Should be one of "
+            + ", ".join(list(handlers.keys())),
+        )
+
     except DefaultFileRemoveAttempt as e:
         logger.warning(str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="File Not Found")
     except Exception:
-        logger.error(f"Error removing file {filename}", exc_info=True)
+        logger.error(
+            f"Unhandled error while removing file '{filename}' with media type '{media_type}'",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
@@ -142,7 +169,7 @@ async def remove_file(
 def download_file(
     media_type: str,
     filename: str,
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
     Download a file of a specific media type.
@@ -151,7 +178,7 @@ def download_file(
     --------------
     - media_type (str): The type of media ('music', 'image', 'video', 'data').
     - filename (str): The name of the file to download.
-    - file_manager (FilesService): The file management service.
+    - file_manager (FileService): The file management service.
 
     Returns:
     --------------
@@ -176,7 +203,7 @@ def download_file(
         elif media_type == "video":
             directory = file_manager.get_video_directory(filename)
         else:
-            raise HTTPException(status_code=400, detail="Invalid media type")
+            raise HTTPException(status_code=400, detail="Invalid Media Type")
         return FileResponse(
             path=f"{directory}/{filename}",
             media_type="application/octet-stream",
@@ -198,7 +225,7 @@ def download_file(
 )
 def preview_image(
     filename: str,
-    file_manager: "FilesService" = Depends(get_file_manager),
+    file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
     Provide a preview image of a specific file.
@@ -206,7 +233,7 @@ def preview_image(
     Args:
     --------------
     - filename (str): The name of the image file to preview.
-    - file_manager (FilesService): The file management service.
+    - file_manager (FileService): The file management service.
 
     Returns:
     --------------
@@ -234,7 +261,7 @@ def preview_image(
 
 
 @router.get("/api/files/list/photos", response_model=PhotosResponse)
-def list_photos(file_manager: "FilesService" = Depends(get_file_manager)):
+def list_photos(file_manager: "FileService" = Depends(get_file_manager)):
     """
     List the captured by user photos.
     """
@@ -252,13 +279,13 @@ def list_photos(file_manager: "FilesService" = Depends(get_file_manager)):
         404: {"description": "File not found"},
     },
 )
-def fetch_last_video(file_manager: "FilesService" = Depends(get_file_manager)):
+def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
     """
     Download the last video captured by the user.
 
     Args:
     --------------
-    - file_manager (FilesService): The file management service for videos.
+    - file_manager (FileService): The file management service for videos.
 
     Returns:
     --------------

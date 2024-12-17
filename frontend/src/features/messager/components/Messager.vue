@@ -16,13 +16,10 @@ import Messages from "@/features/messager/components/MessageListContainer.vue";
   max-height: 40px;
 
   @media (min-height: 768px) and (min-width: 992px) {
-    height: 200px;
-    max-height: 200px;
-    left: 0;
     z-index: 1000;
-    font-size: 0.8rem;
-    top: 50%;
-    max-height: 50%;
+    height: 300px;
+    max-height: 300px;
+    left: 0;
     font-size: 1rem;
     top: 100px;
   }

@@ -3,7 +3,7 @@
     <div class="content">
       <VideoBox />
       <GaugesBlock class="gauges">
-        <ToggleableView setting="car_model_view" v-if="!isMobile">
+        <ToggleableView setting="general.robot_3d_view" v-if="!isMobile">
           <CarModelViewer
             class="car-model"
             :zoom="4"

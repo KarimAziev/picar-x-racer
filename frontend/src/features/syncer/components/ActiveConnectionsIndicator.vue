@@ -1,37 +1,19 @@
 <template>
-  <div :class="classObject" class="active_connections">{{ clients }}</div>
+  <span v-if="connected" class="bold">{{ clients }}</span>
+  <DisconnectIndicator v-else />
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useAppSyncStore } from "@/features/syncer";
+import DisconnectIndicator from "@/features/syncer/components/DisconnectIndicator.vue";
 
 const syncStore = useAppSyncStore();
 
-const classObject = computed(() => ({
-  ["disconnected"]: !syncStore.model?.connected,
-  ["blink"]: !syncStore.model?.connected,
-}));
+const connected = computed(() => syncStore.model?.connected);
 
-const clients = computed(() =>
-  syncStore.model?.connected
-    ? `CONNECTED ${syncStore.active_connections} CLIENT${syncStore.active_connections === 1 ? "" : "S"}`
-    : "DISCONNECTED",
+const clients = computed(
+  () =>
+    `${syncStore.active_connections} CONNECTION${syncStore.active_connections === 1 ? "" : "S"}`,
 );
 </script>
-
-<style scoped lang="scss">
-@use "@/assets/scss/blink";
-
-.active_connections {
-  font-weight: bold;
-  position: fixed;
-  font-size: 10px;
-  right: 2px;
-  top: 1px;
-  z-index: 12;
-}
-.disconnected {
-  color: var(--color-red);
-}
-</style>

@@ -2,43 +2,51 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Optional
 
+from app.schemas.battery import BatterySettings
 from app.schemas.connection import ConnectionEvent
-from app.util.get_battery_voltage import get_battery_voltage as read_battery_voltage
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+from robot_hat.battery import Battery
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
 
 
 class BatteryService(metaclass=SingletonMeta):
-    BATTERY_TWO_LEDS_LEVEL = 7.6
-    BATTERY_ONE_LEDS_LEVEL = 7.15
-    BATTERY_DANGER_LEVEL = 6.5
-    BATTERY_MIN_LEVEL = 6.0
-
-    CACHE_SECONDS = 5
-
     def __init__(
-        self, file_manager: "FilesService", connection_manager: "ConnectionService"
+        self, file_manager: "FileService", connection_manager: "ConnectionService"
     ):
         """
         Initializes the BatteryService with required file and connection services.
         """
 
         self._logger = Logger(__name__)
+        self.battery_adapter = Battery()
         self.connection_manager = connection_manager
         self.settings = file_manager.load_settings()
-        self.battery_full_voltage = self.settings.get("battery_full_voltage", 8.4)
-        self.battery_auto_measure_seconds = self.settings.get(
-            "battery_auto_measure_seconds", 60
+        self.battery = BatterySettings(
+            **self.settings.get(
+                "battery",
+                {
+                    "full_voltage": 8.4,
+                    "warn_voltage": 7.15,
+                    "danger_voltage": 6.5,
+                    "min_voltage": 6.0,
+                    "auto_measure_seconds": 60,
+                    "cache_seconds": 2,
+                },
+            )
         )
         self._stop_event = asyncio.Event()
         self._task: Optional[asyncio.Task] = None
         self._last_measure_voltage: Optional[float] = None
         self._last_measure_time: Optional[float] = None
         self._lock = asyncio.Lock()
+
+    def update_battery_settings(self, settings: BatterySettings):
+        "Updates the battery's settings."
+        self.battery = settings
 
     async def read_voltage(self) -> Optional[float]:
         """
@@ -52,7 +60,7 @@ class BatteryService(metaclass=SingletonMeta):
         Cache behavior:
         To optimize performance and reduce frequent hardware queries, the method employs a caching mechanism.
 
-        If a voltage measurement is requested within the time interval specified by the `CACHE_SECONDS` attribute
+        If a voltage measurement is requested within the time interval specified by the `BatterySettings.cache_seconds`
         after the last reading, a cached value is returned instead of performing a new ADC measurement.
 
         Returns:
@@ -66,7 +74,7 @@ class BatteryService(metaclass=SingletonMeta):
         """
         if (
             self._last_measure_time is not None
-            and (time.time() - self._last_measure_time) <= self.CACHE_SECONDS
+            and (time.time() - self._last_measure_time) <= self.battery.cache_seconds
         ):
             self._logger.debug(
                 "Using cached voltage value %s", self._last_measure_voltage
@@ -76,7 +84,9 @@ class BatteryService(metaclass=SingletonMeta):
         value: Optional[float] = None
         async with self._lock:
             try:
-                value = await asyncio.to_thread(read_battery_voltage)
+                value = await asyncio.to_thread(
+                    self.battery_adapter.get_battery_voltage
+                )
             except Exception:
                 await self.connection_manager.error("Error reading voltage")
 
@@ -131,8 +141,8 @@ class BatteryService(metaclass=SingletonMeta):
         """
         Calculates the battery percentage based on the voltage.
         """
-        adjusted_voltage = max(0, voltage - self.BATTERY_MIN_LEVEL)
-        total_adjusted_voltage = self.battery_full_voltage - self.BATTERY_MIN_LEVEL
+        adjusted_voltage = max(0, voltage - self.battery.min_voltage)
+        total_adjusted_voltage = self.battery.full_voltage - self.battery.min_voltage
         percentage = (adjusted_voltage / total_adjusted_voltage) * 100
         return int(percentage * 10) / 10
 
@@ -175,43 +185,43 @@ class BatteryService(metaclass=SingletonMeta):
             if voltage is None:
                 self._logger.error(
                     "Reading voltage is failed, next measuring after %s",
-                    self.battery_auto_measure_seconds,
+                    self.battery.auto_measure_seconds,
                 )
             else:
                 percentage = self._calculate_battery_percentage(voltage)
-                if voltage >= self.BATTERY_ONE_LEDS_LEVEL:
+                if voltage >= self.battery.warn_voltage:
                     self._logger.info(
                         "Battery voltage: %s (%s%%), next measurement after %s",
                         voltage,
                         percentage,
-                        self.battery_auto_measure_seconds,
+                        self.battery.auto_measure_seconds,
                     )
                 elif (
-                    voltage < self.BATTERY_ONE_LEDS_LEVEL
-                    and voltage > self.BATTERY_DANGER_LEVEL
+                    voltage < self.battery.warn_voltage
+                    and voltage > self.battery.danger_voltage
                 ):
                     self._logger.warning(
                         "Battery voltage: %s (%s%%), next measurement after %s",
                         voltage,
                         percentage,
-                        self.battery_auto_measure_seconds,
+                        self.battery.auto_measure_seconds,
                     )
                 elif (
-                    voltage < self.BATTERY_DANGER_LEVEL
-                    and voltage > self.BATTERY_MIN_LEVEL
+                    voltage < self.battery.danger_voltage
+                    and voltage > self.battery.min_voltage
                 ):
                     self._logger.error(
                         "Danger voltage: %s (%s%%), next measurement after %s",
                         voltage,
                         percentage,
-                        self.battery_auto_measure_seconds,
+                        self.battery.auto_measure_seconds,
                     )
                 else:
                     self._logger.critical(
                         "Critical battery voltage: %s (%s%%), next measurement after %s",
                         voltage,
                         percentage,
-                        self.battery_auto_measure_seconds,
+                        self.battery.auto_measure_seconds,
                     )
 
-            await asyncio.sleep(self.battery_auto_measure_seconds)
+            await asyncio.sleep(self.battery.auto_measure_seconds)

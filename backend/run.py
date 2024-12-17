@@ -12,8 +12,8 @@ def main():
     except RuntimeError:
         pass
     from dotenv import load_dotenv
+    from robot_hat import reset_mcu_sync
 
-    from app.util.reset_mcu_sync import reset_mcu_sync
     from app.util.setup_env import setup_env
     from run_car_control_app import start_control_app
     from run_frontend import start_frontend_app

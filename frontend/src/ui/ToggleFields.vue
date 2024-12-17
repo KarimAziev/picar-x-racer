@@ -7,7 +7,7 @@
     layout="row-reverse"
     @update:model-value="(value) => onUpdate(field as string, value)"
     :pt="{ input: { id: field } }"
-    v-model="store.data[field]"
+    v-model="store.data[scope][field]"
   />
 
   <slot></slot>
@@ -21,14 +21,20 @@ const emit = defineEmits(["update:modelValue"]);
 type ToggleableConfig = {
   [key: string]: { label?: string; description?: string };
 };
+
 type MappedData = {
   [P in keyof ToggleableConfig]?: unknown;
 };
+
 interface StoreData {
-  data: MappedData;
+  data: Record<string, MappedData>;
 }
 
-defineProps<{ store: StoreData; fields: ToggleableConfig }>();
+defineProps<{
+  store: StoreData;
+  fields: ToggleableConfig;
+  scope: keyof MappedData;
+}>();
 
 const onUpdate = (fieldName: string, newValue: boolean) => {
   emit("update:modelValue", fieldName, newValue);

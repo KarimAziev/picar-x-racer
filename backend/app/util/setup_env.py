@@ -8,6 +8,9 @@ def setup_env():
 
     os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio" if is_os_raspberry else "mock"
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+    if not is_os_raspberry:
+        os.environ["ROBOT_HAT_MOCK_SMBUS"] = "1"
+        os.environ["ROBOT_HAT_DISCHARGE_RATE"] = "10"
 
     parser = argparse.ArgumentParser(description="Run the application.")
 

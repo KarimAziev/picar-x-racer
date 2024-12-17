@@ -1,5 +1,5 @@
 <template>
-  <div class="container flex align-items-center gap-5" :class="class">
+  <div class="wrapper flex flex-wrap align-items-center">
     <SelectField
       fieldClassName="language opacity-hover"
       field="language"
@@ -13,7 +13,7 @@
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
     />
-    <div class="flex textinput">
+    <div class="flex align-items-center">
       <TextInput
         class="opacity-hover"
         autocomplete="off"
@@ -24,7 +24,6 @@
         v-model="inputRef"
         v-tooltip="'Type the Text To Speech and press Enter to speak'"
       />
-
       <Button
         class="opacity-hover"
         @click="sayText"
@@ -52,7 +51,7 @@ defineProps<{ class?: string }>();
 
 const store = useSettingsStore();
 
-const language = ref(store.data.default_tts_language);
+const language = ref(store.data.tts.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
@@ -80,7 +79,7 @@ const handleKeyEnter = async () => {
 };
 
 watch(
-  () => store.data.default_tts_language,
+  () => store.data.tts.default_tts_language,
   (newValue) => {
     language.value = newValue;
   },
@@ -88,12 +87,12 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.container {
-  @media screen and (max-width: 992px) {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 0;
+.wrapper {
+  @media (max-width: 992px) {
+    max-width: 240px;
+  }
+  @media (max-width: 768px) {
+    max-width: 200px;
   }
 }
 input {

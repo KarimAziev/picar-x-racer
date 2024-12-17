@@ -25,7 +25,8 @@ const distance = computed(() => `${distanceStore.distance.toFixed(2)}cm`);
 const isLoaded = computed(() => settingsStore.loaded);
 const isPopupOpen = computed(() => popupStore.isOpen);
 const isAutoMeasureMode = computed(
-  () => settingsStore.loaded && settingsStore.data.auto_measure_distance_mode,
+  () =>
+    settingsStore.loaded && settingsStore.data.robot.auto_measure_distance_mode,
 );
 
 const fetchAndScheduleNext = async () => {
@@ -37,12 +38,12 @@ const fetchAndScheduleNext = async () => {
   }
   intervalId.value = setTimeout(
     fetchAndScheduleNext,
-    settingsStore.data.auto_measure_distance_delay_ms || 1000,
+    settingsStore.data.robot.auto_measure_distance_delay_ms || 1000,
   );
 };
 
 const handleToggle = () => {
-  settingsStore.toggleSettingsProp("auto_measure_distance_mode");
+  settingsStore.toggleSettingsProp("robot.auto_measure_distance_mode");
 };
 
 const distanceLabel = computed(() =>

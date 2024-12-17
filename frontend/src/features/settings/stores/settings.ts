@@ -1,16 +1,9 @@
 import axios from "axios";
 import { defineStore } from "pinia";
 import { cycleValue } from "@/util/cycleValue";
-import { omit, isObjectEquals } from "@/util/obj";
+import { isObjectEquals, pick, setObjProp, getObjProp } from "@/util/obj";
 import { retrieveError } from "@/util/error";
-import type { ControllerActionName } from "@/features/controller/store";
-import type { DetectionSettings } from "@/features/detection";
-import type { StreamSettings } from "@/features/settings/stores/stream";
-import type { CameraSettings } from "@/features/settings/stores/camera";
-import {
-  behaviorSettings,
-  visibilitySettings,
-} from "@/features/settings/config";
+
 import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore, ShowMessageTypeProps } from "@/features/messager";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
@@ -28,39 +21,12 @@ import {
   defaultState as detectionDefaultState,
 } from "@/features/detection";
 import { useStore as useMusicStore, MusicMode } from "@/features/music";
-
-export type ToggleableSettings = {
-  [P in keyof (typeof behaviorSettings & typeof visibilitySettings)]: boolean;
-};
+import type { Settings, ToggleableKey } from "@/features/settings/interface";
 
 export interface TextItem {
   text: string;
   language: string;
   default?: boolean;
-}
-
-export interface MusicSettings {
-  mode?: MusicMode;
-  order: string[];
-}
-
-export interface CameraStreamSettings {
-  camera: CameraSettings;
-  detection: DetectionSettings;
-  stream: StreamSettings;
-}
-
-export interface Settings
-  extends Partial<ToggleableSettings>,
-    CameraStreamSettings {
-  music: MusicSettings;
-  default_tts_language: string;
-  keybindings: Partial<Record<ControllerActionName, string[] | null>>;
-  battery_full_voltage: number;
-  battery_auto_measure_seconds: number;
-  max_speed: number;
-  auto_measure_distance_delay_ms: number;
-  texts: TextItem[];
 }
 
 export interface State {
@@ -78,16 +44,48 @@ export interface State {
 
 export const defaultState: State = {
   data: {
+    general: {
+      robot_3d_view: true,
+      speedometer_view: true,
+      text_info_view: true,
+      auto_download_photo: true,
+      auto_download_video: true,
+      virtual_mode: false,
+      show_player: true,
+      show_object_detection_settings: true,
+      text_to_speech_input: true,
+      show_battery_indicator: true,
+      show_connections_indicator: true,
+      show_auto_measure_distance_button: true,
+      show_audio_stream_button: true,
+      show_photo_capture_button: true,
+      show_video_record_button: true,
+    },
     keybindings: {},
-    default_tts_language: "en",
-    battery_auto_measure_seconds: 30,
-    max_speed: 80,
-    texts: [],
-    battery_full_voltage: 8.4,
-    auto_measure_distance_delay_ms: 1000,
+
+    tts: {
+      default_tts_language: "en",
+      texts: [],
+    },
+    battery: {
+      full_voltage: 8.4,
+      warn_voltage: 7.15,
+      danger_voltage: 6.5,
+      min_voltage: 6.0,
+      auto_measure_seconds: 60,
+      cache_seconds: 2,
+    },
+
+    robot: {
+      max_speed: 80,
+      auto_measure_distance_mode: false,
+      auto_measure_distance_delay_ms: 1000,
+    },
+
     camera: { ...defaultCameraState.data },
     music: {
       order: [],
+      mode: MusicMode.LOOP,
     },
     detection: { ...detectionDefaultState.data },
     stream: { ...defaultStreamState.data },
@@ -104,31 +102,12 @@ export const useStore = defineStore("settings", {
     detection({ data: { detection } }) {
       return detection;
     },
-    tts({ data: { texts, default_tts_language } }) {
-      return {
-        default_tts_language,
-        texts: texts.filter((item) => !!item.text.length),
-      };
-    },
-    keybindings({ data: { keybindings } }) {
-      return { keybindings };
-    },
 
     generalSettings({ data }) {
       const musicStore = useMusicStore();
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
-      const settingsData = omit(
-        [
-          "keybindings",
-          "texts",
-          "default_tts_language",
-          "detection",
-          "camera",
-          "stream",
-        ],
-        data,
-      );
+      const settingsData = pick(["general", "robot", "battery", "music"], data);
       return {
         ...settingsData,
         camera: cameraStore.data,
@@ -193,9 +172,9 @@ export const useStore = defineStore("settings", {
         case SettingsTab.GENERAL:
           return this.generalSettings;
         case SettingsTab.KEYBINDINGS:
-          return this.keybindings;
+          return { keybindings: this.data.keybindings };
         case SettingsTab.TTS:
-          return this.tts;
+          return { tts: this.data.tts };
         case SettingsTab.MODELS:
           return {
             detection: detectionStore.data,
@@ -239,13 +218,16 @@ export const useStore = defineStore("settings", {
     },
 
     toggleSettingsProp(
-      prop: keyof ToggleableSettings,
+      prop: ToggleableKey,
       showMsg?: boolean,
       msgParams?: ShowMessageTypeProps | string,
     ) {
       const messager = useMessagerStore();
-      const nextValue = !this.data[prop];
-      this.data[prop] = nextValue;
+      const currVal = getObjProp(prop, this.data);
+
+      const nextValue = !currVal;
+      setObjProp(this.data, prop, nextValue);
+
       if (showMsg) {
         messager.info(`${prop}: ${nextValue}`, msgParams);
       }
@@ -266,14 +248,15 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       if (!this.text) {
         const item =
-          this.data.texts.find((item) => item.default) || this.data.texts[0];
+          this.data.tts.texts.find((item) => item.default) ||
+          this.data.tts.texts[0];
         this.text = item.text;
         this.language = item.language;
         return;
       }
       const nextTrack = cycleValue(
         (v) => v.text === this.text,
-        this.data.texts,
+        this.data.tts.texts,
         direction,
       );
       if (!nextTrack) {

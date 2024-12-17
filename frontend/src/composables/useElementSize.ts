@@ -1,4 +1,5 @@
 import { onMounted, onBeforeUnmount, reactive, type Ref } from "vue";
+import { roundNumber } from "@/util/number";
 
 export const useElementSize = (elementRef: Ref<HTMLElement | null>) => {
   const size = reactive({
@@ -11,8 +12,8 @@ export const useElementSize = (elementRef: Ref<HTMLElement | null>) => {
       return;
     }
     const entry = entries[0];
-    size.width = entry.contentRect.width;
-    size.height = entry.contentRect.height;
+    size.width = roundNumber(entry.contentRect.width);
+    size.height = roundNumber(entry.contentRect.height);
   };
 
   let resizeObserver: ResizeObserver | null = null;
@@ -22,8 +23,8 @@ export const useElementSize = (elementRef: Ref<HTMLElement | null>) => {
       resizeObserver = new ResizeObserver((entries) => updateSize(entries));
       resizeObserver.observe(elementRef.value);
       const rect = elementRef.value.getBoundingClientRect();
-      size.width = rect.width;
-      size.height = rect.height;
+      size.width = roundNumber(rect.width);
+      size.height = roundNumber(rect.height);
     }
   });
 

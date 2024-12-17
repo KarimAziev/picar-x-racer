@@ -1,9 +1,10 @@
 import asyncio
+import os
+import sys
 import time
 from os import path
 from typing import TYPE_CHECKING, List, Optional, Union
 
-import pygame
 from app.exceptions.music import MusicPlayerError
 from app.schemas.music import MusicPlayerMode
 from app.util.logger import Logger
@@ -11,7 +12,15 @@ from app.util.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
+
+original_stdout = sys.stdout
+try:
+    sys.stdout = open(os.devnull, 'w')
+    import pygame
+finally:
+    sys.stdout.close()
+    sys.stdout = original_stdout
 
 
 class MusicService(metaclass=SingletonMeta):
@@ -26,7 +35,7 @@ class MusicService(metaclass=SingletonMeta):
 
     Attributes:
         logger (Logger): The logger instance to log messages.
-        file_manager (FilesService): Service instance for managing files and directories.
+        file_manager (FileService): Service instance for managing files and directories.
         connection_manager (ConnectionService): Service instance for managing client connections.
         playlist (List[str]): Ordered list of music tracks in the playlist.
         track (Optional[str]): The currently playing track, if any.
@@ -40,13 +49,13 @@ class MusicService(metaclass=SingletonMeta):
     """
 
     def __init__(
-        self, file_manager: "FilesService", connection_manager: "ConnectionService"
+        self, file_manager: "FileService", connection_manager: "ConnectionService"
     ):
         """
         Initializes the MusicService with required file and connection services.
 
         Args:
-            file_manager (FilesService): The service responsible for file management.
+            file_manager (FileService): The service responsible for file management.
             connection_manager (ConnectionService): The service responsible for managing client connections.
         """
 
@@ -414,3 +423,16 @@ class MusicService(metaclass=SingletonMeta):
             # Broadcast player state to clients
             await self.broadcast_state()
             await asyncio.sleep(0.5)
+
+    async def cleanup(self):
+        """
+        Shuts down the music service and ensures proper cleanup of resources.
+        """
+        if self.is_playing:
+            try:
+                self.logger.info("Stopping playing music")
+                self.pygame.mixer.music.stop()
+            except Exception:
+                self.logger.error("Failed to stop music", exc_info=True)
+
+        await self.cancel_broadcast_task()

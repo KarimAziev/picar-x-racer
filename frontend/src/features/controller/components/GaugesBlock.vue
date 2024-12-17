@@ -1,13 +1,13 @@
 <template>
   <div class="gauges-block gap-5" :class="class">
-    <ToggleableView setting="text_to_speech_input">
-      <TextToSpeechInput class="tts" v-if="isMobile" />
+    <ToggleableView v-if="isMobile" setting="general.text_to_speech_input">
+      <TextToSpeechInput />
     </ToggleableView>
-    <ToggleableView setting="text_info_view">
+    <ToggleableView setting="general.text_info_view">
       <TextInfo />
     </ToggleableView>
     <slot></slot>
-    <ToggleableView setting="speedometer_view" v-if="!isMobile">
+    <ToggleableView setting="general.speedometer_view" v-if="!isMobile">
       <Speedometer />
     </ToggleableView>
     <Messages v-if="isMobile" class="messages" />
@@ -17,13 +17,15 @@
 import { defineAsyncComponent } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-import TextToSpeechInput from "@/ui/tts/TextToSpeechInput.vue";
 import Messages from "@/features/messager/components/MessageListContainer.vue";
 
 const isMobile = useDeviceWatcher();
 
 defineProps<{ class?: string }>();
 
+const TextToSpeechInput = defineAsyncComponent({
+  loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
+});
 const TextInfo = defineAsyncComponent({
   loader: () => import("@/features/controller/components/TextInfo.vue"),
 });
@@ -48,7 +50,7 @@ const Speedometer = defineAsyncComponent({
 
   @media screen and (max-width: 992px) and (orientation: portrait) {
     left: 10px;
-    top: 20px;
+    top: 30px;
   }
 
   @media screen and (max-width: 992px) and (orientation: landscape) {

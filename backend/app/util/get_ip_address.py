@@ -2,6 +2,9 @@ import socket
 
 
 def get_ip_address():
+    """
+    Returns the local IP address of the machine. If unable to determine, defaults to 127.0.0.1.
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("8.8.8.8", 80))

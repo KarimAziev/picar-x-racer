@@ -53,7 +53,7 @@ export const useStore = defineStore("syncer", {
         }
         const { type, payload } = data;
         let msgPrefix: null | string =
-          `${settingsStore.loaded ? "Updated " : ""} ${type}:`.trim();
+          `${settingsStore.loaded ? "Updated " : ""} ${type}`.trim();
         let diffMsg: string | undefined;
 
         switch (type) {
@@ -107,7 +107,6 @@ export const useStore = defineStore("syncer", {
           }
 
           case "camera": {
-            msgPrefix = "Camera: ";
             diffMsg = formatObjectDiff({ ...cameraStore.data }, payload);
             cameraStore.data = payload;
             break;
@@ -127,7 +126,6 @@ export const useStore = defineStore("syncer", {
           case "settings": {
             const currentData = { ...settingsStore.data };
             const nextData = { ...currentData, ...payload };
-
             diffMsg = formatObjectDiff(currentData, nextData);
 
             settingsStore.data = nextData;
@@ -153,6 +151,13 @@ export const useStore = defineStore("syncer", {
             break;
           }
 
+          case "warning": {
+            messager.warning(payload, {
+              immediately: true,
+            });
+            break;
+          }
+
           case "image": {
             imageStore.data = payload;
             break;
@@ -161,7 +166,6 @@ export const useStore = defineStore("syncer", {
 
         if (diffMsg) {
           messager.info(diffMsg, {
-            immediately: true,
             title: msgPrefix ? msgPrefix : undefined,
           });
         }

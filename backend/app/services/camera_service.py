@@ -1,6 +1,5 @@
 import asyncio
 import collections
-import os
 import struct
 import threading
 import time
@@ -8,13 +7,8 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import cv2
 import numpy as np
-from app.adapters.video_device_adapter import VideoDeviceAdapater
 from app.config.video_enhancers import frame_enhancers
-from app.exceptions.camera import (
-    CameraDeviceError,
-    CameraNotFoundError,
-    CameraRecordingError,
-)
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
 from app.util.device import parse_v4l2_device_info
@@ -24,9 +18,11 @@ from app.util.singleton_meta import SingletonMeta
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
+    from app.adapters.video_device_adapter import VideoDeviceAdapater
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
-    from app.services.files_service import FilesService
+    from app.services.file_service import FileService
+    from app.services.video_recorder import VideoRecorder
 
 
 class CameraService(metaclass=SingletonMeta):
@@ -40,8 +36,10 @@ class CameraService(metaclass=SingletonMeta):
     def __init__(
         self,
         detection_service: "DetectionService",
-        file_manager: "FilesService",
+        file_manager: "FileService",
         connection_manager: "ConnectionService",
+        video_device_adapter: "VideoDeviceAdapater",
+        video_recorder: "VideoRecorder",
     ):
         """
         Initializes the `CameraService` singleton instance.
@@ -49,18 +47,18 @@ class CameraService(metaclass=SingletonMeta):
         self.logger = Logger(name=__name__)
         self.file_manager = file_manager
         self.detection_service = detection_service
+        self.video_device_adapter = video_device_adapter
+        self.connection_manager = connection_manager
+        self.video_recorder = video_recorder
+
         self.camera_settings = CameraSettings(
             **self.file_manager.settings.get("camera", {})
         )
         self.stream_settings = StreamSettings(
             **self.file_manager.settings.get("stream", {})
         )
-        self.video_device_adapter = VideoDeviceAdapater()
-        self.connection_manager = connection_manager
-
         self.current_frame_timestamp = None
 
-        self.video_writer: Optional[cv2.VideoWriter] = None
         self.actual_fps = None
 
         self.camera_run = False
@@ -211,7 +209,7 @@ class CameraService(metaclass=SingletonMeta):
             - `self.camera_settings.pixel_format`: Pixel format based on device information.
         """
 
-        self.stop_video_recording()
+        self.video_recorder.stop_recording_safe()
 
         if self.cap is not None:
             info = self.video_device_adapter.video_device or (None, None)
@@ -240,32 +238,29 @@ class CameraService(metaclass=SingletonMeta):
                 self.cap.set(cv2.CAP_PROP_FPS, float(self.camera_settings.fps))
 
             width, height, fps = (
-                int(self.cap.get(x))
+                self.cap.get(x)
                 for x in (
                     cv2.CAP_PROP_FRAME_WIDTH,
                     cv2.CAP_PROP_FRAME_HEIGHT,
                     cv2.CAP_PROP_FPS,
                 )
             )
-            self.camera_settings.width = width
-            self.camera_settings.height = height
-            self.camera_settings.fps = fps
+            self.camera_settings.width = int(width)
+            self.camera_settings.height = int(height)
+            self.camera_settings.fps = int(fps)
 
             if self.stream_settings.video_record:
-                try:
-                    self.start_video_recording()
-                except CameraRecordingError as e:
-                    self.logger.error(str(e))
-                except Exception:
-                    self.logger.error(
-                        "Unhandled error while starting video recording", exc_info=True
-                    )
+                self.video_recorder.start_recording(
+                    width=self.camera_settings.width,
+                    height=self.camera_settings.height,
+                    fps=fps,
+                )
 
             self.logger.info(
                 "Updated size: %sx%s, FPS: %s",
-                width,
-                height,
-                fps,
+                self.camera_settings.width,
+                self.camera_settings.height,
+                self.camera_settings.fps,
             )
             if self.camera_settings.device:
                 data = parse_v4l2_device_info(self.camera_settings.device)
@@ -372,13 +367,13 @@ class CameraService(metaclass=SingletonMeta):
                 self.img = frame
                 self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
 
-                if self.video_writer is not None:
-                    self.video_writer.write(self.stream_img)
+                if self.stream_settings.video_record:
+                    self.video_recorder.write_frame(self.stream_img)
+
                 if (
                     self.detection_service.detection_settings.active
                     and not self.detection_service.loading
                 ):
-                    self.current_frame_timestamp = time.time()
                     (
                         resized_frame,
                         original_width,
@@ -389,6 +384,9 @@ class CameraService(metaclass=SingletonMeta):
                         self.stream_img.copy(),
                         base_size=self.detection_service.detection_settings.img_size,
                     )
+
+                    self.current_frame_timestamp = time.time()
+
                     frame_data = {
                         "frame": resized_frame,
                         "timestamp": self.current_frame_timestamp,
@@ -408,8 +406,8 @@ class CameraService(metaclass=SingletonMeta):
             )
         finally:
             self._release_cap_safe()
+            self.video_recorder.stop_recording_safe()
             self.stream_img = None
-            self.stop_video_recording()
             self.logger.info("Camera loop terminated and camera released.")
 
     def _start_camera(self) -> None:
@@ -427,6 +425,8 @@ class CameraService(metaclass=SingletonMeta):
         - Starts a dedicated thread to run the capture loop.
 
         Raises:
+            CameraDeviceError: If the chosen camera encounters initialization errors.
+            CameraNotFoundError: If no valid camera device is found.
             Exception: If an error occurs during setup or thread initialization.
 
         Returns:
@@ -435,7 +435,7 @@ class CameraService(metaclass=SingletonMeta):
 
         with self.cap_lock:
             if self.camera_run:
-                self.logger.info("Camera is already running.")
+                self.logger.warning("Camera is already running.")
                 return
             self.camera_run = True
             try:
@@ -451,9 +451,15 @@ class CameraService(metaclass=SingletonMeta):
                 self.capture_thread = threading.Thread(target=self._camera_thread_func)
                 self.capture_thread.start()
 
+            except (CameraNotFoundError, CameraDeviceError) as e:
+                self.camera_run = False
+                self.logger.error(str(e))
+                raise
+
             except Exception as e:
                 self.camera_run = False
-                raise e
+                self.logger.error("Unhandled exception", exc_info=True)
+                raise
 
     async def start_camera_and_wait_for_stream_img(self):
         """
@@ -524,78 +530,6 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
-
-    def start_video_recording(self) -> None:
-        """
-        Starts recording video to the specified path. Ensures the directory exists.
-        """
-        if not os.path.exists(self.file_manager.user_videos_dir):
-            os.makedirs(self.file_manager.user_videos_dir)
-
-        fps = (
-            self.camera_settings.fps
-            if self.camera_settings.fps is not None
-            else self.actual_fps or 30.0
-        )
-        if isinstance(fps, int):
-            fps = float(fps)
-
-        name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())}.avi"
-        video_path = os.path.join(self.file_manager.user_videos_dir, name)
-
-        shape = (
-            self.stream_img.shape[:2]
-            if self.stream_img is not None
-            else (self.img.shape[:2] if self.img is not None else None)
-        )
-        (height, width) = (
-            shape
-            if shape is not None
-            else (
-                self.camera_settings.height,
-                self.camera_settings.width,
-            )
-        )
-
-        if height is None or width is None:
-            raise CameraRecordingError(
-                f"Video Recording: invalid height {height} or width {width}"
-            )
-
-        self.logger.info(
-            "Starting video recording %sx%s with %s at %s",
-            width,
-            height,
-            fps,
-            video_path,
-        )
-
-        fourcc = cv2.VideoWriter.fourcc(*"XVID")
-        self.video_writer = cv2.VideoWriter(
-            video_path,
-            fourcc,
-            fps,
-            (
-                width,
-                height,
-            ),
-        )
-
-    def stop_video_recording(self) -> None:
-        """
-        Stops recording video and releases resources.
-        """
-        if self.video_writer is not None:
-            self.logger.info("Stopping video recording")
-            try:
-                self.video_writer.release()
-                self.video_writer = None
-                self.logger.info("Stopped video recording")
-            except Exception:
-                self.logger.error(
-                    "Exception occurred while stopping camera recording capture",
-                    exc_info=True,
-                )
 
     async def restart_camera(self) -> None:
         """

@@ -190,7 +190,7 @@ export const useStore = defineStore("camera", {
 
         return data.file;
       } catch (error) {
-        messager.handleError(error, "Error fetching video feed settings");
+        messager.handleError(error, "Error capturing photo");
       }
     },
   },

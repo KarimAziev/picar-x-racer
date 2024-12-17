@@ -7,7 +7,7 @@
       filter
       optionLabel="label"
       optionValue="value"
-      v-model="store.data.default_tts_language"
+      v-model="store.data.tts.default_tts_language"
       :options="ttsLanguages"
     />
   </div>
@@ -105,7 +105,7 @@ import { TextItem } from "@/features/settings/stores/settings";
 
 const store = useSettingsStore();
 
-const items = computed(() => store.data.texts);
+const items = computed(() => store.data.tts.texts);
 
 function saveSettings() {
   store.saveSettings();
@@ -118,7 +118,7 @@ const sayText = async (textItem: TextItem) => {
 };
 
 const handleRemove = (index: number) => {
-  store.data.texts = store.data.texts.filter((_, idx) => idx !== index);
+  store.data.tts.texts = store.data.tts.texts.filter((_, idx) => idx !== index);
   store.saveSettings();
 };
 
@@ -127,7 +127,8 @@ const markDefault = (item: TextItem) => {
     delete item.default;
     return;
   }
-  store.data.texts.forEach((it) => {
+
+  store.data.tts.texts.forEach((it) => {
     if (it.default) {
       delete it.default;
     }
@@ -138,7 +139,7 @@ const markDefault = (item: TextItem) => {
 };
 
 const handleAddItem = () => {
-  store.data.texts.push({
+  store.data.tts.texts.push({
     text: "",
     language: items.value[items.value.length - 1]?.language,
   });

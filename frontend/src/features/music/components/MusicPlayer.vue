@@ -1,99 +1,102 @@
 <template>
-  <div class="player">
-    <div>
-      <div class="title">
-        {{ currentTrack }}
+  <div class="wrapper flex align-items-end gap-2">
+    <div class="player">
+      <div>
+        <div class="title">
+          {{ currentTrack }}
+        </div>
+        <Slider
+          v-model="musicStore.player.position"
+          @slideend="handleSavePosition"
+          @keyup.stop="handleSavePosition"
+          @mouseup="handleSavePosition"
+          @mousedown="handleModelValueUpdate"
+          @keydown.stop="handleModelValueUpdate"
+          @change="handleModelValueUpdate"
+          @update:model-value="handleModelValueUpdate"
+          :max="duration"
+          v-if="duration"
+        />
       </div>
-      <Slider
-        v-model="musicStore.player.position"
-        @slideend="handleSavePosition"
-        @keyup.stop="handleSavePosition"
-        @mouseup="handleSavePosition"
-        @mousedown="handleModelValueUpdate"
-        @keydown.stop="handleModelValueUpdate"
-        @change="handleModelValueUpdate"
-        @update:model-value="handleModelValueUpdate"
-        :max="duration"
-        v-if="duration"
-      />
-    </div>
 
-    <div class="buttons flex align-items-center jc-between">
-      <Button
-        @click="prevTrack"
-        icon="pi pi-backward"
-        aria-label="Prev track"
-        text
-        v-tooltip="'Previous track'"
-      />
+      <div class="buttons flex align-items-center jc-between">
+        <Button
+          @click="prevTrack"
+          icon="pi pi-backward"
+          aria-label="Prev track"
+          text
+          v-tooltip="'Previous track'"
+        />
 
-      <Button
-        v-if="isPlaying"
-        @click="togglePlaying"
-        icon="pi pi-pause"
-        text
-        aria-label="Pause"
-        v-tooltip="'Pause playing track'"
-      />
-      <Button
-        @click="togglePlaying"
-        v-else
-        icon="pi pi-play-circle"
-        text
-        aria-label="Play"
-        v-tooltip="'Play track'"
-      />
-      <Button
-        @click="stopTrack"
-        icon="pi pi-stop"
-        :disabled="!isPlaying"
-        text
-        aria-label="Stop"
-        v-tooltip="'Stop playing'"
-      />
-      <span class="duration">
-        {{ durationLabel }}
-      </span>
-      <Button
-        @click="nextTrack"
-        icon="pi pi-forward"
-        aria-label="Next track"
-        v-tooltip="'Play next track'"
-        text
-      />
-      <Button
-        v-if="musicMode === MusicMode.LOOP"
-        @click="nextMode"
-        icon="pi pi-sync"
-        aria-label="loop"
-        v-tooltip="'Play all tracks on repeat continuously.'"
-        text
-      />
-      <Button
-        v-if="musicMode === MusicMode.LOOP_ONE"
-        @click="nextMode"
-        icon="pi pi-arrow-right-arrow-left"
-        aria-label="loop_one"
-        v-tooltip="'Repeat the current track continuously.'"
-        text
-      />
-      <Button
-        v-if="musicMode === MusicMode.QUEUE"
-        @click="nextMode"
-        icon="pi pi-list"
-        aria-label="queue"
-        v-tooltip="'Play all tracks once in order, without repeating.'"
-        text
-      />
-      <Button
-        v-if="musicMode === MusicMode.SINGLE"
-        @click="nextMode"
-        icon="pi pi-stop-circle"
-        aria-label="single"
-        v-tooltip="'Play the current track once and stop playback.'"
-        text
-      />
+        <Button
+          v-if="isPlaying"
+          @click="togglePlaying"
+          icon="pi pi-pause"
+          text
+          aria-label="Pause"
+          v-tooltip="'Pause playing track'"
+        />
+        <Button
+          @click="togglePlaying"
+          v-else
+          icon="pi pi-play-circle"
+          text
+          aria-label="Play"
+          v-tooltip="'Play track'"
+        />
+        <Button
+          @click="stopTrack"
+          icon="pi pi-stop"
+          :disabled="!isPlaying"
+          text
+          aria-label="Stop"
+          v-tooltip="'Stop playing'"
+        />
+        <span class="duration">
+          {{ durationLabel }}
+        </span>
+        <Button
+          @click="nextTrack"
+          icon="pi pi-forward"
+          aria-label="Next track"
+          v-tooltip="'Play next track'"
+          text
+        />
+        <Button
+          v-if="musicMode === MusicMode.LOOP"
+          @click="nextMode"
+          icon="pi pi-sync"
+          aria-label="loop"
+          v-tooltip="'Play all tracks on repeat continuously.'"
+          text
+        />
+        <Button
+          v-if="musicMode === MusicMode.LOOP_ONE"
+          @click="nextMode"
+          icon="pi pi-arrow-right-arrow-left"
+          aria-label="loop_one"
+          v-tooltip="'Repeat the current track continuously.'"
+          text
+        />
+        <Button
+          v-if="musicMode === MusicMode.QUEUE"
+          @click="nextMode"
+          icon="pi pi-list"
+          aria-label="queue"
+          v-tooltip="'Play all tracks once in order, without repeating.'"
+          text
+        />
+        <Button
+          v-if="musicMode === MusicMode.SINGLE"
+          @click="nextMode"
+          icon="pi pi-stop-circle"
+          aria-label="single"
+          v-tooltip="'Play the current track once and stop playback.'"
+          text
+        />
+      </div>
     </div>
+    <Volume class="volume" />
   </div>
 </template>
 
@@ -104,6 +107,7 @@ import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
 import { useMusicStore, MusicMode } from "@/features/music";
 import { useAsyncDebounce } from "@/composables/useDebounce";
+import Volume from "@/ui/Volume.vue";
 
 const musicStore = useMusicStore();
 
@@ -173,13 +177,16 @@ const stopTrack = async () => {
 </script>
 
 <style scoped lang="scss">
+.wrapper {
+  position: relative;
+}
 .player {
   display: flex;
   flex-direction: column;
   position: relative;
-  padding-left: 2px;
+  padding: 0 4px;
   font-size: 0.7rem;
-  max-width: 400px;
+  width: 180px;
   user-select: none;
 
   @media (min-width: 992px) and (orientation: portrait) {

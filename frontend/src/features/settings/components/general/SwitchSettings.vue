@@ -1,24 +1,18 @@
 <template>
   <div class="wrapper">
-    <div class="column">
-      <div class="col-title">Visibility</div>
-      <ToggleFields :fields="visibilitySettings" :store="store" />
-    </div>
-    <div class="column">
-      <div class="col-title">Misc</div>
-      <ToggleFields :fields="behaviorSettings" :store="store" />
-      <slot></slot>
+    <div class="column" v-for="(fields, idx) in groups" :key="idx">
+      <ToggleFields scope="general" :fields="fields" :store="store" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useSettingsStore } from "@/features/settings/stores";
-import {
-  behaviorSettings,
-  visibilitySettings,
-} from "@/features/settings/config";
+import { generalSwitchSettings } from "@/features/settings/config";
 import ToggleFields from "@/ui/ToggleFields.vue";
+import { splitObjIntoGroups } from "@/util/obj";
+
+const groups = splitObjIntoGroups(2, generalSwitchSettings);
 
 const store = useSettingsStore();
 </script>
