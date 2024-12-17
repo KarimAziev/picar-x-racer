@@ -7,6 +7,7 @@
 
 SERVICE_NAME="picar_x_racer.service"
 USER=$(whoami)
+
 PROJECT_DIR=$(pwd)
 LOG_DIR="/var/log/picar_x_racer"
 PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
@@ -79,7 +80,7 @@ case "$COMMAND" in
     ;;
 
   setup)
-    echo "Setting up the Picar-X Racer systemd service..."
+    echo "Setting up the Picar-X Racer systemd service."
 
     if [[ ! -f "Makefile" ]]; then
       echo "Error: This script must be run from the project root (where the Makefile is located)."
@@ -87,47 +88,39 @@ case "$COMMAND" in
     fi
 
     if [[ ! -f "$PYTHON_BINARY" ]]; then
-      echo "Error: Virtual environment not found in '$PROJECT_DIR/backend/.venv'."
-      echo "Please set up the virtual environment before setting up the service."
-      echo "You can use: 'bash ./backend/setup_env.sh'."
+      echo "Error: Python virtual environment not found at '$PYTHON_BINARY'."
+      echo "Please set up the virtual environment before proceeding."
       exit 1
     fi
 
     if [[ ! -d "$LOG_DIR" ]]; then
-      echo "Creating log directory at $LOG_DIR..."
+      echo "Creating log directory at $LOG_DIR."
       sudo mkdir -p "$LOG_DIR"
     fi
-
-    echo "Setting up log files in $LOG_DIR..."
     sudo touch "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
+    sudo chown -R "$USER:$USER" "$LOG_DIR"
     sudo chmod 640 "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
-    sudo chown -R "$USER:adm" "$LOG_DIR"
 
-    if [[ -f "/etc/systemd/system/$SERVICE_NAME" ]]; then
-      read -rp "Service $SERVICE_NAME already exists. Do you want to overwrite it? [y/N]: " confirm
-      if [[ "$confirm" != "y" ]]; then
-        echo "Cancelled setup."
-        exit 0
-      fi
-    fi
+    ENV_FILE="/tmp/$SERVICE_NAME.env"
+    echo "Capturing current environment to $ENV_FILE."
+    env | sudo -u "$USER" tee "$ENV_FILE" > /dev/null
 
     TMP_SERVICE_FILE="./$SERVICE_NAME"
 
     cat > "$TMP_SERVICE_FILE" << EOL
 [Unit]
 Description=Picar-X Racer Backend Service
-After=network-online.target
 Wants=network-online.target
+After=network-online.target
 After=sound.target
 Requires=sound.target
 
 [Service]
 Type=simple
 User=$USER
+Group=$GROUP_ID
 WorkingDirectory=$PROJECT_DIR
-Environment=PYTHONUNBUFFERED=1
-Environment="PATH=/usr/bin:/bin:/usr/local/bin"
-Environment=HOME=/home/$USER
+EnvironmentFile=$ENV_FILE
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always
 StandardOutput=append:$LOG_DIR/picar_x_racer.log
