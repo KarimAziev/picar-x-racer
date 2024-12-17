@@ -126,7 +126,6 @@ export const useStore = defineStore("syncer", {
           case "settings": {
             const currentData = { ...settingsStore.data };
             const nextData = { ...currentData, ...payload };
-
             diffMsg = formatObjectDiff(currentData, nextData);
 
             settingsStore.data = nextData;
@@ -152,6 +151,13 @@ export const useStore = defineStore("syncer", {
             break;
           }
 
+          case "warning": {
+            messager.warning(payload, {
+              immediately: true,
+            });
+            break;
+          }
+
           case "image": {
             imageStore.data = payload;
             break;
@@ -160,7 +166,6 @@ export const useStore = defineStore("syncer", {
 
         if (diffMsg) {
           messager.info(diffMsg, {
-            immediately: true,
             title: msgPrefix ? msgPrefix : undefined,
           });
         }

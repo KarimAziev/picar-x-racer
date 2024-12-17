@@ -1,5 +1,5 @@
 <template>
-  <span :class="type" ref="elem">
+  <span :class="className" ref="elem">
     <span class="title" v-if="title">{{ title }} &nbsp;</span>
     <span class="text">{{ msg }}</span>
     <samp v-if="isCaretVisible" class="caret" />
@@ -7,13 +7,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 
 const props = defineProps<{
   text?: string;
-  type?: "error" | "info" | "success";
+  type?: "error" | "info" | "success" | "warning";
   title?: string;
 }>();
+
+const classes = {
+  info: "color-primary",
+  success: "color-primary",
+  warning: "color-warning",
+  error: "color-error",
+};
+
+const className = computed(() => (props.type ? classes[props.type] : ""));
 
 const msg = ref("");
 const elem = ref<HTMLElement | null>();
@@ -70,16 +79,13 @@ const typeText = () => {
 
 onMounted(() => {
   typeText();
-  elem.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+  elem.value?.scrollIntoView({ behavior: "smooth", block: "end" });
 });
 </script>
 
 <style scoped lang="scss">
-.typed {
-  white-space: nowrap;
-}
 .caret {
-  border: 1px solid var(--color-text);
+  border: 1px solid currentColor;
   animation: blink 1s step-end infinite;
 }
 
@@ -95,28 +101,10 @@ onMounted(() => {
   }
 }
 
-.success {
-  color: var(--color-text);
-}
-
-.info {
-  color: var(--color-text);
-}
-
-.warning {
-  color: var(--color-warn);
-}
-
-.error {
-  color: var(--color-red);
-  .caret {
-    border: 1px solid var(--color-red);
-  }
-}
 .title {
   font-weight: 800;
 }
 .text {
-  font-weight: 800;
+  font-weight: 700;
 }
 </style>

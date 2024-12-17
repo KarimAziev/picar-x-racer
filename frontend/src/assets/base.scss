@@ -247,7 +247,7 @@ html {
 }
 
 .color-primary {
-  color: var(--robo-color-primary);
+  color: var(--color-text);
 }
 
 .color-secondary {
@@ -256,15 +256,11 @@ html {
 .color-warning {
   color: var(--color-warn);
 }
+
 .color-error {
-  color: var(--color-red);
+  color: var(--color-error);
 }
 
 .bold {
   font-weight: bold;
 }
-// .p-fieldset,
-// .p-fieldset-content {
-//   background: transparent !important;
-//   border: none !important;
-// }
