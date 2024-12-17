@@ -19,3 +19,4 @@ sounddevice
 appdirs>=1.4.0
 requests>=2.6.0
 web_cache>=1.1.0
+dbus-python
