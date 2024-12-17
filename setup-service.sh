@@ -6,7 +6,7 @@
 # - To display this help: ./setup-service.sh help
 
 SERVICE_NAME="picar_x_racer.service"
-USER=$(whoami)
+USER=$(logname)
 GROUP=$(id -g "$USER")
 USER_ID=$(id -u "$USER")
 PROJECT_DIR=$(pwd)
