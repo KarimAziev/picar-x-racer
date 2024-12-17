@@ -1,5 +1,14 @@
 <template>
+  <MediaControls v-if="isMobile" class="drawer-button">
+    <Button
+      severity="secondary"
+      icon="pi pi-bars"
+      v-tooltip="'Open settings'"
+      @click="handleShow"
+    />
+  </MediaControls>
   <Button
+    v-else
     severity="secondary"
     icon="pi pi-bars"
     v-tooltip="'Open settings'"
@@ -32,10 +41,11 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
-import { computed } from "vue";
+import { computed, defineAsyncComponent } from "vue";
 import Settings from "@/features/settings/Settings.vue";
 import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
 import { saveableTabs } from "@/features/settings/config";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
@@ -43,7 +53,7 @@ const isSaving = computed(() => settingsStore.saving);
 const isSaveDisabled = computed(() => settingsStore.isSaveButtonDisabled());
 
 const isClosable = computed(() => !popupStore.isKeyRecording);
-
+const isMobile = useDeviceWatcher();
 const isEscapeOnCloseEnabled = computed(
   () => !popupStore.isKeyRecording && !popupStore.isPreviewImageOpen,
 );
@@ -51,6 +61,10 @@ const isEscapeOnCloseEnabled = computed(
 const isCurrentTabSaveable = computed(
   () => popupStore.tab && saveableTabs[popupStore.tab],
 );
+
+const MediaControls = defineAsyncComponent({
+  loader: () => import("@/ui/MediaControls.vue"),
+});
 
 const handleHide = () => {
   popupStore.isOpen = false;

@@ -1,20 +1,25 @@
 <template>
-  <Recording />
-  <div class="wrapper flex flex-wrap align-items-center max-w-150">
-    <ToggleableView setting="general.show_photo_capture_button">
-      <PhotoButton />
-    </ToggleableView>
-    <ToggleableView setting="general.show_audio_stream_button">
-      <AudioStream />
-    </ToggleableView>
-    <ToggleableView setting="general.show_video_record_button">
-      <VideoRecordButton />
-    </ToggleableView>
+  <div :class="class" class="flex flex-wrap">
+    <slot></slot>
+    <Recording />
+    <div class="wrapper flex flex-wrap">
+      <ToggleableView setting="general.show_photo_capture_button">
+        <PhotoButton />
+      </ToggleableView>
+      <ToggleableView setting="general.show_audio_stream_button">
+        <AudioStream />
+      </ToggleableView>
+      <ToggleableView setting="general.show_video_record_button">
+        <VideoRecordButton />
+      </ToggleableView>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
+
+defineProps<{ class?: string }>();
 
 const Recording = defineAsyncComponent({
   loader: () =>

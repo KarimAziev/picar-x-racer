@@ -6,7 +6,7 @@
   >
     <div class="flex flex-col jc-center align-items-center">
       <Button text @click="handleInc" size="small" icon="pi pi-angle-up" />
-      {{ currentValue }}%
+      {{ currentValue }}
       <Button text @click="handleDec" size="small" icon="pi pi-angle-down" />
     </div>
   </div>
@@ -50,13 +50,14 @@ watch(
   font-size: 0.8rem;
 }
 button {
-  padding: 0px;
+  padding-top: 0px;
+  padding-bottom: 0px;
   height: unset;
   margin: 0;
   width: unset;
 }
 
-$adjust-btn-pos: 8px;
+$adjust-btn-pos: 0.6rem;
 
 button:first-child {
   position: relative;

@@ -1,6 +1,5 @@
 <template>
   <div class="gauges-block gap-5" :class="class">
-    <MediaControls v-if="isMobile" />
     <ToggleableView v-if="isMobile" setting="general.text_to_speech_input">
       <TextToSpeechInput />
     </ToggleableView>
@@ -23,10 +22,6 @@ import Messages from "@/features/messager/components/MessageListContainer.vue";
 const isMobile = useDeviceWatcher();
 
 defineProps<{ class?: string }>();
-
-const MediaControls = defineAsyncComponent({
-  loader: () => import("@/ui/MediaControls.vue"),
-});
 
 const TextToSpeechInput = defineAsyncComponent({
   loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
@@ -55,7 +50,7 @@ const Speedometer = defineAsyncComponent({
 
   @media screen and (max-width: 992px) and (orientation: portrait) {
     left: 10px;
-    top: 20px;
+    top: 30px;
   }
 
   @media screen and (max-width: 992px) and (orientation: landscape) {
