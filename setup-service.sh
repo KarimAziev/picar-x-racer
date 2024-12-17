@@ -118,12 +118,15 @@ case "$COMMAND" in
 Description=Picar-X Racer Backend Service
 After=network-online.target
 Wants=network-online.target
+After=sound.target
+Requires=sound.target
 
 [Service]
 Type=simple
 User=$USER
 WorkingDirectory=$PROJECT_DIR
 Environment=PYTHONUNBUFFERED=1
+Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always
