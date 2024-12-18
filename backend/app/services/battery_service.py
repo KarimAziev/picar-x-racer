@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from app.schemas.battery import BatterySettings
 from app.schemas.connection import ConnectionEvent
@@ -124,22 +124,34 @@ class BatteryService(metaclass=SingletonMeta):
         )
         await self._cancel_broadcast_task()
 
-    async def broadcast_state(self) -> Optional[float]:
+    async def broadcast_state(self) -> Tuple[Optional[float], Optional[float]]:
         """
         Broadcasts the current battery level to all connected clients.
         """
         value: Optional[float] = await self.read_voltage()
+        percentage = (
+            self._calculate_battery_percentage(value) if value is not None else None
+        )
 
         if value is not None:
             await self.connection_manager.broadcast_json(
-                {"type": "battery", "payload": value}
+                {
+                    "type": "battery",
+                    "payload": {"voltage": value, "percentage": percentage},
+                }
             )
 
-        return value
+        return (value, percentage)
 
     def _calculate_battery_percentage(self, voltage: float) -> float:
         """
-        Calculates the battery percentage based on the voltage.
+        Calculates the remaining battery charge as a percentage.
+
+        This value is calculated based on the voltage relative to the battery's
+        configured minimum and full voltage levels.
+
+        A value of 0% indicates the voltage is at or below the minimum,
+        and 100% indicates it is at the full voltage.
         """
         adjusted_voltage = max(0, voltage - self.battery.min_voltage)
         total_adjusted_voltage = self.battery.full_voltage - self.battery.min_voltage
@@ -181,14 +193,13 @@ class BatteryService(metaclass=SingletonMeta):
         Asynchronous loop to handle continuous broadcasting of the battery state.
         """
         while not self._stop_event.is_set():
-            voltage = await self.broadcast_state()
+            (voltage, percentage) = await self.broadcast_state()
             if voltage is None:
                 self._logger.error(
                     "Reading voltage is failed, next measuring after %s",
                     self.battery.auto_measure_seconds,
                 )
             else:
-                percentage = self._calculate_battery_percentage(voltage)
                 if voltage >= self.battery.warn_voltage:
                     self._logger.info(
                         "Battery voltage: %s (%s%%), next measurement after %s",

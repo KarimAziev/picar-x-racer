@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from app.api.deps import get_battery_manager
 from app.schemas.battery import BatteryStatusResponse
@@ -19,25 +19,24 @@ async def get_battery_voltage(
     battery_manager: "BatteryService" = Depends(get_battery_manager),
 ):
     """
-    Read the ADC value and convert it to a voltage.
+    Read the ADC (Analog-to-Digital Converter) value and convert it to a voltage.
 
-    This endpoint retrieves the current voltage of the battery by reading the
-    ADC (Analog-to-Digital Converter) value and converting it to voltage.
+    Platform behavior:
+    - On a Raspberry Pi, the function uses the actual hardware ADC (Analog-to-Digital Converter) interface.
+    - On other platforms (e.g., local development or testing), it uses a mock ADC implementation.
 
     Returns:
     --------------
-    A dictionary containing the measured voltage in volts.
+    A measured voltage in volts, e.g., '7.1,' and the remaining battery charge as a percentage, e.g., 61.1%.
 
-    Example response:
-    --------------
-    ```
-    {
-        "voltage": 7.8
-    }
-    ```
+    The percentage is calculated based on the voltage relative to the battery's
+    configured minimum and full voltage levels.
+
+    A value of 0% indicates the voltage is at or below the minimum,
+    and 100% indicates it is at the full voltage.
     """
-    value: Optional[float] = await battery_manager.broadcast_state()
-    if value is not None:
-        return {"voltage": value}
+    (voltage, percentage) = await battery_manager.broadcast_state()
+    if voltage is not None:
+        return {"voltage": voltage, "percentage": percentage}
     else:
         raise HTTPException(status_code=500, detail="Error reading voltage")

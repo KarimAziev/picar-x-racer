@@ -102,7 +102,8 @@ export const useStore = defineStore("syncer", {
             break;
           }
           case "battery": {
-            batteryStore.voltage = payload;
+            batteryStore.voltage = payload.voltage;
+            batteryStore.percentage = payload.percentage;
             break;
           }
 

@@ -4,15 +4,22 @@ from pydantic import BaseModel, Field, model_validator
 class BatteryStatusResponse(BaseModel):
     """
     Schema for the battery status response.
-
-    Attributes:
-    - voltage: The voltage of the battery in volts, e.g. '7.8'.
     """
 
     voltage: float = Field(
         ...,
-        description="The voltage of the battery in volts, e.g. '7.8'",
-        examples=[7.1, 6.4, 8.2],
+        description="The current voltage of the battery in volts, e.g. '7.8'",
+        examples=[7.1, 6.42],
+    )
+
+    percentage: float = Field(
+        ...,
+        description=(
+            "The remaining battery charge as a percentage. This value is calculated based on the current "
+            "voltage relative to the battery's configured minimum and full voltage levels. A value of 0% "
+            "indicates the voltage is at or below the minimum, and 100% indicates it is at the full voltage."
+        ),
+        examples=[61.1, 23.3],
     )
 
 

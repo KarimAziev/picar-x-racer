@@ -26,7 +26,6 @@ export const useStore = defineStore("distance", {
         this.distance = isNumber(distance) ? distance : 0;
         this.error = undefined;
       } catch (error) {
-        console.error("Error distance:", error);
         this.error = retrieveError(error).text;
       } finally {
         this.loading = false;
