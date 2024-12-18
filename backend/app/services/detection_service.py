@@ -257,7 +257,7 @@ class DetectionService(metaclass=SingletonMeta):
                 except queue.Empty:
                     pass
                 await asyncio.sleep(0.5)
-        except BrokenPipeError as e:
+        except (BrokenPipeError, EOFError, ConnectionResetError):
             self.detection_settings.active = False
         except DetectionProcessError as e:
             self.detection_settings.active = False
@@ -386,7 +386,7 @@ class DetectionService(metaclass=SingletonMeta):
             self.detection_result = self.detection_queue.get(timeout=1)
         except queue.Empty:
             self.detection_result = None
-        except (BrokenPipeError, EOFError):
+        except (BrokenPipeError, EOFError, ConnectionResetError):
             self.detection_result = None
 
         return self.detection_result
