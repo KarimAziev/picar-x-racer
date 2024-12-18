@@ -259,7 +259,6 @@ class DetectionService(metaclass=SingletonMeta):
                 await asyncio.sleep(0.5)
         except BrokenPipeError as e:
             self.detection_settings.active = False
-
         except DetectionProcessError as e:
             self.detection_settings.active = False
             await self.connection_manager.broadcast_json(
@@ -307,9 +306,6 @@ class DetectionService(metaclass=SingletonMeta):
     def put_frame(self, frame_data) -> None:
         """Puts the frame data into the frame queue after clearing it."""
         if self.shutting_down:
-            self.logger.warning(
-                "Attempted to get detection while service is shutting down."
-            )
             return None
         return clear_and_put(self.frame_queue, frame_data)
 

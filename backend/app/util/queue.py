@@ -20,10 +20,11 @@ def clear_queue(qitem: Optional[Union[Queue, "mp.Queue"]]):
                 messages.append(msg)
             except Empty:
                 pass
-            except (Empty, BrokenPipeError, EOFError) as e:
+            except (BrokenPipeError, EOFError, ConnectionResetError) as e:
                 logger.warning(f"Error while clearing queue: {e}")
-                return None
-    except (BrokenPipeError, EOFError) as e:
+                messages = []
+                break
+    except (ConnectionResetError, BrokenPipeError, EOFError) as e:
         logger.error(f"Failed to clear queue: {e}")
     return messages
 
@@ -52,7 +53,7 @@ def put_to_queue(
             return item
     except Full:
         pass
-    except BrokenPipeError as e:
+    except (BrokenPipeError, EOFError, ConnectionResetError) as e:
         logger.error("Put to qitem failed %s", e)
 
 
