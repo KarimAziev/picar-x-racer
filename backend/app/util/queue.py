@@ -13,15 +13,18 @@ def clear_queue(qitem: Optional[Union[Queue, "mp.Queue"]]):
     if qitem is None:
         return None
     messages = []
-    while qitem and not qitem.empty():
-        try:
-            msg = qitem.get_nowait()
-            messages.append(msg)
-        except Empty:
-            pass
-        except BrokenPipeError:
-            logger.log_exception("Get from qitem failed")
-            return None
+    try:
+        while qitem and not qitem.empty():
+            try:
+                msg = qitem.get_nowait()
+                messages.append(msg)
+            except Empty:
+                pass
+            except BrokenPipeError:
+                logger.log_exception("Get from qitem failed")
+                return None
+    except BrokenPipeError:
+        logger.error("Clear queue failed due to BrokenPipeError", exc_info=True)
     return messages
 
 
