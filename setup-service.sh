@@ -137,8 +137,8 @@ Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always
-StandardOutput=journal+file:$LOG_DIR/picar_x_racer.log
-StandardError=journal+file:$LOG_DIR/picar_x_racer_error.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
