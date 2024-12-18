@@ -106,7 +106,8 @@ def detection_process_func(
                     prev_time = time.time()
 
                 put_to_queue(detection_queue, detection_result_with_timestamp)
-
+        except BrokenPipeError:
+            logger.warning("Detection process received BrokenPipeError, exiting.")
         except KeyboardInterrupt:
             logger.warning("Detection process received KeyboardInterrupt, exiting.")
         finally:

@@ -254,6 +254,9 @@ class DetectionService(metaclass=SingletonMeta):
                 except queue.Empty:
                     pass
                 await asyncio.sleep(0.5)
+        except BrokenPipeError as e:
+            self.detection_settings.active = False
+            self.logger.error("Detection process error: %s", e)
         except DetectionProcessError as e:
             self.detection_settings.active = False
             await self.connection_manager.broadcast_json(
@@ -372,6 +375,8 @@ class DetectionService(metaclass=SingletonMeta):
         try:
             self.detection_result = self.detection_queue.get(timeout=1)
         except queue.Empty:
+            self.detection_result = None
+        except BrokenPipeError:
             self.detection_result = None
 
         return self.detection_result
