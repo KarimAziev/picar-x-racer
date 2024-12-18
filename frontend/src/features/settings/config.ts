@@ -169,7 +169,10 @@ export const saveableTabs = {
   [SettingsTab.MODELS]: true,
 };
 
-export const imgSizeOptions = generateMultiplesOf32(2000);
+export const imgSizeOptions = generateMultiplesOf32(2000).map((value) => ({
+  value,
+  label: `${value}`,
+}));
 export const overlayStyleOptions = Object.values(OverlayStyle).map((value) => ({
   value,
   label: startCase(value),

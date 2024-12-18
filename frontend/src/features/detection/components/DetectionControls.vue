@@ -39,7 +39,6 @@
       placeholder="Img size"
       label="Img size"
       filter
-      simple-options
       :disabled="detectionStore.loading"
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
