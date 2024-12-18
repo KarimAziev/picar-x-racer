@@ -76,6 +76,7 @@ case "$COMMAND" in
     sudo rm -f "/etc/systemd/system/$SERVICE_NAME"
     sudo systemctl daemon-reload
     sudo systemctl reset-failed
+    sudo rm -rf "$LOG_DIR"
     echo "$SERVICE_NAME has been uninstalled."
     exit 0
     ;;
