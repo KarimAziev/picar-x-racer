@@ -1,12 +1,34 @@
 import logging.config
 import os
+import time
+from collections import defaultdict
 
 level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
 
 
-class ExcludeBinaryFilter(logging.Filter):
+class ExcludeBinaryAndAssetsFilter(logging.Filter):
     def filter(self, record):
-        return "> BINARY " not in record.getMessage()
+        msg = record.getMessage()
+        return "> BINARY " not in msg and "GET /assets/" not in msg
+
+
+class RateLimitFilter(logging.Filter):
+    def __init__(self, limit=10):
+        super().__init__()
+        self.limit = limit
+        self.log_timestamps = defaultdict(float)
+
+    def filter(self, record):
+        msg = record.getMessage()
+        if '"type":"player",' not in msg:
+            return True
+        else:
+            current_time = time.time()
+
+            if current_time - self.log_timestamps[msg] > self.limit:
+                self.log_timestamps[msg] = current_time
+                return True
+            return False
 
 
 class UvicornFormatter(logging.Formatter):
@@ -26,8 +48,12 @@ LOGGING_CONFIG = {
     "disable_existing_loggers": False,
     "filters": {
         "exclude_binary": {
-            "()": ExcludeBinaryFilter,
-        }
+            "()": ExcludeBinaryAndAssetsFilter,
+        },
+        "rate_limit": {
+            "()": RateLimitFilter,
+            "limit": 10,
+        },
     },
     "formatters": {
         "colored": {
@@ -109,7 +135,7 @@ LOGGING_CONFIG = {
             "formatter": "uvicorn",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
-            "filters": ["exclude_binary"],
+            "filters": ["exclude_binary", "rate_limit"],
         },
     },
     "loggers": {
