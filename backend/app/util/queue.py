@@ -20,11 +20,11 @@ def clear_queue(qitem: Optional[Union[Queue, "mp.Queue"]]):
                 messages.append(msg)
             except Empty:
                 pass
-            except BrokenPipeError as e:
-                logger.error("Get from qitem failed: %s", e)
+            except (Empty, BrokenPipeError, EOFError) as e:
+                logger.warning(f"Error while clearing queue: {e}")
                 return None
-    except BrokenPipeError as e:
-        logger.error("Clear queue failed due to BrokenPipeError: %s", e)
+    except (BrokenPipeError, EOFError) as e:
+        logger.error(f"Failed to clear queue: {e}")
     return messages
 
 

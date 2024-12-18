@@ -49,6 +49,7 @@ class DetectionService(metaclass=SingletonMeta):
         self.detection_result = None
         self.detection_process_task: Optional[asyncio.Task] = None
         self.loading = False
+        self.shutting_down = False
 
     async def update_detection_settings(
         self, settings: DetectionSettings
@@ -203,6 +204,7 @@ class DetectionService(metaclass=SingletonMeta):
             - Cleans up shared resources like queues and resets state.
         """
         async with self.lock:
+            self.shutting_down = True
             if self.detection_process is None:
                 self.logger.info("Detection process is None, skipping stop")
             else:
@@ -228,6 +230,7 @@ class DetectionService(metaclass=SingletonMeta):
 
             if self.detection_process:
                 self.detection_process = None
+                self.shutting_down = False
                 self.logger.info("Detection process has been stopped successfully.")
 
     async def start_detection_process_task(self) -> None:
@@ -256,7 +259,7 @@ class DetectionService(metaclass=SingletonMeta):
                 await asyncio.sleep(0.5)
         except BrokenPipeError as e:
             self.detection_settings.active = False
-            self.logger.error("Detection process error: %s", e)
+
         except DetectionProcessError as e:
             self.detection_settings.active = False
             await self.connection_manager.broadcast_json(
@@ -303,6 +306,11 @@ class DetectionService(metaclass=SingletonMeta):
 
     def put_frame(self, frame_data) -> None:
         """Puts the frame data into the frame queue after clearing it."""
+        if self.shutting_down:
+            self.logger.warning(
+                "Attempted to get detection while service is shutting down."
+            )
+            return None
         return clear_and_put(self.frame_queue, frame_data)
 
     def put_command(self, command_data) -> None:
@@ -342,6 +350,7 @@ class DetectionService(metaclass=SingletonMeta):
             - Shuts down the multiprocessing manager.
             - Deletes class properties associated with multiprocessing and async state.
         """
+        self.shutting_down = True
         await self.cancel_detection_process_task()
         await self.stop_detection_process()
 
@@ -370,13 +379,18 @@ class DetectionService(metaclass=SingletonMeta):
         Returns:
             dict or None: The detection result, or `None` if no result is available.
         """
+        if self.shutting_down:
+            self.logger.warning(
+                "Attempted to get detection while service is shutting down."
+            )
+            return None
         if self.stop_event.is_set():
             return None
         try:
             self.detection_result = self.detection_queue.get(timeout=1)
         except queue.Empty:
             self.detection_result = None
-        except BrokenPipeError:
+        except (BrokenPipeError, EOFError):
             self.detection_result = None
 
         return self.detection_result
