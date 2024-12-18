@@ -75,6 +75,11 @@ export const generalSwitchSettings: {
     label: "Video Record Button",
     description: "Toggle the display of the video record icon button.",
   },
+  show_shutdown_reboot_button: {
+    label: "Power Off Button",
+    description:
+      "Toggles the display of the shutdown and reboot control buttons.",
+  },
 } as const;
 
 export const ttsLanguages = [

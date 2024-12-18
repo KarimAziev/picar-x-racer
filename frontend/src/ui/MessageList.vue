@@ -18,23 +18,8 @@ defineProps<{ class?: string; messages: MessageItem[] }>();
 </script>
 
 <style scoped lang="scss">
-ul {
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-  scrollbar-width: none; /* Firefox */
-}
-ul::-webkit-scrollbar {
-  display: none; /* Safari and Chrome */
-}
-
 li {
-  list-style: none;
-  padding: 0;
   text-transform: uppercase;
-  max-width: 200px;
   font-size: 0.8rem;
-
-  @media (min-width: 992px) {
-    max-width: 300px;
-  }
 }
 </style>

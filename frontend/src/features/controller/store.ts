@@ -218,21 +218,7 @@ export const useControllerStore = defineStore("controller", {
     },
 
     cleanup() {
-      if (this.speed !== 0) {
-        this.stop();
-      }
-
-      if (this.servoAngle !== 0) {
-        this.resetDirServoAngle();
-      }
-
-      if (this.camPan !== 0) {
-        this.resetCamPan();
-      }
-      if (this.camTilt !== 0) {
-        this.resetCamTilt();
-      }
-
+      this.resetAll();
       this.model?.cleanup();
       this.model = null;
     },
@@ -240,6 +226,30 @@ export const useControllerStore = defineStore("controller", {
     sendMessage(message: any): void {
       this.model?.send(message);
     },
+
+    resetAll() {
+      const settingsStore = useSettingsStore();
+
+      const actionValueLists = [
+        [
+          settingsStore.data.robot.auto_measure_distance_mode,
+          false,
+          this.toggleAutoMeasureDistanceMode,
+        ],
+        [this.avoidObstacles, false, this.toggleAvoidObstaclesMode],
+        [this.speed, 0, this.stop],
+        [this.servoAngle, 0, this.resetDirServoAngle],
+        [this.camPan, 0, this.resetCamPan],
+        [this.camTilt, 0, this.resetCamTilt],
+      ] as const;
+
+      actionValueLists.forEach(([value, requiredValue, action]) => {
+        if (value !== requiredValue) {
+          action();
+        }
+      });
+    },
+
     // command workers
     setMaxSpeed(value: number) {
       const newValue = constrain(MIN_SPEED, MAX_SPEED, value);

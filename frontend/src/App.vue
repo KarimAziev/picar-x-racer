@@ -4,40 +4,32 @@
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
-  <TopRightPanel
-    class="flex flex-col bold text-align-right"
-    v-if="isSettingsLoaded"
-  >
-    <ToggleableView setting="general.show_battery_indicator">
-      <BatteryIndicator />
-    </ToggleableView>
-    <ToggleableView
-      setting="general.show_connections_indicator"
-      v-if="!isMobile"
-    >
-      <ActiveConnectionsIndicator />
-    </ToggleableView>
+  <TopRightPanel v-if="isSettingsLoaded" class="top-right-pan">
+    <PowerControlPanel>
+      <ToggleableView setting="general.show_connections_indicator">
+        <ActiveConnectionsIndicator />
+      </ToggleableView>
+    </PowerControlPanel>
   </TopRightPanel>
-  <div class="indicators" v-if="isSettingsLoaded">
-    <ToggleableView
-      setting="general.show_connections_indicator"
-      v-if="isMobile"
-    >
-      <ActiveConnectionsIndicator />
-    </ToggleableView>
-    <MediaControls v-if="!isMobile" />
+  <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+    <MediaControls />
     <ToggleableView setting="general.show_object_detection_settings">
       <DetectionControls />
     </ToggleableView>
-    <CalibrationModeInfo v-if="!isMobile" />
-    <ToggleableView v-if="!isMobile" setting="general.text_to_speech_input">
+    <CalibrationModeInfo />
+    <ToggleableView setting="general.text_to_speech_input">
       <TextToSpeechInput />
     </ToggleableView>
     <ToggleableView setting="general.show_player">
       <MusicPlayer />
     </ToggleableView>
-    <ToggleableView setting="general.show_auto_measure_distance_button">
-      <Distance v-if="!isMobile" />
+  </div>
+  <div class="mobile-indicators" v-if="isMobile && isSettingsLoaded">
+    <ToggleableView setting="general.show_object_detection_settings">
+      <DetectionControls />
+    </ToggleableView>
+    <ToggleableView setting="general.show_player">
+      <MusicPlayer />
     </ToggleableView>
   </div>
 </template>
@@ -71,6 +63,11 @@ const ActiveConnectionsIndicator = defineAsyncComponent({
     import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
 });
 
+const PowerControlPanel = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/system/PowerControlPanel.vue"),
+});
+
 const TextToSpeechInput = defineAsyncComponent({
   loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
 });
@@ -83,10 +80,6 @@ const KeyboardHandler = defineAsyncComponent({
   loader: () => import("@/features/controller/components/KeyboardHandler.vue"),
 });
 
-const Distance = defineAsyncComponent({
-  loader: () => import("@/features/controller/components/Distance.vue"),
-});
-
 const DetectionControls = defineAsyncComponent({
   loader: () => import("@/features/detection/components/DetectionControls.vue"),
 });
@@ -95,9 +88,6 @@ const MusicPlayer = defineAsyncComponent({
   loader: () => import("@/features/music/components/MusicPlayer.vue"),
 });
 
-const BatteryIndicator = defineAsyncComponent({
-  loader: () => import("@/ui/BatteryIndicator.vue"),
-});
 const CalibrationModeInfo = defineAsyncComponent({
   loader: () =>
     import("@/features/controller/components/CalibrationModeInfo.vue"),
@@ -123,15 +113,52 @@ onBeforeUnmount(() => {
   text-align: left;
   user-select: none;
 
+  @media (max-width: 992px) {
+    right: 10px;
+    top: 20px;
+  }
+
   @media (min-width: 992px) {
+    padding: 0 10px;
     left: 0;
     bottom: 0;
   }
 
-  @media (max-width: 992px) {
-    right: 10px;
-    top: 5px;
+  @media (max-width: 992px) and (min-height: 375px) {
+    top: 25px;
+  }
+
+  @media (max-width: 768px) {
     max-width: 190px;
+  }
+
+  @media (max-width: 992px) {
+    max-width: 200px;
+  }
+}
+.mobile-indicators {
+  position: absolute;
+  z-index: 11;
+  text-align: left;
+  user-select: none;
+  right: 10px;
+  top: 20px;
+
+  @media (max-width: 992px) and (min-height: 375px) {
+    top: 25px;
+  }
+
+  @media (max-width: 768px) {
+    max-width: 190px;
+  }
+
+  @media (max-width: 992px) {
+    max-width: 200px;
+  }
+}
+.top-right-pan {
+  @media (max-width: 992px) {
+    font-size: 0.8rem;
   }
 }
 </style>

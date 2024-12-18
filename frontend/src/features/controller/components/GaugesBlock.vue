@@ -1,12 +1,12 @@
 <template>
-  <div class="gauges-block gap-5" :class="class">
+  <div class="gauges-block gap-5" :class="classObj">
+    <slot></slot>
     <ToggleableView v-if="isMobile" setting="general.text_to_speech_input">
       <TextToSpeechInput />
     </ToggleableView>
     <ToggleableView setting="general.text_info_view">
       <TextInfo />
     </ToggleableView>
-    <slot></slot>
     <ToggleableView setting="general.speedometer_view" v-if="!isMobile">
       <Speedometer />
     </ToggleableView>
@@ -14,14 +14,14 @@
   </div>
 </template>
 <script setup lang="ts">
-import { defineAsyncComponent } from "vue";
+import { defineAsyncComponent, computed } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import Messages from "@/features/messager/components/MessageListContainer.vue";
 
 const isMobile = useDeviceWatcher();
 
-defineProps<{ class?: string }>();
+const classObj = computed(() => (isMobile.value ? "mobile" : ""));
 
 const TextToSpeechInput = defineAsyncComponent({
   loader: () => import("@/ui/tts/TextToSpeechInput.vue"),
@@ -43,33 +43,31 @@ const Speedometer = defineAsyncComponent({
   align-items: flex-start;
   width: fit-content;
 
+  right: 0;
+  bottom: 0;
+}
+.gauges-block.mobile {
+  top: 40px;
+  left: 10px;
+  width: 40%;
+
+  @media screen and (min-width: 768px) {
+    width: 150px;
+  }
   @media (min-width: 992px) {
-    right: 0;
-    bottom: 0;
+    width: 200px;
   }
 
-  @media screen and (max-width: 992px) and (orientation: portrait) {
-    left: 10px;
-    top: 30px;
-  }
-
-  @media screen and (max-width: 992px) and (orientation: landscape) {
-    left: 10px;
-    top: 50px;
+  @media (min-width: 1200px) {
+    width: 220px;
   }
 }
 .messages {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  margin-block-start: 0em;
-  margin-block-end: 0em;
-  margin-inline-start: 0px;
-  margin-inline-end: 0px;
-  padding-inline-start: 0px;
   max-height: 50px;
   overflow-y: scroll;
   font-size: 0.8rem;
+  @media screen and (min-height: 390px) {
+    max-height: 80px;
+  }
 }
 </style>

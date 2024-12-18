@@ -8,6 +8,9 @@
     <InfoItem label="Camera Pan:" :value="camPan" />
     <InfoItem label="Servo Dir:" :value="servoAngle" />
     <InfoItem label="Max Speed:" :value="maxSpeed" />
+    <ToggleableView setting="general.show_auto_measure_distance_button">
+      <Distance />
+    </ToggleableView>
   </InfoBlock>
 </template>
 
@@ -17,6 +20,8 @@ import { useControllerStore } from "@/features/controller/store";
 
 import InfoItem from "@/ui/InfoItem.vue";
 import InfoBlock from "@/ui/InfoBlock.vue";
+import ToggleableView from "@/ui/ToggleableView.vue";
+import Distance from "@/features/controller/components/Distance.vue";
 
 const store = useControllerStore();
 
