@@ -227,10 +227,10 @@ class DetectionService(metaclass=SingletonMeta):
             self.logger.info("Stop event cleared")
 
             self.detection_result = None
+            self.shutting_down = False
 
             if self.detection_process:
                 self.detection_process = None
-                self.shutting_down = False
                 self.logger.info("Detection process has been stopped successfully.")
 
     async def start_detection_process_task(self) -> None:
