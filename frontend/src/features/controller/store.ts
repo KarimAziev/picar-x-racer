@@ -24,6 +24,7 @@ import { useMusicStore } from "@/features/music";
 import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
+import { useAppSyncStore } from "@/features/syncer";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;
@@ -218,7 +219,11 @@ export const useControllerStore = defineStore("controller", {
     },
 
     cleanup() {
-      this.resetAll();
+      const syncStore = useAppSyncStore();
+      if (syncStore.active_connections <= 1 && this.speed !== 0) {
+        this.stop();
+      }
+
       this.model?.cleanup();
       this.model = null;
     },
