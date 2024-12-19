@@ -282,6 +282,14 @@ class DetectionService(metaclass=SingletonMeta):
                 await self.connection_manager.error(
                     f"{e}. Trying to adjust size to {expected}"
                 )
+
+                await self.connection_manager.broadcast_json(
+                    {
+                        "type": "detection",
+                        "payload": next_settings,
+                    }
+                )
+
                 await self.update_detection_settings(DetectionSettings(**next_settings))
 
             else:
