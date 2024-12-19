@@ -1,3 +1,6 @@
+import sys
+
+
 def print_initial_message(browser_url: str):
     """
     Print an initial message to the terminal indicating that the app is ready.
@@ -15,10 +18,11 @@ def print_initial_message(browser_url: str):
     MAGENTA_FG = "\033[35m"
     FG_COLOR = MAGENTA_FG
 
-    print(f"")
-    print(f"")
-    print(f"{BOLD}{FG_COLOR}🚗 App is ready. Open in the browser:{RESET}")
-    print("")
-    print(f"{BOLD}{FG_COLOR}{browser_url}{RESET}")
-    print("")
-    print("")
+    if sys.stdout.isatty():
+        print(f"")
+        print(f"")
+        print(f"{BOLD}{FG_COLOR}🚗 App is ready. Open in the browser:{RESET}")
+        print("")
+        print(f"{BOLD}{FG_COLOR}{browser_url}{RESET}")
+        print("")
+        print("")

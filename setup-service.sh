@@ -76,8 +76,15 @@ case "$COMMAND" in
     sudo rm -f "/etc/systemd/system/$SERVICE_NAME"
     sudo systemctl daemon-reload
     sudo systemctl reset-failed
-    sudo rm -rf "$LOG_DIR"
-    echo "$SERVICE_NAME has been uninstalled."
+
+    if [[ -d "$LOG_DIR" ]]; then
+      echo "Removing log directory at $LOG_DIR..."
+      sudo rm -rf "$LOG_DIR"
+    else
+      echo "Log directory $LOG_DIR not found. Skipping..."
+    fi
+
+    echo "$SERVICE_NAME has been uninstalled successfully."
     exit 0
     ;;
 
@@ -99,6 +106,12 @@ case "$COMMAND" in
     if [[ ! -d "$LOG_DIR" ]]; then
       echo "Creating log directory at $LOG_DIR..."
       sudo mkdir -p "$LOG_DIR"
+    fi
+
+    if [[ -d "$LOG_DIR" ]]; then
+      echo "Setting permissions for $LOG_DIR..."
+      sudo chown -R "$USER:adm" "$LOG_DIR"
+      sudo chmod -R 640 "$LOG_DIR"
     fi
 
     echo "Setting up log files in $LOG_DIR..."
@@ -135,6 +148,7 @@ Environment=DISPLAY=:0
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_ID/bus
 Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
+Environment=PX_LOG_DIR=$LOG_DIR
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always
 StandardOutput=journal

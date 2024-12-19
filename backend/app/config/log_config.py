@@ -1,52 +1,30 @@
-import logging.config
-import os
-import time
-from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
-
-
-class ExcludeBinaryAndAssetsFilter(logging.Filter):
-    def filter(self, record):
-        msg = record.getMessage()
-        return "> BINARY " not in msg and "GET /assets/" not in msg
+from app.util.file_util import resolve_absolute_path
+from app.util.logger_filters import ExcludeBinaryAndAssetsFilter, RateLimitFilter
+from app.util.uvicorn_log_formatter import UvicornFormatter
 
 
-class RateLimitFilter(logging.Filter):
-    def __init__(self, limit=10):
-        super().__init__()
-        self.limit = limit
-        self.log_timestamps = defaultdict(float)
+class LogConfig:
+    """
+    Utility class for managing logging configuration. It supports both file-based
+    and console-based logging, with features such as colored log formatting, log
+    filtering, and handling different logging levels.
 
-    def filter(self, record):
-        msg = record.getMessage()
-        if '"type":"player",' not in msg:
-            return True
-        else:
-            current_time = time.time()
+    This class allows configuring various log handlers, formatters, and filters to
+    enable proper management of logging output for applications such as Uvicorn servers.
+    """
 
-            if current_time - self.log_timestamps[msg] > self.limit:
-                self.log_timestamps[msg] = current_time
-                return True
-            return False
+    LOG_COLORS = {
+        "DEBUG": "bold_blue",
+        "INFO": "bold_green",
+        "WARNING": "bold_yellow",
+        "ERROR": "bold_red",
+        "CRITICAL": "bold_white,bg_red",
+    }
 
-
-class UvicornFormatter(logging.Formatter):
-    def __init__(self, fmt=None, datefmt=None, use_colors=None):
-        super().__init__(fmt, datefmt)
-        self.use_colors = use_colors
-
-    def format(self, record):
-        record.name = ""
-        if self.use_colors and record.levelno == logging.INFO:
-            record.msg = f"\033[92m{record.msg}\033[0m"
-        return super().format(record)
-
-
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "filters": {
+    FILTERS = {
         "exclude_binary": {
             "()": ExcludeBinaryAndAssetsFilter,
         },
@@ -54,122 +32,251 @@ LOGGING_CONFIG = {
             "()": RateLimitFilter,
             "limit": 10,
         },
-    },
-    "formatters": {
-        "colored": {
-            "()": "colorlog.ColoredFormatter",
-            "format": "%(log_color)s%(asctime)s [PID %(process)d] - %(name)s - %(levelname)s - %(message)s",
-            "datefmt": "%H:%M:%S",
-            "log_colors": {
-                "DEBUG": "cyan",
-                "INFO": "green",
-                "WARNING": "yellow",
-                "ERROR": "red",
-                "CRITICAL": "red,bg_white",
-            },
-        },
-        "uvicorn": {
-            "()": UvicornFormatter,
-            "format": "s%(asctime)s [PID %(process)d] - uvicorn - %(levelname)s - %(message)s",
-            "datefmt": "%H:%M:%S",
-            "use_colors": True,
-        },
-        "default": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            "datefmt": "%H:%M:%S",
-        },
-        "colored_px": {
-            "()": "colorlog.ColoredFormatter",
-            "format": "%(log_color)s%(asctime)s [PID %(process)d] - %(name)s - %(levelname)s - %(message)s",
-            "datefmt": "%H:%M:%S",
-            "log_colors": {
-                "DEBUG": "light_purple",
-                "INFO": "light_green",
-                "WARNING": "bold_yellow",
-                "ERROR": "light_red",
-                "CRITICAL": "red,bg_white",
-            },
-        },
-        "colored_ext": {
-            "()": "colorlog.ColoredFormatter",
-            "format": "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            "datefmt": "%H:%M:%S",
-            "log_colors": {
-                "DEBUG": "thin_purple",
-                "INFO": "thin_green",
-                "WARNING": "thin_yellow",
-                "ERROR": "thin_red",
-                "CRITICAL": "thin_red",
-            },
-        },
-    },
-    "handlers": {
-        "console_colored": {
-            "class": "logging.StreamHandler",
-            "formatter": "colored",
-            "filters": ["exclude_binary"],
-        },
-        "console_colored_px": {
-            "class": "logging.StreamHandler",
-            "formatter": "colored_px",
-            "filters": ["exclude_binary"],
-        },
-        "console_color_ext": {
-            "class": "logging.StreamHandler",
-            "formatter": "colored_ext",
-            "filters": ["exclude_binary"],
-        },
-        "console_default": {
-            "class": "logging.StreamHandler",
-            "formatter": "default",
-            "filters": ["exclude_binary"],
-        },
-        "file": {
-            "class": "logging.FileHandler",
-            "filename": "app.log",
-            "formatter": "default",
-            "filters": ["exclude_binary"],
-            "level": level,
-        },
-        "uvicorn": {
-            "formatter": "uvicorn",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-            "filters": ["exclude_binary", "rate_limit"],
-        },
-    },
-    "loggers": {
-        "uvicorn": {
-            "handlers": ["uvicorn"],
-            "level": level,
-        },
-        "uvicorn.error": {
-            "handlers": ["uvicorn"],
-            "level": level,
-            "propagate": False,
-        },
-        "uvicorn.access": {
-            "handlers": ["uvicorn"],
-            "level": level,
-            "propagate": False,
-        },
-        "picar-x-racer": {
-            "handlers": ["console_colored_px"],
-            "level": level,
-            "propagate": False,
-        },
-        "px-control": {
-            "handlers": ["console_colored"],
-            "level": level,
-            "propagate": False,
-        },
-    },
-    "root": {
-        "handlers": ["console_default"],
-        "level": level,
-    },
-}
+    }
 
+    @staticmethod
+    def make_log_config(
+        level: str,
+        log_dir: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Sets up a dictionary-based logging configuration based on the log directory and level.
 
-def setup_logging():
-    logging.config.dictConfig(LOGGING_CONFIG)
+        - When a logging directory is provided, logs are written to separate
+        application and error log files, and messages at WARNING level or above
+        are output to stdout.
+
+        - When no logging directory is specified, all logs above the specified level
+        are streamed to stdout.
+
+        Args:
+        - level: The logging level to be applied (e.g., DEBUG, INFO, etc.).
+        - log_dir: The directory where log files should be created. If None, logging will be stdout-only.
+
+        Returns:
+            A logging configuration dictionary compliant with `logging.config.dictConfig`.
+        """
+
+        log_dir = resolve_absolute_path(log_dir) if log_dir else None
+        level = level
+        app_log_filename: Optional[str] = None
+        error_log_filename: Optional[str] = None
+        if log_dir is None:
+            dict_config = LogConfig.make_non_file_config(level)
+        else:
+            dir_path = Path(log_dir)
+            dir_path.mkdir(parents=True, exist_ok=True)
+            app_log_filename = dir_path.joinpath("app.log").as_posix()
+            error_log_filename = dir_path.joinpath("error.log").as_posix()
+            dict_config = LogConfig.make_file_config(
+                app_log_file=app_log_filename,
+                error_log_file=error_log_filename,
+                level=level,
+            )
+
+        return dict_config
+
+    @staticmethod
+    def make_colored_formatter(handler_color: str) -> Dict[str, Any]:
+        """
+        Creates a configuration dictionary for a colored log formatter.
+
+        This method generates a configuration for the `colorlog` package, allowing log messages to appear with colors
+        based on their severity level. The color of the handler's name can also be customized.
+
+        Args:
+            handler_color: The color to apply for the handler's section in the log message.
+
+        Returns:
+            A dictionary representing the configuration of the colored formatter.
+        """
+        return {
+            "()": "colorlog.ColoredFormatter",
+            "format": f"%(asctime)s [PID %(process)d] - %({handler_color})s%(name)s%(reset)s - %(log_color)s%(levelname)s%(reset)s - %(reset)s%(message)s",
+            "datefmt": "%H:%M:%S",
+            "reset": True,
+            "log_colors": LogConfig.LOG_COLORS,
+        }
+
+    @staticmethod
+    def make_non_file_config(level: str) -> Dict[str, Any]:
+        """
+        Generates a logging configuration for a console-based (non-file) setup.
+
+        This configuration is designed to send all log output to the console (stdout) without writing to any files.
+        It supports multiple handlers, including colored output for different components.
+
+        Args:
+            level: The logging level to be applied (e.g., DEBUG, INFO, etc.).
+
+        Returns:
+            A dictionary representing the logging configuration for non-file-based logging.
+        """
+        return {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "filters": LogConfig.FILTERS,
+            "formatters": {
+                "uvicorn": {
+                    "()": UvicornFormatter,
+                    "format": "%(asctime)s [PID %(process)d] - uvicorn - %(levelname)s - %(message)s",
+                    "datefmt": "%H:%M:%S",
+                    "use_colors": True,
+                },
+                "default": {
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    "datefmt": "%H:%M:%S",
+                },
+                "main_server_colored": LogConfig.make_colored_formatter("blue"),
+                "robot_colored": LogConfig.make_colored_formatter("green"),
+                "robot_hat_colored": LogConfig.make_colored_formatter("purple"),
+            },
+            "handlers": {
+                "px": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "main_server_colored",
+                },
+                "robot_hat": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "robot_hat_colored",
+                },
+                "robot_server": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "robot_colored",
+                },
+                "console_default": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "default",
+                },
+                "uvicorn": {
+                    "formatter": "uvicorn",
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                    "filters": ["exclude_binary", "rate_limit"],
+                },
+            },
+            "loggers": {
+                "uvicorn": {
+                    "handlers": ["uvicorn"],
+                    "level": level,
+                },
+                "uvicorn.error": {
+                    "handlers": ["uvicorn"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "uvicorn.access": {
+                    "handlers": ["uvicorn"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "px": {
+                    "handlers": ["px"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "px_robot": {
+                    "handlers": ["robot_server"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "robot_hat": {
+                    "handlers": ["robot_hat"],
+                    "level": level,
+                    "propagate": False,
+                },
+            },
+            "root": {
+                "handlers": ["console_default"],
+                "level": level,
+            },
+        }
+
+    @staticmethod
+    def make_file_config(
+        app_log_file: str, error_log_file: str, level: str
+    ) -> Dict[str, Any]:
+        """
+        Sets up a file-based logging configuration.
+
+        Logs are saved to rotating files for general application messages and error messages.
+        Additionally, WARNING level logs or higher are also printed to the console. This setup
+        is suitable for applications requiring structured log management with file rotation.
+
+        Args:
+            app_log_file: Path to the file that will store general application logs.
+            error_log_file: Path to the file that will store error logs.
+            level: The logging level to be applied (e.g., DEBUG, INFO, etc.).
+
+        Returns:
+            A dictionary representing the logging configuration compliant with `logging.config.dictConfig`.
+        """
+        return {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "filters": LogConfig.FILTERS,
+            "formatters": {
+                "default": {
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    "datefmt": "%Y-%m-%d %H:%M:%S",
+                },
+            },
+            "handlers": {
+                # Journaling (console) handler for systemd
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "default",
+                    "level": "WARNING",
+                },
+                # General log file (rotating)
+                "file_general": {
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": app_log_file,
+                    "formatter": "default",
+                    "level": level,
+                    "maxBytes": 10_000_000,  # 10 MB per file
+                    "backupCount": 5,  # Keep up to 5 backups (total: 50 MB max),
+                    "filters": ["exclude_binary", "rate_limit"],
+                },
+                # Error log file (rotating)
+                "file_error": {
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": error_log_file,
+                    "formatter": "default",
+                    "level": "ERROR",
+                    "maxBytes": 10_000_000,  # 10 MB per file
+                    "backupCount": 5,
+                },
+            },
+            "loggers": {
+                "uvicorn": {
+                    "handlers": ["console", "file_general", "file_error"],
+                    "level": level,
+                },
+                "uvicorn.error": {
+                    "handlers": ["console", "file_general", "file_error"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "uvicorn.access": {
+                    "handlers": ["console", "file_general", "file_error"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "px": {
+                    "handlers": ["console", "file_general", "file_error"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "px_robot": {
+                    "handlers": ["console", "file_general", "file_error"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "robot_hat": {
+                    "handlers": ["console", "file_general", "file_error"],
+                    "level": level,
+                    "propagate": False,
+                },
+            },
+        }

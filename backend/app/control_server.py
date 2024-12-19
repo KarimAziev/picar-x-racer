@@ -1,10 +1,4 @@
-import logging.config
 from contextlib import asynccontextmanager
-
-from app.config.log_config import LOGGING_CONFIG
-
-logging.config.dictConfig(LOGGING_CONFIG)
-
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.util.logger import Logger
 
 description = """
-`Picar-X Control App` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using WebSockets.
+`Picar-X Robot` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using WebSockets.
 
 It integrates endpoints to manage the car's movement, calibration, and ultrasonic measurements. 🚀
 
@@ -25,19 +19,19 @@ This server runs in a separate process from the main server to ensure that contr
 
 Logger.setup_from_env()
 
-logger = Logger(name=__name__, app_name="px-control")
+logger = Logger(name=__name__, app_name="px_robot")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     port = app.state.port if hasattr(app.state, "port") else 8001
-    logger.info(f"Starting Car Control App on the port {port}")
+    logger.info(f"Starting {app.title} app on the port {port}")
     yield
-    logger.info("Stopping application")
+    logger.info(f"Stopped {app.title}")
 
 
 app = FastAPI(
-    title="Picar X Racer Control App",
+    title="Picar-X Robot",
     version="0.0.1",
     description=description,
     lifespan=lifespan,

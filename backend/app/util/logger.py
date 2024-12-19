@@ -1,8 +1,7 @@
 import logging
 import os
+from logging.config import dictConfig
 from typing import Optional
-
-from app.config.log_config import setup_logging
 
 
 class Logger:
@@ -21,7 +20,7 @@ class Logger:
     }
 
     _handlers_added_pids = set()
-    _app_logger_name = "picar-x-racer"
+    _app_logger_name = "px"
 
     def __init__(
         self,
@@ -32,7 +31,7 @@ class Logger:
             Logger._app_logger_name = app_name
 
         if not logging.root.handlers:
-            setup_logging()
+            self.setup_logging()
 
         full_name = (
             f"{self._app_logger_name}.{name}"
@@ -41,34 +40,56 @@ class Logger:
         )
         self.logger = logging.getLogger(full_name)
 
+    @staticmethod
+    def setup_logging():
+        """
+        Configures a dictionary-based logging configuration based on the
+        environment variables for log directory and level.
+
+        - When a logging directory is provided in environmnent, logs are written to separate
+        application and error log files, and messages at WARNING level or above
+        are output to stdout.
+
+        - When no logging directory is specified, all logs above the specified level
+        are streamed to stdout.
+        """
+        from app.config.log_config import LogConfig
+
+        log_config = LogConfig.make_log_config(
+            log_dir=os.getenv("PX_LOG_DIR"),
+            level=os.getenv("PX_LOG_LEVEL", "INFO").upper(),
+        )
+
+        dictConfig(log_config)
+
     def set_level(self, level: int):
+        """Dynamically set log level for this logger (file handlers only)."""
         if level not in self.LEVELS.values():
             raise ValueError(f"Invalid log level: {level}")
         self.logger.setLevel(level)
 
     @classmethod
     def set_global_log_level(cls, level: int):
+        """Dynamically adjust log levels for file-based handlers."""
         if level not in cls.LEVELS.values():
             raise ValueError(f"Invalid log level: {level}")
         app_logger = logging.getLogger(cls._app_logger_name)
         app_logger.setLevel(level)
 
-    def add_file_handler(
-        self,
-        file_path: str,
-        level: int = DEBUG,
-        fmt: Optional[str] = None,
-        datefmt: Optional[str] = None,
-    ):
-        file_handler = logging.FileHandler(file_path)
-        fmt = fmt or "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        datefmt = datefmt or "%Y-%m-%d %H:%M:%S"
-        file_formatter = logging.Formatter(fmt, datefmt=datefmt)
-        file_handler.setFormatter(file_formatter)
-        file_handler.setLevel(level)
+    @staticmethod
+    def setup_global(log_level: str):
+        """Set the global log level dynamically (via string)."""
+        valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if log_level not in valid_log_levels:
+            log_level = "DEBUG"
+        log_level_constant = getattr(Logger, log_level.upper(), Logger.DEBUG)
+        Logger.set_global_log_level(log_level_constant)
 
-        app_logger = logging.getLogger(self._app_logger_name)
-        app_logger.addHandler(file_handler)
+    @staticmethod
+    def setup_from_env():
+        """Set global log level using PX_LOG_LEVEL from the environment."""
+        log_level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
+        Logger.setup_global(log_level)
 
     def debug(self, message: str, *args, **kwargs):
         self.logger.debug(message, *args, **kwargs)
@@ -87,19 +108,6 @@ class Logger:
 
     def critical(self, message: str, *args, **kwargs):
         self.logger.critical(message, *args, **kwargs)
-
-    @staticmethod
-    def setup_global(log_level: str):
-        valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        if log_level not in valid_log_levels:
-            log_level = "DEBUG"
-        log_level_constant = getattr(Logger, log_level.upper(), Logger.DEBUG)
-        Logger.set_global_log_level(log_level_constant)
-
-    @staticmethod
-    def setup_from_env():
-        log_level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
-        Logger.setup_global(log_level)
 
     @staticmethod
     def log_exception(message: str, exc: Optional[Exception] = None):
