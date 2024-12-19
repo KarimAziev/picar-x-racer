@@ -1,6 +1,7 @@
 import asyncio
 import multiprocessing as mp
 import queue
+import re
 import time
 from typing import TYPE_CHECKING, Optional
 
@@ -260,11 +261,38 @@ class DetectionService(metaclass=SingletonMeta):
         except (BrokenPipeError, EOFError, ConnectionResetError):
             self.detection_settings.active = False
         except DetectionProcessError as e:
-            self.detection_settings.active = False
-            await self.connection_manager.broadcast_json(
-                {"type": "detection", "payload": self.detection_settings.model_dump()}
-            )
-            await self.connection_manager.error(f"Detection process error: {e}")
+            # handling "Cannot set tensor: Dimension mismatch. Got 320 but expected 256 for dimension 1 of input 0."
+            pattern = r"Dimension mismatch\. Got (\d+) but expected (\d+)"
+            error_message = str(e)
+            match = re.search(pattern, error_message)
+            got = int(match.group(1)) if match else None
+            expected = int(match.group(2)) if match else None
+            if (
+                match
+                and got
+                and expected
+                and self.detection_settings.img_size == got
+                and self.detection_settings.img_size != expected
+            ):
+                next_settings = {
+                    **self.detection_settings.model_dump(),
+                    "img_size": expected,
+                }
+
+                await self.connection_manager.error(
+                    f"{e}. Trying to adjust size to {expected}"
+                )
+                await self.update_detection_settings(DetectionSettings(**next_settings))
+
+            else:
+                self.detection_settings.active = False
+                await self.connection_manager.broadcast_json(
+                    {
+                        "type": "detection",
+                        "payload": self.detection_settings.model_dump(),
+                    }
+                )
+                await self.connection_manager.error(f"Detection process error: {e}")
 
     async def cancel_detection_process_task(self) -> None:
         """
