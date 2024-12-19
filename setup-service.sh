@@ -105,13 +105,15 @@ case "$COMMAND" in
 
     if [[ ! -d "$LOG_DIR" ]]; then
       echo "Creating log directory at $LOG_DIR..."
-      mkdir -p "$LOG_DIR"
+      sudo mkdir -p "$LOG_DIR"
+      sudo chown -R "$USER:$USER" "$LOG_DIR"
     fi
 
     echo "Setting up log files in $LOG_DIR..."
     touch "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
 
     echo "Setting permissions for $LOG_DIR..."
+    sudo chown -R "$USER:$USER" "$LOG_DIR"
     chmod 640 "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
     chmod -R u+rwX "$LOG_DIR"
 
