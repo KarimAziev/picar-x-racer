@@ -1,4 +1,5 @@
 import queue
+import sys
 import time
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
 logger = Logger(name=__name__)
+
+verbose_enabled = sys.stdout.isatty()
 
 
 def detection_process_func(
@@ -77,7 +80,7 @@ def detection_process_func(
                     continue
 
                 curr_time = time.time()
-                verbose = curr_time - prev_time >= 5
+                verbose = verbose_enabled and curr_time - prev_time >= 5
 
                 try:
                     detection_result = perform_detection(
