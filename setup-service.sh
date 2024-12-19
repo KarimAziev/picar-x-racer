@@ -10,7 +10,7 @@ USER=$(logname)
 GROUP=$(id -g "$USER")
 USER_ID=$(id -u "$USER")
 PROJECT_DIR=$(pwd)
-LOG_DIR="/var/log/picar_x_racer"
+LOG_DIR="/home/$USER/.cache/picar_x_racer/logs"
 PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
 BACKEND_SCRIPT="$PROJECT_DIR/backend/run.py"
 
@@ -105,19 +105,15 @@ case "$COMMAND" in
 
     if [[ ! -d "$LOG_DIR" ]]; then
       echo "Creating log directory at $LOG_DIR..."
-      sudo mkdir -p "$LOG_DIR"
-    fi
-
-    if [[ -d "$LOG_DIR" ]]; then
-      echo "Setting permissions for $LOG_DIR..."
-      sudo chown -R "$USER:adm" "$LOG_DIR"
-      sudo chmod -R 640 "$LOG_DIR"
+      mkdir -p "$LOG_DIR"
     fi
 
     echo "Setting up log files in $LOG_DIR..."
-    sudo touch "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
-    sudo chmod 640 "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
-    sudo chown -R "$USER:adm" "$LOG_DIR"
+    touch "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
+
+    echo "Setting permissions for $LOG_DIR..."
+    chmod 640 "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
+    chmod -R u+rwX "$LOG_DIR"
 
     if [[ -f "/etc/systemd/system/$SERVICE_NAME" ]]; then
       read -rp "Service $SERVICE_NAME already exists. Do you want to overwrite it? [y/N]: " confirm
