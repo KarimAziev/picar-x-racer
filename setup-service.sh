@@ -110,11 +110,11 @@ case "$COMMAND" in
     fi
 
     echo "Setting up log files in $LOG_DIR..."
-    touch "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
+    touch "$LOG_DIR/app.log" "$LOG_DIR/error.log"
 
     echo "Setting permissions for $LOG_DIR..."
     sudo chown -R "$USER:$USER" "$LOG_DIR"
-    chmod 640 "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
+    chmod 640 "$LOG_DIR/app.log" "$LOG_DIR/error.log"
     chmod -R u+rwX "$LOG_DIR"
 
     if [[ -f "/etc/systemd/system/$SERVICE_NAME" ]]; then
