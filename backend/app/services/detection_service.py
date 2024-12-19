@@ -258,7 +258,13 @@ class DetectionService(metaclass=SingletonMeta):
                 except queue.Empty:
                     pass
                 await asyncio.sleep(0.5)
-        except (BrokenPipeError, EOFError, ConnectionResetError):
+        except (
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+            ConnectionError,
+            ConnectionRefusedError,
+        ):
             self.detection_settings.active = False
         except DetectionProcessError as e:
             # handling "Cannot set tensor: Dimension mismatch. Got 320 but expected 256 for dimension 1 of input 0."
@@ -422,7 +428,13 @@ class DetectionService(metaclass=SingletonMeta):
             self.detection_result = self.detection_queue.get(timeout=1)
         except queue.Empty:
             self.detection_result = None
-        except (BrokenPipeError, EOFError, ConnectionResetError):
+        except (
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+            ConnectionError,
+            ConnectionRefusedError,
+        ):
             self.detection_result = None
 
         return self.detection_result
