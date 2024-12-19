@@ -1,7 +1,7 @@
 #!/bin/bash
 # Setup or Uninstall Picar-X Racer as a systemd service.
 # Usage:
-# - To setup the service on boot: sudo ./setup-service.sh setup
+# - To install the service on boot: sudo ./setup-service.sh install
 # - To uninstall the service: sudo ./setup-service.sh uninstall
 # - To display this help: ./setup-service.sh help
 
@@ -18,20 +18,20 @@ print_help() {
   echo "Usage: sudo ./setup-service.sh [command]"
   echo ""
   echo "Commands:"
-  echo "  setup      Set up the Picar-X Racer systemd service to start on boot."
+  echo "  install    Set up the Picar-X Racer systemd service to start on boot."
   echo "  uninstall  Uninstall the Picar-X Racer systemd service."
   echo "  help       Display this help message."
   echo ""
   echo "Examples:"
-  echo "  sudo ./setup-service.sh setup"
+  echo "  sudo ./setup-service.sh install"
   echo "  sudo ./setup-service.sh uninstall"
   echo "  ./setup-service.sh help"
 }
 
 print_command_help() {
   case "$1" in
-    setup)
-      echo "Usage: sudo ./setup-service.sh setup"
+    install)
+      echo "Usage: sudo ./setup-service.sh install"
       echo "Set up the Picar-X Racer systemd service to start on boot."
       ;;
     uninstall)
@@ -88,7 +88,7 @@ case "$COMMAND" in
     exit 0
     ;;
 
-  setup)
+  install)
     echo "Setting up the Picar-X Racer systemd service..."
 
     if [[ ! -f "Makefile" ]]; then
