@@ -2,6 +2,7 @@ import queue
 import time
 from typing import TYPE_CHECKING
 
+from app.exceptions.detection import DetectionDimensionMismatch
 from app.util.logger import Logger
 from app.util.model_manager import ModelManager
 from app.util.object_detection import perform_detection
@@ -91,6 +92,9 @@ def detection_process_func(
                         should_resize=frame_data["should_resize"],
                         labels_to_detect=labels,
                     )
+                except DetectionDimensionMismatch as e:
+                    put_to_queue(out_queue, {"error": str(e)})
+                    break
                 except Exception as e:
                     logger.error("Exception in detection process", exc_info=True)
                     put_to_queue(out_queue, {"error": str(e)})
