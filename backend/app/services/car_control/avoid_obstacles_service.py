@@ -14,6 +14,7 @@ class AvoidObstaclesService:
     def __init__(self, px: "PicarxAdapter"):
         self.px = px
         self.logger = Logger(name=__name__)
+
         self.avoid_obstacles_task: Optional[asyncio.Task] = None
         self.last_toggle_time: Optional[datetime] = None
         self.avoid_obstacles_mode: bool = False
@@ -64,7 +65,7 @@ class AvoidObstaclesService:
         DangerDistance = 20
         try:
             while True:
-                value = await self.px.ultrasonic.read()
+                value = await asyncio.to_thread(self.px.ultrasonic.read)
                 distance = round(value, 2)
                 self.logger.info(f"distance: {distance}")
                 if distance >= SafeDistance:
