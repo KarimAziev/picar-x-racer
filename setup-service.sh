@@ -10,7 +10,7 @@ USER=$(logname)
 GROUP=$(id -g "$USER")
 USER_ID=$(id -u "$USER")
 PROJECT_DIR=$(pwd)
-LOG_DIR="/home/$USER/.cache/picar_x_racer/logs"
+LOG_DIR="/home/$USER/.cache/picar-x-racer/logs"
 PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
 BACKEND_SCRIPT="$PROJECT_DIR/backend/run.py"
 
@@ -169,7 +169,7 @@ EOL
     echo "Starting $SERVICE_NAME..."
     if sudo systemctl start "$SERVICE_NAME"; then
       echo "$SERVICE_NAME has started successfully!"
-      echo "Logs can be found at: $LOG_DIR/picar_x_racer.log"
+      echo "Logs can be found at: $LOG_DIR"
     else
       echo "Error: $SERVICE_NAME failed to start."
       echo "Run 'sudo journalctl -xe -u $SERVICE_NAME' for detailed logs."
