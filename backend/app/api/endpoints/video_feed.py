@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_camera_manager, get_stream_manager
+from app.api.deps import get_camera_manager, get_connection_manager, get_stream_manager
 from app.config.video_enhancers import frame_enhancers
 from app.schemas.stream import EnhancersResponse, StreamSettings
 from app.util.logger import Logger
@@ -101,9 +101,9 @@ def get_video_settings(
     "/ws/video-stream",
 )
 async def ws(
-    request: Request,
     websocket: WebSocket,
     stream_service: "StreamService" = Depends(get_stream_manager),
+    connection_manager: "ConnectionService" = Depends(get_connection_manager),
 ):
     """
     WebSocket endpoint for providing a video stream.
@@ -118,7 +118,7 @@ async def ws(
     - `WebSocketDisconnect`: Handles the case where the WebSocket connection is closed.
     - `Exception`: Logs any other exceptions that occur during the video stream.
     """
-    connection_manager: "ConnectionService" = request.app.state.app_manager
+
     try:
         await websocket.accept()
         await stream_service.video_stream(websocket, connection_manager)
