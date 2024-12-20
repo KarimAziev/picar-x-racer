@@ -80,6 +80,10 @@ export const generalSwitchSettings: {
     description:
       "Toggles the display of the shutdown and reboot control buttons.",
   },
+  show_fullscreen_button: {
+    label: "Full Screen Button",
+    description: "Toggle the display of the fullscreen icon button.",
+  },
 } as const;
 
 export const ttsLanguages = [

@@ -33,7 +33,7 @@ onMounted(() => {
   carVisualization.value = new CarModelRenderer(rootElement.value, {
     width: parentSize.width,
     height: parentSize.height,
-    bodyLength: 1.5,
+    bodyLength: 2.5,
   });
 
   carVisualization.value.updatePan(store.camPan);

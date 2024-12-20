@@ -2,7 +2,7 @@ import asyncio
 from typing import List, Optional, Union
 
 from app.adapters.motor_adapter import MotorAdapter
-from app.config.paths import PICARX_CONFIG_FILE
+from app.config.paths import PX_CALIBRATION_FILE
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -25,7 +25,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         motor_pins: list[str] = ["D4", "D5", "P12", "P13"],
         grayscale_pins: list[str] = ["A0", "A1", "A2"],
         ultrasonic_pins: list[str] = ["D2", "D3"],
-        config_file: str = PICARX_CONFIG_FILE,
+        config_file: str = PX_CALIBRATION_FILE,
     ):
         self.logger = Logger(name=__name__)
 

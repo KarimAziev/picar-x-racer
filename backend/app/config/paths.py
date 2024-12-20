@@ -32,11 +32,9 @@ PX_MUSIC_DIR = getenv(
         "music",
     ),
 )
+PX_CONFIG_DIR = getenv("PX_CONFIG_DIR", path.join(CONFIG_USER_DIR, APP_NAME))
 
-PX_SETTINGS_FILE = getenv(
-    "PX_SETTINGS_FILE", path.join(CONFIG_USER_DIR, APP_NAME, "user_settings.json")
-)
-
+PX_SETTINGS_FILE = path.join(PX_CONFIG_DIR, "user_settings.json")
 
 CURRENT_DIR = path.dirname(path.realpath(__file__))
 PROJECT_DIR = path.dirname(path.dirname(path.dirname(CURRENT_DIR)))
@@ -58,10 +56,8 @@ FONT_PATH = resolve_absolute_path(
 
 MUSIC_CACHE_FILE_PATH = path.join(CACHE_USER_DIR, APP_NAME, "music_cache.json")
 
-PICARX_CONFIG_DIR = path.join(CONFIG_USER_DIR, "picar-x")
-ROBOT_HAT_CONF = path.join(CONFIG_USER_DIR, "robot-hat/robot-hat.conf")
-PICARX_CONFIG_FILE = path.join(PICARX_CONFIG_DIR, "picar-x.conf")
-PICARX_OLD_CONFIG_FILE = "/opt/picar-x/picar-x.conf"
+PX_CALIBRATION_FILE = path.join(PX_CONFIG_DIR, "picar-x.conf")
+
 
 YOLO_MODEL_PATH = resolve_absolute_path(
     getenv(

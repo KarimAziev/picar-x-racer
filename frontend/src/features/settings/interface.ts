@@ -55,6 +55,7 @@ export interface General {
   show_photo_capture_button: boolean;
   show_video_record_button: boolean;
   show_shutdown_reboot_button: boolean;
+  show_fullscreen_button: boolean;
 }
 
 export interface Music {

@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from app.util.logger import Logger
 
@@ -19,7 +19,7 @@ class AvoidObstaclesService:
         self.last_toggle_time: Optional[datetime] = None
         self.avoid_obstacles_mode: bool = False
 
-    async def toggle_avoid_obstacles_mode(self):
+    async def toggle_avoid_obstacles_mode(self) -> Optional[Dict[str, Any]]:
         """
         Toggles the mode for avoiding obstacles.
         """
@@ -31,7 +31,7 @@ class AvoidObstaclesService:
             self.logger.info("Debounce: Too quick toggle of avoidObstacles detected.")
             return
         await self.cancel_avoid_obstacles_task()
-        await self.reset_px()
+        await asyncio.to_thread(self.reset_px)
         self.last_toggle_time = now
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
 
@@ -82,8 +82,8 @@ class AvoidObstaclesService:
         finally:
             self.px.forward(0)
 
-    async def reset_px(self):
-        await self.px.stop()
+    def reset_px(self) -> None:
+        self.px.stop()
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)

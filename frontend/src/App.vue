@@ -6,6 +6,9 @@
   <Messager v-if="!isMobile" />
   <TopRightPanel v-if="isSettingsLoaded" class="top-right-pan">
     <PowerControlPanel>
+      <ToggleableView setting="general.show_fullscreen_button">
+        <FullscreenButton />
+      </ToggleableView>
       <ToggleableView setting="general.show_connections_indicator">
         <ActiveConnectionsIndicator />
       </ToggleableView>
@@ -61,6 +64,10 @@ const isSettingsLoaded = computed(() => settingsStore.loaded);
 const ActiveConnectionsIndicator = defineAsyncComponent({
   loader: () =>
     import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
+});
+
+const FullscreenButton = defineAsyncComponent({
+  loader: () => import("@/ui/FullscreenButton.vue"),
 });
 
 const PowerControlPanel = defineAsyncComponent({

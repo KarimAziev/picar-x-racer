@@ -5,7 +5,6 @@ import re
 import time
 from typing import TYPE_CHECKING, Optional
 
-from app.config.paths import DATA_DIR
 from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
 from app.schemas.detection import DetectionSettings
 from app.util.detection_process import detection_process_func
@@ -147,7 +146,8 @@ class DetectionService(metaclass=SingletonMeta):
                         target=detection_process_func,
                         args=(
                             resolve_absolute_path(
-                                self.detection_settings.model, DATA_DIR
+                                self.detection_settings.model,
+                                self.file_manager.data_dir,
                             ),
                             self.stop_event,
                             self.frame_queue,

@@ -124,7 +124,7 @@ class CalibrationService(metaclass=SingletonMeta):
         self.px.dir_servo_calibrate(self.servos_offset[0])
         self.px.cam_pan_servo_calibrate(self.servos_offset[1])
         self.px.cam_tilt_servo_calibrate(self.servos_offset[2])
-        self.px.motor_adapter.calibrate_direction(
+        self.px.motor_direction_calibrate(
             self.motor_num + 1, self.motors_offset[self.motor_num]
         )
         return self.get_calibration_data()
