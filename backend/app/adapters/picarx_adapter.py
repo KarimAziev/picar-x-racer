@@ -30,12 +30,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
         motor_pins: list[str] = ["D4", "D5", "P12", "P13"],
         grayscale_pins: list[str] = ["A0", "A1", "A2"],
         ultrasonic_pins: list[str] = ["D2", "D3"],
-        config: str = CONFIG,
+        config_file: str = CONFIG,
     ):
         self.logger = Logger(name=__name__)
 
         # Set up the config file
-        self.config_file = FileDB(config)
+        self.config_file = FileDB(config_file)
 
         # --------- servos init ---------
         self.cam_pan = Servo(servo_pins[0])
@@ -185,7 +185,10 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.motor_speed_pins[motor_index].pulse_width_percent(pwm_speed)
 
         self.logger.debug(
-            f"Motor {motor_name} (Motor {motor}) set to PWM speed {pwm_speed} with direction {'reverse' if direction == -1 else 'forward'}"
+            "%s motor set PWM speed %s and %s direction",
+            motor_name,
+            pwm_speed,
+            'reverse' if direction == -1 else 'forward',
         )
 
     def motor_speed_calibration(self, value):
@@ -276,7 +279,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         angle_value = -1 * (constrained_value + -1 * self.cam_pan_cali_val)
 
         self.logger.debug(
-            "Setting camera pan angle: %s, adjusted: %s with offset %s)",
+            "Setting camera pan angle: '%s', adjusted: '%s' with offset '%s')",
             value,
             angle_value,
             self.cam_pan_cali_val,
@@ -293,7 +296,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         constrained_value = constrain(value, self.CAM_TILT_MIN, self.CAM_TILT_MAX)
         angle_value = -1 * (constrained_value + -1 * self.cam_tilt_cali_val)
 
-        self.logger.debug("Setting camera tilt angle to %s", angle_value)
+        self.logger.debug("Setting camera tilt angle to '%s'", angle_value)
         self.cam_tilt.angle(angle_value)
 
     def move(self, speed: int, direction: int):
@@ -318,13 +321,17 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 speed2 *= power_scale
 
         self.logger.debug(
-            "Move with speed %s, direction %s, angle %s, power_scale %.2f, motor1_speed %s, motor2_speed %s",
+            "Move %s with speed '%s' (motor 1: '%s', motor 2: '%s') angle '%s', power_scale '%.2f'",
+            (
+                "forward"
+                if direction == 1
+                else "backward" if direction == -1 else f"INVALID DIRECTION {direction}"
+            ),
             speed,
-            direction,
-            current_angle,
-            power_scale,
             speed1,
             speed2,
+            current_angle,
+            power_scale,
         )
 
         self.set_motor_speed(1, speed1)
