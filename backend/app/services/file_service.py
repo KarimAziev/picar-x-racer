@@ -17,7 +17,7 @@ from app.config.paths import (
     DEFAULT_MUSIC_DIR,
     DEFAULT_USER_SETTINGS,
     MUSIC_CACHE_FILE_PATH,
-    PICARX_CONFIG_FILE,
+    PX_CALIBRATION_FILE,
     PX_MUSIC_DIR,
     PX_PHOTO_DIR,
     PX_SETTINGS_FILE,
@@ -59,6 +59,8 @@ class FileService(metaclass=SingletonMeta):
         music_cache_path=MUSIC_CACHE_FILE_PATH,
         default_user_settings_file=DEFAULT_USER_SETTINGS,
         default_user_music_dir=DEFAULT_MUSIC_DIR,
+        config_file=PX_CALIBRATION_FILE,
+        data_dir=DATA_DIR,
         *args,
         **kwargs,
     ):
@@ -71,17 +73,18 @@ class FileService(metaclass=SingletonMeta):
         self.user_photos_dir = user_photos_dir
         self.user_videos_dir = user_videos_dir
         self.user_music_dir = user_music_dir
+        self.config_file = config_file
 
         self.music_cache_path = music_cache_path
+        self.data_dir = data_dir
 
         self.audio_manager = audio_manager
 
-        self.cache = self.load_music_cache()
+        self.cache: Optional[Dict[str, Any]] = None
 
         self.last_modified_time = None
         self.current_settings_file = None
         self.settings: Dict[str, Any] = self.load_settings()
-        self.list_all_music_with_details()
 
     def load_music_cache(self) -> Dict[str, Any]:
         """Load cached audio file data from a persistent file."""
@@ -227,7 +230,7 @@ class FileService(metaclass=SingletonMeta):
 
     def prune_cache(self, max_entries=100) -> None:
         """Limits the cache size by keeping only recent entries."""
-        if len(self.cache) > max_entries:
+        if self.cache is not None and len(self.cache) > max_entries:
             # Keeps the N most popular/most recent entries
             self.cache = dict(list(self.cache.items())[-max_entries:])
             self.save_music_cache()
@@ -239,6 +242,8 @@ class FileService(metaclass=SingletonMeta):
         Args:
             ordered_tracks (List[str]): List of track filenames in the desired order.
         """
+        if self.cache is None:
+            self.cache = self.load_music_cache()
         for idx, track_filename in enumerate(ordered_tracks):
             for _, cache_entry in self.cache.items():
                 if cache_entry["details"]["track"] == track_filename:
@@ -271,6 +276,8 @@ class FileService(metaclass=SingletonMeta):
         Otherwise, it will calculate and store the details in cache.
         """
         file_mod_time = os.path.getmtime(file)
+        if self.cache is None:
+            self.cache = self.load_music_cache()
 
         if file in self.cache:
             cached_data = self.cache[file]
@@ -596,8 +603,8 @@ class FileService(metaclass=SingletonMeta):
             dict: Calibration settings in JSON format.
         """
 
-        if path.exists(PICARX_CONFIG_FILE):
-            calibration_settings = FileDB(PICARX_CONFIG_FILE).get_all_as_dict()
+        if path.exists(self.config_file):
+            calibration_settings = FileDB(self.config_file).get_all_as_dict()
             return calibration_settings
         return {}
 

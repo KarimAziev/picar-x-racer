@@ -2,7 +2,6 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_file_manager, get_music_manager
-from app.config.paths import DATA_DIR
 from app.exceptions.file_exceptions import (
     DefaultFileRemoveAttempt,
     InvalidFileName,
@@ -190,7 +189,7 @@ def download_file(
     """
     try:
         if media_type == 'data':
-            path = resolve_absolute_path(filename, DATA_DIR)
+            path = resolve_absolute_path(filename, file_manager.data_dir)
             return FileResponse(
                 path=path,
                 media_type="application/octet-stream",
