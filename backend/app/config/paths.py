@@ -15,7 +15,7 @@ PICTURES_USER_DIR = user_pictures_dir()
 MUSIC_USER_DIR = user_music_dir()
 VIDEO_USER_DIR = user_videos_dir()
 
-APP_NAME = "picar-x-racer"
+APP_NAME = "pidog"
 
 # where to save captured photos
 PX_PHOTO_DIR = getenv("PX_PHOTO_DIR", path.join(PICTURES_USER_DIR, APP_NAME))
@@ -56,7 +56,7 @@ FONT_PATH = resolve_absolute_path(
 
 MUSIC_CACHE_FILE_PATH = path.join(CACHE_USER_DIR, APP_NAME, "music_cache.json")
 
-PX_CALIBRATION_FILE = path.join(PX_CONFIG_DIR, "picar-x.conf")
+PX_CALIBRATION_FILE = path.join(PX_CONFIG_DIR, APP_NAME + ".conf")
 
 
 YOLO_MODEL_PATH = resolve_absolute_path(

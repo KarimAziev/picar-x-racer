@@ -26,15 +26,15 @@ import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
 import { useAppSyncStore } from "@/features/syncer";
 
-export const ACCELERATION = 10;
+export const ACCELERATION = 20;
 export const CAM_PAN_MIN = -90;
 export const CAM_PAN_MAX = 90;
-export const CAM_TILT_MIN = -35;
-export const CAM_TILT_MAX = 65;
+export const CAM_TILT_MIN = -45;
+export const CAM_TILT_MAX = 30;
 export const SERVO_DIR_ANGLE_MIN = -30;
 export const SERVO_DIR_ANGLE_MAX = 30;
-export const MIN_SPEED = 10;
-export const MAX_SPEED = 100;
+export const MIN_SPEED = 40;
+export const MAX_SPEED = 300;
 
 export interface Modes {
   /**
