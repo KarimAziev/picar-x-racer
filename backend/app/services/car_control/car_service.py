@@ -145,7 +145,7 @@ class CarService(metaclass=SingletonMeta):
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
     async def handle_stop(self, payload, _: WebSocket):
-        await self.px.stop()
+        await asyncio.to_thread(self.px.stop)
         self.direction = 0
         self.speed = 0
 

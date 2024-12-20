@@ -1,18 +1,16 @@
 import asyncio
+from typing import List, Optional, Union
 
+from app.adapters.motor_adapter import MotorAdapter
 from app.config.paths import PICARX_CONFIG_FILE
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from robot_hat import ADC, PWM, FileDB, Grayscale, Pin, Servo, Ultrasonic
+from robot_hat import ADC, FileDB, Grayscale, Pin, Servo, Ultrasonic
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
-    CONFIG = PICARX_CONFIG_FILE
-
-    DEFAULT_LINE_REF = [1000, 1000, 1000]
     DEFAULT_CLIFF_REF = [500, 500, 500]
-
     DIR_MIN = -30
     DIR_MAX = 30
     MAX_SPEED = 100
@@ -21,39 +19,38 @@ class PicarxAdapter(metaclass=SingletonMeta):
     CAM_TILT_MIN = -35
     CAM_TILT_MAX = 65
 
-    PERIOD = 4095
-    PRESCALER = 10
-
     def __init__(
         self,
         servo_pins: list[str] = ["P0", "P1", "P2"],
         motor_pins: list[str] = ["D4", "D5", "P12", "P13"],
         grayscale_pins: list[str] = ["A0", "A1", "A2"],
         ultrasonic_pins: list[str] = ["D2", "D3"],
-        config_file: str = CONFIG,
+        config_file: str = PICARX_CONFIG_FILE,
     ):
         self.logger = Logger(name=__name__)
 
         # Set up the config file
-        self.config_file = FileDB(config_file)
+        self.config = FileDB(config_file)
 
         # --------- servos init ---------
-        self.cam_pan = Servo(servo_pins[0])
-        self.cam_tilt = Servo(servo_pins[1])
-        self.dir_servo_pin = Servo(servo_pins[2])
+        self.cam_pan, self.cam_tilt, self.dir_servo_pin = [
+            Servo(pin) for pin in servo_pins
+        ]
         # Get calibration values
-        cali_val = self.config_file.get("picarx_dir_servo", 0)
-        cali_val_float = float(cali_val)
-        self.dir_cali_val = cali_val_float
+        self.dir_cali_val = self.config.get_value_with("picarx_dir_servo", float) or 0.0
+        self.dir_current_angle = 0.0
+
         self.logger.debug("Initted dir_cali_val: %s", self.dir_cali_val)
 
-        self.cam_pan_cali_val = float(
-            self.config_file.get("picarx_cam_pan_servo", default_value=0) or 0
+        self.cam_pan_cali_val = (
+            self.config.get_value_with("picarx_cam_pan_servo", float) or 0.0
         )
         self.logger.debug("Initted cam_pan_cali_val: %s", self.cam_pan_cali_val)
-        self.cam_tilt_cali_val = float(
-            self.config_file.get("picarx_cam_tilt_servo", default_value=0) or 0
+
+        self.cam_tilt_cali_val = (
+            self.config.get_value_with("picarx_cam_tilt_servo", float) or 0.0
         )
+
         self.logger.debug("Initted cam_tilt_cali_val: %s", self.cam_tilt_cali_val)
         # Set servos to init angle
         self.dir_servo_pin.angle(self.dir_cali_val)
@@ -61,51 +58,28 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.cam_tilt.angle(self.cam_tilt_cali_val)
 
         # --------- motors init ---------
-        self.left_rear_dir_pin = Pin(motor_pins[0])
-        self.right_rear_dir_pin = Pin(motor_pins[1])
-        self.left_rear_pwm_pin = PWM(motor_pins[2])
-        self.right_rear_pwm_pin = PWM(motor_pins[3])
-        self.motor_direction_pins = [self.left_rear_dir_pin, self.right_rear_dir_pin]
-        self.motor_speed_pins = [self.left_rear_pwm_pin, self.right_rear_pwm_pin]
-        # Get calibration values
-        temp: str = (
-            self.config_file.get("picarx_dir_motor", default_value="[1, 1]") or "[1, 1]"
+
+        cali_dir_value = self.config.get_list_value_with("picarx_dir_motor", int)
+
+        self.motor_adapter = MotorAdapter(
+            motor_pins, cali_dir_value if len(cali_dir_value) == 2 else [1, 1]
         )
-        self.cali_dir_value = (
-            [int(i.strip()) for i in temp.strip("[]").split(",") if i.strip().isdigit()]
-            if temp
-            else [1, 1]
-        )
-        self.logger.debug("Initted cali_dir_value with %s", self.cali_dir_value)
-        self.cali_speed_value = [0, 0]
-        self.dir_current_angle = 0
-        # Init pwm
-        for pin in self.motor_speed_pins:
-            pin.period(self.PERIOD)
-            pin.prescaler(self.PRESCALER)
 
         # --------- grayscale module init ---------
         adc0, adc1, adc2 = [ADC(pin) for pin in grayscale_pins]
+
         self.grayscale = Grayscale(adc0, adc1, adc2)
         # Get reference
-        self.line_reference = self.config_file.get(
-            "line_reference", default_value=str(self.DEFAULT_LINE_REF)
-        )
         self.line_reference = (
-            [float(i) for i in self.line_reference.strip("[]").split(",")]
-            if self.line_reference
-            else self.DEFAULT_LINE_REF
-        )
-        self.cliff_reference = self.config_file.get(
-            "cliff_reference", default_value=str(self.DEFAULT_CLIFF_REF)
+            self.config.get_list_value_with("line_reference", int)
+            or self.grayscale.reference
         )
         self.cliff_reference = (
-            [float(i) for i in self.cliff_reference.strip("[]").split(",")]
-            if self.cliff_reference
-            else self.DEFAULT_CLIFF_REF
+            self.config.get_list_value_with("cliff_reference", int)
+            or self.DEFAULT_CLIFF_REF
         )
-        # Transfer reference
-        self.grayscale.reference(self.line_reference)
+
+        self.grayscale.reference = self.line_reference
 
         # --------- ultrasonic init ---------
         trig, echo = ultrasonic_pins
@@ -113,119 +87,18 @@ class PicarxAdapter(metaclass=SingletonMeta):
             Pin(trig), Pin(echo, mode=Pin.IN, pull=Pin.PULL_DOWN)
         )
 
-    def set_motor_speed(self, motor: int, speed: float):
-        """
-        Set motor speed.
-
-        Args:
-           motor (int): Motor index (1 = left motor, 2 = right motor)
-           speed (int): Speed value between -100 and 100
-        """
-        # Map motor indices to names for logging
-        motor_names = {1: "left", 2: "right"}
-        motor_name = motor_names.get(motor, "unknown")
-
-        speed = constrain(speed, -self.MAX_SPEED, self.MAX_SPEED)
-
-        motor_index = motor - 1
-
-        # Log the action with constrained speed
-        self.logger.debug(
-            "Setting speed %s for %s motor (Motor %s)", speed, motor_name, motor
-        )
-
-        # Verify calibration values are set and valid
-        if not isinstance(self.cali_dir_value, list) or not self.cali_dir_value:
-            msg = "Calibration direction values are not set properly."
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-        if not isinstance(self.cali_speed_value, list) or not self.cali_speed_value:
-            msg = "Calibration speed values are not set properly."
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-        # Validate motor index is within the range of calibration arrays
-        if motor_index < 0 or motor_index >= len(self.cali_dir_value):
-            msg = f"Motor index {motor} is out of range."
-            self.logger.error(msg)
-            raise IndexError(msg)
-
-        # Retrieve calibration values for the motor
-        calibration_direction = self.cali_dir_value[motor_index]
-        calibration_speed_offset = self.cali_speed_value[motor_index]
-
-        # Ensure calibration direction is an integer (1 or -1)
-        if calibration_direction not in (-1, 1):
-            msg = "Calibration direction should be -1 or 1."
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-        # Determine actual motor direction based on speed and calibration
-        direction = calibration_direction if speed >= 0 else -calibration_direction
-
-        # Compute PWM speed value
-        abs_speed = abs(speed)
-        if abs_speed != 0:
-            pwm_speed = int(abs_speed / 2) + 50
-        else:
-            pwm_speed = 0
-
-        pwm_speed -= calibration_speed_offset
-
-        pwm_speed = constrain(pwm_speed, 0, 100)
-
-        # Set motor direction pin
-        if direction == -1:
-            self.motor_direction_pins[motor_index].high()
-        else:
-            self.motor_direction_pins[motor_index].low()
-
-        # Set motor speed using Pulse Width Modulation (PWM)
-        self.motor_speed_pins[motor_index].pulse_width_percent(pwm_speed)
-
-        self.logger.debug(
-            "%s motor set PWM speed %s and %s direction",
-            motor_name,
-            pwm_speed,
-            'reverse' if direction == -1 else 'forward',
-        )
-
-    def motor_speed_calibration(self, value):
-        self.cali_speed_value = (
-            value if isinstance(value, list) and len(value) == 2 else [0, 0]
-        )
-
-    def motor_direction_calibrate(self, motor: int, value: int):
-        """
-        Set motor direction calibration value.
-
-        Args:
-           motor (int): Motor index (1 for left motor, 2 for right motor)
-           value (int): Calibration value (1 or -1)
-        """
-        if motor not in (1, 2):
-            raise ValueError("Motor index must be 1 (left) or 2 (right).")
-
-        if value not in (1, -1):
-            raise ValueError("Calibration value must be 1 or -1.")
-
-        motor_index = motor - 1  # Adjust for zero-based indexing
-        self.cali_dir_value[motor_index] = value
-        self.config_file.set("picarx_dir_motor", str(self.cali_dir_value))
-
-    def dir_servo_calibrate(self, value: int):
+    def dir_servo_calibrate(self, value: float) -> None:
         """
         Calibrate the steering direction servo.
 
         Args:
-           value (int): Calibration value
+           value (float): Calibration value
         """
         self.dir_cali_val = value
-        self.config_file.set("picarx_dir_servo", str(value))
+        self.config.set("picarx_dir_servo", str(value))
         self.dir_servo_pin.angle(value)
 
-    def set_dir_servo_angle(self, value: int):
+    def set_dir_servo_angle(self, value: float) -> None:
         """
         Set the servo angle for the vehicle's steering direction.
 
@@ -244,7 +117,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         )
         self.dir_servo_pin.angle(angle_value)
 
-    def cam_pan_servo_calibrate(self, value: int):
+    def cam_pan_servo_calibrate(self, value: int) -> None:
         """
         Calibrate the camera pan servo.
 
@@ -252,10 +125,10 @@ class PicarxAdapter(metaclass=SingletonMeta):
            value (int): Calibration value
         """
         self.cam_pan_cali_val = value
-        self.config_file.set("picarx_cam_pan_servo", str(value))
+        self.config.set("picarx_cam_pan_servo", str(value))
         self.cam_pan.angle(value)
 
-    def cam_tilt_servo_calibrate(self, value: int):
+    def cam_tilt_servo_calibrate(self, value: int) -> None:
         """
         Calibrate the camera tilt servo.
 
@@ -264,10 +137,10 @@ class PicarxAdapter(metaclass=SingletonMeta):
         """
         self.logger.info("Calibrating camera tilt servo with value %s", value)
         self.cam_tilt_cali_val = value
-        self.config_file.set("picarx_cam_tilt_servo", str(value))
+        self.config.set("picarx_cam_tilt_servo", str(value))
         self.cam_tilt.angle(value)
 
-    def set_cam_pan_angle(self, value: int):
+    def set_cam_pan_angle(self, value: int) -> None:
         """
         Set the camera pan angle.
 
@@ -286,7 +159,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         )
         self.cam_pan.angle(angle_value)
 
-    def set_cam_tilt_angle(self, value: int):
+    def set_cam_tilt_angle(self, value: int) -> None:
         """
         Set the camera tilt angle.
 
@@ -299,7 +172,18 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.logger.debug("Setting camera tilt angle to '%s'", angle_value)
         self.cam_tilt.angle(angle_value)
 
-    def move(self, speed: int, direction: int):
+    def motor_direction_calibrate(self, motor: int, value: int):
+        """
+        Set motor direction calibration value.
+
+        Args:
+           motor (int): Motor index (1 for left motor, 2 for right motor)
+           value (int): Calibration value (1 or -1)
+        """
+        self.motor_adapter.calibrate_direction(motor, value)
+        self.config.set("picarx_dir_motor", str(self.motor_adapter.cali_dir_value))
+
+    def move(self, speed: int, direction: int) -> None:
         """
         Move the robot forward or backward with steering based on the current angle.
 
@@ -334,10 +218,10 @@ class PicarxAdapter(metaclass=SingletonMeta):
             power_scale,
         )
 
-        self.set_motor_speed(1, speed1)
-        self.set_motor_speed(2, speed2)
+        self.motor_adapter.set_speed(1, speed1)
+        self.motor_adapter.set_speed(2, speed2)
 
-    def forward(self, speed: int):
+    def forward(self, speed: int) -> None:
         """
         Move the robot forward with steering based on the current angle.
 
@@ -347,7 +231,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.logger.debug("Forward: 100/%s", speed)
         self.move(speed, direction=1)
 
-    def backward(self, speed: int):
+    def backward(self, speed: int) -> None:
         """
         Move the robot backward with steering based on the current angle.
 
@@ -357,7 +241,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.logger.debug("Backward: 100/%s", speed)
         self.move(speed, direction=-1)
 
-    async def stop(self):
+    def stop(self) -> None:
         """
         Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a short delay between attempts.
 
@@ -372,20 +256,9 @@ class PicarxAdapter(metaclass=SingletonMeta):
         3. Set both motors' speed to 0% pulse width again.
         4. Wait an additional 2 milliseconds for any remaining process to finalize.
         """
-        self.logger.debug("Stopping motors")
-        self.motor_speed_pins[0].pulse_width_percent(0)
-        self.motor_speed_pins[1].pulse_width_percent(0)
+        return self.motor_adapter.stop()
 
-        await asyncio.sleep(0.002)
-
-        self.motor_speed_pins[0].pulse_width_percent(0)
-        self.motor_speed_pins[1].pulse_width_percent(0)
-
-        await asyncio.sleep(0.002)
-
-        self.logger.debug("Motors Stopped")
-
-    async def get_distance(self):
+    async def get_distance(self) -> Union[float, int]:
         """
         Attempt to read the distance measurement.
 
@@ -394,25 +267,44 @@ class PicarxAdapter(metaclass=SingletonMeta):
         """
         return await asyncio.to_thread(self.ultrasonic.read)
 
-    def set_grayscale_reference(self, value):
-        if not isinstance(value, list) or len(value) != 3:
-            raise ValueError(
-                f"Expected a list of 3 elements for line reference, got {value}"
-            )
-        self.line_reference = value
-        self.grayscale.reference(self.line_reference)
-        self.config_file.set("line_reference", str(self.line_reference))
+    def set_grayscale_reference(self, value: List[int]) -> None:
+        """
+        Sets and save the reference values for the grayscale sensors.
+        """
+        self.grayscale.reference = value
+        self.line_reference = self.grayscale.reference
+        self.config.set("line_reference", str(self.line_reference))
 
-    def get_grayscale_data(self):
-        return list.copy(self.grayscale.read())
+    def get_grayscale_data(self) -> List[int]:
+        """
+        Reads grayscale intensity values from all three channels.
 
-    def get_line_status(self, gm_val_list):
+        Returns:
+            A list of grayscale intensity values for all channels.
+        """
+        return self.grayscale.read_all()
+
+    def get_line_status(self, gm_val_list: Optional[List[int]] = None) -> List[int]:
+        """
+        Reads the status of the lines based on current reference values. Status is
+        calculated as 0 for white and 1 for black.
+
+        Args:
+            datas: List of grayscale data to process. If not provided, grayscale data is read directly from the sensors.
+
+        Returns:
+            A list of statuses for each channel, where 0 represents white
+            and 1 represents black.
+
+        Raises:
+            ValueError: If the reference values are not set.
+        """
         return self.grayscale.read_status(gm_val_list)
 
-    def set_line_reference(self, value):
+    def set_line_reference(self, value: List[int]):
         self.set_grayscale_reference(value)
 
-    def get_cliff_status(self, gm_val_list) -> bool:
+    def get_cliff_status(self, gm_val_list: List[int]) -> bool:
         """
         Checks the cliff status based on the grayscale module values.
 
@@ -430,9 +322,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
                         return True
         return False
 
-    def set_cliff_reference(self, value):
+    def set_cliff_reference(self, value: List[int]) -> None:
+        """
+        Sets the reference values for detecting cliffs based on grayscale sensor readings.
+        """
         if isinstance(value, list) and len(value) == 3:
             self.cliff_reference = value
-            self.config_file.set("cliff_reference", str(self.cliff_reference))
+            self.config.set("cliff_reference", str(self.cliff_reference))
         else:
             raise ValueError("cliff reference must be a 1*3 list")
