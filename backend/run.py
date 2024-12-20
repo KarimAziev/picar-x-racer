@@ -42,7 +42,6 @@ def main():
     websocket_app_process = mp.Process(
         target=start_control_app,
         args=(px_control_app_port, px_log_level),
-        daemon=True,
         name="px_control_server",
     )
 
