@@ -85,6 +85,7 @@ class FileService(metaclass=SingletonMeta):
         self.last_modified_time = None
         self.current_settings_file = None
         self.settings: Dict[str, Any] = self.load_settings()
+        self.list_all_music_with_details()
 
     def load_music_cache(self) -> Dict[str, Any]:
         """Load cached audio file data from a persistent file."""
