@@ -552,6 +552,7 @@ class Pidog(metaclass=SingletonMeta):
         self.legs_speed = speed
         with self.legs_thread_lock:
             self.legs_action_buffer += target_angles
+            logger.info(f"legs_move {self.legs_action_buffer}")
 
     def head_rpy_to_angle(self, target_yrp: List[int], roll_comp=0, pitch_comp=0):
         yaw, roll, pitch = target_yrp
