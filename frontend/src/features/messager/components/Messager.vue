@@ -9,6 +9,7 @@ import Messages from "@/features/messager/components/MessageListContainer.vue";
 <style scoped lang="scss">
 .message-wrapper {
   position: absolute;
+  padding: 0 10px;
   top: 0;
   left: 0;
   overflow-y: scroll;

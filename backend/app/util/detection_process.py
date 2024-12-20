@@ -1,7 +1,9 @@
 import queue
+import sys
 import time
 from typing import TYPE_CHECKING
 
+from app.exceptions.detection import DetectionDimensionMismatch
 from app.util.logger import Logger
 from app.util.model_manager import ModelManager
 from app.util.object_detection import perform_detection
@@ -12,6 +14,8 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
 logger = Logger(name=__name__)
+
+verbose_enabled = sys.stdout.isatty()
 
 
 def detection_process_func(
@@ -76,7 +80,7 @@ def detection_process_func(
                     continue
 
                 curr_time = time.time()
-                verbose = curr_time - prev_time >= 5
+                verbose = verbose_enabled and curr_time - prev_time >= 5
 
                 try:
                     detection_result = perform_detection(
@@ -91,6 +95,9 @@ def detection_process_func(
                         should_resize=frame_data["should_resize"],
                         labels_to_detect=labels,
                     )
+                except DetectionDimensionMismatch as e:
+                    put_to_queue(out_queue, {"error": str(e)})
+                    break
                 except Exception as e:
                     logger.error("Exception in detection process", exc_info=True)
                     put_to_queue(out_queue, {"error": str(e)})
@@ -106,7 +113,8 @@ def detection_process_func(
                     prev_time = time.time()
 
                 put_to_queue(detection_queue, detection_result_with_timestamp)
-
+        except BrokenPipeError:
+            logger.warning("Detection process received BrokenPipeError, exiting.")
         except KeyboardInterrupt:
             logger.warning("Detection process received KeyboardInterrupt, exiting.")
         finally:

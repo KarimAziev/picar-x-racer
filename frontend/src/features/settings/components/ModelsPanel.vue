@@ -54,7 +54,6 @@
             placeholder="Image size"
             label="Image size"
             filter
-            simple-options
             v-tooltip="'The image size for the detection process'"
             :loading="loading"
             @update:model-value="updateDebounced"

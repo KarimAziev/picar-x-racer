@@ -24,6 +24,7 @@ import { useMusicStore } from "@/features/music";
 import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
+import { useAppSyncStore } from "@/features/syncer";
 
 export const ACCELERATION = 10;
 export const CAM_PAN_MIN = -90;
@@ -218,19 +219,9 @@ export const useControllerStore = defineStore("controller", {
     },
 
     cleanup() {
-      if (this.speed !== 0) {
+      const syncStore = useAppSyncStore();
+      if (syncStore.active_connections <= 1 && this.speed !== 0) {
         this.stop();
-      }
-
-      if (this.servoAngle !== 0) {
-        this.resetDirServoAngle();
-      }
-
-      if (this.camPan !== 0) {
-        this.resetCamPan();
-      }
-      if (this.camTilt !== 0) {
-        this.resetCamTilt();
       }
 
       this.model?.cleanup();
@@ -240,6 +231,30 @@ export const useControllerStore = defineStore("controller", {
     sendMessage(message: any): void {
       this.model?.send(message);
     },
+
+    resetAll() {
+      const settingsStore = useSettingsStore();
+
+      const actionValueLists = [
+        [
+          settingsStore.data.robot.auto_measure_distance_mode,
+          false,
+          this.toggleAutoMeasureDistanceMode,
+        ],
+        [this.avoidObstacles, false, this.toggleAvoidObstaclesMode],
+        [this.speed, 0, this.stop],
+        [this.servoAngle, 0, this.resetDirServoAngle],
+        [this.camPan, 0, this.resetCamPan],
+        [this.camTilt, 0, this.resetCamTilt],
+      ] as const;
+
+      actionValueLists.forEach(([value, requiredValue, action]) => {
+        if (value !== requiredValue) {
+          action();
+        }
+      });
+    },
+
     // command workers
     setMaxSpeed(value: number) {
       const newValue = constrain(MIN_SPEED, MAX_SPEED, value);

@@ -143,6 +143,12 @@ class General(BaseModel):
         examples=[True, False],
     )
 
+    show_shutdown_reboot_button: Optional[bool] = Field(
+        None,
+        description="Toggles the display of the shutdown and reboot control buttons.",
+        examples=[True, False],
+    )
+
 
 class RobotSettings(BaseModel):
     """

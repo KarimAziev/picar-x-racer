@@ -60,6 +60,7 @@ export const defaultState: State = {
       show_audio_stream_button: true,
       show_photo_capture_button: true,
       show_video_record_button: true,
+      show_shutdown_reboot_button: true,
     },
     keybindings: {},
 

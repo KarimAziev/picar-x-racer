@@ -73,12 +73,8 @@ watch(
         return drawOverlay(overlayCanvas.value, imgRef.value, []);
       }
       const timeDiff = frameTimeStamp - detectionTimeStamp;
-
       const handler = overlayStyleHandlers[detectionStore.data.overlay_style];
-      if (
-        timeDiff >= 0 &&
-        timeDiff <= detectionStore.data.overlay_draw_threshold
-      ) {
+      if (timeDiff <= detectionStore.data.overlay_draw_threshold) {
         handler(overlayCanvas.value, imgRef.value, newResults);
       } else {
         handler(overlayCanvas.value, imgRef.value, []);

@@ -13,15 +13,31 @@ def clear_queue(qitem: Optional[Union[Queue, "mp.Queue"]]):
     if qitem is None:
         return None
     messages = []
-    while qitem and not qitem.empty():
-        try:
-            msg = qitem.get_nowait()
-            messages.append(msg)
-        except Empty:
-            pass
-        except BrokenPipeError:
-            logger.log_exception("Get from qitem failed")
-            return None
+    try:
+        while qitem and not qitem.empty():
+            try:
+                msg = qitem.get_nowait()
+                messages.append(msg)
+            except Empty:
+                pass
+            except (
+                ConnectionError,
+                ConnectionRefusedError,
+                BrokenPipeError,
+                EOFError,
+                ConnectionResetError,
+            ) as e:
+                logger.warning(f"Error while clearing queue: {e}")
+                messages = []
+                break
+    except (
+        ConnectionError,
+        ConnectionRefusedError,
+        BrokenPipeError,
+        EOFError,
+        ConnectionResetError,
+    ) as e:
+        logger.error(f"Failed to clear queue: {e}")
     return messages
 
 
@@ -49,8 +65,14 @@ def put_to_queue(
             return item
     except Full:
         pass
-    except BrokenPipeError:
-        logger.log_exception("Put to qitem failed")
+    except (
+        ConnectionError,
+        ConnectionRefusedError,
+        BrokenPipeError,
+        EOFError,
+        ConnectionResetError,
+    ) as e:
+        logger.error("Put to qitem failed %s", e)
 
 
 def clear_and_put(

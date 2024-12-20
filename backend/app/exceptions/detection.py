@@ -8,3 +8,9 @@ class DetectionProcessError(Exception):
     """Exception raised during detection process."""
 
     pass
+
+
+class DetectionDimensionMismatch(Exception):
+    """Exception raised during dimension mismatch in detection process."""
+
+    pass

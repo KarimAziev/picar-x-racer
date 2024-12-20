@@ -1,6 +1,12 @@
 <template>
-  <div class="distance" v-if="isLoaded">
-    <button @click="handleToggle" class="btn">{{ distanceLabel }}:</button>
+  <div class="flex jc-between distance" v-if="isLoaded">
+    <button
+      v-tooltip="'Click to toggle auto distance measure'"
+      @click="handleToggle"
+      class="btn bold"
+    >
+      {{ distanceLabel }}:
+    </button>
     &nbsp;
     <samp>{{ distance }}</samp>
   </div>
@@ -47,7 +53,7 @@ const handleToggle = () => {
 };
 
 const distanceLabel = computed(() =>
-  isAutoMeasureMode.value ? "AUTO DISTANCE ON" : "AUTO DISTANCE OFF",
+  isAutoMeasureMode.value ? "DISTANCE ON" : "DISTANCE OFF",
 );
 
 onMounted(fetchAndScheduleNext);

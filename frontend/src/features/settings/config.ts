@@ -75,6 +75,11 @@ export const generalSwitchSettings: {
     label: "Video Record Button",
     description: "Toggle the display of the video record icon button.",
   },
+  show_shutdown_reboot_button: {
+    label: "Power Off Button",
+    description:
+      "Toggles the display of the shutdown and reboot control buttons.",
+  },
 } as const;
 
 export const ttsLanguages = [
@@ -164,7 +169,10 @@ export const saveableTabs = {
   [SettingsTab.MODELS]: true,
 };
 
-export const imgSizeOptions = generateMultiplesOf32(2000);
+export const imgSizeOptions = generateMultiplesOf32(2000).map((value) => ({
+  value,
+  label: `${value}`,
+}));
 export const overlayStyleOptions = Object.values(OverlayStyle).map((value) => ({
   value,
   label: startCase(value),

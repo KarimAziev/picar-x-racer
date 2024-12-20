@@ -1,19 +1,15 @@
 <template>
-  <div class="wrapper">
-    <div class="content">
-      <VideoBox />
-      <GaugesBlock class="gauges">
-        <ToggleableView setting="general.robot_3d_view" v-if="!isMobile">
-          <CarModelViewer
-            class="car-model"
-            :zoom="4"
-            :rotationY="20"
-            :rotationX="0"
-          />
-        </ToggleableView>
-      </GaugesBlock>
-    </div>
-  </div>
+  <VideoBox />
+  <GaugesBlock class="gauges">
+    <ToggleableView setting="general.robot_3d_view" v-if="!isMobile">
+      <CarModelViewer
+        class="car-model"
+        :zoom="4"
+        :rotationY="20"
+        :rotationX="0"
+      />
+    </ToggleableView>
+  </GaugesBlock>
 </template>
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
@@ -36,22 +32,8 @@ const VideoBox = defineAsyncComponent({
 </script>
 
 <style scoped lang="scss">
-.wrapper {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-}
-
-.content {
-  flex: auto;
-}
-
 .car-model {
-  width: 100%;
-  position: fixed;
-  top: -5%;
-  left: 40%;
+  position: absolute;
+  top: -90%;
 }
 </style>

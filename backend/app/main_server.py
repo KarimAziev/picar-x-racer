@@ -1,10 +1,4 @@
-import logging.config
 import os
-
-from app.config.log_config import LOGGING_CONFIG
-
-logging.config.dictConfig(LOGGING_CONFIG)
-
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -145,13 +139,13 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        logger.info("Stopping 🚗 application")
+        logger.info(f"Stopping 🚗 {app.title} application")
         await battery_manager.cleanup_connection_manager()
         await detection_manager.cleanup()
         await music_manager.cleanup()
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
-        logger.info("Application 🚗 stopped")
+        logger.info(f"Application 🚗 {app.title} stopped")
 
 
 app = FastAPI(

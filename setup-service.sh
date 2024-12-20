@@ -1,7 +1,7 @@
 #!/bin/bash
 # Setup or Uninstall Picar-X Racer as a systemd service.
 # Usage:
-# - To setup the service on boot: sudo ./setup-service.sh setup
+# - To install the service on boot: sudo ./setup-service.sh install
 # - To uninstall the service: sudo ./setup-service.sh uninstall
 # - To display this help: ./setup-service.sh help
 
@@ -10,7 +10,7 @@ USER=$(logname)
 GROUP=$(id -g "$USER")
 USER_ID=$(id -u "$USER")
 PROJECT_DIR=$(pwd)
-LOG_DIR="/var/log/picar_x_racer"
+LOG_DIR="/home/$USER/.cache/picar-x-racer/logs"
 PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
 BACKEND_SCRIPT="$PROJECT_DIR/backend/run.py"
 
@@ -18,20 +18,20 @@ print_help() {
   echo "Usage: sudo ./setup-service.sh [command]"
   echo ""
   echo "Commands:"
-  echo "  setup      Set up the Picar-X Racer systemd service to start on boot."
+  echo "  install    Set up the Picar-X Racer systemd service to start on boot."
   echo "  uninstall  Uninstall the Picar-X Racer systemd service."
   echo "  help       Display this help message."
   echo ""
   echo "Examples:"
-  echo "  sudo ./setup-service.sh setup"
+  echo "  sudo ./setup-service.sh install"
   echo "  sudo ./setup-service.sh uninstall"
   echo "  ./setup-service.sh help"
 }
 
 print_command_help() {
   case "$1" in
-    setup)
-      echo "Usage: sudo ./setup-service.sh setup"
+    install)
+      echo "Usage: sudo ./setup-service.sh install"
       echo "Set up the Picar-X Racer systemd service to start on boot."
       ;;
     uninstall)
@@ -76,11 +76,19 @@ case "$COMMAND" in
     sudo rm -f "/etc/systemd/system/$SERVICE_NAME"
     sudo systemctl daemon-reload
     sudo systemctl reset-failed
-    echo "$SERVICE_NAME has been uninstalled."
+
+    if [[ -d "$LOG_DIR" ]]; then
+      echo "Removing log directory at $LOG_DIR..."
+      sudo rm -rf "$LOG_DIR"
+    else
+      echo "Log directory $LOG_DIR not found. Skipping..."
+    fi
+
+    echo "$SERVICE_NAME has been uninstalled successfully."
     exit 0
     ;;
 
-  setup)
+  install)
     echo "Setting up the Picar-X Racer systemd service..."
 
     if [[ ! -f "Makefile" ]]; then
@@ -98,12 +106,16 @@ case "$COMMAND" in
     if [[ ! -d "$LOG_DIR" ]]; then
       echo "Creating log directory at $LOG_DIR..."
       sudo mkdir -p "$LOG_DIR"
+      sudo chown -R "$USER:$USER" "$LOG_DIR"
     fi
 
     echo "Setting up log files in $LOG_DIR..."
-    sudo touch "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
-    sudo chmod 640 "$LOG_DIR/picar_x_racer.log" "$LOG_DIR/picar_x_racer_error.log"
-    sudo chown -R "$USER:adm" "$LOG_DIR"
+    touch "$LOG_DIR/app.log" "$LOG_DIR/error.log"
+
+    echo "Setting permissions for $LOG_DIR..."
+    sudo chown -R "$USER:$USER" "$LOG_DIR"
+    chmod 640 "$LOG_DIR/app.log" "$LOG_DIR/error.log"
+    chmod -R u+rwX "$LOG_DIR"
 
     if [[ -f "/etc/systemd/system/$SERVICE_NAME" ]]; then
       read -rp "Service $SERVICE_NAME already exists. Do you want to overwrite it? [y/N]: " confirm
@@ -134,10 +146,11 @@ Environment=DISPLAY=:0
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_ID/bus
 Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
+Environment=PX_LOG_DIR=$LOG_DIR
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always
-StandardOutput=append:$LOG_DIR/picar_x_racer.log
-StandardError=append:$LOG_DIR/picar_x_racer_error.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -156,7 +169,7 @@ EOL
     echo "Starting $SERVICE_NAME..."
     if sudo systemctl start "$SERVICE_NAME"; then
       echo "$SERVICE_NAME has started successfully!"
-      echo "Logs can be found at: $LOG_DIR/picar_x_racer.log"
+      echo "Logs can be found at: $LOG_DIR"
     else
       echo "Error: $SERVICE_NAME failed to start."
       echo "Run 'sudo journalctl -xe -u $SERVICE_NAME' for detailed logs."

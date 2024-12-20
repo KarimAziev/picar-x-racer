@@ -26,19 +26,19 @@
       />
       <Button
         class="opacity-hover"
-        @click="sayText"
+        @click="handleKeyEnter"
         :disabled="!inputRef || inputRef.length === 0"
         icon="pi pi-play-circle"
         text
         aria-label="Speak"
-        v-tooltip="'Speak'"
+        v-tooltip="tooltipButtonText"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import TextInput from "primevue/inputtext";
 import { useSettingsStore } from "@/features/settings/stores";
 
@@ -50,10 +50,17 @@ import { useInputHistory } from "@/composables/useInputHistory";
 defineProps<{ class?: string }>();
 
 const store = useSettingsStore();
-
 const language = ref(store.data.tts.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
+
+const isEnabled = computed(
+  () => inputRef.value && !!inputRef.value.trim().length,
+);
+
+const tooltipButtonText = computed(() =>
+  isEnabled.value ? "Click to speak the text" : "Type a text to speak",
+);
 
 const handleSelectBeforeShow = () => {
   store.inhibitKeyHandling = true;
@@ -63,12 +70,6 @@ const handleSelectBeforeHide = () => {
   store.inhibitKeyHandling = false;
 };
 
-const sayText = async () => {
-  const value = inputRef.value;
-  if (value && value.length) {
-    await store.speakText(value, language.value);
-  }
-};
 const handleKeyEnter = async () => {
   const value = inputRef.value;
   if (value && value.length > 0) {

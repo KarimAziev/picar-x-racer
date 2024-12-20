@@ -1,6 +1,7 @@
 import asyncio
 import multiprocessing as mp
 import queue
+import re
 import time
 from typing import TYPE_CHECKING, Optional
 
@@ -49,6 +50,7 @@ class DetectionService(metaclass=SingletonMeta):
         self.detection_result = None
         self.detection_process_task: Optional[asyncio.Task] = None
         self.loading = False
+        self.shutting_down = False
 
     async def update_detection_settings(
         self, settings: DetectionSettings
@@ -203,6 +205,7 @@ class DetectionService(metaclass=SingletonMeta):
             - Cleans up shared resources like queues and resets state.
         """
         async with self.lock:
+            self.shutting_down = True
             if self.detection_process is None:
                 self.logger.info("Detection process is None, skipping stop")
             else:
@@ -225,6 +228,7 @@ class DetectionService(metaclass=SingletonMeta):
             self.logger.info("Stop event cleared")
 
             self.detection_result = None
+            self.shutting_down = False
 
             if self.detection_process:
                 self.detection_process = None
@@ -254,12 +258,55 @@ class DetectionService(metaclass=SingletonMeta):
                 except queue.Empty:
                     pass
                 await asyncio.sleep(0.5)
-        except DetectionProcessError as e:
+        except (
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+            ConnectionError,
+            ConnectionRefusedError,
+        ):
             self.detection_settings.active = False
-            await self.connection_manager.broadcast_json(
-                {"type": "detection", "payload": self.detection_settings.model_dump()}
-            )
-            await self.connection_manager.error(f"Detection process error: {e}")
+        except DetectionProcessError as e:
+            # handling "Cannot set tensor: Dimension mismatch. Got 320 but expected 256 for dimension 1 of input 0."
+            pattern = r"Dimension mismatch\. Got (\d+) but expected (\d+)"
+            error_message = str(e)
+            match = re.search(pattern, error_message)
+            got = int(match.group(1)) if match else None
+            expected = int(match.group(2)) if match else None
+            if (
+                match
+                and got
+                and expected
+                and self.detection_settings.img_size == got
+                and self.detection_settings.img_size != expected
+            ):
+                next_settings = {
+                    **self.detection_settings.model_dump(),
+                    "img_size": expected,
+                }
+
+                await self.connection_manager.error(
+                    f"{e}. Trying to adjust size to {expected}"
+                )
+
+                await self.connection_manager.broadcast_json(
+                    {
+                        "type": "detection",
+                        "payload": next_settings,
+                    }
+                )
+
+                await self.update_detection_settings(DetectionSettings(**next_settings))
+
+            else:
+                self.detection_settings.active = False
+                await self.connection_manager.broadcast_json(
+                    {
+                        "type": "detection",
+                        "payload": self.detection_settings.model_dump(),
+                    }
+                )
+                await self.connection_manager.error(f"Detection process error: {e}")
 
     async def cancel_detection_process_task(self) -> None:
         """
@@ -300,6 +347,8 @@ class DetectionService(metaclass=SingletonMeta):
 
     def put_frame(self, frame_data) -> None:
         """Puts the frame data into the frame queue after clearing it."""
+        if self.shutting_down:
+            return None
         return clear_and_put(self.frame_queue, frame_data)
 
     def put_command(self, command_data) -> None:
@@ -339,6 +388,7 @@ class DetectionService(metaclass=SingletonMeta):
             - Shuts down the multiprocessing manager.
             - Deletes class properties associated with multiprocessing and async state.
         """
+        self.shutting_down = True
         await self.cancel_detection_process_task()
         await self.stop_detection_process()
 
@@ -367,11 +417,24 @@ class DetectionService(metaclass=SingletonMeta):
         Returns:
             dict or None: The detection result, or `None` if no result is available.
         """
+        if self.shutting_down:
+            self.logger.warning(
+                "Attempted to get detection while service is shutting down."
+            )
+            return None
         if self.stop_event.is_set():
             return None
         try:
             self.detection_result = self.detection_queue.get(timeout=1)
         except queue.Empty:
+            self.detection_result = None
+        except (
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+            ConnectionError,
+            ConnectionRefusedError,
+        ):
             self.detection_result = None
 
         return self.detection_result

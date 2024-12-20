@@ -400,6 +400,14 @@ class CameraService(metaclass=SingletonMeta):
 
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
+        except (
+            ConnectionResetError,
+            BrokenPipeError,
+            EOFError,
+            ConnectionError,
+            ConnectionRefusedError,
+        ) as e:
+            self.logger.warning("Stopped camera loop due to %s", e)
         except Exception:
             self.logger.error(
                 "Unhandled exception occurred in camera loop", exc_info=True

@@ -1,40 +1,29 @@
 <template>
   <Button
-    @click="confirmRestart($event)"
-    label="Restart"
+    @click="handleConfirm($event)"
+    label="Reboot"
     severity="danger"
     outlined
+    v-tooltip="
+      'This will restart the entire operating system and may interrupt any ongoing operations.'
+    "
   ></Button>
   <ConfirmPopup></ConfirmPopup>
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "@/features/settings/stores";
-
-import { useConfirm } from "primevue/useconfirm";
 import ConfirmPopup from "primevue/confirmpopup";
+import { useSettingsStore } from "@/features/settings/stores";
+import { useShutdownHandler } from "@/features/settings/composables/useShutdownHandler";
 
-const confirmDialog = useConfirm();
-const store = useSettingsStore();
+const settingsStore = useSettingsStore();
 
-const confirmRestart = (event: MouseEvent) => {
-  confirmDialog.require({
-    target: event.currentTarget as HTMLElement,
-    message: "Do you really want to restart the whole OS?",
-    icon: "pi pi-exclamation-triangle",
-    rejectProps: {
-      label: "Cancel",
-      severity: "secondary",
-      outlined: true,
-    },
-    acceptProps: {
-      label: "Restart now",
-      severity: "danger",
-    },
-    accept: async () => {
-      await store.restart();
-    },
-    reject: () => {},
-  });
-};
+const { handleConfirm } = useShutdownHandler({
+  message:
+    "Are you sure you want to restart the system? This will interrupt any ongoing operations.",
+  onAccept: settingsStore.restart,
+  acceptProps: {
+    label: "Reboot Now",
+  },
+});
 </script>

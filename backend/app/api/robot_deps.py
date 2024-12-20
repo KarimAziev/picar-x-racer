@@ -13,7 +13,7 @@ logger = Logger(__name__)
 
 @lru_cache()
 def get_connection_manager() -> ConnectionService:
-    return ConnectionService(app_name="px-control")
+    return ConnectionService(app_name="px_robot")
 
 
 def get_picarx_adapter() -> PicarxAdapter:

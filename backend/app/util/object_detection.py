@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
+from app.exceptions.detection import DetectionDimensionMismatch
 from app.util.logger import Logger
 from app.util.video_utils import resize_to_fixed_height
 
@@ -61,13 +62,21 @@ def perform_detection(
         else (frame, original_width, original_height, resized_width, resized_height)
     )
 
-    results = yolo_model.predict(
-        source=resized_frame,
-        verbose=verbose,
-        conf=confidence_threshold,
-        task="detect",
-        imgsz=resized_height,
-    )[0]
+    try:
+        results = yolo_model.predict(
+            source=resized_frame,
+            verbose=verbose,
+            conf=confidence_threshold,
+            task="detect",
+            imgsz=resized_height,
+        )[0]
+    except ValueError as e:
+        error_message = str(e)
+        if "Dimension mismatch" in error_message:
+            logger.error(error_message)
+            raise DetectionDimensionMismatch(error_message)
+        else:
+            raise
 
     scale_x = original_width / resized_width
     scale_y = original_height / resized_height

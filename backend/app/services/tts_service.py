@@ -1,15 +1,13 @@
 from app.exceptions.tts import TextToSpeechException
-from app.adapters.google_speech import Speech
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+from google_speech_pyplay import Speech
 
 
 class TTSService(metaclass=SingletonMeta):
     """
     The TTSService class provides methods for text-to-speech functionality,
     using Google Translate TTS (Text To Speech) API.
-
-    In order to use the `sox` and `libsox-fmt-mp3` must be installed.
     """
 
     def __init__(self):
