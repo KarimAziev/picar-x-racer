@@ -1,5 +1,4 @@
 import logging
-import multiprocessing as mp
 import os
 import threading
 from math import acos, atan, atan2, cos, pi, sin, sqrt
@@ -9,9 +8,7 @@ from typing import List, Optional, Union
 
 import numpy as np
 from app.config.paths import DEFAULT_SOUNDS_DIR, PX_CALIBRATION_FILE
-from robot_hat import Battery, Music, Pin, Robot, Ultrasonic
-from robot_hat.pin import Pin
-from robot_hat.robot import Robot
+from robot_hat import Battery, Music, Robot
 
 from .dual_touch import DualTouch
 from .rgb_strip import RGBStrip
@@ -219,9 +216,9 @@ class Pidog:
             self.imu_fail_count = 0
             # add imu thread
             self.thread_list.append("imu")
-            logger.info("done")
-        except OSError:
-            logger.error("fail")
+            logger.info("imu done")
+        except OSError as e:
+            logger.error("imu fail %s", e)
 
         try:
             logger.info("rgb_strip init ... ")
@@ -231,44 +228,42 @@ class Pidog:
             self.rgb_fail_count = 0
             # add rgb thread
             self.thread_list.append("rgb")
-            logger.info("done")
-        except OSError:
-            logger.error("fail")
+            logger.info("rgb_strip done")
+        except OSError as e:
+            logger.error("rgb_strip fail %s", e)
 
         try:
             logger.info("dual_touch init ... ")
             self.dual_touch = DualTouch('D2', 'D3')
             self.touch = 'N'
-            logger.info("done")
-        except:
-            logger.error("fail")
+            logger.info("dual_touch done")
+        except Exception as e:
+            logger.error("dual_touch fail %s", e)
 
         try:
             logger.info("sound_direction init ... ")
             self.ears = SoundDirection()
             # self.sound_direction = -1
-            logger.info("done")
-        except:
-            logger.error("fail")
+            logger.info("sound_direction done")
+        except Exception as e:
+            logger.error("sound_direction fail %s", e)
 
         try:
             logger.info("sound_effect init ... ")
             self.music = Music()
             logger.info("done")
-        except:
-            logger.error("fail")
+        except Exception as e:
+            logger.error("sound_effect fail %s", e)
 
-        self.distance = mp.Value('f', -1.0)
+        self.distance: Union[float, int] = -1
 
         self.sensory_process = None
-        self.sensory_lock = mp.Lock()
 
         self.exit_flag = False
         self.action_threads_start()
-        self.sensory_process_start()
 
     def read_distance(self):
-        return round(self.distance.value, 2)
+        return round(self.distance, 2)
 
     # action related: legs,head,tail,imu,rgb_strip
     def close_all_thread(self):
@@ -595,54 +590,6 @@ class Pidog:
         with self.tail_thread_lock:
             self.tail_action_buffer += target_angles
 
-    # ultrasonic
-    def _ultrasonic_thread(self, distance_addr, lock):
-        while True:
-            try:
-                with lock:
-                    val = round(float(self.ultrasonic.read()), 2)
-                    distance_addr.value = val
-                sleep(0.01)
-            except Exception:
-                logger.error('ultrasonic_thread  except', exc_info=True)
-                sleep(0.1)
-                break
-
-    # sensory_process : ultrasonic
-    def sensory_process_work(self, distance_addr, lock):
-        try:
-            logger.info("ultrasonic init ... ")
-            echo = Pin('D0')
-            trig = Pin('D1')
-            self.ultrasonic = Ultrasonic(trig, echo, timeout=0.017)
-            # add ultrasonic thread
-            self.thread_list.append("ultrasonic")
-            logger.info("done")
-        except Exception as e:
-            logger.error("fail")
-            raise ValueError(e)
-
-        if 'ultrasonic' in self.thread_list:
-            ultrasonic_thread = threading.Thread(
-                name='ultrasonic_thread',
-                target=self._ultrasonic_thread,
-                args=(
-                    distance_addr,
-                    lock,
-                ),
-            )
-            # ultrasonic_thread.daemon = True
-            ultrasonic_thread.start()
-
-    def sensory_process_start(self):
-        if self.sensory_process != None:
-            self.sensory_process.terminate()
-        self.sensory_process = mp.Process(
-            name='sensory_process',
-            target=self.sensory_process_work,
-            args=(self.distance, self.sensory_lock),
-        )
-        self.sensory_process.start()
 
     # reset: stop, stop_and_lie
     def stop_and_lie(self, speed=85):
