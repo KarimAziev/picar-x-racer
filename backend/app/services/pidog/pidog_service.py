@@ -33,6 +33,7 @@ class PidogService(metaclass=SingletonMeta):
         self.settings: Dict[str, Any] = load_json_file(self.settings_file)
         self.speed = 0
         self.max_speed: int = self.settings.get("max_speed", 90)
+        self.direction = 0
         self.servo_dir_angle = 0
         self.cam_pan_angle = 0
         self.cam_tilt_angle = 0
