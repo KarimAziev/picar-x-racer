@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 
 import numpy as np
 from app.config.paths import DEFAULT_SOUNDS_DIR, PX_CALIBRATION_FILE
+from app.util.singleton_meta import SingletonMeta
 from robot_hat import Battery, Music, Robot
 
 from .dual_touch import DualTouch
@@ -60,7 +61,7 @@ else:
         return np.matrix(data)
 
 
-class Pidog:
+class Pidog(metaclass=SingletonMeta):
 
     # structure constants
     LEG = 42
@@ -589,7 +590,6 @@ class Pidog:
         self.tail_speed = speed
         with self.tail_thread_lock:
             self.tail_action_buffer += target_angles
-
 
     # reset: stop, stop_and_lie
     def stop_and_lie(self, speed=85):
