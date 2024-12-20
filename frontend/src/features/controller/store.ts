@@ -33,8 +33,8 @@ export const CAM_TILT_MIN = -45;
 export const CAM_TILT_MAX = 30;
 export const SERVO_DIR_ANGLE_MIN = -30;
 export const SERVO_DIR_ANGLE_MAX = 30;
-export const MIN_SPEED = 40;
-export const MAX_SPEED = 300;
+export const MIN_SPEED = 100;
+export const MAX_SPEED = 420;
 
 export interface Modes {
   /**
