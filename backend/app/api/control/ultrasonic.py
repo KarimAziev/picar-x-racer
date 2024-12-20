@@ -5,7 +5,7 @@ from app.schemas.distance import DistanceData
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends
 
-logger = Logger(name=__name__, app_name="px-control")
+logger = Logger(name=__name__, app_name="px_robot")
 
 ultrasonic_router = APIRouter()
 

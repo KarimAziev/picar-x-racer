@@ -7,7 +7,7 @@ from app.util.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-logger = Logger(name=__name__, app_name="px-control")
+logger = Logger(name=__name__, app_name="px_robot")
 
 car_manager_router = APIRouter()
 
