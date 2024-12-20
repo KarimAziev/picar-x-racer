@@ -1,5 +1,6 @@
 numpy==1.26.4
 git+https://github.com/KarimAziev/robot-hat.git@main#egg=robot_hat
+git+https://github.com/KarimAziev/google_speech_pyplay.git@main#egg=google_speech_pyplay
 pandas
 pygame
 colorlog
@@ -16,7 +17,4 @@ pyudev
 watchdog
 python-dotenv
 sounddevice
-appdirs>=1.4.0
-requests>=2.6.0
-web_cache>=1.1.0
 dbus-python
