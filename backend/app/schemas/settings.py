@@ -149,6 +149,12 @@ class General(BaseModel):
         examples=[True, False],
     )
 
+    show_fullscreen_button: Optional[bool] = Field(
+        None,
+        description="Toggles the display of the request full screen button.",
+        examples=[True, False],
+    )
+
 
 class RobotSettings(BaseModel):
     """
