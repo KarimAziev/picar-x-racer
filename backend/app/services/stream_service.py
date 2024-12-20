@@ -9,6 +9,7 @@ from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
     from app.services.camera_service import CameraService
+    from app.services.connection_service import ConnectionService
 
 
 class StreamService(metaclass=SingletonMeta):
@@ -71,7 +72,9 @@ class StreamService(metaclass=SingletonMeta):
 
             await asyncio.sleep(0)
 
-    async def video_stream(self, websocket: WebSocket):
+    async def video_stream(
+        self, websocket: WebSocket, connection_service: "ConnectionService"
+    ):
         """
         Handles an incoming WebSocket connection for video streaming.
 
@@ -93,9 +96,9 @@ class StreamService(metaclass=SingletonMeta):
             await self.camera_service.start_camera_and_wait_for_stream_img()
             await self.generate_video_stream_for_websocket(websocket)
         except (CameraDeviceError, CameraNotFoundError) as e:
-            self.logger.error("Error starting camera %s", e, exc_info=True)
-            if websocket.application_state == WebSocketState.CONNECTED:
-                await websocket.close()
+            self.logger.error("Error starting camera %s", e)
+            await connection_service.error(str(e))
+
         except WebSocketDisconnect:
             self.logger.info(f"WebSocket Disconnected {websocket.client}")
         except asyncio.CancelledError:
