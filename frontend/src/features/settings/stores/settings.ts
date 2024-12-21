@@ -62,6 +62,7 @@ export const defaultState: State = {
       show_video_record_button: true,
       show_shutdown_reboot_button: true,
       show_fullscreen_button: true,
+      show_avoid_obstacles_button: true,
     },
     keybindings: {},
 
