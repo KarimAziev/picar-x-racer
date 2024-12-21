@@ -1,7 +1,7 @@
 import logging
 import os
 from logging.config import dictConfig
-from typing import Optional
+from typing import Optional, Union
 
 
 class Logger:
@@ -100,8 +100,14 @@ class Logger:
     def warning(self, message: str, *args, **kwargs):
         self.logger.warning(message, *args, **kwargs)
 
-    def error(self, message: str, *args, **kwargs):
-        self.logger.error(message, *args, **kwargs)
+    def error(
+        self,
+        message: str,
+        *args,
+        exc_info: Optional[Union[bool, BaseException]] = None,
+        **kwargs,
+    ):
+        self.logger.error(message, *args, exc_info=exc_info, **kwargs)
 
     def exception(self, message: str, *args, **kwargs):
         self.logger.exception(message, *args, **kwargs)
