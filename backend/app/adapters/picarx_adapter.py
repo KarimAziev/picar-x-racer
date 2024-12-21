@@ -1,12 +1,11 @@
-import asyncio
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from app.adapters.motor_adapter import MotorAdapter
 from app.config.paths import PX_CALIBRATION_FILE
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from robot_hat import ADC, FileDB, Grayscale, Pin, Servo, Ultrasonic
+from robot_hat import ADC, FileDB, Grayscale, Servo
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
@@ -24,7 +23,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
         servo_pins: list[str] = ["P0", "P1", "P2"],
         motor_pins: list[str] = ["D4", "D5", "P12", "P13"],
         grayscale_pins: list[str] = ["A0", "A1", "A2"],
-        ultrasonic_pins: list[str] = ["D2", "D3"],
         config_file: str = PX_CALIBRATION_FILE,
     ):
         self.logger = Logger(name=__name__)
@@ -80,12 +78,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
         )
 
         self.grayscale.reference = self.line_reference
-
-        # --------- ultrasonic init ---------
-        trig, echo = ultrasonic_pins
-        self.ultrasonic = Ultrasonic(
-            Pin(trig), Pin(echo, mode=Pin.IN, pull=Pin.PULL_DOWN)
-        )
 
     def dir_servo_calibrate(self, value: float) -> None:
         """
@@ -257,15 +249,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
         4. Wait an additional 2 milliseconds for any remaining process to finalize.
         """
         return self.motor_adapter.stop()
-
-    async def get_distance(self) -> Union[float, int]:
-        """
-        Attempt to read the distance measurement.
-
-        Returns:
-            float: The measured distance in centimeters. Returns -1 if all attempts fail.
-        """
-        return await asyncio.to_thread(self.ultrasonic.read)
 
     def set_grayscale_reference(self, value: List[int]) -> None:
         """

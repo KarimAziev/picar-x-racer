@@ -11,23 +11,22 @@ from fastapi import WebSocket
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
-    from app.services.car_control.avoid_obstacles_service import AvoidObstaclesService
     from app.services.car_control.calibration_service import CalibrationService
     from app.services.connection_service import ConnectionService
+    from app.services.distance_service import DistanceService
 
 
 class CarService(metaclass=SingletonMeta):
     def __init__(
         self,
         px: "PicarxAdapter",
-        avolid_obstacles_service: "AvoidObstaclesService",
         calibration_service: "CalibrationService",
         connection_manager: "ConnectionService",
+        distance_service: "DistanceService",
     ):
         self.logger = Logger(name=__name__)
         self.px = px
         self.connection_manager = connection_manager
-        self.avoid_obstacles_service = avolid_obstacles_service
         self.calibration = calibration_service
         self.user_settings_file = PX_SETTINGS_FILE
         self.settings_file = (
@@ -36,8 +35,17 @@ class CarService(metaclass=SingletonMeta):
             else DEFAULT_USER_SETTINGS
         )
         self.settings: Dict[str, Any] = load_json_file(self.settings_file)
+        self.robot_settings: Dict[str, Any] = self.settings.get("robot", {})
+        self.distance_interval = self.robot_settings.get(
+            "auto_measure_distance_delay_ms", 1000
+        )
+        self.auto_measure_distance_mode = self.robot_settings.get(
+            "auto_measure_distance_mode", False
+        )
+        self.avoid_obstacles_mode = False
+        self.max_speed = self.robot_settings.get("max_speed", 80)
         self.speed = 0
-        self.max_speed = self.settings.get("max_speed", 80)
+        self.distance_service = distance_service
         self.direction = 0
         self.servo_dir_angle = 0
         self.cam_pan_angle = 0
@@ -62,6 +70,7 @@ class CarService(metaclass=SingletonMeta):
         - "camPan": Current camera pan angle.
         - "camTilt": Current camera tilt angle.
         - "avoidObstacles": Whether avoid obstacles mode is on.
+        - "distance": The measured distance in centimeters.
         """
         return {
             "speed": self.speed,
@@ -70,7 +79,8 @@ class CarService(metaclass=SingletonMeta):
             "servoAngle": self.servo_dir_angle,
             "camPan": self.cam_pan_angle,
             "camTilt": self.cam_tilt_angle,
-            "avoidObstacles": self.avoid_obstacles_service.avoid_obstacles_mode,
+            "avoidObstacles": self.avoid_obstacles_mode,
+            "distance": self.distance_service.distance.value,
         }
 
     @property
@@ -115,7 +125,8 @@ class CarService(metaclass=SingletonMeta):
             "setCamTiltAngle": self.handle_set_cam_tilt_angle,
             "setCamPanAngle": self.handle_set_cam_pan_angle,
             "avoidObstacles": self.handle_avoid_obstacles,
-            "getDistance": self.handle_get_distance,
+            "startAutoMeasureDistance": self.start_auto_measure_distance,
+            "stopAutoMeasureDistance": self.stop_auto_measure_distance,
             "setMaxSpeed": self.handle_max_speed,
         }
 
@@ -136,7 +147,7 @@ class CarService(metaclass=SingletonMeta):
 
         elif action in actions_map:
             func = actions_map[action]
-            await func(payload, websocket)
+            await func(payload)
             await self.broadcast()
 
         else:
@@ -144,54 +155,58 @@ class CarService(metaclass=SingletonMeta):
             self.logger.warning(error_msg)
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
-    async def handle_stop(self, payload, _: WebSocket):
+    async def handle_stop(self, _: Any = None):
         await asyncio.to_thread(self.px.stop)
         self.direction = 0
         self.speed = 0
 
-    async def handle_set_servo_dir_angle(self, payload, _: WebSocket):
+    async def handle_set_servo_dir_angle(self, payload: int):
         angle = payload or 0
         if self.servo_dir_angle != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
             self.servo_dir_angle = angle
 
-    async def handle_set_cam_tilt_angle(self, payload, _):
+    async def handle_set_cam_tilt_angle(self, payload: int):
         angle = payload
         if self.cam_tilt_angle != angle:
             await asyncio.to_thread(self.px.set_cam_tilt_angle, angle)
             self.cam_tilt_angle = angle
 
-    async def handle_set_cam_pan_angle(self, payload, _: WebSocket):
+    async def handle_set_cam_pan_angle(self, payload: int):
         angle = payload
         if self.cam_pan_angle != angle:
             await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
             self.cam_pan_angle = angle
 
-    async def handle_avoid_obstacles(self, _, websocket: WebSocket):
-        response = await self.avoid_obstacles_service.toggle_avoid_obstacles_mode()
-        if response is not None:
-            self.speed = response.get("speed", self.speed)
-            self.direction = response.get("direction", self.direction)
-            self.servo_dir_angle = response.get("servoAngle", self.servo_dir_angle)
-            self.cam_pan_angle = response.get("camPan", self.cam_pan_angle)
-            self.cam_tilt_angle = response.get("camTilt", self.cam_tilt_angle)
-
-            await self.connection_manager.broadcast_json(
-                {
-                    "payload": response,
-                    "type": "update",
-                }
+    async def handle_avoid_obstacles(self, _=None):
+        self.avoid_obstacles_mode = not self.avoid_obstacles_mode
+        if self.avoid_obstacles_mode:
+            await self.handle_stop()
+            self.auto_measure_distance_mode = self.distance_service.running
+            self.auto_measure_distance_mode_prev_interval = (
+                self.distance_service.interval
             )
+            self.distance_service.subscribe(self.avoid_obstacles_subscriber)
+            self.distance_service.interval = 0.1
+            await self.distance_service.start_all()
+        else:
+            self.distance_service.unsubscribe(self.avoid_obstacles_subscriber)
+            await self.handle_stop()
+            await self.distance_service.stop_all()
+            if self.auto_measure_distance_mode_prev_interval:
+                self.distance_service.interval = (
+                    self.auto_measure_distance_mode_prev_interval
+                )
 
-    async def handle_get_distance(self, _, websocket: WebSocket):
-        await self.respond_with_distance("getDistance", websocket)
+            if self.auto_measure_distance_mode:
+                await self.distance_service.start_all()
 
-    async def handle_max_speed(self, payload: int, websocket: WebSocket):
+    async def handle_max_speed(self, payload: int):
         self.max_speed = payload
         if self.speed > self.max_speed:
             await self.move(self.direction, self.max_speed)
 
-    async def handle_move(self, payload, _):
+    async def handle_move(self, payload: Dict[str, Any]):
         """
         Handles move actions to control the car's direction and speed.
 
@@ -202,23 +217,6 @@ class CarService(metaclass=SingletonMeta):
         speed = payload.get("speed", 0)
         if self.direction != direction or speed != self.speed:
             await self.move(direction, speed)
-
-    async def respond_with_distance(self, action, websocket: WebSocket):
-        """
-        Responds with the distance measured by the car's ultrasonic sensor.
-
-        Args:
-            action (str): Action type for the distance request.
-            websocket (WebSocket): WebSocket connection instance.
-        """
-
-        try:
-            distance = await self.get_distance()
-            response = {"payload": distance, "type": action}
-            await self.connection_manager.broadcast_json(response)
-        except Exception as e:
-            error_response = {"type": action, "error": str(e)}
-            await websocket.send_json(error_response)
 
     async def move(self, direction: int, speed: int):
         """
@@ -237,26 +235,41 @@ class CarService(metaclass=SingletonMeta):
 
         self.direction = direction
 
-    async def get_distance(self):
-        """
-        Measures and returns the distance using the car's ultrasonic sensor.
+    async def start_auto_measure_distance(self, _: Any = None):
+        self.settings: Dict[str, Any] = await asyncio.to_thread(
+            load_json_file, self.settings_file
+        )
+        self.robot_settings: Dict[str, Any] = self.settings.get("robot", {})
+        self.distance_interval = self.robot_settings.get(
+            "auto_measure_distance_delay_ms", 1000
+        )
+        distance_secs = self.distance_interval / 1000
+        self.distance_service.interval = distance_secs
+        await self.distance_service.start_all()
 
-        Returns:
-            float: The measured distance.
+    async def stop_auto_measure_distance(self, _: Any = None):
+        await self.distance_service.stop_all()
 
-        Raises:
-            ValueError: If an error occurs while measuring the distance.
-        """
-
-        errors = {
-            -1: "Timeout waiting for echo response",
-            -2: "Failed to detect pulse start or end",
-        }
-        try:
-            distance = await self.px.get_distance()
-            if distance < 0 and distance in errors:
-                raise ValueError(errors.get(distance, "Unexpected distance error"))
-            return distance
-        except Exception as e:
-            self.logger.error(f"Failed to get distance: {e}")
-            raise
+    async def avoid_obstacles_subscriber(self, distance: float) -> None:
+        POWER = 50
+        SafeDistance = 40
+        DangerDistance = 20
+        self.logger.info("distance %s speed=%s", distance, self.speed)
+        if distance >= SafeDistance:
+            await self.handle_set_servo_dir_angle(0)
+            if self.speed != POWER or self.direction != 1:
+                await self.move(1, POWER)
+            await self.broadcast()
+        elif distance >= DangerDistance:
+            await self.handle_set_servo_dir_angle(30)
+            if self.speed != POWER or self.direction != 1:
+                await self.move(1, POWER)
+            else:
+                await asyncio.sleep(0.1)
+            await self.broadcast()
+        else:
+            await self.handle_set_servo_dir_angle(-30)
+            if self.speed != POWER or self.direction != -1:
+                await self.move(-1, POWER)
+            await self.broadcast()
+            await asyncio.sleep(0.5)

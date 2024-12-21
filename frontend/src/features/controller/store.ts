@@ -139,7 +139,7 @@ export const useControllerStore = defineStore("controller", {
             break;
           }
 
-          case "getDistance":
+          case "distance":
             if (error) {
               messager.error(error, "distance error");
             } else {
@@ -516,6 +516,11 @@ export const useControllerStore = defineStore("controller", {
     toggleAutoMeasureDistanceMode() {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("robot.auto_measure_distance_mode");
+      this.sendMessage({
+        action: settingsStore.data.robot.auto_measure_distance_mode
+          ? "startAutoMeasureDistance"
+          : "stopAutoMeasureDistance",
+      });
     },
     toggleVirtualMode() {
       const settingsStore = useSettingsStore();

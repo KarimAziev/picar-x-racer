@@ -49,7 +49,7 @@ class AsyncEventEmitter:
                         else str(listener)
                     )
                     try:
-                        logger.info(
+                        logger.debug(
                             "Emitting event '%s' to listener '%s'",
                             event_name,
                             listener_name,

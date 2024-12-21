@@ -84,6 +84,11 @@ export const generalSwitchSettings: {
     label: "Full Screen Button",
     description: "Toggle the display of the fullscreen icon button.",
   },
+  show_avoid_obstacles_button: {
+    label: "Full Screen Button",
+    description:
+      "Whether to display the button to toggle the avoid obstacle mode.",
+  },
 } as const;
 
 export const ttsLanguages = [
