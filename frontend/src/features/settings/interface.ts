@@ -79,3 +79,9 @@ export interface Text {
   language: string;
   default?: boolean;
 }
+
+export interface RemoveFileResponse {
+  success: boolean;
+  filename: string;
+  error: string | null;
+}

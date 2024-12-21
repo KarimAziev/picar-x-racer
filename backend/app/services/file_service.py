@@ -489,11 +489,10 @@ class FileService(metaclass=SingletonMeta):
 
             return True
         elif path.exists(path.join(self.default_user_music_dir, filename)):
-            raise DefaultFileRemoveAttempt(
-                f"{filename} is default music and cannot be removed!"
-            )
+            raise DefaultFileRemoveAttempt("Cannot remove default music file.")
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", filename)
+            raise FileNotFoundError("File not found")
 
     def remove_data(self, filename: str) -> bool:
         """
@@ -527,7 +526,8 @@ class FileService(metaclass=SingletonMeta):
         if path.exists(user_file):
             return self.user_photos_dir
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", user_file)
+            raise FileNotFoundError("File not found")
 
     def get_video_directory(self, filename: str) -> str:
         """
@@ -547,7 +547,8 @@ class FileService(metaclass=SingletonMeta):
         if path.exists(user_file):
             return self.user_videos_dir
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", user_file)
+            raise FileNotFoundError("File not found")
 
     def get_music_directory(self, filename: str) -> str:
         """
@@ -569,7 +570,8 @@ class FileService(metaclass=SingletonMeta):
         elif path.exists(path.join(self.default_user_music_dir, filename)):
             return self.default_user_music_dir
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", user_file)
+            raise FileNotFoundError("File not found")
 
     def save_uploaded_file(self, file: UploadFile, directory: str) -> str:
         """

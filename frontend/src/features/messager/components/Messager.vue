@@ -15,6 +15,11 @@ import Messages from "@/features/messager/components/MessageListContainer.vue";
   overflow-y: scroll;
   height: 40px;
   max-height: 40px;
+  max-width: 300px;
+
+  @media (min-width: 992px) {
+    max-width: 400px;
+  }
 
   @media (min-height: 768px) and (min-width: 992px) {
     z-index: 1000;

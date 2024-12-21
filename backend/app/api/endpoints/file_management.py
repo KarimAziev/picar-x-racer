@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 from app.api.deps import get_file_manager, get_music_manager
 from app.exceptions.file_exceptions import (
@@ -7,7 +7,9 @@ from app.exceptions.file_exceptions import (
     InvalidFileName,
     InvalidMediaType,
 )
+from app.exceptions.music import MusicPlayerError
 from app.schemas.file_management import (
+    BatchRemoveFilesRequest,
     PhotosResponse,
     RemoveFileResponse,
     UploadFileResponse,
@@ -66,7 +68,7 @@ async def upload_file(
             await connection_manager.broadcast_json(
                 {
                     "type": "uploaded",
-                    "payload": {"file": file.filename, "type": media_type},
+                    "payload": [{"file": file.filename, "type": media_type}],
                 }
             )
         return {"success": True, "filename": file.filename}
@@ -131,7 +133,7 @@ async def remove_file(
         result = await asyncio.to_thread(handler, filename)
         if result:
             await connection_manager.broadcast_json(
-                {"type": "removed", "payload": {"file": filename, "type": media_type}}
+                {"type": "removed", "payload": [{"file": filename, "type": media_type}]}
             )
         return {"success": result, "filename": filename}
     except InvalidMediaType:
@@ -308,3 +310,89 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
         filename=filename,
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.post(
+    "/api/files/remove-batch/{media_type}", response_model=List[RemoveFileResponse]
+)
+async def batch_remove_files(
+    request: Request,
+    media_type: str,
+    request_body: BatchRemoveFilesRequest,
+    file_manager: "FileService" = Depends(get_file_manager),
+    music_player: "MusicService" = Depends(get_music_manager),
+):
+    """
+    Batch remove multiple files of a specific media type.
+
+    Args:
+    --------------
+    - media_type (str): The type of media ('music', 'video', 'image', 'data').
+    - filenames (List[str]): A list of filenames to remove.
+    - file_manager (FileService): The file management service.
+
+    Returns:
+    --------------
+    - `List[RemoveFileResponse]`: A list of response objects for each file with success status and the filename.
+
+    Raises:
+    --------------
+    - `HTTPException`: If the media type is invalid, or any file could not be removed or found.
+    """
+    filenames = request_body.filenames
+    if len(filenames) <= 0:
+        raise HTTPException(status_code=400, detail="No files to remove!")
+    handlers = {
+        "music": music_player.remove_music_track,
+        "image": file_manager.remove_photo,
+        "video": file_manager.remove_video,
+        "data": file_manager.remove_data,
+    }
+
+    handler = handlers.get(media_type)
+    connection_manager: "ConnectionService" = request.app.state.app_manager
+
+    if not handler:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid media type {media_type}. Should be one of "
+            + ", ".join(list(handlers.keys())),
+        )
+    responses: List[RemoveFileResponse] = []
+    success_responses = []
+    for filename in filenames:
+        logger.info("Removing file '%s' of type '%s'", filename, media_type)
+        result = False
+        error: Optional[str] = None
+        try:
+            result = await asyncio.to_thread(handler, filename)
+        except (DefaultFileRemoveAttempt, MusicPlayerError) as e:
+            error = str(e)
+            logger.warning(error)
+        except FileNotFoundError:
+            error = "File not found"
+            logger.warning("Failed to remove file %s: not found", filename)
+        except Exception:
+            error = "Internal server error"
+            logger.error(
+                f"Unhandled error while removing file '{filename}' with media type '{media_type}'",
+                exc_info=True,
+            )
+        finally:
+            responses.append(
+                RemoveFileResponse(
+                    **{"success": result, "filename": filename, "error": error}
+                )
+            )
+            if result:
+                success_responses.append({"file": filename, "type": media_type})
+
+    if success_responses:
+        await connection_manager.broadcast_json(
+            {
+                "type": "removed",
+                "payload": success_responses,
+            }
+        )
+
+    return responses

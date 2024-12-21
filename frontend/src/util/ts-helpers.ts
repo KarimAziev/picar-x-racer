@@ -94,3 +94,7 @@ export type FlattenBooleanObjectKeys<
       ? `${Key}`
       : never
   : never;
+
+export type ExtractStringPropsKey<Obj extends Record<string, any>> = {
+  [Key in keyof Obj]: Obj[Key] extends string ? Key : never;
+}[keyof Obj];
