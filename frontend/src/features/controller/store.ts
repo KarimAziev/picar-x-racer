@@ -111,6 +111,7 @@ export const useControllerStore = defineStore("controller", {
       }
       const messager = useMessagerStore();
       const distanceStore = useDistanceStore();
+      const settingsStore = useSettingsStore();
       const calibrationStore = useCalibrationStore();
       const batteryStore = useBatteryStore();
       const handleMessage = (data: WSMessageData) => {
@@ -197,6 +198,8 @@ export const useControllerStore = defineStore("controller", {
                       immediately: true,
                     });
                   }
+                } else if (k === "autoMeasureDistanceMode") {
+                  settingsStore.data.robot.auto_measure_distance_mode = value;
                 }
               });
             } else if (

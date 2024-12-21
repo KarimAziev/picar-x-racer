@@ -71,6 +71,7 @@ class CarService(metaclass=SingletonMeta):
         - "camTilt": Current camera tilt angle.
         - "avoidObstacles": Whether avoid obstacles mode is on.
         - "distance": The measured distance in centimeters.
+        - "autoMeasureDistanceMode": Whether the auto measure distance mode is on.
         """
         return {
             "speed": self.speed,
@@ -81,6 +82,7 @@ class CarService(metaclass=SingletonMeta):
             "camTilt": self.cam_tilt_angle,
             "avoidObstacles": self.avoid_obstacles_mode,
             "distance": self.distance_service.distance.value,
+            "autoMeasureDistanceMode": self.auto_measure_distance_mode,
         }
 
     @property
@@ -236,6 +238,7 @@ class CarService(metaclass=SingletonMeta):
         self.direction = direction
 
     async def start_auto_measure_distance(self, _: Any = None):
+        self.auto_measure_distance_mode = True
         self.settings: Dict[str, Any] = await asyncio.to_thread(
             load_json_file, self.settings_file
         )
@@ -249,6 +252,7 @@ class CarService(metaclass=SingletonMeta):
 
     async def stop_auto_measure_distance(self, _: Any = None):
         await self.distance_service.stop_all()
+        self.auto_measure_distance_mode = False
 
     async def avoid_obstacles_subscriber(self, distance: float) -> None:
         POWER = 50
