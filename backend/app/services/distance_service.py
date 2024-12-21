@@ -21,8 +21,8 @@ class DistanceService(metaclass=SingletonMeta):
         self,
         emitter: "AsyncEventEmitter",
         task_manager: "AsyncTaskManager",
-        echo_pin: str = "D2",
-        trig_pin: str = "D3",
+        trig_pin: str = "D2",
+        echo_pin: str = "D3",
         interval=0.017,
         timeout=0.017,
     ):

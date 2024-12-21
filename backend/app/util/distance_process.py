@@ -1,5 +1,5 @@
-import random
 import os
+import random
 from time import sleep
 from typing import TYPE_CHECKING
 
@@ -24,9 +24,9 @@ def distance_process(
     interval: float = 0.01,
     timeout=0.017,
 ):
-    echo = Pin(echo_pin)
-    trig = Pin(trig_pin)
-    ultrasonic = Ultrasonic(trig, echo, timeout=timeout)
+    ultrasonic = Ultrasonic(
+        Pin(trig_pin), Pin(echo_pin, mode=Pin.IN, pull=Pin.PULL_DOWN), timeout=timeout
+    )
     try:
         while not stop_event.is_set():
             try:

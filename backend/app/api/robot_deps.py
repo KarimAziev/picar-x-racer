@@ -36,7 +36,7 @@ def get_distance_service(
     task_manager: AsyncTaskManager = Depends(get_async_task_manager),
 ) -> DistanceService:
     return DistanceService(
-        emitter=emitter, task_manager=task_manager, echo_pin="D2", trig_pin="D3"
+        emitter=emitter, task_manager=task_manager, trig_pin="D2", echo_pin="D3"
     )
 
 
