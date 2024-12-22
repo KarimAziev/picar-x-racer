@@ -1,8 +1,9 @@
 import asyncio
 import multiprocessing as mp
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+from app.schemas.distance import UltrasonicConfig
 from app.util.distance_process import distance_process
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -21,18 +22,14 @@ class DistanceService(metaclass=SingletonMeta):
         self,
         emitter: "AsyncEventEmitter",
         task_manager: "AsyncTaskManager",
-        trig_pin: str = "D2",
-        echo_pin: str = "D3",
+        config: Optional[UltrasonicConfig] = None,
         interval=0.017,
-        timeout=0.017,
     ):
-        self.distance: Synchronized[float] = mp.Value('f', 0)
-        self.process = None
+        self._distance: Synchronized[float] = mp.Value('f', 0)
+        self._process = None
+        self.config = config or UltrasonicConfig()
         self.stop_event = mp.Event()
-        self.echo_pin = echo_pin
-        self.trig_pin = trig_pin
         self.interval = interval
-        self.timeout = timeout
         self.lock = threading.Lock()
         self.async_lock = asyncio.Lock()
         self.emitter = emitter
@@ -46,20 +43,19 @@ class DistanceService(metaclass=SingletonMeta):
         self.emitter.off("distance", listener)
 
     async def distance_watcher(self):
-        initial_value = self.distance.value
+        initial_value = self._distance.value
         try:
             while (
                 hasattr(self, "stop_event")
-                and self.process
-                and self.process.is_alive()
+                and self._process
+                and self._process.is_alive()
                 and not self.task_manager.stop_event.is_set()
                 and not self.stop_event.is_set()
             ):
                 if not self.loading:
-                    distance = self.distance.value
-                    await self.emitter.emit("distance", distance)
+                    await self.emitter.emit("distance", self.distance)
                     await asyncio.sleep(self.interval)
-                elif initial_value == self.distance.value:
+                elif initial_value == self._distance.value:
                     await asyncio.sleep(self.interval)
                 else:
                     self.loading = False
@@ -79,54 +75,58 @@ class DistanceService(metaclass=SingletonMeta):
         await self.stop_all()
         async with self.async_lock:
             self.loading = True
-            await asyncio.to_thread(self.start_process)
+            await asyncio.to_thread(self._start_process)
             self.task_manager.start_task(
                 self.distance_watcher, task_name="distance_watcher"
             )
 
-    @property
-    def running(self):
-        with self.lock:
-            return self.process and self.process.is_alive()
-
     async def stop_all(self):
         async with self.async_lock:
-            await asyncio.to_thread(self.cancel_process)
+            await asyncio.to_thread(self._cancel_process)
             if self.task_manager.task:
                 await self.task_manager.cancel_task()
 
-    def start_process(self):
+    @property
+    def distance(self):
+        return round(self._distance.value, 2)
+
+    @property
+    def running(self):
         with self.lock:
-            self.process = mp.Process(
+            return self._process and self._process.is_alive()
+
+    def _start_process(self):
+        with self.lock:
+            self._process = mp.Process(
                 target=distance_process,
                 args=(
-                    self.echo_pin,
-                    self.trig_pin,
+                    self.config.trig_pin,
+                    self.config.echo_pin,
                     self.stop_event,
-                    self.distance,
+                    self._distance,
                     self.interval,
-                    self.timeout,
+                    self.config.timeout,
                 ),
             )
-            self.process.start()
+            self._process.start()
 
-    def cancel_process(self):
+    def _cancel_process(self):
         with self.lock:
-            if self.process is None:
-                logger.info("Distance process is None, skipping stop")
+            if self._process is None:
+                logger.info("Distance _process is None, skipping stop")
             else:
                 self.stop_event.set()
 
-                logger.info("Distance process setted stop_event")
-                self.process.join(10)
-                logger.info("Distance process has been joined")
-                if self.process.is_alive():
+                logger.info("Distance _process setted stop_event")
+                self._process.join(10)
+                logger.info("Distance _process has been joined")
+                if self._process.is_alive():
                     logger.warning(
-                        "Force terminating distance process since it's still alive."
+                        "Force terminating distance _process since it's still alive."
                     )
-                    self.process.terminate()
-                    self.process.join(5)
-                    self.process.close()
+                    self._process.terminate()
+                    self._process.join(5)
+                    self._process.close()
             logger.info("Clearing stop event")
             self.stop_event.clear()
             logger.info("Stop event cleared")
@@ -136,14 +136,14 @@ class DistanceService(metaclass=SingletonMeta):
         Performs cleanup operations for the distance service, preparing it for shutdown.
 
         Behavior:
-            - Cancels any running tasks and stops the distance process.
+            - Cancels any running tasks and stops the distance _process.
             - Deletes class properties associated with multiprocessing and async state.
         """
         await self.task_manager.cancel_task()
-        await asyncio.to_thread(self.cancel_process)
+        await asyncio.to_thread(self._cancel_process)
         for prop in [
             "stop_event",
-            "distance",
+            "_distance",
         ]:
             if hasattr(self, prop):
                 logger.info(f"Removing {prop}")

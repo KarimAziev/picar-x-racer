@@ -23,5 +23,5 @@ async def get_ultrasonic_distance(
     Returns:
         DistanceData: The current distance measurement.
     """
-    value: float = distance_service.distance.value
+    value: float = distance_service.distance
     return {"distance": value}

@@ -81,7 +81,7 @@ class CarService(metaclass=SingletonMeta):
             "camPan": self.cam_pan_angle,
             "camTilt": self.cam_tilt_angle,
             "avoidObstacles": self.avoid_obstacles_mode,
-            "distance": self.distance_service.distance.value,
+            "distance": self.distance_service.distance,
             "autoMeasureDistanceMode": self.auto_measure_distance_mode,
         }
 

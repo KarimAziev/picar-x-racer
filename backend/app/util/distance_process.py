@@ -1,10 +1,15 @@
 import os
-import random
 from time import sleep
 from typing import TYPE_CHECKING
 
 from app.util.logger import Logger
-from robot_hat import Pin, Ultrasonic
+from robot_hat import Pin
+
+if os.getenv("ROBOT_HAT_MOCK_SMBUS"):
+    from robot_hat import UltrasonicMock as Ultrasonic
+else:
+    from robot_hat import Ultrasonic
+
 
 if TYPE_CHECKING:
     from multiprocessing.sharedctypes import Synchronized
@@ -13,12 +18,10 @@ if TYPE_CHECKING:
 
 logger = Logger(__name__)
 
-use_mock = os.getenv("ROBOT_HAT_MOCK_SMBUS")
-
 
 def distance_process(
-    echo_pin: str,
     trig_pin: str,
+    echo_pin: str,
     stop_event: "Event",
     value: "Synchronized",
     interval: float = 0.01,
@@ -30,17 +33,21 @@ def distance_process(
     try:
         while not stop_event.is_set():
             try:
-                val = round(
-                    float(random.uniform(20, 300) if use_mock else ultrasonic.read()), 2
-                )
+                val = float(ultrasonic.read())
                 value.value = val
-                logger.info("%s val, interval %s", val, interval)
+                logger.debug(
+                    "val %s, synchronized value=%s, interval %s",
+                    val,
+                    value.value,
+                    interval,
+                )
+
                 sleep(interval)
             except ValueError as e:
                 logger.error("Aborting distance process: %s", str(e))
                 break
-            except Exception as e:
-                logger.error("Unhandled exception")
+            except Exception:
+                logger.error("Unhandled exception", exc_info=True)
                 break
     except BrokenPipeError:
         logger.warning("Distance process received BrokenPipeError, exiting.")
