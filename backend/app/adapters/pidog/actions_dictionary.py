@@ -83,11 +83,31 @@ class ActionDict(dict):
             data.append(Pidog.legs_angle_calculation(coord))
         return data, 'legs'
 
+    # turn_left_backward
+    @property
+    def turn_left_backward(self):
+        data = []
+        turn_left = Walk(fb=Walk.BACKWARD, lr=Walk.LEFT)
+        coords = turn_left.get_coords()
+        for coord in coords:
+            data.append(Pidog.legs_angle_calculation(coord))
+        return data, 'legs'
+
+
     # turn_right
     @property
     def turn_right(self):
         data = []
         turn_right = Walk(fb=Walk.FORWARD, lr=Walk.RIGHT)
+        coords = turn_right.get_coords()
+        for coord in coords:
+            data.append(Pidog.legs_angle_calculation(coord))
+        return data, 'legs'
+
+    @property
+    def turn_right_backward(self):
+        data = []
+        turn_right = Walk(fb=Walk.BACKWARD, lr=Walk.RIGHT)
         coords = turn_right.get_coords()
         for coord in coords:
             data.append(Pidog.legs_angle_calculation(coord))
