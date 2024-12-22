@@ -104,7 +104,7 @@ class StreamService(metaclass=SingletonMeta):
         except asyncio.CancelledError:
             self.logger.info("Gracefully shutting down WebSocket stream connection")
         except Exception:
-            self.logger.log_exception("An error occurred in video stream")
+            self.logger.error("An error occurred in video stream", exc_info=True)
         finally:
             self.active_clients -= 1
             if self.active_clients == 0:

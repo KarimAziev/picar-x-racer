@@ -45,6 +45,7 @@
           layout="row-reverse"
           :pt="{ input: { id: 'auto_measure_distance_mode' } }"
           v-model="store.data.robot.auto_measure_distance_mode"
+          @update:model-value="handleToggleAutomeasureDistance"
         />
       </div>
     </div>
@@ -79,6 +80,11 @@ const handleUpdateMaxSpeed = (value: number) => {
   if (controllerStore.model?.connected) {
     controllerStore.setMaxSpeed(value);
   }
+};
+const handleToggleAutomeasureDistance = (value: boolean) => {
+  controllerStore.sendMessage({
+    action: value ? "startAutoMeasureDistance" : "stopAutoMeasureDistance",
+  });
 };
 </script>
 <style scoped lang="scss">

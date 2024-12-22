@@ -1,4 +1,8 @@
-import { Narrow, FlattenObject } from "@/util/ts-helpers";
+import {
+  Narrow,
+  FlattenObject,
+  ExtractStringPropsKey,
+} from "@/util/ts-helpers";
 import {
   isEmpty,
   isPlainObject,
@@ -453,3 +457,50 @@ export function splitObjIntoGroups(
 
   return result;
 }
+
+export const groupBy = <
+  Obj extends Record<string, any>,
+  Prop extends ExtractStringPropsKey<Obj>,
+>(
+  propName: Prop,
+  objs: Obj[],
+) =>
+  objs.reduce(
+    (acc, obj) => {
+      const key = obj[propName];
+
+      if (!acc[key]) {
+        acc[key] = [obj] as Obj[];
+      } else {
+        acc[key].push(obj);
+      }
+
+      return acc;
+    },
+    {} as Record<Obj[Prop], Obj[]>,
+  );
+
+export const groupWith = <
+  Obj extends Record<string, any>,
+  Prop extends ExtractStringPropsKey<Obj>,
+  Fn extends (obj: Obj) => any,
+>(
+  propName: Prop,
+  fn: Fn,
+  objs: Obj[],
+) =>
+  objs.reduce(
+    (acc, obj) => {
+      const key = obj[propName];
+      const transformed = fn(obj);
+
+      if (!acc[key]) {
+        acc[key] = [transformed];
+      } else {
+        acc[key].push(transformed);
+      }
+
+      return acc;
+    },
+    {} as Record<Obj[Prop], ReturnType<Fn>[]>,
+  );

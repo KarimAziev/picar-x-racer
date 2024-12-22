@@ -1,8 +1,5 @@
 <template>
-  <div v-if="avoidObstacles" class="info">
-    <InfoItem label="Autopilot is on" />
-  </div>
-  <InfoBlock v-else>
+  <InfoBlock>
     <InfoItem label="Speed:" :value="speed" />
     <InfoItem label="Camera Tilt:" :value="camTilt" />
     <InfoItem label="Camera Pan:" :value="camPan" />
@@ -10,6 +7,9 @@
     <InfoItem label="Max Speed:" :value="maxSpeed" />
     <ToggleableView setting="general.show_auto_measure_distance_button">
       <Distance />
+    </ToggleableView>
+    <ToggleableView setting="general.show_avoid_obstacles_button">
+      <AvoidObstacles />
     </ToggleableView>
   </InfoBlock>
 </template>
@@ -22,10 +22,9 @@ import InfoItem from "@/ui/InfoItem.vue";
 import InfoBlock from "@/ui/InfoBlock.vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import Distance from "@/features/controller/components/Distance.vue";
+import AvoidObstacles from "@/features/controller/components/AvoidObstacles.vue";
 
 const store = useControllerStore();
-
-const avoidObstacles = computed(() => store.avoidObstacles);
 
 const camPan = computed(() => store.camPan.toString().padStart(2, "0"));
 const camTilt = computed(() => store.camTilt.toString().padStart(2, "0"));

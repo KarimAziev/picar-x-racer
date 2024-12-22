@@ -22,3 +22,32 @@ class DistanceData(BaseModel):
             -2,  # Object too close (< 2 cm) or invalid conditions
         ],
     )
+
+
+class UltrasonicConfig(BaseModel):
+    """
+    A model to represent the Ultrasonic configuration.
+    """
+
+    trig_pin: str = Field(
+        default="D2",
+        description="The name of the pin connected to the TRIG pin of the ultrasonic sensor.",
+        examples=[
+            "D2",
+        ],
+    )
+
+    echo_pin: str = Field(
+        default="D3",
+        description="The name of the pin connected to the ECHO pin of the ultrasonic sensor.",
+        examples=[
+            "D3",
+        ],
+    )
+    timeout: float = Field(
+        default=0.017,
+        description="The maximum duration to wait for a pulse to return.",
+        examples=[
+            0.1,
+        ],
+    )

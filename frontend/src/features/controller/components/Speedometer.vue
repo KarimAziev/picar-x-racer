@@ -1,9 +1,10 @@
 <template>
   <SpeedometerGauge
-    :segments="10"
+    :size="300"
+    :segments="segments"
     :value="speed"
     :minValue="0"
-    :maxValue="100"
+    :maxValue="MAX_SPEED"
     :disabled-threshold="maxSpeed"
     :extraInfo="extraInfo"
     class="speedometer"
@@ -11,7 +12,11 @@
 </template>
 <script setup lang="ts">
 import { computed } from "vue";
-import { useControllerStore } from "@/features/controller/store";
+import {
+  useControllerStore,
+  MAX_SPEED,
+  ACCELERATION,
+} from "@/features/controller/store";
 import SpeedometerGauge from "@/features/controller/components/SpeedometerGauge.vue";
 import { speedToReal } from "@/util/speed";
 
@@ -19,6 +24,8 @@ const store = useControllerStore();
 const speed = computed(() =>
   store.direction > 0 ? store.speed : -store.speed,
 );
+
+const segments = computed(() => MAX_SPEED / ACCELERATION);
 
 const extraInfo = computed(() => `${speedToReal(speed.value)} km/h`);
 const maxSpeed = computed(() => store.maxSpeed);

@@ -1,11 +1,16 @@
 import axios from "axios";
 import { defineStore } from "pinia";
 import { constrain } from "@/util/constrain";
-import { downloadFile, removeFile } from "@/features/settings/api";
+import {
+  downloadFile,
+  removeFile,
+  batchRemoveFiles,
+} from "@/features/settings/api";
 import { APIMediaType } from "@/features/settings/interface";
 import { useMessagerStore } from "@/features/messager";
 import { isNumber } from "@/util/guards";
 import { cycleValue } from "@/util/cycleValue";
+import { getBatchFilesErrorMessage } from "@/features/settings/util";
 
 export interface FileDetail {
   track: string;
@@ -255,6 +260,20 @@ export const useStore = defineStore("music", {
     },
     toggleStreaming() {
       this.isStreaming = !this.isStreaming;
+    },
+    async batchRemoveFiles(filenames: string[]) {
+      const messager = useMessagerStore();
+      try {
+        this.loading = true;
+        const { data } = await batchRemoveFiles(mediaType, filenames);
+        const msgParams = getBatchFilesErrorMessage(data);
+        if (msgParams) {
+          messager.error(msgParams.error, msgParams.title);
+        }
+      } catch (error) {
+        this.loading = false;
+        messager.handleError(error);
+      }
     },
   },
 });

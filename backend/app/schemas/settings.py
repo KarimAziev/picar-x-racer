@@ -78,7 +78,7 @@ class General(BaseModel):
     )
     robot_3d_view: Optional[bool] = Field(
         None,
-        description="Toggles the display of the robot's 3D model.",
+        description="Whether to display the robot's 3D model.",
         examples=[True, False],
     )
     virtual_mode: Optional[bool] = Field(
@@ -88,7 +88,7 @@ class General(BaseModel):
     )
     show_player: Optional[bool] = Field(
         None,
-        description="Toggles the visibility of the music player interface.",
+        description="Whether to display the visibility of the music player interface.",
         examples=[True, False],
     )
     speedometer_view: Optional[bool] = Field(
@@ -103,55 +103,60 @@ class General(BaseModel):
     )
     text_info_view: Optional[bool] = Field(
         None,
-        description="Toggles the visibility of text-based information, such as camera tilt, "
+        description="Whether to display the text-based information, such as camera tilt, "
         "camera pan, and servo direction.",
         examples=[True, False],
     )
     show_object_detection_settings: Optional[bool] = Field(
         None,
-        description="Toggles the visibility of the object detection settings panel on the main screen.",
+        description="Whether to display the object detection settings panel on the main screen.",
         examples=[True, False],
     )
     show_audio_stream_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the audio stream icon button.",
+        description="Whether to display the audio stream icon button.",
         examples=[True, False],
     )
     show_auto_measure_distance_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the auto-measure distance button.",
+        description="Whether to display the auto-measure distance button.",
         examples=[True, False],
     )
     show_photo_capture_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the photo capture icon button.",
+        description="Whether to display the photo capture icon button.",
         examples=[True, False],
     )
     show_video_record_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the video record icon button.",
+        description="Whether to display the video record icon button.",
         examples=[True, False],
     )
     show_battery_indicator: Optional[bool] = Field(
         None,
-        description="Toggles the display of the video record icon button.",
+        description="Whether to display the battery indicator.",
         examples=[True, False],
     )
     show_connections_indicator: Optional[bool] = Field(
         None,
-        description="Toggles the display of the active connections counter.",
+        description="Whether to display the active connections counter.",
         examples=[True, False],
     )
 
     show_shutdown_reboot_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the shutdown and reboot control buttons.",
+        description="Whether to display the shutdown and reboot control buttons.",
         examples=[True, False],
     )
 
     show_fullscreen_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the request full screen button.",
+        description="Whether to display the request full screen button.",
+        examples=[True, False],
+    )
+    show_avoid_obstacles_button: Optional[bool] = Field(
+        None,
+        description="Whether to display the button to toggle the avoid obstacle mode.",
         examples=[True, False],
     )
 

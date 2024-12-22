@@ -56,6 +56,7 @@ export interface General {
   show_video_record_button: boolean;
   show_shutdown_reboot_button: boolean;
   show_fullscreen_button: boolean;
+  show_avoid_obstacles_button: boolean;
 }
 
 export interface Music {
@@ -78,4 +79,10 @@ export interface Text {
   text: string;
   language: string;
   default?: boolean;
+}
+
+export interface RemoveFileResponse {
+  success: boolean;
+  filename: string;
+  error: string | null;
 }

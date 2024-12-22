@@ -1,7 +1,7 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
-import { formatObjectDiff } from "@/util/obj";
+import { formatObjectDiff, groupWith } from "@/util/obj";
 import { startCase } from "@/util/str";
 import {
   useImageStore,
@@ -83,17 +83,23 @@ export const useStore = defineStore("syncer", {
           }
           case "uploaded":
           case "removed": {
-            const mediaType: string = payload.type;
-            msgPrefix = `${startCase(type)} `;
-            diffMsg = `${payload.file}`;
-            const mediaTypeRefreshers: { [key: string]: Function } = {
+            const mediaTypeRefreshers: { [key: string]: () => Promise<any> } = {
               music: musicStore.fetchData,
               data: detectionStore.fetchModels,
               image: imageStore.fetchData,
             };
-            if (mediaType && mediaTypeRefreshers[mediaType]) {
+            const items: { type: string; file: string }[] = payload;
+            const groupped = groupWith("type", (item) => item.file, items);
+
+            Object.entries(groupped).forEach(([mediaType, msgs]) => {
+              const len = msgs.length;
+              const prefix = `${startCase(type)} ${len} ${mediaType} file${len === 1 ? "" : "s"}`;
+              const msg =
+                `${prefix} ${msgs.length < 2 ? msgs.join(", ") : ""}`.trim();
+              messager.info(msg);
+
               mediaTypeRefreshers[mediaType]();
-            }
+            });
             break;
           }
           case "stream": {

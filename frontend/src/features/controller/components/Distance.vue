@@ -1,6 +1,7 @@
 <template>
   <div class="flex jc-between distance" v-if="isLoaded">
     <button
+      :disabled="avoidObstacles"
       v-tooltip="'Click to toggle auto distance measure'"
       @click="handleToggle"
       class="btn bold"
@@ -13,50 +14,29 @@
 </template>
 
 <script setup lang="ts">
-import {
-  useSettingsStore,
-  usePopupStore,
-  useDistanceStore,
-} from "@/features/settings/stores";
-import { onMounted } from "vue";
-import { computed, ref } from "vue";
-
-const intervalId = ref<NodeJS.Timeout>();
-const popupStore = usePopupStore();
+import { useSettingsStore, useDistanceStore } from "@/features/settings/stores";
+import { computed } from "vue";
+import { useControllerStore } from "@/features/controller/store";
 
 const settingsStore = useSettingsStore();
 const distanceStore = useDistanceStore();
 
 const distance = computed(() => `${distanceStore.distance.toFixed(2)}cm`);
 const isLoaded = computed(() => settingsStore.loaded);
-const isPopupOpen = computed(() => popupStore.isOpen);
+const controllerStore = useControllerStore();
+const avoidObstacles = computed(() => controllerStore.avoidObstacles);
 const isAutoMeasureMode = computed(
   () =>
     settingsStore.loaded && settingsStore.data.robot.auto_measure_distance_mode,
 );
 
-const fetchAndScheduleNext = async () => {
-  if (intervalId.value) {
-    clearTimeout(intervalId.value);
-  }
-  if (isAutoMeasureMode.value && !isPopupOpen.value && settingsStore.loaded) {
-    await distanceStore.fetchDistance();
-  }
-  intervalId.value = setTimeout(
-    fetchAndScheduleNext,
-    settingsStore.data.robot.auto_measure_distance_delay_ms || 1000,
-  );
-};
-
 const handleToggle = () => {
-  settingsStore.toggleSettingsProp("robot.auto_measure_distance_mode");
+  controllerStore.toggleAutoMeasureDistanceMode();
 };
 
 const distanceLabel = computed(() =>
   isAutoMeasureMode.value ? "DISTANCE ON" : "DISTANCE OFF",
 );
-
-onMounted(fetchAndScheduleNext);
 </script>
 
 <style scoped lang="scss">

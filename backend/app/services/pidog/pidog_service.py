@@ -12,6 +12,7 @@ from fastapi import WebSocket
 if TYPE_CHECKING:
     from app.adapters.pidog.pidog import Pidog
     from app.services.connection_service import ConnectionService
+    from app.services.distance_service import DistanceService
 
 
 class PidogService(metaclass=SingletonMeta):
@@ -20,10 +21,12 @@ class PidogService(metaclass=SingletonMeta):
         self,
         pidog: "Pidog",
         connection_manager: "ConnectionService",
+        distance_service: "DistanceService",
     ):
         self.logger = Logger(name=__name__)
         self.pidog = pidog
         self.connection_manager = connection_manager
+        self.distance_service = distance_service
         self.user_settings_file = PX_SETTINGS_FILE
         self.settings_file = (
             self.user_settings_file
