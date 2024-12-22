@@ -124,16 +124,24 @@ class PidogService(metaclass=SingletonMeta):
         """
         angle = payload or 0
         if -30 <= angle <= 30:
-            angles = [
-                [angle, angle],
-                [-angle, -angle],
-            ]
-            await asyncio.to_thread(
-                self.pidog.legs_move,
-                [angles[0] + angles[1]],
-                immediately=True,
-                speed=50,
-            )
+            if angle != 0 and self.speed == 0:
+                self.speed = 98
+            if self.direction == 0:
+                self.direction = 1
+            if angle < 0:
+                self.pidog.do_action('turn_left_backward' if self.direction == -1 else 'turn_left', speed=self.speed)
+                await asyncio.to_thread(self.pidog.do_action, 'turn_left_backward' if self.direction == -1 else 'turn_left', speed=self.speed)
+            elif angle > 0:
+                await asyncio.to_thread(self.pidog.do_action, 'turn_right_backward' if self.direction == -1 else 'turn_right', speed=self.speed)
+                self.servo_dir_angle = angle
+            elif self.speed > 0:
+                await asyncio.to_thread(self.pidog.do_action, 'backward' if self.direction == -1 else 'forward', speed=self.speed)
+                self.servo_dir_angle = angle
+            else:
+                await asyncio.to_thread(self.pidog.body_stop)
+                self.speed = 0
+                self.direction = 0
+
             self.servo_dir_angle = angle
         else:
             raise ValueError(
@@ -144,9 +152,10 @@ class PidogService(metaclass=SingletonMeta):
         """
         Stops the robot immediately.
         """
-        self.pidog.body_stop()
+        await asyncio.to_thread(self.pidog.body_stop)
         self.speed = 0
         self.direction = 0
+
 
     async def handle_set_cam_tilt_angle(self, payload, _):
         """
