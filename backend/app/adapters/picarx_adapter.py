@@ -185,19 +185,19 @@ class PicarxAdapter(metaclass=SingletonMeta):
         """
         current_angle = self.dir_current_angle
         abs_current_angle = min(abs(current_angle), self.DIR_MAX)
-        power_scale = (100 - abs_current_angle) / 100.0
 
         speed1 = speed * direction
         speed2 = -speed * direction
 
         if current_angle != 0:
+            power_scale = (100 - abs_current_angle) / 100.0
             if current_angle > 0:
                 speed1 *= power_scale
             else:
                 speed2 *= power_scale
 
         self.logger.debug(
-            "Move %s with speed '%s' (motor 1: '%s', motor 2: '%s') angle '%s', power_scale '%.2f'",
+            "Move %s with speed '%s' (motor 1: '%s', motor 2: '%s') angle '%s'",
             (
                 "forward"
                 if direction == 1
@@ -207,7 +207,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
             speed1,
             speed2,
             current_angle,
-            power_scale,
         )
 
         self.motor_adapter.set_speed(1, speed1)
