@@ -2,7 +2,6 @@ from functools import lru_cache
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.services.async_task_manager import AsyncTaskManager
-from app.services.car_control.avoid_obstacles_service import AvoidObstaclesService
 from app.services.car_control.calibration_service import CalibrationService
 from app.services.car_control.car_service import CarService
 from app.services.connection_service import ConnectionService
@@ -41,13 +40,6 @@ def get_distance_service(
 
 def get_picarx_adapter() -> PicarxAdapter:
     return PicarxAdapter()
-
-
-def get_avoid_obstacles_service(
-    px=Depends(get_picarx_adapter),
-    distance_service=Depends(get_distance_service),
-) -> AvoidObstaclesService:
-    return AvoidObstaclesService(px=px, distance_service=distance_service)
 
 
 def get_calibration_service(px=Depends(get_picarx_adapter)) -> CalibrationService:
