@@ -24,7 +24,10 @@ class CalibrationService(metaclass=SingletonMeta):
             self.px.cam_pan_cali_val,
             self.px.cam_tilt_cali_val,
         ]
-        self.motors_cali = self.px.motor_adapter.cali_dir_value
+        self.motors_cali = [
+            self.px.motor_controller.left_motor.calibration_direction,
+            self.px.motor_controller.right_motor.calibration_direction,
+        ]
         self.servos_offset = list.copy(self.servos_cali)
         self.motors_offset = list.copy(self.motors_cali)
         self.step = 0.1
@@ -134,5 +137,10 @@ class CalibrationService(metaclass=SingletonMeta):
             "picarx_dir_servo": f"{self.px.dir_cali_val}",
             "picarx_cam_pan_servo": f"{self.px.cam_pan_cali_val}",
             "picarx_cam_tilt_servo": f"{self.px.cam_tilt_cali_val}",
-            "picarx_dir_motor": f"{self.px.motor_adapter.cali_dir_value}",
+            "picarx_dir_motor": str(
+                [
+                    self.px.motor_controller.left_motor.calibration_direction,
+                    self.px.motor_controller.right_motor.calibration_direction,
+                ]
+            ),
         }

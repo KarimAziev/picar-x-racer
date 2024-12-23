@@ -1,5 +1,5 @@
 numpy==1.26.4
-git+https://github.com/KarimAziev/robot-hat.git@main#egg=robot_hat
+robot-hat
 git+https://github.com/KarimAziev/google_speech_pyplay.git@main#egg=google_speech_pyplay
 pandas
 pygame

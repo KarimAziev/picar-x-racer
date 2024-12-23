@@ -1,11 +1,18 @@
 from typing import List, Optional
 
-from app.adapters.motor_adapter import MotorAdapter
 from app.config.paths import PX_CALIBRATION_FILE
 from app.util.constrain import constrain
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from robot_hat import ADC, FileDB, Grayscale, Servo
+from robot_hat import (
+    ADC,
+    FileDB,
+    Grayscale,
+    MotorConfig,
+    MotorController,
+    MotorFabric,
+    Servo,
+)
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
@@ -21,13 +28,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
     def __init__(
         self,
         servo_pins: list[str] = ["P0", "P1", "P2"],
-        motor_pins: list[str] = ["D4", "D5", "P12", "P13"],
+        motor_dir_pins: list[str] = ["D4", "D5"],
+        motor_speed_pins: list[str] = ["P12", "P13"],
         grayscale_pins: list[str] = ["A0", "A1", "A2"],
         config_file: str = PX_CALIBRATION_FILE,
     ):
         self.logger = Logger(name=__name__)
-
-        # Set up the config file
         self.config = FileDB(config_file)
 
         # --------- servos init ---------
@@ -38,18 +44,14 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.dir_cali_val = self.config.get_value_with("picarx_dir_servo", float) or 0.0
         self.dir_current_angle = 0.0
 
-        self.logger.debug("Initted dir_cali_val: %s", self.dir_cali_val)
-
         self.cam_pan_cali_val = (
             self.config.get_value_with("picarx_cam_pan_servo", float) or 0.0
         )
-        self.logger.debug("Initted cam_pan_cali_val: %s", self.cam_pan_cali_val)
 
         self.cam_tilt_cali_val = (
             self.config.get_value_with("picarx_cam_tilt_servo", float) or 0.0
         )
 
-        self.logger.debug("Initted cam_tilt_cali_val: %s", self.cam_tilt_cali_val)
         # Set servos to init angle
         self.dir_servo_pin.angle(self.dir_cali_val)
         self.cam_pan.angle(self.cam_pan_cali_val)
@@ -58,9 +60,29 @@ class PicarxAdapter(metaclass=SingletonMeta):
         # --------- motors init ---------
 
         cali_dir_value = self.config.get_list_value_with("picarx_dir_motor", int)
+        left_motor, right_motor = MotorFabric.create_motor_pair(
+            MotorConfig(
+                dir_pin=motor_dir_pins[0],
+                pwm_pin=motor_speed_pins[0],
+                calibration_direction=(
+                    cali_dir_value[0] if len(cali_dir_value) == 2 else 1
+                ),
+                max_speed=self.MAX_SPEED,
+                name="LeftMotor",
+            ),
+            MotorConfig(
+                dir_pin=motor_dir_pins[1],
+                pwm_pin=motor_speed_pins[1],
+                calibration_direction=(
+                    cali_dir_value[1] if len(cali_dir_value) == 2 else 1
+                ),
+                max_speed=self.MAX_SPEED,
+                name="RightMotor",
+            ),
+        )
 
-        self.motor_adapter = MotorAdapter(
-            motor_pins, cali_dir_value if len(cali_dir_value) == 2 else [1, 1]
+        self.motor_controller = MotorController(
+            left_motor=left_motor, right_motor=right_motor
         )
 
         # --------- grayscale module init ---------
@@ -172,8 +194,30 @@ class PicarxAdapter(metaclass=SingletonMeta):
            motor (int): Motor index (1 for left motor, 2 for right motor)
            value (int): Calibration value (1 or -1)
         """
-        self.motor_adapter.calibrate_direction(motor, value)
-        self.config.set("picarx_dir_motor", str(self.motor_adapter.cali_dir_value))
+        if motor not in (1, 2):
+            raise ValueError("Motor index must be 1 (left) or 2 (right).")
+
+        if value not in (1, -1):
+            raise ValueError("Calibration value must be 1 or -1.")
+
+        if motor == 1:
+            self.motor_controller.update_left_motor_calibration_direction(
+                value, persist=True
+            )
+        else:
+            self.motor_controller.update_right_motor_calibration_direction(
+                value, persist=True
+            )
+
+        self.config.set(
+            "picarx_dir_motor",
+            str(
+                [
+                    self.motor_controller.left_motor.calibration_direction,
+                    self.motor_controller.right_motor.calibration_direction,
+                ]
+            ),
+        )
 
     def move(self, speed: int, direction: int) -> None:
         """
@@ -185,32 +229,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         """
         current_angle = self.dir_current_angle
         abs_current_angle = min(abs(current_angle), self.DIR_MAX)
-
-        speed1 = speed * direction
-        speed2 = -speed * direction
-
-        if current_angle != 0:
-            power_scale = (100 - abs_current_angle) / 100.0
-            if current_angle > 0:
-                speed1 *= power_scale
-            else:
-                speed2 *= power_scale
-
-        self.logger.debug(
-            "Move %s with speed '%s' (motor 1: '%s', motor 2: '%s') angle '%s'",
-            (
-                "forward"
-                if direction == 1
-                else "backward" if direction == -1 else f"INVALID DIRECTION {direction}"
-            ),
-            speed,
-            speed1,
-            speed2,
-            current_angle,
-        )
-
-        self.motor_adapter.set_speed(1, speed1)
-        self.motor_adapter.set_speed(2, speed2)
+        return self.motor_controller.move(speed, direction, int(abs_current_angle))
 
     def forward(self, speed: int) -> None:
         """
@@ -235,19 +254,8 @@ class PicarxAdapter(metaclass=SingletonMeta):
     def stop(self) -> None:
         """
         Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a short delay between attempts.
-
-        The motor speed control is set to 0% pulse width twice for each motor, with a small delay (2 ms) between the
-        two executions. This is done to ensure that even if a brief command or glitch occurred that could have
-        prevented the motors from stopping on the first attempt, the second setting enforces that the motors come
-        to a full stop.
-
-        Steps followed:
-        1. Set both motors' speed to 0% pulse width.
-        2. Wait for 2 milliseconds.
-        3. Set both motors' speed to 0% pulse width again.
-        4. Wait an additional 2 milliseconds for any remaining process to finalize.
         """
-        return self.motor_adapter.stop()
+        return self.motor_controller.stop_all()
 
     def set_grayscale_reference(self, value: List[int]) -> None:
         """

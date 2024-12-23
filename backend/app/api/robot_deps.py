@@ -21,13 +21,11 @@ def get_connection_manager() -> ConnectionService:
 
 @lru_cache()
 def get_async_event_emitter() -> AsyncEventEmitter:
-    logger.info("GETTING ASYNC EVENT EMITTER")
     return AsyncEventEmitter()
 
 
 @lru_cache()
 def get_async_task_manager() -> AsyncTaskManager:
-    logger.info("GETTING TASK MANAGER")
     return AsyncTaskManager()
 
 
