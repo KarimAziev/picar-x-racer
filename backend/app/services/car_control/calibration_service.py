@@ -64,36 +64,42 @@ class CalibrationService(metaclass=SingletonMeta):
         self.px.steering_servo.update_calibration(
             self.increase_servo_angle(self.px.steering_servo.calibration_offset)
         )
+        self.px.steering_servo.servo.angle(self.px.steering_servo.calibration_offset)
         return self.get_calibration_data()
 
     def decrease_servo_dir_angle(self) -> Dict[str, str]:
         self.px.steering_servo.update_calibration(
             self.decrease_servo_angle(self.px.steering_servo.calibration_offset)
         )
+        self.px.steering_servo.servo.angle(self.px.steering_servo.calibration_offset)
         return self.get_calibration_data()
 
     def increase_cam_pan_angle(self) -> Dict[str, str]:
         self.px.cam_pan_servo.update_calibration(
             self.increase_servo_angle(self.px.cam_pan_servo.calibration_offset)
         )
+        self.px.cam_pan_servo.servo.angle(self.px.cam_pan_servo.calibration_offset)
         return self.get_calibration_data()
 
     def decrease_cam_pan_angle(self) -> Dict[str, str]:
         self.px.cam_pan_servo.update_calibration(
             self.decrease_servo_angle(self.px.cam_pan_servo.calibration_offset)
         )
+        self.px.cam_pan_servo.servo.angle(self.px.cam_pan_servo.calibration_offset)
         return self.get_calibration_data()
 
     def increase_cam_tilt_angle(self) -> Dict[str, str]:
         self.px.cam_tilt_servo.update_calibration(
             self.increase_servo_angle(self.px.cam_tilt_servo.calibration_offset)
         )
+        self.px.cam_tilt_servo.servo.angle(self.px.cam_tilt_servo.calibration_offset)
         return self.get_calibration_data()
 
     def decrease_cam_tilt_angle(self) -> Dict[str, str]:
         self.px.cam_tilt_servo.update_calibration(
             self.decrease_servo_angle(self.px.cam_tilt_servo.calibration_offset)
         )
+        self.px.cam_tilt_servo.servo.angle(self.px.cam_tilt_servo.calibration_offset)
         return self.get_calibration_data()
 
     def save_calibration(self) -> Dict[str, Any]:
