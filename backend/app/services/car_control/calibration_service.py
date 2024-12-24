@@ -1,38 +1,28 @@
 from time import sleep
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
+from app.schemas.config import ConfigSchema
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+from robot_hat import constrain
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
+    from app.services.car_control.config_service import ConfigService
 
 
 class CalibrationService(metaclass=SingletonMeta):
     def __init__(
         self,
         picarx: "PicarxAdapter",
+        config_manager: "ConfigService",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.logger = Logger(__name__)
         self.px = picarx
-
-        self.motor_num = 0
-        self.servos_cali = [
-            self.px.dir_cali_val,
-            self.px.cam_pan_cali_val,
-            self.px.cam_tilt_cali_val,
-        ]
-        self.motors_cali = [
-            self.px.motor_controller.left_motor.calibration_direction,
-            self.px.motor_controller.right_motor.calibration_direction,
-        ]
-        self.servos_offset = list.copy(self.servos_cali)
-        self.motors_offset = list.copy(self.motors_cali)
+        self.config_manager = config_manager
         self.step = 0.1
-
-        self.motor_run = False
 
     def servos_test(self) -> None:
         self.px.set_dir_servo_angle(-30)
@@ -54,93 +44,96 @@ class CalibrationService(metaclass=SingletonMeta):
         self.px.set_cam_tilt_angle(0)
         sleep(0.5)
 
-    def servos_move(self, servo_num: int, value: int) -> None:
-        self.logger.info(f"SERVOS_MOVE servo_num {servo_num} value {value}")
-        if servo_num == 0:
-            self.logger.debug(f"SERVOS_MOVE set_dir_servo_angle {value}")
-            self.px.set_dir_servo_angle(value)
-        elif servo_num == 1:
-            self.logger.debug(f"SERVOS_MOVE set_cam_pan_angle {value}")
-            self.px.set_cam_pan_angle(value)
-        elif servo_num == 2:
-            self.logger.debug(f"SERVOS_MOVE set_cam_tilt_angle {value}")
-            self.px.set_cam_tilt_angle(value)
-
-    def set_servos_offset(self, servo_num: int, value: int) -> None:
-        self.logger.debug(f"Setting servos offset {servo_num} to {value}")
-        if servo_num == 0:
-            self.px.dir_cali_val = value
-            self.logger.debug(f"px.dir_cali_val {self.px.dir_cali_val}")
-        elif servo_num == 1:
-            self.px.cam_pan_cali_val = value
-            self.logger.debug(f"px.cam_pan_cali_val {self.px.cam_pan_cali_val}")
-        elif servo_num == 2:
-            self.px.cam_tilt_cali_val = value
-            self.logger.debug(f"px.cam_tilt_cali_val {self.px.cam_tilt_cali_val}")
-
-    def servos_reset(self) -> Dict[str, str]:
-        for i in range(3):
-            self.servos_move(i, 0)
+    def reset_calibration(self) -> Dict[str, str]:
+        for servo in [
+            self.px.steering_servo,
+            self.px.cam_tilt_servo,
+            self.px.cam_pan_servo,
+        ]:
+            servo.reset_calibration()
+        self.px.motor_controller.reset_calibration()
         return self.get_calibration_data()
 
-    def increase_servo_angle(self, servo_num: int) -> None:
-        self.servos_offset[servo_num] += self.step
-        if self.servos_offset[servo_num] > 20:
-            self.servos_offset[servo_num] = 20
-        self.servos_offset[servo_num] = round(self.servos_offset[servo_num], 2)
-        self.set_servos_offset(servo_num, self.servos_offset[servo_num])
-        self.servos_move(servo_num, 0)
+    def increase_servo_angle(self, value: float) -> float:
+        return round(constrain(value + self.step, -20, 20), 2)
 
-    def decrease_servo_angle(self, servo_num: int) -> None:
-        self.servos_offset[servo_num] -= self.step
-        if self.servos_offset[servo_num] < -20:
-            self.servos_offset[servo_num] = -20
-        self.servos_offset[servo_num] = round(self.servos_offset[servo_num], 2)
-        self.set_servos_offset(servo_num, self.servos_offset[servo_num])
-        self.servos_move(servo_num, 0)
+    def decrease_servo_angle(self, value: float) -> float:
+        return round(constrain(value - self.step, -20, 20), 2)
 
-    def increase_servo_dir_angle(self) -> Dict[str, str]:
-        self.increase_servo_angle(0)
-        return self.get_calibration_data()
-
-    def decrease_servo_dir_angle(self) -> Dict[str, str]:
-        self.decrease_servo_angle(0)
-        return self.get_calibration_data()
-
-    def increase_cam_pan_angle(self) -> Dict[str, str]:
-        self.increase_servo_angle(1)
-        return self.get_calibration_data()
-
-    def decrease_cam_pan_angle(self) -> Dict[str, str]:
-        self.decrease_servo_angle(1)
-        return self.get_calibration_data()
-
-    def increase_cam_tilt_angle(self) -> Dict[str, str]:
-        self.increase_servo_angle(2)
-        return self.get_calibration_data()
-
-    def decrease_cam_tilt_angle(self) -> Dict[str, str]:
-        self.decrease_servo_angle(2)
-        return self.get_calibration_data()
-
-    def save_calibration(self) -> Dict[str, str]:
-        self.px.dir_servo_calibrate(self.servos_offset[0])
-        self.px.cam_pan_servo_calibrate(self.servos_offset[1])
-        self.px.cam_tilt_servo_calibrate(self.servos_offset[2])
-        self.px.motor_direction_calibrate(
-            self.motor_num + 1, self.motors_offset[self.motor_num]
+    def increase_servo_dir_angle(self) -> Dict[str, Any]:
+        self.px.steering_servo.update_calibration(
+            self.increase_servo_angle(self.px.steering_servo.calibration_offset)
         )
         return self.get_calibration_data()
 
-    def get_calibration_data(self) -> Dict[str, str]:
+    def decrease_servo_dir_angle(self) -> Dict[str, str]:
+        self.px.steering_servo.update_calibration(
+            self.decrease_servo_angle(self.px.steering_servo.calibration_offset)
+        )
+        return self.get_calibration_data()
+
+    def increase_cam_pan_angle(self) -> Dict[str, str]:
+        self.px.cam_pan_servo.update_calibration(
+            self.increase_servo_angle(self.px.cam_pan_servo.calibration_offset)
+        )
+        return self.get_calibration_data()
+
+    def decrease_cam_pan_angle(self) -> Dict[str, str]:
+        self.px.cam_pan_servo.update_calibration(
+            self.decrease_servo_angle(self.px.cam_pan_servo.calibration_offset)
+        )
+        return self.get_calibration_data()
+
+    def increase_cam_tilt_angle(self) -> Dict[str, str]:
+        self.px.cam_tilt_servo.update_calibration(
+            self.increase_servo_angle(self.px.cam_tilt_servo.calibration_offset)
+        )
+        return self.get_calibration_data()
+
+    def decrease_cam_tilt_angle(self) -> Dict[str, str]:
+        self.px.cam_tilt_servo.update_calibration(
+            self.decrease_servo_angle(self.px.cam_tilt_servo.calibration_offset)
+        )
+        return self.get_calibration_data()
+
+    def save_calibration(self) -> Dict[str, Any]:
+        config = ConfigSchema(**self.config_manager.load_settings())
+        steering_servo_offset = self.px.steering_servo.calibration_offset
+        cam_pan_servo_offset = self.px.cam_pan_servo.calibration_offset
+        cam_tilt_servo_offset = self.px.cam_tilt_servo.calibration_offset
+        left_motor = self.px.motor_controller.left_motor.calibration_direction
+        right_motor = self.px.motor_controller.right_motor.calibration_direction
+
+        config.steering_servo.calibration_offset = steering_servo_offset
+        config.cam_pan_servo.calibration_offset = cam_pan_servo_offset
+        config.cam_tilt_servo.calibration_offset = cam_tilt_servo_offset
+        config.left_motor.calibration_direction = left_motor
+        config.right_motor.calibration_direction = right_motor
+
+        for servo in [
+            self.px.steering_servo,
+            self.px.cam_tilt_servo,
+            self.px.cam_pan_servo,
+        ]:
+            servo.update_calibration(servo.calibration_offset, True)
+
+        self.px.motor_controller.update_left_motor_calibration_direction(
+            left_motor, True
+        )
+        self.px.motor_controller.update_right_motor_calibration_direction(
+            right_motor, True
+        )
+
+        self.config_manager.save_settings(config.model_dump(mode="json"))
+        self.px.config = config
+
+        return self.get_calibration_data()
+
+    def get_calibration_data(self) -> Dict[str, Any]:
         return {
-            "picarx_dir_servo": f"{self.px.dir_cali_val}",
-            "picarx_cam_pan_servo": f"{self.px.cam_pan_cali_val}",
-            "picarx_cam_tilt_servo": f"{self.px.cam_tilt_cali_val}",
-            "picarx_dir_motor": str(
-                [
-                    self.px.motor_controller.left_motor.calibration_direction,
-                    self.px.motor_controller.right_motor.calibration_direction,
-                ]
-            ),
+            "steering_servo_offset": self.px.steering_servo.calibration_offset,
+            "cam_pan_servo_offset": self.px.cam_pan_servo.calibration_offset,
+            "cam_tilt_servo_offset": self.px.cam_tilt_servo.calibration_offset,
+            "left_motor_direction": self.px.motor_controller.left_motor.calibration_direction,
+            "right_motor_direction": self.px.motor_controller.right_motor.calibration_direction,
         }

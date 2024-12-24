@@ -4,6 +4,7 @@ from app.adapters.picarx_adapter import PicarxAdapter
 from app.services.async_task_manager import AsyncTaskManager
 from app.services.car_control.calibration_service import CalibrationService
 from app.services.car_control.car_service import CarService
+from app.services.car_control.config_service import ConfigService
 from app.services.connection_service import ConnectionService
 from app.services.distance_service import DistanceService
 from app.util.async_emitter import AsyncEventEmitter
@@ -28,6 +29,10 @@ def get_async_task_manager() -> AsyncTaskManager:
     return AsyncTaskManager()
 
 
+def get_config_manager() -> ConfigService:
+    return ConfigService()
+
+
 def get_distance_service(
     emitter: AsyncEventEmitter = Depends(get_async_event_emitter),
     task_manager: AsyncTaskManager = Depends(get_async_task_manager),
@@ -38,12 +43,17 @@ def get_distance_service(
     )
 
 
-def get_picarx_adapter() -> PicarxAdapter:
-    return PicarxAdapter()
+def get_picarx_adapter(
+    config_manager: ConfigService = Depends(get_config_manager),
+) -> PicarxAdapter:
+    return PicarxAdapter(config_manager=config_manager)
 
 
-def get_calibration_service(px=Depends(get_picarx_adapter)) -> CalibrationService:
-    return CalibrationService(px)
+def get_calibration_service(
+    px: PicarxAdapter = Depends(get_picarx_adapter),
+    config_manager: ConfigService = Depends(get_config_manager),
+) -> CalibrationService:
+    return CalibrationService(px, config_manager=config_manager)
 
 
 def get_robot_manager(

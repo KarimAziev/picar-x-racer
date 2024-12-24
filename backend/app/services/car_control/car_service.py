@@ -115,7 +115,7 @@ class CarService(metaclass=SingletonMeta):
             "decreaseCamTiltCali": self.calibration.decrease_cam_tilt_angle,
             "increaseServoDirCali": self.calibration.increase_servo_dir_angle,
             "decreaseServoDirCali": self.calibration.decrease_servo_dir_angle,
-            "resetCalibration": self.calibration.servos_reset,
+            "resetCalibration": self.calibration.reset_calibration,
             "saveCalibration": self.calibration.save_calibration,
             "servoTest": self.calibration.servos_test,
         }

@@ -1,95 +1,74 @@
-from app.config.paths import PX_CALIBRATION_FILE
+from typing import TYPE_CHECKING
+
+from app.schemas.config import ConfigSchema
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from robot_hat import (
-    FileDB,
-    MotorConfig,
-    MotorController,
-    MotorFabric,
-    Servo,
-    constrain,
-)
+from robot_hat import MotorConfig, MotorFabric, MotorService, ServoService
+
+logger = Logger(name=__name__)
+
+if TYPE_CHECKING:
+    from app.services.car_control.config_service import ConfigService
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
-    DEFAULT_CLIFF_REF = [500, 500, 500]
-    DIR_MIN = -30
-    DIR_MAX = 30
-    MAX_SPEED = 100
-    CAM_PAN_MIN = -90
-    CAM_PAN_MAX = 90
-    CAM_TILT_MIN = -35
-    CAM_TILT_MAX = 65
-
     def __init__(
         self,
-        servo_pins: list[str] = ["P0", "P1", "P2"],
-        motor_dir_pins: list[str] = ["D4", "D5"],
-        motor_speed_pins: list[str] = ["P12", "P13"],
-        config_file: str = PX_CALIBRATION_FILE,
+        config_manager: "ConfigService",
     ):
-        self.logger = Logger(name=__name__)
-        self.config = FileDB(config_file)
+        self.config_manager = config_manager
 
-        # --------- servos init ---------
-        self.cam_pan, self.cam_tilt, self.dir_servo_pin = [
-            Servo(pin) for pin in servo_pins
-        ]
-        # Get calibration values
-        self.dir_cali_val = self.config.get_value_with("picarx_dir_servo", float) or 0.0
-        self.dir_current_angle = 0.0
+        self.config = ConfigSchema(**config_manager.load_settings())
 
-        self.cam_pan_cali_val = (
-            self.config.get_value_with("picarx_cam_pan_servo", float) or 0.0
+        self.cam_pan_servo = ServoService(
+            servo_pin=self.config.cam_pan_servo.servo_pin,
+            calibration_offset=self.config.cam_pan_servo.calibration_offset,
+            min_angle=self.config.cam_pan_servo.min_angle,
+            max_angle=self.config.cam_pan_servo.max_angle,
+            calibration_mode=self.config.cam_pan_servo.calibration_mode,
+            name=self.config.cam_pan_servo.name,
+        )
+        self.cam_tilt_servo = ServoService(
+            servo_pin=self.config.cam_tilt_servo.servo_pin,
+            calibration_offset=self.config.cam_tilt_servo.calibration_offset,
+            min_angle=self.config.cam_tilt_servo.min_angle,
+            max_angle=self.config.cam_tilt_servo.max_angle,
+            calibration_mode=self.config.cam_tilt_servo.calibration_mode,
+            name=self.config.cam_tilt_servo.name,
+        )
+        self.steering_servo = ServoService(
+            servo_pin=self.config.steering_servo.servo_pin,
+            calibration_offset=self.config.steering_servo.calibration_offset,
+            min_angle=self.config.steering_servo.min_angle,
+            max_angle=self.config.steering_servo.max_angle,
+            calibration_mode=self.config.steering_servo.calibration_mode,
+            name=self.config.steering_servo.name,
         )
 
-        self.cam_tilt_cali_val = (
-            self.config.get_value_with("picarx_cam_tilt_servo", float) or 0.0
-        )
-
-        # Set servos to init angle
-        self.dir_servo_pin.angle(self.dir_cali_val)
-        self.cam_pan.angle(self.cam_pan_cali_val)
-        self.cam_tilt.angle(self.cam_tilt_cali_val)
-
-        # --------- motors init ---------
-
-        cali_dir_value = self.config.get_list_value_with("picarx_dir_motor", int)
         left_motor, right_motor = MotorFabric.create_motor_pair(
             MotorConfig(
-                dir_pin=motor_dir_pins[0],
-                pwm_pin=motor_speed_pins[0],
-                calibration_direction=(
-                    cali_dir_value[0] if len(cali_dir_value) == 2 else 1
-                ),
-                max_speed=self.MAX_SPEED,
-                name="LeftMotor",
+                dir_pin=self.config.left_motor.dir_pin,
+                pwm_pin=self.config.left_motor.pwm_pin,
+                calibration_direction=self.config.left_motor.calibration_direction,
+                max_speed=self.config.left_motor.max_speed,
+                name=self.config.left_motor.name,
+                period=self.config.left_motor.period,
+                prescaler=self.config.left_motor.prescaler,
             ),
             MotorConfig(
-                dir_pin=motor_dir_pins[1],
-                pwm_pin=motor_speed_pins[1],
-                calibration_direction=(
-                    cali_dir_value[1] if len(cali_dir_value) == 2 else 1
-                ),
-                max_speed=self.MAX_SPEED,
-                name="RightMotor",
+                dir_pin=self.config.right_motor.dir_pin,
+                pwm_pin=self.config.right_motor.pwm_pin,
+                calibration_direction=self.config.right_motor.calibration_direction,
+                max_speed=self.config.right_motor.max_speed,
+                name=self.config.right_motor.name,
+                period=self.config.right_motor.period,
+                prescaler=self.config.right_motor.prescaler,
             ),
         )
 
-        self.motor_controller = MotorController(
+        self.motor_controller = MotorService(
             left_motor=left_motor, right_motor=right_motor
         )
-
-    def dir_servo_calibrate(self, value: float) -> None:
-        """
-        Calibrate the steering direction servo.
-
-        Args:
-           value (float): Calibration value
-        """
-        self.dir_cali_val = value
-        self.config.set("picarx_dir_servo", str(value))
-        self.dir_servo_pin.angle(value)
 
     def set_dir_servo_angle(self, value: float) -> None:
         """
@@ -98,50 +77,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            value (int): Desired angle
         """
-        original_value = self.dir_current_angle
-        self.dir_current_angle = constrain(value, self.DIR_MIN, self.DIR_MAX)
-        angle_value = self.dir_current_angle + self.dir_cali_val
-
-        self.logger.debug(
-            "Direction angle from %s to %s (calibrated %s)",
-            original_value,
-            self.dir_current_angle,
-            angle_value,
-        )
-        self.dir_servo_pin.angle(angle_value)
-
-    def cam_pan_servo_calibrate(self, value: int) -> None:
-        """
-        Calibrate the camera pan servo.
-
-        Args:
-           value (int): Calibration value
-        """
-        self.cam_pan_cali_val = value
-        self.config.set("picarx_cam_pan_servo", str(value))
-        self.cam_pan.angle(value)
-
-    def cam_tilt_servo_calibrate(self, value: int) -> None:
-        """
-        Calibrate the camera tilt servo.
-
-        Args:
-           value (int): Calibration value
-        """
-        self.logger.info("Calibrating camera tilt servo with value %s", value)
-        self.cam_tilt_cali_val = value
-        self.config.set("picarx_cam_tilt_servo", str(value))
-        self.cam_tilt.angle(value)
-
-    @staticmethod
-    def calc_angle(
-        value: float, min_value: float, max_value: float, calibration_value: float
-    ) -> float:
-        """
-        Calculate and return a constrained and adjusted angle value based on input parameters.
-        """
-        constrained_value = constrain(value, min_value, max_value)
-        return -1 * (constrained_value + -1 * calibration_value)
+        self.steering_servo.set_angle(value)
 
     def set_cam_pan_angle(self, value: int) -> None:
         """
@@ -150,11 +86,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            value (int): Desired angle
         """
-
-        adjusted_value = PicarxAdapter.calc_angle(
-            value, self.CAM_PAN_MIN, self.CAM_PAN_MAX, self.cam_pan_cali_val
-        )
-        self.cam_pan.angle(adjusted_value)
+        self.cam_pan_servo.set_angle(value)
 
     def set_cam_tilt_angle(self, value: int) -> None:
         """
@@ -163,51 +95,17 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            value (int): Desired angle
         """
-        adjusted_value = PicarxAdapter.calc_angle(
-            value, self.CAM_TILT_MIN, self.CAM_TILT_MAX, self.cam_tilt_cali_val
-        )
-        self.cam_tilt.angle(adjusted_value)
-
-    def motor_direction_calibrate(self, motor: int, value: int):
-        """
-        Set motor direction calibration value.
-
-        Args:
-           motor (int): Motor index (1 for left motor, 2 for right motor)
-           value (int): Calibration value (1 or -1)
-        """
-        if motor not in (1, 2):
-            raise ValueError("Motor index must be 1 (left) or 2 (right).")
-
-        if motor == 1:
-            self.motor_controller.update_left_motor_calibration_direction(
-                value, persist=True
-            )
-        else:
-            self.motor_controller.update_right_motor_calibration_direction(
-                value, persist=True
-            )
-
-        self.config.set(
-            "picarx_dir_motor",
-            str(
-                [
-                    self.motor_controller.left_motor.calibration_direction,
-                    self.motor_controller.right_motor.calibration_direction,
-                ]
-            ),
-        )
+        self.cam_tilt_servo.set_angle(value)
 
     def move(self, speed: int, direction: int) -> None:
         """
-        Move the robot forward or backward with steering based on the current angle.
+        Move the robot forward or backward.
 
         Args:
         - speed (int): The base speed at which to move.
         - direction (int): 1 for forward, -1 for backward.
         """
-        abs_current_angle = min(abs(self.dir_current_angle), self.DIR_MAX)
-        return self.motor_controller.move(speed, direction, int(abs_current_angle))
+        return self.motor_controller.move(speed, direction)
 
     def forward(self, speed: int) -> None:
         """
@@ -216,7 +114,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            speed (int): The base speed at which to move.
         """
-        self.logger.debug("Forward: 100/%s", speed)
+        logger.debug("Forward: 100/%s", speed)
         self.move(speed, direction=1)
 
     def backward(self, speed: int) -> None:
@@ -226,7 +124,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Args:
            speed (int): The base speed at which to move.
         """
-        self.logger.debug("Backward: 100/%s", speed)
+        logger.debug("Backward: 100/%s", speed)
         self.move(speed, direction=-1)
 
     def stop(self) -> None:

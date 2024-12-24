@@ -2,7 +2,7 @@
   <div class="fields">
     <div v-for="(_value, field) in store.data" :key="field" class="field">
       <label :for="`${field}`">{{ field }}</label>
-      <InputText
+      <InputNumber
         class="text-input"
         size="small"
         :id="field as string"
@@ -28,7 +28,7 @@
 <script setup lang="ts">
 import { useCalibrationStore } from "@/features/settings/stores";
 import { useControllerStore } from "@/features/controller/store";
-import InputText from "primevue/inputtext";
+import InputNumber from "primevue/inputnumber";
 
 const store = useCalibrationStore();
 const controllerStore = useControllerStore();

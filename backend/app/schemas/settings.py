@@ -237,39 +237,3 @@ class Settings(BaseModel):
             }
         ],
     )
-
-
-class CalibrationConfig(BaseModel):
-    """
-    A model representing the calibration configuration.
-
-    Attributes:
-      - `picarx_dir_servo`: Configuration for the direction servo.
-      - `picarx_cam_pan_servo`: Configuration for the camera's pan servo.
-      - `picarx_cam_tilt_servo`: Configuration for the camera's tilt servo.
-      - `picarx_dir_motor`: Configuration for the direction motor.
-    """
-
-    picarx_dir_servo: Optional[str] = Field(
-        None,
-        description="Configuration for the direction servo.",
-        examples=["6.0"],
-    )
-
-    picarx_cam_pan_servo: Optional[str] = Field(
-        None,
-        description="Configuration for the camera's pan servo.",
-        examples=["-0.6"],
-    )
-
-    picarx_cam_tilt_servo: Optional[str] = Field(
-        None,
-        description="Configuration for the camera's tilt servo.",
-        examples=["0.2"],
-    )
-
-    picarx_dir_motor: Optional[str] = Field(
-        None,
-        description="Configuration for the direction motor.",
-        examples=["[1, 1]"],
-    )
