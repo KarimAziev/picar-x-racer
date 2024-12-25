@@ -371,7 +371,8 @@ def get_frame_info(
         cmd = [
             "v4l2-ctl",
             "--list-frameintervals",
-            f"width={width},height={height},pixelformat={pixel_format}" "--device",
+            f"width={width},height={height},pixelformat={pixel_format}",
+            "--device",
             device,
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
