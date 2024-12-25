@@ -49,11 +49,11 @@ import TabList from "primevue/tablist";
 import Tab from "primevue/tab";
 import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
-import { defineAsyncComponent } from "vue";
 import { SettingsTab } from "@/features/settings/enums";
 import { usePopupStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import TTSPanel from "@/features/settings/components/TTSPanel.vue";
+import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vue";
 import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
 import CalibrationPanel from "@/features/settings/components/CalibrationPanel.vue";
 import PhotosPanel from "@/features/settings/components/PhotosPanel.vue";
@@ -61,10 +61,6 @@ import ModelsPanel from "@/features/settings/components/ModelsPanel.vue";
 
 const popupStore = usePopupStore();
 const isMobile = useDeviceWatcher();
-
-const KeybindingsPanel = defineAsyncComponent({
-  loader: () => import("@/features/settings/components/KeybindingsPanel.vue"),
-});
 </script>
 <style scoped lang="scss">
 .robo-tabs {

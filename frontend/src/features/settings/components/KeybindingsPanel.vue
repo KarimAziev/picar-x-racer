@@ -13,7 +13,6 @@
               :v-tooltip="fieldPair[0].label"
               v-model="fieldPair[0].value"
               optionLabel="label"
-              size="small"
               optionValue="value"
               :options="fieldPair[0].options"
               :disabled="fieldPair[0].props?.disabled"
