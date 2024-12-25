@@ -31,6 +31,18 @@ router = APIRouter()
     response_model=DetectionSettings,
     summary="Update Detection Settings",
     response_description="Returns the updated detection settings.",
+    responses={
+        400: {
+            "description": "Bad Request - Errors like model loading or detection issues.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Model's file /home/pi/picar-x-racer/data/yolov3n.pt is not found"
+                    }
+                }
+            },
+        }
+    },
 )
 async def update_detection_settings(
     request: Request,
@@ -40,11 +52,6 @@ async def update_detection_settings(
     """
     Endpoint to update object detection settings.
 
-    Args:
-    -------------
-    - payload (DetectionSettings): The new configuration for the object detection system.
-    - detection_service (DetectionService): The service managing the object detection process.
-
     Returns:
     -------------
     DetectionSettings: The updated settings after applying configurations.
@@ -53,10 +60,6 @@ async def update_detection_settings(
     -------------
     - Updates detection settings and notifies connected clients via WebSocket.
     - Handles errors related to model loading or detection issues.
-
-    Raises:
-    -------------
-    - HTTPException (400): If there is an error during model loading or detection.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     logger.info("Detection update payload %s", payload)
@@ -77,7 +80,7 @@ async def update_detection_settings(
                 "payload": detection_service.detection_settings.model_dump(),
             }
         )
-        raise HTTPException(status_code=400, detail=f"Model loading error {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except DetectionProcessError as e:
         detection_service.detection_settings.active = False
         await connection_manager.broadcast_json(
@@ -96,18 +99,14 @@ async def update_detection_settings(
 @router.get(
     "/api/detection/settings",
     response_model=DetectionSettings,
-    summary="Retrieve Detection Settings",
-    response_description="Returns the current detection configuration.",
+    summary="Retrieve object detection settings",
+    response_description="The current configuration of the object detection system",
 )
 def get_detection_settings(
     detection_service: "DetectionService" = Depends(deps.get_detection_manager),
 ):
     """
     Endpoint to retrieve the current detection configuration.
-
-    Args:
-    -------------
-    - detection_service (DetectionService): The service managing the object detection process.
 
     Returns:
     -------------

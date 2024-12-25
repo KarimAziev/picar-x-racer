@@ -45,9 +45,13 @@ def detection_process_func(
         - Sends success or error messages to the `out_queue`.
         - Stops gracefully when the `stop_event` is set.
     """
-    with ModelManager(model) as yolo_model:
+    with ModelManager(model) as pair:
+        yolo_model, err_msg = pair
         if yolo_model is None:
-            msg = f"Failed to load the model {model}. Exiting detection process."
+            msg = (
+                err_msg
+                or f"Failed to load the model {model}. Exiting detection process."
+            )
             logger.error(msg)
             put_to_queue(out_queue, {"success": False, "error": msg})
             return

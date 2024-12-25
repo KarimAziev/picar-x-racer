@@ -1,5 +1,6 @@
 import gc
 import os
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from app.config.paths import DATA_DIR, YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
 from app.util.file_util import resolve_absolute_path
@@ -7,6 +8,9 @@ from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 
 logger = Logger(__name__)
+
+if TYPE_CHECKING:
+    from ultralytics import YOLO
 
 
 class ModelManager:
@@ -17,7 +21,7 @@ class ModelManager:
     The model loading path is selected dynamically based on available files.
     """
 
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None) -> None:
         """
         Initializes the ModelManager with an optional model path.
 
@@ -25,13 +29,14 @@ class ModelManager:
             model_path (str): An optional custom path to use for loading the model.
         """
         self.model = None
+        self.error_msg = None
         self.model_path = (
             resolve_absolute_path(model_path, DATA_DIR)
             if model_path is not None
             else model_path
         )
 
-    def __enter__(self):
+    def __enter__(self) -> Tuple[Optional["YOLO"], Optional[str]]:
         """
         Called when entering the context (i.e. using the 'with' statement).
         Tries to load the YOLO object detection model from the model paths defined in configuration.
@@ -63,14 +68,21 @@ class ModelManager:
             try:
                 self.model = YOLO(model=self.model_path, task="detect")
                 logger.info(f"Model {self.model_path} loaded successfully")
-            except Exception as err:
-                logger.log_exception(f"Error loading model {self.model_path}", err)
+            except FileNotFoundError:
+                msg = f"Model's file {self.model_path} is not found"
+                logger.error(msg)
+                self.error_msg = msg
+            except Exception:
+                msg = f"Unexpected error while loading {self.model_path}"
+                logger.error(msg, exc_info=True)
+                self.error_msg = msg
 
-            return self.model
+            return self.model, self.error_msg
         except KeyboardInterrupt:
             logger.warning("Detection model context received KeyboardInterrupt.")
+            return self.model, "Detection model context received KeyboardInterrupt."
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         """
         Called upon exiting the context (i.e. after the 'with' block).
         Ensures proper cleanup of resources tied to the YOLO model, including memory deallocation and garbage collection.
