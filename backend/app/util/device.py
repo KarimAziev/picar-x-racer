@@ -213,12 +213,6 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
         if resolution_stepwise_match:
             min_size = resolution_stepwise_match.group(1)
             max_size = resolution_stepwise_match.group(2)
-            logger.info(
-                "current_format=%s, min_size=%s, max_size=%s",
-                current_format,
-                min_size,
-                max_size,
-            )
             # step_x = resolution_stepwise_match.group(3)
             # step_y = resolution_stepwise_match.group(4)
             if (
@@ -230,19 +224,6 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
                 [max_width, max_height] = [int(value) for value in max_size.split("x")]
 
                 for width, height in COMMON_SIZES:
-                    logger.info(
-                        "height=%s, width=%s, min_width=%s, min_height=%s, max_width=%s, max_height=%s, max_width >= width=%s, max_height >= height=%s, width >= min_width=%s, height >= min_height=%s",
-                        height,
-                        width,
-                        min_width,
-                        min_height,
-                        max_width,
-                        max_height,
-                        max_width >= width,
-                        max_height >= height,
-                        width >= min_width,
-                        height >= min_height,
-                    )
                     if (
                         max_width >= width
                         and max_height >= height
@@ -256,13 +237,6 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
                             width=width,
                             height=height,
                             pixel_format=current_format,
-                        )
-                        logger.info(
-                            "current_format=%s, min_size=%s, max_size=%s, fps_rates=%s",
-                            current_format,
-                            min_size,
-                            max_size,
-                            fps_rates,
                         )
                         for fps_value in fps_rates:
                             value = (
