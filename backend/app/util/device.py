@@ -141,14 +141,14 @@ def list_available_camera_devices():
 
 
 COMMON_SIZES = [
-    (320, 180),
-    (424, 240),
-    (640, 360),
+    # (320, 180),
+    # (424, 240),
+    # (640, 360),
     (640, 480),
     (800, 600),
     (1024, 768),
-    (1280, 720),
-    (2592, 1944),
+    # (1280, 720),
+    # (2592, 1944),
 ]
 
 
@@ -239,6 +239,8 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
                             pixel_format=current_format,
                         )
                         for fps_value in fps_rates:
+                            if fps_value < 30:
+                                continue
                             value = (
                                 f"{device}:{current_format}:{frame_size}:{fps_value}"
                             )
