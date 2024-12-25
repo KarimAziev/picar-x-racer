@@ -9,7 +9,7 @@ from robot_hat import constrain
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
     from app.services.car_control.config_service import ConfigService
-    from robot_hat import ServoService
+    from robot_hat import Motor, ServoService
 
 
 class CalibrationService(metaclass=SingletonMeta):
@@ -75,13 +75,23 @@ class CalibrationService(metaclass=SingletonMeta):
         await self._decrease_servo_angle(self.px.cam_tilt_servo)
         return self.get_calibration_data()
 
+    def _reverse_motor(self, motor: "Motor") -> Dict[str, Any]:
+        motor.update_calibration_direction(-motor.direction)
+        return self.get_calibration_data()
+
+    def reverse_left_motor(self) -> Dict[str, Any]:
+        return self._reverse_motor(self.px.motor_controller.left_motor)
+
+    def reverse_right_motor(self) -> Dict[str, Any]:
+        return self._reverse_motor(self.px.motor_controller.right_motor)
+
     async def save_calibration(self) -> Dict[str, Any]:
         config = ConfigSchema(**self.config_manager.load_settings())
         steering_servo_offset = self.px.steering_servo.calibration_offset
         cam_pan_servo_offset = self.px.cam_pan_servo.calibration_offset
         cam_tilt_servo_offset = self.px.cam_tilt_servo.calibration_offset
-        left_motor = self.px.motor_controller.left_motor.calibration_direction
-        right_motor = self.px.motor_controller.right_motor.calibration_direction
+        left_motor = self.px.motor_controller.left_motor.direction
+        right_motor = self.px.motor_controller.right_motor.direction
 
         config.steering_servo.calibration_offset = steering_servo_offset
         config.cam_pan_servo.calibration_offset = cam_pan_servo_offset
@@ -113,6 +123,6 @@ class CalibrationService(metaclass=SingletonMeta):
             "steering_servo_offset": self.px.steering_servo.calibration_offset,
             "cam_pan_servo_offset": self.px.cam_pan_servo.calibration_offset,
             "cam_tilt_servo_offset": self.px.cam_tilt_servo.calibration_offset,
-            "left_motor_direction": self.px.motor_controller.left_motor.calibration_direction,
-            "right_motor_direction": self.px.motor_controller.right_motor.calibration_direction,
+            "left_motor_direction": self.px.motor_controller.left_motor.direction,
+            "right_motor_direction": self.px.motor_controller.right_motor.direction,
         }

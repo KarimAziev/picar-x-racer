@@ -7,7 +7,7 @@ import { retrieveError } from "@/util/error";
 import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore, ShowMessageTypeProps } from "@/features/messager";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
-import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
+
 import {
   useStore as useStreamStore,
   defaultState as defaultStreamState,
@@ -127,7 +127,6 @@ export const useStore = defineStore("settings", {
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
-      const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
       const streamStore = useStreamStore();
       if (this.retryTimer) {
@@ -137,7 +136,6 @@ export const useStore = defineStore("settings", {
         this.loading = true;
         const [response] = await Promise.all([
           axios.get<Settings>("/api/settings"),
-          calibrationStore.fetchData(),
           musicStore.fetchData(),
           streamStore.fetchEnhancers(),
         ]);

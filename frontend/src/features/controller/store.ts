@@ -476,6 +476,12 @@ export const useControllerStore = defineStore("controller", {
     decreaseServoDirCali() {
       this.sendMessage({ action: "decreaseServoDirCali" });
     },
+    reverseLeftMotor() {
+      this.sendMessage({ action: "reverseLeftMotor" });
+    },
+    reverseRightMotor() {
+      this.sendMessage({ action: "reverseRightMotor" });
+    },
     saveCalibration() {
       this.sendMessage({ action: "saveCalibration" });
     },

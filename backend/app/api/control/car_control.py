@@ -12,6 +12,7 @@ logger = Logger(name=__name__, app_name="px_robot")
 car_manager_router = APIRouter()
 
 if TYPE_CHECKING:
+    from app.services.car_control.calibration_service import CalibrationService
     from app.services.car_control.car_service import CarService
     from app.services.connection_service import ConnectionService
 
@@ -20,15 +21,15 @@ if TYPE_CHECKING:
 async def websocket_endpoint(
     websocket: WebSocket,
     car_manager: "CarService" = Depends(robot_deps.get_robot_manager),
+    calibration_service: "CalibrationService" = Depends(
+        robot_deps.get_calibration_service
+    ),
     connection_manager: "ConnectionService" = Depends(
         robot_deps.get_connection_manager
     ),
 ):
     """
     WebSocket endpoint for controlling the Picar-X vehicle.
-
-    Args:
-        websocket (WebSocket): The WebSocket connection for sending and receiving control commands.
 
     Raises:
         Exception: If there is an error processing the incoming message.
@@ -37,7 +38,14 @@ async def websocket_endpoint(
     """
     try:
         await connection_manager.connect(websocket)
+        await connection_manager.broadcast_json(
+            {
+                "type": "updateCalibration",
+                "payload": calibration_service.get_calibration_data(),
+            }
+        )
         await car_manager.broadcast()
+
         while websocket.application_state == WebSocketState.CONNECTED:
             raw_data = await websocket.receive_text()
             data = json.loads(raw_data)

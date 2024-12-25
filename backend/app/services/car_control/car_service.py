@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import os
 from typing import TYPE_CHECKING, Any, Dict
@@ -112,8 +113,11 @@ class CarService(metaclass=SingletonMeta):
             "decreaseCamTiltCali": self.calibration.decrease_cam_tilt_angle,
             "increaseServoDirCali": self.calibration.increase_servo_dir_angle,
             "decreaseServoDirCali": self.calibration.decrease_servo_dir_angle,
+            "reverseRightMotor": self.calibration.reverse_right_motor,
+            "reverseLeftMotor": self.calibration.reverse_left_motor,
             "resetCalibration": self.calibration.reset_calibration,
             "saveCalibration": self.calibration.save_calibration,
+            "getCalibrationData": self.calibration.get_calibration_data,
         }
 
         actions_map = {
@@ -129,9 +133,13 @@ class CarService(metaclass=SingletonMeta):
             "servoTest": self.servos_test,
         }
 
-        calibrationData = None
         if action in calibration_actions_map:
-            calibrationData = await calibration_actions_map[action]()
+            handler = calibration_actions_map[action]
+            if inspect.iscoroutinefunction(handler):
+                calibrationData = await handler()
+            else:
+                calibrationData = handler()
+
             if calibrationData:
                 await self.connection_manager.broadcast_json(
                     {
@@ -146,7 +154,11 @@ class CarService(metaclass=SingletonMeta):
 
         elif action in actions_map:
             func = actions_map[action]
-            await func(payload)
+            if inspect.iscoroutinefunction(func):
+                await func(payload)
+            else:
+                func(payload)
+
             await self.broadcast()
 
         else:
