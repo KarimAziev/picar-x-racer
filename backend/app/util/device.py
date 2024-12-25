@@ -227,7 +227,7 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
                 and max_size is not None
             ):
                 [min_width, min_height] = [int(value) for value in min_size.split("x")]
-                [max_width, max_height] = [int(value) for value in min_size.split("x")]
+                [max_width, max_height] = [int(value) for value in max_size.split("x")]
 
                 for width, height in COMMON_SIZES:
                     logger.info(
