@@ -44,12 +44,7 @@ class CarService(metaclass=SingletonMeta):
         )
         self.avoid_obstacles_mode = False
         self.max_speed = self.robot_settings.get("max_speed", 80)
-        self.speed = 0
         self.distance_service = distance_service
-        self.direction = 0
-        self.servo_dir_angle = 0
-        self.cam_pan_angle = 0
-        self.cam_tilt_angle = 0
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)
@@ -73,13 +68,15 @@ class CarService(metaclass=SingletonMeta):
         - "distance": The measured distance in centimeters.
         - "autoMeasureDistanceMode": Whether the auto measure distance mode is on.
         """
+
+        px_state = self.px.state
         return {
-            "speed": self.speed,
+            "speed": px_state["speed"],
+            "direction": px_state["direction"],
+            "servoAngle": px_state["steering_servo_angle"],
+            "camPan": px_state["cam_pan_angle"],
+            "camTilt": px_state["cam_tilt_angle"],
             "maxSpeed": self.max_speed,
-            "direction": self.direction,
-            "servoAngle": self.servo_dir_angle,
-            "camPan": self.cam_pan_angle,
-            "camTilt": self.cam_tilt_angle,
             "avoidObstacles": self.avoid_obstacles_mode,
             "distance": self.distance_service.distance,
             "autoMeasureDistanceMode": self.auto_measure_distance_mode,
@@ -117,7 +114,6 @@ class CarService(metaclass=SingletonMeta):
             "decreaseServoDirCali": self.calibration.decrease_servo_dir_angle,
             "resetCalibration": self.calibration.reset_calibration,
             "saveCalibration": self.calibration.save_calibration,
-            "servoTest": self.calibration.servos_test,
         }
 
         actions_map = {
@@ -130,11 +126,12 @@ class CarService(metaclass=SingletonMeta):
             "startAutoMeasureDistance": self.start_auto_measure_distance,
             "stopAutoMeasureDistance": self.stop_auto_measure_distance,
             "setMaxSpeed": self.handle_max_speed,
+            "servoTest": self.servos_test,
         }
 
         calibrationData = None
         if action in calibration_actions_map:
-            calibrationData = calibration_actions_map[action]()
+            calibrationData = await calibration_actions_map[action]()
             if calibrationData:
                 await self.connection_manager.broadcast_json(
                     {
@@ -159,26 +156,20 @@ class CarService(metaclass=SingletonMeta):
 
     async def handle_stop(self, _: Any = None):
         await asyncio.to_thread(self.px.stop)
-        self.direction = 0
-        self.speed = 0
 
     async def handle_set_servo_dir_angle(self, payload: int):
         angle = payload or 0
-        if self.servo_dir_angle != angle:
+        if self.px.state["steering_servo_angle"] != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
-            self.servo_dir_angle = angle
 
     async def handle_set_cam_tilt_angle(self, payload: int):
-        angle = payload
-        if self.cam_tilt_angle != angle:
-            await asyncio.to_thread(self.px.set_cam_tilt_angle, angle)
-            self.cam_tilt_angle = angle
+        if self.px.state["cam_tilt_angle"] != payload:
+            await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
     async def handle_set_cam_pan_angle(self, payload: int):
         angle = payload
-        if self.cam_pan_angle != angle:
+        if self.px.state["cam_pan_angle"] != angle:
             await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
-            self.cam_pan_angle = angle
 
     async def handle_avoid_obstacles(self, _=None):
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
@@ -203,10 +194,22 @@ class CarService(metaclass=SingletonMeta):
             if self.auto_measure_distance_mode:
                 await self.distance_service.start_all()
 
+    async def servos_test(self, _=None) -> None:
+        servos = [
+            (self.px.set_dir_servo_angle, [-30, 30, 0]),
+            (self.px.set_cam_pan_angle, [-30, 30, 0]),
+            (self.px.set_cam_tilt_angle, [-30, 30, 0]),
+        ]
+        for fn, args in servos:
+            for arg in args:
+                await asyncio.to_thread(fn, arg)
+                await self.broadcast()
+                await asyncio.sleep(0.5)
+
     async def handle_max_speed(self, payload: int):
         self.max_speed = payload
-        if self.speed > self.max_speed:
-            await self.move(self.direction, self.max_speed)
+        if self.px.state["speed"] > self.max_speed:
+            await self.move(self.px.state["direction"], self.max_speed)
 
     async def handle_move(self, payload: Dict[str, Any]):
         """
@@ -217,7 +220,7 @@ class CarService(metaclass=SingletonMeta):
         """
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
-        if self.direction != direction or speed != self.speed:
+        if self.px.state["direction"] != direction or speed != self.px.state["speed"]:
             await self.move(direction, speed)
 
     async def move(self, direction: int, speed: int):
@@ -232,10 +235,6 @@ class CarService(metaclass=SingletonMeta):
             await asyncio.to_thread(self.px.forward, speed)
         elif direction == -1:
             await asyncio.to_thread(self.px.backward, speed)
-
-        self.speed = speed
-
-        self.direction = direction
 
     async def start_auto_measure_distance(self, _: Any = None):
         self.auto_measure_distance_mode = True
@@ -258,22 +257,22 @@ class CarService(metaclass=SingletonMeta):
         POWER = 50
         SafeDistance = 40
         DangerDistance = 20
-        self.logger.info("distance %s speed=%s", distance, self.speed)
+        self.logger.info("distance %s speed=%s", distance, self.px.state["speed"])
         if distance >= SafeDistance:
             await self.handle_set_servo_dir_angle(0)
-            if self.speed != POWER or self.direction != 1:
+            if self.px.state["speed"] != POWER or self.px.state["direction"] != 1:
                 await self.move(1, POWER)
             await self.broadcast()
         elif distance >= DangerDistance:
             await self.handle_set_servo_dir_angle(30)
-            if self.speed != POWER or self.direction != 1:
+            if self.px.state["speed"] != POWER or self.px.state["direction"] != 1:
                 await self.move(1, POWER)
             else:
                 await asyncio.sleep(0.1)
             await self.broadcast()
         else:
             await self.handle_set_servo_dir_angle(-30)
-            if self.speed != POWER or self.direction != -1:
+            if self.px.state["speed"] != POWER or self.px.state["direction"] != -1:
                 await self.move(-1, POWER)
             await self.broadcast()
             await asyncio.sleep(0.5)

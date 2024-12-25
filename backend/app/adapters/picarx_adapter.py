@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 from app.schemas.config import ConfigSchema
 from app.util.logger import Logger
@@ -69,6 +69,26 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.motor_controller = MotorService(
             left_motor=left_motor, right_motor=right_motor
         )
+
+    @property
+    def state(self) -> Dict[str, Any]:
+        """
+        Returns key metrics of the current state as a dictionary.
+
+        The returned dictionary contains:
+        - "speed": Current speed.
+        - "direction": Current travel direction.
+        - "steering_servo_angle": Current servo direction angle.
+        - "cam_pan_angle": Current camera pan angle.
+        - "cam_tilt_angle": Current camera tilt angle.
+        """
+        return {
+            "speed": self.motor_controller.speed,
+            "direction": self.motor_controller.direction,
+            "steering_servo_angle": self.steering_servo.current_angle,
+            "cam_pan_angle": self.cam_pan_servo.current_angle,
+            "cam_tilt_angle": self.cam_tilt_servo.current_angle,
+        }
 
     def set_dir_servo_angle(self, value: float) -> None:
         """
