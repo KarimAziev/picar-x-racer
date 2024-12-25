@@ -125,9 +125,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         - speed (int): The base speed at which to move.
         - direction (int): 1 for forward, -1 for backward.
         """
-        return self.motor_controller.move_with_steering(
-            speed, direction, int(self.steering_servo.current_angle)
-        )
+        return self.motor_controller.move(speed, direction)
 
     def forward(self, speed: int) -> None:
         """
