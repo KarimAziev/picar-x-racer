@@ -43,7 +43,7 @@ def try_video_path(path: str | int):
     return cap if result else None
 
 
-def v4l2_list_devices() -> list[str]:
+def v4l2_list_devices() -> List[str]:
     """
     Lists V4L2 video capture devices on the system.
 
@@ -51,7 +51,7 @@ def v4l2_list_devices() -> list[str]:
     video capture devices on the system and returns the raw output lines.
 
     Returns:
-        list[str]: A list of output lines from the `v4l2-ctl --list-devices` command. Each line may contain information about a device or its category.
+       A list of output lines from the `v4l2-ctl --list-devices` command.
     """
     lines = []
     try:
@@ -141,6 +141,9 @@ def list_available_camera_devices():
 
 
 COMMON_SIZES = [
+    (320, 180),
+    (424, 240),
+    (640, 360),
     (640, 480),
     (800, 600),
     (1024, 768),
@@ -208,28 +211,47 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
 
         resolution_stepwise_match = resolution_stepwise_pattern.search(line)
         if resolution_stepwise_match:
-            # min_size = resolution_stepwise_match.group(1)
-            # max_size = resolution_stepwise_match.group(2)
+            min_size = resolution_stepwise_match.group(1)
+            max_size = resolution_stepwise_match.group(2)
             # step_x = resolution_stepwise_match.group(3)
             # step_y = resolution_stepwise_match.group(4)
+            if (
+                current_format is not None
+                and min_size is not None
+                and max_size is not None
+            ):
+                [min_width, min_height] = [int(value) for value in min_size.split("x")]
+                [max_width, max_height] = [int(value) for value in min_size.split("x")]
+                for width, height in COMMON_SIZES:
+                    if (
+                        max_width >= width
+                        and max_height >= max_height
+                        and width >= min_width
+                        and height >= min_height
+                    ):
+                        frame_size = f"{width}x{height}"
 
-            for width, height in COMMON_SIZES:
-                frame_size = f"{width}x{height}"
-
-                fps_value = "30"
-                value = f"{device}:{current_format}:{frame_size}:{fps_value}"
-                label = f"{current_format}, {frame_size}, {fps_value} fps"
-                formats.append(
-                    {
-                        "key": value,
-                        "label": label,
-                        "device": device,
-                        "size": frame_size,
-                        "fps": fps_value,
-                        "pixel_format": current_format,
-                        "icon": "pi pi-video",
-                    }
-                )
+                        fps_rates = get_frame_info(
+                            device=device,
+                            width=width,
+                            height=height,
+                            pixel_format=current_format,
+                        )
+                        for fps_value in fps_rates:
+                            value = (
+                                f"{device}:{current_format}:{frame_size}:{fps_value}"
+                            )
+                            label = f"{current_format}, {frame_size}, {fps_value} fps"
+                            formats.append(
+                                {
+                                    "key": value,
+                                    "label": label,
+                                    "device": device,
+                                    "size": frame_size,
+                                    "fps": fps_value,
+                                    "pixel_format": current_format,
+                                }
+                            )
 
         fps_match = fps_pattern.search(line)
         if fps_match:
@@ -244,9 +266,8 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
                         "label": label,
                         "device": device,
                         "size": frame_size,
-                        "fps": fps_value,
+                        "fps": int(fps_value),
                         "pixel_format": current_format,
-                        "icon": "pi pi-video",
                     }
                 )
 
@@ -314,3 +335,175 @@ def parse_v4l2_device_info_output(output: str):
     pixel_format = pixel_format_regex.group(1)
 
     return {"width": width, "height": height, "pixel_format": pixel_format}
+
+
+def get_frame_info(
+    device: str, width: int, height: int, pixel_format: str
+) -> List[int]:
+    try:
+        cmd = [
+            "v4l2-ctl",
+            "--list-frameintervals",
+            f"width={width},height={height},pixelformat={pixel_format}" "--device",
+            device,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        output = result.stdout
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error executing v4l2-ctl: {e}")
+        return []
+
+    return parse_frameinterval_output(output)
+
+
+def parse_frameinterval_output(output: str) -> List[int]:
+    """
+    Parse and filter output from ioctl: VIDIOC_ENUM_FRAMEINTERVALS
+    and return a list of divisible by 10 frame rates as integers in descending order.
+
+    Example 1: Continuous interval
+    --------------
+    ```python
+    result1 = parse_frameinterval_output(
+        "ioctl: VIDIOC_ENUM_FRAMEINTERVALS\\\\n"
+        "        Interval: Continuous 0.011s - 1.000s (1.000-90.000 fps)"
+    )
+    print(result1)  # Output: [90, 80, 70, ..., 10]
+    ```
+
+    Example 2: Discrete interval
+    --------------
+    ```python
+    result2 = parse_frameinterval_output(
+        "ioctl: VIDIOC_ENUM_FRAMEINTERVALS\\\\n"
+        "        Interval: Discrete 0.033s (30.000 fps)"
+    )
+
+    print(result2)  # Output: [30]
+
+    ```
+    """
+    import re
+
+    frame_rates = []
+    if "Continuous" in output:
+        match = re.search(r'\(([\d.]+)-([\d.]+) fps\)', output)
+        if match:
+            min_fps = float(match.group(1))
+            max_fps = float(match.group(2))
+
+            frame_rates = [
+                int(fps)
+                for fps in range(int(max_fps), int(min_fps) - 1, -1)
+                if int(fps) % 10 == 0
+            ]
+
+    elif "Discrete" in output:
+        match = re.search(r'\(([\d.]+) fps\)', output)
+        if match:
+            frame_rates = [int(float(match.group(1)))]
+
+    return frame_rates
+
+
+# parse_frameinterval_output(
+#     "ioctl: VIDIOC_ENUM_FRAMEINTERVALS" "\n" "Interval: Discrete 0.033s (30.000 fps)"
+# )  # => [30]
+
+# v4l2-ctl --list-frameintervals width=1200,height=800,pixelformat=NV12 -d 10
+# ioctl: VIDIOC_ENUM_FMT
+# 	Type: Video Capture Multiplanar
+
+# 	[0]: 'YU12' (Planar YUV 4:2:0)
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+# 	[1]: 'YV12' (Planar YVU 4:2:0)
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+# 	[2]: 'NV12' (Y/UV 4:2:0)
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+# 	[3]: 'NV21' (Y/VU 4:2:0)
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+# 	[4]: 'NC12' (Y/CbCr 4:2:0 (128b cols))
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+# 	[5]: 'RGBP' (16-bit RGB 5-6-5)
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+# 	[6]: 'AB24' (32-bit RGBA 8-8-8-8)
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+# 	[7]: 'BGR4' (32-bit BGRA/X 8-8-8-8)
+# 		Size: Stepwise 32x32 - 1920x1920 with step 2/2
+
+
+# [0]: 'YU12' (Planar YUV 4:2:0)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [1]: 'YUYV' (YUYV 4:2:2)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [2]: 'RGB3' (24-bit RGB 8-8-8)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [3]: 'JPEG' (JFIF JPEG, compressed)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [4]: 'H264' (H.264, compressed)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [5]: 'MJPG' (Motion-JPEG, compressed)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [6]: 'YVYU' (YVYU 4:2:2)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [7]: 'VYUY' (VYUY 4:2:2)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [8]: 'UYVY' (UYVY 4:2:2)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [9]: 'NV12' (Y/UV 4:2:0)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [10]: 'BGR3' (24-bit BGR 8-8-8)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [11]: 'YV12' (Planar YVU 4:2:0)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [12]: 'NV21' (Y/VU 4:2:0)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+# [13]: 'RX24' (32-bit XBGR 8-8-8-8)
+# 	Size: Stepwise 32x32 - 2592x1944 with step 2/2
+
+# km@carbon:~/repos/projects/picar-x-racer$ v4l2-ctl --list-formats-ext
+# ioctl: VIDIOC_ENUM_FMT
+# 	Type: Video Capture
+
+# 	[0]: 'MJPG' (Motion-JPEG, compressed)
+# 		Size: Discrete 1920x1080
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 320x180
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 320x240
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 352x288
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 424x240
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 640x360
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 640x480
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 848x480
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 960x540
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 1280x720
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 	[1]: 'YUYV' (YUYV 4:2:2)
+# 		Size: Discrete 640x480
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 320x180
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 320x240
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 352x288
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 424x240
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 640x360
+# 			Interval: Discrete 0.033s (30.000 fps)
+# 		Size: Discrete 848x480
+# 			Interval: Discrete 0.050s (20.000 fps)
+# 		Size: Discrete 960x540
+# 			Interval: Discrete 0.067s (15.000 fps)
+# 		Size: Discrete 1280x720
+# 			Interval: Discrete 0.100s (10.000 fps)
+# 		Size: Discrete 1920x1080
+# 			Interval: Discrete 0.200s (5.000 fps)

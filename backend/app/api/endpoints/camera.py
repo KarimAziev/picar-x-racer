@@ -1,7 +1,7 @@
 from time import localtime, strftime
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_camera_manager, get_file_manager
+from app.api import deps
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.util.device import list_available_camera_devices
@@ -27,7 +27,7 @@ logger = Logger(__name__)
 async def update_camera_settings(
     request: Request,
     payload: CameraSettings,
-    camera_manager: "CameraService" = Depends(get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
 ):
     """
     Update the camera settings with new configurations and broadcast the updates.
@@ -70,10 +70,6 @@ async def update_camera_settings(
     - `CameraSettings`: The updated camera settings.
 
     - Additionally, broadcasts the updated settings to all connected clients.
-
-    Raises:
-    --------------
-    None
     """
     logger.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
@@ -116,7 +112,7 @@ async def update_camera_settings(
     """,
 )
 def get_camera_settings(
-    camera_manager: "CameraService" = Depends(get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
 ):
     """
     Retrieve the current camera settings.
@@ -153,11 +149,21 @@ def get_camera_devices():
 
 
 @router.get(
-    "/api/camera/capture-photo", response_model=PhotoResponse, summary="Capture a photo"
+    "/api/camera/capture-photo",
+    response_model=PhotoResponse,
+    summary="Capture a photo",
+    responses={
+        400: {
+            "description": "Raised if the photo could not be taken or saved due to an error",
+            "content": {
+                "application/json": {"example": {"detail": "Error capturing photo"}}
+            },
+        }
+    },
 )
 async def take_photo(
-    camera_manager: "CameraService" = Depends(get_camera_manager),
-    file_manager: "FileService" = Depends(get_file_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    file_manager: "FileService" = Depends(deps.get_file_manager),
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
@@ -191,4 +197,4 @@ async def take_photo(
     )
     if status:
         return {"file": name}
-    raise HTTPException(status_code=400, detail="Couldn't take photo")
+    raise HTTPException(status_code=400, detail="Error capturing photo")

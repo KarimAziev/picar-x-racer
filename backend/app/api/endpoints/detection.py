@@ -54,7 +54,7 @@ async def update_detection_settings(
 
     Returns:
     -------------
-    DetectionSettings: The updated settings after applying configurations.
+    The updated settings after applying configurations.
 
     Behavior:
     -------------
@@ -110,7 +110,7 @@ def get_detection_settings(
 
     Returns:
     -------------
-    DetectionSettings: The current configuration of the object detection system.
+    The current configuration of the object detection system.
     """
     return detection_service.detection_settings
 

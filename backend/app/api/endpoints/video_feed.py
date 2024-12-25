@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_camera_manager, get_stream_manager
+from app.api import deps
 from app.config.video_enhancers import frame_enhancers
 from app.schemas.stream import EnhancersResponse, StreamSettings
 from app.services.connection_service import ConnectionService
@@ -25,7 +25,7 @@ router = APIRouter()
 async def update_video_feed_settings(
     request: Request,
     payload: StreamSettings,
-    camera_manager: "CameraService" = Depends(get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
 ):
     """
     Update the video feed settings.
@@ -52,10 +52,6 @@ async def update_video_feed_settings(
     --------------
     `StreamSettings`: The updated video stream settings.
     Additionally, broadcasts the updated settings to all connected clients.
-
-    Raises:
-    --------------
-    None
     """
     logger.info("Video feed update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
@@ -81,7 +77,7 @@ async def update_video_feed_settings(
     """,
 )
 def get_video_settings(
-    camera_manager: "CameraService" = Depends(get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
 ):
     """
     Retrieve the current video feed settings.
@@ -102,7 +98,7 @@ def get_video_settings(
 )
 async def ws(
     websocket: WebSocket,
-    stream_service: "StreamService" = Depends(get_stream_manager),
+    stream_service: "StreamService" = Depends(deps.get_stream_manager),
 ):
     """
     WebSocket endpoint for providing a video stream.
@@ -130,21 +126,28 @@ async def ws(
     "/api/video-feed/enhancers",
     response_model=EnhancersResponse,
     summary="Retrieve a list of available video frame enhancers.",
-    response_description="""
-    | Enhancer                            | Description                                                                       |
-    | ----------------------------------- | --------------------------------------------------------------------------------- |
-    | `simulate_robocop_vision`           | Video effect to simulate RoboCop vision.                                          |
-    | `simulate_predator_vision`          | Thermal effect to simulate Predator vision.                                       |
-    | `simulate_infrared_vision`          | Highlights warmer areas.                                                          |
-    | `simulate_ultrasonic_vision`        | A monochromatic sonar effect.                                                     |
-    | `preprocess_frame`                  | Enhances video quality.                                                           |
-    | `preprocess_frame_clahe`            | Enhances contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization). |
-    | `preprocess_frame_edge_enhancement` | Highlights object boundaries.                                                     |
-    | `preprocess_frame_ycrcb`            | Transforms the image into the YCrCb color space.                                  |
-    | `preprocess_frame_hsv_saturation`   | Increases saturation in the HSV color space.                                      |
-    | `preprocess_frame_kmeans`           | Performs K-means clustering for image segmentation.                               |
-    | `preprocess_frame_combined`         | Applies multiple preprocessing techniques.                                        |
-    """,
+    response_description="- simulate_robocop_vision            Video effect to simulate RoboCop vision."
+    "\n"
+    "- simulate_predator_vision           Thermal effect to simulate Predator vision."
+    "\n"
+    "- simulate_infrared_vision           Highlights warmer areas."
+    "\n"
+    "- simulate_ultrasonic_vision         A monochromatic sonar effect."
+    "\n"
+    "- preprocess_frame                   Enhances video quality."
+    "\n"
+    "- preprocess_frame_clahe             Enhances contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization)."
+    "\n"
+    "- preprocess_frame_edge_enhancement  Highlights object boundaries."
+    "\n"
+    "- preprocess_frame_ycrcb             Transforms the image into the YCrCb color space."
+    "\n"
+    "- preprocess_frame_hsv_saturation    Increases saturation in the HSV color space."
+    "\n"
+    "- preprocess_frame_kmeans            Performs K-means clustering for image segmentation."
+    "\n"
+    "- preprocess_frame_combined          Applies multiple preprocessing techniques."
+    "\n",
 )
 def get_frame_enhancers():
     """
