@@ -1,7 +1,8 @@
 from typing import Optional, Union
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from robot_hat import ServoCalibrationMode
+from typing_extensions import Annotated
 
 
 class ServoConfig(BaseModel):
@@ -146,29 +147,47 @@ class CalibrationConfig(BaseModel):
 
     steering_servo_offset: float = Field(
         0.0,
-        description="A calibration offset for fine-tuning servo angles.",
-        examples=["Steering Direction", "Camera Pan"],
+        description="A calibration offset for fine-tuning servo direction angles.",
+        examples=[-1.5],
     )
     cam_pan_servo_offset: float = Field(
         0.0,
-        description="A calibration offset for fine-tuning servo angles.",
-        examples=["Steering Direction", "Camera Pan"],
+        description="A calibration offset for fine-tuning camera pan servo angles.",
+        examples=[-0.9],
     )
 
     cam_tilt_servo_offset: float = Field(
         0.0,
-        description="A calibration offset for fine-tuning servo angles.",
-        examples=["Steering Direction", "Camera Pan"],
+        description="A calibration offset for fine-tuning camera tilt servo angles.",
+        examples=[1.3],
     )
 
-    left_motor_direction: int = Field(
-        ...,
-        description="Initial motor direction calibration (+1/-1)",
-        examples=[1, -1],
-    )
+    left_motor_direction: Annotated[
+        int,
+        Field(
+            1,
+            strict=True,
+            ge=-1,
+            le=1,
+            description="Initial motor direction calibration (+1/-1)",
+            examples=[1],
+        ),
+    ]
 
-    right_motor_direction: int = Field(
-        ...,
-        description="Initial motor direction calibration (+1/-1)",
-        examples=[1, -1],
-    )
+    right_motor_direction: Annotated[
+        int,
+        Field(
+            1,
+            strict=True,
+            ge=-1,
+            le=1,
+            description="Initial motor direction calibration (+1/-1)",
+            examples=[1],
+        ),
+    ]
+
+    @field_validator("left_motor_direction", "right_motor_direction")
+    def validate_motor_direction(cls, value):
+        if value not in (-1, 1):
+            raise ValueError("Motor direction must be either 1 or -1.")
+        return value
