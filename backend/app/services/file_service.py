@@ -661,6 +661,7 @@ class FileService(metaclass=SingletonMeta):
                 item = {
                     "label": key,
                     "key": key,
+                    "selectable": True,
                     "data": {"name": key, "type": "Loadable model"},
                 }
                 result.append(item)

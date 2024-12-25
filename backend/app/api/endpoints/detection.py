@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List
 
 from app.api import deps
 from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
-from app.schemas.detection import DetectionSettings, ModelResponse
+from app.schemas.detection import DetectionSettings, FileNode
 from app.util.logger import Logger
 from fastapi import (
     APIRouter,
@@ -157,15 +157,21 @@ async def object_detection(
 @router.get(
     "/api/detection/models",
     summary="Retrieve Available Detection Models",
-    response_description="Returns a structed list of available object detection models.",
-    response_model=List[ModelResponse],
+    response_description="Returns a hierarchical tree structure representing the available object detection models, "
+    "organized as a series of nodes. Each node in the tree can represent one of the following:"
+    "\n"
+    "- `Folder`: A container for sub-nodes (children) that includes other folders or files. "
+    "Only those directories are included that have at least one valid model file at any depth."
+    "\n"
+    "- `File`: A specific file representing a concrete object detection model present on the filesystem."
+    "\n"
+    "- `Loadable model`: A virtual node that represents a detection model, which may not physically exist on the "
+    "filesystem but is loadable (e.g., pre-trained models such as `yolov8n.pt`).",
+    response_model=List[FileNode],
 )
 def get_detectors(file_manager: "FileService" = Depends(deps.get_file_manager)):
     """
-    Endpoint to retrieve a list of available object detection models.
-
-    Returns:
-    -------------
-    List[Dict[str, Any]]: A list of available detection models that can be used for object detection.
+    Retrieve a recursive tree structure representing the organized set of
+    detection models and their associated metadata.
     """
     return file_manager.get_available_models()
