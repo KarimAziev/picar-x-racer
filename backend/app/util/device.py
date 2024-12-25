@@ -228,10 +228,24 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
             ):
                 [min_width, min_height] = [int(value) for value in min_size.split("x")]
                 [max_width, max_height] = [int(value) for value in min_size.split("x")]
+
                 for width, height in COMMON_SIZES:
+                    logger.info(
+                        "height=%s, width=%s, min_width=%s, min_height=%s, max_width=%s, max_height=%s, max_width >= width=%s, max_height >= height=%s, width >= min_width=%s, height >= min_height=%s",
+                        height,
+                        width,
+                        min_width,
+                        min_height,
+                        max_width,
+                        max_height,
+                        max_width >= width,
+                        max_height >= height,
+                        width >= min_width,
+                        height >= min_height,
+                    )
                     if (
                         max_width >= width
-                        and max_height >= max_height
+                        and max_height >= height
                         and width >= min_width
                         and height >= min_height
                     ):
