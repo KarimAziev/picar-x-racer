@@ -23,6 +23,18 @@ logger = Logger(__name__)
     response_model=CameraSettings,
     tags=["camera"],
     summary="Update camera settings",
+    response_description="**Settings:**"
+    "\n"
+    "- **device**: ID or name of the camera device."
+    "\n"
+    "- **width**: Frame width in pixels."
+    "\n"
+    "- **height**: Frame height in pixels."
+    "\n"
+    "- **fps**: Frames per second for capturing."
+    "\n"
+    "- **pixel_format**: Pixel format, such as 'RGB' or 'GRAY'."
+    "\n",
 )
 async def update_camera_settings(
     request: Request,
@@ -58,12 +70,6 @@ async def update_camera_settings(
        - Updates `self.camera_settings.device` if a different device is chosen.
     4. Broadcasts the final `self.camera_settings` to clients, regardless of success or failure.
     5. In the case of errors, also broadcasts an error message to clients.
-
-    Args:
-    --------------
-    - `request` (Request): FastAPI request object used to access app state and components.
-    - `payload` (CameraSettings): New camera settings to apply.
-    - `camera_manager` (CameraService): Camera management service for handling operations.
 
     Returns:
     --------------
@@ -102,14 +108,18 @@ async def update_camera_settings(
     response_model=CameraSettings,
     tags=["camera"],
     summary="Get camera settings",
-    response_description="""
-    Settings:
-    device: ID or name of the camera device.
-    width: Frame width in pixels.
-    height: Frame height in pixels.
-    fps: Frames per second for capturing.
-    pixel_format: Pixel format, such as 'RGB' or 'GRAY'.
-    """,
+    response_description="**Settings:**"
+    "\n"
+    "- **device**: ID or name of the camera device."
+    "\n"
+    "- **width**: Frame width in pixels."
+    "\n"
+    "- **height**: Frame height in pixels."
+    "\n"
+    "- **fps**: Frames per second for capturing."
+    "\n"
+    "- **pixel_format**: Pixel format, such as 'RGB' or 'GRAY'."
+    "\n",
 )
 def get_camera_settings(
     camera_manager: "CameraService" = Depends(deps.get_camera_manager),

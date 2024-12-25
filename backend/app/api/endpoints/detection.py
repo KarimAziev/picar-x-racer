@@ -30,7 +30,20 @@ router = APIRouter()
     "/api/detection/settings",
     response_model=DetectionSettings,
     summary="Update Detection Settings",
-    response_description="Returns the updated detection settings.",
+    response_description="Returns the updated detection settings:"
+    "\n"
+    "- **model**: The name of the object detection model to be used."
+    "\n"
+    "- **confidence**: The confidence threshold for detections."
+    "\n"
+    "- **active**: Flag indicating whether the detection is currently active."
+    "\n"
+    "- **img_size**: The image size for the detection process."
+    "\n"
+    "- **labels**: A list of labels to filter for specific object detections, if desired."
+    "\n"
+    "- **overlay_draw_threshold**: The maximum allowable time difference (in seconds) "
+    "between the frame timestamp and the detection timestamp for overlay drawing to occur.",
     responses={
         400: {
             "description": "Bad Request - Errors like model loading or detection issues.",
@@ -52,14 +65,8 @@ async def update_detection_settings(
     """
     Endpoint to update object detection settings.
 
-    Returns:
-    -------------
-    The updated settings after applying configurations.
-
-    Behavior:
-    -------------
-    - Updates detection settings and notifies connected clients via WebSocket.
-    - Handles errors related to model loading or detection issues.
+    Updates detection settings, notifies all connected clients via WebSocket and
+    returns the updated settings.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     logger.info("Detection update payload %s", payload)
@@ -100,7 +107,20 @@ async def update_detection_settings(
     "/api/detection/settings",
     response_model=DetectionSettings,
     summary="Retrieve object detection settings",
-    response_description="The current configuration of the object detection system",
+    response_description="The current configuration of the object detection system: "
+    "\n"
+    "- **model**: The name of the object detection model to be used."
+    "\n"
+    "- **confidence**: The confidence threshold for detections."
+    "\n"
+    "- **active**: Flag indicating whether the detection is currently active."
+    "\n"
+    "- **img_size**: The image size for the detection process."
+    "\n"
+    "- **labels**: A list of labels to filter for specific object detections, if desired."
+    "\n"
+    "- **overlay_draw_threshold**: The maximum allowable time difference (in seconds) "
+    "between the frame timestamp and the detection timestamp for overlay drawing to occur.",
 )
 def get_detection_settings(
     detection_service: "DetectionService" = Depends(deps.get_detection_manager),
@@ -108,9 +128,7 @@ def get_detection_settings(
     """
     Endpoint to retrieve the current detection configuration.
 
-    Returns:
-    -------------
-    The current configuration of the object detection system.
+    Returns the current configuration of the object detection system.
     """
     return detection_service.detection_settings
 
@@ -125,7 +143,6 @@ async def object_detection(
     WebSocket endpoint for real-time object detection updates.
 
     Behavior:
-    -------------
     - Establishes a WebSocket connection for continuous object detection updates.
     - Gracefully handles connection interruptions or shutdowns.
     """
@@ -159,12 +176,12 @@ async def object_detection(
     response_description="Returns a hierarchical tree structure representing the available object detection models, "
     "organized as a series of nodes. Each node in the tree can represent one of the following:"
     "\n"
-    "- `Folder`: A container for sub-nodes (children) that includes other folders or files. "
+    "- **Folder**: A container for sub-nodes (children) that includes other folders or files. "
     "Only those directories are included that have at least one valid model file at any depth."
     "\n"
-    "- `File`: A specific file representing a concrete object detection model present on the filesystem."
+    "- **File**: A specific file representing a concrete object detection model present on the filesystem."
     "\n"
-    "- `Loadable model`: A virtual node that represents a detection model, which may not physically exist on the "
+    "- **Loadable model**: A virtual node that represents a detection model, which may not physically exist on the "
     "filesystem but is loadable (e.g., pre-trained models such as `yolov8n.pt`).",
     response_model=List[FileNode],
 )
