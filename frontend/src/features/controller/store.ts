@@ -31,8 +31,8 @@ export const CAM_PAN_MIN = -90;
 export const CAM_PAN_MAX = 90;
 export const CAM_TILT_MIN = -35;
 export const CAM_TILT_MAX = 65;
-export const SERVO_DIR_ANGLE_MIN = -30;
-export const SERVO_DIR_ANGLE_MAX = 30;
+export const SERVO_DIR_ANGLE_MIN = -25;
+export const SERVO_DIR_ANGLE_MAX = 25;
 export const MIN_SPEED = 10;
 export const MAX_SPEED = 100;
 
