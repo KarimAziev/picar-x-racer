@@ -213,6 +213,12 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
         if resolution_stepwise_match:
             min_size = resolution_stepwise_match.group(1)
             max_size = resolution_stepwise_match.group(2)
+            logger.info(
+                "current_format=%s, min_size=%s, max_size=%s",
+                current_format,
+                min_size,
+                max_size,
+            )
             # step_x = resolution_stepwise_match.group(3)
             # step_y = resolution_stepwise_match.group(4)
             if (
@@ -236,6 +242,13 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
                             width=width,
                             height=height,
                             pixel_format=current_format,
+                        )
+                        logger.info(
+                            "current_format=%s, min_size=%s, max_size=%s, fps_rates=%s",
+                            current_format,
+                            min_size,
+                            max_size,
+                            fps_rates,
                         )
                         for fps_value in fps_rates:
                             value = (
@@ -383,7 +396,6 @@ def parse_frameinterval_output(output: str) -> List[int]:
 
     ```
     """
-    import re
 
     frame_rates = []
     if "Continuous" in output:
