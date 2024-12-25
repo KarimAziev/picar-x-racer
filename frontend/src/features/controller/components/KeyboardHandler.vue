@@ -25,13 +25,22 @@ const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
 const popupStore = usePopupStore();
 
-const isEventAllowed: KeyboardEventPred = (event) =>
-  event.target === inputRef.value ||
-  !(
-    (isButton(event.target) || isInput(event.target)) &&
-    (event.key.length === 1 ||
-      Object.hasOwn(inputHistoryDirectionByKey, event.key))
-  );
+const isEventAllowed: KeyboardEventPred = (event) => {
+  if (event.target === inputRef.value) {
+    return true;
+  }
+  if (isButton(event.target)) {
+    return event.key !== " ";
+  }
+
+  if (isInput(event.target)) {
+    return !(
+      event.key.length === 1 ||
+      Object.hasOwn(inputHistoryDirectionByKey, event.key)
+    );
+  }
+  return true;
+};
 
 const {
   gameLoop,
