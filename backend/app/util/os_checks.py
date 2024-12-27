@@ -1,3 +1,7 @@
+from functools import lru_cache
+
+
+@lru_cache()
 def is_raspberry_pi() -> bool:
     """
     Check if the current operating system is running on a Raspberry Pi.
