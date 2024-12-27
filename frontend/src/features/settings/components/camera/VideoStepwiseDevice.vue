@@ -45,13 +45,23 @@ import { roundNumber } from "@/util/number";
 
 const camStore = useCameraStore();
 
-defineProps<DeviceStepwise>();
+const props = defineProps<DeviceStepwise>();
 
 const emit = defineEmits(["update:modelValue"]);
 
-const fps = ref(30);
-const width = ref<number | undefined>();
-const height = ref<number | undefined>();
+const fps = ref(camStore.data.fps || 30);
+const width = ref<number | undefined>(
+  props.max_width >= (camStore.data.width || 0) &&
+    props.min_width <= (camStore.data.width || 0)
+    ? camStore.data.width
+    : undefined,
+);
+const height = ref<number | undefined>(
+  props.max_height >= (camStore.data.height || 0) &&
+    props.min_height <= (camStore.data.height || 0)
+    ? camStore.data.height
+    : undefined,
+);
 
 const loading = computed(() => camStore.loading);
 
