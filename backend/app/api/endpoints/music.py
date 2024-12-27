@@ -298,19 +298,7 @@ async def prev_track(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
 
 
-@router.post(
-    "/music/order",
-    responses={
-        200: {
-            "description": "Success message",
-            "content": {
-                "application/json": {
-                    "message": "Custom music order saved successfully!"
-                }
-            },
-        },
-    },
-)
+@router.post("/music/order")
 async def save_music_order(
     request: Request,
     order: List[str],
