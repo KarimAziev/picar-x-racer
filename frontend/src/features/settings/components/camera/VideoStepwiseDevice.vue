@@ -42,6 +42,7 @@ import { useCameraStore } from "@/features/settings/stores";
 import { DeviceStepwise } from "@/features/settings/interface";
 import NumberInputField from "@/ui/NumberInputField.vue";
 import { roundNumber } from "@/util/number";
+import { useDebounce } from "@/composables/useDebounce";
 
 const camStore = useCameraStore();
 
@@ -65,7 +66,7 @@ const height = ref<number | undefined>(
 
 const loading = computed(() => camStore.loading);
 
-const onUpdate = () => {
+const onUpdate = useDebounce(() => {
   if (!height.value || !width.value) {
     return;
   }
@@ -74,6 +75,6 @@ const onUpdate = () => {
     width: roundNumber(width.value),
     fps: roundNumber(fps.value),
   });
-};
+}, 1000);
 </script>
 <style scoped lang="scss"></style>
