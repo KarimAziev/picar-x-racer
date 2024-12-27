@@ -31,7 +31,7 @@ import Field from "@/ui/Field.vue";
 export type Props = {
   modelValue?: any;
   invalid?: boolean;
-  message?: string;
+  message?: string | null;
   label?: string;
   field?: string;
   fieldClassName?: string;

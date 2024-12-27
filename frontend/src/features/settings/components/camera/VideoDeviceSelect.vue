@@ -1,13 +1,20 @@
 <template>
-  <Field :label="label"
+  <Field :label="label" v-tooltip="'The camera device path and settings'"
     ><TreeSelect
+      selectionMode="single"
       inputId="device"
       v-model="selectedDevice"
       :options="devices"
       :disabled="loading"
       :loading="loading"
       @update:model-value="updateDevice"
-  /></Field>
+    />
+  </Field>
+  <VideoStepwiseDevice
+    v-if="stepwiseDevice"
+    v-bind="stepwiseDevice"
+    @update:model-value="updateStepwiseDevice"
+  />
 </template>
 
 <script setup lang="ts">
@@ -16,57 +23,55 @@ import { ref, onMounted, computed, watch } from "vue";
 
 import { useCameraStore } from "@/features/settings/stores";
 
-import { isString, isNumber } from "@/util/guards";
+import { isString } from "@/util/guards";
 import Field from "@/ui/Field.vue";
-import { DeviceSuboption } from "@/features/settings/stores/camera";
+import {
+  findDevice,
+  extractChildren,
+  mapChildren,
+} from "@/features/settings/util";
+import { DiscreteDevice, DeviceStepwise } from "@/features/settings/interface";
+import VideoStepwiseDevice from "@/features/settings/components/camera/VideoStepwiseDevice.vue";
 
 const camStore = useCameraStore();
-const devices = computed(() => camStore.devices);
+const devices = computed(() => mapChildren(camStore.devices));
 
 type DeviceTreeValue = { [key: string]: boolean };
-
-const hashData = computed(() =>
-  [...camStore.devices]
-    .flatMap((item) => [...item.children])
-    .reduce(
-      (acc, item) => {
-        acc[item.key] = item;
-        return acc;
-      },
-      {} as { [key: string]: DeviceSuboption },
-    ),
-);
 
 const loading = computed(() => camStore.loading);
 
 const getInitialValue = () => {
-  if (
-    !isString(camStore.data.device) ||
-    !isString(camStore.data.pixel_format) ||
-    !isNumber(camStore.data.fps) ||
-    !isNumber(camStore.data.height) ||
-    !isNumber(camStore.data.width)
-  ) {
+  const found = findDevice(camStore.data, camStore.devices);
+  if (!found) {
     return {};
   }
-  const fps = camStore.data.fps;
-  const width = camStore.data.width;
-  const height = camStore.data.height;
-  const size = `${width}x${height}`;
 
   return {
-    [`${camStore.data.device}:${camStore.data.pixel_format}:${size}:${fps}`]:
-      true,
+    [found.key]: true,
   };
 };
 
 const selectedDevice = ref<DeviceTreeValue>(getInitialValue());
+
 const label = computed(() => {
   const val = Object.keys(selectedDevice.value)[0];
 
   return [`Camera:`, val ? val.split(":")[0] : val]
     .filter((v) => !!v)
     .join(" ");
+});
+
+const stepwiseDevice = computed(() => {
+  const newVal = Object.keys(selectedDevice.value)[0];
+  if (!isString(newVal)) {
+    return;
+  }
+  const itemData = extractChildren(camStore.devices).find(
+    (item) => item.key === newVal,
+  );
+  if (itemData && (itemData as any).max_width) {
+    return itemData as DeviceStepwise;
+  }
 });
 
 onMounted(async () => {
@@ -81,25 +86,32 @@ watch(
   },
 );
 
+const updateStepwiseDevice = async (params: {
+  width: number;
+  height: number;
+  fps: number;
+}) => {
+  if (!stepwiseDevice.value) {
+    return;
+  }
+  await camStore.updateData({ ...stepwiseDevice.value, ...params });
+};
+
 const updateDevice = async (newValObj: DeviceTreeValue) => {
   const newVal = Object.keys(newValObj)[0];
   if (!isString(newVal)) {
     return;
   }
-  const itemData = hashData.value[newVal];
+  const itemData = extractChildren(camStore.devices).find(
+    (item) => item.key === newVal,
+  );
   if (!itemData) {
     return itemData;
   }
-  const { pixel_format, fps, size, device } = itemData;
-
-  const [width, height] = size.split("x");
-  await camStore.updateData({
-    device: device,
-    pixel_format: pixel_format,
-    width: +width,
-    height: +height,
-    fps: +fps,
-  });
+  if ((itemData as any).width) {
+    const discreted = itemData as DiscreteDevice;
+    await camStore.updateData(discreted);
+  }
 };
 </script>
 <style scoped lang="scss"></style>

@@ -132,7 +132,6 @@ def list_available_camera_devices():
             item = {
                 "key": key,
                 "label": f"{key} ({category})" if category is not None else key,
-                "selectable": False,
                 "children": formats,
             }
             result.append(item)
@@ -195,84 +194,86 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
     )
     fps_pattern = re.compile(r"Interval: Discrete ([0-9.]+)s \((\d+)\.000 fps\)")
 
-    current_format = None
+    current_pixel_format = None
+    current_pixel_format_data = {"children": []}
     frame_size = None
+    lines = output.splitlines()
+    lines_len = len(lines)
 
-    for line in output.splitlines():
+    for idx, line in enumerate(lines):
         line = line.strip()
 
-        format_match = format_pattern.match(line)
-        if format_match:
-            current_format = format_match.group(1)
+        if format_match := format_pattern.match(line):
+            if current_pixel_format_data and current_pixel_format_data.get("children"):
+                if len(current_pixel_format_data["children"]) > 1:
+                    formats.append(current_pixel_format_data)
+                else:
+                    child = current_pixel_format_data["children"][0]
+                    formats.append(child)
+            current_pixel_format = format_match.group(1)
+            current_pixel_format_data = {
+                "key": f"{device}:{current_pixel_format}",
+                "label": current_pixel_format,
+                "children": [],
+            }
 
-        resolution_discrete_match = resolution_discrete_pattern.search(line)
-        if resolution_discrete_match:
+        elif resolution_discrete_match := resolution_discrete_pattern.search(line):
             frame_size = resolution_discrete_match.group(1)
+            [width, height] = [int(value) for value in frame_size.split("x")]
+            fps_match = fps_pattern.search(line)
+            next_line_idx = idx + 1
+            if not fps_match and lines_len >= next_line_idx:
+                next_line = lines[next_line_idx]
+                fps_match = fps_pattern.search(next_line)
 
-        resolution_stepwise_match = resolution_stepwise_pattern.search(line)
-        if resolution_stepwise_match:
+            if fps_match:
+                fps_value = fps_match.group(2)
+
+                if current_pixel_format and frame_size:
+                    value = f"{device}:{current_pixel_format}:{frame_size}:{fps_value}"
+                    label = f"{current_pixel_format}, {frame_size},  {fps_value} fps"
+                    if not current_pixel_format_data:
+                        current_pixel_format_data = {"children": []}
+                    current_pixel_format_data["children"].append(
+                        {
+                            "key": value,
+                            "label": label,
+                            "device": device,
+                            "width": width,
+                            "height": height,
+                            "fps": int(fps_value),
+                            "pixel_format": current_pixel_format,
+                        }
+                    )
+        elif resolution_stepwise_match := resolution_stepwise_pattern.search(line):
             min_size = resolution_stepwise_match.group(1)
             max_size = resolution_stepwise_match.group(2)
-            # step_x = resolution_stepwise_match.group(3)
-            # step_y = resolution_stepwise_match.group(4)
-            if (
-                current_format is not None
-                and min_size is not None
-                and max_size is not None
-            ):
-                [min_width, min_height] = [int(value) for value in min_size.split("x")]
-                [max_width, max_height] = [int(value) for value in max_size.split("x")]
+            width_step = resolution_stepwise_match.group(3)
+            height_step = resolution_stepwise_match.group(4)
+            [min_width, min_height] = [int(value) for value in min_size.split("x")]
+            [max_width, max_height] = [int(value) for value in max_size.split("x")]
 
-                for width, height in COMMON_SIZES:
-                    if (
-                        max_width >= width
-                        and max_height >= height
-                        and width >= min_width
-                        and height >= min_height
-                    ):
-                        frame_size = f"{width}x{height}"
+            current_pixel_format_data["children"].append(
+                {
+                    "key": f"{device}:{current_pixel_format}:{min_size} - {max_size}",
+                    "label": f"{current_pixel_format} {min_size} - {max_size}",
+                    "device": device,
+                    "pixel_format": current_pixel_format,
+                    "min_width": min_width,
+                    "max_width": max_width,
+                    "min_height": min_height,
+                    "max_height": max_height,
+                    "height_step": int(height_step),
+                    "width_step": int(width_step),
+                }
+            )
 
-                        fps_rates = get_frame_info(
-                            device=device,
-                            width=width,
-                            height=height,
-                            pixel_format=current_format,
-                        )
-                        for fps_value in fps_rates:
-                            if fps_value < 30:
-                                continue
-                            value = (
-                                f"{device}:{current_format}:{frame_size}:{fps_value}"
-                            )
-                            label = f"{current_format}, {frame_size}, {fps_value} fps"
-                            formats.append(
-                                {
-                                    "key": value,
-                                    "label": label,
-                                    "device": device,
-                                    "size": frame_size,
-                                    "fps": fps_value,
-                                    "pixel_format": current_format,
-                                }
-                            )
-
-        fps_match = fps_pattern.search(line)
-        if fps_match:
-            fps_value = fps_match.group(2)
-
-            if current_format and frame_size:
-                value = f"{device}:{current_format}:{frame_size}:{fps_value}"
-                label = f"{current_format}, {frame_size},  {fps_value} fps"
-                formats.append(
-                    {
-                        "key": value,
-                        "label": label,
-                        "device": device,
-                        "size": frame_size,
-                        "fps": int(fps_value),
-                        "pixel_format": current_format,
-                    }
-                )
+    if current_pixel_format_data and current_pixel_format_data.get("children"):
+        if len(current_pixel_format_data["children"]) > 1:
+            formats.append(current_pixel_format_data)
+        else:
+            child = current_pixel_format_data["children"][0]
+            formats.append(child)
 
     return formats
 

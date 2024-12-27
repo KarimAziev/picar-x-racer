@@ -1,5 +1,5 @@
 <template>
-  <VideoDeviceSelect v-tooltip="'The camera device path and settings'" />
+  <VideoDeviceSelect />
   <VideoQualitySelect
     v-tooltip="'Quality compression level for frames (0–100)'"
   />

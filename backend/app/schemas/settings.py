@@ -6,6 +6,7 @@ from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
 from app.schemas.tts import TTSSettings
 from app.services.detection_service import DetectionSettings
+from app.util.pydantic_helpers import partial_model
 from pydantic import BaseModel, Field
 
 
@@ -193,40 +194,38 @@ class Settings(BaseModel):
     A model representing application-wide settings.
     """
 
-    battery: Optional[BatterySettings] = Field(
-        None, description="Configuration for battery settings."
+    battery: BatterySettings = Field(
+        ..., description="Configuration for battery settings."
     )
 
-    general: Optional[General] = Field(
-        None,
+    general: General = Field(
+        ...,
         description="General application settings, including UI widget visibility.",
     )
 
-    robot: Optional[RobotSettings] = Field(
-        None, description="Settings related to robot control."
-    )
+    robot: RobotSettings = Field(..., description="Settings related to robot control.")
 
-    camera: Optional[CameraSettings] = Field(
-        None,
+    camera: CameraSettings = Field(
+        ...,
         description="Configuration settings for the camera, including resolution, FPS, and device input.",
     )
-    detection: Optional[DetectionSettings] = Field(
-        None,
+    detection: DetectionSettings = Field(
+        ...,
         description="Settings for the object detection module, including model choice, thresholds, and parameters.",
     )
-    stream: Optional[StreamSettings] = Field(
-        None,
+    stream: StreamSettings = Field(
+        ...,
         description="Settings defining the video stream output, such as format, quality, and enhancement modes.",
     )
 
-    tts: Optional[TTSSettings] = Field(None, description="Text to speech settings.")
+    tts: TTSSettings = Field(..., description="Text to speech settings.")
 
-    music: Optional[MusicSettings] = Field(
-        None,
+    music: MusicSettings = Field(
+        ...,
         description="Settings for the music playback system, including configurations for track control and playback behavior.",
     )
-    keybindings: Optional[Keybindings] = Field(
-        None,
+    keybindings: Keybindings = Field(
+        ...,
         description="A collection of custom keybindings for various user actions.",
         examples=[
             {
@@ -237,3 +236,18 @@ class Settings(BaseModel):
             }
         ],
     )
+
+
+class TestSettings(BaseModel):
+    """
+    A model representing application-wide settings.
+    """
+
+    battery: Optional[BatterySettings] = Field(
+        None, description="Configuration for battery settings."
+    )
+
+
+@partial_model
+class SettingsUpdateRequest(Settings):
+    pass

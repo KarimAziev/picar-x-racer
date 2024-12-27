@@ -1,7 +1,6 @@
 import { ControllerActionName } from "@/features/controller/store";
 import type { DetectionSettings } from "@/features/detection";
 import type { StreamSettings } from "@/features/settings/stores/stream";
-import type { CameraSettings } from "@/features/settings/stores/camera";
 import { MusicMode } from "@/features/music";
 import { FlattenBooleanObjectKeys, FlattenObject } from "@/util/ts-helpers";
 
@@ -85,4 +84,60 @@ export interface RemoveFileResponse {
   success: boolean;
   filename: string;
   error: string | null;
+}
+
+export interface DeviceItem {
+  key: string;
+  label: string;
+}
+
+export interface DeviceCommonProps {
+  device: string;
+  pixel_format: string;
+}
+
+export interface DiscreteDevice extends DeviceItem, DeviceCommonProps {
+  width: number;
+  height: number;
+  fps: number;
+}
+
+export interface DeviceStepwise extends DeviceItem, DeviceCommonProps {
+  min_width: number;
+  max_width: number;
+  min_height: number;
+  max_height: number;
+  height_step: number;
+  width_step: number;
+}
+
+export interface DeviceNode extends DeviceItem {
+  children: (DeviceStepwise | DeviceNode | DiscreteDevice)[];
+}
+
+export interface CameraSettings {
+  /**
+   * The ID or name of the camera device.
+   */
+  device?: string;
+
+  /**
+   * The width of the camera frame in pixels.
+   */
+  width?: number;
+
+  /**
+   * The height of the camera frame in pixels.
+   */
+  height?: number;
+
+  /**
+   * The number of frames per second the camera should capture.
+   */
+  fps?: number;
+
+  /**
+   * The format for the pixels (e.g., 'RGB', 'GRAY').
+   */
+  pixel_format?: string;
 }
