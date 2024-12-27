@@ -176,9 +176,6 @@ app.add_middleware(
 )
 
 
-app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
-app.mount("/frontend", StaticFiles(directory=FRONTEND_FOLDER), name="frontend")
-
 from app.api.endpoints import (
     app_sync_router,
     audio_management_router,
@@ -194,6 +191,10 @@ from app.api.endpoints import (
     video_feed_router,
 )
 
+app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
+app.mount("/frontend", StaticFiles(directory=FRONTEND_FOLDER), name="frontend")
+
+
 api_router = APIRouter()
 
 api_router.include_router(audio_management_router, tags=["audio"])
@@ -207,6 +208,6 @@ api_router.include_router(video_feed_router, tags=["video-stream"])
 api_router.include_router(detection_router, tags=["detection"])
 api_router.include_router(app_sync_router, tags=["sync"])
 api_router.include_router(system_router, tags=["system"])
-api_router.include_router(main_router, tags=["serve"])
 
 app.include_router(api_router, prefix="/api")
+app.include_router(main_router)
