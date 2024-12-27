@@ -17,19 +17,19 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      "/ws/video-stream": {
+      "/api/ws/video-stream": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,
         secure: false,
         ws: true,
       },
-      "/ws/sync": {
+      "/api/ws/sync": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,
         secure: false,
         ws: true,
       },
-      "/ws/object-detection": {
+      "/api/ws/object-detection": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,
         secure: false,
@@ -46,7 +46,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      "/ws/audio-stream": {
+      "/api/ws/audio-stream": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         ws: true,
         changeOrigin: true,

@@ -49,7 +49,7 @@ const {
   imgLoading,
   active: isVideoStreamActive,
   imgInitted,
-} = useWebsocketStream({ url: "ws/video-stream", imgRef });
+} = useWebsocketStream({ url: "api/ws/video-stream", imgRef });
 
 const isOverlayEnabled = computed(
   () => detectionStore.data.active && isVideoStreamActive.value,

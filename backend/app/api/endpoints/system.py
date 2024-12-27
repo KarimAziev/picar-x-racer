@@ -18,7 +18,7 @@ logger = Logger(__name__)
 router = APIRouter()
 
 
-@router.get("/api/system/shutdown")
+@router.get("/system/shutdown")
 async def shutdown(
     request: Request,
     music_manager: "MusicService" = Depends(deps.get_music_manager),
@@ -64,7 +64,7 @@ async def shutdown(
         )
 
 
-@router.get("/api/system/restart")
+@router.get("/system/restart")
 async def restart_system(
     request: Request,
     music_manager: "MusicService" = Depends(deps.get_music_manager),

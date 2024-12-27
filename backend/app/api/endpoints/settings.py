@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from app.api import deps
 from app.schemas.config import CalibrationConfig, ConfigSchema
-from app.schemas.settings import Settings
+from app.schemas.settings import Settings, SettingsUpdateRequest
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, Request
 
@@ -17,7 +17,7 @@ logger = Logger(__name__)
 router = APIRouter()
 
 
-@router.get("/api/settings", response_model=Settings)
+@router.get("/settings", response_model=Settings)
 def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
     """
     Retrieve the current application settings.
@@ -33,10 +33,10 @@ def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
     return file_service.load_settings()
 
 
-@router.post("/api/settings", response_model=Settings)
+@router.post("/settings", response_model=Settings)
 async def update_settings(
     request: Request,
-    new_settings: Settings,
+    new_settings: SettingsUpdateRequest,
     file_service: "FileService" = Depends(deps.get_file_manager),
     battery_manager: "BatteryService" = Depends(deps.get_battery_manager),
 ):
@@ -61,7 +61,7 @@ async def update_settings(
     return new_settings
 
 
-@router.get("/api/settings/config", response_model=ConfigSchema)
+@router.get("/settings/config", response_model=ConfigSchema)
 def get_config_settings(
     file_service: "FileService" = Depends(deps.get_file_manager),
 ):
@@ -79,7 +79,7 @@ def get_config_settings(
     return file_service.get_robot_config()
 
 
-@router.get("/api/settings/calibration", response_model=CalibrationConfig)
+@router.get("/settings/calibration", response_model=CalibrationConfig)
 def get_calibration_settings(
     file_service: "FileService" = Depends(deps.get_file_manager),
 ):

@@ -179,7 +179,7 @@ export const useStore = defineStore("syncer", {
       };
 
       this.model = useWebSocket({
-        url: "ws/sync",
+        url: "api/ws/sync",
         onMessage: handleMessage,
         onOpen: async () => {
           await settingsStore.fetchSettingsInitial();

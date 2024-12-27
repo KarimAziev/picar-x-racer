@@ -27,7 +27,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/api/detection/settings",
+    "/detection/settings",
     response_model=DetectionSettings,
     summary="Update Detection Settings",
     response_description="Returns the updated detection settings:"
@@ -104,7 +104,7 @@ async def update_detection_settings(
 
 
 @router.get(
-    "/api/detection/settings",
+    "/detection/settings",
     response_model=DetectionSettings,
     summary="Retrieve object detection settings",
     response_description="The current configuration of the object detection system: "
@@ -171,7 +171,7 @@ async def object_detection(
 
 
 @router.get(
-    "/api/detection/models",
+    "/detection/models",
     summary="Retrieve Available Detection Models",
     response_description="Returns a hierarchical tree structure representing the available object detection models, "
     "organized as a series of nodes. Each node in the tree can represent one of the following:"

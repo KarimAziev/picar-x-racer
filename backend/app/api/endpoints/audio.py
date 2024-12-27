@@ -17,7 +17,7 @@ logger = Logger(__name__)
 
 
 @router.post(
-    "/api/audio/volume",
+    "/audio/volume",
     response_model=VolumeData,
     summary="Set the playback volume level",
 )
@@ -91,7 +91,7 @@ async def set_volume(
 
 
 @router.get(
-    "/api/audio/volume",
+    "/audio/volume",
     response_model=VolumeData,
     summary="Retrieve the current volume level",
 )

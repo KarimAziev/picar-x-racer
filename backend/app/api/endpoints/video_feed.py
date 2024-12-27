@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/api/video-feed/settings",
+    "/video-feed/settings",
     response_model=StreamSettings,
     summary="Update video feed settings with enhanced parameters for video streaming.",
     response_description="The updated video stream settings:"
@@ -70,7 +70,7 @@ async def update_video_feed_settings(
 
 
 @router.get(
-    "/api/video-feed/settings",
+    "/video-feed/settings",
     response_model=StreamSettings,
     summary="Retrieve the current video feed settings.",
     response_description="Video feed settings with such attributes:"
@@ -122,7 +122,7 @@ async def ws(
 
 
 @router.get(
-    "/api/video-feed/enhancers",
+    "/video-feed/enhancers",
     response_model=EnhancersResponse,
     summary="Retrieve a list of available video frame enhancers.",
     response_description="A list of available video frame enhancers such as:"

@@ -19,7 +19,7 @@ logger = Logger(__name__)
 
 
 @router.post(
-    "/api/camera/settings",
+    "/camera/settings",
     response_model=CameraSettings,
     tags=["camera"],
     summary="Update camera settings",
@@ -104,7 +104,7 @@ async def update_camera_settings(
 
 
 @router.get(
-    "/api/camera/settings",
+    "/camera/settings",
     response_model=CameraSettings,
     tags=["camera"],
     summary="Get camera settings",
@@ -139,7 +139,7 @@ def get_camera_settings(
 
 
 @router.get(
-    "/api/camera/devices",
+    "/camera/devices",
     response_model=CameraDevicesResponse,
     summary="Retrieve a list of available camera devices",
 )
@@ -159,7 +159,7 @@ def get_camera_devices():
 
 
 @router.get(
-    "/api/camera/capture-photo",
+    "/camera/capture-photo",
     response_model=PhotoResponse,
     summary="Capture a photo",
     responses={

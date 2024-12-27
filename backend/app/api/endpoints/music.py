@@ -24,7 +24,7 @@ logger = Logger(__name__)
 
 
 @router.post(
-    "/api/music/toggle-play",
+    "/music/toggle-play",
     summary="Toggle playing of the current track.",
 )
 async def toggle_play_music(
@@ -64,7 +64,7 @@ async def toggle_play_music(
 
 
 @router.post(
-    "/api/music/track",
+    "/music/track",
     summary="Play a track.",
 )
 async def play_track(
@@ -105,7 +105,7 @@ async def play_track(
 
 
 @router.post(
-    "/api/music/stop",
+    "/music/stop",
     summary="Stop playing of the current track.",
 )
 async def stop_playing(
@@ -143,7 +143,7 @@ async def stop_playing(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
 
 
-@router.post("/api/music/position", response_model=MusicPlayerState)
+@router.post("/music/position", response_model=MusicPlayerState)
 async def update_position(
     payload: MusicPositionPayload,
     music_player: "MusicService" = Depends(get_music_manager),
@@ -186,7 +186,7 @@ async def update_position(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
 
 
-@router.post("/api/music/mode")
+@router.post("/music/mode")
 async def update_mode(
     payload: MusicModePayload,
     music_player: "MusicService" = Depends(get_music_manager),
@@ -224,7 +224,7 @@ async def update_mode(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
 
 
-@router.post("/api/music/next-track")
+@router.post("/music/next-track")
 async def next_track(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
@@ -260,7 +260,7 @@ async def next_track(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
 
 
-@router.post("/api/music/prev-track")
+@router.post("/music/prev-track")
 async def prev_track(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
@@ -299,7 +299,7 @@ async def prev_track(
 
 
 @router.post(
-    "/api/music/order",
+    "/music/order",
     responses={
         200: {
             "description": "Success message",
@@ -356,7 +356,7 @@ async def save_music_order(
         raise HTTPException(status_code=400, detail=str(err))
 
 
-@router.get("/api/music", response_model=MusicResponse)
+@router.get("/music", response_model=MusicResponse)
 async def get_music_tracks(
     file_manager: "FileService" = Depends(get_file_manager),
     audio_manager: "AudioService" = Depends(get_audio_manager),

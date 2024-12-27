@@ -28,7 +28,7 @@ router = APIRouter()
 logger = Logger(__name__)
 
 
-@router.post("/api/files/upload/{media_type}", response_model=UploadFileResponse)
+@router.post("/files/upload/{media_type}", response_model=UploadFileResponse)
 async def upload_file(
     request: Request,
     media_type: str,
@@ -90,7 +90,7 @@ async def upload_file(
 
 
 @router.delete(
-    "/api/files/remove/{media_type}/{filename}", response_model=RemoveFileResponse
+    "/files/remove/{media_type}/{filename}", response_model=RemoveFileResponse
 )
 async def remove_file(
     request: Request,
@@ -157,7 +157,7 @@ async def remove_file(
 
 
 @router.get(
-    "/api/files/download/{media_type}/{filename}",
+    "/files/download/{media_type}/{filename}",
     responses={
         200: {
             "content": {"application/octet-stream": {}},
@@ -215,7 +215,7 @@ def download_file(
 
 
 @router.get(
-    "/api/files/preview/{filename}",
+    "/files/preview/{filename}",
     responses={
         200: {
             "content": {"image/jpeg": {}, "image/png": {}},
@@ -261,7 +261,7 @@ def preview_image(
         raise HTTPException(status_code=404, detail="File not found")
 
 
-@router.get("/api/files/list/photos", response_model=PhotosResponse)
+@router.get("/files/list/photos", response_model=PhotosResponse)
 def list_photos(file_manager: "FileService" = Depends(get_file_manager)):
     """
     List the captured by user photos.
@@ -271,7 +271,7 @@ def list_photos(file_manager: "FileService" = Depends(get_file_manager)):
 
 
 @router.get(
-    "/api/files/download-last-video",
+    "/files/download-last-video",
     responses={
         200: {
             "content": {"application/octet-stream": {}},
@@ -313,7 +313,7 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
 
 
 @router.post(
-    "/api/files/remove-batch/{media_type}", response_model=List[RemoveFileResponse]
+    "/files/remove-batch/{media_type}", response_model=List[RemoveFileResponse]
 )
 async def batch_remove_files(
     request: Request,

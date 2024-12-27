@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -194,15 +194,19 @@ from app.api.endpoints import (
     video_feed_router,
 )
 
-app.include_router(audio_management_router, tags=["audio"])
-app.include_router(music_router, tags=["music"])
-app.include_router(tts_router, tags=["tts"])
-app.include_router(battery_router, tags=["battery"])
-app.include_router(camera_feed_router, tags=["camera"])
-app.include_router(file_management_router, tags=["files"])
-app.include_router(settings_router, tags=["settings"])
-app.include_router(video_feed_router, tags=["video-stream"])
-app.include_router(detection_router, tags=["detection"])
-app.include_router(app_sync_router, tags=["sync"])
-app.include_router(system_router, tags=["system"])
-app.include_router(main_router, tags=["serve"])
+api_router = APIRouter()
+
+api_router.include_router(audio_management_router, tags=["audio"])
+api_router.include_router(music_router, tags=["music"])
+api_router.include_router(tts_router, tags=["tts"])
+api_router.include_router(battery_router, tags=["battery"])
+api_router.include_router(camera_feed_router, tags=["camera"])
+api_router.include_router(file_management_router, tags=["files"])
+api_router.include_router(settings_router, tags=["settings"])
+api_router.include_router(video_feed_router, tags=["video-stream"])
+api_router.include_router(detection_router, tags=["detection"])
+api_router.include_router(app_sync_router, tags=["sync"])
+api_router.include_router(system_router, tags=["system"])
+api_router.include_router(main_router, tags=["serve"])
+
+app.include_router(api_router, prefix="/api")

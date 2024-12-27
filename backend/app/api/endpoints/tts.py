@@ -16,7 +16,7 @@ logger = Logger(__name__)
 
 
 @router.post(
-    "/api/tts/speak",
+    "/tts/speak",
     summary="Text to Speech API Endpoint",
 )
 async def text_to_speech(
