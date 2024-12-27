@@ -23,7 +23,7 @@ import { ref, onMounted, computed, watch } from "vue";
 
 import { useCameraStore } from "@/features/settings/stores";
 
-import { isString } from "@/util/guards";
+import { isString, isNumber } from "@/util/guards";
 import Field from "@/ui/Field.vue";
 import {
   findDevice,
@@ -111,6 +111,16 @@ const updateDevice = async (newValObj: DeviceTreeValue) => {
   if ((itemData as any).width) {
     const discreted = itemData as DiscreteDevice;
     await camStore.updateData(discreted);
+  } else if (
+    isNumber(camStore.data.width) &&
+    isNumber(camStore.data.height) &&
+    isNumber(camStore.data.fps)
+  ) {
+    updateStepwiseDevice({
+      width: camStore.data.width,
+      height: camStore.data.height,
+      fps: camStore.data.fps,
+    });
   }
 };
 </script>
