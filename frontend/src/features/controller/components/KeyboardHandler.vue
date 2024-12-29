@@ -33,7 +33,7 @@ const isEventAllowed: KeyboardEventPred = (event) => {
     return event.key !== " ";
   }
 
-  if (isInput(event.target)) {
+  if (isInput(event.target) && event?.key) {
     return !(
       event.key.length === 1 ||
       Object.hasOwn(inputHistoryDirectionByKey, event.key)
