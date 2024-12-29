@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 from app.util.logger import Logger
