@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cv2
 from app.util.logger import Logger
@@ -12,7 +12,7 @@ logger = Logger(__name__)
 CameraInfo = Tuple[str, str]
 
 
-def try_video_path(path: str | int):
+def try_video_path(path: str | int) -> Optional[cv2.VideoCapture]:
     """
     Tries to open a video capture at a specified path.
 
@@ -20,13 +20,13 @@ def try_video_path(path: str | int):
     If successful, returns the video capture object; otherwise, returns None.
 
     Parameters:
-        path (str): The file path or device path to the video stream.
+        path: The file path or device path to the video stream.
 
     Returns:
-        Optional[cv2.VideoCapture]: The video capture object if the path is valid and readable, otherwise None.
+        The video capture object if the path is valid and readable, otherwise None.
     """
     result: Optional[bool] = None
-    cap = None
+    cap: Optional[cv2.VideoCapture] = None
 
     try:
         logger.debug("Trying camera %s", path)
@@ -63,8 +63,11 @@ def v4l2_list_devices() -> List[str]:
         )
         lines = result.stdout.strip().splitlines()
 
-    except Exception as e:
-        logger.log_exception("List devices failed", e)
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to run 'v4l2-ctl --list-devices':", e)
+
+    except Exception:
+        logger.error("Unexpected exception occurred: ", exc_info=True)
 
     return lines
 
@@ -78,8 +81,8 @@ def list_camera_devices() -> List[CameraInfo]:
     falls back to listing potential camera devices based on video files in /dev/.
 
     Returns:
-        List[CameraInfo]: A list of tuples, each containing a device path and a category, representing available cameras.
-                          If no category is found, the category string is empty.
+        A list of tuples, each containing a device path and a category, representing available cameras.
+        If no category is found, the category string is empty.
     """
     lines = v4l2_list_devices()
     category_pattern = re.compile(r"^(.+) \(.+\):$")
@@ -117,17 +120,17 @@ def list_camera_devices() -> List[CameraInfo]:
     return [(device, "") for device in dev_video_files]
 
 
-def find_device_info(device) -> Optional[CameraInfo]:
+def find_device_info(device: str) -> Optional[CameraInfo]:
     devices = list_camera_devices()
     for device_path, device_info in devices:
         if device_path == device:
             return (device, device_info)
 
 
-def list_available_camera_devices():
-    result: List[Dict[str, Union[str, bool, List[Dict[str, str]]]]] = []
+def list_video_devices_with_formats() -> List[Dict[str, Any]]:
+    result: List[Dict[str, Any]] = []
     for key, category in list_camera_devices():
-        formats = parse_v4l2_formats(key)
+        formats = list_device_formats_ext(key)
         if formats:
             item = {
                 "key": key,
@@ -139,29 +142,7 @@ def list_available_camera_devices():
     return result
 
 
-COMMON_SIZES = [
-    # (320, 180),
-    # (424, 240),
-    # (640, 360),
-    (640, 480),
-    (800, 600),
-    (1024, 768),
-    # (1280, 720),
-    # (2592, 1944),
-]
-
-
-def parse_v4l2_formats(device: str) -> List[Dict[str, str]]:
-    """
-    Parse the output of v4l2-ctl --list-formats-ext for the specified device.
-
-    Args:
-        device (str): The path to the camera device, e.g., '/dev/video0'.
-
-    Returns:
-        List[Dict[str, str]]: A formatted list of dictionaries where each dict contains a
-                              'value' and 'label' representing format, resolution, and FPS.
-    """
+def list_device_formats_ext(device: str) -> List[Dict[str, Any]]:
     try:
         cmd = ["v4l2-ctl", "--list-formats-ext", "--device", device]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -173,68 +154,132 @@ def parse_v4l2_formats(device: str) -> List[Dict[str, str]]:
     return parse_v4l2_formats_output(output, device)
 
 
-def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
+def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
     """
-    Parse the output of v4l2-ctl --list-formats-ext for the specified device.
+    Parses the output of `v4l2-ctl --list-formats-ext` and extracts video format,
+    resolution, and frame rate information for a specified video device.
+
+    This function processes the text output from the `v4l2-ctl` command, which is
+    commonly used to query video device capabilities on Linux systems. Specifically,
+    it extracts the available pixel formats, supported frame sizes (both discrete and
+    stepwise), and frame rates for each resolution, organizing the data into a
+    hierarchical structure.
 
     Args:
-        output (str): the output of v4l2-ctl --list-formats-ext.
-        device (str): The path to the camera device, e.g., '/dev/video0'.
+        output (str): The raw string output from `v4l2-ctl --list-formats-ext`.
+        device (str): The video device identifier (e.g., `/dev/video0`).
 
     Returns:
-        List[Dict[str, str]]: A formatted list of dictionaries where each dict contains a
-                              'value' and 'label' representing format, resolution, and FPS.
+        List: A list of dictionaries representing the video format
+        capabilities. Each dictionary has the following structure:
+            - "key" (str): A unique key for identifying the format/resolution.
+            - "label" (str): A human-readable label for the format/resolution.
+            - "pixel_format" (str): The pixel format (e.g., `YUYV`).
+            - Other keys varying based on whether the resolution is discrete or stepwise:
+                - Discrete resolution:
+                    - "device" (str): The device name.
+                    - "width" (int): Frame width in pixels.
+                    - "height" (int): Frame height in pixels.
+                    - "fps" (int): Frames per second for this resolution.
+                - Stepwise resolution:
+                    - "min_width" (int): Minimum frame width in pixels.
+                    - "max_width" (int): Maximum frame width in pixels.
+                    - "min_height" (int): Minimum frame height in pixels.
+                    - "max_height" (int): Maximum frame height in pixels.
+                    - "width_step" (int): Step size for width increments.
+                    - "height_step" (int): Step size for height increments.
+                    - "min_fps" (int): The minimal frame rate of the camera mode.
+                    - "max_fps" (int): The maximum frame rate of the camera mode.
+
+    Example:
+        Given the following `v4l2-ctl` output:
+        ```
+        [0]: 'YUYV' (YUYV 4:2:2)
+            Size: Discrete 640x480
+                Interval: Discrete 0.033s (30.000 fps)
+        [1]: 'MJPG' (Motion-JPEG)
+            Size: Stepwise 320x240 - 1280x720 with step 16/16
+        ```
+
+        Calling `parse_v4l2_formats_output(output, "/dev/video0")` returns:
+        [
+            {
+                'key': '/dev/video1:YUYV:640x480:30',
+                'label': 'YUYV, 640x480,  30 fps',
+                'device': '/dev/video1',
+                'width': 640,
+                'height': 480,
+                'fps': 30,
+                'pixel_format': 'YUYV',
+            },
+            {
+                'key': '/dev/video1:MJPG:320x240 - 1280x720',
+                'label': 'MJPG 320x240 - 1280x720',
+                'device': '/dev/video1',
+                'pixel_format': 'MJPG',
+                'min_width': 320,
+                'max_width': 1280,
+                'min_height': 240,
+                'max_height': 720,
+                'height_step': 16,
+                'width_step': 16,
+            },
+        ]
     """
     formats = []
 
     format_pattern = re.compile(r"\[\d+\]: '([A-Z0-9]+)' \((.+)\)")
-    resolution_discrete_pattern = re.compile(r"Size: Discrete (\d+x\d+)")
+    resolution_discrete_size_pattern = re.compile(r"Size: Discrete (\d+x\d+)")
     resolution_stepwise_pattern = re.compile(
         r"Size: Stepwise (\d+x\d+) - (\d+x\d+) with step (\d+)/(\d+)"
     )
     fps_pattern = re.compile(r"Interval: Discrete ([0-9.]+)s \((\d+)\.000 fps\)")
 
-    current_pixel_format = None
+    current_pixel_format: Optional[str] = None
     current_pixel_format_data = {"children": []}
     frame_size = None
     lines = output.splitlines()
     lines_len = len(lines)
 
-    for idx, line in enumerate(lines):
-        line = line.strip()
+    idx = 0
 
-        if format_match := format_pattern.match(line):
-            if current_pixel_format_data and current_pixel_format_data.get("children"):
-                if len(current_pixel_format_data["children"]) > 1:
-                    formats.append(current_pixel_format_data)
-                else:
-                    child = current_pixel_format_data["children"][0]
-                    formats.append(child)
-            current_pixel_format = format_match.group(1)
-            current_pixel_format_data = {
-                "key": f"{device}:{current_pixel_format}",
-                "label": current_pixel_format,
-                "children": [],
-            }
+    while idx < lines_len:
+        line = lines[idx].strip()
+        try:
+            if format_match := format_pattern.match(line):
+                if current_pixel_format_data and current_pixel_format_data.get(
+                    "children"
+                ):
+                    if len(current_pixel_format_data["children"]) > 1:
+                        formats.append(current_pixel_format_data)
+                    else:
+                        child = current_pixel_format_data["children"][0]
+                        formats.append(child)
+                current_pixel_format = format_match.group(1)
+                current_pixel_format_data = {
+                    "key": f"{device}:{current_pixel_format}",
+                    "label": current_pixel_format,
+                    "children": [],
+                }
 
-        elif resolution_discrete_match := resolution_discrete_pattern.search(line):
-            frame_size = resolution_discrete_match.group(1)
-            [width, height] = [int(value) for value in frame_size.split("x")]
-            fps_match = fps_pattern.search(line)
-            next_line_idx = idx + 1
-            if not fps_match and lines_len >= next_line_idx:
-                next_line = lines[next_line_idx]
-                fps_match = fps_pattern.search(next_line)
+            elif resolution_discrete_match := resolution_discrete_size_pattern.search(
+                line
+            ):
+                frame_size = resolution_discrete_match.group(1)
+                [width, height] = [int(value) for value in frame_size.split("x")]
 
-            if fps_match:
-                fps_value = fps_match.group(2)
+                fps_match: Optional[re.Match] = None
+                next_line = lines[idx + 1] if idx + 1 < lines_len else None
+                size_key = f"{device}:{current_pixel_format}:{frame_size}"
+                size_label = f"{current_pixel_format}, {frame_size}"
+                size_item = {"key": size_key, "label": size_label, "children": []}
 
-                if current_pixel_format and frame_size:
+                while fps_match := fps_pattern.search(next_line) if next_line else None:
+                    idx += 1
+                    fps_value = fps_match.group(2)
                     value = f"{device}:{current_pixel_format}:{frame_size}:{fps_value}"
-                    label = f"{current_pixel_format}, {frame_size},  {fps_value} fps"
-                    if not current_pixel_format_data:
-                        current_pixel_format_data = {"children": []}
-                    current_pixel_format_data["children"].append(
+                    label = f"{current_pixel_format}, {frame_size}, {fps_value} fps"
+                    size_item["children"].append(
                         {
                             "key": value,
                             "label": label,
@@ -245,28 +290,57 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, str]]:
                             "pixel_format": current_pixel_format,
                         }
                     )
-        elif resolution_stepwise_match := resolution_stepwise_pattern.search(line):
-            min_size = resolution_stepwise_match.group(1)
-            max_size = resolution_stepwise_match.group(2)
-            width_step = resolution_stepwise_match.group(3)
-            height_step = resolution_stepwise_match.group(4)
-            [min_width, min_height] = [int(value) for value in min_size.split("x")]
-            [max_width, max_height] = [int(value) for value in max_size.split("x")]
+                    next_line = lines[idx + 1] if idx + 1 < lines_len else None
 
-            current_pixel_format_data["children"].append(
-                {
-                    "key": f"{device}:{current_pixel_format}:{min_size} - {max_size}",
-                    "label": f"{current_pixel_format} {min_size} - {max_size}",
-                    "device": device,
-                    "pixel_format": current_pixel_format,
-                    "min_width": min_width,
-                    "max_width": max_width,
-                    "min_height": min_height,
-                    "max_height": max_height,
-                    "height_step": int(height_step),
-                    "width_step": int(width_step),
-                }
-            )
+                if not current_pixel_format_data:
+                    current_pixel_format_data = {"children": []}
+
+                current_pixel_format_data["children"].append(
+                    size_item["children"][0]
+                    if len(size_item["children"]) == 1
+                    else size_item
+                )
+
+            elif resolution_stepwise_match := resolution_stepwise_pattern.search(line):
+                min_size = resolution_stepwise_match.group(1)
+                max_size = resolution_stepwise_match.group(2)
+                width_step = resolution_stepwise_match.group(3)
+                height_step = resolution_stepwise_match.group(4)
+                [min_width, min_height] = [int(value) for value in min_size.split("x")]
+                [max_width, max_height] = [int(value) for value in max_size.split("x")]
+
+                fps_intervals = (
+                    get_fps_intervals(
+                        device,
+                        width=min_width,
+                        height=min_height,
+                        pixel_format=current_pixel_format,
+                    )
+                    if current_pixel_format
+                    else None
+                ) or 1, 90
+                if fps_intervals:
+                    min_fps, max_fps = fps_intervals
+                    current_pixel_format_data["children"].append(
+                        {
+                            "key": f"{device}:{current_pixel_format}:{min_size} - {max_size}",
+                            "label": f"{current_pixel_format} {min_size} - {max_size}",
+                            "device": device,
+                            "pixel_format": current_pixel_format,
+                            "min_width": min_width,
+                            "max_width": max_width,
+                            "min_height": min_height,
+                            "max_height": max_height,
+                            "height_step": int(height_step),
+                            "width_step": int(width_step),
+                            "min_fps": min_fps,
+                            "max_fps": max_fps,
+                        }
+                    )
+        except Exception:
+            logger.error("Unexpected parsing error", exc_info=True)
+        finally:
+            idx += 1
 
     if current_pixel_format_data and current_pixel_format_data.get("children"):
         if len(current_pixel_format_data["children"]) > 1:
@@ -341,9 +415,9 @@ def parse_v4l2_device_info_output(output: str):
     return {"width": width, "height": height, "pixel_format": pixel_format}
 
 
-def get_frame_info(
+def get_fps_intervals(
     device: str, width: int, height: int, pixel_format: str
-) -> List[int]:
+) -> Optional[Tuple[int, int]]:
     try:
         cmd = [
             "v4l2-ctl",
@@ -356,9 +430,52 @@ def get_frame_info(
         output = result.stdout
     except subprocess.CalledProcessError as e:
         logger.error(f"Error executing v4l2-ctl: {e}")
-        return []
+        return None
 
-    return parse_frameinterval_output(output)
+    return parse_frameinterval(output)
+
+
+def parse_frameinterval(output: str) -> Optional[Tuple[int, int]]:
+    """
+    Parse and filter output from ioctl: VIDIOC_ENUM_FRAMEINTERVALS
+    and return a list of divisible by 10 frame rates as integers in descending order.
+
+    Example 1: Continuous interval
+    --------------
+    ```python
+    result1 = parse_frameinterval_output(
+        "ioctl: VIDIOC_ENUM_FRAMEINTERVALS\\\\n"
+        "        Interval: Continuous 0.011s - 1.000s (1.000-90.000 fps)"
+    )
+    print(result1)  # Output: [90, 80, 70, ..., 10]
+    ```
+
+    Example 2: Discrete interval
+    --------------
+    ```python
+    result2 = parse_frameinterval_output(
+        "ioctl: VIDIOC_ENUM_FRAMEINTERVALS\\\\n"
+        "        Interval: Discrete 0.033s (30.000 fps)"
+    )
+
+    print(result2)  # Output: [30]
+
+    ```
+    """
+
+    if "Continuous" in output:
+        match = re.search(r'\(([\d.]+)-([\d.]+) fps\)', output)
+        if match:
+            min_fps = int(float(match.group(1)))
+            max_fps = int(float(match.group(2)))
+
+            return (min_fps, max_fps)
+
+    elif "Discrete" in output:
+        match = re.search(r'\(([\d.]+) fps\)', output)
+        if match:
+            value = int(float(match.group(1)))
+            return (value, value)
 
 
 def parse_frameinterval_output(output: str) -> List[int]:

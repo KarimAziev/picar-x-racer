@@ -85,17 +85,21 @@ export const extractChildren = <DataItem>(
 
 export const mapChildren = <DataItem>(
   items: ItemData<DataItem>[],
+  counter = { value: 1 },
 ): DataItem[] => {
   return items.map((item) => {
+    const tabIdx = counter.value++;
     if (item.children) {
       return {
         ...item,
-        children: mapChildren(item.children),
+        tabIdx,
+        children: mapChildren(item.children, counter),
         selectable: false,
       };
     }
     return {
       ...item,
+      tabIdx,
       selectable: true,
     };
   });

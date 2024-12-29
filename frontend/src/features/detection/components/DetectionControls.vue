@@ -16,6 +16,7 @@
       v-model="fields.model"
       :options="nodes"
       placeholder="Model"
+      tooltip="Object detection model '%s'"
       filter
       :disabled="detectionStore.loading"
       @before-show="handleSelectBeforeShow"
@@ -23,7 +24,7 @@
       @update:model-value="updateDebounced"
     >
       <template #dropdownicon>
-        <i class="pi pi-search" />
+        <i class="pi pi-microchip-ai" />
       </template>
       <template #header>
         <div class="title">Available Models</div>

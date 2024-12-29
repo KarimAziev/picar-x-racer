@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from app.api import deps
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
-from app.util.device import list_available_camera_devices
+from app.util.device import list_video_devices_with_formats
 from app.util.logger import Logger
 from app.util.photo import capture_photo
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -154,7 +154,7 @@ def get_camera_devices():
     --------------
     `CameraDevicesResponse`: A structured list of available camera devices.
     """
-    devices = list_available_camera_devices()
+    devices = list_video_devices_with_formats()
     return {"devices": devices}
 
 

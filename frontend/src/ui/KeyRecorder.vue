@@ -157,7 +157,7 @@ onBeforeUnmount(() => {
 }
 
 .error {
-  color: red;
+  color: var(--color-error);
   margin-top: 0.5em;
 }
 .field {

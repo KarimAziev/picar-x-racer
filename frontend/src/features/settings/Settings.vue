@@ -66,6 +66,7 @@ const isMobile = useDeviceWatcher();
 .robo-tabs {
   font-family: var(--font-family-settings);
 }
+.robo-tabs,
 .wrapper {
   width: 98%;
   margin: auto;
@@ -75,7 +76,6 @@ const isMobile = useDeviceWatcher();
   }
 
   @media (min-width: 360px) {
-    max-width: 600px;
     min-width: 340px;
     width: 350px;
   }

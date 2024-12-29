@@ -196,6 +196,18 @@ class DeviceStepwise(DeviceItem, DeviceCommonProps):
         examples=[1, 2, 10],
     )
 
+    min_fps: int = Field(
+        ...,
+        description="The minimal frame rate of the camera mode, measured in frames per second (fps).",
+        examples=[1, 20, 30],
+    )
+
+    max_fps: int = Field(
+        ...,
+        description="The maximum frame rate of the camera mode, measured in frames per second (fps).",
+        examples=[90],
+    )
+
 
 class DeviceNode(DeviceItem):
     """

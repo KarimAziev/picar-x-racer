@@ -276,6 +276,7 @@ export const formatObjectDiff = <
   const a = cloneDeep(origData);
   const b = cloneDeep(newData);
   const diffObj = diffObjectsDeep(a, b);
+
   if (!isEmpty(diffObj)) {
     return formatObjDeep(diffObj);
   }

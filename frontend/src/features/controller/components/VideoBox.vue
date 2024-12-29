@@ -6,6 +6,7 @@
     :default-height="defaultHeight"
   >
     <ImageFeed />
+    <!-- <img src="@/assets/logo.svg" /> -->
   </ResizableContainer>
 </template>
 <script setup lang="ts">

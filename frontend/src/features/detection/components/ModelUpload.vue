@@ -6,6 +6,7 @@
     accept=".pt,.tflite"
     :auto="true"
     chooseLabel="Add model"
+    :chooseButtonProps="{ outlined: true, text: true }"
     :customUpload="true"
     @uploader="uploader"
   />

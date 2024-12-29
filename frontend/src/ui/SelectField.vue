@@ -11,14 +11,20 @@
       :options="options"
       :optionLabel="optionLabel"
       :optionValue="optionValue"
+      v-tooltip="tooltipText"
       filter
+      autoFilterFocus
       :class="props.inputClassName"
       v-model="currentValue"
       :invalid="invalid"
       :disabled="readonly || disabled"
       v-bind="otherAttrs"
       @update:model-value="onUpdate"
-    />
+    >
+      <template #dropdownicon>
+        <i class="pi pi-angle-down" />
+      </template>
+    </Select>
   </Field>
 </template>
 
@@ -45,6 +51,7 @@ export type Props = {
   readonly?: boolean;
   disabled?: boolean;
   loading?: boolean;
+  tooltip?: string;
 };
 const props = defineProps<Props>();
 const otherAttrs = useAttrs();
@@ -57,6 +64,28 @@ const optionLabel = computed(() =>
 const optionValue = computed(() =>
   props.simpleOptions ? undefined : props.optionValue || "value",
 );
+
+const tooltipText = computed(() => {
+  const { tooltip } = props;
+  if (!tooltip || !props.options || !/%s/gim.test(tooltip)) {
+    return tooltip;
+  }
+
+  const optValue = optionValue.value;
+  const optLabel = optionLabel.value;
+
+  if (!optValue || !optLabel) {
+    return tooltip.replace("%s", currentValue.value || "None");
+  }
+  const option = props.options.find(
+    (opt) => opt && opt[optValue] === currentValue.value,
+  );
+
+  if (!option) {
+    return tooltip.replace("%s", "None");
+  }
+  return tooltip.replace("%s", option[optLabel]);
+});
 
 watch(
   () => props.modelValue,

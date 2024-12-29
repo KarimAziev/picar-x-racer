@@ -4,6 +4,9 @@
     optionValue="value"
     label="Enhance Mode"
     field="video_feed_enhance_mode"
+    tooltip="
+      'Video effect to apply (%s)'
+    "
     placeholder="Video Effect"
     v-model="streamStore.data.enhance_mode"
     :loading="streamStore.loading"

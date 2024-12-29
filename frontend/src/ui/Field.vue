@@ -43,46 +43,4 @@ const classObject = computed(() => ({
     color: var(--color-red);
   }
 }
-:deep(.p-select-dropdown),
-:deep(.p-treeselect-dropdown) {
-  width: 0.8rem;
-
-  .p-icon {
-    position: relative;
-    width: 0.5rem;
-    right: 50%;
-  }
-}
-:deep(.p-inputtext),
-:deep(.p-treeselect),
-:deep(.p-select),
-:deep(.p-inputnumber) {
-  display: flex;
-  align-items: center;
-  max-width: 140px;
-  height: 30px;
-
-  @media (min-width: 576px) {
-    max-width: 140px;
-  }
-  @media (min-width: 768px) {
-    max-width: 190px;
-  }
-
-  @media (min-width: 992px) {
-    max-width: 210px;
-  }
-  @media (min-width: 1200px) {
-    height: 40px;
-    max-width: 220px;
-  }
-
-  @media (min-width: 1440px) {
-    max-width: 230px;
-  }
-
-  @media (min-width: 1600px) {
-    max-width: 240px;
-  }
-}
 </style>

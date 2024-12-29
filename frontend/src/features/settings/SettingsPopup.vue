@@ -1,17 +1,11 @@
 <template>
   <MediaControls v-if="isMobile" class="drawer-button">
-    <Button
-      severity="secondary"
-      icon="pi pi-bars"
-      v-tooltip="'Open settings'"
-      @click="handleShow"
-    />
+    <Button severity="secondary" icon="pi pi-bars" @click="handleShow" />
   </MediaControls>
   <Button
     v-else
     severity="secondary"
     icon="pi pi-bars"
-    v-tooltip="'Open settings'"
     @click="handleShow"
     class="drawer-button"
   />

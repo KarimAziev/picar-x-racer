@@ -1,0 +1,25 @@
+.p-tree-node-content {
+  --p-tree-node-padding: 0.25rem 3rem 0.25rem 0.5rem;
+  position: relative;
+
+  &:hover {
+    background-color: var(--p-tree-node-hover-background);
+    color: var(--p-tree-node-hover-color);
+  }
+}
+.p-tree-node-toggle-button {
+  --p-tree-node-toggle-button-size: 100%;
+  --p-tree-node-toggle-button-hover-background: transparent;
+  --p-tree-node-toggle-button-border-radius: 0;
+  position: absolute !important;
+  opacity: 1;
+  transition: all 0.3s ease-in;
+  width: 100%;
+  left: 0;
+  top: 0;
+  right: 0;
+  svg {
+    position: absolute;
+    right: 0;
+  }
+}

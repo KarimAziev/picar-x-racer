@@ -9,7 +9,7 @@
       :options="ttsLanguages"
       optionLabel="label"
       optionValue="value"
-      v-tooltip="'The language of Text to Speech'"
+      tooltip="The current language of text to speech (%s)"
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
     />
@@ -22,7 +22,7 @@
         @keyup.stop="handleKeyUp"
         @keyup.enter="handleKeyEnter"
         v-model="inputRef"
-        v-tooltip="'Type the Text To Speech and press Enter to speak'"
+        v-tooltip="textInputTooltip"
       />
       <Button
         class="opacity-hover"
@@ -56,6 +56,12 @@ const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
 const isEnabled = computed(
   () => inputRef.value && !!inputRef.value.trim().length,
+);
+
+const textInputTooltip = computed(() =>
+  isEnabled.value
+    ? `Press 'Enter' to speak: '${inputRef.value}'`
+    : "Type the text to speech and press 'Enter' to speak",
 );
 
 const tooltipButtonText = computed(() =>
@@ -96,43 +102,8 @@ watch(
     max-width: 200px;
   }
 }
-input {
-  width: 50px;
-  height: 30px;
 
-  @media (min-width: 576px) {
-    width: 120px;
-  }
-
-  @media (min-width: 1200px) {
-    height: 40px;
-    width: 140px;
-  }
-}
 .language {
-  width: 50px;
-  @media (min-width: 576px) {
-    width: 60px;
-  }
-  @media (min-width: 768px) {
-    width: 80px;
-  }
-  @media (min-width: 992px) {
-    :deep(.p-select-label) {
-      padding: 0.15rem 0.4rem;
-
-      @media (min-width: 576px) {
-        padding: 0.25rem 0.7rem;
-      }
-
-      @media (min-width: 768px) {
-        padding: 0.3rem 0.7rem;
-      }
-
-      @media (min-width: 1200px) {
-        padding: 0.4rem 0.7rem;
-      }
-    }
-  }
+  width: 70px;
 }
 </style>

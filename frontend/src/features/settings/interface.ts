@@ -102,14 +102,21 @@ export interface DiscreteDevice extends DeviceItem, DeviceCommonProps {
   fps: number;
 }
 
-export interface DeviceStepwise extends DeviceItem, DeviceCommonProps {
+export interface StepwiseDeviceProps {
   min_width: number;
   max_width: number;
   min_height: number;
   max_height: number;
   height_step: number;
   width_step: number;
+  min_fps: number;
+  max_fps: number;
 }
+
+export interface DeviceStepwise
+  extends DeviceItem,
+    DeviceCommonProps,
+    StepwiseDeviceProps {}
 
 export interface DeviceNode extends DeviceItem {
   children: (DeviceStepwise | DeviceNode | DiscreteDevice)[];
@@ -140,4 +147,19 @@ export interface CameraSettings {
    * The format for the pixels (e.g., 'RGB', 'GRAY').
    */
   pixel_format?: string;
+}
+
+export interface TreeNode {
+  /**
+   * Mandatory unique key of the node.
+   */
+  key: string;
+  /**
+   * Label of the node.
+   */
+  label?: string;
+
+  children?: TreeNode[];
+
+  [key: string]: any;
 }
