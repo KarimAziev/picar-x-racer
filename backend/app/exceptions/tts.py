@@ -1,4 +1,4 @@
 class TextToSpeechException(Exception):
-    """Exception raised when default file is trying to remove."""
+    """Custom exception raised for errors in the Text-to-Speech process."""
 
     pass

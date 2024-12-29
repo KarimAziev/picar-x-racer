@@ -15,6 +15,7 @@ class TTSService(metaclass=SingletonMeta):
         Initializes the TTSService instance.
         """
         self.logger = Logger(__name__)
+        self.is_playing = False
 
     def text_to_speech(self, words: str, lang="en") -> None:
         """
@@ -25,9 +26,14 @@ class TTSService(metaclass=SingletonMeta):
             lang (str): The language of the text. Default is "en".
         """
         self.logger.info(f"text-to-speech: {words} lang {lang}")
+        if self.is_playing:
+            raise TextToSpeechException("Already speaking")
         try:
             speech = Speech(words, lang)
+            self.is_playing = True
             speech.play()
         except Exception as e:
             self.logger.error("Text to speech error: %s", e)
             raise TextToSpeechException("Text to speech error") from e
+        finally:
+            self.is_playing = False
