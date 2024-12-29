@@ -223,6 +223,8 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
                 'max_height': 720,
                 'height_step': 16,
                 'width_step': 16,
+                'min_fps': 1,
+                'max_fps': 90,
             },
         ]
     """
@@ -438,7 +440,7 @@ def get_fps_intervals(
 def parse_frameinterval(output: str) -> Optional[Tuple[int, int]]:
     """
     Parse and filter output from ioctl: VIDIOC_ENUM_FRAMEINTERVALS
-    and return a list of divisible by 10 frame rates as integers in descending order.
+    and return a tuple of minimum and maximum fps.
 
     Example 1: Continuous interval
     --------------
@@ -447,7 +449,7 @@ def parse_frameinterval(output: str) -> Optional[Tuple[int, int]]:
         "ioctl: VIDIOC_ENUM_FRAMEINTERVALS\\\\n"
         "        Interval: Continuous 0.011s - 1.000s (1.000-90.000 fps)"
     )
-    print(result1)  # Output: [90, 80, 70, ..., 10]
+    print(result1)  # Output: (1, 90)
     ```
 
     Example 2: Discrete interval
@@ -458,7 +460,7 @@ def parse_frameinterval(output: str) -> Optional[Tuple[int, int]]:
         "        Interval: Discrete 0.033s (30.000 fps)"
     )
 
-    print(result2)  # Output: [30]
+    print(result2)  # Output: (30, 30)
 
     ```
     """
