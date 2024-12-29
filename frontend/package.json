@@ -19,7 +19,7 @@
     "pinia": "^2.1.7",
     "postcss": "^8.4.41",
     "primeicons": "^7.0.0",
-    "primevue": "^4.2.4",
+    "primevue": "^4.2.5",
     "rename-obj-map": "^2.0.2",
     "three": "^0.167.1",
     "vue": "^3.5.13",
@@ -38,7 +38,7 @@
     "sass-embedded": "^1.82.0",
     "typescript": "^5.5.3",
     "unplugin-vue-components": "^0.27.5",
-    "vite": "^6.0.3",
+    "vite": "^6.0.6",
     "vitest": "^2.1.8",
     "vue-tsc": "^2.1.10"
   }
