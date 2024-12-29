@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
@@ -417,6 +418,7 @@ def parse_v4l2_device_info_output(output: str):
     return {"width": width, "height": height, "pixel_format": pixel_format}
 
 
+@lru_cache(maxsize=128)
 def get_fps_intervals(
     device: str, width: int, height: int, pixel_format: str
 ) -> Optional[Tuple[int, int]]:
