@@ -321,7 +321,7 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
                     )
                     if current_pixel_format
                     else None
-                ) or 1, 90
+                )
                 if fps_intervals:
                     min_fps, max_fps = fps_intervals
                     current_pixel_format_data["children"].append(
@@ -473,13 +473,13 @@ def parse_frameinterval(output: str) -> Optional[Tuple[int, int]]:
             min_fps = int(float(match.group(1)))
             max_fps = int(float(match.group(2)))
 
-            return (min_fps, max_fps)
+            return min_fps, max_fps
 
     elif "Discrete" in output:
         match = re.search(r'\(([\d.]+) fps\)', output)
         if match:
             value = int(float(match.group(1)))
-            return (value, value)
+            return value, value
 
 
 def parse_frameinterval_output(output: str) -> List[int]:
