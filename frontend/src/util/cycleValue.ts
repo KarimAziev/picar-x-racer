@@ -33,7 +33,7 @@ export const cycleValue = <T>(
 };
 
 export const numberSequence = (from: number, to: number, step: number) => {
-  const sequence = [];
+  const sequence: number[] = [];
   for (let i = from; step > 0 ? i <= to : i >= to; i += step) {
     sequence.push(i);
   }

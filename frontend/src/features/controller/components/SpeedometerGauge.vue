@@ -70,7 +70,11 @@ const gaugeCenterStyle = reactive({
 });
 
 const outerLabels = computed(() => {
-  const labels = [];
+  const labels: {
+    value: number;
+    style: string;
+    disabled: boolean | 0 | undefined;
+  }[] = [];
   for (let i = 0; i <= props.segments; i++) {
     const step = (props.maxValue - props.minValue) / props.segments;
     const value = step * i;

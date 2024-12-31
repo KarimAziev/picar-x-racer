@@ -7,6 +7,8 @@ import {
   DeviceStepwise,
   CameraSettings,
 } from "@/features/settings/interface";
+import { isNumber } from "@/util/guards";
+import { inRange } from "@/util/number";
 
 export const objectKeysToOptions = (
   obj: Record<string, string[]> | string[],
@@ -112,7 +114,7 @@ export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
   }
 
   const stack: (DeviceStepwise | DeviceNode | DiscreteDevice)[] = [...items];
-  const candidates = [];
+  const candidates: DiscreteDevice[] = [];
 
   while (stack.length > 0) {
     const current = stack.pop();
@@ -151,4 +153,49 @@ export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
   }
 
   return candidates[0];
+};
+
+export const validateStepwiseData = (
+  stepWiseDevice: Partial<DeviceStepwise>,
+  data: {
+    width?: number;
+    height?: number;
+    fps?: number;
+  },
+) => {
+  if (!stepWiseDevice) {
+    return {};
+  }
+  return Object.entries(data).reduce(
+    (acc, [k, val]) => {
+      const key = k as keyof typeof data;
+      const minVal = stepWiseDevice[`min_${key}`];
+      const maxVal = stepWiseDevice[`max_${key}`];
+      const step = stepWiseDevice[`${key}_step`];
+      if (!isNumber(val)) {
+        acc[key] = "Required";
+      } else if (
+        isNumber(minVal) &&
+        isNumber(maxVal) &&
+        !inRange(val, minVal, maxVal)
+      ) {
+        acc[key] = `Should be between ${minVal} and ${maxVal}`;
+      } else if (
+        isNumber(minVal) &&
+        isNumber(maxVal) &&
+        step &&
+        (val - minVal) % step !== 0
+      ) {
+        const closestValidValue = Math.min(
+          maxVal,
+          Math.max(minVal, minVal + Math.round((val - minVal) / step) * step),
+        );
+        acc[key] =
+          `Invalid step. The closest valid value is ${closestValidValue}.`;
+      }
+
+      return acc;
+    },
+    {} as Record<keyof typeof data, string>,
+  );
 };
