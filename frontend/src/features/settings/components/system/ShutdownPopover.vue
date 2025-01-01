@@ -12,22 +12,22 @@
     <div class="flex flex-col gap-4">
       <Button
         :loading="loading"
-        @click="handleShutdown"
-        label="Power Off"
-        severity="danger"
-        variant="text"
-        v-tooltip="
-          'This will shut down the entire system. Save all work, as a manual reboot will be required to power it back on.'
-        "
-      ></Button>
-      <Button
-        :loading="loading"
         @click="handleReboot"
         label="Restart"
         severity="danger"
         variant="text"
         v-tooltip="
           'This will restart the entire operating system and may interrupt any ongoing operations.'
+        "
+      ></Button>
+      <Button
+        :loading="loading"
+        @click="handleShutdown"
+        label="Power Off"
+        severity="danger"
+        variant="text"
+        v-tooltip="
+          'This will shut down the entire system. Save all work, as a manual reboot will be required to power it back on.'
         "
       ></Button>
     </div>
