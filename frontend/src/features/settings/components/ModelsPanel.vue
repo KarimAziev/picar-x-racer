@@ -19,15 +19,18 @@
     }"
   >
     <template #header>
-      <div class="flex align-items-center">
-        <div class="title">
+      <div class="flex items-center">
+        <div
+          class="font-bold max-w-[75%] whitespace-nowrap overflow-hidden text-ellipsis"
+        >
           Current model: &nbsp;{{ detectionStore.data.model || "None" }}
         </div>
-        <div class="search-wrapper">
+        <div class="flex flex-auto justify-end">
           <div class="search-field">
             <IconField>
               <InputIcon class="pi pi-search" />
               <InputText
+                class="max-w-20"
                 id="search-models"
                 v-model="filters['name'] as string"
                 :pt="{ pcInput: { id: 'search-models' } }"
@@ -39,10 +42,10 @@
       </div>
 
       <FieldSet toggleable legend="Model parameters">
-        <div class="flex gap-10 flex-wrap">
+        <div class="flex gap-2.5 flex-wrap">
           <ToggleSwitchField
             label="Detection"
-            class="align-items-center"
+            class="items-center"
             field="settings.detection.active"
             @update:model-value="updateDebounced"
             v-tooltip="'Toggle object detection'"
@@ -117,7 +120,7 @@
     <Column field="type" header="Type"></Column>
     <Column :exportable="false" header="Actions">
       <template #body="slotProps">
-        <ButtonGroup class="button-group">
+        <ButtonGroup class="whitespace-nowrap">
           <Button
             rounded
             v-tooltip="'Download file'"
@@ -198,27 +201,7 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.title {
-  font-weight: bold;
-  font-family: var(--font-family);
-  max-width: 75%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.button-group {
-  white-space: nowrap;
-}
-:deep(.p-inputtext) {
-  max-width: 90px;
-}
 :deep(tr:hover) {
   cursor: pointer;
-}
-.search-wrapper {
-  display: flex;
-  flex: auto;
-  justify-content: flex-end;
 }
 </style>

@@ -2,7 +2,7 @@
   <button
     :disabled="disabled || loading"
     ref="btnRef"
-    class="btn tree-btn"
+    class="btn tree-btn pl-3"
     type="button"
     @keydown.stop.prevent.escape="handleClose"
     @click="toggle"
@@ -14,7 +14,7 @@
       >{{ modelValue?.label }}</span
     >
     <span v-else class="placeholder">{{ modelValue?.label }}</span>
-    <i class="pi pi-angle-down" />
+    <i class="pi pi-angle-down pt-1 md:pt-1.5 pr-2" />
   </button>
 
   <Popover ref="op" closeOnEscape @keydown.stop.prevent.escape="handleClose">
@@ -64,7 +64,6 @@ const handleUpdate = (node: TreeNode) => {
   justify-content: space-between;
   background-color: var(--p-form-field-background);
   border: 1px solid var(--p-form-field-border-color);
-  padding-left: 0.75rem;
   outline: none;
   cursor: pointer;
   border-radius: var(--p-form-field-border-radius);

@@ -18,18 +18,16 @@
       @blur="handleKeyEnter"
       @update:model-value="handleResetMsg"
     />
-    <div class="flex flex-wrap labels gap-4">
-      <Button
-        class="chip"
+    <div class="flex flex-wrap max-w-[120px] gap-x-1">
+      <button
+        class="inline-flex p-0 items-center justify-center"
         v-for="(val, i) in currentValue"
         :key="i"
-        icon="pi pi-times"
-        :label="val"
-        severity="danger"
-        outlined
-        variant="text"
         @click="() => removeValue(val)"
-      />
+      >
+        {{ val }}
+        <span class="text-red-400 cursor-pointer">&times;</span>
+      </button>
     </div>
   </Field>
 </template>
@@ -38,7 +36,7 @@
 import { ref, watch, useAttrs } from "vue";
 import TextInput from "primevue/inputtext";
 import type { InputTextProps } from "primevue/inputtext";
-import Button from "primevue/button";
+
 import Field from "@/ui/Field.vue";
 import type { FieldLayout } from "@/ui/Field.vue";
 import { omit } from "@/util/obj";
@@ -100,13 +98,3 @@ const removeValue = (removedValue: string) => {
   emit("update:modelValue", currentValue.value);
 };
 </script>
-<style scoped lang="scss">
-.labels {
-  max-width: 100px;
-}
-.chip {
-  padding: 2px 4px;
-  flex-direction: row-reverse;
-  width: fit-content;
-}
-</style>

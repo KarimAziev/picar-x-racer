@@ -6,6 +6,7 @@ import { useStore as useCalibrationStore } from "@/features/settings/stores/cali
 import { useStore as useDistanceStore } from "@/features/settings/stores/distance";
 import { useStore as useCameraStore } from "@/features/settings/stores/camera";
 import { useStore as useStreamStore } from "@/features/settings/stores/stream";
+import { useStore as useThemeStore } from "@/features/settings/stores/theme";
 
 export {
   useImageStore,
@@ -16,4 +17,5 @@ export {
   useDistanceStore,
   useCameraStore,
   useStreamStore,
+  useThemeStore,
 };

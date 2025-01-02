@@ -1,10 +1,10 @@
 <template>
-  <div class="flex jc-between distance" v-if="isLoaded">
+  <div class="flex justify-between text-left" v-if="isLoaded">
     <button
       :disabled="avoidObstacles"
       v-tooltip="'Click to toggle auto distance measure'"
       @click="handleToggle"
-      class="btn bold"
+      class="font-bold text-inherit cursor-pointer p-0 border-none bg-transparent transition-opacity duration-300 ease-in-out hover:opacity-70 focus:outline-none"
     >
       {{ distanceLabel }}:
     </button>
@@ -38,25 +38,3 @@ const distanceLabel = computed(() =>
   isAutoMeasureMode.value ? "DISTANCE ON" : "DISTANCE OFF",
 );
 </script>
-
-<style scoped lang="scss">
-.distance {
-  text-align: left;
-  color: var(--color-text);
-
-  .btn {
-    font-size: inherit;
-    font-family: var(--font-family);
-    cursor: pointer;
-    padding: 0;
-    color: var(--color-text);
-    border: none;
-    background-color: transparent;
-    outline: none;
-    transition: all 0.3s ease;
-    &:hover {
-      opacity: 0.7;
-    }
-  }
-}
-</style>

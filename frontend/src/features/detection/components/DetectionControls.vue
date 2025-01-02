@@ -1,7 +1,7 @@
 <template>
-  <div class="flex max-w-200 flex-wrap gap-2">
+  <div class="flex max-w-52 flex-wrap gap-x-1">
     <ToggleSwitchField
-      fieldClassName="opacity-hover"
+      fieldClassName="my-0"
       label="Detection"
       layout="row"
       field="toggle_detection"
@@ -11,7 +11,6 @@
       v-model="fields.active"
     />
     <TreeSelect
-      class="opacity-hover"
       inputId="model"
       v-model="fields.model"
       :options="nodes"
@@ -24,17 +23,17 @@
       @update:model-value="updateDebounced"
     >
       <template #dropdownicon>
-        <i class="pi pi-microchip-ai" />
+        <i class="pi pi-angle-down pr-2 pt-1 md:pt-1.5" />
       </template>
       <template #header>
-        <div class="title">Available Models</div>
+        <div class="p-2">Available Models</div>
       </template>
       <template #footer>
         <ModelUpload />
       </template>
     </TreeSelect>
     <SelectField
-      fieldClassName="img-size opacity-hover"
+      fieldClassName="my-0 w-20"
       inputId="img_size"
       v-model="fields.img_size"
       placeholder="Img size"
@@ -47,7 +46,7 @@
       :options="imgSizeOptions"
     />
     <NumberField
-      fieldClassName="opacity-hover w-80"
+      fieldClassName="my-0 w-20"
       @keydown.stop="doNothing"
       @keyup.stop="doNothing"
       @keypress.stop="doNothing"
@@ -62,7 +61,7 @@
       @update:model-value="updateDebounced"
     />
     <NumberField
-      fieldClassName="opacity-hover"
+      fieldClassName="my-0"
       @keydown.stop="doNothing"
       :normalizeValue="roundToOneDecimalPlace"
       @keyup.stop="doNothing"
@@ -80,7 +79,7 @@
       @update:model-value="updateDebounced"
     />
     <SelectField
-      fieldClassName="opacity-hover w-80"
+      fieldClassName="my-0 w-20"
       :filter="false"
       inputId="overlay_style"
       v-model="fields.overlay_style"
@@ -126,27 +125,6 @@ const handleSelectBeforeHide = () => {
 const nodes = computed(() => detectionStore.detectors);
 </script>
 <style scoped lang="scss">
-@use "@/ui/field.scss";
-
-.p-field {
-  margin: 0rem 0rem;
-}
-
-.title {
-  padding: 0.5rem;
-}
-.label {
-  font-weight: bold;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-:deep(.p-inputtext),
-:deep(.img-size) {
-  width: 70px;
-}
-
 :deep(.p-treeselect) {
   height: 30px;
   display: flex;

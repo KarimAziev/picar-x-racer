@@ -2,7 +2,7 @@
   <div>
     Default Language
     <SelectField
-      fieldClassName="language"
+      fieldClassName="w-[100px]"
       field="default_tts_language"
       filter
       optionLabel="label"
@@ -18,14 +18,12 @@
           outlined
           label="New"
           icon="pi pi-plus"
-          severity="success"
           class="mr-2"
           @click="handleAddItem"
         />
         <Button
           label="Save"
           icon="pi pi-save"
-          severity="success"
           class="mr-2"
           @click="saveSettings"
         />
@@ -33,16 +31,12 @@
     </template>
     <Column header="Default">
       <template #body="slotProps">
-        <Tag
-          v-if="slotProps.data.default"
-          severity="success"
-          value="Default"
-        ></Tag>
+        <Tag v-if="slotProps.data.default" value="Default"></Tag>
 
         <Tag
           v-else
           v-tooltip="'Click to set as default text'"
-          class="tag"
+          class="cursor-pointer"
           @click="markDefault(slotProps.data)"
           severity="secondary"
           value="Default"
@@ -65,6 +59,7 @@
     <Column field="text" header="Text" :colspan="4">
       <template #body="slotProps">
         <Textarea
+          class="w-[120px] md:w-[200px]"
           v-tooltip="'Type the text to speech'"
           v-model="slotProps.data.text"
         />
@@ -72,7 +67,7 @@
     </Column>
     <Column :exportable="false" header="Actions" :colspan="4">
       <template #body="slotProps">
-        <ButtonGroup class="button-group">
+        <ButtonGroup class="whitespace-nowrap">
           <Button
             @click="sayText(slotProps.data)"
             icon="pi pi-play-circle"
@@ -145,31 +140,3 @@ const handleAddItem = () => {
   });
 };
 </script>
-
-<style scoped lang="scss">
-.tag {
-  cursor: pointer;
-}
-.language {
-  width: 60px;
-}
-textarea {
-  width: 100%;
-}
-
-.button-group {
-  white-space: nowrap;
-}
-
-@media (min-width: 576px) {
-  .language {
-    width: 100px;
-  }
-}
-
-@media (min-width: 1200px) {
-  textarea {
-    width: 200px;
-  }
-}
-</style>

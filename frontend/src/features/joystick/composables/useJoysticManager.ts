@@ -84,12 +84,14 @@ export const useJoystickControl = (
 
   const handleCreateJoysticManager = (params?: JoystickManagerOptions) => {
     if (joystickZone.value) {
+      const styles = getComputedStyle(document.documentElement);
+      const color = styles.getPropertyValue("--color-text").trim();
       joystickManager.value = nipplejs.create({
         zone: joystickZone.value!,
         dynamicPage: true,
         mode: "static",
         position: { left: "20%", bottom: "50%" },
-        color: "#00ffbf",
+        color: color,
         ...params,
       });
 

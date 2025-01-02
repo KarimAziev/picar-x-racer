@@ -1,14 +1,22 @@
 <template>
   <Panel collapsed header="System" toggleable>
-    <div class="flex gap-10">
+    <div class="flex gap-2.5">
       <Restart />
       <Shutdown />
     </div>
   </Panel>
   <Panel header="Appearance" toggleable>
-    <SwitchSettings>
-      <FPSToggle v-tooltip="'Whether to draw FPS on the top-right corner'" />
-    </SwitchSettings>
+    <SwitchSettings />
+    <div class="flex">
+      <div class="flex-1">
+        <FPSToggle />
+      </div>
+      <div class="flex-1">
+        <DarkThemeSwitch />
+      </div>
+    </div>
+    <PrimaryColor />
+    <SurfaceColor />
   </Panel>
 
   <Panel header="Camera" toggleable>
@@ -45,7 +53,8 @@ import BatterySettings from "@/features/settings/components/general/BatterySetti
 import Shutdown from "@/features/settings/components/system/Shutdown.vue";
 import Restart from "@/features/settings/components/system/Restart.vue";
 import RobotSettings from "@/features/settings/components/robot/RobotSettings.vue";
+import PrimaryColor from "@/features/settings/components/theming/PrimaryColor.vue";
+import SurfaceColor from "@/features/settings/components/theming/SurfaceColor.vue";
+
+import DarkThemeSwitch from "@/features/settings/components/theming/DarkThemeSwitch.vue";
 </script>
-<style scoped lang="scss">
-@use "@/assets/scss/two-column-layout.scss";
-</style>

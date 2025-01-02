@@ -1,12 +1,17 @@
 <template>
-  <DataTable :value="files" :loading="loading" @rowReorder="onRowReorder">
+  <DataTable
+    size="small"
+    :value="files"
+    :loading="loading"
+    @rowReorder="onRowReorder"
+  >
     <template #header>
-      <div class="flex jc-between align-items-center">
-        <div class="flex gap-16">
+      <div class="flex justify-between items-center">
+        <div class="flex gap-4">
           <SelectField
             field="settings.music.mode"
             label="Default Mode"
-            class="mode-select"
+            class="w-full min-w-52"
             :options="musicModes"
             v-model="musicStore.player.mode"
             @update:model-value="handleUpdateMusicMode"
@@ -15,33 +20,46 @@
       </div>
     </template>
     <Column rowReorder headerStyle="width: 3rem" :reorderableColumn="false" />
-    <Column class="track-col" field="track" header="Track"></Column>
-    <Column field="duration" header="Duration">
+    <Column
+      class="max-w-[100px] whitespace-nowrap overflow-hidden text-ellipsis md:max-w-[120px] xl:max-w-[250px]"
+      field="track"
+      header="Track"
+    >
+      <template #body="slotProps">
+        <span v-tooltip="slotProps.data.track">{{ slotProps.data.track }}</span>
+      </template>
+    </Column>
+    <Column field="duration" header="Duration" class="w-20 !text-center">
       <template #body="slotProps">
         {{ secondsToReadableString(slotProps.data.duration) }}
       </template>
     </Column>
 
-    <Column :exportable="false" header="Actions">
+    <Column :exportable="false" header="Actions" class="w-[100px]">
       <template #body="slotProps">
         <ButtonGroup>
           <Button
+            size="small"
             v-if="isPlaying(slotProps.data.track)"
             @click="pauseTrack"
             icon="pi pi-pause"
+            v-tooltip="'Pause'"
             text
             aria-label="Pause"
           />
           <Button
             @click="playTrack(slotProps.data.track)"
             v-else
+            size="small"
+            v-tooltip="'Play'"
             icon="pi pi-play-circle"
             text
             aria-label="Play"
           />
           <Button
             rounded
-            v-tooltip="'Download file'"
+            size="small"
+            v-tooltip="'Download'"
             severity="secondary"
             text
             icon="pi pi-download"
@@ -49,6 +67,8 @@
           >
           </Button>
           <Button
+            size="small"
+            v-tooltip="'Remove'"
             v-if="slotProps.data.removable"
             icon="pi pi-trash"
             severity="danger"
@@ -60,7 +80,7 @@
     </Column>
   </DataTable>
   <FileUpload
-    class="upload-btn"
+    class="mt-4"
     :auto="true"
     :disabled="loading"
     mode="basic"
@@ -144,30 +164,3 @@ const handleDownloadFile = (track: string) => {
   musicStore.downloadFile(track);
 };
 </script>
-<style scoped lang="scss">
-:deep(.track-col) {
-  max-width: 100px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  @media (min-width: 768px) {
-    & {
-      max-width: 120px;
-    }
-  }
-  @media (min-width: 1200px) {
-    & {
-      max-width: 300px;
-    }
-  }
-}
-
-.mode-select {
-  width: 100%;
-  min-width: 200px;
-}
-
-.upload-btn {
-  margin-top: 1rem;
-}
-</style>

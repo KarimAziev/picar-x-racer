@@ -29,5 +29,3 @@ const defaultHeight = computed(() => cameraStore.data.height);
 
 const isResizable = computed(() => !popupStore.isOpen);
 </script>
-
-<style scoped lang="scss"></style>

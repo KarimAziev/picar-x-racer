@@ -1,6 +1,9 @@
 <template>
   <FullscreenContent>
-    <div class="resizable-wrapper" ref="resizableWrapper">
+    <div
+      class="relative flex items-center justify-center select-none flex-col"
+      ref="resizableWrapper"
+    >
       <slot></slot>
       <component :is="Resizers" v-model="size" v-if="isResizable" />
     </div>
@@ -140,14 +143,3 @@ onBeforeUnmount(() => {
   window.removeEventListener("orientationchange", handleResize);
 });
 </script>
-
-<style scoped lang="scss">
-.resizable-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  flex-direction: column;
-}
-</style>

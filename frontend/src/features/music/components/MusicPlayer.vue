@@ -1,11 +1,14 @@
 <template>
-  <div class="wrapper flex align-items-end gap-2">
-    <div class="player">
+  <div class="relative flex items-end gap-1">
+    <div
+      class="flex flex-col relative px-1 text-[0.7rem] w-[180px] select-none lg:w-[200px] xl:w-[300px]"
+    >
       <div>
-        <div class="title">
+        <div class="whitespace-nowrap overflow-hidden text-ellipsis">
           {{ currentTrack }}
         </div>
         <Slider
+          class="cursor-pointer"
           v-model="musicStore.player.position"
           @slideend="handleSavePosition"
           @keyup.stop="handleSavePosition"
@@ -19,7 +22,7 @@
         />
       </div>
 
-      <div class="buttons flex align-items-center jc-between">
+      <div class="buttons flex items-center justify-between">
         <Button
           @click="prevTrack"
           icon="pi pi-backward"
@@ -52,7 +55,7 @@
           aria-label="Stop"
           v-tooltip="'Stop playing'"
         />
-        <span class="duration">
+        <span class="whitespace-nowrap">
           {{ durationLabel }}
         </span>
         <Button
@@ -177,41 +180,11 @@ const stopTrack = async () => {
 </script>
 
 <style scoped lang="scss">
-.wrapper {
-  position: relative;
-}
-.player {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  padding: 0 4px;
-  font-size: 0.7rem;
-  width: 180px;
-  user-select: none;
-
-  @media (min-width: 992px) and (orientation: portrait) {
-    width: 200px;
-  }
-
-  @media (min-width: 992px) and (orientation: landscape) {
-    width: 300px;
-  }
-}
-.duration {
-  white-space: nowrap;
-}
-.title {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 :deep(.p-button) {
   padding-top: 1px;
 }
 
 :deep(.p-slider) {
-  cursor: pointer;
   .p-slider-handle {
     transform: scale(0.5);
   }

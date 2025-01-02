@@ -6,7 +6,7 @@
     :closeOnEscape="false"
     :modal="false"
   >
-    <div class="title-caption">
+    <div class="mb-1">
       Press desired key sequence and then<br />
       <b>Enter</b> to confirm or <b>Escape</b> to reset
     </div>
@@ -148,14 +148,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dialog {
-  max-width: 500px;
-}
-
-.title-caption {
-  margin-bottom: 1em;
-}
-
 .error {
   color: var(--color-error);
   margin-top: 0.5em;

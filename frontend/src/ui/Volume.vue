@@ -1,10 +1,10 @@
 <template>
   <div
     :class="class"
-    class="flex align-items-center wrapper gap-2"
+    class="flex items-center wrapper gap-1"
     v-tooltip="'System volume'"
   >
-    <div class="flex flex-col jc-center align-items-center">
+    <div class="flex flex-col justify-center items-center">
       <Button text @click="handleInc" size="small" icon="pi pi-angle-up" />
       {{ currentValue }}
       <Button text @click="handleDec" size="small" icon="pi pi-angle-down" />

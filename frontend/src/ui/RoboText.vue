@@ -1,7 +1,7 @@
 <template>
   <span :class="className" ref="elem">
-    <span class="title" v-if="title">{{ title }} &nbsp;</span>
-    <span class="text">{{ msg }}</span>
+    <span class="font-extrabold" v-if="title">{{ title }} &nbsp;</span>
+    <span class="font-bold">{{ msg }}</span>
     <samp v-if="isCaretVisible" class="caret" />
   </span>
 </template>
@@ -99,12 +99,5 @@ onMounted(() => {
   100% {
     opacity: 1;
   }
-}
-
-.title {
-  font-weight: 800;
-}
-.text {
-  font-weight: 700;
 }
 </style>

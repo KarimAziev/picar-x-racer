@@ -1,8 +1,8 @@
 <template>
-  <div class="p-field" :class="classObject">
-    <span class="label" v-if="label" :class="labelClassName"
+  <div class="flex relative my-2" :class="classObject">
+    <span class="flex flex-col font-bold" v-if="label" :class="labelClassName"
       >{{ label }}
-      <span v-if="message" class="message">
+      <span v-if="message" class="bg-transparent text-red-500 text-sm">
         {{ message }}
       </span>
     </span>
@@ -26,21 +26,20 @@ export type Props = {
 
 const props = defineProps<Props>();
 
-const classObject = computed(() => ({
-  [props.layout ? props.layout : "col"]: true,
-  [props.fieldClassName ? props.fieldClassName : ""]: !!props.fieldClassName,
-}));
+const extraProps: Partial<Record<FieldLayout, { [key: string]: boolean }>> = {
+  row: {
+    "gap-2.5": true,
+    "items-center": true,
+  },
+};
+
+const classObject = computed(() => {
+  const layout = props.layout || "col";
+  const extraLayotProps = extraProps[layout];
+  return {
+    [`flex-${layout}`]: true,
+    ...extraLayotProps,
+    [props.fieldClassName ? props.fieldClassName : ""]: !!props.fieldClassName,
+  };
+});
 </script>
-<style scoped lang="scss">
-@use "./field.scss";
-.label {
-  font-weight: bold;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  .message {
-    background-color: transparent;
-    color: var(--color-red);
-  }
-}
-</style>

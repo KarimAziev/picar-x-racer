@@ -2,7 +2,7 @@
   <NumberField
     label="The Maximum Speed"
     v-model="store.data.robot.max_speed"
-    v-tooltip="'The maximum allowed speed of the robot'"
+    tooltip="The maximum allowed speed of the robot"
     inputId="settings.data.max_speed"
     :min="10"
     :step="10"
@@ -13,8 +13,8 @@
   <NumberField
     label="Distance Measure Delay (ms)"
     v-model="store.data.robot.auto_measure_distance_delay_ms"
-    v-tooltip="
-      'The time interval between successive auto distance measurements in milliseconds. This is applicable only when `auto_measure_distance_mode` is enabled. '
+    tooltip="
+      The time interval between successive auto distance measurements in milliseconds. This is applicable only when `auto_measure_distance_mode` is enabled.
     "
     inputId="auto_measure_distance_delay_ms"
     :min="50"
@@ -23,9 +23,10 @@
   />
   <ToggleSwitchField
     label="Auto-measure distance"
-    v-tooltip="'Toggle auto-measuring with ultrasonic'"
+    tooltip="Toggle auto-measuring with ultrasonic"
+    fieldClassName="flex-row-reverse gap-2.5 items-center justify-end"
+    field="auto_measure_distance_mode"
     layout="row-reverse"
-    :pt="{ input: { id: 'auto_measure_distance_mode' } }"
     v-model="store.data.robot.auto_measure_distance_mode"
     @update:model-value="handleToggleAutomeasureDistance"
   />

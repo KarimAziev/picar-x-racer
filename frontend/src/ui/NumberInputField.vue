@@ -8,6 +8,7 @@
   >
     <InputNumber
       showButtons
+      v-tooltip="tooltip"
       :inputId="field"
       :pt="{ pcInput: { id: field } }"
       :class="props.inputClassName"
@@ -43,6 +44,7 @@ export type Props = {
   readonly?: boolean;
   disabled?: boolean;
   layout?: FieldLayout;
+  tooltip?: string;
 };
 const props = defineProps<Props>();
 const otherAttrs: InputNumberProps = useAttrs();

@@ -1,6 +1,6 @@
 <template>
   <ul :class="class">
-    <li v-for="message in messages" :key="message.id">
+    <li v-for="message in messages" :key="message.id" class="uppercase text-xs">
       <RoboText
         :title="message.title"
         :type="message.type"
@@ -16,10 +16,3 @@ import type { MessageItem } from "@/features/messager";
 
 defineProps<{ class?: string; messages: MessageItem[] }>();
 </script>
-
-<style scoped lang="scss">
-li {
-  text-transform: uppercase;
-  font-size: 0.8rem;
-}
-</style>

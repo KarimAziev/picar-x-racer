@@ -9,7 +9,7 @@
     v-tooltip="'Shutdown/Reboot'"
   ></Button>
   <Popover ref="popoverRef">
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
       <Button
         :loading="loading"
         @click="handleReboot"

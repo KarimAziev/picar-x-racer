@@ -43,11 +43,12 @@ import {
   defineAsyncComponent,
   computed,
   onMounted,
+  onBeforeMount,
 } from "vue";
 import { RouterView } from "vue-router";
 import Messager from "@/features/messager/components/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, useThemeStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer";
@@ -60,6 +61,8 @@ const isMobile = useDeviceWatcher();
 
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
+
+const themeStore = useThemeStore();
 
 const ActiveConnectionsIndicator = defineAsyncComponent({
   loader: () =>
@@ -105,6 +108,8 @@ const JoysticZone = defineAsyncComponent({
 });
 
 useAppHeight();
+
+onBeforeMount(themeStore.init);
 
 onMounted(() => {
   syncStore.initializeWebSocket();

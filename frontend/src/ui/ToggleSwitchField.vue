@@ -7,6 +7,7 @@
     :layout="layout"
   >
     <ToggleSwitch
+      v-tooltip="tooltip"
       :inputId="field"
       :pt="{ input: { id: field } }"
       :inputClass="inputClass"
@@ -41,6 +42,7 @@ export type Props = {
   readonly?: boolean;
   disabled?: boolean;
   layout?: FieldLayout;
+  tooltip?: string;
 };
 const props = defineProps<Props>();
 const otherAttrs: ToggleSwitchProps = useAttrs();

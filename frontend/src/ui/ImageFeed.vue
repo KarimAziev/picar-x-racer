@@ -1,26 +1,26 @@
 <template>
   <ScanLines
     v-if="!isVideoStreamActive"
-    class="scan"
+    class="w-full"
     :class="{
-      'scan-full': !imgInitted,
+      'h-[90%]': !imgInitted,
     }"
   />
   <img
     v-else
     ref="imgRef"
-    class="image-feed"
+    class="w-full block h-[99%] shadow-[0_0_4px_2px] shadow-primary-500 select-none cursor-grab touch-none"
     :draggable="false"
     @load="handleImageOnLoad"
     :class="{
-      loading: imgLoading,
+      'opacity-0': imgLoading,
     }"
     alt="Video"
   />
   <canvas
     v-if="isOverlayEnabled"
     ref="overlayCanvas"
-    class="overlay-canvas"
+    class="absolute left-0 h-[99%] pointer-events-none"
   ></canvas>
 </template>
 
@@ -125,31 +125,3 @@ onBeforeUnmount(() => {
   handleSocketsCleanup();
 });
 </script>
-
-<style scoped lang="scss">
-.image-feed {
-  width: 100%;
-  display: block;
-  height: 99%;
-  box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
-  user-select: none;
-  cursor: grab;
-  touch-action: none;
-}
-.loading {
-  opacity: 0;
-}
-
-.scan {
-  width: 100%;
-}
-.scan-full {
-  height: 90%;
-}
-.overlay-canvas {
-  position: absolute;
-  left: 0;
-  height: 99%;
-  pointer-events: none;
-}
-</style>

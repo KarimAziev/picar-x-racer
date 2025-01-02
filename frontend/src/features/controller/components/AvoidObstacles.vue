@@ -1,10 +1,10 @@
 <template>
-  <div class="flex jc-between distance">
-    <span class="bold">AVOID OBSTACLES</span>
+  <div class="flex justify-between items-center">
+    <span class="font-bold">AVOID OBSTACLES</span>
     <button
       v-tooltip="'Click to toggle avoid obstacles mode'"
       @click="handleToggle"
-      class="btn"
+      class="text-inherit font-inherit cursor-pointer px-0 py-0 text-current border-none bg-transparent outline-none transition-opacity duration-300 ease-in-out hover:opacity-70"
     >
       {{ label }}
     </button>
@@ -23,20 +23,3 @@ const handleToggle = () => {
 
 const label = computed(() => (controllerStore.avoidObstacles ? "ON" : "OFF"));
 </script>
-
-<style scoped lang="scss">
-button {
-  font-size: inherit;
-  font-family: var(--font-family);
-  cursor: pointer;
-  padding: 0;
-  color: var(--color-text);
-  border: none;
-  background-color: transparent;
-  outline: none;
-  transition: all 0.3s ease;
-  &:hover {
-    opacity: 0.7;
-  }
-}
-</style>

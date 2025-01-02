@@ -1,5 +1,6 @@
 <template>
   <input
+    class="absolute top-0 -left-full"
     ref="inputRef"
     id="keyboard-handler"
     @keyup.stop="handleKeyUp"
@@ -75,11 +76,3 @@ onBeforeUnmount(() => {
   cleanup();
 });
 </script>
-
-<style scoped lang="scss">
-input {
-  position: absolute;
-  top: 0;
-  left: -100%;
-}
-</style>

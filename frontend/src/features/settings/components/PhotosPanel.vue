@@ -33,7 +33,7 @@
       </ButtonGroup>
     </template>
     <template #empty>
-      <div v-if="!loading" class="empty-message">
+      <div v-if="!loading" class="text-center">
         {{ emptyMessage }}
       </div>
     </template>
@@ -54,7 +54,7 @@
 
     <Column :exportable="false" header="Actions">
       <template #body="slotProps">
-        <ButtonGroup class="button-group">
+        <ButtonGroup class="whitespace-nowrap">
           <Button
             rounded
             v-tooltip="'Download photo'"
@@ -90,15 +90,15 @@
     modal
     @after-hide="removeKeyEventListeners"
   >
-    <Photo className="full-image" :src="selectedImage?.url" :width="380" />
-    <ButtonGroup class="prev-next-buttons">
+    <Photo className="w-full h-auto" :src="selectedImage?.url" :width="380" />
+    <ButtonGroup class="flex justify-center">
       <Button
         text
         aria-label="Previous image"
         icon="pi pi-chevron-left"
         @click="handlePrevImagePreview"
       ></Button>
-      <div class="dialog-filename">{{ selectedImage.name }}</div>
+      <div class="text-center flex-auto">{{ selectedImage.name }}</div>
       <Button
         text
         aria-label="Next image"
@@ -233,30 +233,3 @@ watch(
 
 onMounted(store.fetchData);
 </script>
-<style scoped lang="scss">
-.button-group {
-  white-space: nowrap;
-}
-:deep(.thumbnail) {
-  cursor: pointer;
-}
-
-.image-dialog .full-image {
-  width: 100%;
-  height: auto;
-}
-
-.prev-next-buttons {
-  display: flex;
-  justify-content: center;
-}
-.dialog-filename {
-  flex: auto;
-  text-align: center;
-}
-
-.empty-message {
-  text-align: center;
-}
-</style>
-p

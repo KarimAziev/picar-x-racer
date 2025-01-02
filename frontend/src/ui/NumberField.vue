@@ -12,12 +12,13 @@
       <span
         class="p-inputtext p-component p-inputnumber-input"
         :class="{ disabled: !!disabled }"
+        v-tooltip="tooltip"
       >
         {{ currentValue }}
       </span>
       <span class="p-inputnumber-button-group">
         <Button
-          class="p-inputnumber-button p-inputnumber-increment-button up"
+          class="p-inputnumber-button p-inputnumber-increment-button up p-0"
           @click="handleInc"
           :readonly="loading"
           :disabled="disabled"
@@ -25,7 +26,7 @@
           icon="pi pi-angle-up"
         />
         <Button
-          class="p-inputnumber-button p-inputnumber-decrement-button down"
+          class="p-inputnumber-button p-inputnumber-decrement-button down p-0"
           @click="handleDec"
           :readonly="loading"
           :disabled="disabled"
@@ -59,6 +60,7 @@ export type Props = {
   readonly?: boolean;
   disabled?: boolean;
   normalizeValue?: (val: number) => number;
+  tooltip?: string;
 };
 const props = defineProps<Props>();
 
@@ -163,13 +165,15 @@ button {
   z-index: 1;
 }
 .p-inputnumber-stacked .p-inputnumber-increment-button {
-  padding: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   border-start-end-radius: calc(
     var(--p-inputnumber-button-border-radius) - 1px
   );
 }
 .p-inputnumber-stacked .p-inputnumber-decrement-button {
-  padding: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   border-end-end-radius: calc(var(--p-inputnumber-button-border-radius) - 1px);
 }
 .p-inputnumber-stacked .p-inputnumber-button {
@@ -209,7 +213,7 @@ button {
 }
 .p-inputnumber-vertical .p-inputnumber-button {
   border: 1px solid var(--p-inputnumber-button-border-color);
-  padding: var(--p-inputnumber-button-vertical-padding);
+  /* padding: var(--p-inputnumber-button-vertical-padding); */
 }
 .p-inputnumber-vertical .p-inputnumber-button:hover {
   border-color: var(--p-inputnumber-button-hover-border-color);

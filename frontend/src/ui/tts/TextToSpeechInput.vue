@@ -1,10 +1,11 @@
 <template>
-  <div class="wrapper flex flex-wrap align-items-center">
+  <div
+    class="xl:max-w-[300] lg:max-w-[270px] md:max-w-[200px] flex flex-wrap items-center gap-1"
+  >
     <SelectField
-      fieldClassName="language opacity-hover"
+      fieldClassName="w-[70px] lg:w-[80px]"
       field="language"
       filter
-      inputClassName="languages-dropdown"
       v-model="language"
       :options="ttsLanguages"
       optionLabel="label"
@@ -13,9 +14,8 @@
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
     />
-    <div class="flex align-items-center">
+    <div class="flex items-center">
       <TextInput
-        class="opacity-hover"
         autocomplete="off"
         placeholder="Speak"
         id="tts-text"
@@ -25,7 +25,6 @@
         v-tooltip="textInputTooltip"
       />
       <Button
-        class="opacity-hover"
         @click="handleKeyEnter"
         :disabled="!inputRef || inputRef.length === 0"
         icon="pi pi-play-circle"
@@ -92,18 +91,3 @@ watch(
   },
 );
 </script>
-
-<style scoped lang="scss">
-.wrapper {
-  @media (max-width: 992px) {
-    max-width: 240px;
-  }
-  @media (max-width: 768px) {
-    max-width: 200px;
-  }
-}
-
-.language {
-  width: 70px;
-}
-</style>

@@ -10,7 +10,7 @@
     <InfoItem
       label="Left Motor"
       v-tooltip="'Click to toggle direction'"
-      class="motor-info"
+      class="cursor-pointer transition-all duration-300 ease-in-out hover:opacity-70"
       :value="calibrationStore.data.left_motor_direction"
       @click="store.reverseLeftMotor"
     >
@@ -18,13 +18,13 @@
     <InfoItem
       label="Right Motor"
       v-tooltip="'Click to toggle direction'"
-      class="motor-info"
+      class="cursor-pointer transition-all duration-300 ease-in-out hover:opacity-70"
       :value="calibrationStore.data.right_motor_direction"
       @click="store.reverseRightMotor"
     >
     </InfoItem>
 
-    <div class="calibration-buttons">
+    <div class="my-1">
       <Button size="small" outlined @click="store.saveCalibration"
         >Save calibration
       </Button>
@@ -32,7 +32,7 @@
         >Stop calibration</Button
       >
     </div>
-    <div class="calibration-buttons">
+    <div class="my-1">
       <Button size="small" outlined @click="store.servoTest"
         >Test servos
       </Button>
@@ -61,16 +61,3 @@ const calibrationData = computed(() =>
   ),
 );
 </script>
-
-<style scoped lang="scss">
-.calibration-buttons {
-  margin: 0.2rem 0;
-}
-.motor-info {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  &:hover {
-    opacity: 0.7;
-  }
-}
-</style>

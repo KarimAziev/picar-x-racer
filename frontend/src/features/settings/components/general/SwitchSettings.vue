@@ -1,6 +1,6 @@
 <template>
-  <div class="wrapper">
-    <div class="column" v-for="(fields, idx) in groups" :key="idx">
+  <div class="flex">
+    <div class="flex-1" v-for="(fields, idx) in groups" :key="idx">
       <ToggleFields scope="general" :fields="fields" :store="store" />
     </div>
   </div>
@@ -16,6 +16,3 @@ const groups = splitObjIntoGroups(2, generalSwitchSettings);
 
 const store = useSettingsStore();
 </script>
-<style scoped lang="scss">
-@use "@/assets/scss/two-column-layout.scss";
-</style>

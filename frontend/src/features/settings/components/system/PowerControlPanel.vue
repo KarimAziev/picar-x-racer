@@ -1,5 +1,5 @@
 <template>
-  <div class="flex align-items-center jc-end gap-8" :class="className[0]">
+  <div class="flex items-center justify-end gap-2" :class="className[0]">
     <slot></slot>
     <ToggleableView setting="general.show_battery_indicator">
       <BatteryIndicator

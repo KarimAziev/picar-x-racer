@@ -1,5 +1,8 @@
 <template>
-  <div class="fullscreen-content" :class="class">
+  <div
+    class="fullscreen-content flex flex-col items-center justify-center relative"
+    :class="class"
+  >
     <slot></slot>
   </div>
 </template>
@@ -9,11 +12,6 @@ defineProps<{ class?: string }>();
 
 <style scoped lang="scss">
 .fullscreen-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
   height: calc(var(--app-height));
 }
 </style>

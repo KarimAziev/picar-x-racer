@@ -3,11 +3,15 @@
     <form
       @submit.prevent="handleSubmit"
       @reset.prevent="handleReset"
-      class="keybindings-form"
+      class="m-auto justify-items-center"
     >
       <div>
-        <div v-for="(fieldPair, index) in fields" :key="index" class="row">
-          <div class="field cmd-field">
+        <div
+          v-for="(fieldPair, index) in fields"
+          :key="index"
+          class="flex gap-0.5"
+        >
+          <div class="w-3/5">
             <Select
               filter
               :v-tooltip="fieldPair[0].label"
@@ -16,11 +20,10 @@
               optionValue="value"
               :options="fieldPair[0].options"
               :disabled="fieldPair[0].props?.disabled"
-              class="select"
+              class="w-full max-w-full"
             />
-            <div class="error-box"></div>
           </div>
-          <div class="field key-field">
+          <div>
             <InputText
               v-model="fieldPair[1].value"
               :invalid="!!invalidKeys[fieldPair[1].value]"
@@ -28,9 +31,9 @@
               @beforeinput="(event) => startRecording(event, index)"
               @focus="(event) => startRecording(event, index)"
               name="keybinding"
-              class="input-text"
+              class="w-full max-w-full"
             />
-            <div class="error-box">
+            <div class="text-red-500">
               {{ invalidKeys[fieldPair[1].value] }}
             </div>
           </div>
@@ -44,25 +47,20 @@
         </div>
       </div>
 
-      <span class="form-footer">
-        <Button
-          size="small"
-          label="Add Key"
-          @click="addField"
-          class="p-button-sm"
-        />
+      <span class="flex gap-2 mt-8 justify-self-start">
+        <Button size="small" label="Add Key" @click="addField" class="w-fit" />
         <Button
           size="small"
           label="Save"
           type="submit"
           :disabled="isSubmitDisabled"
-          class="p-button-sm"
+          class="w-fit"
         />
         <Button
           label="Reset to defaults"
           type="reset"
           size="small"
-          class="p-button-sm p-button-secondary"
+          class="w-fit p-button-secondary"
         />
       </span>
     </form>
@@ -310,62 +308,3 @@ const validateRowsFields = () => {
 
 const isSubmitDisabled = ref(false);
 </script>
-
-<style scoped lang="scss">
-.keybindings-form {
-  margin: auto;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  justify-items: center;
-}
-
-.row {
-  display: flex;
-  gap: 0.125rem;
-  .select,
-  .input-text,
-  .p-button-sm {
-    max-width: 100%;
-    min-width: 100%;
-    width: 100%;
-  }
-}
-
-.p-button-sm {
-  width: fit-content;
-  height: 30px;
-}
-
-.cmd-field {
-  width: 60%;
-}
-
-.key-field {
-  width: 30%;
-}
-
-.error-box {
-  color: var(--color-red);
-  width: 10%;
-}
-
-.form-footer {
-  display: flex;
-  justify-content: flex-start;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-:deep(.p-select-label) {
-  padding: 0.15rem 0.4rem;
-
-  @media (min-width: 640px) {
-    padding: 0.3rem 0.7rem;
-  }
-
-  @media (min-width: 1200px) {
-    padding: 0.4rem 0.7rem;
-  }
-}
-</style>

@@ -139,7 +139,7 @@ onMounted(() => {
   border-radius: 50%;
   border: 10px solid var(--robo-color-primary);
   opacity: 0.5;
-  background: #003366;
+
   position: absolute;
   top: 0;
   left: 0;
@@ -167,7 +167,7 @@ onMounted(() => {
   background: conic-gradient(
     transparent 0 135deg,
     transparent 135deg 270deg,
-    lime 0 90deg,
+    var(--color-text) 0 90deg,
     rgba(0, 0, 0, 0.4) 90deg 135deg
   );
   border-radius: 50%;

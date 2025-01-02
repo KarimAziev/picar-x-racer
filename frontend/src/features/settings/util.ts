@@ -6,6 +6,7 @@ import {
   DiscreteDevice,
   DeviceStepwise,
   CameraSettings,
+  StepwiseDeviceProps,
 } from "@/features/settings/interface";
 import { isNumber } from "@/util/guards";
 import { inRange } from "@/util/number";
@@ -156,7 +157,7 @@ export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
 };
 
 export const validateStepwiseData = (
-  stepWiseDevice: Partial<DeviceStepwise>,
+  stepWiseDevice: StepwiseDeviceProps,
   data: {
     width?: number;
     height?: number;
@@ -169,9 +170,13 @@ export const validateStepwiseData = (
   return Object.entries(data).reduce(
     (acc, [k, val]) => {
       const key = k as keyof typeof data;
+      const stepKey = `${key}_step` as const;
       const minVal = stepWiseDevice[`min_${key}`];
       const maxVal = stepWiseDevice[`max_${key}`];
-      const step = stepWiseDevice[`${key}_step`];
+      const step =
+        key === "fps"
+          ? 1
+          : stepWiseDevice[stepKey as Exclude<typeof stepKey, "fps_step">];
       if (!isNumber(val)) {
         acc[key] = "Required";
       } else if (
