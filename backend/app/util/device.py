@@ -129,6 +129,46 @@ def find_device_info(device: str) -> Optional[CameraInfo]:
 
 
 def list_video_devices_with_formats() -> List[Dict[str, Any]]:
+    """
+    List available video devices along with their supported formats.
+
+    Each device's formats are structured hierarchically, with the device
+    as the parent and its formats as children.
+
+    Returns:
+        A list of dictionaries where each dictionary represents a video device
+        and its supported formats. The structure of the dictionary is as
+        follows:
+            - "key" (str): The video device key (e.g., `/dev/video0`).
+            - "label" (str): A human-readable label for the device. If the device
+              has a category, the format is `"{key} ({category})"`, otherwise, it
+              is just `"{key}"`.
+            - "children" (List[Dict]): A list of dictionaries representing
+              the supported video formats of the device.
+
+    Example:
+        ```python
+        devices = list_video_devices_with_formats()
+        print(devices)
+        # Output example:
+        # [
+        #     {
+        #         "key": "/dev/video0",
+        #         "label": "/dev/video0 (Integrated Camera)",
+        #         "children": [
+        #             {... video formats for /dev/video0 ...}
+        #         ],
+        #     },
+        #     {
+        #         "key": "/dev/video1",
+        #         "label": "/dev/video1",
+        #         "children": [
+        #             {... video formats for /dev/video1 ...}
+        #         ],
+        #     },
+        # ]
+        ```
+    """
     result: List[Dict[str, Any]] = []
     for key, category in list_camera_devices():
         formats = list_device_formats_ext(key)
@@ -144,6 +184,39 @@ def list_video_devices_with_formats() -> List[Dict[str, Any]]:
 
 
 def list_device_formats_ext(device: str) -> List[Dict[str, Any]]:
+    """
+    Retrieve extended video format details for a specific video device.
+
+    This function runs the `v4l2-ctl --list-formats-ext` command on the specified
+    video device to query its format capabilities. The output is parsed and
+    organized into a list of dictionaries that describe each format, resolution,
+    and frame rate supported by the device.
+
+    Args:
+        device (str): The video device identifier (e.g., `/dev/video0`).
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries representing the supported
+        video formats. Each dictionary describes a format or resolution in a
+        hierarchical structure.
+
+    Example:
+        ```python
+        formats = list_device_formats_ext("/dev/video0")
+        print(formats)
+        # Output example:
+        # [
+        #     {
+        #         "key": "/dev/video0:YUYV",
+        #         "label": "YUYV",
+        #         "children": [
+        #             {... resolutions and frame rates for YUYV format ...}
+        #         ],
+        #     },
+        #     ...
+        # ]
+        ```
+    """
     try:
         cmd = ["v4l2-ctl", "--list-formats-ext", "--device", device]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -160,11 +233,9 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
     Parses the output of `v4l2-ctl --list-formats-ext` and extracts video format,
     resolution, and frame rate information for a specified video device.
 
-    This function processes the text output from the `v4l2-ctl` command, which is
-    commonly used to query video device capabilities on Linux systems. Specifically,
-    it extracts the available pixel formats, supported frame sizes (both discrete and
-    stepwise), and frame rates for each resolution, organizing the data into a
-    hierarchical structure.
+    It extracts the available pixel formats, supported frame sizes (both
+    discrete and stepwise), and frame rates for each resolution, organizing the
+    data into a hierarchical structure.
 
     Args:
         output (str): The raw string output from `v4l2-ctl --list-formats-ext`.
@@ -193,20 +264,21 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
                     - "max_fps" (int): The maximum frame rate of the camera mode.
 
     Example:
-        Given the following `v4l2-ctl` output:
+        ```python
+        parse_v4l2_formats_output(
+            "        [0]: 'YUYV' (YUYV 4:2:2)\\\\n"
+            "            Size: Discrete 640x480\\\\n"
+            "                Interval: Discrete 0.033s (30.000 fps)\\\\n"
+            "        [1]: 'MJPG' (Motion-JPEG)\\\\n"
+            "            Size: Stepwise 320x240 - 1280x720 with step 16/16\\\\n",
+            "/dev/video1",
+        )
         ```
-        [0]: 'YUYV' (YUYV 4:2:2)
-            Size: Discrete 640x480
-                Interval: Discrete 0.033s (30.000 fps)
-        [1]: 'MJPG' (Motion-JPEG)
-            Size: Stepwise 320x240 - 1280x720 with step 16/16
-        ```
-
-        Calling `parse_v4l2_formats_output(output, "/dev/video0")` returns:
+        The result will be:
         [
             {
                 'key': '/dev/video1:YUYV:640x480:30',
-                'label': 'YUYV, 640x480,  30 fps',
+                'label': 'YUYV, 640x480, 30 fps',
                 'device': '/dev/video1',
                 'width': 640,
                 'height': 480,
@@ -224,8 +296,8 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
                 'max_height': 720,
                 'height_step': 16,
                 'width_step': 16,
-                'min_fps': 1,
-                'max_fps': 90,
+                'min_fps': 90,
+                'max_fps': 1,
             },
         ]
     """
@@ -322,6 +394,7 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
                     if current_pixel_format
                     else None
                 )
+
                 if fps_intervals:
                     min_fps, max_fps = fps_intervals
                     current_pixel_format_data["children"].append(
@@ -422,6 +495,31 @@ def parse_v4l2_device_info_output(output: str):
 def get_fps_intervals(
     device: str, width: int, height: int, pixel_format: str
 ) -> Optional[Tuple[int, int]]:
+    """
+    Retrieve the minimum and maximum frame rates (fps) supported by a device
+    for a specific resolution and pixel format.
+
+    This function uses the `v4l2-ctl --list-frameintervals` command to query
+    frame interval capabilities of the video device. It parses the output and
+    returns the frame rate range as a tuple.
+
+    Args:
+        device (str): The video device identifier (e.g., `/dev/video0`).
+        width (int): The frame width in pixels.
+        height (int): The frame height in pixels.
+        pixel_format (str): The pixel format (e.g., `YUYV` or `MJPG`).
+
+    Returns:
+        Optional[Tuple[int, int]]: A tuple containing the minimum and maximum
+        frame rates (fps) for the specified resolution and pixel format, or
+        `None` if no information is available.
+
+    Example:
+        ```python
+        fps_range = get_fps_intervals("/dev/video0", 640, 480, "YUYV")
+        print(fps_range)  # Output: (30, 60)
+        ```
+    """
     try:
         cmd = [
             "v4l2-ctl",
