@@ -86,4 +86,3 @@ const onUpdate = () => {
   emit("update:modelValue", value.value);
 };
 </script>
-<style scoped lang="scss"></style>

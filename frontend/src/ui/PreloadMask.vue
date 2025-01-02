@@ -1,13 +1,18 @@
 <template>
   <transition name="fade">
-    <div class="wrapper" v-if="showPreloader">
-      <div class="content">
+    <div
+      class="fixed inset-0 flex items-center justify-center z-50 w-full h-full"
+      v-if="showPreloader"
+    >
+      <div class="flex items-center justify-center flex-auto">
         <ResizableContainer
           :default-width="width"
           :default-height="height"
           :fullscreen="true"
         >
-          <ScanLines class="box" />
+          <ScanLines
+            class="w-full h-full opacity-100 shadow-[0px_0px_4px_2px] shadow-primary"
+          />
         </ResizableContainer>
       </div>
     </div>
@@ -57,33 +62,7 @@ if (props.loading) {
 }
 </script>
 
-<style scoped lang="scss">
-.wrapper {
-  width: 100%;
-  display: flex;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 15;
-}
-
-.content {
-  flex: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.box {
-  width: 100%;
-  height: 100%;
-  opacity: 1;
-  box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
-  user-select: none;
-}
-
+<style scoped>
 .fade-enter-active,
 .fade-leave-active {
   transition:
