@@ -11,10 +11,10 @@ from app.config.video_enhancers import frame_enhancers
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.util.device import parse_v4l2_device_info
 from app.util.logger import Logger
 from app.util.overlay_detecton import overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
+from app.util.v4l2_manager import V4L2
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 
 if TYPE_CHECKING:
@@ -263,7 +263,7 @@ class CameraService(metaclass=SingletonMeta):
                 self.camera_settings.fps,
             )
             if self.camera_settings.device:
-                data = parse_v4l2_device_info(self.camera_settings.device)
+                data = V4L2.video_capture_format(self.camera_settings.device)
                 self.camera_settings.pixel_format = data.get(
                     "pixel_format", self.camera_settings.pixel_format
                 )

@@ -2,14 +2,10 @@ from typing import List, Optional, Tuple, Union
 
 import cv2
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.util.device import (
-    CameraInfo,
-    find_device_info,
-    list_camera_devices,
-    try_video_path,
-)
+from app.util.device import try_video_path
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
+from app.util.v4l2_manager import V4L2, CameraInfo
 
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
@@ -18,12 +14,6 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
     This class handles finding available camera devices and setting up
     video capture sessions. It maintains a list of available camera
     devices and a list of devices that have previously failed to initialize.
-
-    Attributes:
-        logger (Logger): An instance of the Logger to handle logging.
-        video_device (Optional[CameraInfo]): The currently active camera device information.
-        video_devices (List[CameraInfo]): A list of all possible camera devices.
-        failed_camera_devices (List[str]): A list of camera devices that have experienced initialization failures.
     """
 
     def __init__(self):
@@ -47,7 +37,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
             A tuple containing the video capture object, the device path, and its information.
             Returns (None, None, None) if no operational device is found.
         """
-        self.video_devices = list_camera_devices()
+        self.video_devices = V4L2.list_camera_devices()
 
         for device_path, device_info in self.video_devices:
             if device_path in self.failed_camera_devices:
@@ -64,9 +54,16 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         return (None, None, None)
 
     def update_device(self, device: str) -> cv2.VideoCapture:
+        """
+        Updates the video device by finding the specified device and
+        establishing a video capture connection.
+
+        Raises a CameraDeviceError if the specified device is not found or
+        fails to initialize.
+        """
         self.logger.info(f"Update device {device}")
-        self.video_devices = list_camera_devices()
-        self.video_device = find_device_info(device)
+        self.video_devices = V4L2.list_camera_devices()
+        self.video_device = V4L2.find_device_info(device)
         if self.video_device is None:
             raise CameraDeviceError("Video device not found")
         else:
@@ -78,6 +75,11 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 return cap
 
     def find_and_setup_device_cap(self) -> cv2.VideoCapture:
+        """
+        Attempts to find an operational video device and set up a capture object.
+
+        If no operational device is found, raises a `CameraNotFoundError`.
+        """
         self.cap = self.setup_video_capture()
         if self.cap is None:
             raise CameraNotFoundError("Couldn't find video device")
@@ -91,7 +93,8 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
         Returns:
             The video capture object if successful, otherwise None.
-            If the current device fails to reopen, it recursively tries to set up a capture with another available device.
+            If the current device fails to reopen, it recursively tries to set
+            up a capture with another available device.
         """
         if not self.video_device:
             cap, device, category = self.find_camera_device()
