@@ -314,22 +314,47 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
     current_pixel_format_data = {"children": []}
     frame_size = None
     lines = output.splitlines()
-    lines_len = len(lines)
 
-    idx = 0
+    discrete_size_item: Optional[Dict[str, Any]] = None
+    discrete_size_common_data: Optional[Dict[str, Any]] = None
+    discrete_fps_match: Optional[re.Match] = None
 
-    while idx < lines_len:
-        line = lines[idx].strip()
+    def ensure_discrete_size_item():
+        nonlocal discrete_size_item, current_pixel_format_data, discrete_size_common_data
+        if (
+            not discrete_fps_match
+            and discrete_size_item
+            and discrete_size_item.get("children")
+        ):
+            if not current_pixel_format_data:
+                current_pixel_format_data = {"children": []}
+
+            current_pixel_format_data["children"].append(
+                discrete_size_item["children"][0]
+                if len(discrete_size_item["children"]) == 1
+                else discrete_size_item
+            )
+            discrete_size_item = None
+            discrete_size_common_data = None
+
+    def ensure_current_pixel_format_append():
+        if current_pixel_format_data and current_pixel_format_data.get("children"):
+            if len(current_pixel_format_data["children"]) > 1:
+                formats.append(current_pixel_format_data)
+            else:
+                child = current_pixel_format_data["children"][0]
+                formats.append(child)
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        discrete_fps_match = fps_pattern.search(line)
+        ensure_discrete_size_item()
         try:
             if format_match := format_pattern.match(line):
-                if current_pixel_format_data and current_pixel_format_data.get(
-                    "children"
-                ):
-                    if len(current_pixel_format_data["children"]) > 1:
-                        formats.append(current_pixel_format_data)
-                    else:
-                        child = current_pixel_format_data["children"][0]
-                        formats.append(child)
+                ensure_current_pixel_format_append()
                 current_pixel_format = format_match.group(1)
                 current_pixel_format_data = {
                     "key": f"{device}:{current_pixel_format}",
@@ -337,44 +362,40 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
                     "children": [],
                 }
 
+            elif discrete_fps_match:
+                fps_value = discrete_fps_match.group(2)
+                if discrete_size_item and discrete_size_common_data:
+                    value = f"{discrete_size_item['key']}:{fps_value}"
+                    label = f"{discrete_size_item['label']}, {fps_value} fps"
+                    discrete_size_item["children"].append(
+                        {
+                            **discrete_size_common_data,
+                            "key": value,
+                            "label": label,
+                            "fps": int(fps_value),
+                        }
+                    )
+                    discrete_fps_match = None
+
             elif resolution_discrete_match := resolution_discrete_size_pattern.search(
                 line
             ):
                 frame_size = resolution_discrete_match.group(1)
                 [width, height] = [int(value) for value in frame_size.split("x")]
 
-                fps_match: Optional[re.Match] = None
-                next_line = lines[idx + 1] if idx + 1 < lines_len else None
                 size_key = f"{device}:{current_pixel_format}:{frame_size}"
                 size_label = f"{current_pixel_format}, {frame_size}"
-                size_item = {"key": size_key, "label": size_label, "children": []}
-
-                while fps_match := fps_pattern.search(next_line) if next_line else None:
-                    idx += 1
-                    fps_value = fps_match.group(2)
-                    value = f"{device}:{current_pixel_format}:{frame_size}:{fps_value}"
-                    label = f"{current_pixel_format}, {frame_size}, {fps_value} fps"
-                    size_item["children"].append(
-                        {
-                            "key": value,
-                            "label": label,
-                            "device": device,
-                            "width": width,
-                            "height": height,
-                            "fps": int(fps_value),
-                            "pixel_format": current_pixel_format,
-                        }
-                    )
-                    next_line = lines[idx + 1] if idx + 1 < lines_len else None
-
-                if not current_pixel_format_data:
-                    current_pixel_format_data = {"children": []}
-
-                current_pixel_format_data["children"].append(
-                    size_item["children"][0]
-                    if len(size_item["children"]) == 1
-                    else size_item
-                )
+                discrete_size_item = {
+                    "key": size_key,
+                    "label": size_label,
+                    "children": [],
+                }
+                discrete_size_common_data = {
+                    "device": device,
+                    "width": width,
+                    "height": height,
+                    "pixel_format": current_pixel_format,
+                }
 
             elif resolution_stepwise_match := resolution_stepwise_pattern.search(line):
                 min_size = resolution_stepwise_match.group(1)
@@ -415,15 +436,9 @@ def parse_v4l2_formats_output(output: str, device: str) -> List[Dict[str, Any]]:
                     )
         except Exception:
             logger.error("Unexpected parsing error", exc_info=True)
-        finally:
-            idx += 1
 
-    if current_pixel_format_data and current_pixel_format_data.get("children"):
-        if len(current_pixel_format_data["children"]) > 1:
-            formats.append(current_pixel_format_data)
-        else:
-            child = current_pixel_format_data["children"][0]
-            formats.append(child)
+    ensure_discrete_size_item()
+    ensure_current_pixel_format_append()
 
     return formats
 
