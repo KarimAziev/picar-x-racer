@@ -24,7 +24,7 @@
   <ToggleSwitchField
     label="Auto-measure distance"
     tooltip="Toggle auto-measuring with ultrasonic"
-    fieldClassName="flex-row-reverse gap-2.5 items-center justify-end"
+    fieldClassName="flex-row-reverse gap-2.5 items-center justify-end mt-4"
     field="auto_measure_distance_mode"
     layout="row-reverse"
     v-model="store.data.robot.auto_measure_distance_mode"

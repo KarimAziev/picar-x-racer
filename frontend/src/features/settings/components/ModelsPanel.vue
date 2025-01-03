@@ -27,16 +27,13 @@
         </div>
         <div class="flex flex-auto justify-end">
           <div class="search-field">
-            <IconField>
-              <InputIcon class="pi pi-search" />
-              <InputText
-                class="max-w-20"
-                id="search-models"
-                v-model="filters['name'] as string"
-                :pt="{ pcInput: { id: 'search-models' } }"
-                placeholder="Search"
-              />
-            </IconField>
+            <InputText
+              class="max-w-20"
+              id="search-models"
+              v-model="filters['name'] as string"
+              :pt="{ pcInput: { id: 'search-models' } }"
+              placeholder="Search"
+            />
           </div>
         </div>
       </div>
