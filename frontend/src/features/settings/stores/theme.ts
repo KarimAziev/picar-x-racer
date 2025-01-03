@@ -42,6 +42,11 @@ export const useStore = defineStore("theme", {
       const newPalette = palette(newColor);
       this.primaryColor = newColor;
       updatePrimaryPalette(newPalette);
+      window.dispatchEvent(
+        new CustomEvent("update-primary-palette", {
+          bubbles: true,
+        }),
+      );
     },
     updateSurfaceColor(newColor: string) {
       const newPalette =

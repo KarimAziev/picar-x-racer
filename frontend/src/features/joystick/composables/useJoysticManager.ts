@@ -123,12 +123,14 @@ export const useJoystickControl = (
   onMounted(() => {
     controllerStore.initializeWebSocket();
     window.addEventListener("resize", restartJoysticManager);
+    window.addEventListener("update-primary-palette", restartJoysticManager);
     window.addEventListener("orientationchange", restartJoysticManager);
     handleCreateJoysticManager(optionsParams.value);
   });
 
   onBeforeUnmount(() => {
     window.removeEventListener("resize", restartJoysticManager);
+    window.removeEventListener("update-primary-palette", restartJoysticManager);
     window.removeEventListener("orientationchange", restartJoysticManager);
     handleDestroyJoysticManager();
     controllerStore.cleanup();
