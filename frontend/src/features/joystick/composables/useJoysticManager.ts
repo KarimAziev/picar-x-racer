@@ -8,6 +8,7 @@ import {
 } from "@/features/controller/store";
 import { roundToNearestTen } from "@/util/number";
 import { constrain } from "@/util/constrain";
+import { debounce } from "@/util/debounce";
 
 export interface Callbacks {
   onStart?: (outputData: nipplejs.JoystickOutputData) => void;
@@ -109,10 +110,10 @@ export const useJoystickControl = (
     }
   };
 
-  const restartJoysticManager = () => {
+  const restartJoysticManager = debounce(() => {
     handleDestroyJoysticManager();
     handleCreateJoysticManager({ ...optionsParams.value });
-  };
+  }, 500);
 
   const recreateJoysticManager = (params?: JoystickManagerOptions) => {
     optionsParams.value = { ...optionsParams.value, ...params };
