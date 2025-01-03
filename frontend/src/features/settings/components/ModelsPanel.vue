@@ -147,8 +147,6 @@
 import { ref, computed, onMounted } from "vue";
 import ButtonGroup from "primevue/buttongroup";
 import TreeTable, { TreeTableFilterMeta } from "primevue/treetable";
-import InputIcon from "primevue/inputicon";
-import IconField from "primevue/iconfield";
 import FieldSet from "primevue/fieldset";
 import NumberField from "@/ui/NumberField.vue";
 import { useMessagerStore } from "@/features/messager";
