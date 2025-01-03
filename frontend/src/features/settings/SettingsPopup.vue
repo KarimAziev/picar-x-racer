@@ -23,7 +23,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from "vue";
+import { computed } from "vue";
+import { Dialog } from "primevue";
 import Settings from "@/features/settings/Settings.vue";
 import { usePopupStore, useSettingsStore } from "@/features/settings/stores";
 import { saveableTabs } from "@/features/settings/config";
@@ -32,10 +33,6 @@ const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
 const isSaving = computed(() => settingsStore.saving);
 const isSaveDisabled = computed(() => settingsStore.isSaveButtonDisabled());
-
-const Dialog = defineAsyncComponent({
-  loader: () => import("primevue/dialog"),
-});
 
 const isClosable = computed(() => !popupStore.isKeyRecording);
 const isEscapeOnCloseEnabled = computed(
