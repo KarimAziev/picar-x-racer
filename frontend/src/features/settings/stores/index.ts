@@ -7,6 +7,7 @@ import { useStore as useDistanceStore } from "@/features/settings/stores/distanc
 import { useStore as useCameraStore } from "@/features/settings/stores/camera";
 import { useStore as useStreamStore } from "@/features/settings/stores/stream";
 import { useStore as useThemeStore } from "@/features/settings/stores/theme";
+import { useStore as useFPSStore } from "@/features/settings/stores/fps";
 
 export {
   useImageStore,
@@ -18,4 +19,5 @@ export {
   useCameraStore,
   useStreamStore,
   useThemeStore,
+  useFPSStore,
 };

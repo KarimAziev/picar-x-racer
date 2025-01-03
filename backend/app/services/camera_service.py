@@ -12,7 +12,6 @@ from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
 from app.util.logger import Logger
-from app.util.overlay_detecton import overlay_fps_render
 from app.util.singleton_meta import SingletonMeta
 from app.util.v4l2_manager import V4L2
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
@@ -159,26 +158,23 @@ class CameraService(metaclass=SingletonMeta):
 
     def generate_frame(self) -> Optional[bytes]:
         """
-        Generates a video frame for streaming, including an embedded timestamp.
+        Generates a video frame for streaming, including an embedded timestamp and FPS.
 
-        Retrieves the latest detection results, optionally overlays FPS rendering on the frame,
-        encodes the frame in the specified format, and returns it as a byte array along with the
-        timestamp.
+        Encodes the video frame in the specified format and returns it as a byte array
+        with additional metadata. The frame is prefixed by the frame's timestamp and FPS,
+        both packed in binary format as double-precision floating-point numbers.
 
-        The timestamp is packed in binary format (double-precision float), and it is prepended to the encoded frame.
+        The structure of the returned byte array is as follows:
+            - First 8 bytes: Timestamp (double-precision float) in seconds since the epoch.
+            - Next 8 bytes: FPS (double-precision float) representing the current frame rate.
+            - Remaining bytes: Encoded video frame in the specified format (e.g., JPEG).
 
         Returns:
-            Optional[bytes]: The encoded video frame as a byte array, prefixed by the frame's
-                             timestamp (as double-precision floating point format), or None if no
-                             frame is available.
+            The encoded video frame as a byte array, prefixed with the timestamp
+            and FPS, or None if no frame is available.
         """
         if self.stream_img is not None:
-            frame = (
-                overlay_fps_render(self.stream_img, self.actual_fps)
-                if self.stream_settings.render_fps and self.actual_fps
-                else self.stream_img
-            )
-
+            frame = self.stream_img
             encode_params = (
                 [cv2.IMWRITE_JPEG_QUALITY, self.stream_settings.quality]
                 if self.stream_settings.format == ".jpg"
@@ -190,7 +186,10 @@ class CameraService(metaclass=SingletonMeta):
             timestamp = self.current_frame_timestamp or time.time()
             timestamp_bytes = struct.pack('d', timestamp)
 
-            return timestamp_bytes + encoded_frame
+            fps = self.actual_fps or 0.0
+            fps_bytes = struct.pack('d', fps)
+
+            return timestamp_bytes + fps_bytes + encoded_frame
 
     def setup_camera_props(self) -> None:
         """

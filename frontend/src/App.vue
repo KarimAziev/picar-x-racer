@@ -5,6 +5,9 @@
   <LazySettings />
   <Messager v-if="!isMobile" />
   <TopRightPanel v-if="isSettingsLoaded" class="top-right-pan">
+    <ToggleableView setting="stream.render_fps">
+      <FPS />
+    </ToggleableView>
     <PowerControlPanel>
       <ToggleableView setting="general.show_fullscreen_button">
         <FullscreenButton />
@@ -55,6 +58,7 @@ import { useAppSyncStore } from "@/features/syncer";
 
 import ToggleableView from "@/ui/ToggleableView.vue";
 import TopRightPanel from "@/ui/TopRightPanel.vue";
+import FPS from "@/ui/FPS.vue";
 
 const syncStore = useAppSyncStore();
 const isMobile = useDeviceWatcher();

@@ -24,7 +24,7 @@ export interface Settings {
 }
 
 export type ToggleableKey = FlattenBooleanObjectKeys<
-  Required<Pick<Settings, "general" | "robot">>
+  Required<Pick<Settings, "general" | "robot" | "stream">>
 >;
 export type AllProps = FlattenObject<Settings>;
 
