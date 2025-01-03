@@ -27,7 +27,7 @@ const { width } = useWindowSize();
 
 const size = computed(() => {
   const baseSize = width.value / 7;
-  return constrain(240, 300, baseSize);
+  return constrain(255, 300, baseSize);
 });
 
 const speed = computed(() =>

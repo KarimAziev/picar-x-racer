@@ -14,6 +14,7 @@
         :loading="loading"
         @click="handleReboot"
         label="Restart"
+        class="text-inherit"
         severity="danger"
         variant="text"
         v-tooltip="
@@ -21,6 +22,7 @@
         "
       ></Button>
       <Button
+        class="text-inherit"
         :loading="loading"
         @click="handleShutdown"
         label="Power Off"
@@ -70,8 +72,3 @@ const handleReboot = async () => {
   hidePopover();
 };
 </script>
-<style scoped lang="scss">
-button {
-  color: inherit;
-}
-</style>

@@ -25,6 +25,7 @@
       <div class="buttons flex items-center justify-between">
         <Button
           @click="prevTrack"
+          class="!pt-0"
           icon="pi pi-backward"
           aria-label="Prev track"
           text
@@ -32,6 +33,7 @@
         />
 
         <Button
+          class="!pt-0"
           v-if="isPlaying"
           @click="togglePlaying"
           icon="pi pi-pause"
@@ -40,6 +42,7 @@
           v-tooltip="'Pause playing track'"
         />
         <Button
+          class="!pt-0"
           @click="togglePlaying"
           v-else
           icon="pi pi-play-circle"
@@ -48,6 +51,7 @@
           v-tooltip="'Play track'"
         />
         <Button
+          class="!pt-0"
           @click="stopTrack"
           icon="pi pi-stop"
           :disabled="!isPlaying"
@@ -59,6 +63,7 @@
           {{ durationLabel }}
         </span>
         <Button
+          class="!pt-0"
           @click="nextTrack"
           icon="pi pi-forward"
           aria-label="Next track"
@@ -66,6 +71,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.LOOP"
           @click="nextMode"
           icon="pi pi-sync"
@@ -74,6 +80,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.LOOP_ONE"
           @click="nextMode"
           icon="pi pi-arrow-right-arrow-left"
@@ -82,6 +89,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.QUEUE"
           @click="nextMode"
           icon="pi pi-list"
@@ -90,6 +98,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.SINGLE"
           @click="nextMode"
           icon="pi pi-stop-circle"
@@ -178,15 +187,3 @@ const stopTrack = async () => {
   await musicStore.stopPlaying();
 };
 </script>
-
-<style scoped lang="scss">
-:deep(.p-button) {
-  padding-top: 1px;
-}
-
-:deep(.p-slider) {
-  .p-slider-handle {
-    transform: scale(0.5);
-  }
-}
-</style>
