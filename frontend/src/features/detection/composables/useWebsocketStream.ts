@@ -1,7 +1,7 @@
 import { ref, Ref } from "vue";
 import { useWebSocket, WebSocketOptions } from "@/composables/useWebsocket";
 import { useDetectionStore } from "@/features/detection";
-import { useFPSStore } from "@/features/settings/stores";
+import { useStore as useFPSStore } from "@/features/settings/stores/fps";
 
 export interface WebsocketStreamParams extends WebSocketOptions {
   imgRef: Ref<HTMLImageElement | undefined>;
