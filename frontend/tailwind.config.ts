@@ -17,6 +17,10 @@ export default {
       boxShadow: {
         primary: "0px 0px 4px 2px var(--robo-color-primary)",
       },
+      zIndex: {
+        "11": "11",
+        "12": "12",
+      },
     },
   },
 };

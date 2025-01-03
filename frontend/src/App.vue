@@ -1,5 +1,6 @@
 <template>
   <KeyboardHandler v-if="!isMobile && isSettingsLoaded" />
+  <SettingsButton />
   <JoysticZone v-if="isMobile && isSettingsLoaded" />
   <RouterView />
   <LazySettings />
@@ -75,6 +76,10 @@ const ActiveConnectionsIndicator = defineAsyncComponent({
 
 const FullscreenButton = defineAsyncComponent({
   loader: () => import("@/ui/FullscreenButton.vue"),
+});
+
+const SettingsButton = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/SettingsButton.vue"),
 });
 
 const PowerControlPanel = defineAsyncComponent({

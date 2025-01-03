@@ -1,16 +1,57 @@
 <template>
-  <div class="resizers" @mousedown="initResize">
-    <div class="resizer top-left" data-resize="top-left"></div>
-    <div class="resizer top-right" data-resize="top-right"></div>
-    <div class="resizer bottom-left" data-resize="bottom-left"></div>
-    <div class="resizer bottom-right" data-resize="bottom-right"></div>
-    <div class="resizer top" data-resize="top"></div>
-    <div class="resizer right" data-resize="right"></div>
-    <div class="resizer bottom" data-resize="bottom"></div>
-    <div class="resizer left" data-resize="left"></div>
+  <div
+    class="absolute inset-0 pointer-events-none z-10 overflow-hidden"
+    @mousedown="initResize"
+  >
+    <!-- Top-Left Resizer -->
+    <div
+      class="z-11 absolute w-[120px] h-[120px] rounded-full opacity-10 pointer-events-auto hover:bg-primary-500 cursor-nwse-resize -top-[60px] -left-[60px]"
+      data-resize="top-left"
+    ></div>
+
+    <!-- Top-Right Resizer -->
+    <div
+      class="z-11 absolute w-[120px] h-[120px] rounded-full opacity-10 pointer-events-auto hover:bg-primary-500 cursor-nesw-resize -top-[60px] -right-[60px]"
+      data-resize="top-right"
+    ></div>
+
+    <!-- Bottom-Left Resizer -->
+    <div
+      class="z-11 absolute w-[120px] h-[120px] rounded-full opacity-10 pointer-events-auto hover:bg-primary-500 cursor-nesw-resize -bottom-[60px] -left-[60px]"
+      data-resize="bottom-left"
+    ></div>
+
+    <!-- Bottom-Right Resizer -->
+    <div
+      class="z-11 absolute w-[120px] h-[120px] rounded-full opacity-10 pointer-events-auto hover:bg-primary-500 cursor-nwse-resize -bottom-[60px] -right-[60px]"
+      data-resize="bottom-right"
+    ></div>
+
+    <!-- Middle Top Resizer -->
+    <div
+      class="absolute left-1/2 transform -translate-x-1/2 w-full h-[10%] opacity-10 pointer-events-auto cursor-ns-resize -top-[5px]"
+      data-resize="top"
+    ></div>
+
+    <!-- Middle Bottom Resizer -->
+    <div
+      class="absolute left-1/2 transform -translate-x-1/2 w-full h-[10%] opacity-10 pointer-events-auto cursor-ns-resize -bottom-[5px]"
+      data-resize="bottom"
+    ></div>
+
+    <!-- Middle Left Resizer -->
+    <div
+      class="absolute top-0 w-[20px] h-full opacity-10 pointer-events-auto cursor-ew-resize -left-[5px]"
+      data-resize="left"
+    ></div>
+
+    <!-- Middle Right Resizer -->
+    <div
+      class="absolute top-0 w-[20px] h-full opacity-10 pointer-events-auto cursor-ew-resize -right-[5px]"
+      data-resize="right"
+    ></div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref } from "vue";
 
@@ -29,7 +70,7 @@ const initResize = (event: MouseEvent) => {
   if (event.button !== 0) {
     return;
   }
-  if (!(event.target as HTMLElement).classList.contains("resizer")) {
+  if (!(event.target as HTMLElement)?.hasAttribute("data-resize")) {
     return;
   }
   resizing.value = true;
@@ -73,94 +114,3 @@ const stopResize = () => {
   window.removeEventListener("mouseup", stopResize);
 };
 </script>
-
-<style scoped lang="scss">
-.resizers {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  pointer-events: none;
-  z-index: 10;
-  overflow: hidden;
-}
-
-.resizer {
-  position: absolute;
-  pointer-events: all;
-  opacity: 0.1;
-}
-
-$base-size: 120px;
-
-.resizer.top-left,
-.resizer.top-right,
-.resizer.bottom-left,
-.resizer.bottom-right {
-  width: $base-size;
-  height: $base-size;
-  z-index: 11;
-  border-radius: 50%;
-  &:hover {
-    background-color: var(--robo-color-primary);
-  }
-}
-
-.resizer.top-left {
-  top: calc(-#{$base-size} / 2);
-  left: calc(-#{$base-size} / 2);
-  cursor: nwse-resize;
-}
-
-.resizer.top-right {
-  top: calc(-#{$base-size} / 2);
-  right: calc(-#{$base-size} / 2);
-  cursor: nesw-resize;
-}
-
-.resizer.bottom-left {
-  bottom: calc(-#{$base-size} / 2);
-  left: calc(-#{$base-size} / 2);
-  cursor: nesw-resize;
-}
-
-.resizer.bottom-right {
-  bottom: calc(-#{$base-size} / 2);
-  right: calc(-#{$base-size} / 2);
-
-  cursor: nwse-resize;
-}
-
-.resizer.top,
-.resizer.bottom {
-  left: 50%;
-  width: 100%;
-  height: 10%;
-  cursor: ns-resize;
-  margin-left: -50%;
-}
-
-.resizer.top {
-  top: -5px;
-}
-
-.resizer.bottom {
-  bottom: -5px;
-}
-
-.resizer.left,
-.resizer.right {
-  width: 20px;
-  height: 100%;
-  cursor: ew-resize;
-}
-
-.resizer.left {
-  left: -5px;
-}
-
-.resizer.right {
-  right: -5px;
-}
-</style>
