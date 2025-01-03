@@ -8,6 +8,7 @@ import { useLocalStorage } from "@vueuse/core";
 import { defaultPrimaryColor } from "@/presets/RoboPreset";
 import { isDarkMode } from "@/util/theme";
 import { surfaces } from "@/presets/surfaces";
+import { ensurePrefix } from "@/util/str";
 
 export const defaultLightState = {
   primaryColor: defaultPrimaryColor,
@@ -39,7 +40,7 @@ export const useStore = defineStore("theme", {
       this.dark = isDarkMode();
     },
     updatePrimaryColor(newColor: string) {
-      const newPalette = palette(newColor);
+      const newPalette = palette(ensurePrefix("#", newColor));
       this.primaryColor = newColor;
       updatePrimaryPalette(newPalette);
       window.dispatchEvent(
@@ -50,7 +51,8 @@ export const useStore = defineStore("theme", {
     },
     updateSurfaceColor(newColor: string) {
       const newPalette =
-        surfaces[newColor as keyof typeof surfaces] || palette(newColor);
+        surfaces[newColor as keyof typeof surfaces] ||
+        palette(ensurePrefix("#", newColor));
       updateSurfacePalette(newPalette);
       this.surfaceColor = newColor;
     },
