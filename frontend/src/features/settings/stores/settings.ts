@@ -63,6 +63,7 @@ export const defaultState: State = {
       show_shutdown_reboot_button: true,
       show_fullscreen_button: true,
       show_avoid_obstacles_button: true,
+      show_dark_theme_toggle: false,
     },
     keybindings: {},
 

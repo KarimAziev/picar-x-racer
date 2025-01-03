@@ -1,39 +1,48 @@
 <template>
-  <div class="flex max-w-52 flex-wrap gap-x-1">
-    <ToggleSwitchField
-      fieldClassName="my-0"
-      label="Detection"
-      layout="row"
-      field="toggle_detection"
-      v-tooltip="'Toggle Object Detection'"
-      :disabled="detectionStore.loading || !detectionStore.data.model"
-      @update:model-value="updateDebounced"
-      v-model="fields.active"
-    />
-    <TreeSelect
-      inputId="model"
-      v-model="fields.model"
-      :options="nodes"
-      placeholder="Model"
-      tooltip="Object detection model '%s'"
-      filter
-      :disabled="detectionStore.loading"
-      @before-show="handleSelectBeforeShow"
-      @before-hide="handleSelectBeforeHide"
-      @update:model-value="updateDebounced"
-    >
-      <template #dropdownicon>
-        <i class="pi pi-angle-down pr-2 pt-1 md:pt-1.5" />
-      </template>
-      <template #header>
-        <div class="p-2">Available Models</div>
-      </template>
-      <template #footer>
-        <ModelUpload />
-      </template>
-    </TreeSelect>
+  <div :class="class" class="flex md:max-w-56 flex-wrap gap-x-2">
+    <div>
+      <Field label="Detection" layout="row">
+        <button
+          class="text-inherit font-inherit disabled:cursor-default hover:opacity-70 hover:disabled:opacity-70 disabled:opacity-70 bold"
+          v-tooltip="'Toggle Object Detection'"
+          :disabled="detectionStore.loading || !detectionStore.data.model"
+          @click="
+            async () => {
+              fields.active = !fields.active;
+              await updateDebounced();
+            }
+          "
+        >
+          {{ fields.active ? "On" : "Off" }}
+        </button>
+      </Field>
+
+      <TreeSelect
+        class="w-[108px] md:w-[126px] xl:w-[148px]"
+        inputId="model"
+        v-model="fields.model"
+        :options="nodes"
+        placeholder="Model"
+        tooltip="Object detection model '%s'"
+        filter
+        :disabled="detectionStore.loading"
+        @before-show="handleSelectBeforeShow"
+        @before-hide="handleSelectBeforeHide"
+        @update:model-value="updateDebounced"
+      >
+        <template #dropdownicon>
+          <i class="pi pi-angle-down pr-2 pt-1 md:pt-1.5" />
+        </template>
+        <template #header>
+          <div class="p-2">Available Models</div>
+        </template>
+        <template #footer>
+          <ModelUpload />
+        </template>
+      </TreeSelect>
+    </div>
     <SelectField
-      fieldClassName="my-0 w-20"
+      fieldClassName="w-20"
       inputId="img_size"
       v-model="fields.img_size"
       placeholder="Img size"
@@ -46,7 +55,7 @@
       :options="imgSizeOptions"
     />
     <NumberField
-      fieldClassName="my-0 w-20"
+      fieldClassName="w-20"
       @keydown.stop="doNothing"
       @keyup.stop="doNothing"
       @keypress.stop="doNothing"
@@ -79,7 +88,7 @@
       @update:model-value="updateDebounced"
     />
     <SelectField
-      fieldClassName="my-0 w-20"
+      fieldClassName="w-20"
       :filter="false"
       inputId="overlay_style"
       v-model="fields.overlay_style"
@@ -102,9 +111,10 @@ import {
 } from "@/features/settings/config";
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
-import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
+
 import ModelUpload from "@/features/detection/components/ModelUpload.vue";
 import { roundToOneDecimalPlace } from "@/util/number";
+import Field from "@/ui/Field.vue";
 
 defineProps<{ class?: string; label?: string }>();
 
@@ -124,18 +134,3 @@ const handleSelectBeforeHide = () => {
 
 const nodes = computed(() => detectionStore.detectors);
 </script>
-<style scoped lang="scss">
-:deep(.p-treeselect) {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  width: 150px;
-  @media (min-width: 576px) {
-    max-width: 140px;
-  }
-  @media (min-width: 1200px) {
-    height: 40px;
-    max-width: 150px;
-  }
-}
-</style>

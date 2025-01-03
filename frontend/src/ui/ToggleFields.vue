@@ -5,7 +5,7 @@
     :label="item.label"
     v-tooltip="item.description"
     layout="row-reverse"
-    field-class-name="flex-row-reverse gap-x-2.5 items-center justify-end"
+    field-class-name="flex-row-reverse gap-2.5 items-center justify-end my-1"
     @update:model-value="(value) => onUpdate(field as string, value)"
     :field="field as string"
     v-model="store.data[scope][field]"

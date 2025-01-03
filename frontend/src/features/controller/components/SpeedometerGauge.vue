@@ -16,7 +16,7 @@
       </span>
       <span class="extra-info" v-if="extraInfo">{{ extraInfo }}</span>
     </div>
-    <div class="outer-labels" ref="outerLabelsRef">
+    <div class="outer-labels">
       <span
         v-for="label in outerLabels"
         :key="label.value"
@@ -49,7 +49,6 @@ const props = defineProps<SpeedometerParams>();
 const speedometerRef = ref<HTMLElement | null>(null);
 const needleRef = ref<HTMLElement | null>(null);
 const centerLabelRef = ref<HTMLElement | null>(null);
-const outerLabelsRef = ref<HTMLElement | null>(null);
 
 const adjustedValue = computed(() => props.value);
 
@@ -59,10 +58,10 @@ const translateY = computed(() => {
   return actualHeight * (120 / 300);
 });
 
-const styleObj = reactive({
+const styleObj = computed(() => ({
   width: `${props.size || defaultSize}px`,
   height: `${props.size || defaultSize}px`,
-});
+}));
 
 const gaugeCenterStyle = reactive({
   width: `${translateY.value}px`,

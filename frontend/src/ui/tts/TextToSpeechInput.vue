@@ -1,9 +1,9 @@
 <template>
   <div
-    class="xl:max-w-[300] lg:max-w-[270px] md:max-w-[200px] flex flex-wrap items-center gap-1"
+    class="xl:max-w-[300] lg:max-w-[270px] md:max-w-[200px] flex flex-wrap items-center gap-2"
   >
     <SelectField
-      fieldClassName="w-[70px] lg:w-[80px]"
+      fieldClassName="w-[70px]"
       field="language"
       filter
       v-model="language"

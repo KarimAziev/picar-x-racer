@@ -9,7 +9,10 @@ export const useStore = defineStore("fps", {
   state: (): State => ({ fps: null }),
   actions: {
     updateFPS(fps: number | null) {
-      if (Math.abs((this.fps || 0) - (fps || 0)) > 0.1) {
+      if (
+        (Number.isInteger(fps) && !Number.isInteger(this.fps)) ||
+        Math.abs((this.fps || 0) - (fps || 0)) > 0.1
+      ) {
         this.fps = fps;
       }
     },

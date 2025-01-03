@@ -40,7 +40,7 @@ export const preset = {
       shadow: "none",
     },
     disabledOpacity: "0.6",
-    iconSize: "1rem",
+    iconSize: "inherit",
     anchorGutter: "0.125rem",
     formField: {
       paddingY: "0.5rem",
@@ -392,7 +392,7 @@ export const preset = {
     },
     treeselect: {
       dropdownWidth: "1.25rem",
-      paddingY: "0.5rem 0",
+      paddingY: "0.5rem 0.5rem",
       paddingX: "0.5rem 0.75rem",
     },
     inputnumber: {

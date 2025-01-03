@@ -56,6 +56,7 @@ export interface General {
   show_shutdown_reboot_button: boolean;
   show_fullscreen_button: boolean;
   show_avoid_obstacles_button: boolean;
+  show_dark_theme_toggle: boolean;
 }
 
 export interface Music {

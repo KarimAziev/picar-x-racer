@@ -17,7 +17,8 @@
     "show_video_record_button": false,
     "show_fullscreen_button": true,
     "show_shutdown_reboot_button": true,
-    "show_avoid_obstacles_button": true
+    "show_avoid_obstacles_button": true,
+    "show_dark_theme_toggle": false
   },
   "robot": {
     "max_speed": 80,

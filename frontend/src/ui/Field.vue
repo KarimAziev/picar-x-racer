@@ -1,5 +1,5 @@
 <template>
-  <div class="flex relative my-2" :class="classObject">
+  <div class="flex relative" :class="classObject">
     <span class="flex flex-col font-bold" v-if="label" :class="labelClassName"
       >{{ label }}
       <span v-if="message" class="bg-transparent text-red-500 text-sm">
@@ -22,6 +22,7 @@ export type Props = {
   fieldClassName?: string;
   labelClassName?: string;
   layout?: FieldLayout;
+  noMargin?: boolean;
 };
 
 const props = defineProps<Props>();

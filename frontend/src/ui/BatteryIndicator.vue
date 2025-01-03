@@ -1,16 +1,16 @@
 <template>
-  <div :class="class" class="flex items-center text-inherit">
-    <!-- Voltage Value -->
-    <span class="min-w-[4rem] px-1">{{ value }}V</span>
-
-    <!-- Battery Icon Wrapper -->
-    <div class="flex items-center justify-center h-[15px] w-[12px]">
+  <div
+    :class="class"
+    class="flex items-center text-inherit"
+    v-tooltip.left="`Battery ${percentage}%`"
+  >
+    <span class="bold min-w-11">{{ value }}V</span>
+    <div class="flex items-center w-[12px] h-[15px]">
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 12 16"
-        class="h-full block"
+        viewBox="0 0 12 18"
+        class="block h-full"
       >
-        <!-- Outer Battery -->
         <rect
           x="1"
           y="0.5"
@@ -22,7 +22,6 @@
           fill="none"
           stroke-width="1"
         />
-        <!-- Battery Cap -->
         <rect
           x="4"
           y="-2"
@@ -31,7 +30,6 @@
           transform="translate(0,2)"
           fill="currentColor"
         />
-        <!-- Charge Level -->
         <rect
           x="2"
           :y="14 - chargeHeight"
@@ -41,9 +39,6 @@
         />
       </svg>
     </div>
-
-    <!-- Percentage -->
-    <span class="min-w-[4rem] px-1">{{ percentage }}%</span>
   </div>
 </template>
 

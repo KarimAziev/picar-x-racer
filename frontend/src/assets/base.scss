@@ -30,7 +30,7 @@
   --color-background: var(--p-surface-900);
 }
 .p-dark {
-  --color-background: var(--p-surface-950);
+  --color-background: var(--p-surface-900);
 }
 
 *,
@@ -207,4 +207,8 @@ input {
   @media (min-width: 1600px) {
     max-width: 240px;
   }
+}
+.p-inputicon {
+  font-size: 1rem;
+  margin-top: calc(-1 * (1rem / 2)) !important;
 }

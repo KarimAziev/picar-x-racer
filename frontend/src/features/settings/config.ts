@@ -89,6 +89,11 @@ export const generalSwitchSettings: {
     description:
       "Whether to display the button to toggle the avoid obstacle mode.",
   },
+  show_dark_theme_toggle: {
+    label: "Dark Theme Toggle",
+    description:
+      "Whether to display the dark theme toggle button in the top right corner of the screen.",
+  },
 } as const;
 
 export const ttsLanguages = [

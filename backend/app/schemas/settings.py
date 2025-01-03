@@ -161,6 +161,12 @@ class General(BaseModel):
         examples=[True, False],
     )
 
+    show_dark_theme_toggle: Optional[bool] = Field(
+        None,
+        description="Whether to display the dark theme toggle button in the top right corner of the screen.",
+        examples=[False, True],
+    )
+
 
 class RobotSettings(BaseModel):
     """

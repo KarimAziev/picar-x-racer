@@ -7,7 +7,7 @@
   >
     <template #header>
       <div class="flex justify-between items-center">
-        <div class="flex gap-4">
+        <div class="flex gap-x-4">
           <SelectField
             field="settings.music.mode"
             label="Default Mode"

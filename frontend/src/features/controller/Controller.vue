@@ -3,7 +3,7 @@
   <GaugesBlock class="gauges">
     <ToggleableView setting="general.robot_3d_view" v-if="!isMobile">
       <CarModelViewer
-        class="car-model"
+        class="portrait:display-hidden absolute -top-[90%]"
         :zoom="4"
         :rotationY="20"
         :rotationX="0"
@@ -30,10 +30,3 @@ const VideoBox = defineAsyncComponent({
   loader: () => import("@/features/controller/components/VideoBox.vue"),
 });
 </script>
-
-<style scoped lang="scss">
-.car-model {
-  position: absolute;
-  top: -90%;
-}
-</style>

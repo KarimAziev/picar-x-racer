@@ -11,6 +11,7 @@
       :inputId="field"
       :pt="{ input: { id: field } }"
       :inputClass="inputClass"
+      :class="class"
       v-model="currentValue"
       :invalid="invalid"
       :disabled="readonly || disabled"
@@ -43,6 +44,7 @@ export type Props = {
   disabled?: boolean;
   layout?: FieldLayout;
   tooltip?: string;
+  class?: string;
 };
 const props = defineProps<Props>();
 const otherAttrs: ToggleSwitchProps = useAttrs();

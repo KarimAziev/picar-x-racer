@@ -1,5 +1,5 @@
 <template>
-  <MediaControls v-if="isMobile" class="absolute z-12 top-1 left-1">
+  <MediaControls v-if="isMobile" class="absolute z-12 top-0 left-1">
     <Button
       aria-label="settings"
       variant="text"
@@ -7,7 +7,7 @@
       @click="handleShow"
     />
   </MediaControls>
-  <span v-else class="absolute z-12 top-1 left-1">
+  <span v-else class="absolute z-12 top-0 left-1">
     <Button
       aria-label="settings"
       variant="text"

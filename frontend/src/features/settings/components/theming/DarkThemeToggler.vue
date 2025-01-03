@@ -1,10 +1,10 @@
 <template>
   <button
     type="button"
-    class="inline-flex w-8 h-8 p-0 items-center justify-center surface-0 dark:surface-800 border border-surface-200 dark:border-surface-600 rounded"
+    class="outline-none inline-flex w-8 h-8 p-0 items-center justify-center surface-0 dark:surface-800 rounded"
     @click="handleToggleDarkTheme"
   >
-    <i :class="`dark:text-white pi ${iconClass}`" />
+    <i :class="`pi ${iconClass}`" />
   </button>
 </template>
 

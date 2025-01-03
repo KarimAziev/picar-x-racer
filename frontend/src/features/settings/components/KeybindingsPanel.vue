@@ -11,18 +11,21 @@
           :key="index"
           class="flex gap-0.5"
         >
-          <div class="w-3/5">
-            <Select
-              filter
-              :v-tooltip="fieldPair[0].label"
-              v-model="fieldPair[0].value"
-              optionLabel="label"
-              optionValue="value"
-              :options="fieldPair[0].options"
-              :disabled="fieldPair[0].props?.disabled"
-              class="w-full max-w-full"
-            />
-          </div>
+          <SelectField
+            :field="`command-${index}`"
+            fieldClassName="w-3/5 !my-0"
+            inputClassName="w-full max-w-full"
+            filter
+            :tooltip="fieldPair[0].label"
+            v-model="fieldPair[0].value"
+            optionLabel="label"
+            optionValue="value"
+            autoFilterFocus
+            :options="fieldPair[0].options"
+            :disabled="fieldPair[0].props?.disabled"
+            class="w-full max-w-full"
+          />
+
           <div>
             <InputText
               v-model="fieldPair[1].value"
@@ -83,6 +86,8 @@ import KeyRecorder from "@/ui/KeyRecorder.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { allCommandOptions } from "@/features/settings/defaultKeybindings";
 import { splitKeySequence } from "@/util/keyboard-util";
+import Field from "@/ui/Field.vue";
+import SelectField from "@/ui/SelectField.vue";
 
 const popupStore = usePopupStore();
 
