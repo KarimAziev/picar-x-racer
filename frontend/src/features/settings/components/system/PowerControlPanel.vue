@@ -46,7 +46,7 @@ const className = computed(() => {
   ) {
     return ["color-warning"];
   } else {
-    return ["color-error", "blink"];
+    return ["color-error"];
   }
 });
 </script>

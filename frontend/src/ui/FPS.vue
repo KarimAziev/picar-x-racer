@@ -1,5 +1,7 @@
 <template>
-  <span v-if="fpsStore.fps" :class="class"> {{ fps }}&nbsp;FPS </span>
+  <span v-if="fpsStore.fps" class="bold" :class="class">
+    {{ fps }}&nbsp;FPS
+  </span>
 </template>
 
 <script setup lang="ts">

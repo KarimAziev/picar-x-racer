@@ -1,13 +1,20 @@
 <template>
-  <div
-    :class="class"
-    class="flex items-center wrapper gap-1"
-    v-tooltip="'System volume'"
-  >
-    <div class="flex flex-col justify-center items-center">
-      <Button text @click="handleInc" size="small" icon="pi pi-angle-up" />
-      {{ currentValue }}
-      <Button text @click="handleDec" size="small" icon="pi pi-angle-down" />
+  <div :class="class" class="flex items-center gap-1 text-sm">
+    <div class="flex flex-col items-center justify-center">
+      <button
+        text
+        @click="handleInc"
+        class="relative top-1 p-0 h-auto m-0 w-auto hover:text-primary-300"
+      >
+        <i class="pi pi-angle-up" />
+      </button>
+      <div v-tooltip="'System volume'">{{ currentValue }}</div>
+      <button
+        @click="handleDec"
+        class="relative p-0 h-auto m-0 w-auto hover:text-primary-300"
+      >
+        <i class="pi pi-angle-down" />
+      </button>
     </div>
   </div>
 </template>
@@ -45,25 +52,3 @@ watch(
   },
 );
 </script>
-<style scoped lang="scss">
-.wrapper {
-  font-size: 0.8rem;
-}
-button {
-  padding-top: 0px;
-  padding-bottom: 0px;
-  height: unset;
-  margin: 0;
-  width: unset;
-}
-
-$adjust-btn-pos: 0.6rem;
-
-button:first-child {
-  position: relative;
-  top: $adjust-btn-pos;
-}
-button:last-child {
-  bottom: $adjust-btn-pos;
-}
-</style>
