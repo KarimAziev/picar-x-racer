@@ -35,15 +35,72 @@
 </template>
 
 <script setup lang="ts">
-import Music from "@/features/settings/components/general/Music.vue";
-import SwitchSettings from "@/features/settings/components/general/SwitchSettings.vue";
-import VideoSettings from "@/features/settings/components/camera/VideoSettings.vue";
 import Panel from "@/ui/Panel.vue";
-import VideoDeviceSelect from "@/features/settings/components/camera/VideoDeviceSelect.vue";
-import BatterySettings from "@/features/settings/components/general/BatterySettings.vue";
-import Shutdown from "@/features/settings/components/system/Shutdown.vue";
-import Restart from "@/features/settings/components/system/Restart.vue";
-import RobotSettings from "@/features/settings/components/robot/RobotSettings.vue";
+import { defineAsyncComponent } from "vue";
+import ProgressSpinner from "primevue/progressspinner";
+import SwitchSettings from "@/features/settings/components/general/SwitchSettings.vue";
 import PrimaryColor from "@/features/settings/components/theming/PrimaryColor.vue";
 import SurfaceColor from "@/features/settings/components/theming/SurfaceColor.vue";
+
+const Music = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/general/Music.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+const VideoSettings = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/camera/VideoSettings.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+const VideoDeviceSelect = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/camera/VideoDeviceSelect.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+const BatterySettings = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/general/BatterySettings.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+const Shutdown = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/system/Shutdown.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+const Restart = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/system/Restart.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+const RobotSettings = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/robot/RobotSettings.vue"),
+  loadingComponent: ProgressSpinner,
+  delay: 0,
+});
+
+/**
+ * const PrimaryColor = defineAsyncComponent({
+ *   loader: () =>
+ *     import("@/features/settings/components/theming/PrimaryColor.vue"),
+ *   loadingComponent: ProgressSpinner,
+ *   delay: 0,
+ * });
+ *
+ * const SurfaceColor = defineAsyncComponent({
+ *   loader: () =>
+ *     import("@/features/settings/components/theming/SurfaceColor.vue"),
+ *   loadingComponent: ProgressSpinner,
+ *   delay: 0,
+ * });
+ */
 </script>

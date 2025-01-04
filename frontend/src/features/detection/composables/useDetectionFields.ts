@@ -1,4 +1,4 @@
-import { onMounted, watch, reactive, computed } from "vue";
+import { onMounted, watch, reactive } from "vue";
 import type { DetectionSettings } from "@/features/detection/store";
 import { useStore as useDetectionStore } from "@/features/detection/store";
 import { useAsyncDebounce } from "@/composables/useDebounce";
@@ -42,10 +42,6 @@ export const useDetectionFields = (params?: FieldsParams) => {
     overlay_style: detectionStore.data.overlay_style,
   });
 
-  const isModified = computed(() =>
-    diffObjects(detectionStore.data, evolve(denormalizers, fields)),
-  );
-
   const updateData = async () => {
     const data = evolve(denormalizers, fields);
     const originalData = detectionStore.data;
@@ -61,7 +57,9 @@ export const useDetectionFields = (params?: FieldsParams) => {
     params?.debounce || 1000,
   );
 
-  onMounted(detectionStore.fetchModels);
+  onMounted(() => {
+    detectionStore.fetchModels();
+  });
 
   watch(
     () => detectionStore.data,
@@ -85,7 +83,6 @@ export const useDetectionFields = (params?: FieldsParams) => {
 
   return {
     updateData,
-    isModified,
     updateDebounced,
     fields,
   };
