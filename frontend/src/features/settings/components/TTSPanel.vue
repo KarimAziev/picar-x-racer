@@ -7,6 +7,7 @@
       filter
       optionLabel="label"
       optionValue="value"
+      :loading="langsLoading"
       v-model="store.data.tts.default_tts_language"
       :options="ttsLanguages"
     />
@@ -46,6 +47,7 @@
     <Column field="language" header="Language">
       <template #body="slotProps">
         <SelectField
+          :loading="langsLoading"
           fieldClassName="language"
           field="language"
           filter
@@ -89,18 +91,19 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, useTTSStore } from "@/features/settings/stores";
 import Textarea from "primevue/textarea";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import ButtonGroup from "primevue/buttongroup";
-
-import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 import { TextItem } from "@/features/settings/stores/settings";
 
 const store = useSettingsStore();
+const ttsStore = useTTSStore();
 
 const items = computed(() => store.data.tts.texts);
+const ttsLanguages = computed(() => ttsStore.data);
+const langsLoading = computed(() => !!ttsStore.loading);
 
 function saveSettings() {
   store.saveSettings();
@@ -139,4 +142,6 @@ const handleAddItem = () => {
     language: items.value[items.value.length - 1]?.language,
   });
 };
+
+onMounted(ttsStore.fetchLanguagesOnce);
 </script>

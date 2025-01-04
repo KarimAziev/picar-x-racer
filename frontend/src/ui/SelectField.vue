@@ -8,6 +8,7 @@
   >
     <Select
       :pt="{ input: { id: field, name: field } }"
+      :loading="loading"
       :options="options"
       :optionLabel="optionLabel"
       :optionValue="optionValue"

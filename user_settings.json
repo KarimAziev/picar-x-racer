@@ -29,7 +29,8 @@
     "default_tts_language": "en",
     "texts": [
       { "text": "Target identified", "language": "en", "default": true }
-    ]
+    ],
+    "allowed_languages": []
   },
   "battery": {
     "full_voltage": 8.4,

@@ -1,7 +1,7 @@
 from app.exceptions.tts import TextToSpeechException
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
-from google_speech_pyplay import Speech
+from google_speech_pyplay import LANGUAGES_OPTIONS, Speech
 
 
 class TTSService(metaclass=SingletonMeta):
@@ -16,6 +16,10 @@ class TTSService(metaclass=SingletonMeta):
         """
         self.logger = Logger(__name__)
         self.is_playing = False
+
+    @staticmethod
+    def available_languages():
+        return LANGUAGES_OPTIONS
 
     def text_to_speech(self, words: str, lang="en") -> None:
         """

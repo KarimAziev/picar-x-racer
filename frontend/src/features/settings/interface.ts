@@ -73,6 +73,7 @@ export interface Robot {
 export interface TTS {
   default_tts_language: string;
   texts: Text[];
+  allowed_languages?: string[];
 }
 
 export interface Text {

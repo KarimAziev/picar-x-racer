@@ -1,9 +1,9 @@
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from app.api.deps import get_tts_manager
 from app.exceptions.tts import TextToSpeechException
-from app.schemas.tts import TextToSpeechData
+from app.schemas.tts import LanguageOption, TextToSpeechData
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -62,3 +62,17 @@ async def text_to_speech(
     except Exception as err:
         logger.error("Unexpected text to speech error.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to speak the text")
+
+
+@router.get(
+    "/tts/languages",
+    summary="List available languages for text-to-speech",
+    response_model=List[LanguageOption],
+)
+def supported_langs(
+    tts_manager: "TTSService" = Depends(get_tts_manager),
+):
+    """
+    List supported languages.
+    """
+    return tts_manager.available_languages()

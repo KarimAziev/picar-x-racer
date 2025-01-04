@@ -7,7 +7,8 @@
       field="language"
       filter
       v-model="language"
-      :options="ttsLanguages"
+      :loading="langsLoading"
+      :options="ttsOptions"
       optionLabel="label"
       optionValue="value"
       tooltip="The current language of text to speech (%s)"
@@ -37,11 +38,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import TextInput from "primevue/inputtext";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, useTTSStore } from "@/features/settings/stores";
 
-import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 
 import { useInputHistory } from "@/composables/useInputHistory";
@@ -49,6 +49,21 @@ import { useInputHistory } from "@/composables/useInputHistory";
 defineProps<{ class?: string }>();
 
 const store = useSettingsStore();
+const ttsStore = useTTSStore();
+
+const langsLoading = computed(() => !!ttsStore.loading);
+
+const ttsOptions = computed(() => {
+  if (
+    !store.data.tts.allowed_languages ||
+    !store.data.tts.allowed_languages.length
+  ) {
+    return ttsStore.data;
+  }
+  const codes = new Set(store.data.tts.allowed_languages);
+  return ttsStore.data.filter(({ value }) => codes.has(value));
+});
+
 const language = ref(store.data.tts.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
@@ -90,4 +105,6 @@ watch(
     language.value = newValue;
   },
 );
+
+onMounted(ttsStore.fetchLanguagesOnce);
 </script>
