@@ -1,7 +1,7 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_audio_manager, get_audio_stream_service
+from app.api import deps
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.schemas.audio import VolumeData
 from app.util.logger import Logger
@@ -19,12 +19,39 @@ logger = Logger(__name__)
 @router.post(
     "/audio/volume",
     response_model=VolumeData,
-    summary="Set the playback volume level",
+    summary="Set the playback volume to the specified level.",
+    response_description="The volume level is returned as a normalized integer between 0 and 100.",
+    responses={
+        404: {
+            "description": "**Not Found**. `amixer` is missing.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "'amixer' is not installed on the system."}
+                }
+            },
+        },
+        503: {
+            "description": "**Service Unavailable**. General audio issue.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Error setting the volume due to a command execution failure."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "**Internal Server Error**. This error occurs if something unexpected breaks during processing.",
+            "content": {
+                "application/json": {"example": {"detail": "Failed to set the volume."}}
+            },
+        },
+    },
 )
 async def set_volume(
     request: Request,
     payload: VolumeData,
-    audio_manager: "AudioService" = Depends(get_audio_manager),
+    audio_manager: "AudioService" = Depends(deps.get_audio_manager),
 ):
     """
     Set the playback volume level.
@@ -34,26 +61,17 @@ async def set_volume(
 
     Behavior:
     --------------
-    - The input should specify the `volume` level, either as an integer or a float.
-    - Floats are automatically normalized to integers (e.g., `45.6` becomes `46`).
-    - The accepted range is 0 to 100; values outside this range will raise an error.
-    - All responses will return the `volume` as a normalized integer.
+    The input should specify the `volume` level, either as an integer or a float.
 
-    Args:
-    --------------
-    - `request` (Request): The incoming HTTP request object.
-    - `payload` (VolumeData): The desired volume level provided by the client.
-    - `audio_manager` (AudioService): Dependency injection of the AudioService instance.
+    Floats are automatically normalized to integers (e.g., `45.6` becomes `46`).
+
+    The accepted range is 0 to 100; values outside this range will raise an error.
+
+    All responses will return the `volume` as a normalized integer.
 
     Returns:
     --------------
-    - `VolumeData`: The updated volume level (as an integer).
-
-    Raises:
-    --------------
-    - `HTTPException` (500): If `amixer` is not installed on the system.
-    - `HTTPException` (400): If there is an error while setting the volume.
-    - `HTTPException` (500): If an unexpected error occurs.
+    **VolumeData**: The updated volume level (as an integer).
 
     """
     logger.info("Volume update payload %s", payload)
@@ -72,31 +90,51 @@ async def set_volume(
             logger.error(f"WebSocket broadcasting error: {ws_err}", exc_info=True)
 
         return {"volume": new_volume}
-    except AmixerNotInstalled:
-        logger.warning("'amixer' is not installed on the system.")
-        raise HTTPException(
-            status_code=500, detail="'amixer' is not installed on the system!"
-        )
-    except AudioVolumeError:
-        logger.error("Error occurred while setting the volume.")
-        raise HTTPException(
-            status_code=400, detail="Error occurred while setting the volume level!"
-        )
-    except Exception as err:
-        logger.error(f"Unexpected error in set_volume: {err}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="An unexpected error occurred while processing your request.",
-        )
+    except AmixerNotInstalled as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except AudioVolumeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception:
+        logger.error("Unexpected error while getting the volume level", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to set the volume.")
 
 
 @router.get(
     "/audio/volume",
     response_model=VolumeData,
     summary="Retrieve the current volume level",
+    response_description="The volume level is returned as a normalized integer between 0 and 100.",
+    responses={
+        404: {
+            "description": "**Not Found**. `amixer` is missing.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "'amixer' is not installed on the system."}
+                }
+            },
+        },
+        503: {
+            "description": "**Service Unavailable**. General audio fetching issue.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Error getting the volume due to a command execution failure."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "**Internal Server Error**. This error occurs if something unexpected breaks during processing.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to retrieve volume information."}
+                }
+            },
+        },
+    },
 )
 async def get_volume(
-    audio_manager: "AudioService" = Depends(get_audio_manager),
+    audio_manager: "AudioService" = Depends(deps.get_audio_manager),
 ):
     """
     Retrieve the current playback volume level.
@@ -105,48 +143,31 @@ async def get_volume(
 
     Behavior:
     --------------
-    - The volume level is returned as a normalized integer between 0 and 100.
-    - Floats are not involved in this endpoint, as the volume is always computed and stored as integers.
-
-    Args:
-    --------------
-    - `audio_manager` (AudioService): Dependency injection of the AudioService instance.
+    The volume level is returned as a normalized integer between 0 and 100.
+    Floats are not involved in this endpoint, as the volume is always computed and stored as integers.
 
     Returns:
     --------------
-    - `VolumeData`: The current volume level (as an integer).
-
-    Raises:
-    --------------
-    - `HTTPException` (500): If `amixer` is not installed on the system.
-    - `HTTPException` (400): If there is an error while retrieving the volume level.
-    - `HTTPException` (500): If an unexpected error occurs.
+    **VolumeData**: The current volume level (as an integer).
     """
     try:
         current_volume = await asyncio.to_thread(audio_manager.get_volume)
-        if isinstance(current_volume, str):
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to retrieve volume information: {current_volume}",
-            )
         return {"volume": current_volume}
-    except AmixerNotInstalled:
+    except AmixerNotInstalled as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except AudioVolumeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception:
+        logger.error("Unexpected error while getting the volume level", exc_info=True)
         raise HTTPException(
-            status_code=404, detail="'amixer' is not installed on the system!"
+            status_code=500, detail="Failed to retrieve volume information."
         )
-    except AudioVolumeError:
-        raise HTTPException(
-            status_code=404, detail="Error occurred while setting the volume level!"
-        )
-    except Exception as err:
-        logger.error(f"Unexpected error in get_volume: {err}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(err))
 
 
 @router.websocket("/ws/audio-stream")
 async def audio_stream_ws(
     websocket: WebSocket,
-    audio_service: "AudioStreamService" = Depends(get_audio_stream_service),
+    audio_service: "AudioStreamService" = Depends(deps.get_audio_stream_service),
 ):
     """
     WebSocket endpoint for providing audio stream to a client.
