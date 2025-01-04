@@ -46,7 +46,9 @@ async def update_video_feed_settings(
 
     Returns:
     --------------
-    **StreamSettings**: The updated video stream settings. Additionally, broadcasts the updated settings to all connected clients.
+    **StreamSettings**: The updated video stream settings.
+
+    Additionally, broadcasts the updated settings to all connected clients.
     """
     logger.info("Video feed update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
