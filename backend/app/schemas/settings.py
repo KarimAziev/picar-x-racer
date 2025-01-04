@@ -244,16 +244,6 @@ class Settings(BaseModel):
     )
 
 
-class TestSettings(BaseModel):
-    """
-    A model representing application-wide settings.
-    """
-
-    battery: Optional[BatterySettings] = Field(
-        None, description="Configuration for battery settings."
-    )
-
-
 @partial_model
 class SettingsUpdateRequest(Settings):
     pass
