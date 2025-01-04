@@ -44,20 +44,52 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
+import { SettingsTab } from "@/features/settings/enums";
+import { usePopupStore } from "@/features/settings/stores";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import Tabs from "primevue/tabs";
 import TabList from "primevue/tablist";
 import Tab from "primevue/tab";
 import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
-import { SettingsTab } from "@/features/settings/enums";
-import { usePopupStore } from "@/features/settings/stores";
-import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
-import TTSPanel from "@/features/settings/components/TTSPanel.vue";
-import KeybindingsPanel from "@/features/settings/components/KeybindingsPanel.vue";
-import GeneralPanel from "@/features/settings/components/GeneralPanel.vue";
-import CalibrationPanel from "@/features/settings/components/CalibrationPanel.vue";
-import PhotosPanel from "@/features/settings/components/PhotosPanel.vue";
-import ModelsPanel from "@/features/settings/components/ModelsPanel.vue";
+import Skeleton from "@/ui/Skeleton.vue";
+
+const TTSPanel = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/TTSPanel.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+});
+
+const KeybindingsPanel = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/KeybindingsPanel.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+});
+
+const GeneralPanel = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/GeneralPanel.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+});
+
+const CalibrationPanel = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/CalibrationPanel.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+});
+
+const PhotosPanel = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/PhotosPanel.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+});
+
+const ModelsPanel = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/ModelsPanel.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+});
 
 const popupStore = usePopupStore();
 const isMobile = useDeviceWatcher();
