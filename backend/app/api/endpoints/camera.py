@@ -127,10 +127,6 @@ def get_camera_settings(
     """
     Retrieve the current camera settings.
 
-    Args:
-    --------------
-    - `camera_manager` (CameraService): Camera management service for retrieving settings.
-
     Returns:
     --------------
     `CameraSettings`: Current camera configuration data.
@@ -177,11 +173,6 @@ async def take_photo(
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
-
-    Args:
-    --------------
-    - `camera_manager` (CameraService): Camera management service for interfacing with the hardware.
-    - `file_manager` (FileService): File management service for determining save locations.
 
     Returns:
     --------------

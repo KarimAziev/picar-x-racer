@@ -252,6 +252,7 @@ export const useStore = defineStore("music", {
       try {
         this.loading = true;
         await axios.post("/api/music/order", tracks);
+        messager.success("Music order is saved.");
       } catch (error) {
         messager.handleError(error);
       } finally {

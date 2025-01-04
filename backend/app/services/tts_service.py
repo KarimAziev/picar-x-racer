@@ -32,8 +32,8 @@ class TTSService(metaclass=SingletonMeta):
             speech = Speech(words, lang)
             self.is_playing = True
             speech.play()
-        except Exception as e:
-            self.logger.error("Text to speech error: %s", e)
-            raise TextToSpeechException("Text to speech error") from e
+        except Exception:
+            self.logger.error("Unexpected text to speech error", exc_info=True)
+            raise
         finally:
             self.is_playing = False

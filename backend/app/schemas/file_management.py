@@ -56,9 +56,9 @@ class PhotoItem(BaseModel):
     A model to represent a response containing a user photo.
 
     Attributes:
-    - `name` (str): the name of the filename without directory, but with extension.
-    - `path` (str): Full path of file.
-    - `url` (str): Preview URL.
+    - `name`: the name of the filename without directory, but with extension.
+    - `path`: Full path of file.
+    - `url`: Preview URL.
     """
 
     name: str = Field(
@@ -81,9 +81,6 @@ class PhotoItem(BaseModel):
 class PhotosResponse(BaseModel):
     """
     A model to represent a response containing a list of user photos.
-
-    Attributes:
-    - `files` (PhotoItem[str]): A list of files.
     """
 
     files: List[PhotoItem]

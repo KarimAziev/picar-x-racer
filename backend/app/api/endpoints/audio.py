@@ -23,7 +23,7 @@ logger = Logger(__name__)
     response_description="The volume level is returned as a normalized integer between 0 and 100.",
     responses={
         404: {
-            "description": "**Not Found**. `amixer` is missing.",
+            "description": "Not Found. `amixer` is missing.",
             "content": {
                 "application/json": {
                     "example": {"detail": "'amixer' is not installed on the system."}
@@ -31,7 +31,7 @@ logger = Logger(__name__)
             },
         },
         503: {
-            "description": "**Service Unavailable**. General audio issue.",
+            "description": "Service Unavailable. General audio issue.",
             "content": {
                 "application/json": {
                     "example": {
@@ -41,9 +41,29 @@ logger = Logger(__name__)
             },
         },
         500: {
-            "description": "**Internal Server Error**. This error occurs if something unexpected breaks during processing.",
+            "description": "Internal Server Error. This error occurs if something unexpected breaks during processing.",
             "content": {
                 "application/json": {"example": {"detail": "Failed to set the volume."}}
+            },
+        },
+        422: {
+            "description": "Validation Error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": [
+                            {
+                                "type": "value_error",
+                                "loc": ["body", "volume"],
+                                "msg": "Value error, Volume decimal precision must be at most 1.",
+                                "input": 76.43,
+                                "ctx": {
+                                    "error": {},
+                                },
+                            },
+                        ]
+                    }
+                }
             },
         },
     },
@@ -106,7 +126,7 @@ async def set_volume(
     response_description="The volume level is returned as a normalized integer between 0 and 100.",
     responses={
         404: {
-            "description": "**Not Found**. `amixer` is missing.",
+            "description": "Not Found. `amixer` is missing.",
             "content": {
                 "application/json": {
                     "example": {"detail": "'amixer' is not installed on the system."}
@@ -114,7 +134,7 @@ async def set_volume(
             },
         },
         503: {
-            "description": "**Service Unavailable**. General audio fetching issue.",
+            "description": "Service Unavailable. General audio fetching issue.",
             "content": {
                 "application/json": {
                     "example": {
@@ -124,7 +144,7 @@ async def set_volume(
             },
         },
         500: {
-            "description": "**Internal Server Error**. This error occurs if something unexpected breaks during processing.",
+            "description": "Internal Server Error. This error occurs if something unexpected breaks during processing.",
             "content": {
                 "application/json": {
                     "example": {"detail": "Failed to retrieve volume information."}

@@ -7,7 +7,7 @@ from app.exceptions.file_exceptions import (
     InvalidFileName,
     InvalidMediaType,
 )
-from app.exceptions.music import MusicPlayerError
+from app.exceptions.music import ActiveMusicTrackRemovalError, MusicPlayerError
 from app.schemas.file_management import (
     BatchRemoveFilesRequest,
     PhotosResponse,
@@ -28,7 +28,25 @@ router = APIRouter()
 logger = Logger(__name__)
 
 
-@router.post("/files/upload/{media_type}", response_model=UploadFileResponse)
+@router.post(
+    "/files/upload/{media_type}",
+    response_model=UploadFileResponse,
+    response_description="A response object with the filename and the status of uploading.",
+    responses={
+        400: {
+            "description": "Bad Request. Invalid filename or media type.",
+            "content": {
+                "application/json": {"example": {"detail": "Invalid filename."}}
+            },
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {"example": {"detail": "Failed to upload the file"}}
+            },
+        },
+    },
+)
 async def upload_file(
     request: Request,
     media_type: str,
@@ -36,21 +54,11 @@ async def upload_file(
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Upload a file of a specific media type.
-
-    Args:
-    --------------
-    - media_type (str): The type of media to upload ('music', 'image', 'data' etc).
-    - file (UploadFile): The file to upload.
-    - file_manager (FileService): The file management service.
+    Upload a file of a specific media type: 'music', 'image', 'video' or 'data'.
 
     Returns:
     --------------
-    `UploadFileResponse`: A response object containing the success status and the filename.
-
-    Raises:
-    --------------
-    `HTTPException`: If no file is selected or the media type is invalid.
+    **UploadFileResponse**: A response object containing the success status and the filename.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     handlers = {
@@ -85,12 +93,41 @@ async def upload_file(
         logger.error("Unhandled exception during file upload", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Internal Server Error",
+            detail="Failed to upload the file.",
         )
 
 
 @router.delete(
-    "/files/remove/{media_type}/{filename}", response_model=RemoveFileResponse
+    "/files/remove/{media_type}/{filename}",
+    response_model=RemoveFileResponse,
+    response_description="A response object with the filename, "
+    "the status of removal, and "
+    "optionally an error message if the file wasn't removed successfully.",
+    responses={
+        400: {
+            "description": "Bad Request. Invalid media type is given; "
+            "default file or active music track is trying to be removed.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Cannot remove the default file."}
+                }
+            },
+        },
+        404: {
+            "description": "Not Found. The file is not found or can't be resolved.",
+            "content": {
+                "application/json": {"example": {"detail": "File is not found."}}
+            },
+        },
+        500: {
+            "description": "Internal Server Error. Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to remove 'my_file.wav'"}
+                }
+            },
+        },
+    },
 )
 async def remove_file(
     request: Request,
@@ -100,21 +137,11 @@ async def remove_file(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
-    Remove a file of a specific media type.
-
-    Args:
-    --------------
-    - media_type (str): The type of media ('music', 'video', 'image', 'data').
-    - filename (str): The name of the file to remove.
-    - file_manager (FileService): The file management service.
+    Remove a file of a specific media type: 'music', 'video', 'image' or 'data'.
 
     Returns:
     --------------
-    - `RemoveFileResponse`: A response object containing the success status and the filename.
-
-    Raises:
-    --------------
-    - `HTTPException`: If the media type is invalid, or the file could not be removed or found.
+    - **RemoveFileResponse**: A response object containing the success status and the filename.
     """
     handlers = {
         "music": music_player.remove_music_track,
@@ -143,21 +170,23 @@ async def remove_file(
             + ", ".join(list(handlers.keys())),
         )
 
-    except DefaultFileRemoveAttempt as e:
+    except (ActiveMusicTrackRemovalError, DefaultFileRemoveAttempt) as e:
         logger.warning(str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="File Not Found")
+        logger.warning(f"File %s is not found", filename)
+        raise HTTPException(status_code=404, detail="File is not found")
     except Exception:
         logger.error(
             f"Unhandled error while removing file '{filename}' with media type '{media_type}'",
             exc_info=True,
         )
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(status_code=500, detail=f"Failed to remove '{filename}'")
 
 
 @router.get(
     "/files/download/{media_type}/{filename}",
+    response_description="The file response to download.",
     responses={
         200: {
             "content": {"application/octet-stream": {}},
@@ -173,21 +202,11 @@ def download_file(
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Download a file of a specific media type.
-
-    Args:
-    --------------
-    - media_type (str): The type of media ('music', 'image', 'video', 'data').
-    - filename (str): The name of the file to download.
-    - file_manager (FileService): The file management service.
+    Download a file of a specific media type: 'music', 'image', 'video' or 'data'.
 
     Returns:
     --------------
-    - `FileResponse`: A response containing the file to download.
-
-    Raises:
-    --------------
-    - `HTTPException`: If the media type is invalid or the file is not found.
+    - **FileResponse**: A response containing the file to download.
     """
     try:
         if media_type == 'data':
@@ -231,18 +250,9 @@ def preview_image(
     """
     Provide a preview image of a specific file.
 
-    Args:
-    --------------
-    - filename (str): The name of the image file to preview.
-    - file_manager (FileService): The file management service.
-
     Returns:
     --------------
-    - `FileResponse`: A response containing the preview image.
-
-    Raises:
-    --------------
-    - `HTTPException`: If the file is not found.
+    **FileResponse**: A response containing the preview image.
     """
     try:
         directory = file_manager.get_photo_directory(filename)
@@ -261,7 +271,14 @@ def preview_image(
         raise HTTPException(status_code=404, detail="File not found")
 
 
-@router.get("/files/list/photos", response_model=PhotosResponse)
+@router.get(
+    "/files/list/photos",
+    response_model=PhotosResponse,
+    response_description="List of the user photos. "
+    "Each photo contains the name "
+    "of the filename without directory, but with extension, "
+    "full path, and preview URL.",
+)
 def list_photos(file_manager: "FileService" = Depends(get_file_manager)):
     """
     List the captured by user photos.
@@ -272,6 +289,7 @@ def list_photos(file_manager: "FileService" = Depends(get_file_manager)):
 
 @router.get(
     "/files/download-last-video",
+    response_description="A response containing the most recent video to download.",
     responses={
         200: {
             "content": {"application/octet-stream": {}},
@@ -284,17 +302,9 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
     """
     Download the last video captured by the user.
 
-    Args:
-    --------------
-    - file_manager (FileService): The file management service for videos.
-
     Returns:
     --------------
     - `FileResponse`: A response containing the most recent video to download.
-
-    Raises:
-    --------------
-    - `HTTPException`: If no videos are found.
     """
     videos = file_manager.list_user_videos()
 
@@ -313,7 +323,23 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
 
 
 @router.post(
-    "/files/remove-batch/{media_type}", response_model=List[RemoveFileResponse]
+    "/files/remove-batch/{media_type}",
+    response_model=List[RemoveFileResponse],
+    response_description="A list of objects with the filename, "
+    "the status of removal, and "
+    "optionally an error message if the file wasn't removed successfully.",
+    responses={
+        400: {
+            "description": "Bad Request. Invalid media type is given.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid media type 'photo'. Should be one of: music, image, video, data."
+                    }
+                }
+            },
+        },
+    },
 )
 async def batch_remove_files(
     request: Request,
@@ -323,21 +349,11 @@ async def batch_remove_files(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
-    Batch remove multiple files of a specific media type.
-
-    Args:
-    --------------
-    - media_type (str): The type of media ('music', 'video', 'image', 'data').
-    - filenames (List[str]): A list of filenames to remove.
-    - file_manager (FileService): The file management service.
+    Batch remove multiple files of a specific media type: 'music', 'image', 'video', or 'data'.
 
     Returns:
     --------------
-    - `List[RemoveFileResponse]`: A list of response objects for each file with success status and the filename.
-
-    Raises:
-    --------------
-    - `HTTPException`: If the media type is invalid, or any file could not be removed or found.
+    A list of response objects for each file with success status and the filename.
     """
     filenames = request_body.filenames
     if len(filenames) <= 0:
@@ -355,7 +371,7 @@ async def batch_remove_files(
     if not handler:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid media type {media_type}. Should be one of "
+            detail=f"Invalid media type {media_type}. Should be one of: "
             + ", ".join(list(handlers.keys())),
         )
     responses: List[RemoveFileResponse] = []

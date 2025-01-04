@@ -489,7 +489,7 @@ class FileService(metaclass=SingletonMeta):
 
             return True
         elif path.exists(path.join(self.default_user_music_dir, filename)):
-            raise DefaultFileRemoveAttempt("Cannot remove default music file.")
+            raise DefaultFileRemoveAttempt("Cannot remove the default file.")
         else:
             self.logger.error("The file '%s' was not found", filename)
             raise FileNotFoundError("File not found")

@@ -5,7 +5,7 @@ import time
 from os import path
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from app.exceptions.music import MusicPlayerError
+from app.exceptions.music import ActiveMusicTrackRemovalError, MusicPlayerError
 from app.schemas.music import MusicPlayerMode
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -187,11 +187,13 @@ class MusicService(metaclass=SingletonMeta):
 
         Raises:
             MusicPlayerError: If the track to be removed is currently playing.
+            DefaultFileRemoveAttempt: If attempting to remove a default music file.
+            FileNotFoundError: If the file doesn't exist.
         """
         if self.track == track:
             self.next_track()
-        if self.track == track:
-            raise MusicPlayerError("Can't remove the playing track")
+        if self.track == track and self.is_playing:
+            raise ActiveMusicTrackRemovalError("Can't remove the playing track.")
 
         return self.file_manager.remove_music(track)
 
@@ -242,7 +244,7 @@ class MusicService(metaclass=SingletonMeta):
         Toggles playback (play or pause) for the current track.
 
         Raises:
-            MusicPlayerError: If no music track is loaded.
+            If no music track is loaded.
         """
         self.pygame_mixer_ensure()
         if self.is_playing:
@@ -250,7 +252,7 @@ class MusicService(metaclass=SingletonMeta):
         else:
             if not self.pygame.mixer.music.get_busy():
                 if self.track is None:
-                    raise MusicPlayerError("No music track")
+                    raise MusicPlayerError("No music track.")
                 file_path = self.music_track_to_absolute(self.track)
                 self.pygame.mixer.music.load(file_path)
                 self.pygame.mixer.music.play(start=self.position)
@@ -374,7 +376,7 @@ class MusicService(metaclass=SingletonMeta):
             MusicPlayerError: If no music track is currently selected.
         """
         if self.track is None:
-            raise MusicPlayerError("No music track")
+            raise MusicPlayerError("No music track.")
 
         file_path = self.music_track_to_absolute(self.track)
         self.pygame_mixer_ensure()

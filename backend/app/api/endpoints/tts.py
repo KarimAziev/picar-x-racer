@@ -17,7 +17,21 @@ logger = Logger(__name__)
 
 @router.post(
     "/tts/speak",
-    summary="Text to Speech API Endpoint",
+    summary="Speak the given text using Google Translate TTS API",
+    responses={
+        400: {
+            "description": "Bad Request. If the text-to-speech is already running.",
+            "content": {
+                "application/json": {"example": {"detail": "Already speaking"}}
+            },
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {"example": {"detail": "Failed to speak the text"}}
+            },
+        },
+    },
 )
 async def text_to_speech(
     request: Request,
@@ -27,20 +41,11 @@ async def text_to_speech(
     """
     Endpoint to convert text to speech.
 
-    Args:
-    -------------
-    - payload (TextToSpeechData): Contains the text and language details for text-to-speech conversion.
-    - tts_manager (TTSService): The audio service for managing audio playback.
-
     Returns:
     -------------
-    None: The endpoint does not return any data to the caller.
-    All connected clients are notified asynchronously via WebSocket.
+    **None**: The endpoint does not return any data to the caller.
 
-    Raises:
-    -------------
-    - HTTPException (400): If Google speech is not available.
-    - HTTPException (500): If an unexpected error occurs.
+    All connected clients are notified asynchronously via WebSocket.
     """
     logger.info("TTS payload=%s", payload)
     try:
@@ -55,5 +60,5 @@ async def text_to_speech(
         logger.error("Text to speech exception", err)
         raise HTTPException(status_code=400, detail=f"Text to speech error: {str(err)}")
     except Exception as err:
-        logger.error("Unexpected Error", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error("Unexpected text to speech error.", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to speak the text")

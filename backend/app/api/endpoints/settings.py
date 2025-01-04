@@ -21,14 +21,6 @@ router = APIRouter()
 def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
     """
     Retrieve the current application settings.
-
-    Args:
-    --------------
-    - file_service (FileService): The file service for managing settings.
-
-    Returns:
-    --------------
-    - `Settings`: The current settings of the application.
     """
     return file_service.load_settings()
 
@@ -42,9 +34,6 @@ async def update_settings(
 ):
     """
     Update the application settings.
-    Returns:
-    --------------
-    - `Settings`: The updated settings of the application.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
@@ -52,7 +41,8 @@ async def update_settings(
         battery_manager.update_battery_settings(new_settings.battery)
 
     data = new_settings.model_dump(exclude_unset=True)
-    logger.info("Settings update data %s", data)
+
+    logger.info("Updating settings with %s", data)
 
     await asyncio.to_thread(file_service.save_settings, data)
 
@@ -67,14 +57,6 @@ def get_config_settings(
 ):
     """
     Retrieve the calibration settings.
-
-    Args:
-    --------------
-    - file_service (FileService): The file service for managing settings.
-
-    Returns:
-    --------------
-    - `ConfigSchema`: The calibration settings.
     """
     return file_service.get_robot_config()
 
@@ -85,13 +67,5 @@ def get_calibration_settings(
 ):
     """
     Retrieve the calibration settings.
-
-    Args:
-    --------------
-    - file_service (FileService): The file service for managing settings.
-
-    Returns:
-    --------------
-    - `CalibrationConfig`: The calibration settings.
     """
     return file_service.get_calibration_config()

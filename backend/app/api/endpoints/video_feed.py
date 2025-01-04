@@ -44,21 +44,9 @@ async def update_video_feed_settings(
     """
     Update the video feed settings.
 
-    Example Payload:
-    --------------
-    ```json
-    {
-        "format": ".jpg",
-        "quality": 95,
-        "enhance_mode": "simulate_predator_vision",
-        "video_record": true,
-        "render_fps": true
-    }
-    ```
-
     Returns:
     --------------
-    `StreamSettings`: The updated video stream settings. Additionally, broadcasts the updated settings to all connected clients.
+    **StreamSettings**: The updated video stream settings. Additionally, broadcasts the updated settings to all connected clients.
     """
     logger.info("Video feed update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
@@ -94,7 +82,7 @@ def get_video_settings(
 
     Returns:
     --------------
-    StreamSettings: Current video stream configuration data.
+    **StreamSettings**: Current video stream configuration data.
     """
     return camera_manager.stream_settings
 
@@ -156,6 +144,6 @@ def get_frame_enhancers():
 
     Returns:
     --------------
-    `EnhancersResponse`: A list of available frame enhancer names.
+    **EnhancersResponse**: A list of available frame enhancer names.
     """
     return {"enhancers": list(frame_enhancers.keys())}
