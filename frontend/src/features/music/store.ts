@@ -251,8 +251,11 @@ export const useStore = defineStore("music", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        await axios.post("/api/music/order", tracks);
-        messager.success("Music order is saved.");
+        const { data } = await axios.post<{ message: string }>(
+          "/api/music/order",
+          tracks,
+        );
+        messager.success(data.message);
       } catch (error) {
         messager.handleError(error);
       } finally {

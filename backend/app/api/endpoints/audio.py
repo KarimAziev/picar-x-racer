@@ -41,7 +41,7 @@ logger = Logger(__name__)
             },
         },
         500: {
-            "description": "Internal Server Error. This error occurs if something unexpected breaks during processing.",
+            "description": "Internal Server Error. Unexpected error occurred.",
             "content": {
                 "application/json": {"example": {"detail": "Failed to set the volume."}}
             },
@@ -144,7 +144,7 @@ async def set_volume(
             },
         },
         500: {
-            "description": "Internal Server Error. This error occurs if something unexpected breaks during processing.",
+            "description": "Internal Server Error. Unexpected error occurred.",
             "content": {
                 "application/json": {
                     "example": {"detail": "Failed to retrieve volume information."}
@@ -159,12 +159,15 @@ async def get_volume(
     """
     Retrieve the current playback volume level.
 
-    This endpoint allows the client to retrieve the current volume level of the playback device.
+    This endpoint allows the client to retrieve the current volume level of the
+    playback device.
 
     Behavior:
     --------------
     The volume level is returned as a normalized integer between 0 and 100.
-    Floats are not involved in this endpoint, as the volume is always computed and stored as integers.
+
+    Floats are not involved in this endpoint, as the volume is always computed
+    and stored as integers.
 
     Returns:
     --------------

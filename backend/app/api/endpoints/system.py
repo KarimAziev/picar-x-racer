@@ -18,7 +18,29 @@ logger = Logger(__name__)
 router = APIRouter()
 
 
-@router.get("/system/shutdown")
+@router.get(
+    "/system/shutdown",
+    responses={
+        200: {
+            "description": "A success message that indicates a successful shutdown initiiation.",
+            "content": {
+                "application/json": {
+                    "example": {"message": "System shutdown initiated successfully."}
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Failed to shutdown the system due to an internal error."
+                    }
+                }
+            },
+        },
+    },
+)
 async def shutdown(
     request: Request,
     music_manager: "MusicService" = Depends(deps.get_music_manager),
@@ -64,7 +86,27 @@ async def shutdown(
         )
 
 
-@router.get("/system/restart")
+@router.get(
+    "/system/restart",
+    responses={
+        200: {
+            "description": "A success message that indicates a successful restart process.",
+            "content": {
+                "application/json": {
+                    "example": {"message": "System restart initiated successfully."}
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to restart the system."}
+                }
+            },
+        },
+    },
+)
 async def restart_system(
     request: Request,
     music_manager: "MusicService" = Depends(deps.get_music_manager),
