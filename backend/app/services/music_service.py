@@ -269,8 +269,8 @@ class MusicService(metaclass=SingletonMeta):
         if self.is_playing:
             self.pygame_mixer_ensure()
             self.pygame.mixer.music.stop()
+            self.is_playing = False
         self.position = 0
-        self.is_playing = not self.is_playing
 
     def update_position(self, position: float) -> None:
         """
