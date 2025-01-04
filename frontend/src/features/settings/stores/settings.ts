@@ -23,12 +23,6 @@ import {
 import { useStore as useMusicStore, MusicMode } from "@/features/music";
 import type { Settings, ToggleableKey } from "@/features/settings/interface";
 
-export interface TextItem {
-  text: string;
-  language: string;
-  default?: boolean;
-}
-
 export interface State {
   loading?: boolean;
   loaded?: boolean;

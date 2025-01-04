@@ -165,3 +165,9 @@ export interface TreeNode {
 
   [key: string]: any;
 }
+
+export interface TextItem {
+  text: string;
+  language: string;
+  default?: boolean;
+}

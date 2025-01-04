@@ -5,6 +5,7 @@
     :label="label"
     :message="message"
     :loading="loading"
+    :layout="layout"
   >
     <Select
       :pt="{ input: { id: field, name: field } }"
@@ -32,11 +33,11 @@
 <script setup lang="ts">
 import { ref, watch, useAttrs, computed } from "vue";
 import type { SelectEmitsOptions, SelectProps } from "primevue/select";
-
+import type { Props as FieldProps } from "@/ui/Field.vue";
 import Select from "primevue/select";
 import Field from "@/ui/Field.vue";
 
-export type Props = {
+export interface Props extends FieldProps {
   modelValue?: any;
   invalid?: boolean;
   message?: string;
@@ -53,7 +54,7 @@ export type Props = {
   disabled?: boolean;
   loading?: boolean;
   tooltip?: string;
-};
+}
 const props = defineProps<Props>();
 const otherAttrs = useAttrs();
 

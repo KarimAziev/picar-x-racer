@@ -100,7 +100,7 @@ export const saveableTabs = {
   [SettingsTab.GENERAL]: true,
   [SettingsTab.KEYBINDINGS]: false,
   [SettingsTab.CALIBRATION]: false,
-  [SettingsTab.TTS]: false,
+  [SettingsTab.TTS]: true,
   [SettingsTab.PHOTOS]: false,
   [SettingsTab.MODELS]: true,
 };

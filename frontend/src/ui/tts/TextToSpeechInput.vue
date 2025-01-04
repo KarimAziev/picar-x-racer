@@ -48,23 +48,28 @@ import { useInputHistory } from "@/composables/useInputHistory";
 
 defineProps<{ class?: string }>();
 
-const store = useSettingsStore();
+const settingsStore = useSettingsStore();
 const ttsStore = useTTSStore();
 
 const langsLoading = computed(() => !!ttsStore.loading);
 
 const ttsOptions = computed(() => {
   if (
-    !store.data.tts.allowed_languages ||
-    !store.data.tts.allowed_languages.length
+    !settingsStore.data.tts.allowed_languages ||
+    !settingsStore.data.tts.allowed_languages.length
   ) {
     return ttsStore.data;
   }
-  const codes = new Set(store.data.tts.allowed_languages);
-  return ttsStore.data.filter(({ value }) => codes.has(value));
+  const hashLangs = new Map(
+    ttsStore.data.map(({ value, label }) => [value, label]),
+  );
+  return settingsStore.data.tts.allowed_languages.map((code) => ({
+    value: code,
+    label: hashLangs.get(code) || code,
+  }));
 });
 
-const language = ref(store.data.tts.default_tts_language);
+const language = ref(settingsStore.data.tts.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
@@ -83,11 +88,11 @@ const tooltipButtonText = computed(() =>
 );
 
 const handleSelectBeforeShow = () => {
-  store.inhibitKeyHandling = true;
+  settingsStore.inhibitKeyHandling = true;
 };
 
 const handleSelectBeforeHide = () => {
-  store.inhibitKeyHandling = false;
+  settingsStore.inhibitKeyHandling = false;
 };
 
 const handleKeyEnter = async () => {
@@ -95,12 +100,12 @@ const handleKeyEnter = async () => {
   if (value && value.length > 0) {
     inputRef.value = "";
     inputHistory.value?.push(value);
-    await store.speakText(value, language.value);
+    await settingsStore.speakText(value, language.value);
   }
 };
 
 watch(
-  () => store.data.tts.default_tts_language,
+  () => settingsStore.data.tts.default_tts_language,
   (newValue) => {
     language.value = newValue;
   },
