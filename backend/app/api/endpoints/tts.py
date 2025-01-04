@@ -57,9 +57,9 @@ async def text_to_speech(
             {"type": "info", "payload": "Speaking: " + text}
         )
     except TextToSpeechException as err:
-        logger.error("Text to speech exception", err)
-        raise HTTPException(status_code=400, detail=f"Text to speech error: {str(err)}")
-    except Exception as err:
+        logger.error("Text to speech error: %s", err)
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception:
         logger.error("Unexpected text to speech error.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to speak the text")
 
