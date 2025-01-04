@@ -262,6 +262,14 @@ export const useStore = defineStore("settings", {
 
       this.text = nextTrack.text;
       this.language = nextTrack.language;
+      const keybindings = this.data.keybindings.sayText;
+      if (!keybindings || !keybindings.length) {
+        return messager.info(
+          `Current text to speak: ${this.text}. (Assign key to 'sayText' command to speak)`,
+        );
+      }
+      const keyHint = keybindings.join(", ");
+      messager.info(`Press '${keyHint}' to speak '${this.text}'`);
     },
     nextText() {
       this.cycleText(1);
