@@ -43,7 +43,15 @@ router = APIRouter()
     "- **labels**: A list of labels to filter for specific object detections, if desired."
     "\n"
     "- **overlay_draw_threshold**: The maximum allowable time difference (in seconds) "
-    "between the frame timestamp and the detection timestamp for overlay drawing to occur.",
+    "between the frame timestamp and the detection timestamp for overlay drawing to occur."
+    "\n"
+    "- **overlay_style**: The detection overlay style."
+    "\n"
+    "  - **box**: Draws a bounding box for the detected object."
+    "\n"
+    "  - **aim**: Draws crosshair lines (centered) within for the detected object."
+    "\n"
+    "  - **mixed**: Draws crosshair lines within the first detection, and for others, a bounding box.",
     responses={
         400: {
             "description": "Bad Request - Errors like model loading or detection issues.",
@@ -120,7 +128,15 @@ async def update_detection_settings(
     "- **labels**: A list of labels to filter for specific object detections, if desired."
     "\n"
     "- **overlay_draw_threshold**: The maximum allowable time difference (in seconds) "
-    "between the frame timestamp and the detection timestamp for overlay drawing to occur.",
+    "between the frame timestamp and the detection timestamp for overlay drawing to occur."
+    "\n"
+    "- **overlay_style**: The detection overlay style."
+    "\n"
+    "  - **box**: Draws a bounding box for the detected object."
+    "\n"
+    "  - **aim**: Draws crosshair lines (centered) within for the detected object."
+    "\n"
+    "  - **mixed**: Draws crosshair lines within the first detection, and for others, a bounding box.",
 )
 def get_detection_settings(
     detection_service: "DetectionService" = Depends(deps.get_detection_manager),
