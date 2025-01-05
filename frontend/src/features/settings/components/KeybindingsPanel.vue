@@ -1,10 +1,24 @@
 <template>
   <Panel header="Keybindings">
-    <form
-      @submit.prevent="handleSubmit"
-      @reset.prevent="handleReset"
-      class="m-auto justify-items-center"
-    >
+    <form @submit.prevent="handleSubmit" class="m-auto justify-items-center">
+      <Teleport to="#settings-footer">
+        <span class="flex gap-2 justify-self-start">
+          <Button
+            size="small"
+            label="Add Key"
+            @click="addField"
+            class="w-fit"
+            severity="secondary"
+          />
+          <Button
+            size="small"
+            label="Save"
+            type="submit"
+            :disabled="isDisabled"
+            class="w-fit"
+          />
+        </span>
+      </Teleport>
       <div>
         <div
           v-for="(fieldPair, index) in fields"
@@ -49,23 +63,6 @@
           </div>
         </div>
       </div>
-
-      <span class="flex gap-2 mt-8 justify-self-start">
-        <Button size="small" label="Add Key" @click="addField" class="w-fit" />
-        <Button
-          size="small"
-          label="Save"
-          type="submit"
-          :disabled="isSubmitDisabled"
-          class="w-fit"
-        />
-        <Button
-          label="Reset to defaults"
-          type="reset"
-          size="small"
-          class="w-fit p-button-secondary"
-        />
-      </span>
     </form>
     <KeyRecorder
       v-if="keyRecorderOpen"
@@ -80,19 +77,21 @@
 import { ref, reactive, computed } from "vue";
 import InputText from "primevue/inputtext";
 import Button from "primevue/button";
-import Panel from "@/ui/Panel.vue";
+import { Panel } from "primevue";
 import KeyRecorder from "@/ui/KeyRecorder.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { allCommandOptions } from "@/features/settings/defaultKeybindings";
 import { splitKeySequence } from "@/util/keyboard-util";
 import Field from "@/ui/Field.vue";
 import SelectField from "@/ui/SelectField.vue";
+import { diffObjectsDeep } from "@/util/obj";
+import { isEmpty } from "@/util/guards";
+import { ControllerActionName } from "@/features/controller/store";
 
 const popupStore = usePopupStore();
 
 const store = useSettingsStore();
 
-const originalKeys = computed(() => store.data.keybindings);
 const keyRecorderOpen = computed(() => popupStore.isKeyRecording);
 
 const commandsToOptions = (obj: Record<string, string[] | null>): Fields => {
@@ -274,6 +273,7 @@ const handleKeySubmit = (keytext: string) => {
 const handleKeyCancel = () => {
   popupStore.isKeyRecording = false;
 };
+const isSubmitDisabled = ref(false);
 
 const handleSubmit = async () => {
   const errs = validateAll();
@@ -285,10 +285,6 @@ const handleSubmit = async () => {
     store.data.keybindings = pairsToConfig(validFields);
     await store.saveSettings();
   }
-};
-
-const handleReset = () => {
-  store.data.keybindings = originalKeys.value;
 };
 
 const validateAll = () => {
@@ -310,5 +306,26 @@ const validateRowsFields = () => {
   return errors;
 };
 
-const isSubmitDisabled = ref(false);
+const isDisabled = computed(() => {
+  validateAll();
+  if (isSubmitDisabled.value) {
+    return isSubmitDisabled.value;
+  }
+  const validFields = fields.value.filter(
+    ([_, keybindingField]) => keybindingField.value.length > 0,
+  );
+  const validStoredFields = Object.entries(store.data.keybindings).reduce(
+    (acc, [cmd, val]) => {
+      if (val && val.length > 0) {
+        acc[cmd as ControllerActionName] = val;
+      }
+      return acc;
+    },
+    {} as Partial<Record<ControllerActionName, string[] | null>>,
+  );
+
+  const data = pairsToConfig(validFields);
+  const result = diffObjectsDeep(validStoredFields, data);
+  return !result || isEmpty(result);
+});
 </script>

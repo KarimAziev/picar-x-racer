@@ -289,8 +289,9 @@ export const isObjectEquals = <
   origData: V,
   newData: B,
 ) => {
-  const diffObj = diffObjects(origData, newData);
-  return isEmpty(diffObj);
+  const diffObj = diffObjectsDeep(origData, newData);
+
+  return !diffObj || isEmpty(diffObj);
 };
 
 export const diffObjectsDeep = <

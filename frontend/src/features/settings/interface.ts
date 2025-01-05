@@ -6,8 +6,8 @@ import { FlattenBooleanObjectKeys, FlattenObject } from "@/util/ts-helpers";
 
 export type APIMediaType = "image" | "sound" | "music" | "data";
 
-export interface ValueLabelOption {
-  value: string;
+export interface ValueLabelOption<T = string> {
+  value: T;
   label: string;
 }
 

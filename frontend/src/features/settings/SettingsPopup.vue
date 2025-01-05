@@ -1,24 +1,33 @@
 <template>
   <Dialog
+    class="settings-popup"
     v-model:visible="popupStore.isOpen"
     header="Settings"
     dismissableMask
-    modal
     :closable="isClosable"
     :closeOnEscape="isEscapeOnCloseEnabled"
   >
     <Settings />
-    <div class="flex justify-start gap-4 mt-8">
-      <Button
-        v-if="isCurrentTabSaveable"
-        type="button"
-        label="Save"
-        :disabled="isSaveDisabled"
-        :loading="isSaving"
-        @click="saveSettings"
-      ></Button>
-      <Button type="button" outlined label="Close" @click="handleHide"></Button>
-    </div>
+    <template #footer>
+      <div id="settings-footer" class="flex gap-x-2 mt-2">
+        <span class="flex justify-start gap-x-4">
+          <Button
+            v-if="isCurrentTabSaveable"
+            type="button"
+            label="Save"
+            :disabled="isSaveDisabled"
+            :loading="isSaving"
+            @click="saveSettings"
+          ></Button>
+          <Button
+            type="button"
+            outlined
+            label="Close"
+            @click="handleHide"
+          ></Button>
+        </span>
+      </div>
+    </template>
   </Dialog>
 </template>
 

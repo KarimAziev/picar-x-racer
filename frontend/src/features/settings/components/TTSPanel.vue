@@ -1,6 +1,6 @@
 <template>
   <SelectField
-    fieldClassName="min-w-[150px]"
+    fieldClassName="min-w-[150px] mb-2"
     field="default_tts_language"
     label="Default Language"
     filter
@@ -10,7 +10,7 @@
     v-model="store.data.tts.default_tts_language"
     :options="ttsLanguages"
   />
-  <Panel header="Allowed languages" toggleable>
+  <Panel header="Allowed languages" toggleable class="mb-2">
     <LangsPickList v-if="!langsLoading" />
   </Panel>
   <Panel header="Texts presets" toggleable>

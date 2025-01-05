@@ -12,7 +12,7 @@
             type="button"
             :title="startCase(colorOption.label)"
             @click="updateColor(colorOption.value)"
-            class="outline outline-2 outline-offset-2 outline-transparent cursor-pointer p-0 rounded-[50%] w-5 h-5"
+            class="outline outline-2 outline-offset-2 outline-transparent cursor-pointer p-0 rounded-[50%] w-5 h-5 focus:ring"
             :style="{
               backgroundColor: `${colorOption.value}`,
               outlineColor: `${
@@ -26,6 +26,7 @@
       </div>
       <Field label="Custom:">
         <ColorPicker
+          inputId="primary-color"
           v-model="store.primaryColor"
           @update:model-value="store.updatePrimaryColor"
         />

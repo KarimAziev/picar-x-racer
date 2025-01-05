@@ -29,7 +29,14 @@ export interface FieldsParams {
   debounce?: number;
   store?: ReturnType<typeof useDetectionStore>;
 }
-export const useDetectionFields = (params?: FieldsParams) => {
+
+export interface DetectionFields {
+  updateData: () => Promise<void>;
+  updateDebounced: () => Promise<void>;
+  fields: NormalizedData;
+}
+
+export const useDetectionFields = (params?: FieldsParams): DetectionFields => {
   const detectionStore = params?.store || useDetectionStore();
 
   const fields: NormalizedData = reactive({

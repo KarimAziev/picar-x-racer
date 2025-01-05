@@ -22,7 +22,7 @@
     </PowerControlPanel>
   </TopRightPanel>
   <div
-    class="absolute z-11 select-none bottom-0"
+    class="absolute z-11 select-none bottom-0 flex flex-col gap-y-2"
     v-if="!isMobile && isSettingsLoaded"
   >
     <MediaControls />

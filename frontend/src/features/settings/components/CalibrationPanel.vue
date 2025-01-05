@@ -9,7 +9,7 @@
       <InputNumber
         class="w-1/2"
         size="small"
-        :id="field as string"
+        :inputId="field as string"
         v-model="store.data[field]"
         disabled
       />

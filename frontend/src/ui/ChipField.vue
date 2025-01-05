@@ -17,6 +17,7 @@
       v-bind="omit(['modelValue'], { ...props, ...otherAttrs })"
       @blur="handleKeyEnter"
       @update:model-value="handleResetMsg"
+      v-tooltip="tooltip"
     />
     <div class="flex flex-wrap max-w-[120px] gap-x-1">
       <button
@@ -52,6 +53,7 @@ export interface Props {
   disabled?: boolean;
   layout?: FieldLayout;
   size?: "small" | "large" | undefined;
+  tooltip?: string;
 }
 const props = defineProps<Props>();
 const otherAttrs: InputTextProps = useAttrs();
