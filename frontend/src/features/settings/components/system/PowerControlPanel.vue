@@ -1,12 +1,8 @@
 <template>
-  <div class="flex align-items-center jc-end gap-8" :class="className[0]">
+  <div class="flex items-center justify-end gap-2" :class="className">
     <slot></slot>
     <ToggleableView setting="general.show_battery_indicator">
-      <BatteryIndicator
-        :class="className[1]"
-        :value="batteryVoltage"
-        :percentage="percentage"
-      />
+      <BatteryIndicator :value="batteryVoltage" :percentage="percentage" />
     </ToggleableView>
     <ToggleableView setting="general.show_shutdown_reboot_button">
       <ShutdownPopover />
@@ -39,14 +35,14 @@ const className = computed(() => {
   const voltage = batteryStore.voltage;
 
   if (voltage >= settingsStore.data.battery.warn_voltage) {
-    return ["color-success"];
+    return "color-success";
   } else if (
     voltage < settingsStore.data.battery.warn_voltage &&
     voltage > settingsStore.data.battery.danger_voltage
   ) {
-    return ["color-warning"];
+    return "color-warning";
   } else {
-    return ["color-error", "blink"];
+    return "color-error";
   }
 });
 </script>

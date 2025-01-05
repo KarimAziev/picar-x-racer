@@ -28,7 +28,7 @@ export interface StreamSettings {
   /**
    * Whether the frames per second (FPS) should be rendered.
    */
-  render_fps?: boolean;
+  render_fps: boolean;
 }
 
 export interface State {
@@ -42,6 +42,7 @@ export const defaultState: State = {
   data: {
     format: ".jpg",
     quality: 100,
+    render_fps: false,
   },
   enhancers: [],
 };

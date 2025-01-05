@@ -7,6 +7,7 @@ import {
   isPlainObject,
   isString,
 } from "@/util/guards";
+import { where } from "@/util/func";
 
 export const retrieveResponseBody = (error: unknown) => {
   try {
@@ -15,6 +16,12 @@ export const retrieveResponseBody = (error: unknown) => {
     return error as Error;
   }
 };
+
+export const validationErrorPred = where({
+  loc: Array.isArray,
+  msg: isString,
+  type: isString,
+});
 
 const stringifyError = (data: any): string => {
   if (isString(data)) {
@@ -27,6 +34,10 @@ const stringifyError = (data: any): string => {
     return data.map(stringifyError).join("\n");
   }
   if (isPlainObject(data)) {
+    if (validationErrorPred(data)) {
+      return data.msg;
+    }
+
     return Object.entries(data)
       .map(([key, value]) => {
         const str = `${key}: ${stringifyError(value)}`;

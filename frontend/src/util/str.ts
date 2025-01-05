@@ -26,3 +26,15 @@ export const startCase = (str: string) =>
     .split(" ")
     .map((v) => v[0].toUpperCase() + v.slice(1))
     .join(" ");
+
+export function ensurePrefix(prefix: string): (str: string) => string;
+export function ensurePrefix(prefix: string, str: string): string;
+export function ensurePrefix(prefix: string, str?: string) {
+  return arguments.length === 1
+    ? (str: string) => (str.startsWith(prefix) ? str : `${prefix}${str}`)
+    : str?.startsWith(prefix)
+      ? str
+      : str
+        ? `${prefix}${str}`
+        : str;
+}

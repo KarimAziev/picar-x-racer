@@ -3,6 +3,7 @@
     label="Video Quality"
     field="video_feed_quality"
     v-model="streamStore.data.quality"
+    tooltip="Quality compression level for frames (%s)"
     optionLabel="label"
     optionValue="value"
     :options="videoQualityOptions"

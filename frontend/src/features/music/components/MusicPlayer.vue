@@ -1,11 +1,14 @@
 <template>
-  <div class="wrapper flex align-items-end gap-2">
-    <div class="player">
+  <div class="relative flex items-end gap-1">
+    <div
+      class="flex flex-col relative px-1 text-[0.7rem] w-[180px] select-none lg:w-[200px] xl:w-[300px]"
+    >
       <div>
-        <div class="title">
+        <div class="whitespace-nowrap overflow-hidden text-ellipsis">
           {{ currentTrack }}
         </div>
         <Slider
+          class="cursor-pointer"
           v-model="musicStore.player.position"
           @slideend="handleSavePosition"
           @keyup.stop="handleSavePosition"
@@ -19,9 +22,10 @@
         />
       </div>
 
-      <div class="buttons flex align-items-center jc-between">
+      <div class="buttons flex items-center justify-between">
         <Button
           @click="prevTrack"
+          class="!pt-0"
           icon="pi pi-backward"
           aria-label="Prev track"
           text
@@ -29,6 +33,7 @@
         />
 
         <Button
+          class="!pt-0"
           v-if="isPlaying"
           @click="togglePlaying"
           icon="pi pi-pause"
@@ -37,6 +42,7 @@
           v-tooltip="'Pause playing track'"
         />
         <Button
+          class="!pt-0"
           @click="togglePlaying"
           v-else
           icon="pi pi-play-circle"
@@ -45,6 +51,7 @@
           v-tooltip="'Play track'"
         />
         <Button
+          class="!pt-0"
           @click="stopTrack"
           icon="pi pi-stop"
           :disabled="!isPlaying"
@@ -52,10 +59,11 @@
           aria-label="Stop"
           v-tooltip="'Stop playing'"
         />
-        <span class="duration">
+        <span class="whitespace-nowrap">
           {{ durationLabel }}
         </span>
         <Button
+          class="!pt-0"
           @click="nextTrack"
           icon="pi pi-forward"
           aria-label="Next track"
@@ -63,6 +71,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.LOOP"
           @click="nextMode"
           icon="pi pi-sync"
@@ -71,6 +80,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.LOOP_ONE"
           @click="nextMode"
           icon="pi pi-arrow-right-arrow-left"
@@ -79,6 +89,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.QUEUE"
           @click="nextMode"
           icon="pi pi-list"
@@ -87,6 +98,7 @@
           text
         />
         <Button
+          class="!pt-0"
           v-if="musicMode === MusicMode.SINGLE"
           @click="nextMode"
           icon="pi pi-stop-circle"
@@ -175,45 +187,3 @@ const stopTrack = async () => {
   await musicStore.stopPlaying();
 };
 </script>
-
-<style scoped lang="scss">
-.wrapper {
-  position: relative;
-}
-.player {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  padding: 0 4px;
-  font-size: 0.7rem;
-  width: 180px;
-  user-select: none;
-
-  @media (min-width: 992px) and (orientation: portrait) {
-    width: 200px;
-  }
-
-  @media (min-width: 992px) and (orientation: landscape) {
-    width: 300px;
-  }
-}
-.duration {
-  white-space: nowrap;
-}
-.title {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-:deep(.p-button) {
-  padding-top: 1px;
-}
-
-:deep(.p-slider) {
-  cursor: pointer;
-  .p-slider-handle {
-    transform: scale(0.5);
-  }
-}
-</style>

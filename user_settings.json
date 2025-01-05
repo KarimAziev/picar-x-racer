@@ -16,7 +16,9 @@
     "show_photo_capture_button": true,
     "show_video_record_button": false,
     "show_fullscreen_button": true,
-    "show_shutdown_reboot_button": true
+    "show_shutdown_reboot_button": true,
+    "show_avoid_obstacles_button": true,
+    "show_dark_theme_toggle": false
   },
   "robot": {
     "max_speed": 80,
@@ -27,7 +29,8 @@
     "default_tts_language": "en",
     "texts": [
       { "text": "Target identified", "language": "en", "default": true }
-    ]
+    ],
+    "allowed_languages": []
   },
   "battery": {
     "full_voltage": 8.4,

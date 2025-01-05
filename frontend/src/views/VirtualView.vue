@@ -1,7 +1,7 @@
 <template>
   <FullscreenContent>
     <CarModelViewer
-      class="content"
+      class="flex-auto"
       :zoom="10"
       :rotationY="140"
       :rotationX="-5"
@@ -43,29 +43,3 @@ onBeforeMount(() => {
   }
 });
 </script>
-<style scoped lang="scss">
-.wrapper {
-  width: 100%;
-  display: flex;
-}
-
-.content {
-  flex: auto;
-}
-.right {
-  position: absolute;
-  right: 0;
-  width: 400px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 0;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.car-model {
-  height: 50vh;
-  position: fixed;
-}
-</style>

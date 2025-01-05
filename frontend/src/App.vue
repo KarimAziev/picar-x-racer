@@ -1,20 +1,30 @@
 <template>
   <KeyboardHandler v-if="!isMobile && isSettingsLoaded" />
+  <SettingsButton />
   <JoysticZone v-if="isMobile && isSettingsLoaded" />
   <RouterView />
   <LazySettings />
   <Messager v-if="!isMobile" />
-  <TopRightPanel v-if="isSettingsLoaded" class="top-right-pan">
+  <TopRightPanel v-if="isSettingsLoaded" class="text-xs">
+    <ToggleableView setting="stream.render_fps">
+      <FPS />
+    </ToggleableView>
+    <ToggleableView setting="general.show_dark_theme_toggle">
+      <DarkThemeToggler />
+    </ToggleableView>
+    <ToggleableView setting="general.show_fullscreen_button">
+      <FullscreenButton />
+    </ToggleableView>
     <PowerControlPanel>
-      <ToggleableView setting="general.show_fullscreen_button">
-        <FullscreenButton />
-      </ToggleableView>
       <ToggleableView setting="general.show_connections_indicator">
         <ActiveConnectionsIndicator />
       </ToggleableView>
     </PowerControlPanel>
   </TopRightPanel>
-  <div class="indicators" v-if="!isMobile && isSettingsLoaded">
+  <div
+    class="absolute z-11 select-none bottom-0 flex flex-col gap-y-2"
+    v-if="!isMobile && isSettingsLoaded"
+  >
     <MediaControls />
     <ToggleableView setting="general.show_object_detection_settings">
       <DetectionControls />
@@ -27,9 +37,12 @@
       <MusicPlayer />
     </ToggleableView>
   </div>
-  <div class="mobile-indicators" v-if="isMobile && isSettingsLoaded">
+  <div
+    class="select-none absolute z-11 flex flex-col gap-y-1 right-1 top-9 portrait:max-w-[53%] portrait:min-[400px]:max-w-[50%] landscape:max-w-[210px]"
+    v-if="isMobile && isSettingsLoaded"
+  >
     <ToggleableView setting="general.show_object_detection_settings">
-      <DetectionControls />
+      <DetectionControls class="portrait:justify-end" />
     </ToggleableView>
     <ToggleableView setting="general.show_player">
       <MusicPlayer />
@@ -43,11 +56,12 @@ import {
   defineAsyncComponent,
   computed,
   onMounted,
+  onBeforeMount,
 } from "vue";
 import { RouterView } from "vue-router";
 import Messager from "@/features/messager/components/Messager.vue";
 import LazySettings from "@/features/settings/LazySettings.vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, useThemeStore } from "@/features/settings/stores";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer";
@@ -61,13 +75,28 @@ const isMobile = useDeviceWatcher();
 const settingsStore = useSettingsStore();
 const isSettingsLoaded = computed(() => settingsStore.loaded);
 
+const themeStore = useThemeStore();
+
 const ActiveConnectionsIndicator = defineAsyncComponent({
   loader: () =>
     import("@/features/syncer/components/ActiveConnectionsIndicator.vue"),
 });
 
+const DarkThemeToggler = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/theming/DarkThemeToggler.vue"),
+});
+
+const FPS = defineAsyncComponent({
+  loader: () => import("@/ui/FPS.vue"),
+});
+
 const FullscreenButton = defineAsyncComponent({
   loader: () => import("@/ui/FullscreenButton.vue"),
+});
+
+const SettingsButton = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/SettingsButton.vue"),
 });
 
 const PowerControlPanel = defineAsyncComponent({
@@ -106,6 +135,8 @@ const JoysticZone = defineAsyncComponent({
 
 useAppHeight();
 
+onBeforeMount(themeStore.init);
+
 onMounted(() => {
   syncStore.initializeWebSocket();
 });
@@ -113,59 +144,3 @@ onBeforeUnmount(() => {
   syncStore.cleanup();
 });
 </script>
-<style scoped lang="scss">
-.indicators {
-  position: absolute;
-  z-index: 11;
-  text-align: left;
-  user-select: none;
-
-  @media (max-width: 992px) {
-    right: 10px;
-    top: 20px;
-  }
-
-  @media (min-width: 992px) {
-    padding: 0 10px;
-    left: 0;
-    bottom: 0;
-  }
-
-  @media (max-width: 992px) and (min-height: 375px) {
-    top: 25px;
-  }
-
-  @media (max-width: 768px) {
-    max-width: 190px;
-  }
-
-  @media (max-width: 992px) {
-    max-width: 200px;
-  }
-}
-.mobile-indicators {
-  position: absolute;
-  z-index: 11;
-  text-align: left;
-  user-select: none;
-  right: 10px;
-  top: 20px;
-
-  @media (max-width: 992px) and (min-height: 375px) {
-    top: 25px;
-  }
-
-  @media (max-width: 768px) {
-    max-width: 190px;
-  }
-
-  @media (max-width: 992px) {
-    max-width: 200px;
-  }
-}
-.top-right-pan {
-  @media (max-width: 992px) {
-    font-size: 0.8rem;
-  }
-}
-</style>

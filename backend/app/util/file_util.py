@@ -227,6 +227,7 @@ def get_directory_structure(
                     {
                         "key": key_path,
                         "label": entry,
+                        "selectable": True,
                         "data": {"name": entry, "type": "File"},
                     }
                 )

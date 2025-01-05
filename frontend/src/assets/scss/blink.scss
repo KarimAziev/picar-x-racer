@@ -1,9 +1,0 @@
-.blink {
-  animation: blink-effect 1s step-start 0s infinite;
-}
-
-@keyframes blink-effect {
-  50% {
-    opacity: 0;
-  }
-}

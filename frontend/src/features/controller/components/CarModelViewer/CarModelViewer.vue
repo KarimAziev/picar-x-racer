@@ -1,5 +1,5 @@
 <template>
-  <div ref="rootElement" class="wrapper" :class="class" />
+  <div ref="rootElement" class="size-full" :class="class" />
 </template>
 
 <script setup lang="ts">
@@ -113,9 +113,3 @@ onBeforeUnmount(() => {
   carVisualization.value = null;
 });
 </script>
-<style scoped lang="scss">
-.wrapper {
-  width: 100%;
-  height: 100%;
-}
-</style>

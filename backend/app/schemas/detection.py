@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import List, Optional
 
@@ -76,8 +78,11 @@ class DetectionSettings(BaseModel):
         OverlayStyle.BOX,
         description=(
             "The detection overlay style."
+            "\n"
             "- `box`: Draws a bounding box for the detected object."
+            "\n"
             "- `aim`: Draws crosshair lines (centered) within for the detected object."
+            "\n"
             "- `mixed`: Draws crosshair lines within the first detection, and for others, a bounding box."
         ),
         examples=[OverlayStyle.AIM.value],
@@ -106,31 +111,7 @@ class FileData(BaseModel):
     )
 
 
-class ModelChild(BaseModel):
-    """
-    Model representing a child item in a folder structure.
-
-    Attributes:
-    --------------
-    - `key`: Unique key for the child item.
-    - `label`: Display label for the child item.
-    - `data`: Metadata about the child item.
-    """
-
-    key: str = Field(
-        ...,
-        description="Unique key for the child item.",
-        examples=["cat_320_saved_model/cat_320_float32.tflite"],
-    )
-    label: str = Field(
-        ...,
-        description="Display label for the child item.",
-        examples=["cat_320_float32.tflite"],
-    )
-    data: FileData
-
-
-class ModelResponse(BaseModel):
+class FileNode(BaseModel):
     """
     Model representing an available object detection model or its folder.
 
@@ -156,9 +137,9 @@ class ModelResponse(BaseModel):
     selectable: Optional[bool] = Field(
         None,
         description="Whether the folder/model is selectable (applies mainly to folders).",
-        examples=[False],
+        examples=[False, True],
     )
-    children: Optional[List[ModelChild]] = Field(
+    children: Optional[List[FileNode]] = Field(
         None,
         description="List of child items in the folder (applies to folder items).",
         examples=[
@@ -170,8 +151,26 @@ class ModelResponse(BaseModel):
                         "name": "cat_320_float32.tflite",
                         "type": "File",
                     },
+                    "selectable": True,
                 }
             ]
         ],
     )
-    data: FileData
+    data: FileData = Field(
+        ...,
+        description="Metadata about the model or folder.",
+        examples=[
+            {
+                "name": "cat_320_saved_model",
+                "type": "Folder",
+            },
+            {
+                "name": "yolov8n.pt",
+                "type": "Loadable model",
+            },
+            {
+                "name": "cat_320_float32.tflite",
+                "type": "File",
+            },
+        ],
+    )

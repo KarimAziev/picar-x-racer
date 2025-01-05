@@ -1,41 +1,41 @@
 <template>
   <SpeedometerGauge
-    :segments="10"
+    :size="size"
+    :segments="segments"
     :value="speed"
     :minValue="0"
-    :maxValue="100"
+    :maxValue="MAX_SPEED"
     :disabled-threshold="maxSpeed"
     :extraInfo="extraInfo"
-    class="speedometer"
+    class="portrait:display-hidden"
   />
 </template>
 <script setup lang="ts">
 import { computed } from "vue";
-import { useControllerStore } from "@/features/controller/store";
+import {
+  useControllerStore,
+  MAX_SPEED,
+  ACCELERATION,
+} from "@/features/controller/store";
 import SpeedometerGauge from "@/features/controller/components/SpeedometerGauge.vue";
 import { speedToReal } from "@/util/speed";
+import { useWindowSize } from "@/composables/useWindowSize";
+import { constrain } from "@/util/constrain";
 
 const store = useControllerStore();
+const { width } = useWindowSize();
+
+const size = computed(() => {
+  const baseSize = width.value / 7;
+  return constrain(255, 300, baseSize);
+});
+
 const speed = computed(() =>
   store.direction > 0 ? store.speed : -store.speed,
 );
 
+const segments = computed(() => MAX_SPEED / ACCELERATION);
+
 const extraInfo = computed(() => `${speedToReal(speed.value)} km/h`);
 const maxSpeed = computed(() => store.maxSpeed);
 </script>
-<style scoped lang="scss">
-.speedometer {
-  @media screen and (max-width: 1200px) and (orientation: portrait) {
-    display: none;
-  }
-  @media (max-width: 1200px) {
-    transform: scale(0.5);
-    translate: 25% 25%;
-  }
-
-  @media (max-width: 1440px) {
-    transform: scale(0.7);
-    translate: 6% 7%;
-  }
-}
-</style>

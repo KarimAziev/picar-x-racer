@@ -1,8 +1,5 @@
-import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
-import Components from "unplugin-vue-components/vite";
-import { PrimeVueResolver } from "@primevue/auto-import-resolver";
+import { baseConfig } from "./vite.config.base";
 
 const mainAppPort = process.env.VITE_MAIN_APP_PORT || 8000;
 const wsAppPort = process.env.VITE_WS_APP_PORT || 8001;
@@ -10,20 +7,7 @@ const serverPort = +(process.env.VITE_DEV_SERVER_PORT || "4000");
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    Components({
-      resolvers: [PrimeVueResolver()],
-    }),
-  ],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
-  },
-  build: {
-    assetsDir: "assets",
-  },
+  ...baseConfig,
   server: {
     port: serverPort, // Vite front-end dev server runs on this port
     cors: true,
@@ -33,19 +17,19 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      "/ws/video-stream": {
+      "/api/ws/video-stream": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,
         secure: false,
         ws: true,
       },
-      "/ws/sync": {
+      "/api/ws/sync": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,
         secure: false,
         ws: true,
       },
-      "/ws/object-detection": {
+      "/api/ws/object-detection": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         changeOrigin: true,
         secure: false,
@@ -62,7 +46,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      "/ws/audio-stream": {
+      "/api/ws/audio-stream": {
         target: `ws://127.0.0.1:${mainAppPort}/`,
         ws: true,
         changeOrigin: true,

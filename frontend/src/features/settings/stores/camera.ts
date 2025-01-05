@@ -1,8 +1,9 @@
 import axios from "axios";
 import { defineStore } from "pinia";
-import type { TreeNode } from "primevue/treenode";
+
 import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
+import { DeviceNode, CameraSettings } from "@/features/settings/interface";
 
 export const dimensions = [
   [640, 480],
@@ -20,44 +21,6 @@ export const dimensions = [
 
 const MAX_FPS = 70;
 
-export interface CameraSettings {
-  /**
-   * The ID or name of the camera device.
-   */
-  device?: string;
-
-  /**
-   * The width of the camera frame in pixels.
-   */
-  width?: number;
-
-  /**
-   * The height of the camera frame in pixels.
-   */
-  height?: number;
-
-  /**
-   * The number of frames per second the camera should capture.
-   */
-  fps?: number;
-
-  /**
-   * The format for the pixels (e.g., 'RGB', 'GRAY').
-   */
-  pixel_format?: string;
-}
-
-export interface DeviceSuboption extends TreeNode {
-  device: string;
-  size: string;
-  fps: string;
-  pixel_format: string;
-}
-
-export interface DeviceOption extends Pick<DeviceSuboption, "key" | "label"> {
-  children: DeviceSuboption[];
-}
-
 export interface PhotoCaptureResponse {
   file: string;
 }
@@ -65,7 +28,7 @@ export interface PhotoCaptureResponse {
 export interface State {
   data: CameraSettings;
   loading: boolean;
-  devices: DeviceOption[];
+  devices: DeviceNode[];
 }
 
 export const defaultState: State = {
@@ -122,7 +85,7 @@ export const useStore = defineStore("camera", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } = await axios.get<{ devices: DeviceOption[] }>(
+        const { data } = await axios.get<{ devices: DeviceNode[] }>(
           "/api/camera/devices",
         );
         this.devices = data.devices;

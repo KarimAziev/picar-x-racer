@@ -1,11 +1,13 @@
 <template>
   <FileUpload
+    class="my-4"
     mode="basic"
     multiple
     name="file"
     accept=".pt,.tflite"
     :auto="true"
     chooseLabel="Add model"
+    :chooseButtonProps="{ outlined: true, text: true }"
     :customUpload="true"
     @uploader="uploader"
   />
@@ -28,9 +30,3 @@ const { uploader } = useFileUploader({
   },
 });
 </script>
-
-<style scoped lang="scss">
-:deep(.p-fileupload-basic) {
-  margin: 2rem 0;
-}
-</style>

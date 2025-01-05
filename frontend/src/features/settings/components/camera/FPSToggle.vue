@@ -1,8 +1,10 @@
 <template>
   <ToggleSwitchField
-    label="Render FPS"
+    field="render_fps"
     layout="row-reverse"
-    :pt="{ input: { id: 'render_fps' } }"
+    tooltip="Whether to draw FPS on the top-right corner"
+    label="Render FPS"
+    fieldClassName="flex-row-reverse gap-2.5 items-center justify-end"
     v-model="streamStore.data.render_fps"
     @update:model-value="updateRenderFPS"
   />

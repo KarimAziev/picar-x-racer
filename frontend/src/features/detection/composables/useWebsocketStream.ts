@@ -1,25 +1,30 @@
 import { ref, Ref } from "vue";
 import { useWebSocket, WebSocketOptions } from "@/composables/useWebsocket";
 import { useDetectionStore } from "@/features/detection";
+import { useStore as useFPSStore } from "@/features/settings/stores/fps";
 
 export interface WebsocketStreamParams extends WebSocketOptions {
   imgRef: Ref<HTMLImageElement | undefined>;
 }
 
-const extractFrameWithTimestamp = (data: ArrayBuffer) => {
+const extractFrameWithMetadata = (data: ArrayBuffer) => {
   // Extract first 8 bytes for the timestamp (Double-precision float, 8 bytes)
-  const timestampView = new DataView(data, 0, 8);
-  const timestamp = timestampView.getFloat64(0, true);
+  const dataView = new DataView(data);
+  const timestamp = dataView.getFloat64(0, true);
 
-  // The rest of the data is the frame
-  const arrayBufferView = new Uint8Array(data, 8); // Skipping the first 8 bytes
+  // Extract the next 8 bytes for the FPS (Double-precision float)
+  const fps = dataView.getFloat64(8, true);
+
+  // The rest of the data is the frame (starting from the 16th byte)
+  const arrayBufferView = new Uint8Array(data, 16);
   const blob = new Blob([arrayBufferView], { type: "image/jpeg" });
 
-  return { timestamp, blob };
+  return { timestamp, fps, blob };
 };
 
 export const useWebsocketStream = (params: WebsocketStreamParams) => {
   const detectionStore = useDetectionStore();
+  const fpsStore = useFPSStore();
   const imgInitted = ref(false);
   const imgLoading = ref(true);
   const currentImageBlobUrl = ref<string>();
@@ -39,11 +44,13 @@ export const useWebsocketStream = (params: WebsocketStreamParams) => {
       currentImageBlobUrl.value = undefined;
     }
 
-    const { timestamp, blob } = extractFrameWithTimestamp(data);
+    const { timestamp, blob, fps } = extractFrameWithMetadata(data);
 
     const imageUrl = urlCreator.createObjectURL(blob);
 
     detectionStore.setCurrentFrameTimestamp(timestamp);
+    fpsStore.updateFPS(fps);
+
     if (params.imgRef.value) {
       params.imgRef.value.src = imageUrl;
       currentImageBlobUrl.value = imageUrl;
@@ -64,6 +71,7 @@ export const useWebsocketStream = (params: WebsocketStreamParams) => {
       currentImageBlobUrl.value = undefined;
     }
     imgLoading.value = true;
+    fpsStore.updateFPS(null);
   };
 
   const {

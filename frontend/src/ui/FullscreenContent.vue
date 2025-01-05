@@ -1,19 +1,11 @@
 <template>
-  <div class="fullscreen-content" :class="class">
+  <div
+    class="h-[calc(var(--app-height))] flex flex-col items-center justify-center relative"
+    :class="class"
+  >
     <slot></slot>
   </div>
 </template>
 <script setup lang="ts">
 defineProps<{ class?: string }>();
 </script>
-
-<style scoped lang="scss">
-.fullscreen-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  height: calc(var(--app-height));
-}
-</style>

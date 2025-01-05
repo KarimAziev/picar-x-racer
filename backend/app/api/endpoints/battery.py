@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/api/battery-status",
+    "/battery-status",
     response_model=BatteryStatusResponse,
     summary="Retrieve the current battery status in volts.",
 )

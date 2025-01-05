@@ -13,4 +13,3 @@ const SettingsPopup = defineAsyncComponent({
 const storeSettings = useSettingsStore();
 const loaded = computed(() => storeSettings.loaded);
 </script>
-<style scoped lang="scss"></style>

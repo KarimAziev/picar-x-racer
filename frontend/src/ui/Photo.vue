@@ -1,12 +1,12 @@
 <template>
-  <div class="box">
+  <div class="relative w-full h-full flex flex-col justify-center items-center">
     <ProgressSpinner
       :style="`width: ${width}px;`"
-      class="preloader"
+      class="auto my-auto text-center"
       v-if="imgLoading"
     />
     <img
-      class="image-preview"
+      class="auto transition-opacity cursor-pointer"
       @load="handleImageOnLoad"
       :style="`width: ${width}px;`"
       :class="imgClass"
@@ -38,24 +38,6 @@ const handleImageOnLoad = () => {
 </script>
 
 <style scoped lang="scss">
-.box {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
-.preloader {
-  height: auto;
-  text-align: center;
-  margin: auto;
-  flex: auto;
-}
-.image-preview {
-  height: auto;
-}
 .loading {
   opacity: 0;
   position: absolute;

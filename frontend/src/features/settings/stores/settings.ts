@@ -7,7 +7,7 @@ import { retrieveError } from "@/util/error";
 import { SettingsTab } from "@/features/settings/enums";
 import { useMessagerStore, ShowMessageTypeProps } from "@/features/messager";
 import { useStore as usePopupStore } from "@/features/settings/stores/popup";
-import { useStore as useCalibrationStore } from "@/features/settings/stores/calibration";
+
 import {
   useStore as useStreamStore,
   defaultState as defaultStreamState,
@@ -22,12 +22,6 @@ import {
 } from "@/features/detection";
 import { useStore as useMusicStore, MusicMode } from "@/features/music";
 import type { Settings, ToggleableKey } from "@/features/settings/interface";
-
-export interface TextItem {
-  text: string;
-  language: string;
-  default?: boolean;
-}
 
 export interface State {
   loading?: boolean;
@@ -62,6 +56,8 @@ export const defaultState: State = {
       show_video_record_button: true,
       show_shutdown_reboot_button: true,
       show_fullscreen_button: true,
+      show_avoid_obstacles_button: true,
+      show_dark_theme_toggle: false,
     },
     keybindings: {},
 
@@ -106,14 +102,19 @@ export const useStore = defineStore("settings", {
     },
 
     generalSettings({ data }) {
-      const musicStore = useMusicStore();
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
-      const settingsData = pick(["general", "robot", "battery", "music"], data);
+      const settingsData = pick(["general", "robot", "battery"], data);
       return {
         ...settingsData,
         camera: cameraStore.data,
         stream: streamStore.data,
+      } as Partial<Settings>;
+    },
+    musicSettings({ data }) {
+      const musicStore = useMusicStore();
+      const settingsData = pick(["music"], data);
+      return {
         music: {
           ...settingsData.music,
           mode: musicStore.player.mode,
@@ -121,12 +122,10 @@ export const useStore = defineStore("settings", {
       } as Partial<Settings>;
     },
   },
-
   actions: {
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
-      const calibrationStore = useCalibrationStore();
       const musicStore = useMusicStore();
       const streamStore = useStreamStore();
       if (this.retryTimer) {
@@ -136,7 +135,6 @@ export const useStore = defineStore("settings", {
         this.loading = true;
         const [response] = await Promise.all([
           axios.get<Settings>("/api/settings"),
-          calibrationStore.fetchData(),
           musicStore.fetchData(),
           streamStore.fetchEnhancers(),
         ]);
@@ -181,17 +179,22 @@ export const useStore = defineStore("settings", {
           return {
             detection: detectionStore.data,
           };
+        case SettingsTab.MUSIC:
+          return this.musicSettings;
         default:
           return null;
       }
     },
     isSaveButtonDisabled() {
       const popupStore = usePopupStore();
+      const musicStore = useMusicStore();
       const currentTab = popupStore.tab;
       const detectionStore = useDetectionStore();
       switch (currentTab) {
         case SettingsTab.MODELS:
           return isObjectEquals(detectionStore.data, this.data.detection);
+        case SettingsTab.MUSIC:
+          return musicStore.player.mode === this.data.music.mode;
         default:
           return false;
       }
@@ -268,6 +271,14 @@ export const useStore = defineStore("settings", {
 
       this.text = nextTrack.text;
       this.language = nextTrack.language;
+      const keybindings = this.data.keybindings.sayText;
+      if (!keybindings || !keybindings.length) {
+        return messager.info(
+          `Current text to speak: ${this.text}. (Assign key to 'sayText' command to speak)`,
+        );
+      }
+      const keyHint = keybindings.join(", ");
+      messager.info(`Press '${keyHint}' to speak '${this.text}'`);
     },
     nextText() {
       this.cycleText(1);

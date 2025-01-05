@@ -32,6 +32,11 @@
         ></Button>
       </ButtonGroup>
     </template>
+    <template #empty>
+      <div v-if="!loading" class="text-center">
+        {{ emptyMessage }}
+      </div>
+    </template>
 
     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
     <Column class="preview-col" header="Preview" field="url">
@@ -49,7 +54,7 @@
 
     <Column :exportable="false" header="Actions">
       <template #body="slotProps">
-        <ButtonGroup class="button-group">
+        <ButtonGroup class="whitespace-nowrap">
           <Button
             rounded
             v-tooltip="'Download photo'"
@@ -85,15 +90,15 @@
     modal
     @after-hide="removeKeyEventListeners"
   >
-    <Photo className="full-image" :src="selectedImage?.url" :width="380" />
-    <ButtonGroup class="prev-next-buttons">
+    <Photo className="w-full h-auto" :src="selectedImage?.url" :width="380" />
+    <ButtonGroup class="flex justify-center">
       <Button
         text
         aria-label="Previous image"
         icon="pi pi-chevron-left"
         @click="handlePrevImagePreview"
       ></Button>
-      <div class="dialog-filename">{{ selectedImage.name }}</div>
+      <div class="text-center flex-auto">{{ selectedImage.name }}</div>
       <Button
         text
         aria-label="Next image"
@@ -105,23 +110,24 @@
 </template>
 
 <script setup lang="ts">
-import { useStore, FileItem } from "@/features/settings/stores/images";
-import { computed, onMounted, ref } from "vue";
+import { FileItem } from "@/features/settings/stores/images";
+import { watch, computed, onMounted, ref } from "vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import ButtonGroup from "primevue/buttongroup";
 
-import { usePopupStore } from "@/features/settings/stores";
+import { usePopupStore, useImageStore } from "@/features/settings/stores";
 import { cycleValue } from "@/util/cycleValue";
 import { formatKeyEventItem } from "@/util/keyboard-util";
 import Photo from "@/ui/Photo.vue";
 
-const store = useStore();
+const store = useImageStore();
 
 const popupStore = usePopupStore();
-const loading = ref(false);
+const loading = computed(() => store.loading);
 const downloading = ref<Record<string, boolean>>({});
 const removing = ref<Record<string, boolean>>({});
+const emptyMessage = computed(() => store.emptyMessage);
 
 const selectedImage = ref({ url: "", name: "" });
 
@@ -129,6 +135,7 @@ const itemSize = 50;
 
 const files = computed(() => store.data);
 const markedItems = ref<FileItem[]>([]);
+
 const markedItemsLen = computed(() => markedItems.value.length);
 const batchButtonsDisabled = computed(
   () =>
@@ -167,13 +174,12 @@ const handleDownloadFile = (name: string) => {
 };
 
 const handleRemoveMarked = async () => {
-  for (let i = 0; i < markedItems.value.length; i++) {
-    const { name, url } = markedItems.value[i];
-    removing.value[url] = true;
-    await store.removeFile(name);
-  }
-  await store.fetchData();
-  markedItems.value = [];
+  const names = markedItems.value.map((file) => file.name);
+  markedItems.value.forEach((file) => {
+    removing.value[file.url] = true;
+  });
+  await store.batchRemoveFiles(names);
+
   removing.value = {};
 };
 
@@ -188,7 +194,6 @@ const handleDownloadMarked = async () => {
 
 const handleRemove = async (name: string) => {
   await store.removeFile(name);
-  await store.fetchData();
 };
 
 const keyHandlers: { [key: string]: Function } = {
@@ -218,31 +223,13 @@ const openImage = (item: FileItem) => {
   popupStore.isPreviewImageOpen = true;
 };
 
-onMounted(async () => {
-  loading.value = true;
-  await store.fetchData();
-  loading.value = false;
-});
+watch(
+  () => store.data,
+  (newData) => {
+    const hash = new Set(newData.map((item) => item.url));
+    markedItems.value = markedItems.value.filter((it) => hash.has(it.url));
+  },
+);
+
+onMounted(store.fetchData);
 </script>
-<style scoped lang="scss">
-.button-group {
-  white-space: nowrap;
-}
-:deep(.thumbnail) {
-  cursor: pointer;
-}
-
-.image-dialog .full-image {
-  width: 100%;
-  height: auto;
-}
-
-.prev-next-buttons {
-  display: flex;
-  justify-content: center;
-}
-.dialog-filename {
-  flex: auto;
-  text-align: center;
-}
-</style>

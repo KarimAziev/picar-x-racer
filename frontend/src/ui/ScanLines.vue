@@ -13,7 +13,6 @@ const attrs = useAttrs();
 <style scoped lang="scss">
 .scanlines {
   box-shadow: 0px 0px 4px 2px var(--robo-color-primary);
-
   position: relative;
   background-color: transparent;
 }

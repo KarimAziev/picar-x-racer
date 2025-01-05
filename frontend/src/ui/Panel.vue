@@ -1,7 +1,12 @@
 <template>
-  <Panel class="p-panel" v-bind="props" ref="panelRef">
+  <Panel v-bind="props" ref="panelRef">
     <template #header>
-      <div class="header" @click="handleToggle">{{ header }}</div>
+      <div
+        class="flex-auto text-left leading-none font-semibold cursor-pointer"
+        @click="handleToggle"
+      >
+        {{ header }}
+      </div>
     </template>
     <slot></slot>
   </Panel>
@@ -25,12 +30,5 @@ const handleToggle = () => {
 :deep(.p-panel-header) {
   display: flex;
   flex-direction: row-reverse;
-  .header {
-    flex: auto;
-    text-align: left;
-    line-height: 1;
-    font-weight: 600;
-    cursor: pointer;
-  }
 }
 </style>

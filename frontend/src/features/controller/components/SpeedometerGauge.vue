@@ -1,8 +1,13 @@
 <template>
-  <div class="speedometer" ref="speedometerRef" :class="class">
+  <div
+    class="speedometer"
+    ref="speedometerRef"
+    :class="class"
+    :style="styleObj"
+  >
     <div class="gauge">
       <div class="progress"></div>
-      <div class="gauge-center"></div>
+      <div class="gauge-center" :style="gaugeCenterStyle"></div>
       <div class="needle" ref="needleRef"></div>
     </div>
     <div class="labels">
@@ -11,7 +16,7 @@
       </span>
       <span class="extra-info" v-if="extraInfo">{{ extraInfo }}</span>
     </div>
-    <div class="outer-labels" ref="outerLabelsRef">
+    <div class="outer-labels">
       <span
         v-for="label in outerLabels"
         :key="label.value"
@@ -27,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, reactive } from "vue";
 
 export interface SpeedometerParams {
   value: number;
@@ -37,18 +42,38 @@ export interface SpeedometerParams {
   disabledThreshold?: number;
   class?: string;
   extraInfo?: string | number;
+  size?: number;
 }
 
 const props = defineProps<SpeedometerParams>();
 const speedometerRef = ref<HTMLElement | null>(null);
 const needleRef = ref<HTMLElement | null>(null);
 const centerLabelRef = ref<HTMLElement | null>(null);
-const outerLabelsRef = ref<HTMLElement | null>(null);
 
 const adjustedValue = computed(() => props.value);
 
+const defaultSize = 300;
+const translateY = computed(() => {
+  const actualHeight = props.size || defaultSize;
+  return actualHeight * (120 / 300);
+});
+
+const styleObj = computed(() => ({
+  width: `${props.size || defaultSize}px`,
+  height: `${props.size || defaultSize}px`,
+}));
+
+const gaugeCenterStyle = reactive({
+  width: `${translateY.value}px`,
+  height: `${translateY.value}px`,
+});
+
 const outerLabels = computed(() => {
-  const labels = [];
+  const labels: {
+    value: number;
+    style: string;
+    disabled: boolean | 0 | undefined;
+  }[] = [];
   for (let i = 0; i <= props.segments; i++) {
     const step = (props.maxValue - props.minValue) / props.segments;
     const value = step * i;
@@ -57,7 +82,7 @@ const outerLabels = computed(() => {
     const disabled = props.disabledThreshold && props.disabledThreshold < value;
     labels.push({
       value,
-      style: `transform: rotate(${rotation}deg) translateY(-120px) rotate(-${rotation}deg);`,
+      style: `transform: rotate(${rotation}deg) translateY(${-translateY.value}px) rotate(-${rotation}deg);`,
       disabled,
     });
   }
@@ -93,8 +118,6 @@ onMounted(() => {
 <style scoped>
 .speedometer {
   position: relative;
-  width: 300px;
-  height: 300px;
   color: var(--color-text);
   pointer-events: none;
 }
@@ -115,7 +138,7 @@ onMounted(() => {
   border-radius: 50%;
   border: 10px solid var(--robo-color-primary);
   opacity: 0.5;
-  background: #003366;
+
   position: absolute;
   top: 0;
   left: 0;
@@ -123,8 +146,6 @@ onMounted(() => {
 }
 
 .gauge-center {
-  width: 120px;
-  height: 120px;
   background: var(--color-text);
   opacity: 0.2;
   border-radius: 50%;
@@ -145,7 +166,7 @@ onMounted(() => {
   background: conic-gradient(
     transparent 0 135deg,
     transparent 135deg 270deg,
-    lime 0 90deg,
+    var(--color-text) 0 90deg,
     rgba(0, 0, 0, 0.4) 90deg 135deg
   );
   border-radius: 50%;

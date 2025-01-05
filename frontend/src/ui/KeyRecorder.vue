@@ -6,14 +6,14 @@
     :closeOnEscape="false"
     :modal="false"
   >
-    <div class="title-caption">
+    <div class="mb-1">
       Press desired key sequence and then<br />
       <b>Enter</b> to confirm or <b>Escape</b> to reset
     </div>
-    <div class="field">
+    <div class="mt-5 mb-5">
       <InputText v-model="keyInput" :readonly="!recording" />
     </div>
-    <div class="error" v-if="errorMsg">{{ errorMsg }}</div>
+    <div class="text-red-500" v-if="errorMsg">{{ errorMsg }}</div>
     <ButtonGroup class="button-group">
       <Button
         label="Reset"
@@ -146,21 +146,3 @@ onBeforeUnmount(() => {
   removeKeyDownListener();
 });
 </script>
-
-<style scoped>
-.dialog {
-  max-width: 500px;
-}
-
-.title-caption {
-  margin-bottom: 1em;
-}
-
-.error {
-  color: red;
-  margin-top: 0.5em;
-}
-.field {
-  margin: 20px 0;
-}
-</style>

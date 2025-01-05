@@ -1,86 +1,87 @@
 <template>
   <Panel collapsed header="System" toggleable>
-    <div class="flex gap-10">
+    <div class="flex gap-2.5">
       <Restart />
       <Shutdown />
     </div>
   </Panel>
   <Panel header="Appearance" toggleable>
-    <SwitchSettings>
-      <FPSToggle v-tooltip="'Whether to draw FPS on the top-right corner'" />
-    </SwitchSettings>
+    <SwitchSettings />
+    <PrimaryColor />
+    <SurfaceColor />
   </Panel>
-  <Panel header="Camera/Robot" toggleable>
+
+  <Panel header="Camera" toggleable>
     <div class="wrapper">
       <div class="column">
         <VideoSettings />
       </div>
-
       <div class="column">
-        <NumberField
-          label="The Maximum Speed"
-          v-model="store.data.robot.max_speed"
-          v-tooltip="'The maximum allowed speed of the robot'"
-          inputId="settings.data.max_speed"
-          :min="10"
-          :step="10"
-          :max="100"
-          showButtons
-          @update:model-value="handleUpdateMaxSpeed"
-        />
-        <NumberField
-          label="Distance Measure Delay (ms)"
-          v-model="store.data.robot.auto_measure_distance_delay_ms"
-          v-tooltip="
-            'The time interval between successive auto distance measurements in milliseconds. This is applicable only when `auto_measure_distance_mode` is enabled. '
-          "
-          inputId="auto_measure_distance_delay_ms"
-          :min="50"
-          :step="50"
-          showButtons
-        />
-        <ToggleSwitchField
-          label="Auto-measure distance"
-          v-tooltip="'Toggle auto-measuring with ultrasonic'"
-          layout="row-reverse"
-          :pt="{ input: { id: 'auto_measure_distance_mode' } }"
-          v-model="store.data.robot.auto_measure_distance_mode"
-        />
+        <Fieldset legend="Device settings">
+          <VideoDeviceSelect />
+        </Fieldset>
       </div>
     </div>
+  </Panel>
+  <Panel collapsed header="Robot" toggleable>
+    <RobotSettings />
   </Panel>
   <Panel collapsed header="Battery" toggleable>
     <BatterySettings />
   </Panel>
-  <Panel collapsed header="Music" toggleable>
-    <Music />
-  </Panel>
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "@/features/settings/stores";
-import Music from "@/features/settings/components/general/Music.vue";
-import SwitchSettings from "@/features/settings/components/general/SwitchSettings.vue";
-import VideoSettings from "@/features/settings/components/camera/VideoSettings.vue";
 import Panel from "@/ui/Panel.vue";
-import NumberField from "@/ui/NumberField.vue";
-import FPSToggle from "@/features/settings/components/camera/FPSToggle.vue";
-import { useControllerStore } from "@/features/controller/store";
+import { defineAsyncComponent } from "vue";
+import SwitchSettings from "@/features/settings/components/general/SwitchSettings.vue";
+import PrimaryColor from "@/features/settings/components/theming/PrimaryColor.vue";
+import SurfaceColor from "@/features/settings/components/theming/SurfaceColor.vue";
+import Skeleton from "@/features/settings/components/general/Skeleton.vue";
+import ErrorComponent from "@/ui/ErrorComponent.vue";
 
-import BatterySettings from "@/features/settings/components/general/BatterySettings.vue";
-import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
-import Shutdown from "@/features/settings/components/system/Shutdown.vue";
-import Restart from "@/features/settings/components/system/Restart.vue";
+const VideoSettings = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/camera/VideoSettings.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+  errorComponent: ErrorComponent,
+});
 
-const store = useSettingsStore();
-const controllerStore = useControllerStore();
+const VideoDeviceSelect = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/camera/VideoDeviceSelect.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+  errorComponent: ErrorComponent,
+});
 
-const handleUpdateMaxSpeed = (value: number) => {
-  if (controllerStore.model?.connected) {
-    controllerStore.setMaxSpeed(value);
-  }
-};
+const BatterySettings = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/general/BatterySettings.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+});
+
+const Shutdown = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/system/Shutdown.vue"),
+  loadingComponent: Skeleton,
+  errorComponent: ErrorComponent,
+  delay: 0,
+});
+
+const Restart = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/system/Restart.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+  errorComponent: ErrorComponent,
+});
+
+const RobotSettings = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/robot/RobotSettings.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+  errorComponent: ErrorComponent,
+});
 </script>
-<style scoped lang="scss">
-@use "@/assets/scss/two-column-layout.scss";
-</style>

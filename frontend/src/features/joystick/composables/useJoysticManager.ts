@@ -8,6 +8,7 @@ import {
 } from "@/features/controller/store";
 import { roundToNearestTen } from "@/util/number";
 import { constrain } from "@/util/constrain";
+import { debounce } from "@/util/debounce";
 
 export interface Callbacks {
   onStart?: (outputData: nipplejs.JoystickOutputData) => void;
@@ -84,12 +85,14 @@ export const useJoystickControl = (
 
   const handleCreateJoysticManager = (params?: JoystickManagerOptions) => {
     if (joystickZone.value) {
+      const styles = getComputedStyle(document.documentElement);
+      const color = styles.getPropertyValue("--color-text").trim();
       joystickManager.value = nipplejs.create({
         zone: joystickZone.value!,
         dynamicPage: true,
         mode: "static",
         position: { left: "20%", bottom: "50%" },
-        color: "#00ffbf",
+        color: color,
         ...params,
       });
 
@@ -107,10 +110,10 @@ export const useJoystickControl = (
     }
   };
 
-  const restartJoysticManager = () => {
+  const restartJoysticManager = debounce(() => {
     handleDestroyJoysticManager();
     handleCreateJoysticManager({ ...optionsParams.value });
-  };
+  }, 500);
 
   const recreateJoysticManager = (params?: JoystickManagerOptions) => {
     optionsParams.value = { ...optionsParams.value, ...params };
@@ -121,12 +124,14 @@ export const useJoystickControl = (
   onMounted(() => {
     controllerStore.initializeWebSocket();
     window.addEventListener("resize", restartJoysticManager);
+    window.addEventListener("update-primary-palette", restartJoysticManager);
     window.addEventListener("orientationchange", restartJoysticManager);
     handleCreateJoysticManager(optionsParams.value);
   });
 
   onBeforeUnmount(() => {
     window.removeEventListener("resize", restartJoysticManager);
+    window.removeEventListener("update-primary-palette", restartJoysticManager);
     window.removeEventListener("orientationchange", restartJoysticManager);
     handleDestroyJoysticManager();
     controllerStore.cleanup();

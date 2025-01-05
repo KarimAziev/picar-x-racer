@@ -1,5 +1,8 @@
 import axios from "axios";
-import { APIMediaType } from "@/features/settings/interface";
+import {
+  APIMediaType,
+  RemoveFileResponse,
+} from "@/features/settings/interface";
 
 export const downloadFile = async (mediaType: string, fileName: string) => {
   const response = await axios.get(
@@ -18,4 +21,12 @@ export const downloadFile = async (mediaType: string, fileName: string) => {
 };
 
 export const removeFile = (mediaType: APIMediaType, file: string) =>
-  axios.delete(`/api/files/remove/${mediaType}/${file}`);
+  axios.delete<RemoveFileResponse>(`/api/files/remove/${mediaType}/${file}`);
+
+export const batchRemoveFiles = (
+  mediaType: APIMediaType,
+  filenames: string[],
+) =>
+  axios.post<RemoveFileResponse[]>(`/api/files/remove-batch/${mediaType}`, {
+    filenames,
+  });

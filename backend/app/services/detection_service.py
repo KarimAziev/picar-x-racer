@@ -176,9 +176,12 @@ class DetectionService(metaclass=SingletonMeta):
                 )
                 msg = await asyncio.to_thread(self.out_queue.get)
                 self.logger.info("Received %s", msg)
-                if msg.get('error') is not None:
+                err_msg = msg.get('error')
+                if err_msg is not None:
                     raise DetectionModelLoadError(
-                        f"Model {self.detection_settings.model} failed to load"
+                        err_msg
+                        if isinstance(err_msg, str)
+                        else f"Model {self.detection_settings.model} failed to load."
                     )
 
                 await asyncio.to_thread(clear_and_put, self.control_queue, command)
@@ -187,11 +190,13 @@ class DetectionService(metaclass=SingletonMeta):
                 self.logger.info(msg)
         except DetectionModelLoadError as e:
             await self.connection_manager.error(str(e))
-            raise DetectionModelLoadError from e
+            raise
         except Exception as e:
-            self.logger.exception(f"Unhandled exception in detection process: {e}")
+            self.logger.error(
+                f"Unhandled exception in detection process", exc_info=True
+            )
             await self.connection_manager.error(f"Detection process error: {str(e)}")
-            raise e
+            raise
         finally:
             self.loading = False
 

@@ -1,11 +1,20 @@
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     import multiprocessing as mp
 
 
-def terminate_processes(processes: list["mp.Process"], allow_exit=False):
+def terminate_processes(processes: List["mp.Process"], allow_exit=False):
+    """
+    Gracefully terminates a list of multiprocessing processes.
+
+    Optionally, the function can exit the current program after termination is complete.
+
+    Args:
+    - processes: A list of multiprocessing processes to terminate.
+    - allow_exit: If True, exits the program after all processes are terminated, joined, and closed.
+    """
     COLOR_YELLOW = "\033[33m"
     BOLD = "\033[1m"
     RESET = "\033[0m"

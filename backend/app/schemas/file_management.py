@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -25,16 +25,28 @@ class UploadFileResponse(BaseModel):
 class RemoveFileResponse(BaseModel):
     """
     A model to represent a response after removing a file.
-
-    Attributes:
-    - `success` (bool): Indicator of whether the removal was successful.
-    - `filename` (str): The name of the removed file.
     """
 
     success: bool = Field(..., description="Indicator of whether the file was removed")
     filename: str = Field(
         ...,
         description="The name of the removed file",
+        examples=["photo_2024-12-04-17-35-36.jpg"],
+    )
+    error: Optional[str] = Field(
+        None,
+        description="An error message if the file wasn't removed successfully",
+        examples=["Not found"],
+    )
+
+
+class BatchRemoveFilesRequest(BaseModel):
+    """
+    A model to represent a request body for removing multiple files.
+    """
+
+    filenames: List[str] = Field(
+        None,
         examples=["photo_2024-12-04-17-35-36.jpg"],
     )
 
@@ -44,9 +56,9 @@ class PhotoItem(BaseModel):
     A model to represent a response containing a user photo.
 
     Attributes:
-    - `name` (str): the name of the filename without directory, but with extension.
-    - `path` (str): Full path of file.
-    - `url` (str): Preview URL.
+    - `name`: the name of the filename without directory, but with extension.
+    - `path`: Full path of file.
+    - `url`: Preview URL.
     """
 
     name: str = Field(
@@ -69,9 +81,6 @@ class PhotoItem(BaseModel):
 class PhotosResponse(BaseModel):
     """
     A model to represent a response containing a list of user photos.
-
-    Attributes:
-    - `files` (PhotoItem[str]): A list of files.
     """
 
     files: List[PhotoItem]

@@ -1,16 +1,20 @@
 <template>
-  <div class="fields">
-    <div v-for="(_value, field) in store.data" :key="field" class="field">
-      <label :for="`${field}`">{{ field }}</label>
-      <InputText
-        class="text-input"
+  <div class="flex flex-col items-center justify-center mx-auto">
+    <div
+      v-for="(_value, field) in store.data"
+      :key="field"
+      class="flex gap-2 my-2 items-center w-full"
+    >
+      <label :for="`${field}`" class="w-1/2">{{ field }}</label>
+      <InputNumber
+        class="w-1/2"
         size="small"
-        :id="field as string"
+        :inputId="field as string"
         v-model="store.data[field]"
         disabled
       />
     </div>
-    <div class="field">
+    <div class="flex justify-start gap-2 my-2 w-full">
       <Button @click="controllerStore.toggleCalibration">
         {{
           controllerStore.calibrationMode
@@ -28,33 +32,8 @@
 <script setup lang="ts">
 import { useCalibrationStore } from "@/features/settings/stores";
 import { useControllerStore } from "@/features/controller/store";
-import InputText from "primevue/inputtext";
+import InputNumber from "primevue/inputnumber";
 
 const store = useCalibrationStore();
 const controllerStore = useControllerStore();
 </script>
-
-<style scoped lang="scss">
-.fields {
-  margin: auto;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
-
-.field {
-  display: flex;
-  gap: 10px;
-  margin: 10px 0;
-  button {
-    white-space: nowrap;
-    max-width: 150px;
-  }
-  .text-input {
-    width: 50%;
-  }
-  label {
-    width: 50%;
-  }
-}
-</style>

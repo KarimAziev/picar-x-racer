@@ -4,9 +4,11 @@
 
 `Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games. It integrates both frontend and backend components to manage the car's movement, camera, object detection with AI, and other functionalities. The new interface includes a speedometer, live camera feed, and multimedia controls.
 
-![Alt text](./demo/picar-x-racer-demo.gif)
+![Demo](./demo/picar-x-racer-demo.gif)
 
-![Alt text](./demo/computer-vision.gif)
+![Computer vision](./demo/computer-vision.gif)
+
+![Cat](./demo/demo-picarx-cat.gif)
 
 ## Features
 
@@ -33,20 +35,17 @@
 >     - [Usage](#usage)
 >   - [Settings](#settings)
 >     - [General](#general)
->       - [Appearance](#appearance)
->       - [Music](#music)
 >     - [Models](#models)
 >     - [Keybindings](#keybindings)
 >     - [Calibration](#calibration)
->     - [Photos](#photos)
 >     - [Text-to-Speech (TTS)](#text-to-speech-tts)
+>     - [Music](#music)
+>     - [Photos](#photos)
 >   - [Object Detection](#object-detection)
->     - [Flexible Model Management](#flexible-model-management)
->       - [Configurable UI Features](#configurable-ui-features)
->       - [How to Use](#how-to-use)
->         - [Using Custom Models](#using-custom-models)
->         - [Using Google Coral Accelerator](#using-google-coral-accelerator)
->         - [Google Coral Troubleshooting](#google-coral-troubleshooting)
+>     - [How to Use](#how-to-use)
+>     - [Using Custom Models](#using-custom-models)
+>     - [Using Google Coral Accelerator](#using-google-coral-accelerator)
+>       - [Google Coral Troubleshooting](#google-coral-troubleshooting)
 >   - [Video Enhancers](#video-enhancers)
 >     - [Available Enhancement Modes](#available-enhancement-modes)
 >     - [How to Use](#how-to-use-1)
@@ -161,6 +160,8 @@ After navigating to the control interface, you can customize your experience via
 
 The **Settings** menu enables you to manage every aspect of your Picar-X Racer experience. It provides extensive customization for multimedia, object detection, keybindings, and much more.
 
+![Settings](./demo/demo-settings.gif)
+
 To access settings:
 
 1. Click on the settings icon in the top-left corner of the UI.
@@ -172,104 +173,64 @@ Here are the key sections of the **Settings** menu:
 
 ### General
 
-![Settings Menu](./demo/settings-appearance.png)
-
-#### Appearance
-
 - Toggle visibility of interface components: gauges, speedometer, 3D car view, object detection panel, etc.
 - Configure camera parameters: distance measure delay, video quality, and more.
 - Enable or disable advanced features, such as automatic photo downloading and distance measurement.
 
-#### Music
+### Models
 
-**Music** and **Sound Settings**:
+![Models settings](./demo/models-settings.gif)
+
+You can dynamically manage models either from the settings menu or from the quick panel:
+
+- Load new models on the fly.
+- Export models using `export_model.py` and specify the required parameters (e.g., resolution).
+- Switch between YOLO models (e.g., `YOLOv8`, `.pt`) or Google Coral `.tflite` models without restarting the server.
+
+### Keybindings
+
+Every function of the car and interface can be mapped to specific keys.
+
+- Default values are provided, but you can edit any setting directly from this tab.
+- Alternatively, use the "Shortcuts Settings Menu" on screen (`?`).
+
+### Calibration
+
+Calibration Mode allows you to fine-tune angles for:
+
+- Servo direction
+- Camera pan
+- Camera tilt
+- Motors direction
+
+### Text-to-Speech (TTS)
+
+![TTS](./demo/demo-tts.gif)
+
+Set up predefined language packs and save custom lines of text for real-time conversion to speech.
+
+### Music
 
 - Upload background tracks or sound effects.
 - Manage existing multimedia files via the interface.
 - Choose default background music to be played while operating the car.
 
-### Models
-
-**Advanced Model Management**:
-Users can dynamically manage models directly through the settings menu, leveraging YOLO-based and custom-trained models for object detection. Here's what's possible:
-
-![Settings Menu](./demo/settings-models.png)
-
-- Load new models on the fly.
-- Export models using `export_model.py` and specify required parameters (e.g., resolution).
-- Switch between YOLO models (e.g., `YOLOv8`, `.pt`) or Google Coral `.tflite` models without restarting the server.
-
-**Model Customization**:
-
-On the **Quick Panel**, parameters like image size, detection confidence, and custom threshold values can be set directly:
-
-- **Threshold**: Maximum allowable time difference (in seconds) between the frame's timestamp and the detection's timestamp, determining the overlay accuracy.
-- **Style**: Choose how object detection visuals appear on the live camera feed:
-  - **Box**: Shows bounding boxes around detected objects.
-  - **Aim**: Displays crosshairs for minimalistic visualization.
-  - **Mixed**: Combines both styles.
-
-### Keybindings
-
-Customize control keys to suit your preferences. Every function of the car and interface can be mapped to specific keys.
-
-- Default values are provided, but you can edit any setting directly from this tab.
-- Alternatively, use the "Shortcuts Settings Menu" on screen (`?`).
-
-![Keybindings Menu](./demo/settings-keybindings.png)
-
-### Calibration
-
-**Calibration Mode** allows you to fine-tune angles for:
-
-- Servo direction
-- Camera pan
-- Camera tilt
-
-Switching to Calibration Mode remaps movement controls to allow for precise adjustments.
-
 ### Photos
-
-![Settings Menu](./demo/settings-models.png)
 
 Manage and download photos taken with the Picar-X into your local environment.
 
-### Text-to-Speech (TTS)
-
-Set up predefined language packs and save custom lines of text for real-time conversion to speech. Ideal for interacting with the car dynamically.
-
 ## Object Detection
 
-Leverage AI-powered object detection to enhance your driving and monitoring experience. The Picar-X Racer integrates object detection capabilities using custom and pretrained machine learning models, allowing users to identify and track specific objects in real time.
+![Object detection](./demo/demo-vision-custom.gif)
 
-![Alt text](./demo/object-detection.png)
-
-The UI empowers users with advanced model management and detection configurations, enabling seamless customization of object detection tasks.
-
-### Flexible Model Management
-
-The object detection system now provides a highly customizable interface, allowing users to:
+The application integrates object detection capabilities using custom and pretrained machine learning models, allowing to identify and track specific objects in real time.
 
 - **Dynamically load and select YOLO-based models** directly through the interface. Models can be added and configured via the "Available Models" panel.
 - Set **confidence thresholds**, **detection styles**, and **labels** flexibly using the detection panel's UI settings.
 - Use **Google Coral Accelerator** for better performance on edge devices.
 - Export models with different image sizes and specify these sizes in the interface, removing the limitation on model export resolutions.
 
-By default, no model is preloaded. Users can select one via the dynamically generated UI menu.
-
-#### Configurable UI Features
-
-- **Quick Panel**: Directly adjust detection parameters on the screen, including:
-  - **Image size**: Specify the size (e.g., `320`, `640`, dependent on the model).
-  - **Confidence Threshold**: Set detection confidence (ranges from `0.0` to `1.0`).
-  - **Labels**: Enter specific object classes to detect or leave blank for all classes.
-  - **Style**: Choose how detection overlays are drawn on frames.
-    - **Box**: Bounding boxes with class labels and confidence.
-    - **Aim**: A minimalistic crosshair over detected objects.
-    - **Mixed**: A combination of box annotations and aim visuals.
-  - **Threshold**: Specify the maximum allowable time difference (in seconds) between the frame timestamp and detection timestamp for overlays.
-
-#### How to Use
+### How to Use
 
 Follow these steps to enable real-time object detection:
 
@@ -279,18 +240,21 @@ Follow these steps to enable real-time object detection:
    - **Image size**: Match the size your model expects (e.g., `320`, `640`).
    - **Threshold**: Control overlay synchronization (e.g., `1.2` seconds).
 4. Select the **Style** you want for detection overlays and start detection.
+   - **Box**: Bounding boxes with class labels and confidence.
+   - **Aim**: A minimalistic crosshair over detected objects.
+   - **Mixed**: A combination of box annotations and aim visuals.
 5. Toggle switch to activate detection.
 
 Output results, such as bounding boxes and labels, will immediately appear on the live camera feed.
 
-##### Using Custom Models
+### Using Custom Models
 
-Users can upload pre-trained YOLO `.pt` or TFLite models for Edge TPU via the UI. Simply click **Add Model**, browse for your file, and verify that the settings correspond to your model's requirements.
+You can upload pre-trained YOLO `.pt` or TFLite models for Edge TPU via the UI. Simply click **Add Model**, browse for your file, and verify that the settings correspond to your model's requirements.
 
 > [!NOTE]
 > Ensure the configuration (e.g., image size) matches your model during export or detection.
 
-##### Using Google Coral Accelerator
+### Using Google Coral Accelerator
 
 Inference performance directly on the Raspberry Pi can be suboptimal due to limited processing power. A great way to enhance this is by using the **Google Coral Edge TPU** in combination with the Raspberry Pi, which significantly boosts inference speed.
 
@@ -368,7 +332,7 @@ Then you can run the application. If you encounter errors, such as `Failed to lo
 > [!IMPORTANT]
 > If your Python version or architecture is different, download the appropriate wheel.
 
-##### Google Coral Troubleshooting
+#### Google Coral Troubleshooting
 
 If you face issues with recognizing the device, you can try adding the following udev rules and configurations:
 

@@ -35,6 +35,7 @@ PX_MUSIC_DIR = getenv(
 PX_CONFIG_DIR = getenv("PX_CONFIG_DIR", path.join(CONFIG_USER_DIR, APP_NAME))
 
 PX_SETTINGS_FILE = path.join(PX_CONFIG_DIR, "user_settings.json")
+ROBOT_CONFIG_FILE = path.join(PX_CONFIG_DIR, "config.json")
 
 CURRENT_DIR = path.dirname(path.realpath(__file__))
 PROJECT_DIR = path.dirname(path.dirname(path.dirname(CURRENT_DIR)))
@@ -45,6 +46,8 @@ DATA_DIR = path.join(PROJECT_DIR, "data")
 DEFAULT_USER_SETTINGS = resolve_absolute_path("user_settings.json", PROJECT_DIR)
 DEFAULT_MUSIC_DIR = resolve_absolute_path("music", PROJECT_DIR)
 DEFAULT_SOUNDS_DIR = resolve_absolute_path("sounds", PROJECT_DIR)
+
+DEFAULT_ROBOT_CONFIG_FILE = resolve_absolute_path("config.json", PROJECT_DIR)
 
 FRONTEND_FOLDER = resolve_absolute_path("frontend", PROJECT_DIR)
 STATIC_FOLDER = resolve_absolute_path("frontend/dist/assets", PROJECT_DIR)

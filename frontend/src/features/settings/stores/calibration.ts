@@ -4,7 +4,11 @@ import { useMessagerStore } from "@/features/messager";
 import type { Nullable } from "@/util/ts-helpers";
 
 export interface Data {
-  [key: string]: Nullable<string>;
+  steering_servo_offset: Nullable<number>;
+  cam_pan_servo_offset: Nullable<number>;
+  cam_tilt_servo_offset: Nullable<number>;
+  left_motor_direction: Nullable<number>;
+  right_motor_direction: Nullable<number>;
 }
 export interface State {
   data: Data;
@@ -14,10 +18,11 @@ export interface State {
 const defaultState: State = {
   loading: false,
   data: {
-    picarx_dir_servo: null,
-    picarx_cam_pan_servo: null,
-    picarx_cam_tilt_servo: null,
-    picarx_dir_motor: null,
+    steering_servo_offset: null,
+    cam_pan_servo_offset: null,
+    cam_tilt_servo_offset: null,
+    left_motor_direction: null,
+    right_motor_direction: null,
   },
 };
 
@@ -31,7 +36,7 @@ export const useStore = defineStore("calibration", {
         const response = await axios.get<Data>("/api/settings/calibration");
         Object.entries(response.data).forEach(([key, value]) => {
           messager.info(`${value}`, key);
-          this.data[key] = value;
+          this.data[key as keyof Data] = value;
         });
       } catch (error) {
         messager.handleError(error, `Error fetching calibration settings`);

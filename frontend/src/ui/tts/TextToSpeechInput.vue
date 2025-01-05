@@ -1,31 +1,31 @@
 <template>
-  <div class="wrapper flex flex-wrap align-items-center">
+  <div
+    class="xl:max-w-[300] lg:max-w-[270px] md:max-w-[200px] flex flex-wrap items-center gap-2"
+  >
     <SelectField
-      fieldClassName="language opacity-hover"
+      fieldClassName="w-[70px]"
       field="language"
       filter
-      inputClassName="languages-dropdown"
       v-model="language"
-      :options="ttsLanguages"
+      :loading="langsLoading"
+      :options="ttsOptions"
       optionLabel="label"
       optionValue="value"
-      v-tooltip="'The language of Text to Speech'"
+      tooltip="The current language of text to speech (%s)"
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
     />
-    <div class="flex align-items-center">
+    <div class="flex items-center">
       <TextInput
-        class="opacity-hover"
         autocomplete="off"
         placeholder="Speak"
         id="tts-text"
         @keyup.stop="handleKeyUp"
         @keyup.enter="handleKeyEnter"
         v-model="inputRef"
-        v-tooltip="'Type the Text To Speech and press Enter to speak'"
+        v-tooltip="textInputTooltip"
       />
       <Button
-        class="opacity-hover"
         @click="handleKeyEnter"
         :disabled="!inputRef || inputRef.length === 0"
         icon="pi pi-play-circle"
@@ -38,19 +38,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import TextInput from "primevue/inputtext";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, useTTSStore } from "@/features/settings/stores";
 
-import { ttsLanguages } from "@/features/settings/config";
 import SelectField from "@/ui/SelectField.vue";
 
 import { useInputHistory } from "@/composables/useInputHistory";
 
 defineProps<{ class?: string }>();
 
-const store = useSettingsStore();
-const language = ref(store.data.tts.default_tts_language);
+const settingsStore = useSettingsStore();
+const ttsStore = useTTSStore();
+
+const langsLoading = computed(() => !!ttsStore.loading);
+
+const ttsOptions = computed(() => {
+  if (
+    !settingsStore.data.tts.allowed_languages ||
+    !settingsStore.data.tts.allowed_languages.length
+  ) {
+    return ttsStore.data;
+  }
+  const hashLangs = new Map(
+    ttsStore.data.map(({ value, label }) => [value, label]),
+  );
+  return settingsStore.data.tts.allowed_languages.map((code) => ({
+    value: code,
+    label: hashLangs.get(code) || code,
+  }));
+});
+
+const language = ref(settingsStore.data.tts.default_tts_language);
 
 const { inputHistory, inputRef, handleKeyUp } = useInputHistory("");
 
@@ -58,16 +77,22 @@ const isEnabled = computed(
   () => inputRef.value && !!inputRef.value.trim().length,
 );
 
+const textInputTooltip = computed(() =>
+  isEnabled.value
+    ? `Press 'Enter' to speak: '${inputRef.value}'`
+    : "Type the text to speech and press 'Enter' to speak",
+);
+
 const tooltipButtonText = computed(() =>
   isEnabled.value ? "Click to speak the text" : "Type a text to speak",
 );
 
 const handleSelectBeforeShow = () => {
-  store.inhibitKeyHandling = true;
+  settingsStore.inhibitKeyHandling = true;
 };
 
 const handleSelectBeforeHide = () => {
-  store.inhibitKeyHandling = false;
+  settingsStore.inhibitKeyHandling = false;
 };
 
 const handleKeyEnter = async () => {
@@ -75,64 +100,16 @@ const handleKeyEnter = async () => {
   if (value && value.length > 0) {
     inputRef.value = "";
     inputHistory.value?.push(value);
-    await store.speakText(value, language.value);
+    await settingsStore.speakText(value, language.value);
   }
 };
 
 watch(
-  () => store.data.tts.default_tts_language,
+  () => settingsStore.data.tts.default_tts_language,
   (newValue) => {
     language.value = newValue;
   },
 );
+
+onMounted(ttsStore.fetchLanguagesOnce);
 </script>
-
-<style scoped lang="scss">
-.wrapper {
-  @media (max-width: 992px) {
-    max-width: 240px;
-  }
-  @media (max-width: 768px) {
-    max-width: 200px;
-  }
-}
-input {
-  width: 50px;
-  height: 30px;
-
-  @media (min-width: 576px) {
-    width: 120px;
-  }
-
-  @media (min-width: 1200px) {
-    height: 40px;
-    width: 140px;
-  }
-}
-.language {
-  width: 50px;
-  @media (min-width: 576px) {
-    width: 60px;
-  }
-  @media (min-width: 768px) {
-    width: 80px;
-  }
-  @media (min-width: 992px) {
-    :deep(.p-select-label) {
-      padding: 0.15rem 0.4rem;
-
-      @media (min-width: 576px) {
-        padding: 0.25rem 0.7rem;
-      }
-
-      @media (min-width: 768px) {
-        padding: 0.3rem 0.7rem;
-      }
-
-      @media (min-width: 1200px) {
-        padding: 0.4rem 0.7rem;
-      }
-    }
-  }
-}
-</style>

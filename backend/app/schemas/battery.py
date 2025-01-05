@@ -42,7 +42,7 @@ class BatterySettings(BaseModel):
         description="Time interval in seconds for automatic measurement.",
         examples=[60],
     )
-    cache_seconds: int = Field(
+    cache_seconds: float = Field(
         ..., ge=0, description="Cache duration in seconds.", examples=[2]
     )
 

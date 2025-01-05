@@ -1,0 +1,30 @@
+.p-inputnumber.p-inputnumber-stacked {
+  --p-inputnumber-transition-duration: var(--p-transition-duration);
+  --p-inputnumber-button-width: 1.5rem;
+  --p-inputnumber-button-border-radius: var(--p-form-field-border-radius);
+  --p-inputnumber-button-vertical-padding: var(--p-form-field-padding-y);
+  --p-inputnumber-button-background: transparent;
+  --p-inputnumber-button-hover-background: transparent;
+  --p-inputnumber-button-active-background: var(--p-surface-200);
+  --p-inputnumber-button-border-color: var(--p-form-field-border-color);
+  --p-inputnumber-button-hover-border-color: var(
+    --p-form-field-hover-border-color
+  );
+  --p-inputnumber-button-active-border-color: var(--p-form-field-border-color);
+  --p-inputnumber-button-color: var(--p-form-field-color);
+  --p-inputnumber-button-hover-color: var(--p-form-field-hover-color);
+  --p-inputnumber-button-active-color: var(--p-form-field-active-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .p-inputnumber.p-inputnumber-stacked {
+    --p-inputnumber-button-background: transparent;
+    --p-inputnumber-button-hover-background: var(--p-surface-800);
+    --p-inputnumber-button-active-background: var(--p-surface-700);
+    --p-inputnumber-button-border-color: var(--p-form-field-border-color);
+    --p-inputnumber-button-hover-border-color: var(--p-form-field-border-color);
+    --p-inputnumber-button-active-border-color: var(
+      --p-form-field-border-color
+    );
+  }
+}

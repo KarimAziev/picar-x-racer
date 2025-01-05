@@ -1,9 +1,9 @@
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from app.api.deps import get_tts_manager
 from app.exceptions.tts import TextToSpeechException
-from app.schemas.tts import TextToSpeechData
+from app.schemas.tts import LanguageOption, TextToSpeechData
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -16,8 +16,22 @@ logger = Logger(__name__)
 
 
 @router.post(
-    "/api/tts/speak",
-    summary="Text to Speech API Endpoint",
+    "/tts/speak",
+    summary="Speak the given text using Google Translate TTS API",
+    responses={
+        400: {
+            "description": "Bad Request. If the text-to-speech is already running.",
+            "content": {
+                "application/json": {"example": {"detail": "Already speaking"}}
+            },
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {"example": {"detail": "Failed to speak the text"}}
+            },
+        },
+    },
 )
 async def text_to_speech(
     request: Request,
@@ -27,20 +41,11 @@ async def text_to_speech(
     """
     Endpoint to convert text to speech.
 
-    Args:
-    -------------
-    - payload (TextToSpeechData): Contains the text and language details for text-to-speech conversion.
-    - tts_manager (TTSService): The audio service for managing audio playback.
-
     Returns:
     -------------
-    None: The endpoint does not return any data to the caller.
-    All connected clients are notified asynchronously via WebSocket.
+    **None**: The endpoint does not return any data to the caller.
 
-    Raises:
-    -------------
-    - HTTPException (400): If Google speech is not available.
-    - HTTPException (500): If an unexpected error occurs.
+    All connected clients are notified asynchronously via WebSocket.
     """
     logger.info("TTS payload=%s", payload)
     try:
@@ -52,8 +57,22 @@ async def text_to_speech(
             {"type": "info", "payload": "Speaking: " + text}
         )
     except TextToSpeechException as err:
-        logger.error(f"Text to speech exception")
-        raise HTTPException(status_code=400, detail=f"Text to speech error: {str(err)}")
-    except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error("Text to speech error: %s", err)
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception:
+        logger.error("Unexpected text to speech error.", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to speak the text")
+
+
+@router.get(
+    "/tts/languages",
+    summary="List available languages for text-to-speech",
+    response_model=List[LanguageOption],
+)
+def supported_langs(
+    tts_manager: "TTSService" = Depends(get_tts_manager),
+):
+    """
+    List supported languages.
+    """
+    return tts_manager.available_languages()

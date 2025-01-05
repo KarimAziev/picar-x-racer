@@ -111,6 +111,7 @@ export const useControllerStore = defineStore("controller", {
       }
       const messager = useMessagerStore();
       const distanceStore = useDistanceStore();
+      const settingsStore = useSettingsStore();
       const calibrationStore = useCalibrationStore();
       const batteryStore = useBatteryStore();
       const handleMessage = (data: WSMessageData) => {
@@ -139,7 +140,7 @@ export const useControllerStore = defineStore("controller", {
             break;
           }
 
-          case "getDistance":
+          case "distance":
             if (error) {
               messager.error(error, "distance error");
             } else {
@@ -197,6 +198,8 @@ export const useControllerStore = defineStore("controller", {
                       immediately: true,
                     });
                   }
+                } else if (k === "autoMeasureDistanceMode") {
+                  settingsStore.data.robot.auto_measure_distance_mode = value;
                 }
               });
             } else if (
@@ -473,6 +476,12 @@ export const useControllerStore = defineStore("controller", {
     decreaseServoDirCali() {
       this.sendMessage({ action: "decreaseServoDirCali" });
     },
+    reverseLeftMotor() {
+      this.sendMessage({ action: "reverseLeftMotor" });
+    },
+    reverseRightMotor() {
+      this.sendMessage({ action: "reverseRightMotor" });
+    },
     saveCalibration() {
       this.sendMessage({ action: "saveCalibration" });
     },
@@ -516,6 +525,11 @@ export const useControllerStore = defineStore("controller", {
     toggleAutoMeasureDistanceMode() {
       const settingsStore = useSettingsStore();
       settingsStore.toggleSettingsProp("robot.auto_measure_distance_mode");
+      this.sendMessage({
+        action: settingsStore.data.robot.auto_measure_distance_mode
+          ? "startAutoMeasureDistance"
+          : "stopAutoMeasureDistance",
+      });
     },
     toggleVirtualMode() {
       const settingsStore = useSettingsStore();

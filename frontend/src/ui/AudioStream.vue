@@ -30,7 +30,7 @@ const tooltipText = computed(
 );
 
 const { startAudio, stopAudio, connected, loading, cleanup } =
-  useWebsocketAudio("ws/audio-stream");
+  useWebsocketAudio("api/ws/audio-stream");
 
 const handleSocketsCleanup = () => {
   window.removeEventListener("beforeunload", handleSocketsCleanup);

@@ -5,4 +5,5 @@ export enum SettingsTab {
   TTS = "Text To Speach",
   PHOTOS = "Photos",
   MODELS = "Models",
+  MUSIC = "Music",
 }

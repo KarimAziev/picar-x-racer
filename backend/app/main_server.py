@@ -1,8 +1,9 @@
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -176,8 +177,21 @@ app.add_middleware(
 )
 
 
-app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
-app.mount("/frontend", StaticFiles(directory=FRONTEND_FOLDER), name="frontend")
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000  # in millis
+    formatted_process_time = f"{process_time:.2f} ms"
+    client_ip = request.client.host if request.client else "N/A"
+    method = request.method
+    url = request.url.path
+    status_code = response.status_code
+    logger.info(
+        f"{client_ip} - \"{method} {url}\" {status_code} - {formatted_process_time}"
+    )
+    return response
+
 
 from app.api.endpoints import (
     app_sync_router,
@@ -194,15 +208,23 @@ from app.api.endpoints import (
     video_feed_router,
 )
 
-app.include_router(audio_management_router, tags=["audio"])
-app.include_router(music_router, tags=["music"])
-app.include_router(tts_router, tags=["tts"])
-app.include_router(battery_router, tags=["battery"])
-app.include_router(camera_feed_router, tags=["camera"])
-app.include_router(file_management_router, tags=["files"])
-app.include_router(settings_router, tags=["settings"])
-app.include_router(video_feed_router, tags=["video-stream"])
-app.include_router(detection_router, tags=["detection"])
-app.include_router(app_sync_router, tags=["sync"])
-app.include_router(system_router, tags=["system"])
-app.include_router(main_router, tags=["serve"])
+app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
+app.mount("/frontend", StaticFiles(directory=FRONTEND_FOLDER), name="frontend")
+
+
+api_router = APIRouter()
+
+api_router.include_router(audio_management_router, tags=["audio"])
+api_router.include_router(music_router, tags=["music"])
+api_router.include_router(tts_router, tags=["tts"])
+api_router.include_router(battery_router, tags=["battery"])
+api_router.include_router(camera_feed_router, tags=["camera"])
+api_router.include_router(file_management_router, tags=["files"])
+api_router.include_router(settings_router, tags=["settings"])
+api_router.include_router(video_feed_router, tags=["video-stream"])
+api_router.include_router(detection_router, tags=["detection"])
+api_router.include_router(app_sync_router, tags=["sync"])
+api_router.include_router(system_router, tags=["system"])
+
+app.include_router(api_router, prefix="/api")
+app.include_router(main_router)

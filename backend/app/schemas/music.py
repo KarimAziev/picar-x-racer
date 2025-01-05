@@ -34,7 +34,9 @@ class MusicDetailItem(MusicDetail):
     """
 
     removable: bool = Field(
-        ..., description="Indicates whether the music track can be removed."
+        ...,
+        description="Indicates whether the music track can be removed.",
+        examples=[True, False],
     )
 
 
@@ -105,7 +107,7 @@ class MusicTrackPayload(BaseModel):
         ...,
         min_length=1,
         description="The name of the track.",
-        examples=["my-song.mp3"],
+        examples=["Extreme_Epic_Cinematic_Action_-_StudioKolomna.mp3"],
     )
 
 

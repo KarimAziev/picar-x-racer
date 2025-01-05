@@ -15,7 +15,6 @@ export const useWindowSize = () => {
 
   const width = ref(getWidth());
   const height = ref(getHeight());
-
   const handleResize = () => {
     width.value = getWidth();
     height.value = getHeight();

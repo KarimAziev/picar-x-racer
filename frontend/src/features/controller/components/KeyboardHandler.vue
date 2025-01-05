@@ -1,5 +1,6 @@
 <template>
   <input
+    class="absolute top-0 -left-full"
     ref="inputRef"
     id="keyboard-handler"
     @keyup.stop="handleKeyUp"
@@ -25,13 +26,22 @@ const settingsStore = useSettingsStore();
 const controllerStore = useControllerStore();
 const popupStore = usePopupStore();
 
-const isEventAllowed: KeyboardEventPred = (event) =>
-  event.target === inputRef.value ||
-  !(
-    (isButton(event.target) || isInput(event.target)) &&
-    (event.key.length === 1 ||
-      Object.hasOwn(inputHistoryDirectionByKey, event.key))
-  );
+const isEventAllowed: KeyboardEventPred = (event) => {
+  if (event.target === inputRef.value) {
+    return true;
+  }
+  if (isButton(event.target)) {
+    return event.key !== " ";
+  }
+
+  if (isInput(event.target) && event?.key) {
+    return !(
+      event.key.length === 1 ||
+      Object.hasOwn(inputHistoryDirectionByKey, event.key)
+    );
+  }
+  return true;
+};
 
 const {
   gameLoop,
@@ -66,11 +76,3 @@ onBeforeUnmount(() => {
   cleanup();
 });
 </script>
-
-<style scoped lang="scss">
-input {
-  position: absolute;
-  top: 0;
-  left: -100%;
-}
-</style>

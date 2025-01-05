@@ -1,5 +1,10 @@
 @use "./base.scss";
+@use "./treeselect.scss";
+@use "./input-number.scss";
 @use "./animation.scss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 #app {
   margin: 0 auto;

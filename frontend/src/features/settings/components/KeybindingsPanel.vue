@@ -1,97 +1,94 @@
 <template>
-  <Panel header="Keybindings">
-    <form
-      @submit.prevent="handleSubmit"
-      @reset.prevent="handleReset"
-      class="keybindings-form"
-    >
-      <div>
-        <div v-for="(fieldPair, index) in fields" :key="index" class="row">
-          <div class="field cmd-field">
-            <Select
-              filter
-              :v-tooltip="fieldPair[0].label"
-              v-model="fieldPair[0].value"
-              optionLabel="label"
-              size="small"
-              optionValue="value"
-              :options="fieldPair[0].options"
-              :disabled="fieldPair[0].props?.disabled"
-              class="select"
-            />
-            <div class="error-box"></div>
-          </div>
-          <div class="field key-field">
-            <InputText
-              v-model="fieldPair[1].value"
-              :invalid="!!invalidKeys[fieldPair[1].value]"
-              readonly
-              @beforeinput="(event) => startRecording(event, index)"
-              @focus="(event) => startRecording(event, index)"
-              name="keybinding"
-              class="input-text"
-            />
-            <div class="error-box">
-              {{ invalidKeys[fieldPair[1].value] }}
-            </div>
-          </div>
-          <div>
-            <Button
-              icon="pi pi-times"
-              class="p-button-rounded p-button-danger p-button-text"
-              @click="removeField(index)"
-            />
-          </div>
-        </div>
-      </div>
-
-      <span class="form-footer">
+  <form @submit.prevent="handleSubmit" class="m-auto justify-items-center">
+    <Teleport to="#settings-footer">
+      <span class="flex gap-2 justify-self-start">
         <Button
           size="small"
           label="Add Key"
           @click="addField"
-          class="p-button-sm"
+          class="w-fit"
+          severity="secondary"
         />
         <Button
           size="small"
           label="Save"
           type="submit"
-          :disabled="isSubmitDisabled"
-          class="p-button-sm"
-        />
-        <Button
-          label="Reset to defaults"
-          type="reset"
-          size="small"
-          class="p-button-sm p-button-secondary"
+          :disabled="isDisabled"
+          class="w-fit"
         />
       </span>
-    </form>
-    <KeyRecorder
-      v-if="keyRecorderOpen"
-      :onSubmit="handleKeySubmit"
-      :onCancel="handleKeyCancel"
-      :validate="validateKey"
-    />
-  </Panel>
+    </Teleport>
+    <div>
+      <div
+        v-for="(fieldPair, index) in fields"
+        :key="index"
+        class="flex gap-0.5"
+      >
+        <SelectField
+          :field="`command-${index}`"
+          fieldClassName="w-3/5 !my-0"
+          inputClassName="w-full max-w-full"
+          filter
+          :tooltip="fieldPair[0].label"
+          v-model="fieldPair[0].value"
+          optionLabel="label"
+          optionValue="value"
+          autoFilterFocus
+          :options="fieldPair[0].options"
+          :disabled="fieldPair[0].props?.disabled"
+          class="w-full max-w-full"
+        />
+
+        <div>
+          <InputText
+            v-model="fieldPair[1].value"
+            :invalid="!!invalidKeys[fieldPair[1].value]"
+            readonly
+            @beforeinput="(event) => startRecording(event, index)"
+            @focus="(event) => startRecording(event, index)"
+            name="keybinding"
+            class="w-full max-w-full"
+          />
+          <div class="text-red-500">
+            {{ invalidKeys[fieldPair[1].value] }}
+          </div>
+        </div>
+        <div>
+          <Button
+            icon="pi pi-times"
+            class="p-button-rounded p-button-danger p-button-text"
+            @click="removeField(index)"
+          />
+        </div>
+      </div>
+    </div>
+  </form>
+  <KeyRecorder
+    v-if="keyRecorderOpen"
+    :onSubmit="handleKeySubmit"
+    :onCancel="handleKeyCancel"
+    :validate="validateKey"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
 import InputText from "primevue/inputtext";
-import Select from "primevue/select";
 import Button from "primevue/button";
-import Panel from "@/ui/Panel.vue";
 import KeyRecorder from "@/ui/KeyRecorder.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { allCommandOptions } from "@/features/settings/defaultKeybindings";
 import { splitKeySequence } from "@/util/keyboard-util";
+import Field from "@/ui/Field.vue";
+import SelectField from "@/ui/SelectField.vue";
+import { diffObjectsDeep } from "@/util/obj";
+import { isEmpty } from "@/util/guards";
+import { ControllerActionName } from "@/features/controller/store";
 
 const popupStore = usePopupStore();
 
 const store = useSettingsStore();
 
-const originalKeys = computed(() => store.data.keybindings);
 const keyRecorderOpen = computed(() => popupStore.isKeyRecording);
 
 const commandsToOptions = (obj: Record<string, string[] | null>): Fields => {
@@ -273,6 +270,7 @@ const handleKeySubmit = (keytext: string) => {
 const handleKeyCancel = () => {
   popupStore.isKeyRecording = false;
 };
+const isSubmitDisabled = ref(false);
 
 const handleSubmit = async () => {
   const errs = validateAll();
@@ -284,10 +282,6 @@ const handleSubmit = async () => {
     store.data.keybindings = pairsToConfig(validFields);
     await store.saveSettings();
   }
-};
-
-const handleReset = () => {
-  store.data.keybindings = originalKeys.value;
 };
 
 const validateAll = () => {
@@ -309,64 +303,26 @@ const validateRowsFields = () => {
   return errors;
 };
 
-const isSubmitDisabled = ref(false);
+const isDisabled = computed(() => {
+  validateAll();
+  if (isSubmitDisabled.value) {
+    return isSubmitDisabled.value;
+  }
+  const validFields = fields.value.filter(
+    ([_, keybindingField]) => keybindingField.value.length > 0,
+  );
+  const validStoredFields = Object.entries(store.data.keybindings).reduce(
+    (acc, [cmd, val]) => {
+      if (val && val.length > 0) {
+        acc[cmd as ControllerActionName] = val;
+      }
+      return acc;
+    },
+    {} as Partial<Record<ControllerActionName, string[] | null>>,
+  );
+
+  const data = pairsToConfig(validFields);
+  const result = diffObjectsDeep(validStoredFields, data);
+  return !result || isEmpty(result);
+});
 </script>
-
-<style scoped lang="scss">
-.keybindings-form {
-  margin: auto;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  justify-items: center;
-}
-
-.row {
-  display: flex;
-  gap: 0.125rem;
-  .select,
-  .input-text,
-  .p-button-sm {
-    max-width: 100%;
-    min-width: 100%;
-    width: 100%;
-  }
-}
-
-.p-button-sm {
-  width: fit-content;
-  height: 30px;
-}
-
-.cmd-field {
-  width: 60%;
-}
-
-.key-field {
-  width: 30%;
-}
-
-.error-box {
-  color: var(--color-red);
-  width: 10%;
-}
-
-.form-footer {
-  display: flex;
-  justify-content: flex-start;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-:deep(.p-select-label) {
-  padding: 0.15rem 0.4rem;
-
-  @media (min-width: 640px) {
-    padding: 0.3rem 0.7rem;
-  }
-
-  @media (min-width: 1200px) {
-    padding: 0.4rem 0.7rem;
-  }
-}
-</style>

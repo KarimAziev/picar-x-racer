@@ -43,10 +43,6 @@ class TextToSpeechItem(BaseModel):
 class TTSSettings(BaseModel):
     """
     A model to represent Text-to-Speech (TTS) settings.
-
-    Attributes:
-    - `default_tts_language`: The default language for TTS output (e.g., 'en' for English).
-    - `texts`: A list of `TextToSpeechItem` representing available TTS items in multiple languages.
     """
 
     default_tts_language: Optional[str] = Field(
@@ -57,4 +53,26 @@ class TTSSettings(BaseModel):
     texts: Optional[List[TextToSpeechItem]] = Field(
         None,
         description="A list of `TextToSpeechItem` representing available TTS items in multiple languages.",
+    )
+    allowed_languages: Optional[List[str]] = Field(
+        None,
+        description="A list of enabled language codes.",
+        examples=["en", "en-us", "es"],
+    )
+
+
+class LanguageOption(BaseModel):
+    """
+    A model to represent a language option.
+    """
+
+    value: str = Field(
+        None,
+        description="The language code.",
+        examples=["en", "en-us", "es"],
+    )
+    label: str = Field(
+        None,
+        description="Human readable description of language.",
+        examples=["English", "English (US)", "Spanish"],
     )

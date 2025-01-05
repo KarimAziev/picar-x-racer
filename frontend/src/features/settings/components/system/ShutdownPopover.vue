@@ -9,8 +9,20 @@
     v-tooltip="'Shutdown/Reboot'"
   ></Button>
   <Popover ref="popoverRef">
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
       <Button
+        :loading="loading"
+        @click="handleReboot"
+        label="Restart"
+        class="text-inherit"
+        severity="danger"
+        variant="text"
+        v-tooltip="
+          'This will restart the entire operating system and may interrupt any ongoing operations.'
+        "
+      ></Button>
+      <Button
+        class="text-inherit"
         :loading="loading"
         @click="handleShutdown"
         label="Power Off"
@@ -18,16 +30,6 @@
         variant="text"
         v-tooltip="
           'This will shut down the entire system. Save all work, as a manual reboot will be required to power it back on.'
-        "
-      ></Button>
-      <Button
-        :loading="loading"
-        @click="handleReboot"
-        label="Restart"
-        severity="danger"
-        variant="text"
-        v-tooltip="
-          'This will restart the entire operating system and may interrupt any ongoing operations.'
         "
       ></Button>
     </div>
@@ -70,8 +72,3 @@ const handleReboot = async () => {
   hidePopover();
 };
 </script>
-<style scoped lang="scss">
-button {
-  color: inherit;
-}
-</style>

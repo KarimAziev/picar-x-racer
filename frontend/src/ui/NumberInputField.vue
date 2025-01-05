@@ -4,9 +4,11 @@
     :labelClassName="labelClassName"
     :label="label"
     :message="message"
+    :layout="layout"
   >
     <InputNumber
       showButtons
+      v-tooltip="tooltip"
       :inputId="field"
       :pt="{ pcInput: { id: field } }"
       :class="props.inputClassName"
@@ -15,6 +17,7 @@
       :disabled="readonly || disabled"
       v-bind="otherAttrs"
       @update:model-value="onUpdate"
+      @blur="onBlur"
     />
     <slot></slot>
   </Field>
@@ -27,11 +30,12 @@ import InputNumber, {
   InputNumberProps,
 } from "primevue/inputnumber";
 import Field from "@/ui/Field.vue";
+import type { FieldLayout } from "@/ui/Field.vue";
 
 export type Props = {
   modelValue?: any;
   invalid?: boolean;
-  message?: string;
+  message?: string | null;
   label?: string;
   field?: string;
   fieldClassName?: string;
@@ -39,6 +43,8 @@ export type Props = {
   inputClassName?: string;
   readonly?: boolean;
   disabled?: boolean;
+  layout?: FieldLayout;
+  tooltip?: string;
 };
 const props = defineProps<Props>();
 const otherAttrs: InputNumberProps = useAttrs();
@@ -52,9 +58,13 @@ watch(
   },
 );
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "blur"]);
 
 const onUpdate: InputNumberEmitsOptions["update:modelValue"] = (newValue) => {
   emit("update:modelValue", newValue);
+};
+
+const onBlur: InputNumberEmitsOptions["blur"] = (newValue) => {
+  emit("blur", newValue);
 };
 </script>

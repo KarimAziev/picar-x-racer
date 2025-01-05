@@ -147,7 +147,7 @@ export const useStore = defineStore("detection-settings", {
     initializeWebSocket() {
       const messager = useMessagerStore();
       const model = useWebSocket({
-        url: "ws/object-detection",
+        url: "api/ws/object-detection",
         onMessage: (data: DetectionResponse) => {
           if (data.detection_result) {
             this.detection_result = data.detection_result;

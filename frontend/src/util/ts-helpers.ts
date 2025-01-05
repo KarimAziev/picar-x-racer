@@ -94,3 +94,19 @@ export type FlattenBooleanObjectKeys<
       ? `${Key}`
       : never
   : never;
+
+export type ExtractStringPropsKey<Obj extends Record<string, any>> = {
+  [Key in keyof Obj]: Obj[Key] extends string ? Key : never;
+}[keyof Obj];
+
+/**
+ * Utility type to make all properties of a type required (non-optional).
+ *
+ * @example
+ * type Example = { a?: number; b: string };
+ * type Result = Defined<Example>;
+ * // Result: { a: number; b: string }
+ */
+export type Defined<T> = {
+  [P in keyof T]-?: T[P];
+};

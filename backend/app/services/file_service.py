@@ -15,13 +15,14 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from app.config.paths import (
     DATA_DIR,
     DEFAULT_MUSIC_DIR,
+    DEFAULT_ROBOT_CONFIG_FILE,
     DEFAULT_USER_SETTINGS,
     MUSIC_CACHE_FILE_PATH,
-    PX_CALIBRATION_FILE,
     PX_MUSIC_DIR,
     PX_PHOTO_DIR,
     PX_SETTINGS_FILE,
     PX_VIDEO_DIR,
+    ROBOT_CONFIG_FILE,
 )
 from app.config.yolo_common_models import yolo_descriptions
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
@@ -35,7 +36,6 @@ from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
-from robot_hat.filedb import FileDB
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
@@ -59,7 +59,7 @@ class FileService(metaclass=SingletonMeta):
         music_cache_path=MUSIC_CACHE_FILE_PATH,
         default_user_settings_file=DEFAULT_USER_SETTINGS,
         default_user_music_dir=DEFAULT_MUSIC_DIR,
-        config_file=PX_CALIBRATION_FILE,
+        config_file=ROBOT_CONFIG_FILE,
         data_dir=DATA_DIR,
         *args,
         **kwargs,
@@ -489,11 +489,10 @@ class FileService(metaclass=SingletonMeta):
 
             return True
         elif path.exists(path.join(self.default_user_music_dir, filename)):
-            raise DefaultFileRemoveAttempt(
-                f"{filename} is default music and cannot be removed!"
-            )
+            raise DefaultFileRemoveAttempt("Cannot remove the default file.")
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", filename)
+            raise FileNotFoundError("File not found")
 
     def remove_data(self, filename: str) -> bool:
         """
@@ -527,7 +526,8 @@ class FileService(metaclass=SingletonMeta):
         if path.exists(user_file):
             return self.user_photos_dir
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", user_file)
+            raise FileNotFoundError("File not found")
 
     def get_video_directory(self, filename: str) -> str:
         """
@@ -547,7 +547,8 @@ class FileService(metaclass=SingletonMeta):
         if path.exists(user_file):
             return self.user_videos_dir
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", user_file)
+            raise FileNotFoundError("File not found")
 
     def get_music_directory(self, filename: str) -> str:
         """
@@ -569,7 +570,8 @@ class FileService(metaclass=SingletonMeta):
         elif path.exists(path.join(self.default_user_music_dir, filename)):
             return self.default_user_music_dir
         else:
-            raise FileNotFoundError
+            self.logger.error("The file '%s' was not found", user_file)
+            raise FileNotFoundError("File not found")
 
     def save_uploaded_file(self, file: UploadFile, directory: str) -> str:
         """
@@ -595,7 +597,34 @@ class FileService(metaclass=SingletonMeta):
             buffer.write(file.file.read())
         return file_path
 
-    def get_calibration_config(self) -> Dict:
+    def get_calibration_config(self) -> Dict[str, Any]:
+        """
+        Loads calibration settings from a configuration file.
+
+        Returns:
+            dict: Calibration settings in JSON format.
+        """
+
+        config = self.get_robot_config()
+        return {
+            "steering_servo_offset": config.get("steering_servo", {}).get(
+                "calibration_offset"
+            ),
+            "cam_tilt_servo_offset": config.get("cam_tilt_servo", {}).get(
+                "calibration_offset"
+            ),
+            "cam_pan_servo_offset": config.get("cam_pan_servo", {}).get(
+                "calibration_offset"
+            ),
+            "left_motor_direction": config.get("left_motor", {}).get(
+                "calibration_direction"
+            ),
+            "right_motor_direction": config.get("right_motor", {}).get(
+                "calibration_direction"
+            ),
+        }
+
+    def get_robot_config(self) -> Dict:
         """
         Loads calibration settings from a configuration file.
 
@@ -604,9 +633,8 @@ class FileService(metaclass=SingletonMeta):
         """
 
         if path.exists(self.config_file):
-            calibration_settings = FileDB(self.config_file).get_all_as_dict()
-            return calibration_settings
-        return {}
+            return load_json_file(self.config_file)
+        return load_json_file(DEFAULT_ROBOT_CONFIG_FILE)
 
     @staticmethod
     def get_available_models() -> List[Dict[str, Any]]:
@@ -633,6 +661,7 @@ class FileService(metaclass=SingletonMeta):
                 item = {
                     "label": key,
                     "key": key,
+                    "selectable": True,
                     "data": {"name": key, "type": "Loadable model"},
                 }
                 result.append(item)

@@ -2,6 +2,7 @@ import asyncio
 from typing import TYPE_CHECKING, List
 
 from app.api.deps import get_audio_manager, get_file_manager, get_music_manager
+from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.exceptions.music import MusicPlayerError
 from app.schemas.music import (
     MusicModePayload,
@@ -24,169 +25,223 @@ logger = Logger(__name__)
 
 
 @router.post(
-    "/api/music/toggle-play",
+    "/music/toggle-play",
     summary="Toggle playing of the current track.",
+    response_model=MusicPlayerState,
+    response_description="Details such as the currently playing track, "
+    "playback position, playback mode, and whether or not music is playing.",
+    responses={
+        400: {
+            "description": "Bad Request. There are no music track to play or stop.",
+            "content": {"application/json": {"example": {"detail": "No music track."}}},
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to toggle music playing."}
+                }
+            },
+        },
+    },
 )
 async def toggle_play_music(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
-    Endpoint to toggle play or pause of the current track.
+    Toggle play or pause of the current track.
 
-    Args:
-    -------------
-    - music_player (MusicService): The `MusicService` instance, injected via dependency.
-
-    Behavior:
-    -------------
-    This endpoint toggles the playback state (play/pause) of the current track
-    and notifies connected clients by broadcasting the updated state over WebSocket.
-
-    Returns:
-    -------------
-    None: The endpoint does not return any data to the caller.
-    All connected clients are notified asynchronously via WebSocket.
-
-    Raises:
-    -------------
-    - HTTPException (400): If there is a `MusicPlayerError`.
-    - HTTPException (500): If an unexpected error occurs.
+    Also notifies connected clients by broadcasting the updated state over WebSocket.
     """
     try:
         await asyncio.to_thread(music_player.toggle_playing)
         await music_player.broadcast_state()
+        return music_player.current_state
     except MusicPlayerError as err:
-        logger.error(f"MusicPlayerError: {err}")
-        raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
+        logger.error(f"Failed to toggle music playing: {err}")
+        raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error(
+            "Unexpected error occurred while toggling music playing.", exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to toggle music playing.")
 
 
 @router.post(
-    "/api/music/track",
-    summary="Play a track.",
+    "/music/track",
+    summary="Play a music track.",
+    response_model=MusicPlayerState,
+    response_description="Details such as the currently playing track, "
+    "playback position, playback mode, and whether or not music is playing.",
+    responses={
+        400: {
+            "description": "Bad Request. No music track to play.",
+            "content": {"application/json": {"example": {"detail": "No music track."}}},
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to play the track 'my_track.wav'."}
+                }
+            },
+        },
+        404: {
+            "description": "The requested music track is not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "The track 'my_song.mp3' is not found."}
+                }
+            },
+        },
+    },
 )
 async def play_track(
     payload: MusicTrackPayload,
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
-    Endpoint to play a specified music track.
+    Play a specified music track.
 
-    Args:
-    -------------
-    - payload (`MusicTrackPayload`): Contains the name of the track to play.
-    - music_player (`MusicService`): The `MusicService` instance, injected via dependency.
-
-    Behavior:
-    -------------
     Broadcasts the updated state to connected clients.
-
-    Returns:
-    -------------
-    None: If successful, no additional payload is returned.
-    All connected clients are notified asynchronously via WebSocket.
-
-    Raises:
-    -------------
-        - HTTPException (400): If there is a `MusicPlayerError`.
-        - HTTPException (500): If an unexpected error occurs.
     """
+
     try:
         await asyncio.to_thread(music_player.play_track, payload.track)
         await music_player.broadcast_state()
+        return music_player.current_state
     except MusicPlayerError as err:
-        logger.error(f"MusicPlayerError: {err}")
-        raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
+        logger.error(f"Failed to play the track %s: %s", payload.track, err)
+        raise HTTPException(status_code=400, detail=str(err))
+    except FileNotFoundError:
+        logger.error("The music file for '%s' is not found", payload.track)
+        raise HTTPException(
+            status_code=404, detail=f"The track '{payload.track}' is not found."
+        )
     except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error(
+            "Unexpected error while playing the track '%s'.",
+            payload.track,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Failed to play the track '{payload.track}'."
+        )
 
 
 @router.post(
-    "/api/music/stop",
+    "/music/stop",
     summary="Stop playing of the current track.",
+    response_model=MusicPlayerState,
+    response_description="Details such as the currently playing track, "
+    "playback position, playback mode, and whether or not music is playing.",
+    responses={
+        400: {
+            "description": "Bad Request. There are no music track to play or stop.",
+            "content": {"application/json": {"example": {"detail": "No music track."}}},
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {"example": {"detail": "Failed to stop playing."}}
+            },
+        },
+    },
 )
 async def stop_playing(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
-    Endpoint to stop playback of the current track.
-
-    Args:
-    -------------
-    - music_player (MusicService): The `MusicService` instance, injected via dependency.
+    Stop playback of the current track.
 
     Behavior:
     -------------
     Broadcasts the updated state to connected clients.
-
-    Returns:
-    -------------
-    None: If successful, no additional payload is returned.
-    All connected clients are notified asynchronously via WebSocket.
-
-    Raises:
-    -------------
-    - HTTPException (400): If there is a `MusicPlayerError`.
-    - HTTPException (500): If an unexpected error occurs.
     """
     try:
         await asyncio.to_thread(music_player.stop_playing)
         await music_player.broadcast_state()
+        return music_player.current_state
     except MusicPlayerError as err:
-        logger.error(f"MusicPlayerError: {err}")
-        raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
+        logger.error(f"Failed to stop the playing: %s", err)
+        raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error("Unexpected error while stopping the track.", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to stop playing.")
 
 
-@router.post("/api/music/position", response_model=MusicPlayerState)
+@router.post(
+    "/music/position",
+    response_model=MusicPlayerState,
+    response_description="Details such as the currently playing track, "
+    "playback position, playback mode, and whether or not music is playing.",
+    responses={
+        400: {
+            "description": "Bad Request. There are no music track to play or stop.",
+            "content": {"application/json": {"example": {"detail": "No music track."}}},
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to update the position."}
+                }
+            },
+        },
+    },
+)
 async def update_position(
     payload: MusicPositionPayload,
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
-    Endpoint to update the playback position of the current track.
-
-    Args:
-    -------------
-    - payload (MusicPositionPayload): Contains the new playback position in seconds.
-    - music_player (MusicService): The `MusicService` instance, injected via dependency.
+    Update the playback position of the current track.
 
     Behavior:
     -------------
-    Updates the position of the currently playing track and seeks to the specified position (if applicable).
+    Updates the position of the currently playing track.
+
+    Also seeks to the specified position (if applicable).
+
     Broadcasts the state to connected clients.
-
-
-    Returns:
-    --------------
-    MusicPlayerState: Details such as the currently playing track, playback
-    position, playback mode, and whether or not music is playing.
-    Also, all connected clients are notified asynchronously via WebSocket.
-
-    Raises:
-    - HTTPException (400): If there is a `MusicPlayerError`.
-    - HTTPException (500): If an unexpected error occurs.
     """
     next_pos = float(payload.position)
-    logger.info(f"seeking track %s", next_pos)
+    logger.info(f"Updating music position to %s", next_pos)
     try:
         await asyncio.to_thread(music_player.update_position, next_pos)
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicPlayerError as err:
-        logger.error(f"MusicPlayerError: {err}")
-        raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
-    except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error("Failed to update the playback position: %s", err)
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception:
+        logger.error(
+            "Unexpected error occured while seeking the playback position",
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to update the position.")
 
 
-@router.post("/api/music/mode")
+@router.post(
+    "/music/mode",
+    response_model=MusicPlayerState,
+    response_description="Details such as the currently playing track, "
+    "playback position, playback mode, and whether or not music is playing.",
+    responses={
+        400: {
+            "description": "Bad Request. No music track is found.",
+            "content": {"application/json": {"example": {"detail": "No music track."}}},
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to update the mode."}
+                }
+            },
+        },
+    },
+)
 async def update_mode(
     payload: MusicModePayload,
     music_player: "MusicService" = Depends(get_music_manager),
@@ -194,118 +249,128 @@ async def update_mode(
     """
     Endpoint to update the playback mode of the music player.
 
-    Args:
-    -------------
-
-     - payload (MusicModePayload): Contains the new playback mode.
-     - music_player (MusicService): The `MusicService` instance, injected via dependency.
-
-    Behavior:
-    -------------
-    Updates the current playback mode (e.g., LOOP, SINGLE) and broadcasts the updated state to connected clients.
-
-    Returns:
-    --------------
-    None: If successful, no additional payload is returned.
-    All connected clients are notified asynchronously via WebSocket.
-
-    Raises:
-    - HTTPException (400): If there is a `MusicPlayerError`.
-    - HTTPException (500): If an unexpected error occurs.
+    Updates the current playback mode and broadcasts the updated state to connected clients.
     """
     try:
         await asyncio.to_thread(music_player.update_mode, payload.mode)
         await music_player.broadcast_state()
+        return music_player.current_state
     except MusicPlayerError as err:
-        logger.error(f"MusicPlayerError: {err}")
-        raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
-    except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error("Failed to update the playback mode: %s", err)
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception:
+        logger.error("Unexpected error while updating the mode.", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update the mode.")
 
 
-@router.post("/api/music/next-track")
+@router.post(
+    "/music/next-track",
+    response_model=MusicPlayerState,
+    response_description="Details such as the currently playing track, "
+    "playback position, playback mode, and whether or not music is playing.",
+    responses={
+        400: {
+            "description": "Bad Request. No music track is found.",
+            "content": {"application/json": {"example": {"detail": "No music track."}}},
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to switch the track."}
+                }
+            },
+        },
+    },
+)
 async def next_track(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
-    Endpoint to switch to the next track in the playlist.
-
-    Args:
-    --------------
-    - music_player (MusicService): The `MusicService` instance, injected via dependency.
+    Switch to the next track in the playlist.
 
     Behavior:
     -------------
-    Advances playback to the next track in the playlist. In loop modes, the playlist wraps around when the last track is reached.
+    Advances playback to the next track in the playlist.
+
+    In loop modes, the playlist wraps around when the last track is reached.
+
     Broadcasts the updated state to connected clients.
-
-    Returns:
-    --------------
-    None: If successful, no additional payload is returned.
-    All connected clients are notified asynchronously via WebSocket.
-
-    Raises:
-    - HTTPException (400): If there is a `MusicPlayerError`.
-    - HTTPException (500): If an unexpected error occurs.
     """
     try:
         await asyncio.to_thread(music_player.next_track)
         await music_player.broadcast_state()
+        return music_player.current_state
     except MusicPlayerError as err:
-        logger.error(f"MusicPlayerError: {err}")
-        raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
-    except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error("Failed to switch the track: %s", err)
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception:
+        logger.error("Unexpected error while switching the track.", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to switch the track.")
 
 
-@router.post("/api/music/prev-track")
+@router.post(
+    "/music/prev-track",
+    response_model=MusicPlayerState,
+    response_description="Details such as the currently playing track, "
+    "playback position, playback mode, and whether or not music is playing.",
+    responses={
+        400: {
+            "description": "Bad Request. No music track is found.",
+            "content": {"application/json": {"example": {"detail": "No music track."}}},
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to switch the track."}
+                }
+            },
+        },
+    },
+)
 async def prev_track(
     music_player: "MusicService" = Depends(get_music_manager),
 ):
     """
     Endpoint to switch to the previous track in the playlist.
 
-    Args:
-    --------------
-    - music_player (MusicService): The `MusicService` instance, injected via dependency.
-
     Behavior:
     -------------
     Moves playback to the previous track in the playlist.
+
     In loop modes, the playlist wraps around when the first track is reached.
+
     Broadcasts the updated state to connected clients.
-
-    Returns:
-    --------------
-    None: If successful, no additional payload is returned.
-    All connected clients are notified asynchronously via WebSocket.
-
-    Raises:
-    --------------
-    - HTTPException (400): If there is a `MusicPlayerError`.
-    - HTTPException (500): If an unexpected error occurs.
     """
     try:
         await asyncio.to_thread(music_player.prev_track)
         await music_player.broadcast_state()
+        return music_player.current_state
     except MusicPlayerError as err:
-        logger.error(f"MusicPlayerError: {err}")
-        raise HTTPException(status_code=400, detail=f"Music player issue: {str(err)}")
-    except Exception as err:
-        logger.error(f"UnexpectedError: {err}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(err)}")
+        logger.error("Failed to switch the track: %s", err)
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception:
+        logger.error("Unexpected error while switching the track.", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to switch the track.")
 
 
 @router.post(
-    "/api/music/order",
+    "/music/order",
     responses={
         200: {
-            "description": "Success message",
+            "description": "A message that the new order is saved successfully.",
             "content": {
                 "application/json": {
-                    "message": "Custom music order saved successfully!"
+                    "example": {"message": "Music order saved successfully!"}
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to update music order."}
                 }
             },
         },
@@ -318,27 +383,17 @@ async def save_music_order(
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Endpoint to save the custom order of music tracks in the playlist.
-
-    Args:
-    -------------
-    - request (Request): The HTTP request object (for accessing application state).
-    - order (List[str]): The new custom order list for tracks.
-    - music_player (MusicService): The `MusicService` instance, injected via dependency.
-    - file_manager (FileService): The `FileService` instance, injected via dependency.
+    Save the custom order of music tracks in the playlist.
 
     Behavior:
     -------------
-    Updates the order of tracks in the playlist and saves this new order using the FileService.
+    Updates the order of tracks in the playlist and saves this new order.
+
     Notifies connected clients about the new playlist order.
 
     Returns:
     -------------
-    dict: A message confirming the successful update of the music order.
-
-    Raises:
-    -------------
-    - HTTPException (400): If any error occurs while updating the track order.
+    A message confirming the successful update of the music order.
     """
     logger.info("Music order update %s", order)
     connection_manager: "ConnectionService" = request.app.state.app_manager
@@ -351,12 +406,28 @@ async def save_music_order(
         await connection_manager.broadcast_json(
             {"type": "settings", "payload": {"music": settings.get("music")}}
         )
-        return {"message": "Custom music order saved successfully!"}
-    except Exception as err:
-        raise HTTPException(status_code=400, detail=str(err))
+        return {"message": "Music order saved successfully!"}
+    except Exception:
+        logger.error("Unexpected error while saving the music order", exc_info=True)
+        raise HTTPException(status_code=400, detail="Failed to update music order.")
 
 
-@router.get("/api/music", response_model=MusicResponse)
+@router.get(
+    "/music",
+    response_model=MusicResponse,
+    response_description="A list of available music tracks with detailed information, "
+    "such as duration and whether the music track can be removed, etc.",
+    responses={
+        500: {
+            "description": "Internal Server Error: Unexpected error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to retrieve music files."}
+                }
+            },
+        },
+    },
+)
 async def get_music_tracks(
     file_manager: "FileService" = Depends(get_file_manager),
     audio_manager: "AudioService" = Depends(get_audio_manager),
@@ -364,25 +435,23 @@ async def get_music_tracks(
     """
     Retrieve the list of available music tracks.
 
-    Args:
-    --------------
-    - file_manager (FileService): The file service for managing files.
-    - audio_manager (AudioService): The audio service for managing audio playback.
-
     Returns:
     --------------
-    `MusicResponse`: The response object containing the list of available music tracks, system volume, and music volume.
-
-    Raises:
-    --------------
-    - HTTPException (404): If there is an error while retrieving the music tracks.
+    The response object containing the list of available music tracks and system volume.
     """
-    music_volume = await asyncio.to_thread(audio_manager.get_volume)
+    music_volume = 0
+    try:
+        music_volume = await asyncio.to_thread(audio_manager.get_volume)
+    except (AmixerNotInstalled, AudioVolumeError) as e:
+        logger.error("Couldn't retrieve a volume: %s", e)
+    except Exception:
+        logger.error("Unexpected error while getting the volume level", exc_info=True)
     try:
         files = file_manager.list_all_music_with_details()
         return {
             "files": files,
             "volume": music_volume,
         }
-    except Exception as err:
-        raise HTTPException(status_code=404, detail=str(err))
+    except Exception:
+        logger.error("Unexpected error while retrieving music files.", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve music files.")

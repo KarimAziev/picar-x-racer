@@ -1,12 +1,13 @@
 from time import localtime, strftime
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_camera_manager, get_file_manager
+from app.api import deps
+from app.api.endpoints.devices_mock import mocked_devices
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
-from app.util.device import list_available_camera_devices
 from app.util.logger import Logger
 from app.util.photo import capture_photo
+from app.util.v4l2_manager import V4L2
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
@@ -19,15 +20,27 @@ logger = Logger(__name__)
 
 
 @router.post(
-    "/api/camera/settings",
+    "/camera/settings",
     response_model=CameraSettings,
     tags=["camera"],
     summary="Update camera settings",
+    response_description="**Settings:**"
+    "\n"
+    "- **device**: ID or name of the camera device."
+    "\n"
+    "- **width**: Frame width in pixels."
+    "\n"
+    "- **height**: Frame height in pixels."
+    "\n"
+    "- **fps**: Frames per second for capturing."
+    "\n"
+    "- **pixel_format**: Pixel format, such as 'RGB' or 'GRAY'."
+    "\n",
 )
 async def update_camera_settings(
     request: Request,
     payload: CameraSettings,
-    camera_manager: "CameraService" = Depends(get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
 ):
     """
     Update the camera settings with new configurations and broadcast the updates.
@@ -59,21 +72,11 @@ async def update_camera_settings(
     4. Broadcasts the final `self.camera_settings` to clients, regardless of success or failure.
     5. In the case of errors, also broadcasts an error message to clients.
 
-    Args:
-    --------------
-    - `request` (Request): FastAPI request object used to access app state and components.
-    - `payload` (CameraSettings): New camera settings to apply.
-    - `camera_manager` (CameraService): Camera management service for handling operations.
-
     Returns:
     --------------
     - `CameraSettings`: The updated camera settings.
 
     - Additionally, broadcasts the updated settings to all connected clients.
-
-    Raises:
-    --------------
-    None
     """
     logger.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
@@ -102,28 +105,28 @@ async def update_camera_settings(
 
 
 @router.get(
-    "/api/camera/settings",
+    "/camera/settings",
     response_model=CameraSettings,
     tags=["camera"],
     summary="Get camera settings",
-    response_description="""
-    Settings:
-    device: ID or name of the camera device.
-    width: Frame width in pixels.
-    height: Frame height in pixels.
-    fps: Frames per second for capturing.
-    pixel_format: Pixel format, such as 'RGB' or 'GRAY'.
-    """,
+    response_description="**Settings:**"
+    "\n"
+    "- **device**: ID or name of the camera device."
+    "\n"
+    "- **width**: Frame width in pixels."
+    "\n"
+    "- **height**: Frame height in pixels."
+    "\n"
+    "- **fps**: Frames per second for capturing."
+    "\n"
+    "- **pixel_format**: Pixel format, such as 'RGB' or 'GRAY'."
+    "\n",
 )
 def get_camera_settings(
-    camera_manager: "CameraService" = Depends(get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
 ):
     """
     Retrieve the current camera settings.
-
-    Args:
-    --------------
-    - `camera_manager` (CameraService): Camera management service for retrieving settings.
 
     Returns:
     --------------
@@ -133,7 +136,7 @@ def get_camera_settings(
 
 
 @router.get(
-    "/api/camera/devices",
+    "/camera/devices",
     response_model=CameraDevicesResponse,
     summary="Retrieve a list of available camera devices",
 )
@@ -148,24 +151,29 @@ def get_camera_devices():
     --------------
     `CameraDevicesResponse`: A structured list of available camera devices.
     """
-    devices = list_available_camera_devices()
-    return {"devices": devices}
+    devices = V4L2.list_video_devices_with_formats()
+    return {"devices": devices + mocked_devices}
 
 
 @router.get(
-    "/api/camera/capture-photo", response_model=PhotoResponse, summary="Capture a photo"
+    "/camera/capture-photo",
+    response_model=PhotoResponse,
+    summary="Capture a photo",
+    responses={
+        400: {
+            "description": "Raised if the photo could not be taken or saved due to an error",
+            "content": {
+                "application/json": {"example": {"detail": "Error capturing photo"}}
+            },
+        }
+    },
 )
 async def take_photo(
-    camera_manager: "CameraService" = Depends(get_camera_manager),
-    file_manager: "FileService" = Depends(get_file_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    file_manager: "FileService" = Depends(deps.get_file_manager),
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
-
-    Args:
-    --------------
-    - `camera_manager` (CameraService): Camera management service for interfacing with the hardware.
-    - `file_manager` (FileService): File management service for determining save locations.
 
     Returns:
     --------------
@@ -191,4 +199,4 @@ async def take_photo(
     )
     if status:
         return {"file": name}
-    raise HTTPException(status_code=400, detail="Couldn't take photo")
+    raise HTTPException(status_code=400, detail="Error capturing photo")

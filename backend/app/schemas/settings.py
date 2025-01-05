@@ -6,6 +6,7 @@ from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
 from app.schemas.tts import TTSSettings
 from app.services.detection_service import DetectionSettings
+from app.util.pydantic_helpers import partial_model
 from pydantic import BaseModel, Field
 
 
@@ -78,7 +79,7 @@ class General(BaseModel):
     )
     robot_3d_view: Optional[bool] = Field(
         None,
-        description="Toggles the display of the robot's 3D model.",
+        description="Whether to display the robot's 3D model.",
         examples=[True, False],
     )
     virtual_mode: Optional[bool] = Field(
@@ -88,7 +89,7 @@ class General(BaseModel):
     )
     show_player: Optional[bool] = Field(
         None,
-        description="Toggles the visibility of the music player interface.",
+        description="Whether to display the visibility of the music player interface.",
         examples=[True, False],
     )
     speedometer_view: Optional[bool] = Field(
@@ -103,56 +104,67 @@ class General(BaseModel):
     )
     text_info_view: Optional[bool] = Field(
         None,
-        description="Toggles the visibility of text-based information, such as camera tilt, "
+        description="Whether to display the text-based information, such as camera tilt, "
         "camera pan, and servo direction.",
         examples=[True, False],
     )
     show_object_detection_settings: Optional[bool] = Field(
         None,
-        description="Toggles the visibility of the object detection settings panel on the main screen.",
+        description="Whether to display the object detection settings panel on the main screen.",
         examples=[True, False],
     )
     show_audio_stream_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the audio stream icon button.",
+        description="Whether to display the audio stream icon button.",
         examples=[True, False],
     )
     show_auto_measure_distance_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the auto-measure distance button.",
+        description="Whether to display the auto-measure distance button.",
         examples=[True, False],
     )
     show_photo_capture_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the photo capture icon button.",
+        description="Whether to display the photo capture icon button.",
         examples=[True, False],
     )
     show_video_record_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the video record icon button.",
+        description="Whether to display the video record icon button.",
         examples=[True, False],
     )
     show_battery_indicator: Optional[bool] = Field(
         None,
-        description="Toggles the display of the video record icon button.",
+        description="Whether to display the battery indicator.",
         examples=[True, False],
     )
     show_connections_indicator: Optional[bool] = Field(
         None,
-        description="Toggles the display of the active connections counter.",
+        description="Whether to display the active connections counter.",
         examples=[True, False],
     )
 
     show_shutdown_reboot_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the shutdown and reboot control buttons.",
+        description="Whether to display the shutdown and reboot control buttons.",
         examples=[True, False],
     )
 
     show_fullscreen_button: Optional[bool] = Field(
         None,
-        description="Toggles the display of the request full screen button.",
+        description="Whether to display the request full screen button.",
         examples=[True, False],
+    )
+    show_avoid_obstacles_button: Optional[bool] = Field(
+        None,
+        description="Whether to display the button to toggle the avoid obstacle mode.",
+        examples=[True, False],
+    )
+
+    show_dark_theme_toggle: Optional[bool] = Field(
+        None,
+        description="Whether to display the dark theme toggle button in the top right corner of the screen.",
+        examples=[False, True],
     )
 
 
@@ -188,40 +200,38 @@ class Settings(BaseModel):
     A model representing application-wide settings.
     """
 
-    battery: Optional[BatterySettings] = Field(
-        None, description="Configuration for battery settings."
+    battery: BatterySettings = Field(
+        ..., description="Configuration for battery settings."
     )
 
-    general: Optional[General] = Field(
-        None,
+    general: General = Field(
+        ...,
         description="General application settings, including UI widget visibility.",
     )
 
-    robot: Optional[RobotSettings] = Field(
-        None, description="Settings related to robot control."
-    )
+    robot: RobotSettings = Field(..., description="Settings related to robot control.")
 
-    camera: Optional[CameraSettings] = Field(
-        None,
+    camera: CameraSettings = Field(
+        ...,
         description="Configuration settings for the camera, including resolution, FPS, and device input.",
     )
-    detection: Optional[DetectionSettings] = Field(
-        None,
+    detection: DetectionSettings = Field(
+        ...,
         description="Settings for the object detection module, including model choice, thresholds, and parameters.",
     )
-    stream: Optional[StreamSettings] = Field(
-        None,
+    stream: StreamSettings = Field(
+        ...,
         description="Settings defining the video stream output, such as format, quality, and enhancement modes.",
     )
 
-    tts: Optional[TTSSettings] = Field(None, description="Text to speech settings.")
+    tts: TTSSettings = Field(..., description="Text to speech settings.")
 
-    music: Optional[MusicSettings] = Field(
-        None,
+    music: MusicSettings = Field(
+        ...,
         description="Settings for the music playback system, including configurations for track control and playback behavior.",
     )
-    keybindings: Optional[Keybindings] = Field(
-        None,
+    keybindings: Keybindings = Field(
+        ...,
         description="A collection of custom keybindings for various user actions.",
         examples=[
             {
@@ -234,37 +244,6 @@ class Settings(BaseModel):
     )
 
 
-class CalibrationConfig(BaseModel):
-    """
-    A model representing the calibration configuration.
-
-    Attributes:
-      - `picarx_dir_servo`: Configuration for the direction servo.
-      - `picarx_cam_pan_servo`: Configuration for the camera's pan servo.
-      - `picarx_cam_tilt_servo`: Configuration for the camera's tilt servo.
-      - `picarx_dir_motor`: Configuration for the direction motor.
-    """
-
-    picarx_dir_servo: Optional[str] = Field(
-        None,
-        description="Configuration for the direction servo.",
-        examples=["6.0"],
-    )
-
-    picarx_cam_pan_servo: Optional[str] = Field(
-        None,
-        description="Configuration for the camera's pan servo.",
-        examples=["-0.6"],
-    )
-
-    picarx_cam_tilt_servo: Optional[str] = Field(
-        None,
-        description="Configuration for the camera's tilt servo.",
-        examples=["0.2"],
-    )
-
-    picarx_dir_motor: Optional[str] = Field(
-        None,
-        description="Configuration for the direction motor.",
-        examples=["[1, 1]"],
-    )
+@partial_model
+class SettingsUpdateRequest(Settings):
+    pass

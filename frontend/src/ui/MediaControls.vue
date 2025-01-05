@@ -2,7 +2,7 @@
   <div :class="class" class="flex flex-wrap">
     <slot></slot>
     <Recording />
-    <div class="wrapper flex flex-wrap">
+    <div class="flex flex-wrap">
       <ToggleableView setting="general.show_photo_capture_button">
         <PhotoButton />
       </ToggleableView>
@@ -39,4 +39,3 @@ const PhotoButton = defineAsyncComponent({
   loader: () => import("@/ui/PhotoButton.vue"),
 });
 </script>
-<style scoped lang="scss"></style>

@@ -17,3 +17,6 @@ export const generateMultiplesOf32 = (limit: number): number[] => {
 
   return multiples;
 };
+
+export const inRange = (value: number, minValue: number, maxValue: number) =>
+  value >= minValue && value <= maxValue;
