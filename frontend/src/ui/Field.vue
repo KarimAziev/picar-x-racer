@@ -2,11 +2,11 @@
   <div class="flex relative" :class="classObject">
     <span class="flex flex-col font-bold" v-if="label" :class="labelClassName"
       >{{ label }}
-      <span v-if="message" class="bg-transparent text-red-500 text-sm">
-        {{ message }}
-      </span>
     </span>
     <slot></slot>
+    <span v-if="message" class="bg-transparent text-red-500 text-sm">
+      {{ message }}
+    </span>
   </div>
 </template>
 

@@ -1,68 +1,83 @@
 <template>
-  <Field :label="label">
-    <TreeSelect
-      @update:model-value="updateDevice"
-      :nodes="devices"
-      v-model:model-value="selectedDevice"
-    />
-  </Field>
-  <NumberInputField
-    v-if="selectedDevice && (selectedDevice as any).max_width"
-    label="Width"
-    field="step-width"
-    v-model="stepwiseData.width"
-    :disabled="loading"
-    :loading="loading"
-    suffix="px"
-    :min="selectedDevice && (selectedDevice as any).min_width"
-    :max="selectedDevice && (selectedDevice as any).max_width"
-    :invalid="!!invalidData.width"
-    :message="invalidData.width"
-    @update:model-value="validate"
-    :step="invalidData.width ? 1 : (selectedDevice as any)?.width_step"
-    @blur="validate"
-  />
-  <NumberInputField
-    v-if="selectedDevice && (selectedDevice as any).max_width"
-    label="Height"
-    allowEmpty
-    suffix="px"
-    field="step-height"
-    v-model="stepwiseData.height"
-    :disabled="loading"
-    :loading="loading"
-    :min="selectedDevice && (selectedDevice as any).min_height"
-    :invalid="!!invalidData.height"
-    :message="invalidData.height"
-    @update:model-value="validate"
-    :step="
-      invalidData.height
-        ? 1
-        : selectedDevice && (selectedDevice as any).height_step
-    "
-    @blur="validate"
-  />
-  <NumberInputField
-    v-if="selectedDevice && (selectedDevice as any).max_width"
-    label="FPS"
-    allowEmpty
-    field="step-fps"
-    v-model="stepwiseData.fps"
-    :disabled="loading"
-    :loading="loading"
-    :min="selectedDevice && (selectedDevice as any).min_fps"
-    :max="selectedDevice && (selectedDevice as any).max_fps"
-    :invalid="!!invalidData.fps"
-    :message="invalidData.fps"
-    @update:model-value="validate"
-    @blur="validate"
-  />
-  <Button
-    v-if="selectedDevice && (selectedDevice as any).max_width"
-    :disabled="disabled || loading"
-    @click="onSubmit"
-    >Submit</Button
-  >
+  <div class="flex gap-2">
+    <div class="flex-1">
+      <Field :label="label">
+        <TreeSelect
+          @update:model-value="updateDevice"
+          :nodes="devices"
+          v-model:model-value="selectedDevice"
+        />
+      </Field>
+      <div class="flex gap-2">
+        <NumberInputField
+          :useGrouping="false"
+          v-if="selectedDevice && (selectedDevice as any).max_width"
+          fieldClassName="w-24"
+          inputClass="w-24"
+          label="Width"
+          field="step-width"
+          v-model="stepwiseData.width"
+          :disabled="loading"
+          :loading="loading"
+          suffix="px"
+          :min="selectedDevice && (selectedDevice as any).min_width"
+          :max="selectedDevice && (selectedDevice as any).max_width"
+          :invalid="!!invalidData.width"
+          :message="invalidData.width"
+          @update:model-value="validate"
+          :step="invalidData.width ? 1 : (selectedDevice as any)?.width_step"
+          @blur="validate"
+        />
+        <NumberInputField
+          inputClass="w-24"
+          v-if="selectedDevice && (selectedDevice as any).max_width"
+          label="Height"
+          allowEmpty
+          suffix="px"
+          fieldClassName="w-24"
+          field="step-height"
+          v-model="stepwiseData.height"
+          :disabled="loading"
+          :loading="loading"
+          :min="selectedDevice && (selectedDevice as any).min_height"
+          :invalid="!!invalidData.height"
+          :message="invalidData.height"
+          @update:model-value="validate"
+          :step="
+            invalidData.height
+              ? 1
+              : selectedDevice && (selectedDevice as any).height_step
+          "
+          @blur="validate"
+        />
+      </div>
+    </div>
+    <div class="flex-1 flex flex-col gap-2 justify-between items-start">
+      <NumberInputField
+        v-if="selectedDevice && (selectedDevice as any).max_width"
+        label="FPS"
+        allowEmpty
+        inputClass="w-20"
+        fieldClassName="w-20"
+        field="step-fps"
+        v-model="stepwiseData.fps"
+        :disabled="loading"
+        :loading="loading"
+        :min="selectedDevice && (selectedDevice as any).min_fps"
+        :max="selectedDevice && (selectedDevice as any).max_fps"
+        :invalid="!!invalidData.fps"
+        :message="invalidData.fps"
+        @update:model-value="validate"
+        @blur="validate"
+      />
+      <Button
+        v-if="selectedDevice && (selectedDevice as any).max_width"
+        :disabled="disabled || loading"
+        @click="onSubmit"
+        >Submit</Button
+      >
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -210,7 +225,9 @@ const updateDevice = async (
 
     await camStore.updateData(discreted);
   } else if (isStepwiseDevice(stepwiseParams)) {
-    onSubmit();
+    /**
+     * onSubmit();
+     */
   }
 };
 
