@@ -133,10 +133,7 @@ class DetectionService(metaclass=SingletonMeta):
         try:
             async with self.lock:
                 if self.detection_settings.model is None:
-                    await self.connection_manager.info(
-                        f"No model, skipping starting model"
-                    )
-                    return
+                    raise DetectionModelLoadError("No model, skipping starting model")
                 if (
                     self.detection_process is None
                     or not self.detection_process.is_alive()
@@ -199,6 +196,7 @@ class DetectionService(metaclass=SingletonMeta):
             self.logger.error("Failed to start detection process %s", e)
             await self.connection_manager.error(str(e))
         except DetectionModelLoadError as e:
+            self.detection_settings.active = False
             await self.connection_manager.error(str(e))
             raise
         except Exception as e:
