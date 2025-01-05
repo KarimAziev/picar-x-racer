@@ -1,5 +1,6 @@
 <template>
   <FileUpload
+    class="my-4"
     mode="basic"
     multiple
     name="file"
@@ -29,9 +30,3 @@ const { uploader } = useFileUploader({
   },
 });
 </script>
-
-<style scoped lang="scss">
-:deep(.p-fileupload-basic) {
-  margin: 2rem 0;
-}
-</style>

@@ -6,13 +6,16 @@
       :overlayStyleOptions="overlayStyleOptions"
       :loading="loading"
     />
+    <div class="flex items-center justify-between">
+      <div>Click on the row to select the model</div>
+      <ModelUpload />
+    </div>
     <ModelsTable />
   </div>
-  <ModelUpload />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, defineAsyncComponent } from "vue";
+import { ref, computed, provide } from "vue";
 import type { TreeTableFilterMeta } from "primevue/treetable";
 import { useDetectionStore } from "@/features/detection";
 import { useSettingsStore } from "@/features/settings/stores";
@@ -23,17 +26,8 @@ import {
 } from "@/features/settings/config";
 import ModelUpload from "@/features/detection/components/ModelUpload.vue";
 import Header from "@/features/settings/components/detection/Header.vue";
-import Skeleton from "@/ui/Skeleton.vue";
-import ErrorComponent from "@/ui/ErrorComponent.vue";
 import ModelFieldSet from "@/features/settings/components/detection/ModelFieldSet.vue";
-
-const ModelsTable = defineAsyncComponent({
-  loader: () =>
-    import("@/features/settings/components/detection/ModelsTable.vue"),
-  loadingComponent: Skeleton,
-  errorComponent: ErrorComponent,
-  delay: 0,
-});
+import ModelsTable from "@/features/settings/components/detection/ModelsTable.vue";
 
 const settingsStore = useSettingsStore();
 const detectionStore = useDetectionStore();

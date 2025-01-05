@@ -18,7 +18,6 @@
       orientation: 'vertical',
     }"
   >
-    <template #header> Click on the row to select the model </template>
     <Column field="name" header="Model" expander> </Column>
     <Column field="type" header="Type"></Column>
     <Column :exportable="false" header="Actions">

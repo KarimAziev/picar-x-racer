@@ -1,83 +1,80 @@
 <template>
-  <Panel header="Keybindings">
-    <form @submit.prevent="handleSubmit" class="m-auto justify-items-center">
-      <Teleport to="#settings-footer">
-        <span class="flex gap-2 justify-self-start">
-          <Button
-            size="small"
-            label="Add Key"
-            @click="addField"
-            class="w-fit"
-            severity="secondary"
-          />
-          <Button
-            size="small"
-            label="Save"
-            type="submit"
-            :disabled="isDisabled"
-            class="w-fit"
-          />
-        </span>
-      </Teleport>
-      <div>
-        <div
-          v-for="(fieldPair, index) in fields"
-          :key="index"
-          class="flex gap-0.5"
-        >
-          <SelectField
-            :field="`command-${index}`"
-            fieldClassName="w-3/5 !my-0"
-            inputClassName="w-full max-w-full"
-            filter
-            :tooltip="fieldPair[0].label"
-            v-model="fieldPair[0].value"
-            optionLabel="label"
-            optionValue="value"
-            autoFilterFocus
-            :options="fieldPair[0].options"
-            :disabled="fieldPair[0].props?.disabled"
+  <form @submit.prevent="handleSubmit" class="m-auto justify-items-center">
+    <Teleport to="#settings-footer">
+      <span class="flex gap-2 justify-self-start">
+        <Button
+          size="small"
+          label="Add Key"
+          @click="addField"
+          class="w-fit"
+          severity="secondary"
+        />
+        <Button
+          size="small"
+          label="Save"
+          type="submit"
+          :disabled="isDisabled"
+          class="w-fit"
+        />
+      </span>
+    </Teleport>
+    <div>
+      <div
+        v-for="(fieldPair, index) in fields"
+        :key="index"
+        class="flex gap-0.5"
+      >
+        <SelectField
+          :field="`command-${index}`"
+          fieldClassName="w-3/5 !my-0"
+          inputClassName="w-full max-w-full"
+          filter
+          :tooltip="fieldPair[0].label"
+          v-model="fieldPair[0].value"
+          optionLabel="label"
+          optionValue="value"
+          autoFilterFocus
+          :options="fieldPair[0].options"
+          :disabled="fieldPair[0].props?.disabled"
+          class="w-full max-w-full"
+        />
+
+        <div>
+          <InputText
+            v-model="fieldPair[1].value"
+            :invalid="!!invalidKeys[fieldPair[1].value]"
+            readonly
+            @beforeinput="(event) => startRecording(event, index)"
+            @focus="(event) => startRecording(event, index)"
+            name="keybinding"
             class="w-full max-w-full"
           />
-
-          <div>
-            <InputText
-              v-model="fieldPair[1].value"
-              :invalid="!!invalidKeys[fieldPair[1].value]"
-              readonly
-              @beforeinput="(event) => startRecording(event, index)"
-              @focus="(event) => startRecording(event, index)"
-              name="keybinding"
-              class="w-full max-w-full"
-            />
-            <div class="text-red-500">
-              {{ invalidKeys[fieldPair[1].value] }}
-            </div>
-          </div>
-          <div>
-            <Button
-              icon="pi pi-times"
-              class="p-button-rounded p-button-danger p-button-text"
-              @click="removeField(index)"
-            />
+          <div class="text-red-500">
+            {{ invalidKeys[fieldPair[1].value] }}
           </div>
         </div>
+        <div>
+          <Button
+            icon="pi pi-times"
+            class="p-button-rounded p-button-danger p-button-text"
+            @click="removeField(index)"
+          />
+        </div>
       </div>
-    </form>
-    <KeyRecorder
-      v-if="keyRecorderOpen"
-      :onSubmit="handleKeySubmit"
-      :onCancel="handleKeyCancel"
-      :validate="validateKey"
-    />
-  </Panel>
+    </div>
+  </form>
+  <KeyRecorder
+    v-if="keyRecorderOpen"
+    :onSubmit="handleKeySubmit"
+    :onCancel="handleKeyCancel"
+    :validate="validateKey"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
 import InputText from "primevue/inputtext";
 import Button from "primevue/button";
-import { Panel } from "primevue";
 import KeyRecorder from "@/ui/KeyRecorder.vue";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import { allCommandOptions } from "@/features/settings/defaultKeybindings";

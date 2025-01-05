@@ -29,9 +29,6 @@
   <Panel collapsed header="Battery" toggleable>
     <BatterySettings />
   </Panel>
-  <Panel collapsed header="Music" toggleable>
-    <Music />
-  </Panel>
 </template>
 
 <script setup lang="ts">
@@ -42,13 +39,6 @@ import PrimaryColor from "@/features/settings/components/theming/PrimaryColor.vu
 import SurfaceColor from "@/features/settings/components/theming/SurfaceColor.vue";
 import Skeleton from "@/features/settings/components/general/Skeleton.vue";
 import ErrorComponent from "@/ui/ErrorComponent.vue";
-
-const Music = defineAsyncComponent({
-  loader: () => import("@/features/settings/components/general/Music.vue"),
-  loadingComponent: Skeleton,
-  delay: 0,
-  errorComponent: ErrorComponent,
-});
 
 const VideoSettings = defineAsyncComponent({
   loader: () =>
@@ -94,20 +84,4 @@ const RobotSettings = defineAsyncComponent({
   delay: 0,
   errorComponent: ErrorComponent,
 });
-
-/**
- * const PrimaryColor = defineAsyncComponent({
- *   loader: () =>
- *     import("@/features/settings/components/theming/PrimaryColor.vue"),
- *   loadingComponent: Skeleton,
- *   delay: 0,
- * });
- *
- * const SurfaceColor = defineAsyncComponent({
- *   loader: () =>
- *     import("@/features/settings/components/theming/SurfaceColor.vue"),
- *   loadingComponent: Skeleton,
- *   delay: 0,
- * });
- */
 </script>

@@ -102,14 +102,19 @@ export const useStore = defineStore("settings", {
     },
 
     generalSettings({ data }) {
-      const musicStore = useMusicStore();
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
-      const settingsData = pick(["general", "robot", "battery", "music"], data);
+      const settingsData = pick(["general", "robot", "battery"], data);
       return {
         ...settingsData,
         camera: cameraStore.data,
         stream: streamStore.data,
+      } as Partial<Settings>;
+    },
+    musicSettings({ data }) {
+      const musicStore = useMusicStore();
+      const settingsData = pick(["music"], data);
+      return {
         music: {
           ...settingsData.music,
           mode: musicStore.player.mode,
@@ -117,7 +122,6 @@ export const useStore = defineStore("settings", {
       } as Partial<Settings>;
     },
   },
-
   actions: {
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
@@ -175,17 +179,22 @@ export const useStore = defineStore("settings", {
           return {
             detection: detectionStore.data,
           };
+        case SettingsTab.MUSIC:
+          return this.musicSettings;
         default:
           return null;
       }
     },
     isSaveButtonDisabled() {
       const popupStore = usePopupStore();
+      const musicStore = useMusicStore();
       const currentTab = popupStore.tab;
       const detectionStore = useDetectionStore();
       switch (currentTab) {
         case SettingsTab.MODELS:
           return isObjectEquals(detectionStore.data, this.data.detection);
+        case SettingsTab.MUSIC:
+          return musicStore.player.mode === this.data.music.mode;
         default:
           return false;
       }

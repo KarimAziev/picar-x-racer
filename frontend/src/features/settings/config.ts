@@ -102,6 +102,7 @@ export const saveableTabs = {
   [SettingsTab.CALIBRATION]: false,
   [SettingsTab.TTS]: true,
   [SettingsTab.PHOTOS]: false,
+  [SettingsTab.MUSIC]: true,
   [SettingsTab.MODELS]: true,
 };
 
