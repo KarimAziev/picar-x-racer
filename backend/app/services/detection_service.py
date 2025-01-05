@@ -189,6 +189,15 @@ class DetectionService(metaclass=SingletonMeta):
                 msg = f"Detection is running with {self.detection_settings.model}"
                 await self.connection_manager.info(msg)
                 self.logger.info(msg)
+        except (
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+            ConnectionError,
+            ConnectionRefusedError,
+        ) as e:
+            self.logger.error("Failed to start detection process %s", e)
+            await self.connection_manager.error(str(e))
         except DetectionModelLoadError as e:
             await self.connection_manager.error(str(e))
             raise
