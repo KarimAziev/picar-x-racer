@@ -1,9 +1,8 @@
 import os
-import time
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -175,22 +174,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = (time.time() - start_time) * 1000  # in millis
-    formatted_process_time = f"{process_time:.2f} ms"
-    client_ip = request.client.host if request.client else "N/A"
-    method = request.method
-    url = request.url.path
-    status_code = response.status_code
-    logger.info(
-        f"{client_ip} - \"{method} {url}\" {status_code} - {formatted_process_time}"
-    )
-    return response
 
 
 from app.api.endpoints import (

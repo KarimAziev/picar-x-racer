@@ -92,6 +92,7 @@ class DetectionService(metaclass=SingletonMeta):
 
         if detection_action is not None:
             await self.cancel_detection_process_task()
+            self.logger.info("Update detection settings: stopping detection process")
             await self.stop_detection_process()
 
         self.detection_settings = settings
@@ -188,6 +189,15 @@ class DetectionService(metaclass=SingletonMeta):
                 msg = f"Detection is running with {self.detection_settings.model}"
                 await self.connection_manager.info(msg)
                 self.logger.info(msg)
+        except (
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+            ConnectionError,
+            ConnectionRefusedError,
+        ) as e:
+            self.logger.error("Failed to start detection process %s", e)
+            await self.connection_manager.error(str(e))
         except DetectionModelLoadError as e:
             await self.connection_manager.error(str(e))
             raise
@@ -334,6 +344,8 @@ class DetectionService(metaclass=SingletonMeta):
                 self.detection_process_task = None
             finally:
                 self.task_event.clear()
+        else:
+            self.logger.info("Skipping cancelling detection task")
 
     def _cleanup_queues(self) -> None:
         """
