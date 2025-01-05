@@ -2,7 +2,6 @@ from time import localtime, strftime
 from typing import TYPE_CHECKING
 
 from app.api import deps
-from app.api.endpoints.devices_mock import mocked_devices
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.util.logger import Logger
@@ -152,7 +151,7 @@ def get_camera_devices():
     `CameraDevicesResponse`: A structured list of available camera devices.
     """
     devices = V4L2.list_video_devices_with_formats()
-    return {"devices": devices + mocked_devices}
+    return {"devices": devices}
 
 
 @router.get(
