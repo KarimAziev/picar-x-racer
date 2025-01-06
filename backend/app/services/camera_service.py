@@ -1,10 +1,10 @@
 import asyncio
 import collections
+import concurrent.futures
 import struct
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import cv2
 import numpy as np
@@ -16,6 +16,7 @@ from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
 from app.util.v4l2_manager import V4L2
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
+from cv2.typing import MatLike
 
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapater
@@ -65,7 +66,6 @@ class CameraService(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[cv2.VideoCapture, None] = None
-        self.executor = ThreadPoolExecutor(max_workers=1)
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
         self.shutting_down = False
@@ -319,11 +319,6 @@ class CameraService(metaclass=SingletonMeta):
             self.setup_camera_props()
         return self.cap
 
-    def _submit_to_queue(self, frame_data: Dict[str, Any]) -> None:
-        """Submit frame_data to the detection queue asynchronously."""
-        if self.executor:
-            self.executor.submit(self.detection_service.put_frame, frame_data)
-
     def _camera_thread_func(self) -> None:
         """
         Camera capture loop function.
@@ -337,43 +332,18 @@ class CameraService(metaclass=SingletonMeta):
         prev_fps = 0.0
 
         self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
 
-        try:
-            while self.camera_run and self.cap:
-                frame_start_time = time.time()
-                ret, frame = self.cap.read()
-                if not ret:
-                    if failed_counter < max_failed_attempt_count:
-                        failed_counter += 1
-                        self.logger.error("Failed to read frame from camera.")
-                        continue
-                    elif self._retry_cap():
-                        continue
-                    else:
-                        break
-                else:
-                    failed_counter = 0
-
-                    self.frame_timestamps.append(frame_start_time)
-
-                    self.actual_fps = calc_fps(self.frame_timestamps)
-                    if (
-                        self.actual_fps is not None
-                        and abs(self.actual_fps - prev_fps) > 1
-                    ):
-                        self.logger.info("FPS: %s", self.actual_fps)
-                        prev_fps = self.actual_fps
-
+            def process_frame(frame: MatLike):
+                """Task run by the ThreadPoolExecutor to handle frame detection."""
                 enhance_mode = self.stream_settings.enhance_mode
                 frame_enhancer = (
                     frame_enhancers.get(enhance_mode)
                     if enhance_mode is not None
                     else None
                 )
-
                 self.img = frame
                 self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
-
                 if self.stream_settings.video_record:
                     self.video_recorder.write_frame(self.stream_img)
 
@@ -404,36 +374,58 @@ class CameraService(metaclass=SingletonMeta):
                         "resized_width": resized_width,
                         "should_resize": False,
                     }
-                    if (
-                        self.detection_service.detection_settings.active
-                        and not self.detection_service.loading
-                        and not self.detection_service.shutting_down
-                    ):
-                        self._submit_to_queue(frame_data)
+                    self.detection_service.put_frame(frame_data)
 
-        except KeyboardInterrupt:
-            self.logger.info("Keyboard interrupt, stopping camera loop")
-        except (
-            ConnectionResetError,
-            BrokenPipeError,
-            EOFError,
-            ConnectionError,
-            ConnectionRefusedError,
-        ) as e:
-            self.logger.warning(
-                "Stopped camera loop due to connection-related error: %s",
-                type(e).__name__,
-            )
-        except Exception:
-            self.logger.error(
-                "Unhandled exception occurred in camera loop", exc_info=True
-            )
-        finally:
-            self._release_cap_safe()
-            self.executor.shutdown(wait=True)
-            self.video_recorder.stop_recording_safe()
-            self.stream_img = None
-            self.logger.info("Camera loop terminated and camera released.")
+            try:
+                while self.camera_run and self.cap:
+                    frame_start_time = time.time()
+                    ret, frame = self.cap.read()
+                    if not ret:
+                        if failed_counter < max_failed_attempt_count:
+                            failed_counter += 1
+                            self.logger.error("Failed to read frame from camera.")
+                            continue
+                        elif self._retry_cap():
+                            continue
+                        else:
+                            break
+                    else:
+                        failed_counter = 0
+
+                        self.frame_timestamps.append(frame_start_time)
+
+                        self.actual_fps = calc_fps(self.frame_timestamps)
+                        if (
+                            self.actual_fps is not None
+                            and abs(self.actual_fps - prev_fps) > 1
+                        ):
+                            self.logger.info("FPS: %s", self.actual_fps)
+                            prev_fps = self.actual_fps
+
+                    executor.submit(process_frame, frame)
+
+            except KeyboardInterrupt:
+                self.logger.info("Keyboard interrupt, stopping camera loop")
+            except (
+                ConnectionResetError,
+                BrokenPipeError,
+                EOFError,
+                ConnectionError,
+                ConnectionRefusedError,
+            ) as e:
+                self.logger.warning(
+                    "Stopped camera loop due to connection-related error: %s",
+                    type(e).__name__,
+                )
+            except Exception:
+                self.logger.error(
+                    "Unhandled exception occurred in camera loop", exc_info=True
+                )
+            finally:
+                self._release_cap_safe()
+                self.video_recorder.stop_recording_safe()
+                self.stream_img = None
+                self.logger.info("Camera loop terminated and camera released.")
 
     def _start_camera(self) -> None:
         """
