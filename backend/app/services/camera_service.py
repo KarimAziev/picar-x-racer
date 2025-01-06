@@ -3,7 +3,8 @@ import collections
 import struct
 import threading
 import time
-from typing import TYPE_CHECKING, Optional, Union
+from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import cv2
 import numpy as np
@@ -64,8 +65,10 @@ class CameraService(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[cv2.VideoCapture, None] = None
+        self.executor = ThreadPoolExecutor(max_workers=1)
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
+        self.shutting_down = False
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -316,6 +319,11 @@ class CameraService(metaclass=SingletonMeta):
             self.setup_camera_props()
         return self.cap
 
+    def _submit_to_queue(self, frame_data: Dict[str, Any]) -> None:
+        """Submit frame_data to the detection queue asynchronously."""
+        if self.executor:
+            self.executor.submit(self.detection_service.put_frame, frame_data)
+
     def _camera_thread_func(self) -> None:
         """
         Camera capture loop function.
@@ -401,7 +409,7 @@ class CameraService(metaclass=SingletonMeta):
                         and not self.detection_service.loading
                         and not self.detection_service.shutting_down
                     ):
-                        self.detection_service.put_frame(frame_data)
+                        self._submit_to_queue(frame_data)
 
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
@@ -422,6 +430,7 @@ class CameraService(metaclass=SingletonMeta):
             )
         finally:
             self._release_cap_safe()
+            self.executor.shutdown(wait=True)
             self.video_recorder.stop_recording_safe()
             self.stream_img = None
             self.logger.info("Camera loop terminated and camera released.")
