@@ -10,7 +10,8 @@ Classes:
 import json
 import os
 from os import path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from app.config.paths import (
     DATA_DIR,
@@ -646,9 +647,11 @@ class FileService(metaclass=SingletonMeta):
             ('.tflite', '.pt') if is_google_coral_connected() else ('.pt')
         )
         existing_set = set()
+
         result = get_directory_structure(
             DATA_DIR,
             allowed_extensions,
+            directory_suffix="_ncnn_model",
             exclude_empty_dirs=True,
             absolute=False,
             file_processor=lambda file_path: existing_set.add(

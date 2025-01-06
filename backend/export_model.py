@@ -95,7 +95,9 @@ def export_yolo_model_to_edgetpu(
 
     print(f"Starting exporting model to {target_path}")
 
-    export_file = model.export(format="edgetpu", imgsz=imgsz)
+    export_file = model.export(
+        format="edgetpu" if target_path.endswith(".tflite") else "ncnn", imgsz=imgsz
+    )
 
     if os.path.exists(export_file):
         target_dir = os.path.dirname(target_path)
