@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class OverlayStyle(str, Enum):
@@ -24,15 +24,6 @@ class OverlayStyle(str, Enum):
 class DetectionSettings(BaseModel):
     """
     A schema for defining detection configuration settings.
-
-    Attributes:
-    - `model`: The name of the object detection model to be used.
-    - `confidence`: The confidence threshold for detections.
-    - `active`: Flag indicating whether the detection is currently active.
-    - `img_size`: The image size for the detection process.
-    - `labels`: A list of labels to filter for specific object detections, if desired.
-    - `overlay_draw_threshold`: The maximum allowable time difference (in seconds) between
-          the frame timestamp and the detection timestamp for overlay drawing to occur.
     """
 
     model: Optional[str] = Field(
@@ -87,6 +78,17 @@ class DetectionSettings(BaseModel):
         ),
         examples=[OverlayStyle.AIM.value],
     )
+
+    @model_validator(mode="after")
+    def validate_active_model_dependency(self) -> "DetectionSettings":
+        """
+        Ensures that if 'active' is True, 'model' is not None.
+        """
+        if self.active and self.model is None:
+            raise ValueError(
+                "A valid detection model (e.g., 'yolov8n.pt')` is required for activating detection."
+            )
+        return self
 
 
 class FileData(BaseModel):
