@@ -183,7 +183,7 @@ class DetectionService(metaclass=SingletonMeta):
                     "confidence": self.detection_settings.confidence,
                     "labels": self.detection_settings.labels,
                 }
-                logger.info("Waiting for model %s", {self.detection_settings.model})
+                logger.info("Waiting for model %s", self.detection_settings.model)
                 await self.connection_manager.info(
                     f"Loading model {self.detection_settings.model}"
                 )
