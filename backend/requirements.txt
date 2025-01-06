@@ -18,3 +18,4 @@ watchdog
 python-dotenv
 sounddevice
 dbus-python
+ncnn
