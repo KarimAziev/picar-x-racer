@@ -86,7 +86,7 @@ def perform_detection(
     if results.boxes is not None:
         for detection in results.boxes:
             x1, y1, x2, y2 = detection.xyxy[0].tolist()
-            conf = detection.conf.item()
+            conf = round(detection.conf.item(), 1)
             cls = detection.cls.item()
             label = yolo_model.names[int(cls)]
 

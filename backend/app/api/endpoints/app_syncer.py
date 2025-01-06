@@ -49,9 +49,15 @@ async def app_synchronizer(
         for key, value in data.items():
             await connection_manager.broadcast_json({"type": key, "payload": value})
 
+        if detection_service.loading:
+            await connection_manager.broadcast_json(
+                {"type": "detection-loading", "payload": True}
+            )
+
         if (
             detection_service.detection_settings.active
             and not detection_service.loading
+            and not detection_service.shutting_down
             and detection_service.detection_process is None
         ):
             if detection_service.detection_settings.model is None:
@@ -59,7 +65,7 @@ async def app_synchronizer(
             else:
                 await detection_service.start_detection_process()
                 detection_service.detection_process_task = asyncio.create_task(
-                    detection_service.start_detection_process_task()
+                    detection_service.detection_watcher()
                 )
 
         await connection_manager.broadcast_json(

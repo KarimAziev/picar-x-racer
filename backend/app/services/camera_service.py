@@ -372,6 +372,7 @@ class CameraService(metaclass=SingletonMeta):
                 if (
                     self.detection_service.detection_settings.active
                     and not self.detection_service.loading
+                    and not self.detection_service.shutting_down
                 ):
                     (
                         resized_frame,
@@ -395,7 +396,12 @@ class CameraService(metaclass=SingletonMeta):
                         "resized_width": resized_width,
                         "should_resize": False,
                     }
-                    self.detection_service.put_frame(frame_data)
+                    if (
+                        self.detection_service.detection_settings.active
+                        and not self.detection_service.loading
+                        and not self.detection_service.shutting_down
+                    ):
+                        self.detection_service.put_frame(frame_data)
 
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
@@ -406,7 +412,10 @@ class CameraService(metaclass=SingletonMeta):
             ConnectionError,
             ConnectionRefusedError,
         ) as e:
-            self.logger.warning("Stopped camera loop due to %s", e)
+            self.logger.warning(
+                "Stopped camera loop due to connection-related error: %s",
+                type(e).__name__,
+            )
         except Exception:
             self.logger.error(
                 "Unhandled exception occurred in camera loop", exc_info=True

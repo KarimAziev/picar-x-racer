@@ -3,14 +3,19 @@ import multiprocessing as mp
 import queue
 import re
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
+from app.exceptions.detection import (
+    DetectionModelLoadError,
+    DetectionProcessClosing,
+    DetectionProcessError,
+    DetectionProcessLoading,
+)
 from app.schemas.detection import DetectionSettings
 from app.util.detection_process import detection_process_func
 from app.util.file_util import resolve_absolute_path
 from app.util.logger import Logger
-from app.util.queue import clear_and_put, clear_queue
+from app.util.queue_helpers import clear_and_put, clear_queue
 from app.util.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
@@ -31,7 +36,6 @@ class DetectionService(metaclass=SingletonMeta):
         self, file_manager: "FileService", connection_manager: "ConnectionService"
     ):
         self.lock = asyncio.Lock()
-        self.logger = Logger(__name__)
         self.file_manager = file_manager
         self.connection_manager = connection_manager
 
@@ -43,10 +47,10 @@ class DetectionService(metaclass=SingletonMeta):
         self.manager = mp.Manager()
         self.frame_queue = self.manager.Queue(maxsize=1)
         self.detection_queue = self.manager.Queue(maxsize=1)
-        self.control_queue = self.manager.Queue(maxsize=2)
+        self.control_queue = self.manager.Queue(maxsize=1)
         self.out_queue = self.manager.Queue(maxsize=1)
         self.detection_process = None
-        self.detection_result = None
+        self.detection_result: Optional[Dict[str, Any]] = None
         self.detection_process_task: Optional[asyncio.Task] = None
         self.loading = False
         self.shutting_down = False
@@ -68,6 +72,12 @@ class DetectionService(metaclass=SingletonMeta):
         Returns:
             DetectionSettings: The updated detection settings.
         """
+
+        if self.shutting_down:
+            raise DetectionProcessClosing("Detection process is loading!")
+        elif self.loading:
+            raise DetectionProcessLoading("Detection process is about to close!")
+
         detection_action = None
         dict_data = settings.model_dump()
         detection_data = self.detection_settings.model_dump(exclude_unset=True)
@@ -77,12 +87,14 @@ class DetectionService(metaclass=SingletonMeta):
         }
 
         runtime_data_keys = {"confidence", "labels"}
-
         runtime_data = {}
 
         for key, value in dict_data.items():
-            if detection_data.get(key) != value:
-                self.logger.info("updating %s: %s", key, value)
+            old_value = detection_data.get(key)
+            if old_value != value:
+                logger.info(
+                    "Updating detection setting '%s': '%s'->'%s'", key, old_value, value
+                )
                 if key == "active" and value is not None:
                     detection_action = value
                 elif key in runtime_data_keys:
@@ -91,18 +103,25 @@ class DetectionService(metaclass=SingletonMeta):
                     detection_action = settings.active
 
         if detection_action is not None:
-            await self.cancel_detection_process_task()
-            self.logger.info("Update detection settings: stopping detection process")
+            await self.cancel_detection_watcher()
+            logger.info("Stopping detection process due to updated settings.")
             await self.stop_detection_process()
+        else:
+            logger.info("Skipping cancellation of detection process and watcher")
 
         self.detection_settings = settings
 
         if detection_action == True:
             await self.start_detection_process()
-            self.detection_process_task = asyncio.create_task(
-                self.start_detection_process_task()
-            )
-        elif detection_action is None and len(runtime_data.items()) > 0:
+            if not self.shutting_down:
+                self.detection_process_task = asyncio.create_task(
+                    self.detection_watcher()
+                )
+        elif (
+            not self.shutting_down
+            and detection_action is None
+            and len(runtime_data.items()) > 0
+        ):
             async with self.lock:
                 if (
                     self.detection_process is not None
@@ -133,13 +152,13 @@ class DetectionService(metaclass=SingletonMeta):
         try:
             async with self.lock:
                 if self.detection_settings.model is None:
-                    raise DetectionModelLoadError("No model, skipping starting model")
+                    raise DetectionModelLoadError("No model, skipping starting process")
                 if (
                     self.detection_process is None
                     or not self.detection_process.is_alive()
                 ):
-
                     self.loading = True
+
                     self.detection_process = mp.Process(
                         target=detection_process_func,
                         args=(
@@ -155,25 +174,21 @@ class DetectionService(metaclass=SingletonMeta):
                         ),
                     )
                     self.detection_process.start()
-                    self.logger.info("Detection process has been started")
+                    logger.info("Detection process has been started")
                 else:
-                    self.logger.info(
-                        "Skipping starting of detection process: already alive"
-                    )
+                    logger.info("Skipping starting of detection process: already alive")
 
                 command = {
                     "command": "set_detect_mode",
                     "confidence": self.detection_settings.confidence,
                     "labels": self.detection_settings.labels,
                 }
-                self.logger.info(
-                    "Waiting for model %s", {self.detection_settings.model}
-                )
+                logger.info("Waiting for model %s", {self.detection_settings.model})
                 await self.connection_manager.info(
                     f"Loading model {self.detection_settings.model}"
                 )
                 msg = await asyncio.to_thread(self.out_queue.get)
-                self.logger.info("Received %s", msg)
+                logger.info("Received %s", msg)
                 err_msg = msg.get('error')
                 if err_msg is not None:
                     raise DetectionModelLoadError(
@@ -185,7 +200,7 @@ class DetectionService(metaclass=SingletonMeta):
                 await asyncio.to_thread(clear_and_put, self.control_queue, command)
                 msg = f"Detection is running with {self.detection_settings.model}"
                 await self.connection_manager.info(msg)
-                self.logger.info(msg)
+                logger.info(msg)
         except (
             BrokenPipeError,
             EOFError,
@@ -193,22 +208,21 @@ class DetectionService(metaclass=SingletonMeta):
             ConnectionError,
             ConnectionRefusedError,
         ) as e:
-            self.logger.error("Failed to start detection process %s", e)
+            logger.warning("Failed to start detection process %s", e)
             await self.connection_manager.error(str(e))
+            raise
         except DetectionModelLoadError as e:
             self.detection_settings.active = False
             await self.connection_manager.error(str(e))
             raise
         except Exception as e:
-            self.logger.error(
-                f"Unhandled exception in detection process", exc_info=True
-            )
+            logger.error(f"Unhandled exception in detection process", exc_info=True)
             await self.connection_manager.error(f"Detection process error: {str(e)}")
             raise
         finally:
             self.loading = False
 
-    async def stop_detection_process(self) -> None:
+    async def stop_detection_process(self, clear_queues=True) -> None:
         """
         Stops the currently running detection process.
 
@@ -220,34 +234,35 @@ class DetectionService(metaclass=SingletonMeta):
         async with self.lock:
             self.shutting_down = True
             if self.detection_process is None:
-                self.logger.info("Detection process is None, skipping stop")
+                logger.info("Detection process is None, skipping stop")
             else:
                 await self.connection_manager.info("Stopping detection process")
                 self.stop_event.set()
 
-                self.logger.info("Detection process setted stop_event")
+                logger.info("Detection process setted stop_event")
                 await asyncio.to_thread(self.detection_process.join, 10)
-                self.logger.info("Detection process has been joined")
+                logger.info("Detection process has been joined")
                 if self.detection_process.is_alive():
-                    self.logger.warning(
+                    logger.warning(
                         "Force terminating detection process since it's still alive."
                     )
                     self.detection_process.terminate()
                     await asyncio.to_thread(self.detection_process.join, 5)
                     self.detection_process.close()
-            await asyncio.to_thread(self._cleanup_queues)
-            self.logger.info("Clearing stop event")
+            if clear_queues:
+                await asyncio.to_thread(self._cleanup_queues)
+            logger.info("Clearing stop event")
             self.stop_event.clear()
-            self.logger.info("Stop event cleared")
+            logger.info("Stop event cleared")
 
             self.detection_result = None
             self.shutting_down = False
 
             if self.detection_process:
                 self.detection_process = None
-                self.logger.info("Detection process has been stopped successfully.")
+                logger.info("Detection process has been stopped successfully.")
 
-    async def start_detection_process_task(self) -> None:
+    async def detection_watcher(self) -> None:
         """
         Background task that monitors the output from the detection process in real-time.
 
@@ -258,30 +273,41 @@ class DetectionService(metaclass=SingletonMeta):
         try:
             while (
                 hasattr(self, "out_queue")
+                and not self.shutting_down
                 and not self.task_event.is_set()
                 and not self.stop_event.is_set()
             ):
 
                 try:
                     msg = await asyncio.to_thread(self.out_queue.get, timeout=1)
-                    self.logger.debug("msg %s", msg)
+                    logger.debug("msg %s", msg)
                     err = msg.get('error')
                     if err is not None:
                         raise DetectionProcessError(err)
                 except queue.Empty:
                     pass
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1)
         except (
             BrokenPipeError,
             EOFError,
             ConnectionResetError,
             ConnectionError,
             ConnectionRefusedError,
-        ):
+        ) as e:
             self.detection_settings.active = False
+            logger.warning(
+                "Connection-related error occurred in detection watcher."
+                "Exception handled: %s",
+                type(e).__name__,
+            )
         except DetectionProcessError as e:
             # handling "Cannot set tensor: Dimension mismatch. Got 320 but expected 256 for dimension 1 of input 0."
-            pattern = r"Dimension mismatch\. Got (\d+) but expected (\d+)"
+            pattern = (
+                r"Dimension mismatch\. Got (\d+) but expected (\d+) for dimension 1"
+            )
+            unsupported_pattern = (
+                r"Dimension mismatch\. Got (\d+) but expected (\d+) for dimension 2"
+            )
             error_message = str(e)
             match = re.search(pattern, error_message)
             got = int(match.group(1)) if match else None
@@ -290,6 +316,9 @@ class DetectionService(metaclass=SingletonMeta):
                 match
                 and got
                 and expected
+                and not self.loading
+                and not self.shutting_down
+                and self.detection_settings.active
                 and self.detection_settings.img_size == got
                 and self.detection_settings.img_size != expected
             ):
@@ -297,31 +326,48 @@ class DetectionService(metaclass=SingletonMeta):
                     **self.detection_settings.model_dump(),
                     "img_size": expected,
                 }
-
-                await self.connection_manager.error(
-                    f"{e}. Trying to adjust size to {expected}"
+                self.loading = True
+                logger.warning("Dimension mismatch: %s, retrying", error_message)
+                await self.stop_detection_process()
+                self.detection_settings = DetectionSettings(**next_settings)
+                detection_start_task = asyncio.create_task(
+                    self.start_detection_process()
+                )
+                info_task = asyncio.create_task(
+                    self.connection_manager.broadcast_json(
+                        {
+                            "type": "detection",
+                            "payload": next_settings,
+                            "message": {
+                                "text": f"Dimension mismatch: Got {got} but expected {expected}. Retrying with {expected} size.",
+                                "type": "warning",
+                            },
+                        }
+                    )
                 )
 
-                await self.connection_manager.broadcast_json(
-                    {
-                        "type": "detection",
-                        "payload": next_settings,
-                    }
+                await asyncio.gather(info_task, detection_start_task)
+                self.detection_process_task = asyncio.create_task(
+                    self.detection_watcher()
                 )
-
-                await self.update_detection_settings(DetectionSettings(**next_settings))
 
             else:
                 self.detection_settings.active = False
+                logger.error("Detection process error: %s", error_message)
+                err = (
+                    error_message
+                    if not re.search(unsupported_pattern, error_message)
+                    else "The model expects different widths and heights, which is unsupported."
+                )
                 await self.connection_manager.broadcast_json(
                     {
                         "type": "detection",
                         "payload": self.detection_settings.model_dump(),
+                        "message": {"type": "error", "text": err},
                     }
                 )
-                await self.connection_manager.error(f"Detection process error: {e}")
 
-    async def cancel_detection_process_task(self) -> None:
+    async def cancel_detection_watcher(self) -> None:
         """
         Cancels the background asyncio detection process task, ensuring it shuts down cleanly.
 
@@ -331,19 +377,18 @@ class DetectionService(metaclass=SingletonMeta):
         """
 
         if self.detection_process_task:
-            self.logger.info("Cancelling detection task")
+            logger.info("Cancelling detection task")
             try:
                 self.task_event.set()
-
                 self.detection_process_task.cancel()
                 await self.detection_process_task
             except asyncio.CancelledError:
-                self.logger.info("Detection task is cancelled")
                 self.detection_process_task = None
+                logger.info("Detection task is cancelled")
             finally:
                 self.task_event.clear()
         else:
-            self.logger.info("Skipping cancelling detection task")
+            logger.info("Skipping cancelling detection task")
 
     def _cleanup_queues(self) -> None:
         """
@@ -352,23 +397,40 @@ class DetectionService(metaclass=SingletonMeta):
         Behavior:
             - Ensures safe shutdown of the queues without leaving residual data.
         """
-        for queue_item in [
-            self.frame_queue,
-            self.control_queue,
-            self.detection_queue,
-            self.out_queue,
-        ]:
-            clear_queue(queue_item)
+        try:
+            for queue_item in [
+                self.frame_queue,
+                self.control_queue,
+                self.detection_queue,
+                self.out_queue,
+            ]:
+                clear_queue(queue_item, reraise=True)
+        except (
+            ConnectionError,
+            ConnectionRefusedError,
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+        ) as e:
+            logger.warning(
+                "Connection-related error occurred while clearing detection queues."
+                "Exception handled: %s",
+                type(e).__name__,
+            )
 
-    def put_frame(self, frame_data) -> None:
+    def put_frame(self, frame_data: Dict[str, Any]) -> None:
         """Puts the frame data into the frame queue after clearing it."""
         if self.shutting_down:
+            logger.warning(
+                "Skipping putting a frame to detection queue: service is shutting down."
+            )
+            return None
+        if self.loading:
+            logger.warning(
+                "Skipping putting a frame to detection queue: service is loading."
+            )
             return None
         return clear_and_put(self.frame_queue, frame_data)
-
-    def put_command(self, command_data) -> None:
-        """Puts the control queue into the frame queue after clearing it."""
-        return clear_and_put(self.control_queue, command_data)
 
     @property
     def current_state(self):
@@ -376,7 +438,7 @@ class DetectionService(metaclass=SingletonMeta):
         Retrieves the current state of the detection service, including the latest detection results.
 
         Returns:
-            dict: The current state with keys:
+            The current state with keys:
                 - `detection_result`: The latest detection results (or an empty result if none exist).
                 - `timestamp`: The timestamp associated with the detection results.
                 - `loading`: A flag indicating whether a detection load operation is in progress.
@@ -404,8 +466,8 @@ class DetectionService(metaclass=SingletonMeta):
             - Deletes class properties associated with multiprocessing and async state.
         """
         self.shutting_down = True
-        await self.cancel_detection_process_task()
-        await self.stop_detection_process()
+        await self.cancel_detection_watcher()
+        await self.stop_detection_process(clear_queues=False)
 
         if self.manager is not None:
             logger.info("Shutdown detection manager")
@@ -430,17 +492,19 @@ class DetectionService(metaclass=SingletonMeta):
         Retrieves the latest detection result from the detection process.
 
         Returns:
-            dict or None: The detection result, or `None` if no result is available.
+            The detection result as list, or `None` if no result is available.
         """
         if self.shutting_down:
-            self.logger.warning(
-                "Attempted to get detection while service is shutting down."
-            )
+            logger.warning("Attempted to get detection while service is shutting down.")
             return None
         if self.stop_event.is_set():
             return None
+        if not hasattr(self, "detection_queue"):
+            return None
         try:
-            self.detection_result = self.detection_queue.get(timeout=1)
+            self.detection_result: Optional[Dict[str, Any]] = self.detection_queue.get(
+                timeout=1
+            )
         except queue.Empty:
             self.detection_result = None
         except (
@@ -449,7 +513,11 @@ class DetectionService(metaclass=SingletonMeta):
             ConnectionResetError,
             ConnectionError,
             ConnectionRefusedError,
-        ):
+        ) as e:
             self.detection_result = None
+            logger.warning(
+                "Connection-related error while getting the detection result: %s",
+                type(e).__name__,
+            )
 
         return self.detection_result

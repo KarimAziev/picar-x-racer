@@ -2,7 +2,12 @@ import asyncio
 from typing import TYPE_CHECKING, List
 
 from app.api import deps
-from app.exceptions.detection import DetectionModelLoadError, DetectionProcessError
+from app.exceptions.detection import (
+    DetectionModelLoadError,
+    DetectionProcessClosing,
+    DetectionProcessError,
+    DetectionProcessLoading,
+)
 from app.schemas.detection import DetectionSettings, FileNode
 from app.util.logger import Logger
 from fastapi import (
@@ -62,7 +67,39 @@ router = APIRouter()
                     }
                 }
             },
-        }
+        },
+        422: {
+            "description": "Validation Error",
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "type": "value_error",
+                            "loc": ["body"],
+                            "msg": "Value error, A valid detection model (e.g., 'yolov8n.pt')` is required for activating detection.",
+                            "input": {
+                                "model": None,
+                                "active": True,
+                                "confidence": 0.4,
+                                "img_size": 320,
+                                "labels": [],
+                                "overlay_draw_threshold": 1,
+                                "overlay_style": "box",
+                            },
+                            "ctx": {"error": {}},
+                        }
+                    ]
+                }
+            },
+        },
+        503: {
+            "description": "Bad Request - Errors like model loading or detection issues.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Detection process is loading"}
+                }
+            },
+        },
     },
 )
 async def update_detection_settings(
@@ -78,36 +115,33 @@ async def update_detection_settings(
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     logger.info("Detection update payload %s", payload)
+    if detection_service.shutting_down:
+        raise HTTPException(
+            status_code=503, detail="Detection process is shutting down"
+        )
+    if detection_service.loading:
+        raise HTTPException(status_code=503, detail="Detection process is loading")
     try:
         await connection_manager.broadcast_json(
             {"type": "detection-loading", "payload": True}
         )
-        result = await detection_service.update_detection_settings(payload)
-        await connection_manager.broadcast_json(
-            {"type": "detection", "payload": result.model_dump()}
-        )
-        return result
+        return await detection_service.update_detection_settings(payload)
     except DetectionModelLoadError as e:
-        detection_service.detection_settings.active = False
-        await connection_manager.broadcast_json(
-            {
-                "type": "detection",
-                "payload": detection_service.detection_settings.model_dump(),
-            }
-        )
         raise HTTPException(status_code=400, detail=str(e))
+    except (DetectionProcessClosing, DetectionProcessLoading) as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except DetectionProcessError as e:
-        detection_service.detection_settings.active = False
-        await connection_manager.broadcast_json(
-            {
-                "type": "detection",
-                "payload": detection_service.detection_settings.model_dump(),
-            }
-        )
-        raise HTTPException(status_code=400, detail=f"Detection error {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
     finally:
         await connection_manager.broadcast_json(
-            {"type": "detection-loading", "payload": False}
+            {
+                "type": "detection",
+                "payload": detection_service.detection_settings.model_dump(),
+            }
+        )
+        await connection_manager.broadcast_json(
+            {"type": "detection-loading", "payload": detection_service.loading}
         )
 
 

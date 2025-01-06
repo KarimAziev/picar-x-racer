@@ -70,7 +70,7 @@ async def shutdown(
         logger.info("Starting the shutdown process...")
         await connection_manager.warning("Powering off the system")
         await battery_manager.cleanup_connection_manager()
-        await detection_manager.cancel_detection_process_task()
+        await detection_manager.cancel_detection_watcher()
         await detection_manager.stop_detection_process()
         await music_manager.cleanup()
         await asyncio.to_thread(power_off)
@@ -136,7 +136,7 @@ async def restart_system(
         await connection_manager.warning("Restarting the system")
         await battery_manager.cleanup_connection_manager()
         await music_manager.cleanup()
-        await detection_manager.cancel_detection_process_task()
+        await detection_manager.cancel_detection_watcher()
         await detection_manager.stop_detection_process()
         await asyncio.to_thread(restart)
         return {"message": "System restart initiated successfully."}
