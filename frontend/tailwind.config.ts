@@ -13,6 +13,8 @@ export default {
       },
       colors: {
         "--robo-color-primary": "var(--robo-color-primary)",
+        "button-text-primary-hover-background":
+          "var(--p-button-text-primary-hover-background)",
       },
       boxShadow: {
         primary: "0px 0px 4px 2px var(--robo-color-primary)",

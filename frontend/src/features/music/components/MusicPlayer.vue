@@ -22,55 +22,55 @@
         />
       </div>
 
-      <div class="buttons flex items-center justify-between">
-        <Button
+      <div class="flex items-center justify-between">
+        <button
           @click="prevTrack"
-          class="!pt-0"
-          icon="pi pi-backward"
+          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           aria-label="Prev track"
           text
           v-tooltip="'Previous track'"
-        />
-
-        <Button
-          class="!pt-0"
+        >
+          <i class="pi pi-backward" />
+        </button>
+        <button
           @click="togglePlaying"
-          :icon="togglePlayIcon"
-          text
           aria-label="toggle-play"
+          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           v-tooltip="'Toggle playing'"
-        />
-        <Button
-          class="!pt-0"
+        >
+          <i :class="togglePlayIcon" />
+        </button>
+        <button
+          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="stopTrack"
-          icon="pi pi-stop"
           :disabled="!isPlaying"
-          text
           aria-label="Stop"
           v-tooltip="'Stop playing'"
-        />
+        >
+          <i class="pi pi-stop" />
+        </button>
         <span class="whitespace-nowrap">
           {{ durationLabel }}
         </span>
-        <Button
-          class="!pt-0"
+        <button
+          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextTrack"
-          icon="pi pi-forward"
           aria-label="Next track"
           v-tooltip="'Play next track'"
-          text
-        />
-        <Button
-          class="!pt-0"
+        >
+          <i class="pi pi-forward" />
+        </button>
+        <button
+          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextMode"
-          :icon="musicModeIcon"
           aria-label="next-music-mode"
-          :tooltip="musicModeTooltip"
-          text
-        />
+          v-tooltip="musicModeTooltip"
+        >
+          <i :class="musicModeIcon" />
+        </button>
       </div>
     </div>
-    <Volume class="volume" />
+    <Volume />
   </div>
 </template>
 
@@ -79,9 +79,10 @@ import { ref, computed } from "vue";
 import Slider from "primevue/slider";
 import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
-import { useMusicStore, MusicMode } from "@/features/music";
+import { useMusicStore } from "@/features/music";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import Volume from "@/ui/Volume.vue";
+import { musicModeConfig } from "@/features/music/components/config";
 
 const musicStore = useMusicStore();
 
@@ -93,25 +94,13 @@ const togglePlayIcon = computed(
   () => `pi ${musicStore.player.is_playing ? "pi-pause" : "pi-play-circle"}`,
 );
 
-const musicModeTooltip = computed(() => {
-  const texts = {
-    [MusicMode.LOOP]: "Play all tracks on repeat continuously.",
-    [MusicMode.LOOP_ONE]: "Play all tracks on repeat continuously.",
-    [MusicMode.QUEUE]: "Play all tracks once in order, without repeating.",
-    [MusicMode.SINGLE]: "Play the current track once and stop playback.",
-  };
-  return texts[musicStore.player.mode];
-});
+const musicModeTooltip = computed(
+  () => musicModeConfig[musicStore.player.mode]?.tooltip,
+);
 
-const musicModeIcon = computed(() => {
-  const icons = {
-    [MusicMode.LOOP]: "pi-sync",
-    [MusicMode.LOOP_ONE]: "pi-arrow-right-arrow-left",
-    [MusicMode.QUEUE]: "pi-list",
-    [MusicMode.SINGLE]: "pi-stop-circle",
-  };
-  return `pi ${icons[musicStore.player.mode]}`;
-});
+const musicModeIcon = computed(
+  () => `pi ${musicModeConfig[musicStore.player.mode]?.icon}`,
+);
 
 const handleSavePosition = useAsyncDebounce(async (value: unknown) => {
   if (track.value && track.value !== currentTrack.value) {
