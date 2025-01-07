@@ -5,6 +5,7 @@ import {
   downloadFile,
   removeFile,
   batchRemoveFiles,
+  downloadFilesAsArchive,
 } from "@/features/settings/api";
 import { APIMediaType } from "@/features/settings/interface";
 import { getBatchFilesErrorMessage } from "@/features/settings/util";
@@ -74,6 +75,14 @@ export const useStore = defineStore("images", {
       const messager = useMessagerStore();
       try {
         await downloadFile(mediaType, fileName);
+      } catch (error) {
+        messager.handleError(error);
+      }
+    },
+    async downloadFilesArchive(filenames: string[]) {
+      const messager = useMessagerStore();
+      try {
+        await downloadFilesAsArchive(mediaType, filenames);
       } catch (error) {
         messager.handleError(error);
       }

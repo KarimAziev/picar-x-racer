@@ -20,6 +20,39 @@ export const downloadFile = async (mediaType: string, fileName: string) => {
   link.click();
 };
 
+export const downloadFilesAsArchive = async (
+  mediaType: string,
+  fileNames: string[],
+) => {
+  try {
+    const response = await axios.post(
+      `/api/files/download/archive`,
+      {
+        media_type: mediaType,
+        filenames: fileNames,
+      },
+      {
+        responseType: "blob",
+      },
+    );
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+
+    const archiveName = `${mediaType}_files_archive.zip`;
+
+    link.href = url;
+    link.setAttribute("download", archiveName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error downloading files as archive:", error);
+    throw error;
+  }
+};
+
 export const removeFile = (mediaType: APIMediaType, file: string) =>
   axios.delete<RemoveFileResponse>(`/api/files/remove/${mediaType}/${file}`);
 
