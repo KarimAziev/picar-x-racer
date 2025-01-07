@@ -114,7 +114,6 @@ def clear_and_put(
         ConnectionResetError,
     ) as e:
         logger.warning(
-            "Failed to put the %s to queue due to connection related issue: %s",
-            item,
+            "Failed to put data into the queue due to a connection-related issue: %s",
             type(e).__name__,
         )
