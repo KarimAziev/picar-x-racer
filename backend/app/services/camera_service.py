@@ -194,7 +194,7 @@ class CameraService(metaclass=SingletonMeta):
 
             return timestamp_bytes + fps_bytes + encoded_frame
 
-    def setup_camera_props(self) -> None:
+    def _setup_camera_props(self) -> None:
         """
         Configure the camera properties such as FPS, resolution (width and height),
         and pixel format based on the current settings and device information.
@@ -294,11 +294,10 @@ class CameraService(metaclass=SingletonMeta):
         - Releases the current video capture device (`self.cap`) safely to free resources.
         - Attempts to find and set up another available camera device using `VideoDeviceAdapter`.
 
-        If a new camera device is successfully initialized, its properties are configured using
-        `setup_camera_props`. If no valid camera device is found, the method returns `None`.
+        If no valid camera device is found, the method returns `None`.
 
         Returns:
-            Optional[cv2.VideoCapture]: A new valid video capture object if setup succeeds, or `None`.
+            A new valid video capture object if setup succeeds, or `None`.
         """
         (video_device, _) = self.video_device_adapter.video_device or (
             None,
@@ -316,8 +315,48 @@ class CameraService(metaclass=SingletonMeta):
         self.cap = self.video_device_adapter.setup_video_capture()
 
         if self.cap is not None:
-            self.setup_camera_props()
+            self._setup_camera_props()
         return self.cap
+
+    def _process_frame(self, frame: MatLike) -> None:
+        """Task run by the ThreadPoolExecutor to handle frame detection."""
+        enhance_mode = self.stream_settings.enhance_mode
+        frame_enhancer = (
+            frame_enhancers.get(enhance_mode) if enhance_mode is not None else None
+        )
+        self.img = frame
+        self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
+        if self.stream_settings.video_record:
+            self.video_recorder.write_frame(self.stream_img)
+
+        if (
+            self.detection_service.detection_settings.active
+            and not self.detection_service.loading
+            and not self.detection_service.shutting_down
+        ):
+            (
+                resized_frame,
+                original_width,
+                original_height,
+                resized_width,
+                resized_height,
+            ) = resize_to_fixed_height(
+                self.stream_img.copy(),
+                base_size=self.detection_service.detection_settings.img_size,
+            )
+
+            self.current_frame_timestamp = time.time()
+
+            frame_data = {
+                "frame": resized_frame,
+                "timestamp": self.current_frame_timestamp,
+                "original_height": original_height,
+                "original_width": original_width,
+                "resized_height": resized_height,
+                "resized_width": resized_width,
+                "should_resize": False,
+            }
+            self.detection_service.put_frame(frame_data)
 
     def _camera_thread_func(self) -> None:
         """
@@ -333,48 +372,6 @@ class CameraService(metaclass=SingletonMeta):
 
         self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-
-            def process_frame(frame: MatLike):
-                """Task run by the ThreadPoolExecutor to handle frame detection."""
-                enhance_mode = self.stream_settings.enhance_mode
-                frame_enhancer = (
-                    frame_enhancers.get(enhance_mode)
-                    if enhance_mode is not None
-                    else None
-                )
-                self.img = frame
-                self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
-                if self.stream_settings.video_record:
-                    self.video_recorder.write_frame(self.stream_img)
-
-                if (
-                    self.detection_service.detection_settings.active
-                    and not self.detection_service.loading
-                    and not self.detection_service.shutting_down
-                ):
-                    (
-                        resized_frame,
-                        original_width,
-                        original_height,
-                        resized_width,
-                        resized_height,
-                    ) = resize_to_fixed_height(
-                        self.stream_img.copy(),
-                        base_size=self.detection_service.detection_settings.img_size,
-                    )
-
-                    self.current_frame_timestamp = time.time()
-
-                    frame_data = {
-                        "frame": resized_frame,
-                        "timestamp": self.current_frame_timestamp,
-                        "original_height": original_height,
-                        "original_width": original_width,
-                        "resized_height": resized_height,
-                        "resized_width": resized_width,
-                        "should_resize": False,
-                    }
-                    self.detection_service.put_frame(frame_data)
 
             try:
                 while self.camera_run and self.cap:
@@ -402,7 +399,7 @@ class CameraService(metaclass=SingletonMeta):
                             self.logger.info("FPS: %s", self.actual_fps)
                             prev_fps = self.actual_fps
 
-                    executor.submit(process_frame, frame)
+                    executor.submit(self._process_frame, frame)
 
             except KeyboardInterrupt:
                 self.logger.info("Keyboard interrupt, stopping camera loop")
@@ -464,7 +461,7 @@ class CameraService(metaclass=SingletonMeta):
                     )
                 else:
                     self.cap = self.video_device_adapter.find_and_setup_device_cap()
-                self.setup_camera_props()
+                self._setup_camera_props()
                 self.capture_thread = threading.Thread(target=self._camera_thread_func)
                 self.capture_thread.start()
 
@@ -504,7 +501,8 @@ class CameraService(metaclass=SingletonMeta):
                 except CameraDeviceError as err:
                     if self.camera_settings.device:
                         await self.connection_manager.error(
-                            f"Camera device {self.camera_settings.device} error: {err}, trying to find other camera"
+                            f"Camera {self.camera_settings.device} error: {err}, "
+                            "trying to find other camera"
                         )
                         self.camera_settings.device = None
                         try:
