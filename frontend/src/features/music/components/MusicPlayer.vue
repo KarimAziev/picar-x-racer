@@ -34,21 +34,11 @@
 
         <Button
           class="!pt-0"
-          v-if="isPlaying"
           @click="togglePlaying"
-          icon="pi pi-pause"
+          :icon="togglePlayIcon"
           text
-          aria-label="Pause"
-          v-tooltip="'Pause playing track'"
-        />
-        <Button
-          class="!pt-0"
-          @click="togglePlaying"
-          v-else
-          icon="pi pi-play-circle"
-          text
-          aria-label="Play"
-          v-tooltip="'Play track'"
+          aria-label="toggle-play"
+          v-tooltip="'Toggle playing'"
         />
         <Button
           class="!pt-0"
@@ -72,38 +62,10 @@
         />
         <Button
           class="!pt-0"
-          v-if="musicMode === MusicMode.LOOP"
           @click="nextMode"
-          icon="pi pi-sync"
-          aria-label="loop"
-          v-tooltip="'Play all tracks on repeat continuously.'"
-          text
-        />
-        <Button
-          class="!pt-0"
-          v-if="musicMode === MusicMode.LOOP_ONE"
-          @click="nextMode"
-          icon="pi pi-arrow-right-arrow-left"
-          aria-label="loop_one"
-          v-tooltip="'Repeat the current track continuously.'"
-          text
-        />
-        <Button
-          class="!pt-0"
-          v-if="musicMode === MusicMode.QUEUE"
-          @click="nextMode"
-          icon="pi pi-list"
-          aria-label="queue"
-          v-tooltip="'Play all tracks once in order, without repeating.'"
-          text
-        />
-        <Button
-          class="!pt-0"
-          v-if="musicMode === MusicMode.SINGLE"
-          @click="nextMode"
-          icon="pi pi-stop-circle"
-          aria-label="single"
-          v-tooltip="'Play the current track once and stop playback.'"
+          :icon="musicModeIcon"
+          aria-label="next-music-mode"
+          :tooltip="musicModeTooltip"
           text
         />
       </div>
@@ -126,6 +88,30 @@ const musicStore = useMusicStore();
 const currentTrack = computed(() => musicStore.player.track);
 const isPlaying = computed(() => musicStore.player.is_playing);
 const track = ref<string | null>();
+
+const togglePlayIcon = computed(
+  () => `pi ${musicStore.player.is_playing ? "pi-pause" : "pi-play-circle"}`,
+);
+
+const musicModeTooltip = computed(() => {
+  const texts = {
+    [MusicMode.LOOP]: "Play all tracks on repeat continuously.",
+    [MusicMode.LOOP_ONE]: "Play all tracks on repeat continuously.",
+    [MusicMode.QUEUE]: "Play all tracks once in order, without repeating.",
+    [MusicMode.SINGLE]: "Play the current track once and stop playback.",
+  };
+  return texts[musicStore.player.mode];
+});
+
+const musicModeIcon = computed(() => {
+  const icons = {
+    [MusicMode.LOOP]: "pi-sync",
+    [MusicMode.LOOP_ONE]: "pi-arrow-right-arrow-left",
+    [MusicMode.QUEUE]: "pi-list",
+    [MusicMode.SINGLE]: "pi-stop-circle",
+  };
+  return `pi ${icons[musicStore.player.mode]}`;
+});
 
 const handleSavePosition = useAsyncDebounce(async (value: unknown) => {
   if (track.value && track.value !== currentTrack.value) {
@@ -153,8 +139,6 @@ const handleModelValueUpdate = async (value: number | number[]) => {
     await handleSavePosition(value);
   }
 };
-
-const musicMode = computed(() => musicStore.player.mode);
 
 const duration = computed(() => musicStore.player.duration);
 
