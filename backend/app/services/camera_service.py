@@ -320,15 +320,6 @@ class CameraService(metaclass=SingletonMeta):
 
     def _process_frame(self, frame: MatLike) -> None:
         """Task run by the ThreadPoolExecutor to handle frame detection."""
-        enhance_mode = self.stream_settings.enhance_mode
-        frame_enhancer = (
-            frame_enhancers.get(enhance_mode) if enhance_mode is not None else None
-        )
-        self.img = frame
-        self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
-        if self.stream_settings.video_record:
-            self.video_recorder.write_frame(self.stream_img)
-
         if (
             self.detection_service.detection_settings.active
             and not self.detection_service.loading
@@ -341,7 +332,7 @@ class CameraService(metaclass=SingletonMeta):
                 resized_width,
                 resized_height,
             ) = resize_to_fixed_height(
-                self.stream_img.copy(),
+                frame.copy(),
                 base_size=self.detection_service.detection_settings.img_size,
             )
 
@@ -398,6 +389,19 @@ class CameraService(metaclass=SingletonMeta):
                         ):
                             self.logger.info("FPS: %s", self.actual_fps)
                             prev_fps = self.actual_fps
+
+                    enhance_mode = self.stream_settings.enhance_mode
+                    frame_enhancer = (
+                        frame_enhancers.get(enhance_mode)
+                        if enhance_mode is not None
+                        else None
+                    )
+                    self.img = frame
+                    self.stream_img = (
+                        frame if not frame_enhancer else frame_enhancer(frame)
+                    )
+                    if self.stream_settings.video_record:
+                        self.video_recorder.write_frame(self.stream_img)
 
                     executor.submit(self._process_frame, frame)
 
