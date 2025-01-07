@@ -1,7 +1,7 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
-import { formatObjectDiff, groupWith } from "@/util/obj";
+import { formatObjectDiff, groupWith, isObjectShallowEquals } from "@/util/obj";
 import { startCase } from "@/util/str";
 import {
   useImageStore,
@@ -66,7 +66,10 @@ export const useStore = defineStore("syncer", {
               musicStore.inhibitPlayerSync &&
               musicStore.player.track === payload.track;
 
-            if (!inhibitSync) {
+            if (
+              !inhibitSync &&
+              !isObjectShallowEquals(musicStore.player, payload)
+            ) {
               musicStore.player = payload;
             }
             break;
