@@ -3,6 +3,7 @@ import {
   APIMediaType,
   RemoveFileResponse,
 } from "@/features/settings/interface";
+import { retrieveError } from "@/util/error";
 
 export const downloadFile = async (mediaType: string, fileName: string) => {
   const response = await axios.get(
@@ -48,8 +49,8 @@ export const downloadFilesAsArchive = async (
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("Error downloading files as archive:", error);
-    throw error;
+    const errData = retrieveError(error);
+    throw new Error(errData.text.length > 0 ? errData.text : errData.title);
   }
 };
 
