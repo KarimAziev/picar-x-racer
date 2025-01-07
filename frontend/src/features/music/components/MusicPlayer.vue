@@ -25,7 +25,7 @@
       <div class="flex items-center justify-between">
         <button
           @click="prevTrack"
-          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           aria-label="Prev track"
           text
           v-tooltip="'Previous track'"
@@ -35,13 +35,13 @@
         <button
           @click="togglePlaying"
           aria-label="toggle-play"
-          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           v-tooltip="'Toggle playing'"
         >
           <i :class="togglePlayIcon" />
         </button>
         <button
-          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="stopTrack"
           :disabled="!isPlaying"
           aria-label="Stop"
@@ -53,7 +53,7 @@
           {{ durationLabel }}
         </span>
         <button
-          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextTrack"
           aria-label="Next track"
           v-tooltip="'Play next track'"
@@ -61,7 +61,7 @@
           <i class="pi pi-forward" />
         </button>
         <button
-          class="py-2 px-3 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextMode"
           aria-label="next-music-mode"
           v-tooltip="musicModeTooltip"
