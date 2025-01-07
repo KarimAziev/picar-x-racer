@@ -262,6 +262,33 @@ def download_file(
                 }
             },
         },
+        404: {
+            "description": "One or more files not found",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "File not found: my_unexisting_file"}
+                }
+            },
+        },
+        422: {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": [
+                            {
+                                "type": "literal_error",
+                                "loc": ["body", "media_type"],
+                                "msg": "Input should be 'music', 'image', 'video' or 'data'",
+                                "input": "images",
+                                "ctx": {
+                                    "expected": "'music', 'image', 'video' or 'data'"
+                                },
+                            }
+                        ]
+                    }
+                }
+            },
+        },
         400: {
             "description": "Invalid file request",
             "content": {
@@ -270,14 +297,6 @@ def download_file(
                         "detail": "Invalid media type 'my_media_type'. Should be one of: "
                         "'music', 'image', 'video', 'data'. "
                     }
-                }
-            },
-        },
-        404: {
-            "description": "One or more files not found",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "File not found: my_unexisting_file"}
                 }
             },
         },
