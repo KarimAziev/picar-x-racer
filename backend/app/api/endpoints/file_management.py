@@ -271,6 +271,7 @@ def download_file(
             },
         },
         422: {
+            "description": "Validation error",
             "content": {
                 "application/json": {
                     "example": {
