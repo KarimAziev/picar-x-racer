@@ -102,7 +102,7 @@
     @after-hide="removeKeyEventListeners"
   >
     <Photo className="w-full h-auto" :src="selectedImage?.url" :width="380" />
-    <ButtonGroup class="flex justify-center">
+    <ButtonGroup class="flex justify-center w-full items-center pt-5">
       <Button
         text
         aria-label="Previous image"
