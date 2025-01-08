@@ -134,5 +134,7 @@ def detection_process_func(
             )
         except KeyboardInterrupt:
             logger.warning("Detection process received keyboard interrupt, exiting.")
+            stop_event.set()
+
         finally:
             logger.info("Detection process is finished.")

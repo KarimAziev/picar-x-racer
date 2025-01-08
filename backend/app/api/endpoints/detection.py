@@ -1,4 +1,5 @@
 import asyncio
+import queue
 from typing import TYPE_CHECKING, List
 
 from app.api import deps
@@ -199,23 +200,42 @@ async def object_detection(
     try:
         await detection_notifier.connect(websocket)
         while websocket.application_state == WebSocketState.CONNECTED:
-            if detection_service.stop_event.is_set():
+            if (
+                detection_service.shutting_down
+                or not hasattr(detection_service, "stop_event")
+                or detection_service.stop_event.is_set()
+            ):
                 await detection_notifier.disconnect(websocket)
                 break
-            await asyncio.to_thread(detection_service.get_detection)
-            if detection_service.stop_event.is_set():
-                await detection_notifier.disconnect(websocket)
+
+            try:
+                new_detection = await asyncio.to_thread(
+                    detection_service.detection_queue.get, timeout=0.1
+                )
+                detection_service.detection_result = new_detection
+                await detection_notifier.broadcast_json(detection_service.current_state)
+
+            except queue.Empty:
+                pass
+            except (
+                BrokenPipeError,
+                EOFError,
+                ConnectionResetError,
+                ConnectionError,
+                ConnectionRefusedError,
+            ) as e:
+                logger.warning(
+                    "Connection-related error while getting the detection result: %s",
+                    type(e).__name__,
+                )
                 break
-            await detection_notifier.broadcast_json(detection_service.current_state)
+
+    except asyncio.CancelledError:
+        logger.info("WebSocket handler received cancellation signal.")
+        await detection_notifier.disconnect(websocket)
 
     except WebSocketDisconnect:
-        logger.info("Detection WebSocket Disconnected")
-    except asyncio.CancelledError:
-        logger.info("Gracefully shutting down Detection WebSocket connection")
-        await detection_notifier.disconnect(websocket)
-    except KeyboardInterrupt:
-        logger.info("Detection WebSocket interrupted")
-        await detection_notifier.disconnect(websocket)
+        logger.info("WebSocket client disconnected gracefully.")
     finally:
         detection_notifier.remove(websocket)
 

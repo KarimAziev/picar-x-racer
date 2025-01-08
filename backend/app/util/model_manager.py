@@ -1,4 +1,3 @@
-import gc
 import os
 from typing import TYPE_CHECKING, Optional, Tuple
 
@@ -105,4 +104,3 @@ class ModelManager:
 
             logger.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
         del self.model
-        gc.collect()

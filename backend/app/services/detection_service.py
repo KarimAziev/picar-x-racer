@@ -15,7 +15,7 @@ from app.schemas.detection import DetectionSettings
 from app.util.detection_process import detection_process_func
 from app.util.file_util import resolve_absolute_path
 from app.util.logger import Logger
-from app.util.queue_helpers import clear_and_put, clear_queue
+from app.util.queue_helpers import clear_queue
 from app.util.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
@@ -128,7 +128,7 @@ class DetectionService(metaclass=SingletonMeta):
                     and hasattr(self, "control_queue")
                 ):
                     await asyncio.to_thread(
-                        clear_and_put,
+                        self.clear_and_put,
                         self.control_queue,
                         {"command": "set_detect_mode", **runtime_data},
                     )
@@ -196,7 +196,7 @@ class DetectionService(metaclass=SingletonMeta):
                         else f"Model {self.detection_settings.model} failed to load."
                     )
 
-                await asyncio.to_thread(clear_and_put, self.control_queue, command)
+                await asyncio.to_thread(self.clear_and_put, self.control_queue, command)
                 msg = f"Detection is running with {self.detection_settings.model}"
                 await self.connection_manager.info(msg)
                 logger.info(msg)
@@ -417,6 +417,42 @@ class DetectionService(metaclass=SingletonMeta):
                 type(e).__name__,
             )
 
+    def _close_queues(self) -> None:
+        """
+        Closes and joins threads for all multiprocessing queues to ensure proper
+        cleanup and prevent resource leaks.
+        """
+        for name in [
+            "control_queue",
+            "detection_queue",
+            "out_queue",
+            "frame_queue",
+        ]:
+            try:
+                queue_item: Optional['mp.Queue'] = getattr(self, name, None)
+                if not queue_item:
+                    continue
+                if not queue_item.empty():
+                    logger.info(f"Cleaning non empty queue {name}")
+                    queue_item.get_nowait()
+
+                logger.info("Closing %s", name)
+                queue_item.close()
+                logger.info("Joining %s", name)
+                queue_item.join_thread()
+            except (
+                ConnectionError,
+                ConnectionRefusedError,
+                BrokenPipeError,
+                EOFError,
+                ConnectionResetError,
+            ) as e:
+                logger.warning(
+                    "Connection-related error occurred while clearing detection queues."
+                    "Exception handled: %s",
+                    type(e).__name__,
+                )
+
     def put_frame(self, frame_data: Dict[str, Any]) -> None:
         """Puts the frame data into the frame queue after clearing it."""
         if self.shutting_down:
@@ -429,7 +465,57 @@ class DetectionService(metaclass=SingletonMeta):
                 "Skipping putting a frame to detection queue: service is loading."
             )
             return None
-        return clear_and_put(self.frame_queue, frame_data)
+        return self.clear_and_put(self.frame_queue, frame_data)
+
+    def clear_and_put(
+        self,
+        qitem: Optional["mp.Queue"],
+        item,
+    ):
+
+        if qitem is None:
+            return None
+
+        try:
+            while not self.shutting_down and qitem and not qitem.empty():
+                try:
+                    qitem.get_nowait()
+                    if self.shutting_down:
+                        break
+                except queue.Empty:
+                    pass
+        except (
+            ConnectionError,
+            ConnectionRefusedError,
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+        ) as e:
+            logger.warning(
+                "Failed to clear the queue to connection error: %s",
+                type(e).__name__,
+            )
+            return
+
+        if self.shutting_down:
+            return
+        try:
+            qitem.put_nowait(item)
+            return item
+
+        except queue.Full:
+            pass
+        except (
+            ConnectionError,
+            ConnectionRefusedError,
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+        ) as e:
+            logger.warning(
+                "Failed to put data into the queue due to a connection-related issue: %s",
+                type(e).__name__,
+            )
 
     @property
     def current_state(self):
@@ -467,6 +553,8 @@ class DetectionService(metaclass=SingletonMeta):
         await self.cancel_detection_watcher()
         await self.stop_detection_process(clear_queues=False)
 
+        self._close_queues()
+
         for prop in [
             "stop_event",
             "frame_queue",
@@ -478,38 +566,3 @@ class DetectionService(metaclass=SingletonMeta):
             if hasattr(self, prop):
                 logger.info(f"Removing {prop}")
                 delattr(self, prop)
-
-    def get_detection(self):
-        """
-        Retrieves the latest detection result from the detection process.
-
-        Returns:
-            The detection result as list, or `None` if no result is available.
-        """
-        if self.shutting_down:
-            logger.warning("Attempted to get detection while service is shutting down.")
-            return None
-        if self.stop_event.is_set():
-            return None
-        if not hasattr(self, "detection_queue"):
-            return None
-        try:
-            self.detection_result: Optional[Dict[str, Any]] = self.detection_queue.get(
-                timeout=1
-            )
-        except queue.Empty:
-            self.detection_result = None
-        except (
-            BrokenPipeError,
-            EOFError,
-            ConnectionResetError,
-            ConnectionError,
-            ConnectionRefusedError,
-        ) as e:
-            self.detection_result = None
-            logger.warning(
-                "Connection-related error while getting the detection result: %s",
-                type(e).__name__,
-            )
-
-        return self.detection_result
