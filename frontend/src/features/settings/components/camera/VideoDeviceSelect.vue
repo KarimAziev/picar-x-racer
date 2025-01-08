@@ -8,7 +8,7 @@
           v-model:model-value="selectedDevice"
         />
       </Field>
-      <div class="flex gap-2">
+      <div class="flex mt-2 gap-2">
         <NumberInputField
           :useGrouping="false"
           v-if="selectedDevice && (selectedDevice as any).max_width"
@@ -24,6 +24,7 @@
           :max="selectedDevice && (selectedDevice as any).max_width"
           :invalid="!!invalidData.width"
           :message="invalidData.width"
+          @input="handleChangeWidth"
           @update:model-value="validate"
           :step="invalidData.width ? 1 : (selectedDevice as any)?.width_step"
           @blur="validate"
@@ -43,6 +44,7 @@
           :invalid="!!invalidData.height"
           :message="invalidData.height"
           @update:model-value="validate"
+          @input="handleChangeHeight"
           :step="
             invalidData.height
               ? 1
@@ -52,7 +54,7 @@
         />
       </div>
     </div>
-    <div class="flex-1 flex flex-col gap-2 justify-between items-start">
+    <div class="flex-1 flex flex-col gap-8 justify-start items-start">
       <NumberInputField
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="FPS"
@@ -68,6 +70,7 @@
         :invalid="!!invalidData.fps"
         :message="invalidData.fps"
         @update:model-value="validate"
+        @value-change="handleChangeFPS"
         @blur="validate"
       />
       <Button
@@ -82,6 +85,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
+import type { InputNumberInputEvent } from "primevue/inputnumber";
 
 import { useCameraStore } from "@/features/settings/stores";
 
@@ -135,6 +139,21 @@ const validate = () => {
     ? validateStepwiseData(selectedDevice.value, stepwiseData.value)
     : {};
   return isEmpty(invalidData.value);
+};
+
+const handleChangeFPS = (newValue: number) => {
+  stepwiseData.value.fps = newValue;
+};
+
+const handleChangeWidth = ({ value }: InputNumberInputEvent) => {
+  stepwiseData.value.width = isNumber(value) ? value : undefined;
+
+  validate();
+};
+
+const handleChangeHeight = ({ value }: InputNumberInputEvent) => {
+  stepwiseData.value.height = isNumber(value) ? value : undefined;
+  validate();
 };
 
 const isUnchanged = () => {
