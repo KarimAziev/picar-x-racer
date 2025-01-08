@@ -244,9 +244,7 @@ const updateDevice = async (
 
     await camStore.updateData(discreted);
   } else if (isStepwiseDevice(stepwiseParams)) {
-    /**
-     * onSubmit();
-     */
+    onSubmit();
   }
 };
 
