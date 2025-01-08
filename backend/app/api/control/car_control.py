@@ -3,6 +3,7 @@ import json
 from typing import TYPE_CHECKING
 
 from app.api import robot_deps
+from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from app.util.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -30,11 +31,6 @@ async def websocket_endpoint(
 ):
     """
     WebSocket endpoint for controlling the Picar-X vehicle.
-
-    Raises:
-        Exception: If there is an error processing the incoming message.
-        WebSocketDisconnect: If the WebSocket connection is disconnected.
-        KeyboardInterrupt: If the WebSocket connection is interrupted.
     """
     try:
         await connection_manager.connect(websocket)
@@ -53,15 +49,23 @@ async def websocket_endpoint(
             payload = data.get("payload")
 
             logger.debug("%s", data)
-            await car_manager.process_action(action, payload, websocket)
+            try:
+                await car_manager.process_action(action, payload, websocket)
+            except (RobotI2CTimeout, RobotI2CBusError) as e:
+                logger.error(str(e))
+                await connection_manager.error(str(e))
+            except Exception as e:
+                logger.error("Unexpected error during action processing", exc_info=True)
+                await connection_manager.error("Unexpected robot error occurred")
 
     except WebSocketDisconnect:
-        logger.info("WebSocket Disconnected")
+        logger.info("WebSocket client disconnected gracefully.")
     except asyncio.CancelledError:
-        logger.info("Gracefully shutting down Detection WebSocket connection")
+        logger.warning("WebSocket cancelled by application.")
         await connection_manager.disconnect(websocket)
     except KeyboardInterrupt:
-        logger.info("WebSocket interrupted")
+        logger.warning("WebSocket connection interrupted.")
         await connection_manager.disconnect(websocket)
     finally:
+        logger.info("Cleaning up WebSocket connection.")
         connection_manager.remove(websocket)
