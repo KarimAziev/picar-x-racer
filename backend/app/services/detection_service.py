@@ -44,11 +44,10 @@ class DetectionService(metaclass=SingletonMeta):
         )
         self.task_event = asyncio.Event()
         self.stop_event = mp.Event()
-        self.manager = mp.Manager()
-        self.frame_queue = self.manager.Queue(maxsize=1)
-        self.detection_queue = self.manager.Queue(maxsize=1)
-        self.control_queue = self.manager.Queue(maxsize=1)
-        self.out_queue = self.manager.Queue(maxsize=1)
+        self.frame_queue = mp.Queue(maxsize=1)
+        self.detection_queue = mp.Queue(maxsize=1)
+        self.control_queue = mp.Queue(maxsize=1)
+        self.out_queue = mp.Queue(maxsize=1)
         self.detection_process = None
         self.detection_result: Optional[Dict[str, Any]] = None
         self.detection_process_task: Optional[asyncio.Task] = None
@@ -462,18 +461,12 @@ class DetectionService(metaclass=SingletonMeta):
 
         Behavior:
             - Cancels any running tasks and stops the detection process.
-            - Shuts down the multiprocessing manager.
             - Deletes class properties associated with multiprocessing and async state.
         """
         self.shutting_down = True
         await self.cancel_detection_watcher()
         await self.stop_detection_process(clear_queues=False)
 
-        if self.manager is not None:
-            logger.info("Shutdown detection manager")
-            self.manager.shutdown()
-            logger.info("Detection manager has been shutdown")
-            self.manager.join()
         for prop in [
             "stop_event",
             "frame_queue",
@@ -481,7 +474,6 @@ class DetectionService(metaclass=SingletonMeta):
             "detection_queue",
             "out_queue",
             "detection_process",
-            "manager",
         ]:
             if hasattr(self, prop):
                 logger.info(f"Removing {prop}")
