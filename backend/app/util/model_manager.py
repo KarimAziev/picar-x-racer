@@ -1,7 +1,7 @@
 import os
 from typing import TYPE_CHECKING, Optional, Tuple
 
-from app.config.paths import DATA_DIR, YOLO_MODEL_EDGE_TPU_PATH, YOLO_MODEL_PATH
+from app.config.config import settings
 from app.util.file_util import resolve_absolute_path
 from app.util.google_coral import is_google_coral_connected
 from app.util.logger import Logger
@@ -30,7 +30,7 @@ class ModelManager:
         self.model = None
         self.error_msg = None
         self.model_path = (
-            resolve_absolute_path(model_path, DATA_DIR)
+            resolve_absolute_path(model_path, settings.DATA_DIR)
             if model_path is not None
             else model_path
         )
@@ -57,10 +57,10 @@ class ModelManager:
 
             if self.model_path is None:
                 self.model_path = (
-                    YOLO_MODEL_EDGE_TPU_PATH
-                    if os.path.exists(YOLO_MODEL_EDGE_TPU_PATH)
+                    settings.YOLO_MODEL_EDGE_TPU_PATH
+                    if os.path.exists(settings.YOLO_MODEL_EDGE_TPU_PATH)
                     and is_google_coral_connected()
-                    else YOLO_MODEL_PATH
+                    else settings.YOLO_MODEL_PATH
                 )
 
             logger.info(f"Loading model {self.model_path}")

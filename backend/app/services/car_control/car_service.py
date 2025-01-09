@@ -4,7 +4,7 @@ import json
 import os
 from typing import TYPE_CHECKING, Any, Dict
 
-from app.config.paths import DEFAULT_USER_SETTINGS, PX_SETTINGS_FILE
+from app.config.config import settings as app_config
 from app.util.file_util import load_json_file
 from app.util.logger import Logger
 from app.util.singleton_meta import SingletonMeta
@@ -29,11 +29,11 @@ class CarService(metaclass=SingletonMeta):
         self.px = px
         self.connection_manager = connection_manager
         self.calibration = calibration_service
-        self.user_settings_file = PX_SETTINGS_FILE
+        self.user_settings_file = app_config.PX_SETTINGS_FILE
         self.settings_file = (
             self.user_settings_file
             if os.path.exists(self.user_settings_file)
-            else DEFAULT_USER_SETTINGS
+            else app_config.DEFAULT_USER_SETTINGS
         )
         self.settings: Dict[str, Any] = load_json_file(self.settings_file)
         self.robot_settings: Dict[str, Any] = self.settings.get("robot", {})

@@ -2,7 +2,7 @@ import json
 import os
 from typing import Any, Dict, Optional
 
-from app.config.paths import DEFAULT_ROBOT_CONFIG_FILE, ROBOT_CONFIG_FILE
+from app.config.config import settings as app_config
 from app.util.atomic_write import atomic_write
 from app.util.file_util import load_json_file
 from app.util.logger import Logger
@@ -15,8 +15,8 @@ class ConfigService:
 
     def __init__(
         self,
-        user_settings_file=ROBOT_CONFIG_FILE,
-        default_user_settings_file=DEFAULT_ROBOT_CONFIG_FILE,
+        user_settings_file=app_config.ROBOT_CONFIG_FILE,
+        default_user_settings_file=app_config.DEFAULT_ROBOT_CONFIG_FILE,
         *args,
         **kwargs,
     ):

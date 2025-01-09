@@ -12,18 +12,7 @@ import os
 from os import path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from app.config.paths import (
-    DATA_DIR,
-    DEFAULT_MUSIC_DIR,
-    DEFAULT_ROBOT_CONFIG_FILE,
-    DEFAULT_USER_SETTINGS,
-    MUSIC_CACHE_FILE_PATH,
-    PX_MUSIC_DIR,
-    PX_PHOTO_DIR,
-    PX_SETTINGS_FILE,
-    PX_VIDEO_DIR,
-    ROBOT_CONFIG_FILE,
-)
+from app.config.config import settings as app_config
 from app.config.yolo_common_models import yolo_descriptions
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
 from app.util.atomic_write import atomic_write
@@ -52,15 +41,15 @@ class FileService(metaclass=SingletonMeta):
     def __init__(
         self,
         audio_manager: "AudioService",
-        user_videos_dir=PX_VIDEO_DIR,
-        user_music_dir=PX_MUSIC_DIR,
-        user_photos_dir=PX_PHOTO_DIR,
-        user_settings_file=PX_SETTINGS_FILE,
-        music_cache_path=MUSIC_CACHE_FILE_PATH,
-        default_user_settings_file=DEFAULT_USER_SETTINGS,
-        default_user_music_dir=DEFAULT_MUSIC_DIR,
-        config_file=ROBOT_CONFIG_FILE,
-        data_dir=DATA_DIR,
+        user_videos_dir=app_config.PX_VIDEO_DIR,
+        user_music_dir=app_config.PX_MUSIC_DIR,
+        user_photos_dir=app_config.PX_PHOTO_DIR,
+        user_settings_file=app_config.PX_SETTINGS_FILE,
+        music_cache_path=app_config.MUSIC_CACHE_FILE_PATH,
+        default_user_settings_file=app_config.DEFAULT_USER_SETTINGS,
+        default_user_music_dir=app_config.DEFAULT_MUSIC_DIR,
+        config_file=app_config.ROBOT_CONFIG_FILE,
+        data_dir=app_config.DATA_DIR,
         *args,
         **kwargs,
     ):
@@ -435,7 +424,7 @@ class FileService(metaclass=SingletonMeta):
         """
         Saves the uploaded file to the data directory.
         """
-        return self.save_uploaded_file(file, DATA_DIR)
+        return self.save_uploaded_file(file, app_config.DATA_DIR)
 
     def remove_photo(self, filename: str) -> bool:
         """
@@ -505,7 +494,7 @@ class FileService(metaclass=SingletonMeta):
             bool: True if the file was successfully removed.
         """
 
-        os.remove(resolve_absolute_path(filename, DATA_DIR))
+        os.remove(resolve_absolute_path(filename, app_config.DATA_DIR))
         return True
 
     def get_photo_directory(self, filename: str) -> str:
@@ -606,6 +595,7 @@ class FileService(metaclass=SingletonMeta):
         """
 
         config = self.get_robot_config()
+
         return {
             "steering_servo_offset": config.get("steering_servo", {}).get(
                 "calibration_offset"
@@ -624,7 +614,7 @@ class FileService(metaclass=SingletonMeta):
             ),
         }
 
-    def get_robot_config(self) -> Dict:
+    def get_robot_config(self) -> Dict[str, Any]:
         """
         Loads calibration settings from a configuration file.
 
@@ -634,7 +624,7 @@ class FileService(metaclass=SingletonMeta):
 
         if path.exists(self.config_file):
             return load_json_file(self.config_file)
-        return load_json_file(DEFAULT_ROBOT_CONFIG_FILE)
+        return load_json_file(app_config.DEFAULT_ROBOT_CONFIG_FILE)
 
     @staticmethod
     def get_available_models() -> List[Dict[str, Any]]:
@@ -648,7 +638,7 @@ class FileService(metaclass=SingletonMeta):
         existing_set = set()
 
         result = get_directory_structure(
-            DATA_DIR,
+            app_config.DATA_DIR,
             allowed_extensions,
             directory_suffix="_ncnn_model",
             exclude_empty_dirs=True,

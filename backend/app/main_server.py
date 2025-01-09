@@ -6,7 +6,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config.paths import FRONTEND_FOLDER, STATIC_FOLDER, TEMPLATE_FOLDER
+from app.config.config import settings
 from app.util.ansi import print_initial_message
 from app.util.get_ip_address import get_ip_address
 from app.util.logger import Logger
@@ -114,7 +114,7 @@ async def lifespan(app: FastAPI):
         file_manager=file_manager, connection_manager=connection_manager
     )
 
-    app.state.template_folder = TEMPLATE_FOLDER
+    app.state.template_folder = settings.TEMPLATE_DIR
     app.state.app_manager = app_manager
     port = os.getenv("PX_MAIN_APP_PORT")
     mode = os.getenv("PX_APP_MODE")
@@ -191,8 +191,8 @@ from app.api.endpoints import (
     video_feed_router,
 )
 
-app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
-app.mount("/frontend", StaticFiles(directory=FRONTEND_FOLDER), name="frontend")
+app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
+app.mount("/frontend", StaticFiles(directory=settings.FRONTEND_DIR), name="frontend")
 
 
 api_router = APIRouter()

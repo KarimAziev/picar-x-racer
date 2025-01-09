@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config.paths import DEFAULT_USER_SETTINGS, PX_SETTINGS_FILE
+from app.config.config import settings as app_settings
 from app.util.logger import Logger
 
 description = """
@@ -41,9 +41,9 @@ async def lifespan(app: FastAPI):
 
     distance_service.subscribe(broadcast_distance)
     settings = (
-        load_json_file(PX_SETTINGS_FILE)
-        if os.path.exists(PX_SETTINGS_FILE)
-        else load_json_file(DEFAULT_USER_SETTINGS)
+        load_json_file(app_settings.PX_SETTINGS_FILE)
+        if os.path.exists(app_settings.PX_SETTINGS_FILE)
+        else load_json_file(app_settings.DEFAULT_USER_SETTINGS)
     )
     robot_settings = settings.get("robot", {})
     distance_interval = robot_settings.get("auto_measure_distance_delay_ms", 1000)
