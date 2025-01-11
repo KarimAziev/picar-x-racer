@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from queue import Queue
     import multiprocessing as mp
 
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 logger = Logger(__name__)
 

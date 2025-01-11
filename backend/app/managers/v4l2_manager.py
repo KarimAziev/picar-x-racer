@@ -3,8 +3,8 @@ import re
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.util.logger import Logger
-from app.util.v4l2_parser import V4L2FormatParser
+from app.core.logger import Logger
+from app.core.v4l2_parser import V4L2FormatParser
 
 logger = Logger(__name__)
 

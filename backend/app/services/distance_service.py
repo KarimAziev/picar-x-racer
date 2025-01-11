@@ -3,16 +3,16 @@ import multiprocessing as mp
 import threading
 from typing import TYPE_CHECKING, Optional
 
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
+from app.managers.distance_manager import distance_process
 from app.schemas.distance import UltrasonicConfig
-from app.util.distance_process import distance_process
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from multiprocessing.sharedctypes import Synchronized
 
-    from app.services.async_task_manager import AsyncTaskManager
-    from app.util.async_emitter import AsyncEventEmitter, Listener
+    from app.core.async_emitter import AsyncEventEmitter, Listener
+    from app.managers.async_task_manager import AsyncTaskManager
 
 logger = Logger(__name__)
 

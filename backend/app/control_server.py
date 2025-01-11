@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.control import api_router, tags_metadata
 from app.config.config import settings as app_settings
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 Logger.setup_from_env()
 

@@ -6,11 +6,11 @@ from time import localtime, strftime
 from typing import TYPE_CHECKING
 
 from app.api import deps
+from app.core.logger import Logger
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.managers.v4l2_manager import V4L2
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
-from app.util.logger import Logger
 from app.util.photo import capture_photo
-from app.util.v4l2_manager import V4L2
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:

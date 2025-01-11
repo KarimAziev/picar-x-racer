@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, Optional
 
 import cv2
 import numpy as np
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.file_service import FileService

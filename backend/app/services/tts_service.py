@@ -1,6 +1,6 @@
 from app.exceptions.tts import TextToSpeechException
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from google_speech_pyplay import LANGUAGES_OPTIONS, Speech
 
 

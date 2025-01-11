@@ -6,9 +6,9 @@ import asyncio
 from typing import TYPE_CHECKING, Any, Dict
 
 from app.api import deps
+from app.core.logger import Logger
 from app.schemas.config import CalibrationConfig, ConfigSchema
 from app.schemas.settings import Settings, SettingsUpdateRequest
-from app.util.logger import Logger
 from app.util.pydantic_helpers import schema_to_dynamic_json
 from fastapi import APIRouter, Depends, Request
 

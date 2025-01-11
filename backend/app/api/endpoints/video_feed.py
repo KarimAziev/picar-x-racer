@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from app.api import deps
 from app.config.video_enhancers import frame_enhancers
+from app.core.logger import Logger
 from app.schemas.stream import EnhancersResponse, StreamSettings
 from app.services.connection_service import ConnectionService
-from app.util.logger import Logger
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:

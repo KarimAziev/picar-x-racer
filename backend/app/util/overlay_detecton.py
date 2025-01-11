@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import cv2
 import numpy as np
-from app.util.logger import Logger
+from app.core.logger import Logger
 from typing_extensions import Any, Union
 
 logger = Logger(__name__)

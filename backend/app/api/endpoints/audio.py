@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from app.api import deps
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.schemas.audio import VolumeData
-from app.util.logger import Logger
+from app.core.logger import Logger
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket
 
 if TYPE_CHECKING:

@@ -7,6 +7,7 @@ import queue
 from typing import TYPE_CHECKING, List
 
 from app.api import deps
+from app.core.logger import Logger
 from app.exceptions.detection import (
     DetectionModelLoadError,
     DetectionProcessClosing,
@@ -14,7 +15,6 @@ from app.exceptions.detection import (
     DetectionProcessLoading,
 )
 from app.schemas.detection import DetectionSettings, FileNode
-from app.util.logger import Logger
 from fastapi import (
     APIRouter,
     Depends,

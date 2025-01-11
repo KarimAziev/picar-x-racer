@@ -23,7 +23,7 @@ from app.schemas.file_management import (
     UploadFileResponse,
 )
 from app.util.file_util import resolve_absolute_path
-from app.util.logger import Logger
+from app.core.logger import Logger
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from starlette.responses import FileResponse

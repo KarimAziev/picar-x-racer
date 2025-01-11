@@ -2,14 +2,14 @@ import subprocess
 import unittest
 from unittest.mock import Mock, patch
 
-from app.util.v4l2_manager import V4L2
+from app.managers.v4l2_manager import V4L2
 
 
 class TestV4L2Manager(unittest.TestCase):
     def setUp(self):
         pass
 
-    @patch("app.util.v4l2_manager.V4L2.v4l2_list_devices")
+    @patch("app.managers.v4l2_manager.V4L2.v4l2_list_devices")
     def test_list_camera_devices(self, mock_v4l2_list_devices: Mock):
         """
         Test that `list_camera_devices` properly parses device categories and paths.
@@ -34,7 +34,7 @@ class TestV4L2Manager(unittest.TestCase):
         result = V4L2.list_camera_devices()
         self.assertEqual(result, expected_result)
 
-    @patch("app.util.v4l2_manager.V4L2.v4l2_list_devices")
+    @patch("app.managers.v4l2_manager.V4L2.v4l2_list_devices")
     @patch("os.listdir")
     def test_list_camera_devices_fallback(
         self, mock_listdir: Mock, mock_v4l2_list_devices: Mock
@@ -53,8 +53,8 @@ class TestV4L2Manager(unittest.TestCase):
         result = V4L2.list_camera_devices()
         self.assertEqual(result, expected_result)
 
-    @patch("app.util.v4l2_manager.V4L2.list_camera_devices")
-    @patch("app.util.v4l2_manager.V4L2.list_device_formats_ext")
+    @patch("app.managers.v4l2_manager.V4L2.list_camera_devices")
+    @patch("app.managers.v4l2_manager.V4L2.list_device_formats_ext")
     def test_list_video_devices_with_formats(
         self, mock_list_formats: Mock, mock_list_devices: Mock
     ):
@@ -113,7 +113,7 @@ class TestV4L2Manager(unittest.TestCase):
         results = V4L2.list_video_devices_with_formats()
         self.assertEqual(results, expected_result)
 
-    @patch("app.util.v4l2_manager.subprocess.run")
+    @patch("app.managers.v4l2_manager.subprocess.run")
     def test_v4l2_list_devices_success(self, mock_run: Mock):
         """
         Test `v4l2_list_devices` successfully retrieves device listing.
@@ -131,8 +131,8 @@ class TestV4L2Manager(unittest.TestCase):
         result = V4L2.v4l2_list_devices()
         self.assertEqual(result, expected_result)
 
-    @patch("app.util.logger.Logger.error")
-    @patch("app.util.v4l2_manager.subprocess.run")
+    @patch("app.core.logger.Logger.error")
+    @patch("app.managers.v4l2_manager.subprocess.run")
     def test_v4l2_list_devices_failure(self, mock_run: Mock, mock_logger_error: Mock):
         """
         Test `v4l2_list_devices` gracefully handles subprocess errors.
@@ -143,14 +143,14 @@ class TestV4L2Manager(unittest.TestCase):
         self.assertEqual(result, [])
         mock_logger_error.assert_called_once()
 
-    @patch("app.util.v4l2_manager.subprocess.run")
+    @patch("app.managers.v4l2_manager.subprocess.run")
     def test_list_device_formats_ext(self, mock_run: Mock):
         """
         Test `list_device_formats_ext` retrieves and parses device formats.
         """
         mock_run.return_value.stdout = "Some sample V4L2-CTL output"
 
-        with patch("app.util.v4l2_manager.V4L2FormatParser.parse") as mock_parse:
+        with patch("app.managers.v4l2_manager.V4L2FormatParser.parse") as mock_parse:
             mock_parse.return_value = [
                 {
                     "key": "/dev/video0:MJPG",
@@ -166,8 +166,8 @@ class TestV4L2Manager(unittest.TestCase):
 
             mock_parse.assert_called_once_with("Some sample V4L2-CTL output")
 
-    @patch("app.util.logger.Logger.error")
-    @patch("app.util.v4l2_manager.subprocess.run")
+    @patch("app.core.logger.Logger.error")
+    @patch("app.managers.v4l2_manager.subprocess.run")
     def test_list_device_formats_ext_failure(
         self, mock_run: Mock, mock_logger_error: Mock
     ):
@@ -180,7 +180,7 @@ class TestV4L2Manager(unittest.TestCase):
         self.assertEqual(result, [])
         mock_logger_error.assert_called_once()
 
-    @patch("app.util.v4l2_manager.V4L2.list_camera_devices")
+    @patch("app.managers.v4l2_manager.V4L2.list_camera_devices")
     def test_find_device_info_success(self, mock_list_devices: Mock):
         """
         Test `find_device_info` with a valid device.
@@ -193,7 +193,7 @@ class TestV4L2Manager(unittest.TestCase):
         result = V4L2.find_device_info("/dev/video0")
         self.assertEqual(result, ("/dev/video0", "Integrated Camera"))
 
-    @patch("app.util.v4l2_manager.V4L2.list_camera_devices")
+    @patch("app.managers.v4l2_manager.V4L2.list_camera_devices")
     def test_find_device_info_failure(self, mock_list_devices: Mock):
         """
         Test `find_device_info` when device is not found.
@@ -206,7 +206,7 @@ class TestV4L2Manager(unittest.TestCase):
         result = V4L2.find_device_info("/dev/video2")
         self.assertIsNone(result)
 
-    @patch("app.util.v4l2_manager.subprocess.run")
+    @patch("app.managers.v4l2_manager.subprocess.run")
     def test_video_capture_format_success(self, mock_run: Mock):
         """
         Test `video_capture_format` retrieves device format successfully.
@@ -220,8 +220,8 @@ class TestV4L2Manager(unittest.TestCase):
         result = V4L2.video_capture_format("/dev/video0")
         self.assertEqual(result, {"width": 800, "height": 600, "pixel_format": "MJPG"})
 
-    @patch("app.util.logger.Logger.error")
-    @patch("app.util.v4l2_manager.subprocess.run")
+    @patch("app.core.logger.Logger.error")
+    @patch("app.managers.v4l2_manager.subprocess.run")
     def test_video_capture_format_failure(
         self, mock_run: Mock, mock_logger_error: Mock
     ):

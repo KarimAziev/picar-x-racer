@@ -2,7 +2,7 @@ from typing import Tuple
 
 import cv2
 import numpy as np
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 logger = Logger(__name__)
 

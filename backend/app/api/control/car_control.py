@@ -7,8 +7,8 @@ import json
 from typing import TYPE_CHECKING
 
 from app.api import robot_deps
+from app.core.logger import Logger
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
-from app.util.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 

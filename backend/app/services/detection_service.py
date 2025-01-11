@@ -12,11 +12,11 @@ from app.exceptions.detection import (
     DetectionProcessLoading,
 )
 from app.schemas.detection import DetectionSettings
-from app.util.detection_process import detection_process_func
+from app.managers.detection.detection_process import detection_process_func
 from app.util.file_util import resolve_absolute_path
-from app.util.logger import Logger
+from app.core.logger import Logger
 from app.util.queue_helpers import clear_queue
-from app.util.singleton_meta import SingletonMeta
+from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService

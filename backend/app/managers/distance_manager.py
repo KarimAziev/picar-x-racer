@@ -2,7 +2,7 @@ import os
 from time import sleep
 from typing import TYPE_CHECKING
 
-from app.util.logger import Logger
+from app.core.logger import Logger
 from robot_hat import Pin
 
 if os.getenv("ROBOT_HAT_MOCK_SMBUS"):

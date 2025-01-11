@@ -3,7 +3,7 @@ from typing import Callable, Optional, Sequence, Union
 
 import cv2
 import numpy as np
-from app.util.logger import Logger
+from app.core.logger import Logger
 from app.util.photo import height_to_width, width_to_height
 
 logger = Logger(__name__)

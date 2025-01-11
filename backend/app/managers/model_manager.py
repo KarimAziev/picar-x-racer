@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 from app.config.config import settings
 from app.util.file_util import resolve_absolute_path
 from app.util.google_coral import is_google_coral_connected
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 logger = Logger(__name__)
 

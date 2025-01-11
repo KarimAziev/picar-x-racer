@@ -3,10 +3,10 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
+from app.core.logger import Logger
 from app.exceptions.detection import DetectionDimensionMismatch
-from app.util.logger import Logger
-from app.util.model_manager import ModelManager
-from app.util.object_detection import perform_detection
+from app.managers.detection.object_detection import perform_detection
+from app.managers.model_manager import ModelManager
 from app.util.queue_helpers import put_to_queue
 
 if TYPE_CHECKING:

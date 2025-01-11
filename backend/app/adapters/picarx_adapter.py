@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING, Any, Dict
 
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from app.schemas.config import ConfigSchema
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
 from robot_hat import MotorConfig, MotorFabric, MotorService, ServoService
 
 logger = Logger(name=__name__)

@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.config.config import settings as app_config
 from app.config.yolo_common_models import yolo_descriptions
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
 from app.util.atomic_write import atomic_write
 from app.util.file_util import (
@@ -22,8 +24,6 @@ from app.util.file_util import (
     resolve_absolute_path,
 )
 from app.util.google_coral import is_google_coral_connected
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
 from fastapi import UploadFile
 
 if TYPE_CHECKING:

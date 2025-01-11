@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from app.api import robot_deps
 from app.schemas.distance import DistanceData
-from app.util.logger import Logger
+from app.core.logger import Logger
 from fastapi import APIRouter, Depends
 
 if TYPE_CHECKING:

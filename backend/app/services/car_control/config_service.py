@@ -3,9 +3,9 @@ import os
 from typing import Any, Dict, Optional
 
 from app.config.config import settings as app_config
+from app.core.logger import Logger
 from app.util.atomic_write import atomic_write
 from app.util.file_util import load_json_file
-from app.util.logger import Logger
 
 
 class ConfigService:
@@ -33,7 +33,9 @@ class ConfigService:
         self.settings: Dict[str, Any] = self.load_settings()
 
     def get_settings_file(self) -> str:
-        """Determines the current settings file to use"""
+        """
+        Determines the current settings file to use.
+        """
         return (
             self.user_settings_file
             if os.path.exists(self.user_settings_file)
@@ -41,7 +43,9 @@ class ConfigService:
         )
 
     def load_settings(self) -> Dict[str, Any]:
-        """Loads user settings from a JSON file, using cache if file is not modified."""
+        """
+        Loads user settings from a JSON file, using cache if file is not modified.
+        """
         settings_file = self.get_settings_file()
 
         try:

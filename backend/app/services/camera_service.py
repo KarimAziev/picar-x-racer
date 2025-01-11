@@ -11,9 +11,9 @@ from app.config.video_enhancers import frame_enhancers
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
-from app.util.v4l2_manager import V4L2
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
+from app.managers.v4l2_manager import V4L2
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 from cv2.typing import MatLike
 

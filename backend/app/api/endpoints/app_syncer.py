@@ -12,7 +12,7 @@ from app.api.deps import (
     get_detection_manager,
     get_music_manager,
 )
-from app.util.logger import Logger
+from app.core.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 

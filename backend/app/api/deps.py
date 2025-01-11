@@ -12,7 +12,7 @@ from app.services.music_service import MusicService
 from app.services.stream_service import StreamService
 from app.services.tts_service import TTSService
 from app.services.video_recorder import VideoRecorder
-from app.util.logger import Logger
+from app.core.logger import Logger
 from fastapi import Depends
 
 logger = Logger(__name__)

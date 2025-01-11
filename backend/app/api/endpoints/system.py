@@ -9,7 +9,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from app.api import deps
-from app.util.logger import Logger
+from app.core.logger import Logger
 from app.util.shutdown import power_off, restart
 from fastapi import APIRouter, Depends, HTTPException, Request
 

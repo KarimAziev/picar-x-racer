@@ -2,8 +2,8 @@ import asyncio
 from typing import TYPE_CHECKING, Any, Dict
 
 from app.schemas.config import ConfigSchema
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from robot_hat import constrain
 
 if TYPE_CHECKING:

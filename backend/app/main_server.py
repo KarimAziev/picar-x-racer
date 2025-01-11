@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config.config import settings
 from app.util.ansi import print_initial_message
 from app.util.get_ip_address import get_ip_address
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 if TYPE_CHECKING:
     from app.services.battery_service import BatteryService

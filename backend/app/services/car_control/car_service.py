@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from app.config.config import settings as app_config
 from app.util.file_util import load_json_file
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from fastapi import WebSocket
 
 if TYPE_CHECKING:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List
 from app.api.deps import get_tts_manager
 from app.exceptions.tts import TextToSpeechException
 from app.schemas.tts import LanguageOption, TextToSpeechData
-from app.util.logger import Logger
+from app.core.logger import Logger
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:

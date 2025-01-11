@@ -3,9 +3,9 @@ from typing import List, Optional, Tuple, Union
 import cv2
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.util.device import try_video_path
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
-from app.util.v4l2_manager import V4L2, CameraInfo
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
+from app.managers.v4l2_manager import V4L2, CameraInfo
 
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
