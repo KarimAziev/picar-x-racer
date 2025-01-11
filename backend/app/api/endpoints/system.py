@@ -1,3 +1,10 @@
+"""
+Operations and endpoints related to system-level actions. These include managing
+the operating system, such as shutting down, restarting, or performing other
+system-related functions. Use these endpoints with caution as they interact
+directly with the underlying OS.
+"""
+
 import asyncio
 from typing import TYPE_CHECKING
 

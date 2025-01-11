@@ -1,3 +1,7 @@
+"""
+Websocket endpoint for synchronizing app state between several clients.
+"""
+
 import asyncio
 import json
 from typing import TYPE_CHECKING
@@ -34,6 +38,9 @@ async def app_synchronizer(
     music_service: "MusicService" = Depends(get_music_manager),
     battery_manager: "BatteryService" = Depends(get_battery_manager),
 ):
+    """
+    Websocket endpoint for synchronizing app state between several clients.
+    """
     connection_manager: "ConnectionService" = websocket.app.state.app_manager
 
     try:

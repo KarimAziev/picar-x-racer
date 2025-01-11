@@ -1,3 +1,7 @@
+"""
+WebSocket endpoint for controlling and interacting with the robot.
+"""
+
 import asyncio
 import json
 from typing import TYPE_CHECKING
@@ -8,9 +12,11 @@ from app.util.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-logger = Logger(name=__name__, app_name="px_robot")
+Logger._app_logger_name = "robot"
 
-car_manager_router = APIRouter()
+logger = Logger(name=__name__)
+
+router = APIRouter()
 
 if TYPE_CHECKING:
     from app.services.car_control.calibration_service import CalibrationService
@@ -18,7 +24,7 @@ if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
 
 
-@car_manager_router.websocket("/px/ws")
+@router.websocket("/px/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
     car_manager: "CarService" = Depends(robot_deps.get_robot_manager),
@@ -30,7 +36,7 @@ async def websocket_endpoint(
     ),
 ):
     """
-    WebSocket endpoint for controlling the Picar-X vehicle.
+    WebSocket endpoint for controlling the robot.
     """
     try:
         await connection_manager.connect(websocket)

@@ -1,3 +1,7 @@
+"""
+Endpoints related to audio functionalities, including volume controls.
+"""
+
 import asyncio
 from typing import TYPE_CHECKING
 

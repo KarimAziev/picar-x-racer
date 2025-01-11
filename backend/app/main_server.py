@@ -1,8 +1,20 @@
+"""
+The application provides robot-agnostic functionality, including:
+- Video streaming
+- Managing settings and files
+- Music/sound playback
+- Serving the frontend
+- Managing the operating system
+
+The API responsible for robot hardware interactions runs in a separate
+process to guarantee that control operations are never blocked.
+"""
+
 import os
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -21,78 +33,6 @@ if TYPE_CHECKING:
 Logger.setup_from_env()
 
 logger = Logger(__name__)
-
-
-description = """
-`Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games.
-
-This server runs in a separate process from the car-controlling server to ensure that control operations are never blocked.
-
-It provides endpoints for:
-
-- video streaming including AI object detection with YOLO and video enhancements,
-- music/sound playback,
-- managing settings and files,
-- serving the frontend,
-- reading battery status from ADC.
-- managing the operating system.
-"""
-
-tags_metadata = [
-    {
-        "name": "sync",
-        "description": "Websocket endpoint for synchronizing app state between several clients",
-    },
-    {
-        "name": "audio",
-        "description": "Endpoints related to audio functionalities, including volume controls.",
-    },
-    {
-        "name": "tts",
-        "description": "Endpoints related to text to speech functionalities.",
-    },
-    {
-        "name": "music",
-        "description": "Endpoints related to music playing.",
-    },
-    {
-        "name": "battery",
-        "description": "Endpoints related to battery status and monitoring.",
-    },
-    {
-        "name": "camera",
-        "description": "Endpoints for camera operations, including capturing photos.",
-    },
-    {
-        "name": "files",
-        "description": "Endpoints for managing files, including uploading, listing, downloading, and deleting media files.",
-    },
-    {
-        "name": "settings",
-        "description": "Endpoints to retrieve and update various application settings, including calibration and video mode configuration.",
-    },
-    {
-        "name": "video-stream",
-        "description": "Endpoints for handling video feed settings and WebSocket connections for streaming real-time video.",
-    },
-    {
-        "name": "detection",
-        "description": "Endpoints for handling object detection.",
-    },
-    {
-        "name": "serve",
-        "description": "General serving endpoints, including serving the frontend application and handling fallback routes.",
-    },
-    {
-        "name": "system",
-        "description": (
-            "Operations and endpoints related to system-level actions. These include "
-            "managing the operating system, such as shutting down, restarting, or performing "
-            "other system-related functions. Use these endpoints with caution as they "
-            "interact directly with the underlying OS."
-        ),
-    },
-]
 
 
 @asynccontextmanager
@@ -148,20 +88,21 @@ async def lifespan(app: FastAPI):
         logger.info(f"Application 🚗 {app.title} stopped")
 
 
+from app.api.endpoints import api_router, serve_router, tags_metadata
+
 app = FastAPI(
     lifespan=lifespan,
-    title="Picar X Racer",
-    description=description,
-    summary="Modern web interface for controlling the Picar-X vehicle with various features including video streaming, object detection, audio playback, and more.",
+    title="Picar X Racer Core Application",
+    summary="General-purpose APIs that are not directly related to the robot's hardware interactions.",
+    description=__doc__ or "",
     version="0.0.1",
     contact={
         "name": "Karim Aziiev",
-        "url": "http://github.com/KarimAziev/picar-x-racer",
         "email": "karim.aziiev@gmail.com",
     },
     license_info={
-        "name": "GPL-3.0-or-later",
-        "url": "https://www.gnu.org/licenses/gpl-3.0.en.html",
+        "name": "GNU General Public License v3.0 or later",
+        "identifier": "GPL-3.0-or-later",
     },
     openapi_tags=tags_metadata,
 )
@@ -176,38 +117,8 @@ app.add_middleware(
 )
 
 
-from app.api.endpoints import (
-    app_sync_router,
-    audio_management_router,
-    battery_router,
-    camera_feed_router,
-    detection_router,
-    file_management_router,
-    main_router,
-    music_router,
-    settings_router,
-    system_router,
-    tts_router,
-    video_feed_router,
-)
-
 app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 app.mount("/frontend", StaticFiles(directory=settings.FRONTEND_DIR), name="frontend")
 
-
-api_router = APIRouter()
-
-api_router.include_router(audio_management_router, tags=["audio"])
-api_router.include_router(music_router, tags=["music"])
-api_router.include_router(tts_router, tags=["tts"])
-api_router.include_router(battery_router, tags=["battery"])
-api_router.include_router(camera_feed_router, tags=["camera"])
-api_router.include_router(file_management_router, tags=["files"])
-api_router.include_router(settings_router, tags=["settings"])
-api_router.include_router(video_feed_router, tags=["video-stream"])
-api_router.include_router(detection_router, tags=["detection"])
-api_router.include_router(app_sync_router, tags=["sync"])
-api_router.include_router(system_router, tags=["system"])
-
 app.include_router(api_router, prefix="/api")
-app.include_router(main_router)
+app.include_router(serve_router)

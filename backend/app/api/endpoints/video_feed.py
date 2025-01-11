@@ -1,3 +1,7 @@
+"""
+Endpoints for handling video feed settings and WebSocket connections for streaming real-time video.
+"""
+
 from typing import TYPE_CHECKING
 
 from app.api import deps

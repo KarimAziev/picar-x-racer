@@ -1,3 +1,7 @@
+"""
+Endpoints for managing files, including uploading, listing, downloading, and deleting files.
+"""
+
 import asyncio
 import os
 import zipfile

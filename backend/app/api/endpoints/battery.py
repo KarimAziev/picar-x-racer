@@ -1,3 +1,7 @@
+"""
+Endpoints related to battery status and monitoring.
+"""
+
 from typing import TYPE_CHECKING
 
 from app.api.deps import get_battery_manager

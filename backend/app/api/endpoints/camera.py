@@ -1,3 +1,7 @@
+"""
+Endpoints for camera operations, including configuring the device and capturing photos.
+"""
+
 from time import localtime, strftime
 from typing import TYPE_CHECKING
 

@@ -1,3 +1,7 @@
+"""
+Endpoints related to text to speech functionalities.
+"""
+
 import asyncio
 from typing import TYPE_CHECKING, List
 

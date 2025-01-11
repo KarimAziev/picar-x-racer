@@ -1,3 +1,7 @@
+"""
+Endpoints for handling object detection.
+"""
+
 import asyncio
 import queue
 from typing import TYPE_CHECKING, List

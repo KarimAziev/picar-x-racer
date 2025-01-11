@@ -1,3 +1,7 @@
+"""
+Endpoints to retrieve and update various application settings.
+"""
+
 import asyncio
 from typing import TYPE_CHECKING
 

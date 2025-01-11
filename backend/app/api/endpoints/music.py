@@ -1,3 +1,7 @@
+"""
+Endpoints related to music playing.
+"""
+
 import asyncio
 from typing import TYPE_CHECKING, List
 
