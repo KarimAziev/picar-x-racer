@@ -3,12 +3,13 @@ Endpoints to retrieve and update various application settings.
 """
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 from app.api import deps
 from app.schemas.config import CalibrationConfig, ConfigSchema
 from app.schemas.settings import Settings, SettingsUpdateRequest
 from app.util.logger import Logger
+from app.util.pydantic_helpers import schema_to_dynamic_json
 from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
@@ -63,6 +64,14 @@ def get_config_settings(
     Retrieve the calibration settings.
     """
     return file_service.get_robot_config()
+
+
+@router.get("/settings/robot-fields", response_model=Dict[str, Any])
+def get_fields_config():
+    """
+    Retrieve the a JSON-like schema representation of robot config settings.
+    """
+    return schema_to_dynamic_json(ConfigSchema)
 
 
 @router.get("/settings/calibration", response_model=CalibrationConfig)
