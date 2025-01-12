@@ -12,6 +12,12 @@ export interface Callbacks {
   onEnd?: (outputData: nipplejs.JoystickOutputData) => void;
 }
 
+const BACKWARD_MIN = 210;
+const BACKWARD_MAX = 330;
+
+const MIN_JOYSTICK_ANGLE = 0;
+const HALF_CIRCLE_MAX = 180;
+
 export const useJoystickControl = (
   controllerStore: ReturnType<typeof useControllerStore>,
   robotStore: ReturnType<typeof useRobotStore>,
@@ -26,30 +32,38 @@ export const useJoystickControl = (
     const { angle, distance } = data;
     const direction = angle.degree;
 
-    const isForward = !inRange(direction, 200, 340);
+    const isPlainForward = inRange(
+      direction,
+      MIN_JOYSTICK_ANGLE,
+      HALF_CIRCLE_MAX,
+    );
+    const isExtraForward =
+      !isPlainForward && !inRange(direction, BACKWARD_MIN, BACKWARD_MAX);
+    const isForward = isPlainForward || isExtraForward;
 
     const speed = Math.round(Math.round(distance * 2) / 10) * 10;
-    const minJoystickAngle = 0;
-    const maxJoystickAngle = 180;
 
     const minServoAngle = robotStore.data.steering_servo.min_angle;
     const maxServoAngle = robotStore.data.steering_servo.max_angle;
 
     const directionWithinRange =
-      (isForward ? direction : direction - 180) - minJoystickAngle;
+      (isPlainForward ? direction : direction - HALF_CIRCLE_MAX) -
+      MIN_JOYSTICK_ANGLE;
 
     const value =
       (directionWithinRange * (minServoAngle - maxServoAngle)) /
-        (maxJoystickAngle - minJoystickAngle) +
+        (HALF_CIRCLE_MAX - MIN_JOYSTICK_ANGLE) +
       maxServoAngle;
 
-    const servoDir = roundToNearestTen(
-      constrain(
-        robotStore.data.steering_servo.min_angle,
-        robotStore.data.steering_servo.max_angle,
-        value,
-      ),
+    const clampedValue = constrain(
+      robotStore.data.steering_servo.min_angle,
+      robotStore.data.steering_servo.max_angle,
+      value,
     );
+
+    const roundedValue = roundToNearestTen(clampedValue);
+
+    const servoDir = (isExtraForward ? -1 : 1) * roundedValue;
 
     const servoDirNotLocked = !optionsParams.value?.lockY;
 
