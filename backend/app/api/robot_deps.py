@@ -1,14 +1,15 @@
 from functools import lru_cache
 
 from app.adapters.picarx_adapter import PicarxAdapter
-from app.services.async_task_manager import AsyncTaskManager
+from app.config.config import settings as app_config
+from app.core.async_emitter import AsyncEventEmitter
+from app.core.logger import Logger
+from app.managers.async_task_manager import AsyncTaskManager
+from app.managers.json_data_manager import JsonDataManager
 from app.services.car_control.calibration_service import CalibrationService
 from app.services.car_control.car_service import CarService
-from app.services.car_control.config_service import ConfigService
 from app.services.connection_service import ConnectionService
 from app.services.distance_service import DistanceService
-from app.util.async_emitter import AsyncEventEmitter
-from app.util.logger import Logger
 from fastapi import Depends
 
 logger = Logger(__name__)
@@ -29,8 +30,21 @@ def get_async_task_manager() -> AsyncTaskManager:
     return AsyncTaskManager()
 
 
-def get_config_manager() -> ConfigService:
-    return ConfigService()
+@lru_cache()
+def get_config_manager() -> JsonDataManager:
+
+    return JsonDataManager(
+        target_file=app_config.ROBOT_CONFIG_FILE,
+        template_file=app_config.DEFAULT_ROBOT_CONFIG_FILE,
+    )
+
+
+@lru_cache()
+def get_app_settings_manager() -> JsonDataManager:
+    return JsonDataManager(
+        target_file=app_config.PX_SETTINGS_FILE,
+        template_file=app_config.DEFAULT_USER_SETTINGS,
+    )
 
 
 def get_distance_service(
@@ -44,14 +58,14 @@ def get_distance_service(
 
 
 def get_picarx_adapter(
-    config_manager: ConfigService = Depends(get_config_manager),
+    config_manager: JsonDataManager = Depends(get_config_manager),
 ) -> PicarxAdapter:
     return PicarxAdapter(config_manager=config_manager)
 
 
 def get_calibration_service(
     px: PicarxAdapter = Depends(get_picarx_adapter),
-    config_manager: ConfigService = Depends(get_config_manager),
+    config_manager: JsonDataManager = Depends(get_config_manager),
 ) -> CalibrationService:
     return CalibrationService(px, config_manager=config_manager)
 
@@ -61,10 +75,14 @@ def get_robot_manager(
     picarx_adapter: PicarxAdapter = Depends(get_picarx_adapter),
     calibration_service: CalibrationService = Depends(get_calibration_service),
     distance_service: DistanceService = Depends(get_distance_service),
+    app_settings_manager: JsonDataManager = Depends(get_app_settings_manager),
+    config_manager: JsonDataManager = Depends(get_config_manager),
 ) -> CarService:
     return CarService(
         connection_manager=connection_manager,
         px=picarx_adapter,
         calibration_service=calibration_service,
         distance_service=distance_service,
+        app_settings_manager=app_settings_manager,
+        config_manager=config_manager,
     )

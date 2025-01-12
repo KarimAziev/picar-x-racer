@@ -2,11 +2,13 @@ numpy==1.26.4
 robot-hat
 google_speech_pyplay
 pandas
-pygame
 colorlog
 opencv-python
 platformdirs
+pydantic
+pydantic-settings
 pydub
+pygame
 fastapi[standard]
 starlette
 uvicorn[standard]
@@ -18,3 +20,4 @@ watchdog
 python-dotenv
 sounddevice
 dbus-python
+ncnn

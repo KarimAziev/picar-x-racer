@@ -37,7 +37,7 @@
 >     - [General](#general)
 >     - [Models](#models)
 >     - [Keybindings](#keybindings)
->     - [Calibration](#calibration)
+>     - [Robot](#robot)
 >     - [Text-to-Speech (TTS)](#text-to-speech-tts)
 >     - [Music](#music)
 >     - [Photos](#photos)
@@ -160,8 +160,6 @@ After navigating to the control interface, you can customize your experience via
 
 The **Settings** menu enables you to manage every aspect of your Picar-X Racer experience. It provides extensive customization for multimedia, object detection, keybindings, and much more.
 
-![Settings](./demo/demo-settings.gif)
-
 To access settings:
 
 1. Click on the settings icon in the top-left corner of the UI.
@@ -172,6 +170,8 @@ To access settings:
 Here are the key sections of the **Settings** menu:
 
 ### General
+
+![Settings](./demo/general-settings.gif)
 
 - Toggle visibility of interface components: gauges, speedometer, 3D car view, object detection panel, etc.
 - Configure camera parameters: distance measure delay, video quality, and more.
@@ -194,14 +194,11 @@ Every function of the car and interface can be mapped to specific keys.
 - Default values are provided, but you can edit any setting directly from this tab.
 - Alternatively, use the "Shortcuts Settings Menu" on screen (`?`).
 
-### Calibration
+### Robot
 
-Calibration Mode allows you to fine-tune angles for:
+![Robot](./demo/robot-settings.gif)
 
-- Servo direction
-- Camera pan
-- Camera tilt
-- Motors direction
+Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
 
 ### Text-to-Speech (TTS)
 
@@ -243,6 +240,7 @@ Follow these steps to enable real-time object detection:
    - **Box**: Bounding boxes with class labels and confidence.
    - **Aim**: A minimalistic crosshair over detected objects.
    - **Mixed**: A combination of box annotations and aim visuals.
+   - **Pose**: Draws keypoints representing specific body joints without boxes. Requires pose estimation model, i.e. yolo11n-pose.pt.
 5. Toggle switch to activate detection.
 
 Output results, such as bounding boxes and labels, will immediately appear on the live camera feed.
@@ -395,7 +393,11 @@ Activates a mode where the car automatically adjusts its movements to avoid obst
 
 ## Calibration Mode
 
-Activates a mode for calibration. In this mode, you can adjust the angle for servo direction, camera pan, and camera tilt. Some commands are remapped:
+![Calibration](./demo/calibration.gif)
+
+While you can calibrate directly in the settings popup, doing so is not very convenient. You can start the calibration either from the settings menu by clicking the "Start calibration" button or by using the keybinding (default is "C").
+
+In this mode, you can adjust the angle for servo direction, camera pan, and camera tilt. Some commands are remapped:
 
 | Original Command Label   | Original Key | New Command Label         | New Command Description                                  |
 | ------------------------ | ------------ | ------------------------- | -------------------------------------------------------- |
@@ -409,7 +411,7 @@ Activates a mode for calibration. In this mode, you can adjust the angle for ser
 
 ### 3D Virtual Mode
 
-![Alt text](./demo/3D-mode-demo.png)
+![Virtual mode](./demo/3D-mode-demo.png)
 
 Hides a video stream view and focuses on controlling the car using just a 3D model visualization.
 The mode is supposed to be used with active Auto Measure Distance Mode, which activates the ultrasonic measurement, and the 3D visualization will visualize the ultrasonic distance.

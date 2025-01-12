@@ -165,17 +165,20 @@ button {
   z-index: 1;
 }
 .p-inputnumber-stacked .p-inputnumber-increment-button {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0;
   border-start-end-radius: calc(
     var(--p-inputnumber-button-border-radius) - 1px
   );
 }
 .p-inputnumber-stacked .p-inputnumber-decrement-button {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0;
   border-end-end-radius: calc(var(--p-inputnumber-button-border-radius) - 1px);
 }
+:deep(.pi-angle-up) {
+  position: relative;
+  top: 2px;
+}
+
 .p-inputnumber-stacked .p-inputnumber-button {
   flex: 1 1 auto;
   border: 0 none;

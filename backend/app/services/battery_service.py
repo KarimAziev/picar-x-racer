@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Optional, Tuple
 
 from app.schemas.battery import BatterySettings
 from app.schemas.connection import ConnectionEvent
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from robot_hat.battery import Battery
 
 if TYPE_CHECKING:

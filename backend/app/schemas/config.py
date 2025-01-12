@@ -1,15 +1,20 @@
-from typing import Optional, Union
+from typing import Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from robot_hat import ServoCalibrationMode
+from robot_hat import MotorDirection, ServoCalibrationMode
 from typing_extensions import Annotated
 
 
 class ServoConfig(BaseModel):
-    servo_pin: Union[str, int] = Field(
+    name: str = Field(
         ...,
-        description="PWM channel number or name.",
-        examples=["P0", "P1", "P2", 0, 1, 2],
+        description="A name for the servo (useful for debugging/logging). ",
+        examples=["Steering Direction", "Camera Pan"],
+    )
+    calibration_offset: float = Field(
+        0.0,
+        description="A calibration offset for fine-tuning servo angles.",
+        examples=[0.0, 0.4, -4.2],
     )
     min_angle: int = Field(
         ...,
@@ -21,20 +26,22 @@ class ServoConfig(BaseModel):
         description="Maximum allowable angle for the servo",
         examples=[30, 45],
     )
-    calibration_offset: float = Field(
-        0.0,
-        description="A calibration offset for fine-tuning servo angles.",
-        examples=[0.0, 0.4, -4.2],
-    )
-    calibration_mode: Optional[ServoCalibrationMode] = Field(
-        None,
-        description="Specifies how calibration offsets are applied.",
-        examples=[ServoCalibrationMode.SUM.value, ServoCalibrationMode.NEGATIVE.value],
-    )
-    name: str = Field(
+    calibration_mode: Annotated[
+        ServoCalibrationMode,
+        Field(
+            ServoCalibrationMode.NEGATIVE,
+            description="Specifies how calibration offsets are applied.",
+            examples=[
+                ServoCalibrationMode.SUM.value,
+                ServoCalibrationMode.NEGATIVE.value,
+            ],
+        ),
+    ]
+
+    servo_pin: Union[str, int] = Field(
         ...,
-        description="A name for the servo (useful for debugging/logging). Defaults to the servo pin if not provided.",
-        examples=["Steering Direction", "Camera Pan"],
+        description="PWM channel number or name.",
+        examples=["P0", "P1", "P2", 0, 1, 2],
     )
 
     @model_validator(mode="after")
@@ -56,35 +63,20 @@ class ServoConfig(BaseModel):
 
 
 class MotorConfig(BaseModel):
-    dir_pin: Union[str, int] = Field(
+    name: str = Field(
         ...,
-        description="Pin identifier, either as a GPIO pin number or a named string.",
-        examples=["D4", "D5", 23, 24],
+        description="Human-readable name for the motor",
+        examples=["left", "right"],
     )
-    pwm_pin: Union[str, int] = Field(
+    calibration_direction: MotorDirection = Field(
         ...,
-        description="PWM channel number or name.",
-        examples=["P12", "P13", 12, 13],
+        description="Initial motor direction calibration (+1/-1)",
+        examples=[1, -1],
     )
     max_speed: int = Field(
         ...,
         description="Maximum allowable speed for the motor.",
         examples=[100, 90],
-    )
-    name: Optional[str] = Field(
-        ...,
-        description="Optional human-readable name for the motor",
-        examples=["left", "right"],
-    )
-    calibration_direction: int = Field(
-        ...,
-        description="Initial motor direction calibration (+1/-1)",
-        examples=[1, -1],
-    )
-    calibration_speed_offset: float = Field(
-        0.0,
-        description="Initial motor speed calibration offset",
-        examples=[0.0, 0.1],
     )
     period: int = Field(
         4095,
@@ -95,6 +87,16 @@ class MotorConfig(BaseModel):
         10,
         description="PWM prescaler for speed control",
         examples=[10],
+    )
+    dir_pin: Union[str, int] = Field(
+        ...,
+        description="Direction PIN identifier, either as a GPIO pin number or a named string.",
+        examples=["D4", "D5", 23, 24],
+    )
+    pwm_pin: Union[str, int] = Field(
+        ...,
+        description="PWM channel number or name.",
+        examples=["P12", "P13", 12, 13],
     )
 
     @model_validator(mode="after")
@@ -116,9 +118,13 @@ class MotorConfig(BaseModel):
 
 
 class ConfigSchema(BaseModel):
+    """
+    Configuration model for specifying motors and servos in a robotic system.
+    """
+
+    steering_servo: ServoConfig
     cam_pan_servo: ServoConfig
     cam_tilt_servo: ServoConfig
-    steering_servo: ServoConfig
     left_motor: MotorConfig
     right_motor: MotorConfig
 

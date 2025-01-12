@@ -42,7 +42,7 @@ export interface Props extends FieldProps {
   invalid?: boolean;
   message?: string;
   label?: string;
-  field?: string;
+  field?: string | number;
   fieldClassName?: string;
   labelClassName?: string;
   inputClassName?: string;

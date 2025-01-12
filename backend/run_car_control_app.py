@@ -23,7 +23,7 @@ def main():
         pass
     from robot_hat import reset_mcu_sync
 
-    from app.util.logger import Logger
+    from app.core.logger import Logger
     from app.util.setup_env import setup_env
 
     (

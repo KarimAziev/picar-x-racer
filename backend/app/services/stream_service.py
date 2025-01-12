@@ -2,8 +2,8 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 

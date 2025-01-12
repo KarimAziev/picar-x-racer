@@ -23,7 +23,7 @@ def main():
     except RuntimeError:
         pass
 
-    from app.util.logger import Logger
+    from app.core.logger import Logger
     from app.util.setup_env import setup_env
 
     (

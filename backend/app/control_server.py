@@ -1,31 +1,31 @@
+"""
+The application provides robot-controlling functionality, including:
+
+- WebSockets for controlling and calibration of the robot
+- ultrasonic distance measurement
+"""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config.paths import DEFAULT_USER_SETTINGS, PX_SETTINGS_FILE
-from app.util.logger import Logger
-
-description = """
-`Picar-X Robot` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using WebSockets.
-
-It integrates endpoints to manage the car's movement, calibration, and ultrasonic measurements. 🚀
-
-It provides endpoints for:
-- ultrasonic distance measurement
-- WebSockets for controlling the car and calibration
-
-This server runs in a separate process from the main server to ensure that control operations are never blocked.
-"""
+from app.api.control import api_router, tags_metadata
+from app.config.config import settings as app_settings
+from app.core.logger import Logger
 
 Logger.setup_from_env()
+
 
 logger = Logger(name=__name__, app_name="px_robot")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import os
+
     from app.api import robot_deps
+    from app.util.file_util import load_json_file
 
     async_manager = robot_deps.get_async_task_manager()
     connection_manager = robot_deps.get_connection_manager()
@@ -41,9 +41,9 @@ async def lifespan(app: FastAPI):
 
     distance_service.subscribe(broadcast_distance)
     settings = (
-        load_json_file(PX_SETTINGS_FILE)
-        if os.path.exists(PX_SETTINGS_FILE)
-        else load_json_file(DEFAULT_USER_SETTINGS)
+        load_json_file(app_settings.PX_SETTINGS_FILE)
+        if os.path.exists(app_settings.PX_SETTINGS_FILE)
+        else load_json_file(app_settings.DEFAULT_USER_SETTINGS)
     )
     robot_settings = settings.get("robot", {})
     distance_interval = robot_settings.get("auto_measure_distance_delay_ms", 1000)
@@ -61,18 +61,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Picar-X Robot",
+    title="Robot Control Application",
     version="0.0.1",
-    description=description,
+    summary="API for the robot's hardware interactions.",
+    description=__doc__ or "",
     lifespan=lifespan,
+    openapi_tags=tags_metadata,
     contact={
         "name": "Karim Aziiev",
-        "url": "http://github.com/KarimAziev/picar-x-racer",
         "email": "karim.aziiev@gmail.com",
     },
     license_info={
-        "name": "GPL-3.0-or-later",
-        "url": "https://www.gnu.org/licenses/gpl-3.0.en.html",
+        "name": "GNU General Public License v3.0 or later",
+        "identifier": "GPL-3.0-or-later",
     },
 )
 
@@ -84,11 +85,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-import os
-
-from app.api.control import car_manager_router, ultrasonic_router
-from app.util.file_util import load_json_file
-
-app.include_router(car_manager_router)
-app.include_router(ultrasonic_router)
+app.include_router(api_router)

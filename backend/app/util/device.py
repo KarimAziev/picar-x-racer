@@ -1,7 +1,7 @@
 from typing import Optional
 
 import cv2
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 logger = Logger(__name__)
 

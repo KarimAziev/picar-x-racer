@@ -11,11 +11,11 @@ export const pt = {
     },
   },
   inputnumber: {
-    incrementButton: {
-      class: "w-8 p-0",
+    decrementIcon: {
+      class: "p-1 relative bottom-[4px]",
     },
-    decrementButton: {
-      class: "w-8 p-0",
+    incrementIcon: {
+      class: "p-1",
     },
   },
   select: {

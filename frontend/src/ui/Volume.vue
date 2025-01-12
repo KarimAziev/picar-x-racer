@@ -4,14 +4,14 @@
       <button
         text
         @click="handleInc"
-        class="relative top-1 p-0 h-auto m-0 w-auto hover:text-primary-300"
+        class="py-0 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
       >
         <i class="pi pi-angle-up" />
       </button>
-      <div v-tooltip="'System volume'">{{ currentValue }}</div>
+      <div class="text-xs" v-tooltip="'System volume'">{{ currentValue }}</div>
       <button
         @click="handleDec"
-        class="relative p-0 h-auto m-0 w-auto hover:text-primary-300"
+        class="py-0 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
       >
         <i class="pi pi-angle-down" />
       </button>

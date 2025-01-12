@@ -31,7 +31,7 @@ const stringifyError = (data: any): string => {
     return `${data}`;
   }
   if (isArray(data)) {
-    return data.map(stringifyError).join("\n");
+    return data.map(stringifyError).join(", ");
   }
   if (isPlainObject(data)) {
     if (validationErrorPred(data)) {
@@ -51,14 +51,14 @@ const stringifyError = (data: any): string => {
 export const retrieveError = <Err>(error: Err) => {
   if (isAxiosError(error)) {
     const data = error.response?.data;
-
+    const text = stringifyError(
+      data?.detail || data?.error || data || error.message,
+    );
     return {
       title: error.response?.statusText
         ? `${error.response?.statusText}: `
         : "",
-      text: stringifyError(
-        data?.detail || data?.error || data || error.message,
-      ),
+      text: text,
     };
   }
 

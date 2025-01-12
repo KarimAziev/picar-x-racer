@@ -9,6 +9,7 @@ export enum OverlayStyle {
   BOX = "box",
   AIM = "aim",
   MIXED = "mixed",
+  POSE = "pose",
 }
 
 export interface DetectionSettings {
@@ -80,6 +81,7 @@ export interface DetectionResult {
   bbox: [number, number, number, number];
   label: string;
   confidence: number;
+  keypoints?: { x: number; y: number; conf: number }[];
 }
 export const msg = {
   retry: "Retrying object detection connection...",
@@ -101,12 +103,10 @@ export const useStore = defineStore("detection-settings", {
     async updateData(payload: DetectionSettings) {
       const messager = useMessagerStore();
       try {
-        this.loading = true;
         await axios.post<DetectionSettings>("/api/detection/settings", payload);
       } catch (error) {
-        messager.handleError(error, `Error starting camera`);
+        messager.handleError(error);
       } finally {
-        this.loading = false;
       }
       return this.data;
     },

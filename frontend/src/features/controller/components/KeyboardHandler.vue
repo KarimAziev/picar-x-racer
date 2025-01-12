@@ -2,7 +2,7 @@
   <input
     class="absolute top-0 -left-full"
     ref="inputRef"
-    id="keyboard-handler"
+    :id="keyboardInputID"
     @keyup.stop="handleKeyUp"
     @keydown.stop="handleKeyDown"
     :tabindex="0"
@@ -20,6 +20,7 @@ import {
   useKeyboardControls,
   KeyboardEventPred,
 } from "@/features/controller/composables/useKeyboardControls";
+import { keyboardInputID } from "@/features/controller/config";
 
 const inputRef = ref<HTMLInputElement | null>();
 const settingsStore = useSettingsStore();

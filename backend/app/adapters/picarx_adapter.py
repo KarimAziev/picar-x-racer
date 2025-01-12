@@ -1,24 +1,25 @@
 from typing import TYPE_CHECKING, Any, Dict
 
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
+from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from app.schemas.config import ConfigSchema
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
 from robot_hat import MotorConfig, MotorFabric, MotorService, ServoService
 
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
-    from app.services.car_control.config_service import ConfigService
+    from app.managers.json_data_manager import JsonDataManager
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
     def __init__(
         self,
-        config_manager: "ConfigService",
+        config_manager: "JsonDataManager",
     ):
         self.config_manager = config_manager
 
-        self.config = ConfigSchema(**config_manager.load_settings())
+        self.config = ConfigSchema(**config_manager.load_data())
 
         self.cam_pan_servo = ServoService(
             servo_pin=self.config.cam_pan_servo.servo_pin,
@@ -71,6 +72,16 @@ class PicarxAdapter(metaclass=SingletonMeta):
         )
 
     @property
+    def motor_addresses(self) -> list[int]:
+        """
+        Get the I2C addresses for the left and right motors' speed pins.
+        """
+        return [
+            self.motor_controller.left_motor.speed_pin.address,
+            self.motor_controller.right_motor.speed_pin.address,
+        ]
+
+    @property
     def state(self) -> Dict[str, Any]:
         """
         Returns key metrics of the current state as a dictionary.
@@ -95,9 +106,26 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Set the servo angle for the vehicle's steering direction.
 
         Args:
-           value (int): Desired angle
+           value (float): Desired angle
+
+        Raises:
+           RobotI2CTimeout: If the operation fails due to a timeout.
+           RobotI2CBusError: If the operation fails due to a bus-related error.
         """
-        self.steering_servo.set_angle(value)
+        try:
+            self.steering_servo.set_angle(value)
+        except TimeoutError:
+            raise RobotI2CTimeout(
+                operation="set direction servo angle",
+                addresses=[self.steering_servo.servo.address],
+            )
+        except OSError as e:
+            raise RobotI2CBusError(
+                operation="set direction servo angle",
+                addresses=[self.steering_servo.servo.address],
+                errno=e.errno,
+                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+            )
 
     def set_cam_pan_angle(self, value: int) -> None:
         """
@@ -105,8 +133,25 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         Args:
            value (int): Desired angle
+
+        Raises:
+           RobotI2CTimeout: If the operation fails due to a timeout.
+           RobotI2CBusError: If the operation fails due to a bus-related error.
         """
-        self.cam_pan_servo.set_angle(value)
+        try:
+            self.cam_pan_servo.set_angle(value)
+        except TimeoutError:
+            raise RobotI2CTimeout(
+                operation="set camera pan angle",
+                addresses=[self.cam_pan_servo.servo.address],
+            )
+        except OSError as e:
+            raise RobotI2CBusError(
+                operation="set camera pan angle",
+                addresses=[self.cam_pan_servo.servo.address],
+                errno=e.errno,
+                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+            )
 
     def set_cam_tilt_angle(self, value: int) -> None:
         """
@@ -114,8 +159,25 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         Args:
            value (int): Desired angle
+
+        Raises:
+           RobotI2CTimeout: If the operation fails due to a timeout.
+           RobotI2CBusError: If the operation fails due to a bus-related error.
         """
-        self.cam_tilt_servo.set_angle(value)
+        try:
+            self.cam_tilt_servo.set_angle(value)
+        except TimeoutError:
+            raise RobotI2CTimeout(
+                operation="set camera tilt angle",
+                addresses=[self.cam_tilt_servo.servo.address],
+            )
+        except OSError as e:
+            raise RobotI2CBusError(
+                operation="set camera tilt angle",
+                addresses=[self.cam_tilt_servo.servo.address],
+                errno=e.errno,
+                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+            )
 
     def move(self, speed: int, direction: int) -> None:
         """
@@ -125,7 +187,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         - speed (int): The base speed at which to move.
         - direction (int): 1 for forward, -1 for backward.
         """
-        return self.motor_controller.move(speed, direction)
+        self.motor_controller.move(speed, direction)
 
     def forward(self, speed: int) -> None:
         """
@@ -133,9 +195,26 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         Args:
            speed (int): The base speed at which to move.
+
+        Raises:
+           RobotI2CTimeout: If the operation fails due to a timeout.
+           RobotI2CBusError: If the operation fails due to a bus-related error.
         """
         logger.debug("Forward: 100/%s", speed)
-        self.move(speed, direction=1)
+        try:
+            self.move(speed, direction=1)
+        except TimeoutError:
+            raise RobotI2CTimeout(
+                operation=f"move forward ({speed})",
+                addresses=self.motor_addresses,
+            )
+        except OSError as e:
+            raise RobotI2CBusError(
+                operation=f"move forward ({speed})",
+                addresses=self.motor_addresses,
+                errno=e.errno,
+                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+            )
 
     def backward(self, speed: int) -> None:
         """
@@ -143,12 +222,49 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         Args:
            speed (int): The base speed at which to move.
+
+        Raises:
+           RobotI2CTimeout: If the operation fails due to a timeout.
+           RobotI2CBusError: If the operation fails due to a bus-related error.
         """
         logger.debug("Backward: 100/%s", speed)
-        self.move(speed, direction=-1)
+        try:
+            self.move(speed, direction=-1)
+        except TimeoutError:
+            raise RobotI2CTimeout(
+                operation=f"move backward ({speed})",
+                addresses=self.motor_addresses,
+            )
+        except OSError as e:
+            raise RobotI2CBusError(
+                operation=f"move backward ({speed})",
+                addresses=[
+                    self.motor_controller.left_motor.speed_pin.address,
+                    self.motor_controller.right_motor.speed_pin.address,
+                ],
+                errno=e.errno,
+                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+            )
 
     def stop(self) -> None:
         """
         Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a short delay between attempts.
+
+        Raises:
+           RobotI2CTimeout: If the operation fails due to a timeout.
+           RobotI2CBusError: If the operation fails due to a bus-related error.
         """
-        return self.motor_controller.stop_all()
+        try:
+            return self.motor_controller.stop_all()
+        except TimeoutError:
+            raise RobotI2CTimeout(
+                operation="stop motors",
+                addresses=self.motor_addresses,
+            )
+        except OSError as e:
+            raise RobotI2CBusError(
+                operation="stop motors",
+                addresses=self.motor_addresses,
+                errno=e.errno,
+                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+            )

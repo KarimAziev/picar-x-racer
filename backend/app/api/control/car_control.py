@@ -1,15 +1,22 @@
+"""
+WebSocket endpoint for controlling and interacting with the robot.
+"""
+
 import asyncio
 import json
 from typing import TYPE_CHECKING
 
 from app.api import robot_deps
-from app.util.logger import Logger
+from app.core.logger import Logger
+from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-logger = Logger(name=__name__, app_name="px_robot")
+Logger._app_logger_name = "robot"
 
-car_manager_router = APIRouter()
+logger = Logger(name=__name__)
+
+router = APIRouter()
 
 if TYPE_CHECKING:
     from app.services.car_control.calibration_service import CalibrationService
@@ -17,7 +24,7 @@ if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
 
 
-@car_manager_router.websocket("/px/ws")
+@router.websocket("/px/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
     car_manager: "CarService" = Depends(robot_deps.get_robot_manager),
@@ -29,19 +36,14 @@ async def websocket_endpoint(
     ),
 ):
     """
-    WebSocket endpoint for controlling the Picar-X vehicle.
-
-    Raises:
-        Exception: If there is an error processing the incoming message.
-        WebSocketDisconnect: If the WebSocket connection is disconnected.
-        KeyboardInterrupt: If the WebSocket connection is interrupted.
+    WebSocket endpoint for controlling the robot.
     """
     try:
         await connection_manager.connect(websocket)
         await connection_manager.broadcast_json(
             {
                 "type": "updateCalibration",
-                "payload": calibration_service.get_calibration_data(),
+                "payload": calibration_service.get_current_config(),
             }
         )
         await car_manager.broadcast()
@@ -53,15 +55,23 @@ async def websocket_endpoint(
             payload = data.get("payload")
 
             logger.debug("%s", data)
-            await car_manager.process_action(action, payload, websocket)
+            try:
+                await car_manager.process_action(action, payload, websocket)
+            except (RobotI2CTimeout, RobotI2CBusError) as e:
+                logger.error(str(e))
+                await connection_manager.error(str(e))
+            except Exception as e:
+                logger.error("Unexpected error during action processing", exc_info=True)
+                await connection_manager.error("Unexpected robot error occurred")
 
     except WebSocketDisconnect:
-        logger.info("WebSocket Disconnected")
+        logger.info("WebSocket client disconnected gracefully.")
     except asyncio.CancelledError:
-        logger.info("Gracefully shutting down Detection WebSocket connection")
+        logger.warning("WebSocket cancelled by application.")
         await connection_manager.disconnect(websocket)
     except KeyboardInterrupt:
-        logger.info("WebSocket interrupted")
+        logger.warning("WebSocket connection interrupted.")
         await connection_manager.disconnect(websocket)
     finally:
+        logger.info("Cleaning up WebSocket connection.")
         connection_manager.remove(websocket)

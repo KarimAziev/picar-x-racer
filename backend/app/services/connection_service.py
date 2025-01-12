@@ -1,8 +1,8 @@
 from typing import Any, Optional
 
 from app.schemas.connection import ConnectionEvent
-from app.util.async_emitter import AsyncEventEmitter
-from app.util.logger import Logger
+from app.core.async_emitter import AsyncEventEmitter
+from app.core.logger import Logger
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 

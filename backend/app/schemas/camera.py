@@ -224,8 +224,6 @@ class DeviceNode(DeviceItem):
         examples=[
             [
                 {
-                    'key': '/dev/video0:MJPG',
-                    'label': 'MJPG',
                     'children': [
                         {
                             'key': '/dev/video0:MJPG:352x288:30',
@@ -237,6 +235,8 @@ class DeviceNode(DeviceItem):
                             'pixel_format': 'MJPG',
                         },
                     ],
+                    'key': '/dev/video0:MJPG',
+                    'label': 'MJPG',
                 },
                 {
                     'key': '/dev/video1',
@@ -279,7 +279,7 @@ class DeviceNode(DeviceItem):
 
 class CameraDevicesResponse(BaseModel):
     """
-    Response model for available camera devices.
+    Successful response for available camera devices.
     """
 
     devices: List[DeviceNode] = Field(
@@ -289,103 +289,95 @@ class CameraDevicesResponse(BaseModel):
             "where each device can have child nodes or configurable properties."
         ),
         examples=[
-            {
-                "devices": [
-                    {
-                        'key': '/dev/video0',
-                        'label': '/dev/video0 (Integrated Camera: Integrated C)',
-                        'children': [
-                            {
-                                'key': '/dev/video0:MJPG',
-                                'label': 'MJPG',
-                                'children': [
-                                    {
-                                        'key': '/dev/video0:MJPG:352x288:30',
-                                        'label': 'MJPG, 352x288,  30 fps',
-                                        'device': '/dev/video0',
-                                        'width': 352,
-                                        'height': 288,
-                                        'fps': 30,
-                                        'pixel_format': 'MJPG',
-                                    },
-                                    {
-                                        'key': '/dev/video0:MJPG:424x240:30',
-                                        'label': 'MJPG, 424x240,  30 fps',
-                                        'device': '/dev/video0',
-                                        'width': 424,
-                                        'height': 240,
-                                        'fps': 30,
-                                        'pixel_format': 'MJPG',
-                                    },
-                                ],
-                            },
-                            {
-                                'key': '/dev/video0:YUYV',
-                                'label': 'YUYV',
-                                'children': [
-                                    {
-                                        'key': '/dev/video0:YUYV:640x480:30',
-                                        'label': 'YUYV, 640x480,  30 fps',
-                                        'device': '/dev/video0',
-                                        'width': 640,
-                                        'height': 480,
-                                        'fps': 30,
-                                        'pixel_format': 'YUYV',
-                                    }
-                                ],
-                            },
-                        ],
-                    },
-                    {
-                        'key': '/dev/video2',
-                        'label': '/dev/video2 (Integrated Camera: Integrated C)',
-                        'children': [
-                            {
-                                'key': '/dev/video2:GREY:640x360:15',
-                                'label': 'GREY, 640x360,  15 fps',
-                                'device': '/dev/video2',
-                                'width': 640,
-                                'height': 360,
-                                'fps': 15,
-                                'pixel_format': 'GREY',
-                            }
-                        ],
-                    },
-                    {
-                        'key': '/dev/video1',
-                        'label': '/dev/video1 (mmal service 16.1)',
-                        'children': [
-                            {
-                                'key': '/dev/video1:YU12:32x32 - 2592x1944',
-                                'label': 'YU12 32x32 - 2592x1944',
-                                'device': '/dev/video1',
-                                'pixel_format': 'YU12',
-                                'min_width': 32,
-                                'max_width': 2592,
-                                'min_height': 32,
-                                'max_height': 1944,
-                                'height_step': 2,
-                                'width_step': 2,
-                                'min_fps': 1,
-                                'max_fps': 90,
-                            },
-                            {
-                                'key': '/dev/video1:YUYV:32x32 - 2592x1944',
-                                'label': 'YUYV 32x32 - 2592x1944',
-                                'device': '/dev/video1',
-                                'pixel_format': 'YUYV',
-                                'min_width': 32,
-                                'max_width': 2592,
-                                'min_height': 32,
-                                'max_height': 1944,
-                                'height_step': 2,
-                                'width_step': 2,
-                                'min_fps': 1,
-                                'max_fps': 90,
-                            },
-                        ],
-                    },
-                ]
-            }
+            [
+                {
+                    "key": "/dev/video0",
+                    "label": "/dev/video0 (Integrated Camera: Integrated C)",
+                    "children": [
+                        {
+                            "key": "/dev/video0:MJPG",
+                            "label": "MJPG",
+                            "children": [
+                                {
+                                    "device": "/dev/video0",
+                                    "pixel_format": "MJPG",
+                                    "key": "/dev/video0:MJPG:640x360:30",
+                                    "label": "MJPG, 640x360, 30 fps",
+                                    "width": 640,
+                                    "height": 360,
+                                    "fps": 30,
+                                },
+                                {
+                                    "device": "/dev/video0",
+                                    "pixel_format": "MJPG",
+                                    "key": "/dev/video0:MJPG:640x480:30",
+                                    "label": "MJPG, 640x480, 30 fps",
+                                    "width": 640,
+                                    "height": 480,
+                                    "fps": 30,
+                                },
+                            ],
+                        },
+                        {
+                            "key": "/dev/video0:YUYV",
+                            "label": "YUYV",
+                            "children": [
+                                {
+                                    "device": "/dev/video0",
+                                    "pixel_format": "YUYV",
+                                    "key": "/dev/video0:YUYV:640x480:30",
+                                    "label": "YUYV, 640x480, 30 fps",
+                                    "width": 640,
+                                    "height": 480,
+                                    "fps": 30,
+                                },
+                                {
+                                    "device": "/dev/video0",
+                                    "pixel_format": "YUYV",
+                                    "key": "/dev/video0:YUYV:320x180:30",
+                                    "label": "YUYV, 320x180, 30 fps",
+                                    "width": 320,
+                                    "height": 180,
+                                    "fps": 30,
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "key": "/dev/video1",
+                    "label": "/dev/video1 (mmal service 16.1)",
+                    "children": [
+                        {
+                            "device": "/dev/video1",
+                            "pixel_format": "YU12",
+                            "key": "/dev/video1:YU12:32x32 - 2592x1944",
+                            "label": "YU12 32x32 - 2592x1944",
+                            "min_width": 32,
+                            "max_width": 2592,
+                            "min_height": 32,
+                            "max_height": 1944,
+                            "height_step": 2,
+                            "width_step": 2,
+                            "min_fps": 1,
+                            "max_fps": 90,
+                        },
+                        {
+                            "device": "/dev/video1",
+                            "pixel_format": "YUYV",
+                            "key": "/dev/video1:YUYV:32x32 - 2592x1944",
+                            "label": "YUYV 32x32 - 2592x1944",
+                            "min_width": 32,
+                            "max_width": 2592,
+                            "min_height": 32,
+                            "max_height": 1944,
+                            "height_step": 2,
+                            "width_step": 2,
+                            "min_fps": 1,
+                            "max_fps": 90,
+                        },
+                    ],
+                },
+            ]
         ],
     )

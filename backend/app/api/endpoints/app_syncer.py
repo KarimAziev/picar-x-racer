@@ -1,3 +1,7 @@
+"""
+Websocket endpoint for synchronizing app state between several clients.
+"""
+
 import asyncio
 import json
 from typing import TYPE_CHECKING
@@ -8,7 +12,7 @@ from app.api.deps import (
     get_detection_manager,
     get_music_manager,
 )
-from app.util.logger import Logger
+from app.core.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
@@ -34,6 +38,9 @@ async def app_synchronizer(
     music_service: "MusicService" = Depends(get_music_manager),
     battery_manager: "BatteryService" = Depends(get_battery_manager),
 ):
+    """
+    Websocket endpoint for synchronizing app state between several clients.
+    """
     connection_manager: "ConnectionService" = websocket.app.state.app_manager
 
     try:
@@ -49,9 +56,15 @@ async def app_synchronizer(
         for key, value in data.items():
             await connection_manager.broadcast_json({"type": key, "payload": value})
 
+        if detection_service.loading:
+            await connection_manager.broadcast_json(
+                {"type": "detection-loading", "payload": True}
+            )
+
         if (
             detection_service.detection_settings.active
             and not detection_service.loading
+            and not detection_service.shutting_down
             and detection_service.detection_process is None
         ):
             if detection_service.detection_settings.model is None:
@@ -59,7 +72,7 @@ async def app_synchronizer(
             else:
                 await detection_service.start_detection_process()
                 detection_service.detection_process_task = asyncio.create_task(
-                    detection_service.start_detection_process_task()
+                    detection_service.detection_watcher()
                 )
 
         await connection_manager.broadcast_json(

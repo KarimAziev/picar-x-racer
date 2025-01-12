@@ -14,23 +14,34 @@
     }"
   >
     <template #header>
-      <ButtonGroup>
-        <Button
-          :label="`Download ${markedItemsLen} photos`"
-          @click="handleDownloadMarked"
-          :disabled="batchButtonsDisabled"
-          severity="secondary"
-          icon="pi pi-download"
-        >
-        </Button>
-        <Button
-          severity="danger"
-          :disabled="batchButtonsDisabled"
-          @click="handleRemoveMarked"
-          :label="`Delete ${markedItemsLen} photos`"
-          icon="pi pi-trash"
-        ></Button>
-      </ButtonGroup>
+      <div class="flex flex-col gap-2">
+        <div>Act on {{ markedItemsLen }} files</div>
+        <ButtonGroup>
+          <Button
+            label="Download"
+            @click="handleDownloadMarked"
+            :disabled="batchButtonsDisabled"
+            severity="secondary"
+            icon="pi pi-download"
+          >
+          </Button>
+          <Button
+            label="Download archive"
+            @click="handleDownloadArchive"
+            :disabled="batchButtonsDisabled"
+            severity="secondary"
+            icon="pi pi-download"
+          >
+          </Button>
+          <Button
+            severity="danger"
+            :disabled="batchButtonsDisabled"
+            @click="handleRemoveMarked"
+            label="Delete"
+            icon="pi pi-trash"
+          ></Button>
+        </ButtonGroup>
+      </div>
     </template>
     <template #empty>
       <div v-if="!loading" class="text-center">
@@ -91,7 +102,7 @@
     @after-hide="removeKeyEventListeners"
   >
     <Photo className="w-full h-auto" :src="selectedImage?.url" :width="380" />
-    <ButtonGroup class="flex justify-center">
+    <ButtonGroup class="flex justify-center w-full items-center pt-5">
       <Button
         text
         aria-label="Previous image"
@@ -189,6 +200,20 @@ const handleDownloadMarked = async () => {
     downloading.value[url] = true;
     await store.downloadFile(name);
   }
+  downloading.value = {};
+};
+
+const handleDownloadArchive = async () => {
+  const filenames = markedItems.value.map(({ name }) => name);
+  const downloadingUrls = markedItems.value.reduce(
+    (acc, { url }) => {
+      acc[url] = true;
+      return acc;
+    },
+    {} as Record<string, boolean>,
+  );
+  downloading.value = downloadingUrls;
+  await store.downloadFilesArchive(filenames);
   downloading.value = {};
 };
 

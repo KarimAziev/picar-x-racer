@@ -186,11 +186,11 @@ def is_parent_directory(parent_dir: str, file_path: str):
 def get_directory_structure(
     initial_directory: str,
     extension: Optional[Union[str, Tuple[str, ...]]] = None,
+    directory_suffix: Optional[Union[str, Tuple[str, ...]]] = None,
     exclude_empty_dirs=True,
     absolute=True,
     file_processor: Optional[Callable[[str], Any]] = None,
 ) -> list[Dict[str, Any]]:
-
     def walk_directory(current_path: str):
         children = []
         entries = sorted(
@@ -208,7 +208,21 @@ def get_directory_structure(
                 if absolute
                 else file_to_relative(entry_path, initial_directory)
             )
-            if os.path.isdir(entry_path):
+            is_directory = os.path.isdir(entry_path)
+            if (
+                is_directory
+                and directory_suffix
+                and entry_path.endswith(directory_suffix)
+            ):
+                children.append(
+                    {
+                        "key": key_path,
+                        "label": entry,
+                        "selectable": True,
+                        "data": {"name": entry, "type": "Folder"},
+                    }
+                )
+            elif is_directory:
                 subchildren = walk_directory(entry_path)
                 if not exclude_empty_dirs or len(subchildren) > 0:
                     children.append(

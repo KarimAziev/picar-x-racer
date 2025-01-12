@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from app.exceptions.music import ActiveMusicTrackRemovalError, MusicPlayerError
 from app.schemas.music import MusicPlayerMode
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService

@@ -14,6 +14,7 @@
       tooltip="The current language of text to speech (%s)"
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
+      @hide="focusToKeyboardHandler"
     />
     <div class="flex items-center">
       <TextInput
@@ -45,6 +46,7 @@ import { useSettingsStore, useTTSStore } from "@/features/settings/stores";
 import SelectField from "@/ui/SelectField.vue";
 
 import { useInputHistory } from "@/composables/useInputHistory";
+import { focusToKeyboardHandler } from "@/features/controller/util";
 
 defineProps<{ class?: string }>();
 

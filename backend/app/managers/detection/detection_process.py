@@ -3,11 +3,11 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
+from app.core.logger import Logger
 from app.exceptions.detection import DetectionDimensionMismatch
-from app.util.logger import Logger
-from app.util.model_manager import ModelManager
-from app.util.object_detection import perform_detection
-from app.util.queue import put_to_queue
+from app.managers.detection.object_detection import perform_detection
+from app.managers.model_manager import ModelManager
+from app.util.queue_helpers import put_to_queue
 
 if TYPE_CHECKING:
     import multiprocessing as mp
@@ -46,18 +46,18 @@ def detection_process_func(
         - Stops gracefully when the `stop_event` is set.
     """
     with ModelManager(model) as pair:
-        yolo_model, err_msg = pair
-        if yolo_model is None:
-            msg = (
-                err_msg
-                or f"Failed to load the model {model}. Exiting detection process."
-            )
-            logger.error(msg)
-            put_to_queue(out_queue, {"success": False, "error": msg})
-            return
-        else:
-            put_to_queue(out_queue, {"success": True})
         try:
+            yolo_model, err_msg = pair
+            if yolo_model is None:
+                msg = (
+                    err_msg
+                    or f"Failed to load the model {model}. Exiting detection process."
+                )
+                logger.error(msg)
+                put_to_queue(out_queue, {"success": False, "error": msg}, reraise=True)
+                return
+            else:
+                put_to_queue(out_queue, {"success": True}, reraise=True)
             confidence_threshold = 0.3
             prev_time = time.time()
             labels = None
@@ -100,11 +100,13 @@ def detection_process_func(
                         labels_to_detect=labels,
                     )
                 except DetectionDimensionMismatch as e:
-                    put_to_queue(out_queue, {"error": str(e)})
+                    put_to_queue(out_queue, {"error": str(e)}, reraise=True)
                     break
                 except Exception as e:
-                    logger.error("Exception in detection process", exc_info=True)
-                    put_to_queue(out_queue, {"error": str(e)})
+                    logger.error(
+                        "Unhandled exception in detection process", exc_info=True
+                    )
+                    put_to_queue(out_queue, {"error": str(e)}, reraise=True)
                     break
 
                 detection_result_with_timestamp = {
@@ -116,10 +118,23 @@ def detection_process_func(
                     logger.info(f"Detection result: {detection_result}")
                     prev_time = time.time()
 
-                put_to_queue(detection_queue, detection_result_with_timestamp)
-        except BrokenPipeError:
-            logger.warning("Detection process received BrokenPipeError, exiting.")
+                put_to_queue(
+                    detection_queue, detection_result_with_timestamp, reraise=True
+                )
+        except (
+            ConnectionError,
+            ConnectionRefusedError,
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+        ) as e:
+            logger.warning(
+                "Connection-related error occurred in detection process: %s",
+                type(e).__name__,
+            )
         except KeyboardInterrupt:
-            logger.warning("Detection process received KeyboardInterrupt, exiting.")
+            logger.warning("Detection process received keyboard interrupt, exiting.")
+            stop_event.set()
+
         finally:
-            logger.info("Detection process is terminating.")
+            logger.info("Detection process is finished.")

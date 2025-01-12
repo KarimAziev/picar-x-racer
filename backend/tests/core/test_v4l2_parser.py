@@ -2,7 +2,7 @@ import subprocess
 import unittest
 from unittest.mock import Mock, patch
 
-from app.util.v4l2_parser import V4L2FormatParser
+from app.core.v4l2_parser import V4L2FormatParser
 
 
 class TestV4L2FormatParser(unittest.TestCase):
@@ -55,7 +55,7 @@ class TestV4L2FormatParser(unittest.TestCase):
         result = self.parser.parse(v4l2_output)
         self.assertEqual(result, expected_result)
 
-    @patch("app.util.v4l2_parser.V4L2FormatParser.get_fps_intervals")
+    @patch("app.core.v4l2_parser.V4L2FormatParser.get_fps_intervals")
     def test_parse_stepwise_resolution(self, mock_get_fps_intervals: Mock):
         """
         Test parsing of `v4l2-ctl --list-formats-ext` output with stepwise resolutions.
@@ -138,7 +138,7 @@ class TestV4L2FormatParser(unittest.TestCase):
         result = V4L2FormatParser.parse_frameinterval(frameinterval_output)
         self.assertIsNone(result)
 
-    @patch("app.util.v4l2_parser.subprocess.run")
+    @patch("app.core.v4l2_parser.subprocess.run")
     def test_get_fps_intervals_success(self, mock_subprocess_run: Mock):
         """
         Test `get_fps_intervals` retrieves and parses frame intervals successfully.
@@ -155,8 +155,8 @@ class TestV4L2FormatParser(unittest.TestCase):
         )
         self.assertEqual(result, expected_result)
 
-    @patch("app.util.logger.Logger.error")
-    @patch("app.util.v4l2_parser.subprocess.run")
+    @patch("app.core.logger.Logger.error")
+    @patch("app.core.v4l2_parser.subprocess.run")
     def test_get_fps_intervals_failure(
         self, mock_subprocess_run: Mock, mock_logger_error: Mock
     ):

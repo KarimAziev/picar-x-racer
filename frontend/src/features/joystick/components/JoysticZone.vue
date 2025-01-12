@@ -6,8 +6,10 @@
 import { ref } from "vue";
 import { useControllerStore } from "@/features/controller/store";
 import { useJoystickControl } from "@/features/joystick/composables/useJoysticManager";
+import { useRobotStore } from "@/features/settings/stores";
 
 const controllerStore = useControllerStore();
+const robotStore = useRobotStore();
 const timeout = ref<NodeJS.Timeout>();
 
 const sideOffset = "60px";
@@ -15,6 +17,7 @@ const bottomOffset = "60px";
 
 const { joystickZone: joystickZoneY, params } = useJoystickControl(
   controllerStore,
+  robotStore,
   {
     position: { left: sideOffset, bottom: bottomOffset },
   },
@@ -53,6 +56,7 @@ const handleEnd = () => {
 
 const { joystickZone: joystickZoneX } = useJoystickControl(
   controllerStore,
+  robotStore,
   {
     position: { bottom: bottomOffset, right: sideOffset },
     lockX: true,

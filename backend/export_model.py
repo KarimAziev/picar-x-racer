@@ -83,19 +83,21 @@ from app.util.file_util import (
 def export_yolo_model_to_edgetpu(
     yolo_model_path: str, target_path: Optional[str], imgsz: int
 ):
-    from app.config.paths import DATA_DIR
+    from app.config.config import settings
 
-    yolo_model_path = resolve_absolute_path(yolo_model_path, DATA_DIR)
+    yolo_model_path = resolve_absolute_path(yolo_model_path, settings.DATA_DIR)
     if target_path is None:
         target_path = f"{os.path.splitext(yolo_model_path)[0]}_{imgsz}_edgetpu.tflite"
-    target_path = resolve_absolute_path(target_path, DATA_DIR)
+    target_path = resolve_absolute_path(target_path, settings.DATA_DIR)
 
     print(f"Loading model {yolo_model_path}, will be exported to {target_path}")
     model = YOLO(yolo_model_path)
 
     print(f"Starting exporting model to {target_path}")
 
-    export_file = model.export(format="edgetpu", imgsz=imgsz)
+    export_file = model.export(
+        format="edgetpu" if target_path.endswith(".tflite") else "ncnn", imgsz=imgsz
+    )
 
     if os.path.exists(export_file):
         target_dir = os.path.dirname(target_path)
@@ -108,14 +110,14 @@ def export_yolo_model_to_edgetpu(
             f"To use it add the following line to the {os.path.join(os.path.dirname(os.path.realpath(__file__)), '.env')}:\n"
         )
         print(
-            f"YOLO_MODEL_EDGE_TPU_PATH={target_path if not is_parent_directory(DATA_DIR, target_path) else file_to_relative(target_path, DATA_DIR)}"
+            f"YOLO_MODEL_EDGE_TPU_PATH={target_path if not is_parent_directory(settings.DATA_DIR, target_path) else file_to_relative(target_path, settings.DATA_DIR)}"
         )
     else:
         raise FileNotFoundError(f"Exported file not found: {export_file}")
 
 
 def parse_arguments():
-    from app.config.paths import YOLO_MODEL_PATH
+    from app.config.config import settings
 
     parser = argparse.ArgumentParser(
         description="Export YOLO model to Edge TPU format.",
@@ -145,9 +147,10 @@ def parse_arguments():
         "-m",
         "--model",
         type=str,
-        default=YOLO_MODEL_PATH,
+        default=settings.YOLO_MODEL_PATH,
         help=(
-            "Path to the YOLO model file to export.\n" f"(Default: {YOLO_MODEL_PATH})"
+            "Path to the YOLO model file to export.\n"
+            f"(Default: {settings.YOLO_MODEL_PATH})"
         ),
     )
     parser.add_argument(

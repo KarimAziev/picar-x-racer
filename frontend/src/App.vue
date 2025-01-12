@@ -22,7 +22,7 @@
     </PowerControlPanel>
   </TopRightPanel>
   <div
-    class="absolute z-11 select-none bottom-0 flex flex-col gap-y-2"
+    class="absolute z-11 select-none bottom-0 flex flex-col gap-y-2 px-3"
     v-if="!isMobile && isSettingsLoaded"
   >
     <MediaControls />
@@ -38,7 +38,7 @@
     </ToggleableView>
   </div>
   <div
-    class="select-none absolute z-11 flex flex-col gap-y-1 right-1 top-9 portrait:max-w-[53%] portrait:min-[400px]:max-w-[50%] landscape:max-w-[210px]"
+    class="select-none absolute z-11 flex flex-col gap-y-1 right-1 top-9 portrait:max-w-[53%] portrait:min-[400px]:max-w-[210px] landscape:max-w-[210px]"
     v-if="isMobile && isSettingsLoaded"
   >
     <ToggleableView setting="general.show_object_detection_settings">

@@ -52,11 +52,6 @@ export const pick = <V extends Record<string, any>, K extends keyof V>(
   }, {} as V);
 };
 
-export const isObjEquals = <V extends Record<string, any>>(
-  origData: V,
-  newData: V,
-) => !isEmpty(diffObjects(origData, newData));
-
 export const formatObj = (obj: Record<string, any>, separator = ", ") =>
   Object.entries(obj)
     .map(([k, v]) => `${k}: ${v}`)
@@ -162,76 +157,6 @@ export function cloneDeep<T>(value: T): T {
 
   return value;
 }
-
-export const diffObjects = <
-  OrigObj extends Record<string, unknown>,
-  UpdatedObj extends Record<string, unknown>,
->(
-  origObj: OrigObj,
-  updatedObj: UpdatedObj,
-) => {
-  const visited = new WeakSet();
-  const worker = <
-    V extends Record<string, unknown>,
-    B extends Record<string, unknown>,
-    O extends V & B,
-    K extends keyof O,
-  >(
-    origData: V,
-    newData: B,
-  ) => {
-    if (visited.has(origData as object) || visited.has(newData as object)) {
-      return {};
-    }
-    visited.add(origData as object).add(newData as object);
-    const origKeys = Object.keys(origData);
-    const newDataKeys = Object.keys(newData);
-    const allKeys = [...newDataKeys, ...origKeys];
-    const setKeys = new Set(allKeys);
-    const uniqKeys = [...setKeys];
-
-    return uniqKeys.reduce(
-      (acc, key) => {
-        const newVal = newData[key];
-        const origVal = origData[key];
-
-        if (Array.isArray(newVal) && Array.isArray(origVal)) {
-          const modifiedItems = newVal.filter((v, i) => {
-            if (isPlainObject(v)) {
-              const origObj = origVal[i];
-              if (!isPlainObject(origObj) || !isEmpty(worker(origObj, v))) {
-                return v;
-              } else {
-                return origVal.includes(v);
-              }
-            }
-          });
-          if (!isEmpty(modifiedItems)) {
-            (acc as any)[key] = modifiedItems;
-          }
-        } else if (isPlainObject(newVal) && isPlainObject(origVal)) {
-          const modified = worker(origVal, newVal);
-
-          if (!isEmpty(modified)) {
-            (acc as any)[key] = modified as Record<string, unknown>;
-          }
-        } else if (origVal !== newVal) {
-          (acc as any)[key] = newVal;
-        }
-
-        return acc;
-      },
-      {} as Partial<{
-        [P in K]: O[P] extends Record<string, any> ? Partial<O[P]> : O[P];
-      }>,
-    );
-  };
-  const result = worker(origObj, updatedObj);
-  if (isEmpty(result)) {
-    return undefined;
-  }
-  return result;
-};
 
 export const formatObjDeep = <Obj extends any>(
   obj: Obj,
@@ -506,3 +431,19 @@ export const groupWith = <
     },
     {} as Record<Obj[Prop], ReturnType<Fn>[]>,
   );
+
+export const isObjectShallowEquals = <
+  V extends Record<string, unknown>,
+  B extends Record<string, unknown>,
+>(
+  origData: V,
+  newData: B,
+) => {
+  const origEntries = Object.entries(origData);
+
+  if (origEntries.length !== Object.keys(newData).length) {
+    return false;
+  }
+
+  return origEntries.every(([key, value]) => value === newData[key]);
+};

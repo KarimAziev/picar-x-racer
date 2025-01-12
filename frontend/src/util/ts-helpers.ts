@@ -110,3 +110,17 @@ export type ExtractStringPropsKey<Obj extends Record<string, any>> = {
 export type Defined<T> = {
   [P in keyof T]-?: T[P];
 };
+
+export type DeepObjectsToHandlers<Obj, NoNils extends boolean> = {
+  [P in keyof Obj]: Obj[P] extends Record<string, any>
+    ? DeepObjectsToHandlers<Obj[P], NoNils>
+    : NoNils extends true
+      ? (value: NonNullable<Obj[P]>) => void
+      : (value: Obj[P]) => void;
+};
+
+export type MapObjectsDeepTo<Obj, Value> = {
+  [P in keyof Obj]: Obj[P] extends Record<string, any>
+    ? MapObjectsDeepTo<Obj[P], Value>
+    : Value;
+};

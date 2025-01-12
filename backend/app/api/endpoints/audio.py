@@ -1,10 +1,14 @@
+"""
+Endpoints related to audio functionalities, including volume controls.
+"""
+
 import asyncio
 from typing import TYPE_CHECKING
 
 from app.api import deps
+from app.core.logger import Logger
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.schemas.audio import VolumeData
-from app.util.logger import Logger
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket
 
 if TYPE_CHECKING:
@@ -91,7 +95,7 @@ async def set_volume(
 
     Returns:
     --------------
-    **VolumeData**: The updated volume level (as an integer).
+    The updated volume level (as an integer).
 
     """
     logger.info("Volume update payload %s", payload)

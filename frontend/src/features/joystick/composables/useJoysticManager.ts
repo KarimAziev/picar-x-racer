@@ -1,14 +1,11 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import nipplejs from "nipplejs";
 import type { JoystickManagerOptions } from "nipplejs";
-import {
-  useControllerStore,
-  SERVO_DIR_ANGLE_MIN,
-  SERVO_DIR_ANGLE_MAX,
-} from "@/features/controller/store";
-import { roundToNearestTen } from "@/util/number";
+import { useControllerStore } from "@/features/controller/store";
+import { roundToNearestTen, inRange } from "@/util/number";
 import { constrain } from "@/util/constrain";
 import { debounce } from "@/util/debounce";
+import { useRobotStore } from "@/features/settings/stores";
 
 export interface Callbacks {
   onStart?: (outputData: nipplejs.JoystickOutputData) => void;
@@ -17,6 +14,7 @@ export interface Callbacks {
 
 export const useJoystickControl = (
   controllerStore: ReturnType<typeof useControllerStore>,
+  robotStore: ReturnType<typeof useRobotStore>,
   options?: JoystickManagerOptions,
   handlers?: Callbacks,
 ) => {
@@ -28,22 +26,28 @@ export const useJoystickControl = (
     const { angle, distance } = data;
     const direction = angle.degree;
 
+    const isForward = !inRange(direction, 200, 340);
+
     const speed = Math.round(Math.round(distance * 2) / 10) * 10;
     const minJoystickAngle = 0;
     const maxJoystickAngle = 180;
 
-    const minServoAngle = 30;
-    const maxServoAngle = -30;
-    const isForward = direction <= 180;
+    const minServoAngle = robotStore.data.steering_servo.min_angle;
+    const maxServoAngle = robotStore.data.steering_servo.max_angle;
+
+    const directionWithinRange =
+      (isForward ? direction : direction - 180) - minJoystickAngle;
+
+    const value =
+      (directionWithinRange * (minServoAngle - maxServoAngle)) /
+        (maxJoystickAngle - minJoystickAngle) +
+      maxServoAngle;
 
     const servoDir = roundToNearestTen(
       constrain(
-        SERVO_DIR_ANGLE_MIN,
-        SERVO_DIR_ANGLE_MAX,
-        (((isForward ? direction : direction - 180) - minJoystickAngle) *
-          (maxServoAngle - minServoAngle)) /
-          (maxJoystickAngle - minJoystickAngle) +
-          minServoAngle,
+        robotStore.data.steering_servo.min_angle,
+        robotStore.data.steering_servo.max_angle,
+        value,
       ),
     );
 

@@ -4,8 +4,8 @@ from queue import Empty, Full, Queue
 from typing import AsyncGenerator, Optional
 
 import sounddevice as sd
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from fastapi import WebSocket, WebSocketDisconnect
 
 

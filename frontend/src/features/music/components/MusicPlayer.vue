@@ -22,93 +22,55 @@
         />
       </div>
 
-      <div class="buttons flex items-center justify-between">
-        <Button
+      <div class="flex items-center justify-between">
+        <button
           @click="prevTrack"
-          class="!pt-0"
-          icon="pi pi-backward"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           aria-label="Prev track"
           text
           v-tooltip="'Previous track'"
-        />
-
-        <Button
-          class="!pt-0"
-          v-if="isPlaying"
+        >
+          <i class="pi pi-backward" />
+        </button>
+        <button
           @click="togglePlaying"
-          icon="pi pi-pause"
-          text
-          aria-label="Pause"
-          v-tooltip="'Pause playing track'"
-        />
-        <Button
-          class="!pt-0"
-          @click="togglePlaying"
-          v-else
-          icon="pi pi-play-circle"
-          text
-          aria-label="Play"
-          v-tooltip="'Play track'"
-        />
-        <Button
-          class="!pt-0"
+          aria-label="toggle-play"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
+          v-tooltip="'Toggle playing'"
+        >
+          <i :class="togglePlayIcon" />
+        </button>
+        <button
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="stopTrack"
-          icon="pi pi-stop"
           :disabled="!isPlaying"
-          text
           aria-label="Stop"
           v-tooltip="'Stop playing'"
-        />
+        >
+          <i class="pi pi-stop" />
+        </button>
         <span class="whitespace-nowrap">
           {{ durationLabel }}
         </span>
-        <Button
-          class="!pt-0"
+        <button
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextTrack"
-          icon="pi pi-forward"
           aria-label="Next track"
           v-tooltip="'Play next track'"
-          text
-        />
-        <Button
-          class="!pt-0"
-          v-if="musicMode === MusicMode.LOOP"
+        >
+          <i class="pi pi-forward" />
+        </button>
+        <button
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextMode"
-          icon="pi pi-sync"
-          aria-label="loop"
-          v-tooltip="'Play all tracks on repeat continuously.'"
-          text
-        />
-        <Button
-          class="!pt-0"
-          v-if="musicMode === MusicMode.LOOP_ONE"
-          @click="nextMode"
-          icon="pi pi-arrow-right-arrow-left"
-          aria-label="loop_one"
-          v-tooltip="'Repeat the current track continuously.'"
-          text
-        />
-        <Button
-          class="!pt-0"
-          v-if="musicMode === MusicMode.QUEUE"
-          @click="nextMode"
-          icon="pi pi-list"
-          aria-label="queue"
-          v-tooltip="'Play all tracks once in order, without repeating.'"
-          text
-        />
-        <Button
-          class="!pt-0"
-          v-if="musicMode === MusicMode.SINGLE"
-          @click="nextMode"
-          icon="pi pi-stop-circle"
-          aria-label="single"
-          v-tooltip="'Play the current track once and stop playback.'"
-          text
-        />
+          aria-label="next-music-mode"
+          v-tooltip="musicModeTooltip"
+        >
+          <i :class="musicModeIcon" />
+        </button>
       </div>
     </div>
-    <Volume class="volume" />
+    <Volume />
   </div>
 </template>
 
@@ -117,15 +79,28 @@ import { ref, computed } from "vue";
 import Slider from "primevue/slider";
 import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
-import { useMusicStore, MusicMode } from "@/features/music";
+import { useMusicStore } from "@/features/music";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import Volume from "@/ui/Volume.vue";
+import { musicModeConfig } from "@/features/music/components/config";
 
 const musicStore = useMusicStore();
 
 const currentTrack = computed(() => musicStore.player.track);
 const isPlaying = computed(() => musicStore.player.is_playing);
 const track = ref<string | null>();
+
+const togglePlayIcon = computed(
+  () => `pi ${musicStore.player.is_playing ? "pi-pause" : "pi-play-circle"}`,
+);
+
+const musicModeTooltip = computed(
+  () => musicModeConfig[musicStore.player.mode]?.tooltip,
+);
+
+const musicModeIcon = computed(
+  () => `pi ${musicModeConfig[musicStore.player.mode]?.icon}`,
+);
 
 const handleSavePosition = useAsyncDebounce(async (value: unknown) => {
   if (track.value && track.value !== currentTrack.value) {
@@ -153,8 +128,6 @@ const handleModelValueUpdate = async (value: number | number[]) => {
     await handleSavePosition(value);
   }
 };
-
-const musicMode = computed(() => musicStore.player.mode);
 
 const duration = computed(() => musicStore.player.duration);
 

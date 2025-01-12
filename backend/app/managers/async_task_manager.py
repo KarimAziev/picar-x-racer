@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Callable, Coroutine, Optional
 
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 Worker = Callable[..., Coroutine[Any, Any, Any]]
 

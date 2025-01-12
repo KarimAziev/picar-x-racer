@@ -3,7 +3,7 @@ import subprocess
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.util.logger import Logger
+from app.core.logger import Logger
 
 logger = Logger(__name__)
 

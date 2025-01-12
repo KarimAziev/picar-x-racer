@@ -1,7 +1,7 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
-import { formatObjectDiff, groupWith } from "@/util/obj";
+import { formatObjectDiff, groupWith, isObjectShallowEquals } from "@/util/obj";
 import { startCase } from "@/util/str";
 import {
   useImageStore,
@@ -12,8 +12,10 @@ import {
   useStreamStore,
 } from "@/features/settings/stores";
 import { useMessagerStore } from "@/features/messager";
+import type { MessageItemParams } from "@/features/messager";
 import { useDetectionStore } from "@/features/detection";
 import { useMusicStore } from "@/features/music";
+import { isPlainObject } from "@/util/guards";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
@@ -28,6 +30,7 @@ const defaultState: StoreState = {
 export interface WSMessageData {
   type: string;
   payload: any;
+  message?: string | MessageItemParams;
 }
 
 export const useStore = defineStore("syncer", {
@@ -51,7 +54,7 @@ export const useStore = defineStore("syncer", {
         if (!data) {
           return;
         }
-        const { type, payload } = data;
+        const { type, payload, message } = data;
         let msgPrefix: null | string =
           `${settingsStore.loaded ? "Updated " : ""} ${type}`.trim();
         let diffMsg: string | undefined;
@@ -63,7 +66,10 @@ export const useStore = defineStore("syncer", {
               musicStore.inhibitPlayerSync &&
               musicStore.player.track === payload.track;
 
-            if (!inhibitSync) {
+            if (
+              !inhibitSync &&
+              !isObjectShallowEquals(musicStore.player, payload)
+            ) {
               musicStore.player = payload;
             }
             break;
@@ -125,7 +131,10 @@ export const useStore = defineStore("syncer", {
           }
 
           case "detection": {
-            diffMsg = formatObjectDiff({ ...detectionStore.data }, payload);
+            if (!message) {
+              diffMsg = formatObjectDiff({ ...detectionStore.data }, payload);
+            }
+
             detectionStore.data = payload;
             break;
           }
@@ -133,7 +142,9 @@ export const useStore = defineStore("syncer", {
           case "settings": {
             const currentData = { ...settingsStore.data };
             const nextData = { ...currentData, ...payload };
-            diffMsg = formatObjectDiff(currentData, nextData);
+            if (!message) {
+              diffMsg = formatObjectDiff(currentData, nextData);
+            }
 
             settingsStore.data = nextData;
             break;
@@ -171,7 +182,11 @@ export const useStore = defineStore("syncer", {
           }
         }
 
-        if (diffMsg) {
+        if (isPlainObject(message)) {
+          messager[message.type || "info"](message.text, message);
+        } else if (message) {
+          messager.info(message);
+        } else if (diffMsg) {
           messager.info(diffMsg, {
             title: msgPrefix ? msgPrefix : undefined,
           });

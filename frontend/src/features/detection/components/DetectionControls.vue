@@ -28,6 +28,7 @@
         :disabled="detectionStore.loading"
         @before-show="handleSelectBeforeShow"
         @before-hide="handleSelectBeforeHide"
+        @hide="focusToKeyboardHandler"
         @update:model-value="updateDebounced"
       >
         <template #dropdownicon>
@@ -51,6 +52,7 @@
       :disabled="detectionStore.loading"
       @before-show="handleSelectBeforeShow"
       @before-hide="handleSelectBeforeHide"
+      @hide="focusToKeyboardHandler"
       @update:model-value="updateDebounced"
       :options="imgSizeOptions"
     />
@@ -96,6 +98,9 @@
       :disabled="detectionStore.loading"
       @update:model-value="updateDebounced"
       :options="overlayStyleOptions"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
+      @hide="focusToKeyboardHandler"
     />
   </div>
 </template>
@@ -115,6 +120,7 @@ import SelectField from "@/ui/SelectField.vue";
 import ModelUpload from "@/features/detection/components/ModelUpload.vue";
 import { roundToOneDecimalPlace } from "@/util/number";
 import Field from "@/ui/Field.vue";
+import { focusToKeyboardHandler } from "@/features/controller/util";
 
 defineProps<{ class?: string; label?: string }>();
 

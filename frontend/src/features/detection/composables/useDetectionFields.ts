@@ -3,8 +3,8 @@ import type { DetectionSettings } from "@/features/detection/store";
 import { useStore as useDetectionStore } from "@/features/detection/store";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import { roundNumber } from "@/util/number";
-import { isNumber, isEmpty } from "@/util/guards";
-import { evolve, diffObjects } from "@/util/obj";
+import { isNumber } from "@/util/guards";
+import { evolve, isObjectEquals } from "@/util/obj";
 
 const normalizeValue = (val: string | null): Record<string, boolean> => {
   return val ? { [val]: true } : {};
@@ -52,9 +52,8 @@ export const useDetectionFields = (params?: FieldsParams): DetectionFields => {
   const updateData = async () => {
     const data = evolve(denormalizers, fields);
     const originalData = detectionStore.data;
-    const diffData = diffObjects(originalData, data);
 
-    if (!isEmpty(diffData)) {
+    if (!isObjectEquals(originalData, data)) {
       await detectionStore.updateData(data);
     }
   };

@@ -1,8 +1,16 @@
+"""
+Operations and endpoints related to system-level actions. These include managing
+the operating system, such as shutting down, restarting, or performing other
+system-related functions. Use these endpoints with caution as they interact
+directly with the underlying OS.
+"""
+
 import asyncio
 from typing import TYPE_CHECKING
 
 from app.api import deps
-from app.util.logger import Logger
+from app.core.logger import Logger
+from app.schemas.common import Message
 from app.util.shutdown import power_off, restart
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -20,6 +28,7 @@ router = APIRouter()
 
 @router.get(
     "/system/shutdown",
+    response_model=Message,
     responses={
         200: {
             "description": "A success message that indicates a successful shutdown initiiation.",
@@ -59,10 +68,6 @@ async def shutdown(
     initiates the power-off process for the host machine.
 
     When invoked, the server will attempt to shut down using systemd via the D-Bus interface.
-
-    Raises:
-    --------------
-    HTTPException: If the shutdown process fails (e.g., failure to access D-Bus).
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
@@ -70,7 +75,7 @@ async def shutdown(
         logger.info("Starting the shutdown process...")
         await connection_manager.warning("Powering off the system")
         await battery_manager.cleanup_connection_manager()
-        await detection_manager.cancel_detection_process_task()
+        await detection_manager.cancel_detection_watcher()
         await detection_manager.stop_detection_process()
         await music_manager.cleanup()
         await asyncio.to_thread(power_off)
@@ -88,9 +93,10 @@ async def shutdown(
 
 @router.get(
     "/system/restart",
+    response_model=Message,
     responses={
         200: {
-            "description": "A success message that indicates a successful restart process.",
+            "description": "A message that indicates a successful restart process.",
             "content": {
                 "application/json": {
                     "example": {"message": "System restart initiated successfully."}
@@ -125,10 +131,6 @@ async def restart_system(
     initiates the restart process for the host machine.
 
     When invoked, the server will attempt to restart using systemd via the D-Bus interface.
-
-    Raises:
-    --------------
-    HTTPException: If the restart process fails (e.g., failure to access D-Bus).
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
@@ -136,7 +138,7 @@ async def restart_system(
         await connection_manager.warning("Restarting the system")
         await battery_manager.cleanup_connection_manager()
         await music_manager.cleanup()
-        await detection_manager.cancel_detection_process_task()
+        await detection_manager.cancel_detection_watcher()
         await detection_manager.stop_detection_process()
         await asyncio.to_thread(restart)
         return {"message": "System restart initiated successfully."}

@@ -11,10 +11,11 @@ from app.config.video_enhancers import frame_enhancers
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
-from app.util.v4l2_manager import V4L2
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
+from app.managers.v4l2_manager import V4L2
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
+from cv2.typing import MatLike
 
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapater
@@ -66,6 +67,7 @@ class CameraService(metaclass=SingletonMeta):
         self.cap: Union[cv2.VideoCapture, None] = None
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
+        self.shutting_down = False
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -191,7 +193,7 @@ class CameraService(metaclass=SingletonMeta):
 
             return timestamp_bytes + fps_bytes + encoded_frame
 
-    def setup_camera_props(self) -> None:
+    def _setup_camera_props(self) -> None:
         """
         Configure the camera properties such as FPS, resolution (width and height),
         and pixel format based on the current settings and device information.
@@ -291,11 +293,10 @@ class CameraService(metaclass=SingletonMeta):
         - Releases the current video capture device (`self.cap`) safely to free resources.
         - Attempts to find and set up another available camera device using `VideoDeviceAdapter`.
 
-        If a new camera device is successfully initialized, its properties are configured using
-        `setup_camera_props`. If no valid camera device is found, the method returns `None`.
+        If no valid camera device is found, the method returns `None`.
 
         Returns:
-            Optional[cv2.VideoCapture]: A new valid video capture object if setup succeeds, or `None`.
+            A new valid video capture object if setup succeeds, or `None`.
         """
         (video_device, _) = self.video_device_adapter.video_device or (
             None,
@@ -313,8 +314,40 @@ class CameraService(metaclass=SingletonMeta):
         self.cap = self.video_device_adapter.setup_video_capture()
 
         if self.cap is not None:
-            self.setup_camera_props()
+            self._setup_camera_props()
         return self.cap
+
+    def _process_frame(self, frame: MatLike) -> None:
+        """Task run by the ThreadPoolExecutor to handle frame detection."""
+        if (
+            self.detection_service.detection_settings.active
+            and not self.detection_service.loading
+            and not self.detection_service.shutting_down
+        ):
+            (
+                resized_frame,
+                original_width,
+                original_height,
+                resized_width,
+                resized_height,
+            ) = resize_to_fixed_height(
+                frame.copy(),
+                base_size=self.detection_service.detection_settings.img_size,
+            )
+
+            self.current_frame_timestamp = time.time()
+
+            frame_data = {
+                "frame": resized_frame,
+                "timestamp": self.current_frame_timestamp,
+                "original_height": original_height,
+                "original_width": original_width,
+                "resized_height": resized_height,
+                "resized_width": resized_width,
+                "should_resize": False,
+            }
+            if not self.detection_service.shutting_down:
+                self.detection_service.put_frame(frame_data)
 
     def _camera_thread_func(self) -> None:
         """
@@ -329,7 +362,6 @@ class CameraService(metaclass=SingletonMeta):
         prev_fps = 0.0
 
         self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
-
         try:
             while self.camera_run and self.cap:
                 frame_start_time = time.time()
@@ -362,40 +394,12 @@ class CameraService(metaclass=SingletonMeta):
                     if enhance_mode is not None
                     else None
                 )
-
                 self.img = frame
                 self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
-
                 if self.stream_settings.video_record:
                     self.video_recorder.write_frame(self.stream_img)
 
-                if (
-                    self.detection_service.detection_settings.active
-                    and not self.detection_service.loading
-                ):
-                    (
-                        resized_frame,
-                        original_width,
-                        original_height,
-                        resized_width,
-                        resized_height,
-                    ) = resize_to_fixed_height(
-                        self.stream_img.copy(),
-                        base_size=self.detection_service.detection_settings.img_size,
-                    )
-
-                    self.current_frame_timestamp = time.time()
-
-                    frame_data = {
-                        "frame": resized_frame,
-                        "timestamp": self.current_frame_timestamp,
-                        "original_height": original_height,
-                        "original_width": original_width,
-                        "resized_height": resized_height,
-                        "resized_width": resized_width,
-                        "should_resize": False,
-                    }
-                    self.detection_service.put_frame(frame_data)
+                self._process_frame(frame)
 
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
@@ -406,7 +410,10 @@ class CameraService(metaclass=SingletonMeta):
             ConnectionError,
             ConnectionRefusedError,
         ) as e:
-            self.logger.warning("Stopped camera loop due to %s", e)
+            self.logger.warning(
+                "Stopped camera loop due to connection-related error: %s",
+                type(e).__name__,
+            )
         except Exception:
             self.logger.error(
                 "Unhandled exception occurred in camera loop", exc_info=True
@@ -454,7 +461,7 @@ class CameraService(metaclass=SingletonMeta):
                     )
                 else:
                     self.cap = self.video_device_adapter.find_and_setup_device_cap()
-                self.setup_camera_props()
+                self._setup_camera_props()
                 self.capture_thread = threading.Thread(target=self._camera_thread_func)
                 self.capture_thread.start()
 
@@ -494,7 +501,8 @@ class CameraService(metaclass=SingletonMeta):
                 except CameraDeviceError as err:
                     if self.camera_settings.device:
                         await self.connection_manager.error(
-                            f"Camera device {self.camera_settings.device} error: {err}, trying to find other camera"
+                            f"Camera {self.camera_settings.device} error: {err}, "
+                            "trying to find other camera"
                         )
                         self.camera_settings.device = None
                         try:

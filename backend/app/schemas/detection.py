@@ -3,7 +3,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from app.util.doc_util import extract_clean_docstring
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class OverlayStyle(str, Enum):
@@ -11,28 +12,22 @@ class OverlayStyle(str, Enum):
     An enumeration to represent the detection overlay styles.
 
     Enum Values:
-    - `BOX`: Draws a bounding box for the detected objects.
-    - `AIM`: Draws crosshair lines within the detected objects.
-    - `MIXED`: Draws crosshair lines within the first detection, and for others, a bounding box.
+    - **box**: Draws a bounding box for the detected objects.
+    - **aim**: Draws crosshair lines within the detected objects.
+    - **mixed**: Draws crosshair lines within the first detection, and for others, a bounding box.
+    - **pose**`: Draws keypoints representing specific body joints without boxes.
+              Requires pose estimation model, i.e. yolo11n-pose.pt.
     """
 
     BOX = "box"
     AIM = "aim"
     MIXED = "mixed"
+    POSE = "pose"
 
 
 class DetectionSettings(BaseModel):
     """
     A schema for defining detection configuration settings.
-
-    Attributes:
-    - `model`: The name of the object detection model to be used.
-    - `confidence`: The confidence threshold for detections.
-    - `active`: Flag indicating whether the detection is currently active.
-    - `img_size`: The image size for the detection process.
-    - `labels`: A list of labels to filter for specific object detections, if desired.
-    - `overlay_draw_threshold`: The maximum allowable time difference (in seconds) between
-          the frame timestamp and the detection timestamp for overlay drawing to occur.
     """
 
     model: Optional[str] = Field(
@@ -47,18 +42,17 @@ class DetectionSettings(BaseModel):
         description="The confidence threshold for detections, between 0.0 and 1.0.",
         examples=[0.4],
     )
-    active: Optional[bool] = Field(
-        None,
+    active: bool = Field(
+        False,
         description="Flag indicating whether the detection is currently active.",
     )
     img_size: int = Field(
         640,
-        ge=1,
         description=(
             "The image resolution size for the detection process."
             "Should be rounded up to the nearest multiple of 32."
         ),
-        examples=[320],
+        examples=[320, 256, 640],
     )
     labels: Optional[List[str]] = Field(
         None,
@@ -76,17 +70,36 @@ class DetectionSettings(BaseModel):
     )
     overlay_style: OverlayStyle = Field(
         OverlayStyle.BOX,
-        description=(
-            "The detection overlay style."
-            "\n"
-            "- `box`: Draws a bounding box for the detected object."
-            "\n"
-            "- `aim`: Draws crosshair lines (centered) within for the detected object."
-            "\n"
-            "- `mixed`: Draws crosshair lines within the first detection, and for others, a bounding box."
-        ),
+        description=extract_clean_docstring(OverlayStyle),
         examples=[OverlayStyle.AIM.value],
     )
+
+    @model_validator(mode="after")
+    def validate_active_model_dependency(self) -> "DetectionSettings":
+        """
+        Ensures that if 'active' is True, 'model' is not None.
+        """
+        if self.active and self.model is None:
+            raise ValueError(
+                "A valid detection model (e.g., 'yolov8n.pt')` is required for activating detection."
+            )
+        return self
+
+    @field_validator("img_size", mode="before")
+    def validate_img_size(cls, img_size: int) -> int:
+        """
+        Validates that `img_size` is an integer rounded up to the nearest multiple of 32.
+        """
+        MIN_SIZE = 32
+
+        def round_up_to_multiple(value: int, multiple: int = 32) -> int:
+            """Rounds a value up to the nearest multiple of a given number."""
+            return ((value + multiple - 1) // multiple) * multiple
+
+        if isinstance(img_size, int):
+            if img_size < MIN_SIZE:
+                raise ValueError(f"`img_size` must be at least {MIN_SIZE}.")
+            return round_up_to_multiple(img_size)
 
 
 class FileData(BaseModel):

@@ -4,8 +4,8 @@ import subprocess
 from typing import Union
 
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
-from app.util.logger import Logger
-from app.util.singleton_meta import SingletonMeta
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from pydub import AudioSegment
 
 debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
