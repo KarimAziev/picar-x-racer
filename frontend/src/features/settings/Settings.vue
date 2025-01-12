@@ -3,7 +3,7 @@
     <TabList>
       <Tab :value="SettingsTab.GENERAL">General</Tab>
       <Tab :value="SettingsTab.MODELS">Models</Tab>
-      <Tab :value="SettingsTab.ROBOT">Robot/Calibration</Tab>
+      <Tab :value="SettingsTab.ROBOT">Robot</Tab>
       <Tab :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">Keybindings</Tab>
       <Tab :value="SettingsTab.PHOTOS">Photos</Tab>
       <Tab :value="SettingsTab.MUSIC">Music</Tab>

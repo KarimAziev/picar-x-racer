@@ -37,7 +37,7 @@
 >     - [General](#general)
 >     - [Models](#models)
 >     - [Keybindings](#keybindings)
->     - [Calibration](#calibration)
+>     - [Robot](#robot)
 >     - [Text-to-Speech (TTS)](#text-to-speech-tts)
 >     - [Music](#music)
 >     - [Photos](#photos)
@@ -194,14 +194,9 @@ Every function of the car and interface can be mapped to specific keys.
 - Default values are provided, but you can edit any setting directly from this tab.
 - Alternatively, use the "Shortcuts Settings Menu" on screen (`?`).
 
-### Calibration
+### Robot
 
-Calibration Mode allows you to fine-tune angles for:
-
-- Servo direction
-- Camera pan
-- Camera tilt
-- Motors direction
+Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
 
 ### Text-to-Speech (TTS)
 
