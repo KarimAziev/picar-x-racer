@@ -98,6 +98,9 @@
       :disabled="detectionStore.loading"
       @update:model-value="updateDebounced"
       :options="overlayStyleOptions"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
+      @hide="focusToKeyboardHandler"
     />
   </div>
 </template>
