@@ -9,6 +9,7 @@ from io import BytesIO
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 from app.api.deps import get_file_manager, get_music_manager
+from app.core.logger import Logger
 from app.exceptions.file_exceptions import (
     DefaultFileRemoveAttempt,
     InvalidFileName,
@@ -23,7 +24,6 @@ from app.schemas.file_management import (
     UploadFileResponse,
 )
 from app.util.file_util import resolve_absolute_path
-from app.core.logger import Logger
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from starlette.responses import FileResponse
@@ -72,10 +72,6 @@ async def upload_file(
 ):
     """
     Upload a file of a specific media type: 'music', 'image', 'video' or 'data'.
-
-    Returns:
-    --------------
-    **UploadFileResponse**: A response object containing the success status and the filename.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
     handlers: Dict[str, Callable[[UploadFile], str]] = {
@@ -253,7 +249,7 @@ def download_file(
 
 @router.post(
     "/files/download/archive",
-    response_description="The archived file response to download multiple files.",
+    response_description="A successful response delivering the ZIP archive containing the requested files.",
     response_class=StreamingResponse,
     responses={
         200: {
@@ -313,10 +309,6 @@ def download_files_as_archive(
 ):
     """
     Download multiple files of a specific media type (e.g., 'music', 'image', 'video', or 'data') as an archive.
-
-    Returns:
-    --------------
-    - A response delivering the ZIP archive containing the requested files.
     """
     directory_resolvers: Dict[str, Callable[[str], str]] = {
         "music": file_manager.get_music_directory,
@@ -370,6 +362,7 @@ def download_files_as_archive(
 @router.get(
     "/files/preview/{filename}",
     response_class=FileResponse,
+    response_description="A response containing the preview image.",
     responses={
         200: {
             "content": {
@@ -393,10 +386,6 @@ def preview_image(
 ):
     """
     Provide a preview image of a specific file.
-
-    Returns:
-    --------------
-    **FileResponse**: A response containing the preview image.
     """
     try:
         directory = file_manager.get_photo_directory(filename)
@@ -446,10 +435,6 @@ def list_photos(file_manager: "FileService" = Depends(get_file_manager)):
 def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
     """
     Download the last video captured by the user.
-
-    Returns:
-    --------------
-    - `FileResponse`: A response containing the most recent video to download.
     """
     videos = file_manager.list_user_videos()
 

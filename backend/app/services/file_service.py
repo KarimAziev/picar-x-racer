@@ -1,10 +1,6 @@
 """
-FileService Class
-
-This module handles file operations such as listing, saving, and removing photos, music, and sound files for a user within the application. It also manages user settings and loads audio details using the `AudioService`.
-
-Classes:
-    - FileService: Handles file-related operations including saving, removing, and listing files from specified directories.
+This module handles file operations such as listing, saving, and removing photos, music, and sound files.
+It also manages user settings and loads audio details using the `AudioService`.
 """
 
 import json
@@ -13,7 +9,6 @@ from os import path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.config.config import settings as app_config
-from app.config.yolo_common_models import yolo_descriptions
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
@@ -25,6 +20,7 @@ from app.util.file_util import (
 )
 from app.util.google_coral import is_google_coral_connected
 from fastapi import UploadFile
+from ultralytics.utils.downloads import GITHUB_ASSETS_STEMS
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
@@ -33,9 +29,6 @@ if TYPE_CHECKING:
 class FileService(metaclass=SingletonMeta):
     """
     Service for managing file operations related to user settings, photos, and music.
-
-    Args:
-        audio_manager (AudioService): An instance of AudioService to handle audio operations.
     """
 
     def __init__(
@@ -648,8 +641,10 @@ class FileService(metaclass=SingletonMeta):
             ),
         )
 
-        for key, _ in yolo_descriptions.items():
-            if not key in existing_set:
+        for key in GITHUB_ASSETS_STEMS:
+            if not key in existing_set and not key.endswith(
+                ("-cls", "-seg", ".npy", "-obb")
+            ):
                 item = {
                     "label": key,
                     "key": key,

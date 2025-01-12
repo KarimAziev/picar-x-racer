@@ -1,17 +1,16 @@
 import asyncio
 import inspect
 import json
-import os
 from typing import TYPE_CHECKING, Any, Dict
 
-from app.config.config import settings as app_config
-from app.util.file_util import load_json_file
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.schemas.settings import Settings
 from fastapi import WebSocket
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
+    from app.managers.json_data_manager import JsonDataManager
     from app.services.car_control.calibration_service import CalibrationService
     from app.services.connection_service import ConnectionService
     from app.services.distance_service import DistanceService
@@ -24,34 +23,50 @@ class CarService(metaclass=SingletonMeta):
         calibration_service: "CalibrationService",
         connection_manager: "ConnectionService",
         distance_service: "DistanceService",
+        app_settings_manager: "JsonDataManager",
+        config_manager: "JsonDataManager",
     ):
         self.logger = Logger(name=__name__)
         self.px = px
         self.connection_manager = connection_manager
         self.calibration = calibration_service
-        self.user_settings_file = app_config.PX_SETTINGS_FILE
-        self.settings_file = (
-            self.user_settings_file
-            if os.path.exists(self.user_settings_file)
-            else app_config.DEFAULT_USER_SETTINGS
+        self.config_manager = config_manager
+
+        self.app_settings_manager = app_settings_manager
+
+        app_settings = Settings(**app_settings_manager.load_data())
+
+        self.app_settings = app_settings
+
+        self.app_settings_manager.on(
+            self.app_settings_manager.UPDATE_EVENT, self.refresh_config
         )
-        self.settings: Dict[str, Any] = load_json_file(self.settings_file)
-        self.robot_settings: Dict[str, Any] = self.settings.get("robot", {})
-        self.distance_interval = self.robot_settings.get(
-            "auto_measure_distance_delay_ms", 1000
+
+        self.app_settings_manager.on(
+            self.app_settings_manager.LOAD_EVENT, self.refresh_config
         )
-        self.auto_measure_distance_mode = self.robot_settings.get(
-            "auto_measure_distance_mode", False
-        )
+
+        self.auto_measure_distance_mode = False
         self.avoid_obstacles_mode = False
-        self.max_speed = self.robot_settings.get("max_speed", 80)
+        self.max_speed = app_settings.robot.max_speed
         self.distance_service = distance_service
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)
 
+    def refresh_config(self, data: Dict[str, Any]):
+        self.app_settings = Settings(**data)
+
     async def broadcast(self):
         await self.connection_manager.broadcast_json(self.broadcast_payload)
+
+    async def broadcast_calibration(self):
+        await self.connection_manager.broadcast_json(
+            {
+                "type": "updateCalibration",
+                "payload": self.calibration.get_current_config(),
+            }
+        )
 
     @property
     def current_state(self):
@@ -117,7 +132,16 @@ class CarService(metaclass=SingletonMeta):
             "reverseLeftMotor": self.calibration.reverse_left_motor,
             "resetCalibration": self.calibration.reset_calibration,
             "saveCalibration": self.calibration.save_calibration,
-            "getCalibrationData": self.calibration.get_calibration_data,
+            "getCalibrationData": self.calibration.get_current_config,
+        }
+
+        calibration_actions_with_payload = {
+            "updateServoDirCali": self.calibration.update_servo_dir_angle,
+            "updateCamPanCali": self.calibration.update_cam_pan_angle,
+            "updateCamTiltCali": self.calibration.update_cam_tilt_angle,
+            "updateLeftMotorCaliDir": self.calibration.update_left_motor_direction,
+            "updateRightMotorCaliDir": self.calibration.update_right_motor_direction,
+            "saveConfig": self.calibration.save_config,
         }
 
         actions_map = {
@@ -152,6 +176,21 @@ class CarService(metaclass=SingletonMeta):
                     }
                 )
 
+        elif action in calibration_actions_with_payload:
+            func = calibration_actions_with_payload[action]
+            try:
+                if inspect.iscoroutinefunction(func):
+                    await func(payload)
+                else:
+                    func(payload)
+                if action == 'saveConfig':
+                    await self.connection_manager.info(
+                        "The hardware configuration has been saved. Please reboot the machine for the changes to take effect."
+                    )
+            except ValueError as e:
+                await self.connection_manager.error(str(e))
+
+            await self.broadcast_calibration()
         elif action in actions_map:
             func = actions_map[action]
             if inspect.iscoroutinefunction(func):
@@ -250,12 +289,10 @@ class CarService(metaclass=SingletonMeta):
 
     async def start_auto_measure_distance(self, _: Any = None):
         self.auto_measure_distance_mode = True
-        self.settings: Dict[str, Any] = await asyncio.to_thread(
-            load_json_file, self.settings_file
-        )
-        self.robot_settings: Dict[str, Any] = self.settings.get("robot", {})
-        self.distance_interval = self.robot_settings.get(
-            "auto_measure_distance_delay_ms", 1000
+        self.app_settings_manager.load_data()
+
+        self.distance_interval = (
+            self.app_settings.robot.auto_measure_distance_delay_ms or 1000
         )
         distance_secs = self.distance_interval / 1000
         self.distance_service.interval = distance_secs

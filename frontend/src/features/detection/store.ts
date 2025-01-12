@@ -9,6 +9,7 @@ export enum OverlayStyle {
   BOX = "box",
   AIM = "aim",
   MIXED = "mixed",
+  POSE = "pose",
 }
 
 export interface DetectionSettings {
@@ -80,6 +81,7 @@ export interface DetectionResult {
   bbox: [number, number, number, number];
   label: string;
   confidence: number;
+  keypoints?: { x: number; y: number; conf: number }[];
 }
 export const msg = {
   retry: "Retrying object detection connection...",

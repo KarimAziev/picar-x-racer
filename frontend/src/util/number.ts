@@ -5,7 +5,9 @@ export const roundNumber = (value: number, fractionDigits?: number) => {
 
 export const roundToOneDecimalPlace = (value: number) => roundNumber(value, 1);
 
-export const roundToNearestTen = (value: number) => Math.round(value / 10) * 10;
+export const roundToNearest = (value: number, nearestValue: number) =>
+  Math.round(value / nearestValue) * nearestValue;
+export const roundToNearestTen = (value: number) => roundToNearest(value, 10);
 
 export const generateMultiplesOf32 = (limit: number): number[] => {
   const multiples: number[] = [];

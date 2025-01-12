@@ -279,7 +279,7 @@ class DeviceNode(DeviceItem):
 
 class CameraDevicesResponse(BaseModel):
     """
-    Response model for available camera devices.
+    Successful response for available camera devices.
     """
 
     devices: List[DeviceNode] = Field(

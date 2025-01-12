@@ -10,6 +10,7 @@ from app.core.logger import Logger
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.managers.v4l2_manager import V4L2
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
+from app.util.doc_util import build_response_description
 from app.util.photo import capture_photo
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -25,20 +26,10 @@ logger = Logger(__name__)
 @router.post(
     "/camera/settings",
     response_model=CameraSettings,
-    tags=["camera"],
+    response_description=build_response_description(
+        CameraSettings, "Updated settings with the such fields:"
+    ),
     summary="Update camera settings",
-    response_description="**Settings:**"
-    "\n"
-    "- **device**: ID or name of the camera device."
-    "\n"
-    "- **width**: Frame width in pixels."
-    "\n"
-    "- **height**: Frame height in pixels."
-    "\n"
-    "- **fps**: Frames per second for capturing."
-    "\n"
-    "- **pixel_format**: Pixel format, such as 'RGB' or 'GRAY'."
-    "\n",
 )
 async def update_camera_settings(
     request: Request,
@@ -110,30 +101,16 @@ async def update_camera_settings(
 @router.get(
     "/camera/settings",
     response_model=CameraSettings,
-    tags=["camera"],
     summary="Get camera settings",
-    response_description="**Settings:**"
-    "\n"
-    "- **device**: ID or name of the camera device."
-    "\n"
-    "- **width**: Frame width in pixels."
-    "\n"
-    "- **height**: Frame height in pixels."
-    "\n"
-    "- **fps**: Frames per second for capturing."
-    "\n"
-    "- **pixel_format**: Pixel format, such as 'RGB' or 'GRAY'."
-    "\n",
+    response_description=build_response_description(
+        CameraSettings, "Current camera configuration data:"
+    ),
 )
 def get_camera_settings(
     camera_manager: "CameraService" = Depends(deps.get_camera_manager),
 ):
     """
     Retrieve the current camera settings.
-
-    Returns:
-    --------------
-    `CameraSettings`: Current camera configuration data.
     """
     return camera_manager.camera_settings
 
@@ -142,6 +119,9 @@ def get_camera_settings(
     "/camera/devices",
     response_model=CameraDevicesResponse,
     summary="Retrieve a list of available camera devices",
+    response_description=build_response_description(
+        CameraDevicesResponse, "Available camera devices."
+    ),
 )
 def get_camera_devices():
     """
@@ -149,10 +129,6 @@ def get_camera_devices():
 
     This endpoint identifies primary and secondary camera devices based on categorized
     rules and available video devices in the system.
-
-    Returns:
-    --------------
-    `CameraDevicesResponse`: A structured list of available camera devices.
     """
     devices = V4L2.list_video_devices_with_formats()
     return {"devices": devices}
@@ -162,6 +138,7 @@ def get_camera_devices():
     "/camera/capture-photo",
     response_model=PhotoResponse,
     summary="Capture a photo",
+    response_description=build_response_description(PhotoResponse),
     responses={
         400: {
             "description": "Raised if the photo could not be taken or saved due to an error",
@@ -177,14 +154,6 @@ async def take_photo(
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
-
-    Returns:
-    --------------
-    `PhotoResponse`: A response containing the filename of the captured photo.
-
-    Raises:
-    --------------
-    `HTTPException (400)`: Raised if the photo could not be taken or saved due to an error.
     """
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"

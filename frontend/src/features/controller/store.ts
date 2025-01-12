@@ -13,10 +13,10 @@ import {
   useSettingsStore,
   usePopupStore,
   useBatteryStore,
-  useCalibrationStore,
   useDistanceStore,
   useCameraStore,
   useStreamStore,
+  useRobotStore,
 } from "@/features/settings/stores";
 import { useDetectionStore } from "@/features/detection";
 import { useMessagerStore } from "@/features/messager";
@@ -25,16 +25,10 @@ import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
 import { useAppSyncStore } from "@/features/syncer";
+import type { Data as RobotData } from "@/features/settings/stores/robot";
 
 export const ACCELERATION = 10;
-export const CAM_PAN_MIN = -90;
-export const CAM_PAN_MAX = 90;
-export const CAM_TILT_MIN = -35;
-export const CAM_TILT_MAX = 65;
-export const SERVO_DIR_ANGLE_MIN = -30;
-export const SERVO_DIR_ANGLE_MAX = 30;
-export const MIN_SPEED = 10;
-export const MAX_SPEED = 100;
+export const MIN_SPEED = ACCELERATION;
 
 export interface Modes {
   /**
@@ -112,8 +106,8 @@ export const useControllerStore = defineStore("controller", {
       const messager = useMessagerStore();
       const distanceStore = useDistanceStore();
       const settingsStore = useSettingsStore();
-      const calibrationStore = useCalibrationStore();
       const batteryStore = useBatteryStore();
+      const robotStore = useRobotStore();
       const handleMessage = (data: WSMessageData) => {
         if (!data) {
           return;
@@ -173,11 +167,11 @@ export const useControllerStore = defineStore("controller", {
             break;
 
           case "updateCalibration":
-            calibrationStore.data = payload;
+            robotStore.data = payload;
             break;
 
           case "saveCalibration":
-            calibrationStore.data = payload;
+            robotStore.data = payload;
             this.calibrationMode = false;
             messager.info(`Calibration saved`);
             break;
@@ -260,27 +254,39 @@ export const useControllerStore = defineStore("controller", {
 
     // command workers
     setMaxSpeed(value: number) {
-      const newValue = constrain(MIN_SPEED, MAX_SPEED, value);
+      const robotStore = useRobotStore();
+      const newValue = constrain(MIN_SPEED, robotStore.maxSpeed, value);
       if (newValue !== this.maxSpeed) {
         this.sendMessage({ action: "setMaxSpeed", payload: newValue });
       }
     },
     setCamTiltAngle(angle: number): void {
+      const robotStore = useRobotStore();
       const nextAngle = Math.trunc(
-        constrain(CAM_TILT_MIN, CAM_TILT_MAX, angle),
+        constrain(
+          robotStore.data.cam_tilt_servo.min_angle,
+          robotStore.data.cam_tilt_servo.max_angle,
+          angle,
+        ),
       );
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
     },
 
     setCamPanAngle(servoAngle: number): void {
+      const robotStore = useRobotStore();
       const nextAngle = Math.trunc(
-        constrain(CAM_PAN_MIN, CAM_PAN_MAX, servoAngle),
+        constrain(
+          robotStore.data.cam_pan_servo.min_angle,
+          robotStore.data.cam_pan_servo.max_angle,
+          servoAngle,
+        ),
       );
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
     },
 
     move(speed: number, direction: number) {
-      speed = constrain(0, this.maxSpeed, speed);
+      const robotStore = useRobotStore();
+      speed = constrain(0, this.maxSpeed, robotStore.maxSpeed);
       if (this.speed !== speed || this.direction !== direction) {
         this.sendMessage({
           action: "move",
@@ -301,9 +307,10 @@ export const useControllerStore = defineStore("controller", {
     },
 
     setDirServoAngle(servoAngle: number) {
+      const robotStore = useRobotStore();
       const nextAngle = constrain(
-        SERVO_DIR_ANGLE_MIN,
-        SERVO_DIR_ANGLE_MAX,
+        robotStore.data.steering_servo.min_angle,
+        robotStore.data.steering_servo.max_angle,
         servoAngle,
       );
       this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
@@ -437,10 +444,12 @@ export const useControllerStore = defineStore("controller", {
       this.sendMessage({ action: "avoidObstacles" });
     },
     left() {
-      this.setDirServoAngle(SERVO_DIR_ANGLE_MIN);
+      const robotStore = useRobotStore();
+      this.setDirServoAngle(robotStore.data.steering_servo.min_angle);
     },
     right() {
-      this.setDirServoAngle(SERVO_DIR_ANGLE_MAX);
+      const robotStore = useRobotStore();
+      this.setDirServoAngle(robotStore.data.steering_servo.max_angle);
     },
 
     toggleCalibration() {
@@ -485,11 +494,29 @@ export const useControllerStore = defineStore("controller", {
     saveCalibration() {
       this.sendMessage({ action: "saveCalibration" });
     },
+    saveRobotConfig(payload: RobotData) {
+      this.sendMessage({ action: "saveConfig", payload });
+    },
     servoTest() {
       this.sendMessage({ action: "servoTest" });
     },
     resetCalibration() {
       this.sendMessage({ action: "resetCalibration" });
+    },
+    updateServoDirCali(value: number) {
+      this.sendMessage({ action: "updateServoDirCali", payload: value });
+    },
+    updateCamPanCali(value: number) {
+      this.sendMessage({ action: "updateCamPanCali", payload: value });
+    },
+    updateCamTiltCali(value: number) {
+      this.sendMessage({ action: "updateCamTiltCali", payload: value });
+    },
+    updateLeftMotorCaliDir(value: number) {
+      this.sendMessage({ action: "updateLeftMotorCaliDir", payload: value });
+    },
+    updateRightMotorCaliDir(value: number) {
+      this.sendMessage({ action: "updateRightMotorCaliDir", payload: value });
     },
     // UI commands
     getBatteryVoltage() {

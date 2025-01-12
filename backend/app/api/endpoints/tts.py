@@ -6,9 +6,10 @@ import asyncio
 from typing import TYPE_CHECKING, List
 
 from app.api.deps import get_tts_manager
-from app.exceptions.tts import TextToSpeechException
-from app.schemas.tts import LanguageOption, TextToSpeechData
 from app.core.logger import Logger
+from app.exceptions.tts import TextToSpeechException
+from app.schemas.common import Message
+from app.schemas.tts import LanguageOption, TextToSpeechData
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
@@ -22,6 +23,8 @@ logger = Logger(__name__)
 @router.post(
     "/tts/speak",
     summary="Speak the given text using Google Translate TTS API",
+    response_description="Message with the spoken text.",
+    response_model=Message,
     responses={
         400: {
             "description": "Bad Request. If the text-to-speech is already running.",
@@ -45,10 +48,6 @@ async def text_to_speech(
     """
     Endpoint to convert text to speech.
 
-    Returns:
-    -------------
-    **None**: The endpoint does not return any data to the caller.
-
     All connected clients are notified asynchronously via WebSocket.
     """
     logger.info("TTS payload=%s", payload)
@@ -60,6 +59,7 @@ async def text_to_speech(
         await connection_manager.broadcast_json(
             {"type": "info", "payload": "Speaking: " + text}
         )
+        return {"message": text}
     except TextToSpeechException as err:
         logger.error("Text to speech error: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
@@ -70,6 +70,7 @@ async def text_to_speech(
 
 @router.get(
     "/tts/languages",
+    response_description="Structured list of supported languages",
     summary="List available languages for text-to-speech",
     response_model=List[LanguageOption],
 )

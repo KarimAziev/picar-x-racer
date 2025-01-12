@@ -83,26 +83,6 @@ def perform_detection(
 
     detection_results = []
 
-    # if results.keypoints is not None:
-    #     keypoints_data = results.keypoints.xy.tolist()  # Raw keypoints in [x, y] format
-    #     keypoints_conf = (
-    #         results.keypoints.conf.tolist() if results.keypoints.conf else []
-    #     )
-
-    #     formatted_keypoints = []
-    #     for keypoint_set, conf_set in zip(keypoints_data, keypoints_conf):
-    #         scaled_keypoints = [
-    #             {"x": int(x * scale_x), "y": int(y * scale_y), "conf": conf}
-    #             for (x, y), conf in zip(keypoint_set, conf_set)
-    #         ]
-    #         formatted_keypoints.append(scaled_keypoints)
-
-    #     detection_results.append(
-    #         {
-    #             "keypoints": formatted_keypoints[0],
-    #         }
-    #     )
-
     if results.boxes is not None:
         boxes = results.boxes
         keypoints = results.keypoints if results.keypoints is not None else None
@@ -130,25 +110,19 @@ def perform_detection(
                     "confidence": conf,
                 }
 
-                # Process associated keypoints
                 if keypoints is not None and idx < len(keypoints):
                     raw_keypoints = keypoints.xy[idx].tolist()
-                    confidence_values = (
-                        keypoints.conf[idx].tolist()
-                        if keypoints.conf is not None
-                        else []
-                    )
 
                     formatted_keypoints = [
-                        {"x": int(x * scale_x), "y": int(y * scale_y), "conf": conf}
-                        for (x, y), conf in zip(raw_keypoints, confidence_values)
+                        {"x": int(x * scale_x), "y": int(y * scale_y)}
+                        for (x, y), in zip(raw_keypoints)
                         if x > 0 and y > 0
                     ]
 
-                    # Only add keypoints if they exist and are relevant
                     detection_entry["keypoints"] = formatted_keypoints
 
                 detection_results.append(detection_entry)
-                idx += 1
+
+            idx += 1
 
     return detection_results

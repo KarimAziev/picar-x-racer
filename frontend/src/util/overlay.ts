@@ -1,6 +1,72 @@
 import type { DetectionResult } from "@/features/detection";
 
 /**
+ * Draws keypoints on the canvas at the specified coordinates.
+ * @param ctx - The canvas rendering context.
+ * @param scaleX - Horizontal scaling factor for the keypoint coordinates.
+ * @param scaleY - Vertical scaling factor for the keypoint coordinates.
+ * @param detection - Detection result containing keypoints.
+ * @example
+ * drawKeypoints(ctx, 1, 1, { keypoints: [{ x: 50, y: 50, conf: 0.9 }, ...] });
+ */
+const SKELETON = [
+  [0, 1],
+  [0, 2], // nose to left eye, nose to right Eye
+  [1, 3],
+  [2, 4], // left eye to left ear, right eye to right ear
+  [5, 6], // left shoulder to right shoulder
+  [5, 7],
+  [7, 9], // left shoulder to left elbow to left wrist
+  [6, 8],
+  [8, 10], // right shoulder to right elbow to right wrist
+  [5, 11],
+  [6, 12], // shoulders to hips
+  [11, 12], // hip to hip
+  [11, 13],
+  [13, 15], // left hip to left knee to left ankle
+  [12, 14],
+  [14, 16], // right hip to right knee to right ankle
+];
+
+export const drawKeypoints = (
+  ctx: CanvasRenderingContext2D,
+  scaleX: number,
+  scaleY: number,
+  detection: DetectionResult,
+) => {
+  if (!detection.keypoints || detection.keypoints.length < 2) return;
+
+  const styles = getComputedStyle(document.documentElement);
+  const color = styles.getPropertyValue("--color-text").trim();
+
+  const keypoints = detection.keypoints.map(({ x, y }) => ({
+    x: x * scaleX,
+    y: y * scaleY,
+  }));
+
+  ctx.beginPath();
+  SKELETON.forEach(([startIdx, endIdx]) => {
+    const start = keypoints[startIdx];
+    const end = keypoints[endIdx];
+    if (start && end) {
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+    }
+  });
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  keypoints.forEach(({ x, y }) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+};
+
+/**
  * Draws a label with confidence percentage above the bounding box on the canvas.
  * @param label - The label/classification of the detected object.
  * @param confidence - The confidence score as a number between 0 and 1.
@@ -42,17 +108,22 @@ export const drawDetectionOverlay = (
   scaleY: number,
   detection: DetectionResult,
 ) => {
-  const { label, confidence, bbox } = detection;
-  let [x1, y1, x2, y2] = bbox;
+  const { label, confidence, bbox, keypoints } = detection;
+  if (bbox) {
+    let [x1, y1, x2, y2] = bbox;
 
-  x1 = x1 * scaleX;
-  y1 = y1 * scaleY;
-  x2 = x2 * scaleX;
-  y2 = y2 * scaleY;
+    x1 = x1 * scaleX;
+    y1 = y1 * scaleY;
+    x2 = x2 * scaleX;
+    y2 = y2 * scaleY;
 
-  ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+  }
 
-  drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+  if (keypoints) {
+    drawKeypoints(ctx, scaleX, scaleY, detection);
+  }
 };
 
 /**
@@ -277,5 +348,33 @@ export const drawAimMixedOverlay = (
   detectionData?.forEach((detection, i) => {
     const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionOverlay;
     fn(ctx, scaleX, scaleY, detection);
+  });
+};
+
+export const drawKeypointsOnly = (
+  canvas: HTMLCanvasElement,
+  img: HTMLImageElement,
+  detectionData?: DetectionResult[],
+) => {
+  const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+  if (!ctx) {
+    return;
+  }
+
+  detectionData?.forEach((detection) => {
+    const { label, confidence, bbox, keypoints } = detection;
+    if (bbox) {
+      let [x1, y1, x2, y2] = bbox;
+
+      x1 = x1 * scaleX;
+      y1 = y1 * scaleY;
+      x2 = x2 * scaleX;
+      y2 = y2 * scaleY;
+      drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+    }
+
+    if (keypoints) {
+      drawKeypoints(ctx, scaleX, scaleY, detection);
+    }
   });
 };

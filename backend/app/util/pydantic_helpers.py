@@ -120,7 +120,6 @@ def schema_to_dynamic_json(schema: Type[BaseModel]) -> Dict[str, Any]:
             return None
         origin = get_origin(type_hint)
         args = get_args(type_hint)
-        print(f"origin={origin}, type_={type_hint}")
 
         if origin is Union:
             return [type_to_json(arg) for arg in args if arg is not type(None)]
@@ -131,7 +130,7 @@ def schema_to_dynamic_json(schema: Type[BaseModel]) -> Dict[str, Any]:
         return type_to_json(type_hint)
 
     def type_to_json(type_: Any) -> str:
-        print(f"type_={type_}")
+
         if type_ is int:
             return "int"
         elif type_ is Literal:

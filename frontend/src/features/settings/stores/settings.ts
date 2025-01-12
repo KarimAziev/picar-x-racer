@@ -104,7 +104,7 @@ export const useStore = defineStore("settings", {
     generalSettings({ data }) {
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
-      const settingsData = pick(["general", "robot", "battery"], data);
+      const settingsData = pick(["general", "battery"], data);
       return {
         ...settingsData,
         camera: cameraStore.data,

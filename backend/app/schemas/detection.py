@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional
 
+from app.util.doc_util import extract_clean_docstring
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -11,14 +12,17 @@ class OverlayStyle(str, Enum):
     An enumeration to represent the detection overlay styles.
 
     Enum Values:
-    - `BOX`: Draws a bounding box for the detected objects.
-    - `AIM`: Draws crosshair lines within the detected objects.
-    - `MIXED`: Draws crosshair lines within the first detection, and for others, a bounding box.
+    - **box**: Draws a bounding box for the detected objects.
+    - **aim**: Draws crosshair lines within the detected objects.
+    - **mixed**: Draws crosshair lines within the first detection, and for others, a bounding box.
+    - **pose**`: Draws keypoints representing specific body joints without boxes.
+              Requires pose estimation model, i.e. yolo11n-pose.pt.
     """
 
     BOX = "box"
     AIM = "aim"
     MIXED = "mixed"
+    POSE = "pose"
 
 
 class DetectionSettings(BaseModel):
@@ -66,15 +70,7 @@ class DetectionSettings(BaseModel):
     )
     overlay_style: OverlayStyle = Field(
         OverlayStyle.BOX,
-        description=(
-            "The detection overlay style."
-            "\n"
-            "- `box`: Draws a bounding box for the detected object."
-            "\n"
-            "- `aim`: Draws crosshair lines (centered) within for the detected object."
-            "\n"
-            "- `mixed`: Draws crosshair lines within the first detection, and for others, a bounding box."
-        ),
+        description=extract_clean_docstring(OverlayStyle),
         examples=[OverlayStyle.AIM.value],
     )
 

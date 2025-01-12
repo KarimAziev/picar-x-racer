@@ -43,7 +43,7 @@ async def websocket_endpoint(
         await connection_manager.broadcast_json(
             {
                 "type": "updateCalibration",
-                "payload": calibration_service.get_calibration_data(),
+                "payload": calibration_service.get_current_config(),
             }
         )
         await car_manager.broadcast()

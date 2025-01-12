@@ -23,12 +23,6 @@
       </div>
     </div>
   </Panel>
-  <Panel collapsed header="Robot" toggleable>
-    <RobotSettings />
-  </Panel>
-  <Panel collapsed header="Battery" toggleable>
-    <BatterySettings />
-  </Panel>
 </template>
 
 <script setup lang="ts">
@@ -56,13 +50,6 @@ const VideoDeviceSelect = defineAsyncComponent({
   errorComponent: ErrorComponent,
 });
 
-const BatterySettings = defineAsyncComponent({
-  loader: () =>
-    import("@/features/settings/components/general/BatterySettings.vue"),
-  loadingComponent: Skeleton,
-  delay: 0,
-});
-
 const Shutdown = defineAsyncComponent({
   loader: () => import("@/features/settings/components/system/Shutdown.vue"),
   loadingComponent: Skeleton,
@@ -72,14 +59,6 @@ const Shutdown = defineAsyncComponent({
 
 const Restart = defineAsyncComponent({
   loader: () => import("@/features/settings/components/system/Restart.vue"),
-  loadingComponent: Skeleton,
-  delay: 0,
-  errorComponent: ErrorComponent,
-});
-
-const RobotSettings = defineAsyncComponent({
-  loader: () =>
-    import("@/features/settings/components/robot/RobotSettings.vue"),
   loadingComponent: Skeleton,
   delay: 0,
   errorComponent: ErrorComponent,

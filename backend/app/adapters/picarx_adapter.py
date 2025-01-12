@@ -9,17 +9,17 @@ from robot_hat import MotorConfig, MotorFabric, MotorService, ServoService
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
-    from app.services.car_control.config_service import ConfigService
+    from app.managers.json_data_manager import JsonDataManager
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
     def __init__(
         self,
-        config_manager: "ConfigService",
+        config_manager: "JsonDataManager",
     ):
         self.config_manager = config_manager
 
-        self.config = ConfigSchema(**config_manager.load_settings())
+        self.config = ConfigSchema(**config_manager.load_data())
 
         self.cam_pan_servo = ServoService(
             servo_pin=self.config.cam_pan_servo.servo_pin,

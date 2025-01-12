@@ -33,6 +33,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch, reactive } from "vue";
+import { roundNumber } from "@/util/number";
 
 export interface SpeedometerParams {
   value: number;
@@ -43,6 +44,7 @@ export interface SpeedometerParams {
   class?: string;
   extraInfo?: string | number;
   size?: number;
+  maxAngle?: number;
 }
 
 const props = defineProps<SpeedometerParams>();
@@ -51,6 +53,8 @@ const needleRef = ref<HTMLElement | null>(null);
 const centerLabelRef = ref<HTMLElement | null>(null);
 
 const adjustedValue = computed(() => props.value);
+
+const rotationStep = computed(() => (props.maxAngle || 210) / props.segments);
 
 const defaultSize = 300;
 const translateY = computed(() => {
@@ -76,12 +80,12 @@ const outerLabels = computed(() => {
   }[] = [];
   for (let i = 0; i <= props.segments; i++) {
     const step = (props.maxValue - props.minValue) / props.segments;
-    const value = step * i;
-    const rotation = 180 + i * (180 / props.segments);
 
+    const value = step * i;
+    const rotation = 180 + i * rotationStep.value;
     const disabled = props.disabledThreshold && props.disabledThreshold < value;
     labels.push({
-      value,
+      value: roundNumber(value),
       style: `transform: rotate(${rotation}deg) translateY(${-translateY.value}px) rotate(-${rotation}deg);`,
       disabled,
     });
@@ -94,8 +98,7 @@ const updateNeedle = (value: number) => {
     const absVal = Math.abs(value);
     const step = (props.maxValue - props.minValue) / props.segments;
 
-    const rotation =
-      ((absVal - props.minValue) / step) * (180 / props.segments);
+    const rotation = ((absVal - props.minValue) / step) * rotationStep.value;
 
     needleRef.value.style.transform = `translateY(-100%) rotate(${rotation + 90}deg)`;
   }
@@ -138,7 +141,6 @@ onMounted(() => {
   border-radius: 50%;
   border: 10px solid var(--robo-color-primary);
   opacity: 0.5;
-
   position: absolute;
   top: 0;
   left: 0;
@@ -183,6 +185,7 @@ onMounted(() => {
   transform-origin: left;
   transform: translateX(-50%) rotate(0deg);
   z-index: 3;
+  transition: transform 0.3s ease;
 }
 
 .labels {

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from app.api import deps
 from app.core.logger import Logger
+from app.schemas.common import Message
 from app.util.shutdown import power_off, restart
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -27,6 +28,7 @@ router = APIRouter()
 
 @router.get(
     "/system/shutdown",
+    response_model=Message,
     responses={
         200: {
             "description": "A success message that indicates a successful shutdown initiiation.",
@@ -66,10 +68,6 @@ async def shutdown(
     initiates the power-off process for the host machine.
 
     When invoked, the server will attempt to shut down using systemd via the D-Bus interface.
-
-    Raises:
-    --------------
-    HTTPException: If the shutdown process fails (e.g., failure to access D-Bus).
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
@@ -95,9 +93,10 @@ async def shutdown(
 
 @router.get(
     "/system/restart",
+    response_model=Message,
     responses={
         200: {
-            "description": "A success message that indicates a successful restart process.",
+            "description": "A message that indicates a successful restart process.",
             "content": {
                 "application/json": {
                     "example": {"message": "System restart initiated successfully."}
@@ -132,10 +131,6 @@ async def restart_system(
     initiates the restart process for the host machine.
 
     When invoked, the server will attempt to restart using systemd via the D-Bus interface.
-
-    Raises:
-    --------------
-    HTTPException: If the restart process fails (e.g., failure to access D-Bus).
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
 

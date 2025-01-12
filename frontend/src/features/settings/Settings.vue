@@ -3,8 +3,8 @@
     <TabList>
       <Tab :value="SettingsTab.GENERAL">General</Tab>
       <Tab :value="SettingsTab.MODELS">Models</Tab>
+      <Tab :value="SettingsTab.ROBOT">Robot/Calibration</Tab>
       <Tab :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">Keybindings</Tab>
-      <Tab :value="SettingsTab.CALIBRATION">Calibration</Tab>
       <Tab :value="SettingsTab.PHOTOS">Photos</Tab>
       <Tab :value="SettingsTab.MUSIC">Music</Tab>
       <Tab :value="SettingsTab.TTS">TTS</Tab>
@@ -19,8 +19,8 @@
       <TabPanel :value="SettingsTab.KEYBINDINGS" v-if="!isMobile">
         <KeybindingsPanel />
       </TabPanel>
-      <TabPanel :value="SettingsTab.CALIBRATION">
-        <CalibrationPanel />
+      <TabPanel :value="SettingsTab.ROBOT">
+        <RobotPanel />
       </TabPanel>
       <TabPanel :value="SettingsTab.PHOTOS">
         <PhotosPanel />
@@ -76,13 +76,6 @@ const GeneralPanel = defineAsyncComponent({
   delay: 0,
 });
 
-const CalibrationPanel = defineAsyncComponent({
-  loader: () => import("@/features/settings/components/CalibrationPanel.vue"),
-  loadingComponent: Skeleton,
-  errorComponent: ErrorComponent,
-  delay: 0,
-});
-
 const PhotosPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/PhotosPanel.vue"),
   loadingComponent: Skeleton,
@@ -92,6 +85,13 @@ const PhotosPanel = defineAsyncComponent({
 
 const ModelsPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/ModelsPanel.vue"),
+  loadingComponent: Skeleton,
+  errorComponent: ErrorComponent,
+  delay: 0,
+});
+
+const RobotPanel = defineAsyncComponent({
+  loader: () => import("@/features/settings/components/RobotPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
   delay: 0,

@@ -15,6 +15,7 @@ from app.exceptions.detection import (
     DetectionProcessLoading,
 )
 from app.schemas.detection import DetectionSettings, FileNode
+from app.util.doc_util import build_response_description
 from fastapi import (
     APIRouter,
     Depends,
@@ -40,28 +41,9 @@ router = APIRouter()
     "/detection/settings",
     response_model=DetectionSettings,
     summary="Update Detection Settings",
-    response_description="Returns the updated detection settings:"
-    "\n"
-    "- **model**: The name of the object detection model to be used."
-    "\n"
-    "- **confidence**: The confidence threshold for detections."
-    "\n"
-    "- **active**: Flag indicating whether the detection is currently active."
-    "\n"
-    "- **img_size**: The image size for the detection process."
-    "\n"
-    "- **labels**: A list of labels to filter for specific object detections, if desired."
-    "\n"
-    "- **overlay_draw_threshold**: The maximum allowable time difference (in seconds) "
-    "between the frame timestamp and the detection timestamp for overlay drawing to occur."
-    "\n"
-    "- **overlay_style**: The detection overlay style."
-    "\n"
-    "  - **box**: Draws a bounding box for the detected object."
-    "\n"
-    "  - **aim**: Draws crosshair lines (centered) within for the detected object."
-    "\n"
-    "  - **mixed**: Draws crosshair lines within the first detection, and for others, a bounding box.",
+    response_description=build_response_description(
+        DetectionSettings, "The updated detection settings."
+    ),
     responses={
         400: {
             "description": "Bad Request - Errors like model loading or detection issues.",
@@ -154,28 +136,9 @@ async def update_detection_settings(
     "/detection/settings",
     response_model=DetectionSettings,
     summary="Retrieve object detection settings",
-    response_description="The current configuration of the object detection system: "
-    "\n"
-    "- **model**: The name of the object detection model to be used."
-    "\n"
-    "- **confidence**: The confidence threshold for detections."
-    "\n"
-    "- **active**: Flag indicating whether the detection is currently active."
-    "\n"
-    "- **img_size**: The image size for the detection process."
-    "\n"
-    "- **labels**: A list of labels to filter for specific object detections, if desired."
-    "\n"
-    "- **overlay_draw_threshold**: The maximum allowable time difference (in seconds) "
-    "between the frame timestamp and the detection timestamp for overlay drawing to occur."
-    "\n"
-    "- **overlay_style**: The detection overlay style."
-    "\n"
-    "  - **box**: Draws a bounding box for the detected object."
-    "\n"
-    "  - **aim**: Draws crosshair lines (centered) within for the detected object."
-    "\n"
-    "  - **mixed**: Draws crosshair lines within the first detection, and for others, a bounding box.",
+    response_description=build_response_description(
+        DetectionSettings, "The current configuration of the object detection system."
+    ),
 )
 def get_detection_settings(
     detection_service: "DetectionService" = Depends(deps.get_detection_manager),
@@ -247,16 +210,13 @@ async def object_detection(
 @router.get(
     "/detection/models",
     summary="Retrieve Available Detection Models",
-    response_description="Returns a hierarchical tree structure representing the available object detection models, "
-    "organized as a series of nodes. Each node in the tree can represent one of the following:"
-    "\n"
-    "- **Folder**: A container for sub-nodes (children) that includes other folders or files. "
-    "Only those directories are included that have at least one valid model file at any depth."
-    "\n"
-    "- **File**: A specific file representing a concrete object detection model present on the filesystem."
-    "\n"
-    "- **Loadable model**: A virtual node that represents a detection model, which may not physically exist on the "
-    "filesystem but is loadable (e.g., pre-trained models such as `yolov8n.pt`).",
+    response_description=build_response_description(
+        FileNode,
+        "Returns a hierarchical tree structure representing the available object detection models, "
+        "organized as a series of nodes. Each node in the tree can represent directory, file or "
+        "a virtual node that represents a detection model, which may not physically exist on the "
+        "filesystem but is loadable (e.g., pre-trained models such as `yolov8n.pt`).",
+    ),
     response_model=List[FileNode],
 )
 def get_detectors(file_manager: "FileService" = Depends(deps.get_file_manager)):

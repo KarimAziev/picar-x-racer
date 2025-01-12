@@ -1,7 +1,7 @@
-from typing import Literal, Union
+from typing import Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from robot_hat import ServoCalibrationMode
+from robot_hat import MotorDirection, ServoCalibrationMode
 from typing_extensions import Annotated
 
 
@@ -68,15 +68,10 @@ class MotorConfig(BaseModel):
         description="Human-readable name for the motor",
         examples=["left", "right"],
     )
-    calibration_direction: Literal[1, -1] = Field(
+    calibration_direction: MotorDirection = Field(
         ...,
         description="Initial motor direction calibration (+1/-1)",
         examples=[1, -1],
-    )
-    calibration_speed_offset: float = Field(
-        0.0,
-        description="Initial motor speed calibration offset",
-        examples=[0.0, 0.1],
     )
     max_speed: int = Field(
         ...,
@@ -123,9 +118,13 @@ class MotorConfig(BaseModel):
 
 
 class ConfigSchema(BaseModel):
+    """
+    Configuration model for specifying motors and servos in a robotic system.
+    """
+
+    steering_servo: ServoConfig
     cam_pan_servo: ServoConfig
     cam_tilt_servo: ServoConfig
-    steering_servo: ServoConfig
     left_motor: MotorConfig
     right_motor: MotorConfig
 

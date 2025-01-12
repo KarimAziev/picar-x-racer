@@ -99,11 +99,11 @@ export const generalSwitchSettings: {
 export const saveableTabs = {
   [SettingsTab.GENERAL]: true,
   [SettingsTab.KEYBINDINGS]: false,
-  [SettingsTab.CALIBRATION]: false,
   [SettingsTab.TTS]: true,
   [SettingsTab.PHOTOS]: false,
   [SettingsTab.MUSIC]: true,
   [SettingsTab.MODELS]: true,
+  [SettingsTab.ROBOT]: false,
 };
 
 export const imgSizeOptions = generateMultiplesOf32(2000).map((value) => ({

@@ -9,6 +9,7 @@ from app.api.deps import get_audio_manager, get_file_manager, get_music_manager
 from app.core.logger import Logger
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.exceptions.music import MusicPlayerError
+from app.schemas.common import Message
 from app.schemas.music import (
     MusicModePayload,
     MusicPlayerState,
@@ -361,6 +362,7 @@ async def prev_track(
 
 @router.post(
     "/music/order",
+    response_model=Message,
     responses={
         200: {
             "description": "A message that the new order is saved successfully.",
