@@ -25,7 +25,8 @@ export const useJoystickControl = (
   const handleJoystickMove = (data: nipplejs.JoystickOutputData) => {
     const { angle, distance } = data;
     const direction = angle.degree;
-    const isForward = !inRange(direction, 240, 320);
+
+    const isForward = !inRange(direction, 200, 340);
 
     const speed = Math.round(Math.round(distance * 2) / 10) * 10;
     const minJoystickAngle = 0;
