@@ -7,7 +7,7 @@
         :key="groupName"
         class="flex justify-between items-center select-none"
         :step="0.1"
-        :min="0"
+        :min="-20"
         :max="20"
         :label="startCase(`${groupName.replace(/_servo$/gm, '')}`)"
         v-model="robotStore.data[groupName].calibration_offset"
