@@ -68,7 +68,6 @@ class CameraService(metaclass=SingletonMeta):
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
         self.shutting_down = False
-        self.frame_size: float = 0
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -185,17 +184,6 @@ class CameraService(metaclass=SingletonMeta):
             )
 
             encoded_frame = encode(frame, self.stream_settings.format, encode_params)
-
-            frame_size_kb = len(encoded_frame) / 1024
-
-            diff_size = self.frame_size - frame_size_kb
-
-            if diff_size > 1:
-                self.logger.info(
-                    f"Encoded frame size: {frame_size_kb:.2f} KB, pixel format {self.camera_settings.pixel_format}, {self.camera_settings.width}X{self.camera_settings.height}, {self.actual_fps}"
-                )
-
-            self.frame_size = frame_size_kb
 
             timestamp = self.current_frame_timestamp or time.time()
             timestamp_bytes = struct.pack('d', timestamp)
