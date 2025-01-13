@@ -108,11 +108,13 @@ By default, the config file contains the line `camera_auto_detect=1`. Either com
 > [!WARNING]
 > These settings will make `libcamera-hello` unusable.
 
-Next, to make building and running the project easier, you should install `make` if you don't have it already:
+Next, to make building and running the project easier, install `make` if you don't have it already:
 
 ```bash
 sudo apt install make
 ```
+
+Also, ensure that you have `nodejs`, as it is used for building the UI.
 
 ### Installation
 
@@ -122,7 +124,7 @@ sudo apt install make
 git clone https://github.com/KarimAziev/picar-x-racer.git ~/picar-x-racer/
 ```
 
-2. Go to the project directory:
+2. Navigate to the project directory:
 
 ```bash
 cd ~/picar-x-racer/
@@ -134,27 +136,35 @@ cd ~/picar-x-racer/
 make all
 ```
 
-That's all. This is a one-time setup. You can then run the project by running the following command in the project directory:
+4. If you want the ability to turn off and restart the machine from the UI, you need to create a corresponding `polkit` rule, as the app is not run with `sudo`. You can achieve this by running the script (located in the root of the project directory):
 
 ```bash
-make backend-venv-run
+bash ./setup-polkit-reboot-rule.sh
 ```
+
+That's all! This is a one-time setup.
 
 ### Usage
 
-In the project root directory, run the script to start the server:
+You can launch the project by running the following command in the project directory:
 
 ```bash
 make backend-venv-run
 ```
 
-Once the application is running, open your browser and navigate to (replace `<your-raspberry-pi-ip>` with the actual IP):
+Alternatively, to avoid starting it manually every time, you can run the script below (in the root of the project directory) to configure the application to start automatically upon boot:
+
+```bash
+bash ./setup-service.sh
+```
+
+Once the application is running, open your browser and navigate to the following URL (replace `<your-raspberry-pi-ip>` with your Raspberry Pi's actual IP address):
 
 ```
 http://<your-raspberry-pi-ip>:8000
 ```
 
-After navigating to the control interface, you can customize your experience via the comprehensive settings panel.
+After accessing the control interface, you can customize your experience through the settings panel.
 
 ## Settings
 
