@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING, Optional, Union
 import cv2
 import numpy as np
 from app.config.video_enhancers import frame_enhancers
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.schemas.camera import CameraSettings
-from app.schemas.stream import StreamSettings
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.managers.v4l2_manager import V4L2
+from app.schemas.camera import CameraSettings
+from app.schemas.stream import StreamSettings
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 from cv2.typing import MatLike
 
@@ -68,6 +68,7 @@ class CameraService(metaclass=SingletonMeta):
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
         self.shutting_down = False
+        self.frame_size: float = 0
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -184,6 +185,17 @@ class CameraService(metaclass=SingletonMeta):
             )
 
             encoded_frame = encode(frame, self.stream_settings.format, encode_params)
+
+            frame_size_kb = len(encoded_frame) / 1024
+
+            diff_size = self.frame_size - frame_size_kb
+
+            if diff_size > 1:
+                self.logger.info(
+                    f"Encoded frame size: {frame_size_kb:.2f} KB, pixel format {self.camera_settings.pixel_format}, {self.camera_settings.width}X{self.camera_settings.height}, {self.actual_fps}"
+                )
+
+            self.frame_size = frame_size_kb
 
             timestamp = self.current_frame_timestamp or time.time()
             timestamp_bytes = struct.pack('d', timestamp)
