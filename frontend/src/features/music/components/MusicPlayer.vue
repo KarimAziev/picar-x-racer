@@ -23,23 +23,23 @@
       </div>
 
       <div class="flex items-center justify-between">
-        <button
+        <ButtonIcon
           @click="prevTrack"
-          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
+          class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:opacity-60"
           aria-label="Prev track"
           text
+          icon="pi pi-backward"
           v-tooltip="'Previous track'"
         >
-          <i class="pi pi-backward" />
-        </button>
-        <button
+        </ButtonIcon>
+        <ButtonIcon
           @click="togglePlaying"
           aria-label="toggle-play"
+          :icon="togglePlayIcon"
           class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           v-tooltip="'Toggle playing'"
         >
-          <i :class="togglePlayIcon" />
-        </button>
+        </ButtonIcon>
         <button
           class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="stopTrack"
@@ -52,22 +52,22 @@
         <span class="whitespace-nowrap">
           {{ durationLabel }}
         </span>
-        <button
+        <ButtonIcon
           class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextTrack"
           aria-label="Next track"
           v-tooltip="'Play next track'"
         >
           <i class="pi pi-forward" />
-        </button>
-        <button
+        </ButtonIcon>
+        <ButtonIcon
           class="py-2 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
           @click="nextMode"
           aria-label="next-music-mode"
           v-tooltip="musicModeTooltip"
         >
           <i :class="musicModeIcon" />
-        </button>
+        </ButtonIcon>
       </div>
     </div>
     <Volume />
@@ -83,6 +83,7 @@ import { useMusicStore } from "@/features/music";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import Volume from "@/ui/Volume.vue";
 import { musicModeConfig } from "@/features/music/components/config";
+import ButtonIcon from "@/ui/ButtonIcon.vue";
 
 const musicStore = useMusicStore();
 

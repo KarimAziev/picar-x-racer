@@ -1,20 +1,20 @@
 <template>
   <div :class="class" class="flex items-center gap-1 text-sm">
     <div class="flex flex-col items-center justify-center">
-      <button
+      <ButtonIcon
         text
         @click="handleInc"
         class="py-0 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
       >
         <i class="pi pi-angle-up" />
-      </button>
+      </ButtonIcon>
       <div class="text-xs" v-tooltip="'System volume'">{{ currentValue }}</div>
-      <button
+      <ButtonIcon
         @click="handleDec"
         class="py-0 px-2 hover:bg-button-text-primary-hover-background disabled:hover:bg-transparent disabled:opacity-60"
       >
         <i class="pi pi-angle-down" />
-      </button>
+      </ButtonIcon>
     </div>
   </div>
 </template>
@@ -23,6 +23,7 @@
 import { ref, watch } from "vue";
 import { useMusicStore } from "@/features/music";
 import { useAsyncDebounce } from "@/composables/useDebounce";
+import ButtonIcon from "@/ui/ButtonIcon.vue";
 
 const musicStore = useMusicStore();
 const currentValue = ref(musicStore.volume || 0);

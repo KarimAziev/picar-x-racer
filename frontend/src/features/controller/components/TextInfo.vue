@@ -4,7 +4,7 @@
     <InfoItem label="Camera Tilt:" :value="camTilt" />
     <InfoItem label="Camera Pan:" :value="camPan" />
     <InfoItem label="Servo Dir:" :value="servoAngle" />
-    <InfoItem label="Max Speed:" :value="maxSpeed" />
+    <MaxSpeed />
     <ToggleableView setting="general.show_auto_measure_distance_button">
       <Distance />
     </ToggleableView>
@@ -23,6 +23,7 @@ import InfoBlock from "@/ui/InfoBlock.vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
 import Distance from "@/features/controller/components/Distance.vue";
 import AvoidObstacles from "@/features/controller/components/AvoidObstacles.vue";
+import MaxSpeed from "@/features/controller/components/MaxSpeed.vue";
 
 const store = useControllerStore();
 
@@ -33,6 +34,4 @@ const servoAngle = computed(() => store.servoAngle.toString().padStart(2, "0"));
 const speed = computed(() =>
   (store.direction * store.speed).toString().padStart(2, "0"),
 );
-
-const maxSpeed = computed(() => store.maxSpeed);
 </script>
