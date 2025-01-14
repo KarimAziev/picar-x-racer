@@ -93,12 +93,17 @@ def perform_detection(
             x1, y1, x2, y2 = detection.xyxy[0].tolist()
             conf = round(detection.conf.item(), 2)
             cls = int(detection.cls.item())
-            label = yolo_model.names[cls]
+            label = None
+
+            try:
+                label = yolo_model.names[cls]
+            except KeyError:
+                pass
 
             if conf < confidence_threshold:
                 continue
 
-            if not labels_to_detect or label in labels_to_detect:
+            if not labels_to_detect or not label or label in labels_to_detect:
                 x1 = int(x1 * scale_x)
                 y1 = int(y1 * scale_y)
                 x2 = int(x2 * scale_x)
@@ -116,7 +121,6 @@ def perform_detection(
                     formatted_keypoints = [
                         {"x": int(x * scale_x), "y": int(y * scale_y)}
                         for (x, y), in zip(raw_keypoints)
-                        if x > 0 and y > 0
                     ]
 
                     detection_entry["keypoints"] = formatted_keypoints
