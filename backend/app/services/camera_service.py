@@ -341,7 +341,7 @@ class CameraService(metaclass=SingletonMeta):
                         failed_counter += 1
                         self.emitter.emit(
                             "frame_error",
-                            f"Failed to read frame from camera {failed_counter}",
+                            f"Failed to read frame from camera. {failed_counter} attempt.",
                         )
                         self.logger.error("Failed to read frame from camera.")
                         continue
