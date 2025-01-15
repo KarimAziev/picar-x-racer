@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
+from app.util.debounce import async_debounce
 from fastapi import WebSocket
 
 if TYPE_CHECKING:
@@ -112,6 +113,7 @@ class CarService(metaclass=SingletonMeta):
             "payload": self.current_state,
         }
 
+    @async_debounce(wait=0.01)
     async def process_action(self, action: str, payload, websocket: WebSocket):
         """
         Processes specific actions received from WebSocket messages and performs the corresponding operations.
