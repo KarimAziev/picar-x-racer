@@ -37,6 +37,7 @@ logger = Logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.cancelled = False
     connection_manager: Optional["ConnectionService"] = None
     battery_manager: Optional["BatteryService"] = None
     detection_manager: Optional["DetectionService"] = None
@@ -85,6 +86,7 @@ async def lifespan(app: FastAPI):
         print_initial_message(browser_url)
         yield
     finally:
+        app.state.cancelled = True
         logger.info(f"Stopping 🚗 {app.title} application")
         if battery_manager:
             await battery_manager.cleanup_connection_manager()
