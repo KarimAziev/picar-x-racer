@@ -200,7 +200,6 @@ class EventEmitter:
                     asyncio.run(resolved_listener(*args, **kwargs))
                 else:
                     resolved_listener(*args, **kwargs)
-                resolved_listener(*args, **kwargs)
             except Exception:
                 logger.error(
                     "Error running event '%s' listener '%s'",
