@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import cv2
 import numpy as np
 from app.config.video_enhancers import frame_enhancers
+from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
@@ -68,6 +69,9 @@ class CameraService(metaclass=SingletonMeta):
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
         self.shutting_down = False
+        self.emitter = EventEmitter()
+
+        self.emitter.on("frame_error", self.connection_manager.error)
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -374,6 +378,8 @@ class CameraService(metaclass=SingletonMeta):
                     elif self._retry_cap():
                         continue
                     else:
+                        self.camera_run = False
+                        self.emitter.emit("frame_error", "Error reading frame")
                         break
                 else:
                     failed_counter = 0
