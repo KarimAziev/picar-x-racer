@@ -326,7 +326,7 @@ class CameraService(metaclass=SingletonMeta):
         pushing them to the detection service. Handles errors and device resets.
         """
         failed_counter = 0
-        max_failed_attempt_count = 3
+        max_failed_attempt_count = 1
 
         prev_fps = 0.0
 
