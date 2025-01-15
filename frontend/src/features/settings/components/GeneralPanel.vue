@@ -12,16 +12,12 @@
   </Panel>
 
   <Panel header="Camera" toggleable>
-    <div class="wrapper">
-      <div class="column">
-        <VideoSettings />
-      </div>
-      <div class="column">
-        <Fieldset legend="Device settings">
-          <VideoDeviceSelect />
-        </Fieldset>
-      </div>
-    </div>
+    <Fieldset legend="Effects" toggleable>
+      <VideoSettings />
+    </Fieldset>
+    <Fieldset legend="Device settings" toggleable>
+      <VideoDeviceSelect />
+    </Fieldset>
   </Panel>
 </template>
 

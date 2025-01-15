@@ -8,59 +8,102 @@
           v-model:model-value="selectedDevice"
         />
       </Field>
-      <div class="flex mt-2 gap-2">
-        <NumberInputField
-          :useGrouping="false"
+    </div>
+
+    <div class="flex-1">
+      <SelectField
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Video Effect"
+        field="video-size-preset"
+        v-if="isStepwiseDevice(selectedDevice)"
+        label="Resolutions Presets"
+        :filter="false"
+        v-model="stepwisePresetValue"
+        :options="stepwisePresetOptions"
+        @update:model-value="handleUpdateStepwisePreset"
+      />
+    </div>
+  </div>
+  <div class="flex gap-2 my-2">
+    <div class="flex flex-1 gap-x-2">
+      <NumberInputField
+        :useGrouping="false"
+        v-if="selectedDevice && (selectedDevice as any).max_width"
+        fieldClassName="w-20"
+        inputClass="w-20"
+        label="Width"
+        field="step-width"
+        v-model="stepwiseData.width"
+        :disabled="loading"
+        :loading="loading"
+        :min="selectedDevice && (selectedDevice as any).min_width"
+        :max="selectedDevice && (selectedDevice as any).max_width"
+        :invalid="!!invalidData.width"
+        :message="invalidData.width"
+        @input="handleChangeWidth"
+        @update:model-value="validate"
+        :step="invalidData.width ? 1 : (selectedDevice as any)?.width_step"
+        @blur="validate"
+      >
+        <Slider
+          class="my-2 cursor-pointer"
           v-if="selectedDevice && (selectedDevice as any).max_width"
-          fieldClassName="w-24"
-          inputClass="w-24"
-          label="Width"
-          field="step-width"
           v-model="stepwiseData.width"
           :disabled="loading"
           :loading="loading"
-          suffix="px"
           :min="selectedDevice && (selectedDevice as any).min_width"
           :max="selectedDevice && (selectedDevice as any).max_width"
-          :invalid="!!invalidData.width"
-          :message="invalidData.width"
-          @input="handleChangeWidth"
           @update:model-value="validate"
           :step="invalidData.width ? 1 : (selectedDevice as any)?.width_step"
-          @blur="validate"
         />
-        <NumberInputField
-          inputClass="w-24"
+      </NumberInputField>
+      <NumberInputField
+        inputClass="w-20"
+        v-if="selectedDevice && (selectedDevice as any).max_width"
+        label="Height"
+        allowEmpty
+        fieldClassName="w-20"
+        field="step-height"
+        v-model="stepwiseData.height"
+        :disabled="loading"
+        :loading="loading"
+        :min="selectedDevice && (selectedDevice as any).min_height"
+        :invalid="!!invalidData.height"
+        :message="invalidData.height"
+        @update:model-value="validate"
+        @input="handleChangeHeight"
+        :step="
+          invalidData.height
+            ? 1
+            : selectedDevice && (selectedDevice as any).height_step
+        "
+        @blur="validate"
+      >
+        <Slider
+          class="my-2 cursor-pointer"
           v-if="selectedDevice && (selectedDevice as any).max_width"
-          label="Height"
-          allowEmpty
-          suffix="px"
-          fieldClassName="w-24"
-          field="step-height"
           v-model="stepwiseData.height"
           :disabled="loading"
           :loading="loading"
           :min="selectedDevice && (selectedDevice as any).min_height"
-          :invalid="!!invalidData.height"
-          :message="invalidData.height"
+          :max="selectedDevice && (selectedDevice as any).max_height"
           @update:model-value="validate"
-          @input="handleChangeHeight"
           :step="
             invalidData.height
               ? 1
               : selectedDevice && (selectedDevice as any).height_step
           "
-          @blur="validate"
         />
-      </div>
+      </NumberInputField>
     </div>
-    <div class="flex-1 flex flex-col gap-8 justify-start items-start">
+    <div class="flex-1">
       <NumberInputField
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="FPS"
         allowEmpty
         inputClass="w-20"
-        fieldClassName="w-20"
+        fieldClassName="w-20 self-end"
         field="step-fps"
         v-model="stepwiseData.fps"
         :disabled="loading"
@@ -72,14 +115,28 @@
         @update:model-value="validate"
         @value-change="handleChangeFPS"
         @blur="validate"
-      />
-      <Button
-        v-if="selectedDevice && (selectedDevice as any).max_width"
-        :disabled="disabled || loading"
-        @click="onSubmit"
-        >Submit</Button
       >
+        <Slider
+          class="my-2 cursor-pointer"
+          v-if="selectedDevice && (selectedDevice as any).max_width"
+          v-model="stepwiseData.fps"
+          :disabled="loading"
+          :loading="loading"
+          :min="selectedDevice && (selectedDevice as any).min_fps"
+          :max="selectedDevice && (selectedDevice as any).max_fps"
+          @update:model-value="validate"
+        />
+      </NumberInputField>
     </div>
+  </div>
+  <div class="flex">
+    <Button
+      class="my-2"
+      v-if="selectedDevice && (selectedDevice as any).max_width"
+      :disabled="disabled || loading"
+      @click="onSubmit"
+      >Submit</Button
+    >
   </div>
 </template>
 
@@ -103,9 +160,16 @@ import { isNumber, isEmpty } from "@/util/guards";
 import { inRange } from "@/util/number";
 import NumberInputField from "@/ui/NumberInputField.vue";
 import { where } from "@/util/func";
+import {
+  presetOptions,
+  PresetOptionValue,
+} from "@/features/settings/components/camera/config";
+import SelectField from "@/ui/SelectField.vue";
+import { findStepwisePreset } from "@/features/settings/components/camera/util";
 
 const camStore = useCameraStore();
 const devices = computed(() => mapChildren(camStore.devices));
+
 const isStepwiseDevice = (data: any): data is DeviceStepwise => data?.max_width;
 
 const stepwiseData = ref({
@@ -114,12 +178,15 @@ const stepwiseData = ref({
   fps: camStore.data.fps,
 });
 
-const getInitialValue = () => {
-  return findDevice(camStore.data, camStore.devices) || null;
-};
+const getInitialValue = () =>
+  findDevice(camStore.data, camStore.devices) || null;
 
 const selectedDevice = ref<DiscreteDevice | DeviceStepwise | null>(
   getInitialValue(),
+);
+
+const stepwisePresetValue = ref<PresetOptionValue | undefined>(
+  findStepwisePreset(stepwiseData.value)?.value,
 );
 
 const label = computed(() => {
@@ -134,6 +201,25 @@ const invalidData = ref<Partial<Record<"width" | "height" | "fps", string>>>(
   {},
 );
 
+const handleUpdateStepwisePreset = (preset?: PresetOptionValue) => {
+  if (preset?.width && preset?.height) {
+    stepwiseData.value.width = preset.width;
+    stepwiseData.value.height = preset.height;
+  }
+};
+
+const stepwisePresetOptions = computed(() => {
+  if (!isStepwiseDevice(selectedDevice.value)) {
+    return [];
+  }
+  const { min_width, max_width, min_height, max_height } = selectedDevice.value;
+  return presetOptions.filter(
+    ({ value: { width, height } }) =>
+      inRange(width, min_width, max_width) &&
+      inRange(height, min_height, max_height),
+  );
+});
+
 const validate = () => {
   invalidData.value = isStepwiseDevice(selectedDevice.value)
     ? validateStepwiseData(selectedDevice.value, stepwiseData.value)
@@ -147,7 +233,6 @@ const handleChangeFPS = (newValue: number) => {
 
 const handleChangeWidth = ({ value }: InputNumberInputEvent) => {
   stepwiseData.value.width = isNumber(value) ? value : undefined;
-
   validate();
 };
 
@@ -233,6 +318,7 @@ const updateDevice = async (
   stepwiseParams: DiscreteDevice | DeviceStepwise,
 ) => {
   selectedDevice.value = stepwiseParams;
+
   const valid = validate();
 
   if (!stepwiseParams || !valid || isUnchanged()) {
@@ -244,6 +330,8 @@ const updateDevice = async (
 
     await camStore.updateData(discreted);
   } else if (isStepwiseDevice(stepwiseParams)) {
+    stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
+
     onSubmit();
   }
 };
@@ -251,6 +339,7 @@ const updateDevice = async (
 onMounted(async () => {
   await camStore.fetchAllCameraSettings();
   selectedDevice.value = getInitialValue();
+  stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 });
 
 watch(
@@ -263,5 +352,13 @@ watch(
       fps: camStore.data.fps,
     };
   },
+);
+
+watch(
+  () => stepwiseData.value,
+  (newValue) => {
+    stepwisePresetValue.value = findStepwisePreset(newValue)?.value;
+  },
+  { deep: true },
 );
 </script>
