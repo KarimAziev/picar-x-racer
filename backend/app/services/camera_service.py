@@ -376,9 +376,10 @@ class CameraService(metaclass=SingletonMeta):
                         self.logger.error("Failed to read frame from camera.")
                         continue
                     elif self._retry_cap():
+                        self.logger.info("The capture retry succeeded")
                         continue
                     else:
-                        self.camera_run = False
+                        self.logger.error("Error reading frame, aborting.")
                         self.emitter.emit("frame_error", "Error reading frame")
                         break
                 else:
