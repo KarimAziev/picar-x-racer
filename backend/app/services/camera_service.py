@@ -327,7 +327,7 @@ class CameraService(metaclass=SingletonMeta):
         pushing them to the detection service. Handles errors and device resets.
         """
         failed_counter = 0
-        max_failed_attempt_count = 10
+        max_failed_attempt_count = 5
 
         prev_fps = 0.0
 
@@ -346,8 +346,10 @@ class CameraService(metaclass=SingletonMeta):
                         self.logger.error("Failed to read frame from camera.")
                         continue
                     else:
-                        self.logger.error("Error reading frame, aborting.")
-                        self.emitter.emit("frame_error", "Error reading frame")
+                        self.logger.error(
+                            "Failed to read frame from camera, please choose another device or props."
+                        )
+                        self.camera_cap_error = "Failed to read frame from camera, please choose another device or props."
                         break
                 else:
                     failed_counter = 0
@@ -493,13 +495,18 @@ class CameraService(metaclass=SingletonMeta):
 
         counter = 0
 
-        while True:
+        while not self.camera_cap_error:
             if self.stream_img is not None:
                 break
             if counter <= 1:
                 self.logger.debug("waiting for stream img")
                 counter += 1
             await asyncio.sleep(0.1)
+
+        if self.camera_cap_error:
+            err = self.camera_cap_error
+            self.camera_cap_error = None
+            raise CameraDeviceError(err)
 
     def stop_camera(self) -> None:
         """
