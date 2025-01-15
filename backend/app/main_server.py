@@ -12,16 +12,16 @@ process to guarantee that control operations are never blocked.
 
 import os
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config.config import settings
+from app.core.logger import Logger
 from app.util.ansi import print_initial_message
 from app.util.get_ip_address import get_ip_address
-from app.core.logger import Logger
 
 if TYPE_CHECKING:
     from app.services.battery_service import BatteryService
@@ -37,52 +37,63 @@ logger = Logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.api import deps
-
-    file_manager = deps.get_file_manager(audio_manager=deps.get_audio_manager())
-
-    connection_manager: "ConnectionService" = deps.get_connection_manager()
-    app_manager = connection_manager
-    battery_manager: "BatteryService" = deps.get_battery_manager(
-        connection_manager=connection_manager,
-        file_manager=file_manager,
-    )
-    detection_manager: "DetectionService" = deps.get_detection_manager(
-        file_manager=file_manager, connection_manager=connection_manager
-    )
-    music_manager: "MusicService" = deps.get_music_manager(
-        file_manager=file_manager, connection_manager=connection_manager
-    )
-
-    app.state.template_folder = settings.TEMPLATE_DIR
-    app.state.app_manager = app_manager
-    port = os.getenv("PX_MAIN_APP_PORT")
-    mode = os.getenv("PX_APP_MODE")
-
-    ip_address = get_ip_address()
-    browser_url = f"http://{ip_address}:{port}"
-
-    print_initial_message(browser_url)
-
-    signal_file_path = '/tmp/backend_ready.signal' if mode == "dev" else None
-
-    battery_manager.setup_connection_manager()
-    music_manager.start_broadcast_task()
-
-    if signal_file_path:
-        try:
-            with open(signal_file_path, 'w') as f:
-                f.write('Backend is ready')
-        except Exception as e:
-            logger.error(f"Failed to create signal file: {e}")
+    connection_manager: Optional["ConnectionService"] = None
+    battery_manager: Optional["BatteryService"] = None
+    detection_manager: Optional["DetectionService"] = None
+    music_manager: Optional["MusicService"] = None
+    signal_file_path: Optional[str] = None
 
     try:
+        from app.api import deps
+
+        port = os.getenv("PX_MAIN_APP_PORT")
+        mode = os.getenv("PX_APP_MODE")
+
+        file_manager = deps.get_file_manager(audio_manager=deps.get_audio_manager())
+
+        connection_manager = deps.get_connection_manager()
+        app_manager = connection_manager
+        battery_manager = deps.get_battery_manager(
+            connection_manager=connection_manager,
+            file_manager=file_manager,
+        )
+        detection_manager = deps.get_detection_manager(
+            file_manager=file_manager, connection_manager=connection_manager
+        )
+        music_manager = deps.get_music_manager(
+            file_manager=file_manager, connection_manager=connection_manager
+        )
+
+        app.state.template_folder = settings.TEMPLATE_DIR
+        app.state.app_manager = app_manager
+
+        ip_address = get_ip_address()
+        browser_url = f"http://{ip_address}:{port}"
+
+        signal_file_path = '/tmp/backend_ready.signal' if mode == "dev" else None
+
+        battery_manager.setup_connection_manager()
+        music_manager.start_broadcast_task()
+
+        if signal_file_path:
+            try:
+                with open(signal_file_path, 'w') as f:
+                    f.write('Backend is ready')
+            except Exception as e:
+                logger.error(f"Failed to create signal file: {e}")
+
+        print_initial_message(browser_url)
         yield
     finally:
         logger.info(f"Stopping 🚗 {app.title} application")
-        await battery_manager.cleanup_connection_manager()
-        await detection_manager.cleanup()
-        await music_manager.cleanup()
+        if battery_manager:
+            await battery_manager.cleanup_connection_manager()
+
+        if music_manager:
+            await music_manager.cleanup()
+
+        if detection_manager:
+            await detection_manager.cleanup()
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
         logger.info(f"Application 🚗 {app.title} stopped")

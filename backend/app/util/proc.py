@@ -1,11 +1,11 @@
 import sys
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     import multiprocessing as mp
 
 
-def terminate_processes(processes: List["mp.Process"], allow_exit=False):
+def terminate_processes(processes: List[Optional["mp.Process"]], allow_exit=False):
     """
     Gracefully terminates a list of multiprocessing processes.
 
@@ -20,6 +20,8 @@ def terminate_processes(processes: List["mp.Process"], allow_exit=False):
     RESET = "\033[0m"
 
     for process in processes:
+        if process is None:
+            continue
         try:
             print(f"{BOLD}{COLOR_YELLOW}Terminating process {process.name}.{RESET}")
             process.terminate()
@@ -28,6 +30,8 @@ def terminate_processes(processes: List["mp.Process"], allow_exit=False):
             pass
 
     for process in processes:
+        if process is None:
+            continue
         try:
             print(f"{BOLD}{COLOR_YELLOW}Joining process {process.name}.{RESET}")
             process.join(10)
@@ -45,6 +49,8 @@ def terminate_processes(processes: List["mp.Process"], allow_exit=False):
             pass
 
     for process in processes:
+        if process is None:
+            continue
         try:
             print(f"{BOLD}{COLOR_YELLOW}Closing process {process.name}.{RESET}")
             process.close()
