@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Dict
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
-from app.util.debounce import async_debounce
 from fastapi import WebSocket
 
 if TYPE_CHECKING:
@@ -209,18 +208,15 @@ class CarService(metaclass=SingletonMeta):
     async def handle_stop(self, _: Any = None):
         await asyncio.to_thread(self.px.stop)
 
-    @async_debounce(wait=0.01)
     async def handle_set_servo_dir_angle(self, payload: int):
         angle = payload or 0
         if self.px.state["steering_servo_angle"] != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
 
-    @async_debounce(wait=0.01)
     async def handle_set_cam_tilt_angle(self, payload: int):
         if self.px.state["cam_tilt_angle"] != payload:
             await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
-    @async_debounce(wait=0.01)
     async def handle_set_cam_pan_angle(self, payload: int):
         angle = payload
         if self.px.state["cam_pan_angle"] != angle:
