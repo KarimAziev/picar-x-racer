@@ -67,7 +67,7 @@ class CameraService(metaclass=SingletonMeta):
         self.cap: Union[cv2.VideoCapture, None] = None
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
-        self.shutting_down = False
+        self.camera_cap_error: Optional[str] = None
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -497,6 +497,7 @@ class CameraService(metaclass=SingletonMeta):
         if self.camera_cap_error:
             err = self.camera_cap_error
             self.camera_cap_error = None
+            self.camera_settings.device = None
             self.stop_camera()
             raise CameraDeviceError(err)
 
@@ -514,6 +515,7 @@ class CameraService(metaclass=SingletonMeta):
         self.logger.info("Stopping camera")
 
         self.camera_run = False
+
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()

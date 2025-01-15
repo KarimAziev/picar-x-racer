@@ -37,6 +37,8 @@ logger = Logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
+
     app.state.cancelled = False
     connection_manager: Optional["ConnectionService"] = None
     battery_manager: Optional["BatteryService"] = None
@@ -85,19 +87,38 @@ async def lifespan(app: FastAPI):
 
         print_initial_message(browser_url)
         yield
+    except asyncio.CancelledError:
+        logger.warning(
+            "Lifespan was cancelled mid-shutdown (first-level). Proceeding to final cleanup."
+        )
+        raise
     finally:
         app.state.cancelled = True
         logger.info(f"Stopping 🚗 {app.title} application")
-        if battery_manager:
-            await battery_manager.cleanup_connection_manager()
+        try:
+            if battery_manager:
+                await battery_manager.cleanup_connection_manager()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up battery_manager.")
+            raise
 
-        if music_manager:
-            await music_manager.cleanup()
+        try:
+            if music_manager:
+                await music_manager.cleanup()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up music_manager.")
+            raise
 
-        if detection_manager:
-            await detection_manager.cleanup()
+        try:
+            if detection_manager:
+                await detection_manager.cleanup()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up detection_manager.")
+            raise
+
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
+
         logger.info(f"Application 🚗 {app.title} stopped")
 
 

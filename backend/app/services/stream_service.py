@@ -32,29 +32,51 @@ class StreamService(metaclass=SingletonMeta):
         """
 
         skip_count = 0
-        while not websocket.app.state.cancelled:
-            encoded_frame = await asyncio.to_thread(self.camera_service.generate_frame)
-            if encoded_frame:
-                skip_count = 0
-                try:
-                    if websocket.application_state == WebSocketState.CONNECTED:
-                        await websocket.send_bytes(encoded_frame)
-                    else:
+        while True:
+            if websocket.app.state.cancelled or self.camera_service.camera_cap_error:
+                self.logger.info(
+                    "Streaming loop breaks due to cancelled app state or capture error."
+                )
+                break
+            try:
+                encoded_frame = await asyncio.to_thread(
+                    self.camera_service.generate_frame
+                )
+                if encoded_frame is not None:
+                    skip_count = 0
+                    try:
+                        if websocket.application_state == WebSocketState.CONNECTED:
+                            if (
+                                websocket.app.state.cancelled
+                                or self.camera_service.camera_cap_error
+                            ):
+                                self.logger.info(
+                                    "Streaming loop breaks due to cancelled app state or capture error."
+                                )
+                                break
+                            await websocket.send_bytes(encoded_frame)
+                            await asyncio.sleep(0.005)
+                        else:
+                            self.logger.info(
+                                f"WebSocket connection state is no longer connected: {websocket.client}"
+                            )
+                            break
+                    except (
+                        WebSocketDisconnect,
+                        ConnectionResetError,
+                    ):
                         self.logger.info(
-                            f"WebSocket connection state is no longer connected: {websocket.client}"
+                            f"WebSocket connection lost: {websocket.client}"
                         )
                         break
-                except (
-                    WebSocketDisconnect,
-                    ConnectionResetError,
-                ):
-                    self.logger.info(f"WebSocket connection lost: {websocket.client}")
-                    break
-
-            else:
-                if skip_count < 1:
-                    self.logger.debug("No encoded frame, waiting.")
-                    skip_count += 1
+                else:
+                    if skip_count < 1:
+                        self.logger.debug("No encoded frame, waiting.")
+                        skip_count += 1
+                        await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                self.logger.info("Streaming loop got CancelledError.")
+                break
 
     async def video_stream(self, websocket: WebSocket) -> None:
         """
