@@ -23,8 +23,24 @@ def terminate_processes(processes: List["mp.Process"], allow_exit=False):
         try:
             print(f"{BOLD}{COLOR_YELLOW}Terminating process {process.name}.{RESET}")
             process.terminate()
+
+        except Exception:
+            pass
+
+    for process in processes:
+        try:
             print(f"{BOLD}{COLOR_YELLOW}Joining process {process.name}.{RESET}")
-            process.join()
+            process.join(10)
+            print(f"{BOLD}{COLOR_YELLOW}Joined process {process.name}.{RESET}")
+
+            if process.is_alive():
+                print(
+                    f"{BOLD}{COLOR_YELLOW}Process {process.name} still alive. Terminating. {RESET}"
+                )
+                process.terminate()
+                print(f"{BOLD}{COLOR_YELLOW}Joining {process.name}. {RESET}")
+                process.join(5)
+
         except Exception:
             pass
 
