@@ -55,7 +55,7 @@ class StreamService(metaclass=SingletonMeta):
                     self.logger.debug("No encoded frame, waiting.")
                     skip_count += 1
 
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.005)
 
     async def video_stream(self, websocket: WebSocket) -> None:
         """
