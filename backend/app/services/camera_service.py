@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Optional, Union
 import cv2
 import numpy as np
 from app.config.video_enhancers import frame_enhancers
-from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
@@ -69,8 +68,6 @@ class CameraService(metaclass=SingletonMeta):
         self.cap_lock = threading.Lock()
         self.asyncio_cap_lock = asyncio.Lock()
         self.shutting_down = False
-        self.emitter = EventEmitter()
-        self.emitter.on("frame_error", self.connection_manager.error)
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -326,7 +323,7 @@ class CameraService(metaclass=SingletonMeta):
         pushing them to the detection service. Handles errors and device resets.
         """
         failed_counter = 0
-        max_failed_attempt_count = 5
+        max_failed_attempt_count = 3
 
         prev_fps = 0.0
 
@@ -339,8 +336,7 @@ class CameraService(metaclass=SingletonMeta):
                     if failed_counter < max_failed_attempt_count:
                         failed_counter += 1
                         msg = f"Failed to read frame from camera. {failed_counter} attempt of {max_failed_attempt_count}."
-                        self.logger.error(msg)
-                        self.emitter.emit("frame_error", msg)
+                        self.logger.warning(msg)
                         continue
                     else:
                         self.camera_cap_error = "Failed to read frame from camera, please choose another device or props."
