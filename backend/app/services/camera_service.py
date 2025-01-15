@@ -287,40 +287,6 @@ class CameraService(metaclass=SingletonMeta):
         finally:
             self.cap = None
 
-    def _retry_cap(self) -> Optional[cv2.VideoCapture]:
-        """
-        Attempts to reinitialize the camera by retrying the video capture setup.
-
-        This method is called when the current video capture device (`self.cap`) encounters an error
-        or fails to read frames. It performs the following operations:
-        - Marks the current camera device as "failed" and appends it to a list of failed devices.
-        - Releases the current video capture device (`self.cap`) safely to free resources.
-        - Attempts to find and set up another available camera device using `VideoDeviceAdapter`.
-
-        If no valid camera device is found, the method returns `None`.
-
-        Returns:
-            A new valid video capture object if setup succeeds, or `None`.
-        """
-        (video_device, _) = self.video_device_adapter.video_device or (
-            None,
-            None,
-        )
-        if video_device:
-            self.video_device_adapter.failed_camera_devices.append(video_device)
-
-        if self.cap:
-            try:
-                self.cap.release()
-            except Exception:
-                self.logger.error("Error releasing failed video capture", exc_info=True)
-
-        self.cap = self.video_device_adapter.setup_video_capture()
-
-        if self.cap is not None:
-            self._setup_camera_props()
-        return self.cap
-
     def _process_frame(self, frame: MatLike) -> None:
         """Task run by the ThreadPoolExecutor to handle frame detection."""
         if (
@@ -372,14 +338,12 @@ class CameraService(metaclass=SingletonMeta):
                 ret, frame = self.cap.read()
                 if not ret:
                     if failed_counter < max_failed_attempt_count:
-                        self.emitter.emit(
-                            "frame_error", "Failed to read frame from camera."
-                        )
                         failed_counter += 1
+                        self.emitter.emit(
+                            "frame_error",
+                            f"Failed to read frame from camera {failed_counter}",
+                        )
                         self.logger.error("Failed to read frame from camera.")
-                        continue
-                    elif self._retry_cap():
-                        self.logger.info("The capture retry succeeded")
                         continue
                     else:
                         self.logger.error("Error reading frame, aborting.")
