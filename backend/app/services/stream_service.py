@@ -55,7 +55,6 @@ class StreamService(metaclass=SingletonMeta):
                                 )
                                 break
                             await websocket.send_bytes(encoded_frame)
-                            await asyncio.sleep(0.005)
                         else:
                             self.logger.info(
                                 f"WebSocket connection state is no longer connected: {websocket.client}"
