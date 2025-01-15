@@ -339,16 +339,11 @@ class CameraService(metaclass=SingletonMeta):
                 if not ret:
                     if failed_counter < max_failed_attempt_count:
                         failed_counter += 1
-                        self.emitter.emit(
-                            "frame_error",
-                            f"Failed to read frame from camera. {failed_counter} attempt.",
-                        )
-                        self.logger.error("Failed to read frame from camera.")
+                        msg = f"Failed to read frame from camera. {failed_counter} attempt of {max_failed_attempt_count}."
+                        self.logger.error(msg)
+                        self.emitter.emit("frame_error", msg)
                         continue
                     else:
-                        self.logger.error(
-                            "Failed to read frame from camera, please choose another device or props."
-                        )
                         self.camera_cap_error = "Failed to read frame from camera, please choose another device or props."
                         break
                 else:
@@ -438,6 +433,7 @@ class CameraService(metaclass=SingletonMeta):
                 else:
                     self.cap = self.video_device_adapter.find_and_setup_device_cap()
                 self._setup_camera_props()
+                self.camera_cap_error = None
                 self.capture_thread = threading.Thread(target=self._camera_thread_func)
                 self.capture_thread.start()
 
