@@ -113,7 +113,6 @@ class CarService(metaclass=SingletonMeta):
             "payload": self.current_state,
         }
 
-    @async_debounce(wait=0.01)
     async def process_action(self, action: str, payload, websocket: WebSocket):
         """
         Processes specific actions received from WebSocket messages and performs the corresponding operations.
@@ -210,15 +209,18 @@ class CarService(metaclass=SingletonMeta):
     async def handle_stop(self, _: Any = None):
         await asyncio.to_thread(self.px.stop)
 
+    @async_debounce(wait=0.01)
     async def handle_set_servo_dir_angle(self, payload: int):
         angle = payload or 0
         if self.px.state["steering_servo_angle"] != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
 
+    @async_debounce(wait=0.01)
     async def handle_set_cam_tilt_angle(self, payload: int):
         if self.px.state["cam_tilt_angle"] != payload:
             await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
+    @async_debounce(wait=0.01)
     async def handle_set_cam_pan_angle(self, payload: int):
         angle = payload
         if self.px.state["cam_pan_angle"] != angle:
