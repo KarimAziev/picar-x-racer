@@ -70,7 +70,6 @@ class CameraService(metaclass=SingletonMeta):
         self.asyncio_cap_lock = asyncio.Lock()
         self.shutting_down = False
         self.emitter = EventEmitter()
-
         self.emitter.on("frame_error", self.connection_manager.error)
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
@@ -502,6 +501,7 @@ class CameraService(metaclass=SingletonMeta):
         if self.camera_cap_error:
             err = self.camera_cap_error
             self.camera_cap_error = None
+            self.stop_camera()
             raise CameraDeviceError(err)
 
     def stop_camera(self) -> None:
