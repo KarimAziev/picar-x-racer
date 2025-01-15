@@ -197,7 +197,15 @@ class EventEmitter:
                     listener_name,
                 )
                 if asyncio.iscoroutinefunction(resolved_listener):
-                    asyncio.run(resolved_listener(*args, **kwargs))
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        loop = None
+
+                    if loop:
+                        asyncio.create_task(resolved_listener(*args, **kwargs))
+                    else:
+                        asyncio.run(resolved_listener(*args, **kwargs))
                 else:
                     resolved_listener(*args, **kwargs)
             except Exception:
