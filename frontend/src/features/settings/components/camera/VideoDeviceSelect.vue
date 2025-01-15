@@ -14,7 +14,7 @@
       <SelectField
         optionLabel="label"
         optionValue="value"
-        placeholder="Video Effect"
+        placeholder="Resolution"
         field="video-size-preset"
         v-if="isStepwiseDevice(selectedDevice)"
         label="Resolutions Presets"
