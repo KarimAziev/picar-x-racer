@@ -372,6 +372,9 @@ class CameraService(metaclass=SingletonMeta):
                 ret, frame = self.cap.read()
                 if not ret:
                     if failed_counter < max_failed_attempt_count:
+                        self.emitter.emit(
+                            "frame_error", "Failed to read frame from camera."
+                        )
                         failed_counter += 1
                         self.logger.error("Failed to read frame from camera.")
                         continue
