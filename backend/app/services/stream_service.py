@@ -1,9 +1,9 @@
 import asyncio
 from typing import TYPE_CHECKING
 
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
@@ -14,35 +14,21 @@ if TYPE_CHECKING:
 class StreamService(metaclass=SingletonMeta):
     """
     The `StreamService` class is responsible for streaming video frames to connected clients.
-
-    It handles starting and stopping the server and provides the handler for video streaming connections.
-
-    Attributes:
-        camera_service (CameraService): An instance of `CameraService` to manage camera operations.
     """
 
     def __init__(self, camera_service: "CameraService"):
-        """
-        Initializes the `StreamService` instance.
 
-        Args:
-            camera_service (CameraService): An instance of `CameraService` to manage camera operations.
-        """
         self.logger = Logger(name=__name__)
-
         self.camera_service = camera_service
         self.active_clients = 0
 
-    async def generate_video_stream_for_websocket(self, websocket: WebSocket):
+    async def generate_video_stream_for_websocket(self, websocket: WebSocket) -> None:
         """
         Generates a video frame for streaming.
 
         Retrieves the latest detection results, overlays detection annotations onto the frame,
         applies any video enhancements, encodes the frame in the specified format, and returns
         it as a byte array ready for streaming.
-
-        Returns:
-            Optional[bytes]: The encoded video frame as a byte array, or None if no frame is available.
         """
 
         skip_count = 0
@@ -71,20 +57,12 @@ class StreamService(metaclass=SingletonMeta):
 
             await asyncio.sleep(0)
 
-    async def video_stream(self, websocket: WebSocket):
+    async def video_stream(self, websocket: WebSocket) -> None:
         """
         Handles an incoming WebSocket connection for video streaming.
 
-        This method is called for each new WebSocket connection. It initiates the video stream
-        to the client by calling `generate_video_stream_for_websocket` on the `CameraService`.
-        It manages exceptions that may occur during streaming and ensures proper cleanup when
-        the connection is closed.
-
         Args:
-            websocket (WebSocketServerProtocol): The WebSocket connection to the client.
-
-        Exceptions are logged appropriately, and if there are no more active clients after the
-        connection is closed, the camera is stopped to conserve resources.
+            websocket: The WebSocket connection to the client.
         """
         self.logger.info(f"WebSocket connection established: {websocket.client}")
         self.active_clients += 1
