@@ -56,8 +56,6 @@ class StreamService(metaclass=SingletonMeta):
                     self.logger.debug("No encoded frame, waiting.")
                     skip_count += 1
 
-            await asyncio.sleep(0.005)
-
     async def video_stream(self, websocket: WebSocket) -> None:
         """
         Handles an incoming WebSocket connection for video streaming.
@@ -80,6 +78,13 @@ class StreamService(metaclass=SingletonMeta):
                     pass
         except WebSocketDisconnect:
             self.logger.info(f"WebSocket Disconnected {websocket.client}")
+        except asyncio.CancelledError:
+            if websocket.application_state == WebSocketState.CONNECTED:
+                try:
+                    await websocket.close()
+                except Exception:
+                    pass
+            self.logger.info("Gracefully shutting down WebSocket stream connection")
         except Exception:
             self.logger.error("An error occurred in video stream", exc_info=True)
         finally:
