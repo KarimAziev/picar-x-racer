@@ -19,12 +19,14 @@ def try_video_path(path: str | int) -> Optional[cv2.VideoCapture]:
     Returns:
         The video capture object if the path is valid and readable, otherwise None.
     """
+
     result: Optional[bool] = None
     cap: Optional[cv2.VideoCapture] = None
 
     try:
-        logger.debug("Trying camera %s", path)
-        cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
+        logger.info("Trying camera %s", path)
+        cap = cv2.VideoCapture(path)
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"H264"))
         result, _ = cap.read()
         if not result:
             logger.debug("Camera failed %s", path)
