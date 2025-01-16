@@ -25,7 +25,7 @@ def try_video_path(path: str | int) -> Optional[cv2.VideoCapture]:
 
     try:
         logger.info("Trying camera %s", path)
-        cap = cv2.VideoCapture(path)
+        cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"H264"))
         result, _ = cap.read()
         if not result:
