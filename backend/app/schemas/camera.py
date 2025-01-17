@@ -62,7 +62,25 @@ class CameraSettings(BaseModel):
         None,
         title="Pixel Format",
         description="The format for the pixels (e.g., 'RGB', 'GRAY').",
-        examples=["YUYV", "MJPG", "RGB", "GRAY", "BGR"],
+        examples=[
+            "YU12",
+            "YUYV",
+            "RGB3",
+            "JPEG",
+            "H264",
+            "MJPG",
+            "YVYU",
+            "VYUY",
+            "UYVY",
+            "NV12",
+            "BGR3",
+            "YV12",
+            "NV21",
+            "RX24",
+            "RGB",
+            "GRAY",
+            "BGR",
+        ],
     )
 
     @model_validator(mode="after")
