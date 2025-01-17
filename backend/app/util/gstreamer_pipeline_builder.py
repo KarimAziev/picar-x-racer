@@ -10,8 +10,8 @@ from typing import Dict, Optional, Tuple
 class GstreamerPipelineBuilder:
     pixel_format_props: Dict[str, Tuple[str, str]] = {
         # MJPEG -> Decode images
-        "MJPG": ("image/jpeg", "jpegdec ! video/x-raw ! videoconvert"),
-        "JPEG": ("image/jpeg", "jpegdec ! video/x-raw ! videoconvert"),  # Same as MJPG,
+        "MJPG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
+        "JPEG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),  # Same as MJPG,
         "YUYV": ("video/x-raw, format=YUY2", "videoconvert"),  # YUYV -> Convert to BGR
         "RGB": ("video/x-raw, format=RGB", "videoconvert"),  # RGB directly
         "GRAY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
