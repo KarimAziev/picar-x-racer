@@ -357,7 +357,6 @@ const updateDevice = async (
 };
 
 const handleToggleGstreamer = async (value: boolean) => {
-  console.log("value", value, "selectedDevice.value", selectedDevice.value);
   useGstreamer.value = value;
   if (selectedDevice.value) {
     await updateDevice(selectedDevice.value);
