@@ -97,7 +97,7 @@
         />
       </NumberInputField>
     </div>
-    <div class="flex-1">
+    <div class="flex-1 flex">
       <NumberInputField
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="FPS"
@@ -129,9 +129,19 @@
       </NumberInputField>
     </div>
   </div>
-  <div class="flex">
+  <div class="flex my-2">
+    <ToggleSwitchField
+      field="use_gstreamer"
+      layout="row-reverse"
+      field-class-name="flex-row-reverse gap-2.5 items-center justify-end my-1"
+      tooltip="Whether to use GStreamer"
+      label="Use GStreamer"
+      v-model="useGstreamer"
+      @update:model-value="handleToggleGstreamer"
+    />
+  </div>
+  <div class="flex my-2">
     <Button
-      class="my-2"
       v-if="selectedDevice && (selectedDevice as any).max_width"
       :disabled="disabled || loading"
       @click="onSubmit"
@@ -166,9 +176,12 @@ import {
 } from "@/features/settings/components/camera/config";
 import SelectField from "@/ui/SelectField.vue";
 import { findStepwisePreset } from "@/features/settings/components/camera/util";
+import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const camStore = useCameraStore();
 const devices = computed(() => mapChildren(camStore.devices));
+
+const useGstreamer = ref(camStore.data.use_gstreamer);
 
 const isStepwiseDevice = (data: any): data is DeviceStepwise => data?.max_width;
 
@@ -246,15 +259,18 @@ const isUnchanged = () => {
     ? stepwiseData.value
     : (selectedDevice.value as DiscreteDevice);
 
-  return where(
-    {
-      device: (v) => v === selectedDevice.value?.device,
-      pixel_format: (v) => v === selectedDevice.value?.pixel_format,
-      width: (v) => v === sizeData.width,
-      height: (v) => v === sizeData.height,
-      fps: (v) => v === sizeData.fps,
-    },
-    camStore.data,
+  return (
+    useGstreamer.value === camStore.data.use_gstreamer &&
+    where(
+      {
+        device: (v) => v === selectedDevice.value?.device,
+        pixel_format: (v) => v === selectedDevice.value?.pixel_format,
+        width: (v) => v === sizeData.width,
+        height: (v) => v === sizeData.height,
+        fps: (v) => v === sizeData.fps,
+      },
+      camStore.data,
+    )
   );
 };
 
@@ -299,6 +315,7 @@ const updateStepwiseDevice = async (deviceData: {
   }
 
   await camStore.updateData({
+    use_gstreamer: useGstreamer.value,
     pixel_format: stepwiseParams.pixel_format,
     device: stepwiseParams.device,
     width: roundNumber(deviceData.width),
@@ -328,11 +345,27 @@ const updateDevice = async (
   if ((stepwiseParams as any).width) {
     const discreted = stepwiseParams as DiscreteDevice;
 
-    await camStore.updateData(discreted);
+    await camStore.updateData({
+      ...discreted,
+      use_gstreamer: useGstreamer.value,
+    });
   } else if (isStepwiseDevice(stepwiseParams)) {
     stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 
     onSubmit();
+  }
+};
+
+const handleToggleGstreamer = async (value: boolean) => {
+  console.log("value", value, "selectedDevice.value", selectedDevice.value);
+  useGstreamer.value = value;
+  if (selectedDevice.value) {
+    await updateDevice(selectedDevice.value);
+  } else {
+    await camStore.updateData({
+      ...camStore.data,
+      use_gstreamer: value,
+    });
   }
 };
 
@@ -351,6 +384,7 @@ watch(
       height: camStore.data.height,
       fps: camStore.data.fps,
     };
+    useGstreamer.value = camStore.data.use_gstreamer;
   },
 );
 

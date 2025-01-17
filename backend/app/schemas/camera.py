@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import List, Optional, Union
 
+from app.managers.gstreamer_manager import GstreamerManager
 from pydantic import BaseModel, Field, model_validator
+from typing_extensions import Annotated
 
 
 class PhotoResponse(BaseModel):
@@ -21,67 +23,84 @@ class CameraSettings(BaseModel):
     """
     Model representing camera settings and configurations.
 
-    Attributes:
-    --------------
-    - `device`: ID or name of the camera device.
-    - `width`: Frame width in pixels.
-    - `height`: Frame height in pixels.
-    - `fps`: Frames per second for capturing.
-    - `pixel_format`: Pixel format, such as 'RGB' or 'GRAY'.
-
     Validators:
     --------------
     - Ensures both `width` and `height` must either be specified together or not at all.
     """
 
-    device: Optional[str] = Field(
-        None,
-        title="Device",
-        description="The path of the camera device.",
-        examples=["/dev/video0", "/dev/video1"],
-    )
-    width: Optional[int] = Field(
-        None,
-        title="Frame Width",
-        description="The width of the camera frame in pixels.",
-        examples=[320, 640, 800, 1024, 1280],
-    )
-    height: Optional[int] = Field(
-        None,
-        title="Frame Height",
-        description="The height of the camera frame in pixels.",
-        examples=[180, 480, 600, 768, 720],
-    )
-    fps: Optional[int] = Field(
-        None,
-        title="Frames Per Second",
-        description="The number of frames per second the camera should capture.",
-        examples=[30, 15, 20],
-    )
-    pixel_format: Optional[str] = Field(
-        None,
-        title="Pixel Format",
-        description="The format for the pixels (e.g., 'RGB', 'GRAY').",
-        examples=[
-            "YU12",
-            "YUYV",
-            "RGB3",
-            "JPEG",
-            "H264",
-            "MJPG",
-            "YVYU",
-            "VYUY",
-            "UYVY",
-            "NV12",
-            "BGR3",
-            "YV12",
-            "NV21",
-            "RX24",
-            "RGB",
-            "GRAY",
-            "BGR",
-        ],
-    )
+    device: Annotated[
+        Optional[str],
+        Field(
+            None,
+            title="Device",
+            description="The path of the camera device.",
+            examples=["/dev/video0", "/dev/video1"],
+        ),
+    ] = None
+    width: Annotated[
+        Optional[int],
+        Field(
+            ...,
+            title="Frame Width",
+            description="The width of the camera frame in pixels.",
+            examples=[320, 640, 800, 1024, 1280],
+        ),
+    ] = None
+    height: Annotated[
+        Optional[int],
+        Field(
+            ...,
+            title="Frame Height",
+            description="The height of the camera frame in pixels.",
+            examples=[180, 480, 600, 768, 720],
+        ),
+    ] = None
+    fps: Annotated[
+        Optional[int],
+        Field(
+            ...,
+            title="Frames Per Second",
+            description="The number of frames per second the camera should capture.",
+            examples=[30, 15, 20],
+        ),
+    ] = None
+    pixel_format: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            title="Pixel Format",
+            description="The format for the pixels (e.g., 'RGB', 'GRAY').",
+            examples=[
+                "YU12",
+                "YUYV",
+                "RGB3",
+                "JPEG",
+                "H264",
+                "MJPG",
+                "YVYU",
+                "VYUY",
+                "UYVY",
+                "NV12",
+                "BGR3",
+                "YV12",
+                "NV21",
+                "RX24",
+                "RGB",
+                "GRAY",
+                "BGR",
+            ],
+        ),
+    ] = None
+
+    use_gstreamer: Annotated[
+        Optional[bool],
+        Field(
+            ...,
+            description="Whether to use GStreamer for streaming. "
+            "This settings should be enabled only if GStreamer is installed and opencv-python is compiled with GStreamer support.",
+            examples=[True, False],
+        ),
+    ] = GstreamerManager.gstreamer_available()
 
     @model_validator(mode="after")
     def validate_dimensions(cls, values):

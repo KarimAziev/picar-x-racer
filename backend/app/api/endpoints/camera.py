@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from app.api import deps
 from app.core.logger import Logger
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.managers.gstreamer_manager import GstreamerManager
 from app.managers.v4l2_manager import V4L2
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.util.doc_util import build_response_description
@@ -74,6 +75,24 @@ async def update_camera_settings(
     """
     logger.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
+
+    if payload.use_gstreamer and not GstreamerManager.gstreamer_available():
+        gstreamer_in_cv2, gstreamer_on_system = GstreamerManager.check_gstreamer()
+        reason = " and ".join(
+            [
+                item
+                for item in [
+                    gstreamer_on_system or "gst-launch-1.0 is not found in PATH",
+                    gstreamer_in_cv2
+                    or "opencv-python is not compiled with GStreamer support",
+                ]
+                if isinstance(item, str)
+            ]
+        )
+        msg = f"GStreamer will not be used, because {reason}."
+        logger.warning(msg)
+        raise HTTPException(status_code=400, detail=msg)
+
     try:
         result = await camera_manager.update_camera_settings(payload)
         await connection_manager.broadcast_json(

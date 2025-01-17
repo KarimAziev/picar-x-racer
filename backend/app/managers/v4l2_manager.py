@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.core.logger import Logger
 from app.core.v4l2_parser import V4L2FormatParser
+from app.types.v4l2_types import VideoCaptureFormat
 
 logger = Logger(__name__)
 
@@ -213,7 +214,7 @@ class V4L2:
                 return (device, device_info)
 
     @staticmethod
-    def video_capture_format(device: str) -> Dict[str, Any]:
+    def video_capture_format(device: str) -> Optional[VideoCaptureFormat]:
         """
         Query the video capture format for the specified device.
 
@@ -233,12 +234,12 @@ class V4L2:
             output = result.stdout
         except subprocess.CalledProcessError as e:
             logger.error(f"Error executing v4l2-ctl: {e}")
-            return {}
+            return None
 
         return V4L2.parse_v4l2_device_info_output(output)
 
     @staticmethod
-    def parse_v4l2_device_info_output(output: str) -> Dict[str, Any]:
+    def parse_v4l2_device_info_output(output: str) -> Optional[VideoCaptureFormat]:
         """
         Parse the output of v4l2-ctl --V --device for the specified device.
 
@@ -267,10 +268,10 @@ class V4L2:
 
         if not width_height_regex or not pixel_format_regex:
             logger.error("Failed to parse the required fields from v4l2-ctl output.")
-            return {}
+            return None
 
         width = int(width_height_regex.group(1))
         height = int(width_height_regex.group(2))
         pixel_format = pixel_format_regex.group(1)
 
-        return {"width": width, "height": height, "pixel_format": pixel_format}
+        return VideoCaptureFormat(width=width, height=height, pixel_format=pixel_format)

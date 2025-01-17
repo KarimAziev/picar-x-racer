@@ -8,3 +8,7 @@ class CameraDeviceError(Exception):
 
 class CameraNotFoundError(Exception):
     pass
+
+
+class CameraInfoNotFound(Exception):
+    pass

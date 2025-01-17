@@ -231,7 +231,7 @@ class TestV4L2Manager(unittest.TestCase):
         mock_run.side_effect = subprocess.CalledProcessError(1, "v4l2-ctl")
 
         result = V4L2.video_capture_format("/dev/video0")
-        self.assertEqual(result, {})
+        self.assertEqual(result, None)
         mock_logger_error.assert_called_once()
 
 

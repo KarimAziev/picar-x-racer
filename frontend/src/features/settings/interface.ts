@@ -149,6 +149,7 @@ export interface CameraSettings {
    * The format for the pixels (e.g., 'RGB', 'GRAY').
    */
   pixel_format?: string;
+  use_gstreamer?: boolean;
 }
 
 export interface TreeNode {

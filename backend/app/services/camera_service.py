@@ -12,9 +12,9 @@ from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.managers.v4l2_manager import V4L2
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
+from app.util.device import release_video_capture_safe
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 from cv2.typing import MatLike
 
@@ -196,95 +196,12 @@ class CameraService(metaclass=SingletonMeta):
 
             return timestamp_bytes + fps_bytes + encoded_frame
 
-    def _setup_camera_props(self) -> None:
-        """
-        Configure the camera properties such as FPS, resolution (width and height),
-        and pixel format based on the current settings and device information.
-
-        This method initializes and sets key camera parameters, including:
-        - Pixel format if provided.
-        - Frame width and height.
-        - Frame rate (FPS).
-
-        Updates:
-            - `self.camera_settings.fps`: Frames per second setting of the video feed.
-            - `self.camera_settings.width`: Width of the video frame.
-            - `self.camera_settings.height`: Height of the video frame.
-            - `self.camera_settings.pixel_format`: Pixel format based on device information.
-        """
-
-        self.video_recorder.stop_recording_safe()
-
-        if self.cap is not None:
-            info = self.video_device_adapter.video_device or (None, None)
-            (self.camera_settings.device, _) = info
-
-            for field_name, field_value in self.camera_settings.model_dump(
-                exclude_unset=True
-            ).items():
-                field_info = self.camera_settings.model_fields[field_name]
-                field_title = field_info.title if field_info.title else field_name
-                self.logger.info(f"Updating {field_title}: {field_value}")
-
-            if self.camera_settings.pixel_format:
-                self.cap.set(
-                    cv2.CAP_PROP_FOURCC,
-                    cv2.VideoWriter.fourcc(*self.camera_settings.pixel_format),
-                )
-
-            if self.camera_settings.width is not None:
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera_settings.width)
-
-            if self.camera_settings.height is not None:
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera_settings.height)
-
-            if self.camera_settings.fps is not None:
-                self.cap.set(cv2.CAP_PROP_FPS, float(self.camera_settings.fps))
-
-            width, height, fps = (
-                self.cap.get(x)
-                for x in (
-                    cv2.CAP_PROP_FRAME_WIDTH,
-                    cv2.CAP_PROP_FRAME_HEIGHT,
-                    cv2.CAP_PROP_FPS,
-                )
-            )
-            self.camera_settings.width = int(width)
-            self.camera_settings.height = int(height)
-            self.camera_settings.fps = int(fps)
-
-            if self.stream_settings.video_record:
-                self.video_recorder.start_recording(
-                    width=self.camera_settings.width,
-                    height=self.camera_settings.height,
-                    fps=fps,
-                )
-
-            self.logger.info(
-                "Updated size: %sx%s, FPS: %s",
-                self.camera_settings.width,
-                self.camera_settings.height,
-                self.camera_settings.fps,
-            )
-            if self.camera_settings.device:
-                data = V4L2.video_capture_format(self.camera_settings.device)
-                self.camera_settings.pixel_format = data.get(
-                    "pixel_format", self.camera_settings.pixel_format
-                )
-
     def _release_cap_safe(self) -> None:
         """
-        Safely releases the camera resource represented by `self.cap`.
+        Safely releases the camera resource represented.
         """
-        try:
-            if self.cap and self.cap.isOpened():
-                self.cap.release()
-        except Exception:
-            self.logger.log_exception(
-                "Exception occurred while stopping camera capture"
-            )
-        finally:
-            self.cap = None
+        release_video_capture_safe(self.cap)
+        self.cap = None
 
     def _process_frame(self, frame: MatLike) -> None:
         """Task run by the ThreadPoolExecutor to handle frame detection."""
@@ -423,15 +340,24 @@ class CameraService(metaclass=SingletonMeta):
                 return
             self.camera_run = True
             try:
+                self.video_recorder.stop_recording_safe()
                 self._release_cap_safe()
-
-                if self.camera_settings.device is not None:
-                    self.cap = self.video_device_adapter.update_device(
-                        self.camera_settings.device
+                cap, props = self.video_device_adapter.setup_video_capture(
+                    self.camera_settings
+                )
+                self.cap = cap
+                self.camera_settings = props
+                if (
+                    self.stream_settings.video_record
+                    and self.camera_settings.width
+                    and self.camera_settings.height
+                    and self.camera_settings.fps
+                ):
+                    self.video_recorder.start_recording(
+                        width=self.camera_settings.width,
+                        height=self.camera_settings.height,
+                        fps=float(self.camera_settings.fps),
                     )
-                else:
-                    self.cap = self.video_device_adapter.find_and_setup_device_cap()
-                self._setup_camera_props()
                 self.camera_cap_error = None
                 self.capture_thread = threading.Thread(target=self._camera_thread_func)
                 self.capture_thread.start()
@@ -501,7 +427,6 @@ class CameraService(metaclass=SingletonMeta):
         if self.camera_cap_error:
             err = self.camera_cap_error
             self.camera_cap_error = None
-            self.camera_settings.device = None
             self.stop_camera()
             raise CameraDeviceError(err)
 

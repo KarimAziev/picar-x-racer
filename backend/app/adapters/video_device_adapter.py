@@ -1,19 +1,18 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import cv2
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.util.device import try_video_path
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.managers.gstreamer_manager import GstreamerManager
 from app.managers.v4l2_manager import V4L2, CameraInfo
+from app.schemas.camera import CameraSettings
+from app.util.device import try_video_path
 
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
     """
     A singleton class responsible for managing video capturing devices.
-    This class handles finding available camera devices and setting up
-    video capture sessions. It maintains a list of available camera
-    devices and a list of devices that have previously failed to initialize.
     """
 
     def __init__(self):
@@ -24,101 +23,79 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         self.logger = Logger(name=__name__)
         self.video_device: Optional[CameraInfo] = None
         self.video_devices: List[CameraInfo] = []
-        self.failed_camera_devices: List[str] = []
 
-    def find_camera_device(
-        self,
-    ) -> Union[Tuple[cv2.VideoCapture, str, str], Tuple[None, None, None]]:
-        """
-        Finds an available and operational camera device among the listed devices.
-        Attempts to open each device and returns the first successful one.
-
-        Returns:
-            A tuple containing the video capture object, the device path, and its information.
-            Returns (None, None, None) if no operational device is found.
-        """
-        self.video_devices = V4L2.list_camera_devices()
-
-        for device_path, device_info in self.video_devices:
-            if device_path in self.failed_camera_devices:
-                continue
-
-            cap = try_video_path(device_path)
-            if not cap:
-                self.logger.warning(
-                    f"Error trying camera {device_path} ({device_info or 'Unknown category'})"
-                )
-                self.failed_camera_devices.append(device_path)
-            else:
-                return (cap, device_path, device_info)
-        return (None, None, None)
-
-    def update_device(self, device: str) -> cv2.VideoCapture:
-        """
-        Updates the video device by finding the specified device and
-        establishing a video capture connection.
-
-        Raises a CameraDeviceError if the specified device is not found or
-        fails to initialize.
-        """
-        self.logger.info(f"Update device {device}")
-        self.video_devices = V4L2.list_camera_devices()
-        self.video_device = V4L2.find_device_info(device)
-        if self.video_device is None:
-            raise CameraDeviceError("Video device not found")
-        else:
-            (device_path, _) = self.video_device
-            cap = try_video_path(device_path) if device_path else None
-            if cap is None:
-                raise CameraDeviceError("Video capture failed")
-            else:
-                return cap
-
-    def find_and_setup_device_cap(self) -> cv2.VideoCapture:
-        """
-        Attempts to find an operational video device and set up a capture object.
-
-        If no operational device is found, raises a `CameraNotFoundError`.
-        """
-        self.cap = self.setup_video_capture()
-        if self.cap is None:
-            raise CameraNotFoundError("Couldn't find video device")
-        else:
-            return self.cap
-
-    def setup_video_capture(self) -> Optional[cv2.VideoCapture]:
-        """
-        Sets up and returns a video capture object associated with an available camera device.
-        If a device is already set up successfully, it attempts to reuse it.
-
-        Returns:
-            The video capture object if successful, otherwise None.
-            If the current device fails to reopen, it recursively tries to set
-            up a capture with another available device.
-        """
-        if not self.video_device:
-            cap, device, category = self.find_camera_device()
-            if cap and device:
-                self.video_device = (device, category or "")
-                self.logger.info(
-                    f"Started camera {device} ({category or 'Unknown category'})"
-                )
-                return cap
-
-        device, category = self.video_device if self.video_device else (None, None)
-        cap = try_video_path(device) if device else None
-        if cap:
-            self.logger.info(f"Started camera {device} {category}")
-            return cap
-        elif not cap and not device:
-            self.logger.error(f"Failed to find camera")
-            self.video_device = None
-        elif not cap and device and not device in self.failed_camera_devices:
-            self.logger.warning(
-                f"Failed to reopen camera {device} ({category or 'Unknown category'}), trying other devices"
+    @staticmethod
+    def try_device_props(
+        device: str, camera_settings: CameraSettings
+    ) -> Optional[Tuple[cv2.VideoCapture, CameraSettings]]:
+        if camera_settings.use_gstreamer:
+            pipeline = GstreamerManager.setup_pipeline(
+                device,
+                width=camera_settings.width,
+                height=camera_settings.height,
+                fps=camera_settings.fps,
+                pixel_format=camera_settings.pixel_format,
             )
-            self.failed_camera_devices.append(device)
-            self.video_device = None
-            return self.setup_video_capture()
+            cap = try_video_path(pipeline, backend=cv2.CAP_GSTREAMER)
+            if cap is None:
+                return None
+            updated_settings = {
+                **camera_settings.model_dump(),
+                "device": device,
+            }
         else:
-            return None
+            cap = try_video_path(
+                device,
+                backend=cv2.CAP_V4L2,
+                width=camera_settings.width,
+                height=camera_settings.height,
+                fps=camera_settings.fps,
+                pixel_format=camera_settings.pixel_format,
+            )
+            if cap is None:
+                return None
+            width, height, fps = (
+                cap.get(x)
+                for x in (
+                    cv2.CAP_PROP_FRAME_WIDTH,
+                    cv2.CAP_PROP_FRAME_HEIGHT,
+                    cv2.CAP_PROP_FPS,
+                )
+            )
+
+            data = V4L2.video_capture_format(device) or {}
+
+            updated_settings = {
+                **camera_settings.model_dump(),
+                "device": device,
+                "width": int(width),
+                "height": int(height),
+                "fps": int(fps),
+                "pixel_format": data.get("pixel_format", camera_settings.pixel_format),
+            }
+
+        return cap, CameraSettings(**updated_settings)
+
+    def setup_video_capture(
+        self, camera_settings: CameraSettings
+    ) -> Tuple[cv2.VideoCapture, CameraSettings]:
+        if camera_settings.device is not None:
+            self.video_devices = V4L2.list_camera_devices()
+            self.video_device = V4L2.find_device_info(camera_settings.device)
+            if self.video_device is None:
+                raise CameraDeviceError("Video device not found")
+            else:
+                (device_path, _) = self.video_device
+                result = self.try_device_props(device_path, camera_settings)
+                if result is None:
+                    raise CameraDeviceError("Video capture failed")
+                else:
+                    return result
+        else:
+            self.video_devices = V4L2.list_camera_devices()
+            for device_path, _ in self.video_devices:
+                result = self.try_device_props(device_path, camera_settings)
+                if result is not None:
+                    return result
+
+            raise CameraNotFoundError("Couldn't find video device")
