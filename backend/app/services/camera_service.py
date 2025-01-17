@@ -393,26 +393,7 @@ class CameraService(metaclass=SingletonMeta):
 
         async with self.asyncio_cap_lock:
             if not self.camera_run:
-                try:
-                    await asyncio.to_thread(self._start_camera)
-                except CameraDeviceError as err:
-                    if self.camera_settings.device:
-                        await self.connection_manager.error(
-                            f"Camera {self.camera_settings.device} error: {err}, "
-                            "trying to find other camera"
-                        )
-                        self.camera_settings.device = None
-                        try:
-                            await asyncio.to_thread(self._start_camera)
-                            await self.connection_manager.broadcast_json(
-                                {
-                                    "type": "camera",
-                                    "payload": self.camera_settings.model_dump(),
-                                }
-                            )
-                        except CameraNotFoundError as e:
-                            await self.connection_manager.error(str(e))
-                            raise e
+                await asyncio.to_thread(self._start_camera)
 
         counter = 0
 

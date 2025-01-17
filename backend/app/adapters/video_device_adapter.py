@@ -83,7 +83,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
             self.video_devices = V4L2.list_camera_devices()
             self.video_device = V4L2.find_device_info(camera_settings.device)
             if self.video_device is None:
-                raise CameraDeviceError("Video device not found")
+                raise CameraNotFoundError("Video device is not available")
             else:
                 (device_path, _) = self.video_device
                 result = self.try_device_props(device_path, camera_settings)
@@ -93,9 +93,12 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                     return result
         else:
             self.video_devices = V4L2.list_camera_devices()
-            for device_path, _ in self.video_devices:
-                result = self.try_device_props(device_path, camera_settings)
-                if result is not None:
-                    return result
+            result = None
+            if len(self.video_devices) > 0:
+                device, _ = self.video_devices[0]
+                result = self.try_device_props(device, camera_settings)
 
-            raise CameraNotFoundError("Couldn't find video device")
+            if result is None:
+                raise CameraNotFoundError("Couldn't find video device")
+            else:
+                return result
