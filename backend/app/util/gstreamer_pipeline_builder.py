@@ -75,10 +75,10 @@ class GstreamerPipelineBuilder:
         )
 
         pipeline = (
-            f"v4l2src device={self._device} ! "
+            f"libcamerasrc ! "
             f"{source_format}, width={self._width}, height={self._height}, framerate={self._fps}/1 ! "
             f"{decoder} ! "
             f"appsink"
         )
 
-        return "libcamerasrc ! video/x-raw,format=BGR,width=1280,height=800,framerate=30/1 ! videoconvert ! appsink"
+        return pipeline
