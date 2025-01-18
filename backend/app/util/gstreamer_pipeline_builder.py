@@ -75,7 +75,7 @@ class GstreamerPipelineBuilder:
         )
 
         pipeline = (
-            f"libcamerasrc ! "
+            f"v4l2src device={self._device} ! "
             f"{source_format}, width={self._width}, height={self._height}, framerate={self._fps}/1 ! "
             f"{decoder} ! "
             f"appsink"
