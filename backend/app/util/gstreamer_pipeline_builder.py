@@ -8,11 +8,12 @@ logger = Logger(__name__)
 class GstreamerPipelineBuilder:
     pixel_format_props: Dict[str, Tuple[str, str]] = {
         # MJPEG -> Decode images
-        "MJPG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
-        "JPEG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),  # Same as MJPG,
+        "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
+        "JPEG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
         "YUYV": ("video/x-raw, format=YUY2", "videoconvert"),  # YUYV -> Convert to BGR
         "RGB": ("video/x-raw, format=RGB", "videoconvert"),  # RGB directly
         "GRAY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
+        "GREY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
         "YU12": ("video/x-raw, format=I420", "videoconvert"),  # YUV 4:2:0 -> Convert
         "H264": (
             "video/x-h264",
@@ -53,11 +54,6 @@ class GstreamerPipelineBuilder:
         return self
 
     def pixel_format(self, pixel_format: str) -> "GstreamerPipelineBuilder":
-        if pixel_format not in self.pixel_format_props:
-            raise ValueError(
-                f"Unsupported pixel format: {pixel_format}. "
-                f"Supported formats: {list(self.pixel_format_props.keys())}"
-            )
         self._pixel_format = pixel_format
         return self
 
@@ -75,13 +71,13 @@ class GstreamerPipelineBuilder:
 
         source_format, decoder = self.pixel_format_props.get(
             self._pixel_format,
-            (f"video/x-raw, format={self._pixel_format}", "videoconvert"),
+            (f"video/x-raw", "videoconvert"),
         )
 
         pipeline = (
             f"v4l2src device={self._device} ! "
             f"{source_format}, width={self._width}, height={self._height}, framerate={self._fps}/1 ! "
-            f"{decoder} ! video/x-raw, format=BGR ! "
+            f"{decoder} ! "
             f"appsink"
         )
 

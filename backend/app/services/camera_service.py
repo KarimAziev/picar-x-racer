@@ -66,11 +66,19 @@ class CameraService(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[cv2.VideoCapture, None] = None
-        self.cap_lock = threading.Lock()
-        self.asyncio_cap_lock = asyncio.Lock()
-        self.camera_cap_error: Optional[str] = None
+        # self.cap_lock = threading.Lock()
+        # self.asyncio_cap_lock = asyncio.Lock()
+        self.camera_device_error: Optional[str] = None
+        self.camera_loading: bool = False
+
         self.emitter = EventEmitter()
-        self.emitter.on("frame_error", self.connection_manager.error)
+        self.emitter.on("frame_error", self.notify_camera_error)
+
+    async def notify_camera_error(self, error: Optional[str]):
+        self.camera_device_error = error
+        await self.connection_manager.broadcast_json(
+            {"type": "camera_error", "payload": error}
+        )
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -115,7 +123,7 @@ class CameraService(metaclass=SingletonMeta):
             Exception: If camera restart or other operations fail unexpectedly.
         """
         self.camera_settings = settings
-        await self.restart_camera()
+        await asyncio.to_thread(self.restart_camera)
         return self.camera_settings
 
     async def update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
@@ -158,7 +166,7 @@ class CameraService(metaclass=SingletonMeta):
         should_restart = settings.video_record and not self.stream_settings.video_record
         self.stream_settings = settings
         if should_restart:
-            await self.restart_camera()
+            await asyncio.to_thread(self.restart_camera)
         return self.stream_settings
 
     def generate_frame(self) -> Optional[bytes]:
@@ -203,48 +211,10 @@ class CameraService(metaclass=SingletonMeta):
         release_video_capture_safe(self.cap)
         self.cap = None
 
-    def _process_frame(self, frame: MatLike) -> None:
-        """Task run by the ThreadPoolExecutor to handle frame detection."""
-        if (
-            self.detection_service.detection_settings.active
-            and not self.detection_service.loading
-            and not self.detection_service.shutting_down
-        ):
-            (
-                resized_frame,
-                original_width,
-                original_height,
-                resized_width,
-                resized_height,
-            ) = resize_to_fixed_height(
-                frame.copy(),
-                base_size=self.detection_service.detection_settings.img_size,
-            )
-
-            self.current_frame_timestamp = time.time()
-
-            frame_data = {
-                "frame": resized_frame,
-                "timestamp": self.current_frame_timestamp,
-                "original_height": original_height,
-                "original_width": original_width,
-                "resized_height": resized_height,
-                "resized_width": resized_width,
-                "should_resize": False,
-            }
-            if not self.detection_service.shutting_down:
-                self.detection_service.put_frame(frame_data)
-
     def _camera_thread_func(self) -> None:
         """
         Camera capture loop function.
-
-        Manages the process of capturing video frames, enhancing them, and
-        pushing them to the detection service. Handles errors and device resets.
         """
-        failed_counter = 0
-        max_failed_attempt_count = 1
-
         prev_fps = 0.0
 
         self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
@@ -253,17 +223,14 @@ class CameraService(metaclass=SingletonMeta):
                 frame_start_time = time.time()
                 ret, frame = self.cap.read()
                 if not ret:
-                    if failed_counter < max_failed_attempt_count:
-                        failed_counter += 1
-                        msg = f"Failed to read frame from camera. {failed_counter} attempt of {max_failed_attempt_count}."
-                        self.logger.warning(msg)
-                        self.emitter.emit("frame_error", msg)
-                        continue
-                    else:
-                        self.camera_cap_error = "Failed to read frame from camera, please choose another device or props."
-                        break
+                    self.camera_device_error = "Failed to read frame from camera, please choose another device or props."
+                    self.emitter.emit("frame_error", self.camera_device_error)
+                    break
+
                 else:
-                    failed_counter = 0
+
+                    if self.camera_device_error:
+                        self.emitter.emit("frame_error", None)
 
                     self.frame_timestamps.append(frame_start_time)
 
@@ -311,112 +278,117 @@ class CameraService(metaclass=SingletonMeta):
             self.stream_img = None
             self.logger.info("Camera loop terminated and camera released.")
 
-    def _start_camera(self) -> None:
+    def _process_frame(self, frame: MatLike) -> None:
+        """Task run by the ThreadPoolExecutor to handle frame detection."""
+        if (
+            self.detection_service.detection_settings.active
+            and not self.detection_service.loading
+            and not self.detection_service.shutting_down
+        ):
+            (
+                resized_frame,
+                original_width,
+                original_height,
+                resized_width,
+                resized_height,
+            ) = resize_to_fixed_height(
+                frame.copy(),
+                base_size=self.detection_service.detection_settings.img_size,
+            )
+
+            self.current_frame_timestamp = time.time()
+
+            frame_data = {
+                "frame": resized_frame,
+                "timestamp": self.current_frame_timestamp,
+                "original_height": original_height,
+                "original_width": original_width,
+                "resized_height": resized_height,
+                "resized_width": resized_width,
+                "should_resize": False,
+            }
+            if not self.detection_service.shutting_down:
+                self.detection_service.put_frame(frame_data)
+
+    def start_camera(self) -> None:
         """
         Configures and starts the camera capture thread.
-
-        This method initializes the video capture device based on the current
-        settings and prepares it for frame capturing. It ensures that the existing
-        capture resource is released before assigning a new device and thread.
 
         Actions performed:
         - Releases any previously active camera device.
         - Sets up the camera device based on the current configuration.
         - Applies camera properties like resolution, FPS, and pixel format.
         - Starts a dedicated thread to run the capture loop.
-
-        Raises:
-            CameraDeviceError: If the chosen camera encounters initialization errors.
-            CameraNotFoundError: If no valid camera device is found.
-            Exception: If an error occurs during setup or thread initialization.
-
-        Returns:
-            None
         """
 
-        with self.cap_lock:
-            if self.camera_run:
-                self.logger.warning("Camera is already running.")
-                return
-            self.camera_run = True
-            try:
-                self.video_recorder.stop_recording_safe()
-                self._release_cap_safe()
-                cap, props = self.video_device_adapter.setup_video_capture(
-                    self.camera_settings
+        self.logger.info("Starting camera.")
+        if self.camera_run:
+            self.logger.warning("Camera is already running.")
+            return
+        self.camera_run = True
+        try:
+            self.video_recorder.stop_recording_safe()
+            self._release_cap_safe()
+            cap, props = self.video_device_adapter.setup_video_capture(
+                self.camera_settings
+            )
+            self.cap = cap
+            self.camera_settings = props
+            if (
+                self.stream_settings.video_record
+                and self.camera_settings.width
+                and self.camera_settings.height
+                and self.camera_settings.fps
+            ):
+                self.video_recorder.start_recording(
+                    width=self.camera_settings.width,
+                    height=self.camera_settings.height,
+                    fps=float(self.camera_settings.fps),
                 )
-                self.cap = cap
-                self.camera_settings = props
-                if (
-                    self.stream_settings.video_record
-                    and self.camera_settings.width
-                    and self.camera_settings.height
-                    and self.camera_settings.fps
-                ):
-                    self.video_recorder.start_recording(
-                        width=self.camera_settings.width,
-                        height=self.camera_settings.height,
-                        fps=float(self.camera_settings.fps),
-                    )
-                self.camera_cap_error = None
-                self.capture_thread = threading.Thread(target=self._camera_thread_func)
-                self.capture_thread.start()
+            self.capture_thread = threading.Thread(target=self._camera_thread_func)
+            self.capture_thread.start()
+            self.camera_device_error = None
 
-            except (CameraNotFoundError, CameraDeviceError) as e:
-                self.camera_run = False
-                self.logger.error(str(e))
-                raise
+        except (CameraNotFoundError, CameraDeviceError) as e:
+            self.camera_run = False
+            err_msg = str(e)
+            self.camera_device_error = err_msg
+            self.stream_img = None
+            self.logger.error(err_msg)
+            raise
 
-            except Exception as e:
-                self.camera_run = False
-                self.logger.error("Unhandled exception", exc_info=True)
-                raise
+        except Exception as e:
+            self.camera_run = False
+            self.logger.error("Unhandled exception", exc_info=True)
+            raise
 
     async def start_camera_and_wait_for_stream_img(self):
         """
         Starts the camera asynchronously and ensures it is ready for streaming.
-
-        If a camera device is specified in the settings but fails to initialize, this method resets
-        the device in the settings and makes *one* additional attempt to find another available device
-        and set it in the settings upon success.
-
-        If the specified camera device is invalid, it resets the device and attempts to
-        find and initialize another available device.
-
-        Raises:
-            CameraDeviceError: If the chosen camera encounters initialization errors.
-            CameraNotFoundError: If no valid camera device is found after retries.
-
-        Returns:
-            None
         """
 
-        async with self.asyncio_cap_lock:
-            if not self.camera_run:
-                await asyncio.to_thread(self._start_camera)
+        if not self.camera_run:
+            await asyncio.to_thread(self.start_camera)
 
         counter = 0
 
-        while not self.camera_cap_error:
+        while not self.camera_device_error:
             if self.stream_img is not None:
                 break
             if counter <= 1:
                 self.logger.debug("waiting for stream img")
                 counter += 1
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
 
-        if self.camera_cap_error:
-            err = self.camera_cap_error
-            self.camera_cap_error = None
+        if self.camera_device_error:
+            err = self.camera_device_error
+            self.camera_device_error = None
             self.stop_camera()
             raise CameraDeviceError(err)
 
     def stop_camera(self) -> None:
         """
         Gracefully stops the camera capture thread and cleans up associated resources.
-
-        Returns:
-            None
         """
         if not self.camera_run:
             self.logger.info("Camera is not running.")
@@ -426,27 +398,18 @@ class CameraService(metaclass=SingletonMeta):
 
         self.camera_run = False
 
+        self.logger.info("Checking camera capture thread")
+
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
             self.logger.info("Stopping camera capture thread")
             self.capture_thread.join()
             self.logger.info("Stopped camera capture thread")
 
-    async def restart_camera(self) -> None:
+    def restart_camera(self) -> None:
         """
         Restarts the camera by stopping and reinitializing it.
-
-        This method first stops the current camera capture process to release
-        resources and reset the camera's state. It then calls
-        `start_camera_and_wait_for_stream_img` to begin a new capture session.
-
-        It can be used for dynamically changing camera settings or recovering from
-        errors while the system remains operational.
-
-        Returns:
-            None
         """
         cam_running = self.camera_run
         if cam_running:
-            await asyncio.to_thread(self.stop_camera)
-        if cam_running:
-            await self.start_camera_and_wait_for_stream_img()
+            self.stop_camera()
+        self.start_camera()

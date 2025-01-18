@@ -43,35 +43,6 @@ async def update_camera_settings(
     This endpoint updates the camera's configurations (e.g., resolution, FPS, pixel format),
     handling retries when the specified device fails, and broadcasts the updated settings
     or errors to connected clients.
-
-    Broadcast Behavior:
-    --------------
-    - **On Success**: The successfully updated camera settings are broadcast via
-      `connection_manager.broadcast_json` to ensure all connected clients are up-to-date.
-    - **On Device Retry**: If the incoming payload specifies a `device` that fails
-      initialization, the service attempts to find and configure an alternate available device.
-      In such cases, the `self.camera_settings.device` may be updated to reflect the new device.
-      This updated value, along with the other camera settings, will then be broadcast.
-    - **On Failure**: If the update fails entirely (e.g., due to an invalid device or other issues),
-      an error message is broadcast to clients via the `connection_manager.error` channel.
-      Additionally, the current state of the camera settings (including any partial changes,
-      such as a modified `self.camera_settings.device` due to retries) is broadcast.
-
-    Workflow:
-    --------------
-    1. Accepts new camera settings via the `payload`.
-    2. Updates `self.camera_settings` with validated changes.
-    3. If the specified `device` fails initialization:
-       - Attempts to find and configure another device.
-       - Updates `self.camera_settings.device` if a different device is chosen.
-    4. Broadcasts the final `self.camera_settings` to clients, regardless of success or failure.
-    5. In the case of errors, also broadcasts an error message to clients.
-
-    Returns:
-    --------------
-    - `CameraSettings`: The updated camera settings.
-
-    - Additionally, broadcasts the updated settings to all connected clients.
     """
     logger.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
@@ -98,15 +69,14 @@ async def update_camera_settings(
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": result.model_dump()}
         )
+        await camera_manager.notify_camera_error(camera_manager.camera_device_error)
         return result
     except (CameraDeviceError, CameraNotFoundError) as err:
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": camera_manager.camera_settings.model_dump()}
         )
         await connection_manager.error(str(err))
-        raise HTTPException(
-            status_code=400, detail=f"Couldn't update camera settings: {str(err)}"
-        )
+        raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": camera_manager.camera_settings.model_dump()}
@@ -177,7 +147,8 @@ async def take_photo(
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"
 
-    await camera_manager.start_camera_and_wait_for_stream_img()
+    if camera_manager.img is None:
+        raise HTTPException(status_code=503, detail="Camera is not ready")
 
     status = (
         await capture_photo(

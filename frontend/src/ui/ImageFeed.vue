@@ -1,11 +1,16 @@
 <template>
   <ScanLines
-    v-if="!isVideoStreamActive"
+    v-if="!isVideoStreamActive || errorMsg"
     class="w-full"
     :class="{
-      'h-[90%]': !imgInitted,
+      'h-[90%]': !imgInitted && !errorMsg,
     }"
-  />
+    ><div
+      class="text-center text-error text-xl font-black absolute inset-0 flex items-center justify-center uppercase"
+    >
+      {{ errorMsg }}
+    </div></ScanLines
+  >
   <img
     v-else
     ref="imgRef"
@@ -41,6 +46,8 @@ const detectionStore = useDetectionStore();
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
 const imgRef = ref<HTMLImageElement>();
+
+const errorMsg = computed(() => camStore.error);
 
 const {
   initWS: initVideoStreamWS,

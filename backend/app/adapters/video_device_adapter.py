@@ -17,8 +17,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
     def __init__(self):
         """
-        Initializes the VideoDeviceAdapater instance. Sets up the logger,
-        and initializes attributes for tracking video devices and failed attempts.
+        Initializes the VideoDeviceAdapater instance.
         """
         self.logger = Logger(name=__name__)
         self.video_device: Optional[CameraInfo] = None

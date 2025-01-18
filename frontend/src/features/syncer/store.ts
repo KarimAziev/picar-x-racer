@@ -78,6 +78,11 @@ export const useStore = defineStore("syncer", {
             musicStore.data = payload;
             break;
           }
+
+          case "camera_error": {
+            cameraStore.error = payload;
+            break;
+          }
           case "volume": {
             diffMsg = `${payload}`;
             musicStore.volume = payload;
