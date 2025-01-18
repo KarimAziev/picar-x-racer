@@ -105,6 +105,7 @@ class StreamService(metaclass=SingletonMeta):
                 await self.generate_video_stream_for_websocket(websocket)
         except (CameraDeviceError, CameraNotFoundError) as e:
             self.loading = False
+            await asyncio.to_thread(self.camera_service.stop_camera)
             self.logger.error("Video Stream got camera error: %s", e)
             await self.camera_service.notify_camera_error(str(e))
         except (WebSocketDisconnect, ConnectionClosedError, ConnectionClosedOK):
@@ -128,4 +129,4 @@ class StreamService(metaclass=SingletonMeta):
                 self.active_clients,
             )
             if self.active_clients == 0:
-                self.camera_service.stop_camera()
+                await asyncio.to_thread(self.camera_service.stop_camera)
