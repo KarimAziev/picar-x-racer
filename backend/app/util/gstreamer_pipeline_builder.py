@@ -9,7 +9,7 @@ class GstreamerPipelineBuilder:
     pixel_format_props: Dict[str, Tuple[str, str]] = {
         # MJPEG -> Decode images
         "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
-        "JPEG": ("image/jpeg", "v4l2jpegdec | videoconvert"),
+        "JPEG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
         "YUYV": ("video/x-raw, format=YUY2", "videoconvert"),  # YUYV -> Convert to BGR
         "RGB": ("video/x-raw, format=RGB", "videoconvert"),  # RGB directly
         "GRAY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
