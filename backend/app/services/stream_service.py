@@ -77,7 +77,7 @@ class StreamService(metaclass=SingletonMeta):
                         await asyncio.sleep(1)
             except asyncio.CancelledError:
                 self.logger.info("Streaming loop got CancelledError.")
-                raise
+                break
 
     async def video_stream(self, websocket: WebSocket) -> None:
         """
