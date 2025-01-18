@@ -17,7 +17,7 @@ class GstreamerPipelineBuilder:
         "YU12": ("video/x-raw, format=I420", "videoconvert"),  # YUV 4:2:0 -> Convert
         "H264": (
             "video/x-h264",
-            "h264parse ! avdec_h264 ! videoconvert",
+            "h264parse ! avdec_h264",
         ),  # H.264 -> Parse and decode
         "YVYU": ("video/x-raw, format=YVYU", "videoconvert"),  # YUV variant -> Convert
         "VYUY": ("video/x-raw, format=VYUY", "videoconvert"),  # YUV variant -> Convert
@@ -78,7 +78,8 @@ class GstreamerPipelineBuilder:
             f"v4l2src device={self._device} ! "
             f"{source_format}, width={self._width}, height={self._height}, framerate={self._fps}/1 ! "
             f"{decoder} ! "
-            f"appsink"
+            if decoder
+            else "" f"appsink"
         )
 
         return pipeline
