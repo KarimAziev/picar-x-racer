@@ -4,8 +4,6 @@ from app.core.logger import Logger
 
 logger = Logger(__name__)
 
-from typing import Dict, Optional, Tuple
-
 
 class GstreamerPipelineBuilder:
     pixel_format_props: Dict[str, Tuple[str, str]] = {
