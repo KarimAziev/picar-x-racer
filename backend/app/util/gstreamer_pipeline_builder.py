@@ -17,7 +17,7 @@ class GstreamerPipelineBuilder:
         "YU12": ("video/x-raw, format=I420", "videoconvert"),  # YUV 4:2:0 -> Convert
         "H264": (
             "video/x-h264",
-            "h264parse ! v4l2h264dec ! videoconvert",
+            "h264parse ! v4l2h264dec",
         ),  # H.264 -> Parse and decode
         "YVYU": ("video/x-raw, format=YVYU", "videoconvert"),  # YUV variant -> Convert
         "VYUY": ("video/x-raw, format=VYUY", "videoconvert"),  # YUV variant -> Convert
