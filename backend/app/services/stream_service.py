@@ -106,6 +106,7 @@ class StreamService(metaclass=SingletonMeta):
         except (CameraDeviceError, CameraNotFoundError) as e:
             self.loading = False
             self.logger.error("Video Stream got camera error: %s", e)
+            await self.camera_service.notify_camera_error(str(e))
         except (WebSocketDisconnect, ConnectionClosedError, ConnectionClosedOK):
             self.logger.info("Video Stream disconnected")
         except asyncio.CancelledError:

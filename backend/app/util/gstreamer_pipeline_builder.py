@@ -74,12 +74,15 @@ class GstreamerPipelineBuilder:
             (f"video/x-raw", "videoconvert"),
         )
 
-        pipeline = (
-            f"v4l2src device={self._device} ! "
-            f"{source_format}, width={self._width}, height={self._height}, framerate={self._fps}/1 ! "
-            f"{decoder} ! "
-            if decoder
-            else "" f"appsink"
+        pipeline = "".join(
+            item
+            for item in [
+                f"v4l2src device={self._device} ! ",
+                f"{source_format}, width={self._width}, height={self._height}, framerate={self._fps}/1 ! ",
+                f"{decoder} ! " if decoder else None,
+                f"appsink",
+            ]
+            if item
         )
 
         return pipeline
