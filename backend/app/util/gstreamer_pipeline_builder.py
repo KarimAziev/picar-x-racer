@@ -81,4 +81,4 @@ class GstreamerPipelineBuilder:
         #     f"appsink"
         # )
 
-        return "libcamerasrc ! video/x-raw,format=BGR,width=1280,height=720,framerate=30/1 ! appsink"
+        return "libcamerasrc ! video/x-raw,format=BGR,width=1920,height=1080,framerate=30/1 ! appsink"
