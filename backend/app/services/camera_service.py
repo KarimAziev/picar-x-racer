@@ -179,7 +179,7 @@ class CameraService(metaclass=SingletonMeta):
             and FPS, or None if no frame is available.
         """
         if self.stream_img is not None:
-            frame = self.stream_img.copy()
+            frame = self.stream_img
             encode_params = (
                 [cv2.IMWRITE_JPEG_QUALITY, self.stream_settings.quality]
                 if self.stream_settings.format == ".jpg"
