@@ -27,7 +27,7 @@ class GstreamerPipelineBuilder:
         "NV21": ("video/x-raw, format=NV21", "videoconvert"),  # NV21 variant -> Convert
         "RX24": ("video/x-raw, format=ABGR", "videoconvert"),  # 32-bit -> Convert
         "RGB3": ("video/x-raw, format=RGB", "videoconvert"),  # RGB3 -> Convert to BGR
-        "BGR3": ("video/x-raw, format=BGR", "videoconvert"),  # BGR3 directly -> Convert
+        "BGR3": ("video/x-raw, format=BGR", ""),  # BGR3 directly -> Convert
     }
 
     def __init__(self):
