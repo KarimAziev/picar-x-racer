@@ -125,7 +125,14 @@ class CameraService(metaclass=SingletonMeta):
         Returns:
             The updated streaming settings.
         """
-        should_restart = settings.video_record and not self.stream_settings.video_record
+        if self.shutting_down:
+            self.logger.warning("Service is shutting down.")
+            raise CameraShutdownInProgressError("The camera is shutting down.")
+        should_restart = (
+            settings.video_record
+            and not self.stream_settings.video_record
+            or not self.camera_run
+        )
         self.stream_settings = settings
         if should_restart:
             await asyncio.to_thread(self.restart_camera)
