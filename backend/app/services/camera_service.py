@@ -217,11 +217,20 @@ class CameraService(metaclass=SingletonMeta):
 
                 if not self.shutting_down:
                     self.img = frame
-                    self.stream_img = (
-                        frame if not frame_enhancer else frame_enhancer(frame)
-                    )
-                    if self.stream_settings.video_record:
+                    try:
+                        self.stream_img = (
+                            frame if not frame_enhancer else frame_enhancer(frame)
+                        )
+                    except Exception as e:
+                        self.camera_device_error = f"Failed to apply video effect: {e}"
+                        self.emitter.emit("frame_error", self.camera_device_error)
+                        break
+                    if (
+                        self.stream_settings.video_record
+                        and self.stream_img is not None
+                    ):
                         self.video_recorder.write_frame(self.stream_img)
+
                     self._process_frame(frame)
 
         except KeyboardInterrupt:

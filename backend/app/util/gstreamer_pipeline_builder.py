@@ -8,8 +8,8 @@ logger = Logger(__name__)
 class GstreamerPipelineBuilder:
     pixel_format_props: Dict[str, Tuple[str, str]] = {
         # MJPEG -> Decode images
-        "MJPG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
-        "JPEG": ("image/jpeg", "videoconvert"),
+        "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
+        "JPEG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
         "YUYV": ("video/x-raw, format=YUY2", "videoconvert"),  # YUYV -> Convert to BGR
         "RGB": ("video/x-raw, format=RGB", "videoconvert"),  # RGB directly
         "GRAY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
@@ -17,7 +17,7 @@ class GstreamerPipelineBuilder:
         "YU12": ("video/x-raw, format=I420", "videoconvert"),  # YUV 4:2:0 -> Convert
         "H264": (
             "video/x-h264",
-            "h264parse",
+            "h264parse ! v4l2h264dec",
         ),  # H.264 -> Parse and decode
         "YVYU": ("video/x-raw, format=YVYU", "videoconvert"),  # YUV variant -> Convert
         "VYUY": ("video/x-raw, format=VYUY", "videoconvert"),  # YUV variant -> Convert
@@ -56,8 +56,6 @@ class GstreamerPipelineBuilder:
     def pixel_format(self, pixel_format: str) -> "GstreamerPipelineBuilder":
         self._pixel_format = pixel_format
         return self
-
-
 
     def build(self) -> str:
         if self._device is None:
