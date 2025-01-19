@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from app.core.async_emitter import AsyncEventEmitter, Listener
     from app.managers.async_task_manager import AsyncTaskManager
 
-logger = Logger(__name__)
+logger = Logger(__name__, app_name="px_robot")
 
 
 class DistanceService(metaclass=SingletonMeta):
@@ -25,7 +25,7 @@ class DistanceService(metaclass=SingletonMeta):
         config: Optional[UltrasonicConfig] = None,
         interval=0.017,
     ):
-        self._distance: Synchronized[float] = mp.Value('f', 0)
+        self._distance: Synchronized[float] = mp.Value("f", 0)
         self._process = None
         self.config = config or UltrasonicConfig()
         self.stop_event = mp.Event()

@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING
 
 from app.api import deps
 from app.core.logger import Logger
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraShutdownInProgressError,
+)
 from app.managers.gstreamer_manager import GstreamerManager
 from app.managers.v4l2_manager import V4L2
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
@@ -77,6 +81,8 @@ async def update_camera_settings(
         )
         await connection_manager.error(str(err))
         raise HTTPException(status_code=400, detail=str(err))
+    except CameraShutdownInProgressError as err:
+        raise HTTPException(status_code=503, detail=str(err))
     except Exception as err:
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": camera_manager.camera_settings.model_dump()}

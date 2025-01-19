@@ -25,6 +25,7 @@ from app.util.get_ip_address import get_ip_address
 
 if TYPE_CHECKING:
     from app.services.battery_service import BatteryService
+    from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
     from app.services.music_service import MusicService
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI):
     detection_manager: Optional["DetectionService"] = None
     music_manager: Optional["MusicService"] = None
     signal_file_path: Optional[str] = None
+    camera_manager: Optional["CameraService"] = None
 
     try:
         from app.api import deps
@@ -63,6 +65,13 @@ async def lifespan(app: FastAPI):
         detection_manager = deps.get_detection_manager(
             file_manager=file_manager, connection_manager=connection_manager
         )
+        camera_manager = deps.get_camera_manager(
+            detection_service=detection_manager,
+            file_manager=file_manager,
+            connection_manager=connection_manager,
+            video_device_adapter=deps.get_video_device_adapter(),
+            video_recorder=deps.get_video_recorder(),
+        )
         music_manager = deps.get_music_manager(
             file_manager=file_manager, connection_manager=connection_manager
         )
@@ -73,15 +82,15 @@ async def lifespan(app: FastAPI):
         ip_address = get_ip_address()
         browser_url = f"http://{ip_address}:{port}"
 
-        signal_file_path = '/tmp/backend_ready.signal' if mode == "dev" else None
+        signal_file_path = "/tmp/backend_ready.signal" if mode == "dev" else None
 
         battery_manager.setup_connection_manager()
         music_manager.start_broadcast_task()
 
         if signal_file_path:
             try:
-                with open(signal_file_path, 'w') as f:
-                    f.write('Backend is ready')
+                with open(signal_file_path, "w") as f:
+                    f.write("Backend is ready")
             except Exception as e:
                 logger.error(f"Failed to create signal file: {e}")
 
@@ -91,9 +100,12 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "Lifespan was cancelled mid-shutdown (first-level). Proceeding to final cleanup."
         )
-        raise
     finally:
         app.state.cancelled = True
+        if camera_manager:
+            camera_manager.shutting_down = True
+            await asyncio.to_thread(camera_manager.shutdown)
+
         logger.info(f"Stopping 🚗 {app.title} application")
         try:
             if battery_manager:

@@ -61,8 +61,10 @@ def try_video_path(
 
     except Exception as err:
         logger.debug("Camera Error: %s", err)
-        if cap and cap.isOpened():
-            cap.release()
+        release_video_capture_safe(cap)
+
+    if not result:
+        release_video_capture_safe(cap)
 
     return cap if result else None
 
@@ -72,7 +74,7 @@ def release_video_capture_safe(cap: Optional[cv2.VideoCapture]) -> None:
     Safely releases the camera capture.
     """
     try:
-        if cap and cap.isOpened():
+        if cap is not None:
             cap.release()
     except Exception as e:
         logger.error("Exception occurred while stopping camera capture: %s", e)

@@ -3,7 +3,11 @@ from typing import TYPE_CHECKING
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraShutdownInProgressError,
+)
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
@@ -25,7 +29,7 @@ class StreamService(metaclass=SingletonMeta):
         self.loading = False
 
     def _check_app_cancelled(self, websocket: WebSocket):
-        if websocket.app.state.cancelled:
+        if websocket.app.state.cancelled or self.camera_service.shutting_down:
             self.logger.warning("Streaming loop breaks due to cancelled app state.")
             return True
 
@@ -35,7 +39,10 @@ class StreamService(metaclass=SingletonMeta):
         """
         skip_count = 0
         last_frame = None
-        while WebSocketState.CONNECTED and not websocket.app.state.cancelled:
+        while (
+            websocket.application_state == WebSocketState.CONNECTED
+            and not self._check_app_cancelled(websocket)
+        ):
             try:
                 encoded_frame = await asyncio.to_thread(
                     self.camera_service.generate_frame
@@ -62,22 +69,39 @@ class StreamService(metaclass=SingletonMeta):
                                 "WebSocket connection state is no longer connected"
                             )
                             break
+                    except CameraShutdownInProgressError as e:
+                        self.logger.warning("Video stream is shuttind down %s", e)
                     except (
                         WebSocketDisconnect,
                         ConnectionResetError,
                         ConnectionClosedError,
                         ConnectionClosedOK,
+                        KeyboardInterrupt,
                     ):
                         self.logger.info("Video stream WebSocket connection lost")
                         break
                 else:
                     if skip_count < 2:
-                        self.logger.debug("No encoded frame, waiting %s.", skip_count)
+                        self.logger.info("No encoded frame, waiting %s.", skip_count)
                         skip_count += 1
-                        await asyncio.sleep(1)
+                    await asyncio.sleep(1)
+
             except asyncio.CancelledError:
                 self.logger.info("Streaming loop got CancelledError.")
                 break
+
+    async def disconnect(self, websocket: WebSocket) -> None:
+        if websocket.application_state == WebSocketState.CONNECTED:
+            try:
+                if websocket.app.state.cancelled:
+                    await websocket.close(
+                        code=1013,
+                        reason="Server is shutting down, no new connections allowed.",
+                    )
+                else:
+                    await websocket.close()
+            except Exception:
+                pass
 
     async def video_stream(self, websocket: WebSocket) -> None:
         """
@@ -86,6 +110,10 @@ class StreamService(metaclass=SingletonMeta):
         Args:
             websocket: The WebSocket connection to the client.
         """
+        if self._check_app_cancelled(websocket):
+            await self.disconnect(websocket)
+            return
+
         self.active_clients += 1
 
         self.logger.info("Video Stream %s connection established", self.active_clients)
@@ -108,7 +136,12 @@ class StreamService(metaclass=SingletonMeta):
             await asyncio.to_thread(self.camera_service.stop_camera)
             self.logger.error("Video Stream got camera error: %s", e)
             await self.camera_service.notify_camera_error(str(e))
-        except (WebSocketDisconnect, ConnectionClosedError, ConnectionClosedOK):
+        except (
+            WebSocketDisconnect,
+            ConnectionClosedError,
+            ConnectionClosedOK,
+            CameraShutdownInProgressError,
+        ):
             self.logger.info("Video Stream disconnected")
         except asyncio.CancelledError:
             self.logger.info(
@@ -118,11 +151,7 @@ class StreamService(metaclass=SingletonMeta):
             self.logger.error("An error occurred in video stream", exc_info=True)
         finally:
             self.active_clients -= 1
-            if websocket.application_state == WebSocketState.CONNECTED:
-                try:
-                    await websocket.close()
-                except Exception:
-                    pass
+            await self.disconnect(websocket)
 
             self.logger.info(
                 "Video Stream WebSocket connection %s is ended.",

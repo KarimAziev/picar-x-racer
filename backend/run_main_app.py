@@ -10,6 +10,7 @@ def start_main_app(port: Union[str, int], log_level: str):
         "host": "0.0.0.0",
         "port": int(port) if isinstance(port, str) else port,
         "log_level": log_level.lower(),
+        "timeout_graceful_shutdown": 25,
     }
 
     uvicorn.run(**uvicorn_config)

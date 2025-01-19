@@ -11,7 +11,11 @@ from app.config.video_enhancers import frame_enhancers
 from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraShutdownInProgressError,
+)
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
 from app.util.device import release_video_capture_safe
@@ -66,102 +70,60 @@ class CameraService(metaclass=SingletonMeta):
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
         self.cap: Union[cv2.VideoCapture, None] = None
-        # self.cap_lock = threading.Lock()
-        # self.asyncio_cap_lock = asyncio.Lock()
         self.camera_device_error: Optional[str] = None
         self.camera_loading: bool = False
+        self.shutting_down = False
 
         self.emitter = EventEmitter()
         self.emitter.on("frame_error", self.notify_camera_error)
 
     async def notify_camera_error(self, error: Optional[str]):
         self.camera_device_error = error
+
         await self.connection_manager.broadcast_json(
             {"type": "camera_error", "payload": error}
         )
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
-        Updates the camera's settings and handles device initialization with retries.
-
-        This method adjusts the camera settings such as resolution, FPS, or pixel format based
-        on the provided `settings`. If the specified `device` in the new settings fails during
-        initialization, the method attempts to find and configure an alternate device. The updated
-        settings, including any fallback device, are then applied.
-
-        Key Behaviors:
-        - If the incoming `settings.device` is invalid or fails, the service resets the `device` field
-          to `None` and attempts to initialize an alternate available camera device.
-          Upon success, `self.camera_settings.device` is updated with the new device.
-        - The camera is restarted (stopped and reinitialized) to apply the updated settings.
-
-        Broadcast Behavior:
-        - The updated `self.camera_settings` is provided as the return value to allow the caller
-          (e.g., an external service or API endpoint) to broadcast the new settings to connected clients.
-        - In the case of a fallback or retry (where the specified device fails and another device is found),
-          the updated settings — including the new fallback device — will reflect this change.
-
-        Workflow:
-        1. Updates the internal `self.camera_settings` with the new settings.
-        2. Attempts to restart the camera to apply the updated settings.
-        3. If `settings.device` fails during initialization:
-           - Resets `settings.device` to `None`.
-           - Searches for and configures another available device.
-           - Updates `self.camera_settings.device` with the alternate device if initialization succeeds.
-        4. Returns the finalized and applied `self.camera_settings`.
+        Updates the camera's settings and restarts the device.
 
         Args:
-            settings (CameraSettings): The new camera settings to apply.
+            `settings`: The new camera settings to apply.
 
         Returns:
-            CameraSettings: The fully updated camera settings, including any modified `device`
-            if a fallback occurred.
+            The fully updated camera settings. If certain fields failed to apply,
+            the returned settings may contain modified or defaulted values.
 
         Raises:
-            CameraDeviceError: If the specified camera device cannot be initialized, and no alternate
-                               device is available.
-            Exception: If camera restart or other operations fail unexpectedly.
+        - `CameraNotFoundError`: If the specified camera device is not found in the available
+          devices.
+        - `CameraDeviceError`: If the specified camera device cannot be initialized and
+          no alternative device is available.
+        - `Exception`: If the camera restart or other related operations unexpectedly fail.
         """
+        if self.shutting_down:
+            self.logger.warning("Service is shutting down.")
+            raise CameraShutdownInProgressError("The camera is shutting down.")
+
         self.camera_settings = settings
         await asyncio.to_thread(self.restart_camera)
         return self.camera_settings
 
     async def update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
         """
-        Updates the stream settings and handles camera restarts if necessary.
+        Updates the stream settings and restarts the camera if video recording is requested.
 
         This method modifies various stream settings such as file format, quality,
         frame enhancers, and video recording preferences. If video recording is enabled in
         the new settings while it was previously disabled, the camera is restarted to
         apply the new configuration properly.
 
-        Key Behaviors:
-        - Updates the internal `self.stream_settings` with the provided settings.
-        - Detects changes requiring a camera restart — specifically if `video_record` is
-          enabled in the new settings but was previously disabled.
-        - Avoids unnecessary restarts for other settings changes, ensuring minimal disruption.
-
-        Workflow:
-        1. Evaluates whether the `video_record` field has transitioned from `False` to `True`.
-           - If true, a camera restart is triggered to ensure the recording configuration
-             is applied correctly.
-        2. The method applies the new stream settings by updating `self.stream_settings`.
-        3. Returns the updated `self.stream_settings` to allow broadcasting to connected clients.
-
-        Broadcast Behavior:
-        - While this method does not directly perform broadcasting, the updated
-          `self.stream_settings` data can be returned to external services or
-          APIs (e.g., via `ConnectionService`) for broadcasting to clients.
-        - Any subsequent changes to the stream settings will reflect these updates.
-
         Args:
-            settings (StreamSettings): The new streaming configuration to apply.
+            settings: The new streaming configuration to apply.
 
         Returns:
-            StreamSettings: The updated streaming settings.
-
-        Raises:
-            Exception: If the camera restart fails or unexpected issues occur during configuration.
+            The updated streaming settings.
         """
         should_restart = settings.video_record and not self.stream_settings.video_record
         self.stream_settings = settings
@@ -186,6 +148,10 @@ class CameraService(metaclass=SingletonMeta):
             The encoded video frame as a byte array, prefixed with the timestamp
             and FPS, or None if no frame is available.
         """
+        if self.shutting_down:
+            raise CameraShutdownInProgressError("The camera is is shutting down")
+        if self.camera_device_error:
+            raise CameraDeviceError(self.camera_device_error)
         if self.stream_img is not None:
             frame = self.stream_img
             encode_params = (
@@ -197,10 +163,10 @@ class CameraService(metaclass=SingletonMeta):
             encoded_frame = encode(frame, self.stream_settings.format, encode_params)
 
             timestamp = self.current_frame_timestamp or time.time()
-            timestamp_bytes = struct.pack('d', timestamp)
+            timestamp_bytes = struct.pack("d", timestamp)
 
             fps = self.actual_fps or 0.0
-            fps_bytes = struct.pack('d', fps)
+            fps_bytes = struct.pack("d", fps)
 
             return timestamp_bytes + fps_bytes + encoded_frame
 
@@ -219,11 +185,11 @@ class CameraService(metaclass=SingletonMeta):
 
         self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
         try:
-            while self.camera_run and self.cap:
+            while not self.shutting_down and self.camera_run and self.cap:
                 frame_start_time = time.time()
                 ret, frame = self.cap.read()
                 if not ret:
-                    self.camera_device_error = "Failed to read frame from camera, please choose another device or props."
+                    self.camera_device_error = "Failed to read frame from the camera."
                     self.emitter.emit("frame_error", self.camera_device_error)
                     break
 
@@ -248,12 +214,15 @@ class CameraService(metaclass=SingletonMeta):
                     if enhance_mode is not None
                     else None
                 )
-                self.img = frame
-                self.stream_img = frame if not frame_enhancer else frame_enhancer(frame)
-                if self.stream_settings.video_record:
-                    self.video_recorder.write_frame(self.stream_img)
 
-                self._process_frame(frame)
+                if not self.shutting_down:
+                    self.img = frame
+                    self.stream_img = (
+                        frame if not frame_enhancer else frame_enhancer(frame)
+                    )
+                    if self.stream_settings.video_record:
+                        self.video_recorder.write_frame(self.stream_img)
+                    self._process_frame(frame)
 
         except KeyboardInterrupt:
             self.logger.info("Keyboard interrupt, stopping camera loop")
@@ -322,6 +291,8 @@ class CameraService(metaclass=SingletonMeta):
         """
 
         self.logger.info("Starting camera.")
+        if self.shutting_down:
+            self.logger.warning("Service is shutting down.")
         if self.camera_run:
             self.logger.warning("Camera is already running.")
             return
@@ -345,12 +316,14 @@ class CameraService(metaclass=SingletonMeta):
                     height=self.camera_settings.height,
                     fps=float(self.camera_settings.fps),
                 )
-            self.capture_thread = threading.Thread(target=self._camera_thread_func)
+            self.capture_thread = threading.Thread(
+                target=self._camera_thread_func, daemon=True
+            )
             self.capture_thread.start()
             self.camera_device_error = None
 
         except (CameraNotFoundError, CameraDeviceError) as e:
-            self.camera_run = False
+            self.stop_camera()
             err_msg = str(e)
             self.camera_device_error = err_msg
             self.stream_img = None
@@ -358,6 +331,7 @@ class CameraService(metaclass=SingletonMeta):
             raise
 
         except Exception as e:
+            self.stop_camera()
             self.camera_run = False
             self.logger.error("Unhandled exception", exc_info=True)
             raise
@@ -392,6 +366,7 @@ class CameraService(metaclass=SingletonMeta):
         """
         if not self.camera_run:
             self.logger.info("Camera is not running.")
+            self._release_cap_safe()
             return
 
         self.logger.info("Stopping camera")
@@ -412,4 +387,9 @@ class CameraService(metaclass=SingletonMeta):
         cam_running = self.camera_run
         if cam_running:
             self.stop_camera()
-        self.start_camera()
+        if not self.shutting_down:
+            self.start_camera()
+
+    def shutdown(self) -> None:
+        self.shutting_down = True
+        self.stop_camera()
