@@ -129,9 +129,10 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.warning("Service is shutting down.")
             raise CameraShutdownInProgressError("The camera is shutting down.")
         should_restart = (
-            settings.video_record
+            not self.camera_run
+            or self.camera_device_error
+            or settings.video_record
             and not self.stream_settings.video_record
-            or not self.camera_run
         )
         self.stream_settings = settings
         if should_restart:
