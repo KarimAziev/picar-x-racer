@@ -314,6 +314,7 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.warning("Camera is already running.")
             return
         self.camera_run = True
+        self.emitter.emit("frame_error", None)
         try:
             self.video_recorder.stop_recording_safe()
             self._release_cap_safe()
