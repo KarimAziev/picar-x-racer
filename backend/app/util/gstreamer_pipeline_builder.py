@@ -1,12 +1,13 @@
 from typing import Dict, Optional, Tuple
 
+from app.core.libcamera_parser import LibcameraParser
 from app.core.logger import Logger
 
 logger = Logger(__name__)
 
 
 class GstreamerPipelineBuilder:
-    pixel_format_props: Dict[str, Tuple[str, str]] = {
+    pixel_format_props: Dict[str, Tuple[str, Optional[str]]] = {
         # MJPEG -> Decode images
         "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
         "JPEG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
@@ -58,32 +59,44 @@ class GstreamerPipelineBuilder:
         return self
 
     def build(self) -> str:
-        if self._device is None:
-            raise ValueError("Device is required")
-        if self._width is None:
-            raise ValueError("Width is required")
-        if self._height is None:
-            raise ValueError("Height is required")
-        if self._fps is None:
-            raise ValueError("FPS is required")
-        if self._pixel_format is None:
-            raise ValueError("Pixel format is required")
 
-        source_format, decoder = self.pixel_format_props.get(
-            self._pixel_format,
-            (f"video/x-raw", "videoconvert"),
+        source = (
+            f"v4l2src device={self._device}"
+            if self._device and not LibcameraParser.is_libcamera_device(self._device)
+            else "libcamerasrc"
         )
 
-        pipeline = "".join(
+        source_format, decoder = (
+            self.pixel_format_props.get(
+                self._pixel_format,
+                (f"video/x-raw", "videoconvert"),
+            )
+            if self._pixel_format
+            else ("video/x-raw", "videoconvert")
+        )
+
+        source_format = ",".join(
+            [
+                item
+                for item in [
+                    source_format,
+                    f"width={self._width}" if self._width is not None else None,
+                    f"height={self._height}" if self._height is not None else None,
+                    f"framerate={self._fps}/1" if self._fps is not None else None,
+                ]
+                if item
+            ]
+        )
+
+        pipeline = " ! ".join(
             item
             for item in [
-                f"v4l2src device={self._device} ! ",
-                f"{source_format}, width={self._width}, height={self._height}, framerate={self._fps}/1 ! ",
-                f"{decoder} ! " if decoder else None,
-                f"appsink",
+                source,
+                source_format,
+                decoder,
+                "appsink",
             ]
             if item
         )
 
-        pipeline = f"libcamerasrc ! video/x-raw,format=BGR,width={self._width},height={self._height},framerate=30/1 ! appsink"
         return pipeline
