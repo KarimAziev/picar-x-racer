@@ -227,7 +227,7 @@ class V4L2FormatParser:
             )
             if self.current_pixel_format
             else None
-        )
+        ) or (30, 120)
 
         if fps_intervals:
             min_fps, max_fps = fps_intervals
@@ -390,7 +390,7 @@ class V4L2FormatParser:
         """
 
         if "Continuous" in output:
-            match = re.search(r'\(([\d.]+)-([\d.]+) fps\)', output)
+            match = re.search(r"\(([\d.]+)-([\d.]+) fps\)", output)
             if match:
                 min_fps = int(float(match.group(1)))
                 max_fps = int(float(match.group(2)))
@@ -402,7 +402,7 @@ class V4L2FormatParser:
             fps_intervals: List[int] = []
             for line in lines:
                 line = line.strip()
-                match = re.search(r'\(([\d.]+) fps\)', line)
+                match = re.search(r"\(([\d.]+) fps\)", line)
                 if not match:
                     continue
                 value = int(float(match.group(1)))
