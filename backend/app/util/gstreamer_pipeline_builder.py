@@ -23,7 +23,10 @@ class GstreamerPipelineBuilder:
         "YVYU": ("video/x-raw, format=YVYU", "videoconvert"),  # YUV variant -> Convert
         "VYUY": ("video/x-raw, format=VYUY", "videoconvert"),  # YUV variant -> Convert
         "UYVY": ("video/x-raw, format=UYVY", "videoconvert"),  # YUV variant -> Convert
-        "NV12": ("video/x-raw, format=NV12", "videoconvert"),  # YUV 4:2:0 -> Convert
+        "NV12": (
+            "video/x-raw, format=NV12",
+            "h264parse ! v4l2h264dec",
+        ),  # YUV 4:2:0 -> Convert
         "YV12": ("video/x-raw, format=YV12", "videoconvert"),  # YUV variant -> Convert
         "NV21": ("video/x-raw, format=NV21", "videoconvert"),  # NV21 variant -> Convert
         "RX24": ("video/x-raw, format=ABGR", "videoconvert"),  # 32-bit -> Convert
