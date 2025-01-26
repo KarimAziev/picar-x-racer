@@ -11,6 +11,10 @@ class GstreamerPipelineBuilder:
         "image/jpeg": "jpegdec ! video/x-raw ! videoconvert",
         "video/x-h264": "h264parse ! v4l2h264dec",
     }
+    device_api_prop = {
+        "libcamerasrc": "camera-name",
+        "v4l2src": "device",
+    }
     pixel_format_props: Dict[str, Tuple[str, Optional[str]]] = {
         # MJPEG -> Decode images
         "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
@@ -77,8 +81,9 @@ class GstreamerPipelineBuilder:
 
     def build(self) -> str:
         api = self._api or "v4l2src"
+        device_prop_name = self.device_api_prop.get(api, "device")
 
-        source = f"{api} device={self._device}" if self._device else api
+        source = f"{api} {device_prop_name}={self._device}" if self._device else api
 
         source_media_format = (
             ", ".join(
