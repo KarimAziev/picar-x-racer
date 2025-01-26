@@ -156,13 +156,18 @@ async def take_photo(
     """
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"
+    frame = (
+        camera_manager.stream_img
+        if camera_manager.stream_img is not None
+        else camera_manager.img
+    )
 
-    if camera_manager.img is None:
+    if frame is None:
         raise HTTPException(status_code=503, detail="Camera is not ready")
 
     status = (
         await capture_photo(
-            img=camera_manager.img.copy(),
+            img=frame.copy(),
             photo_name=name,
             path=file_manager.user_photos_dir,
         )
