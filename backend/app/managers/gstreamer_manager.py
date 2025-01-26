@@ -1,17 +1,43 @@
 import shutil
+import subprocess
 from functools import lru_cache
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
+from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
-from app.exceptions.camera import CameraInfoNotFound
-from app.managers.v4l2_manager import V4L2
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
 
 logger = Logger(__name__)
 
 
 class GstreamerManager:
+    @staticmethod
+    @lru_cache()
+    def list_video_devices_with_formats() -> List[Dict[str, Any]]:
+        """
+        Lists video capture devices using gst-device-monitor-1.0.
+        """
+        lines: Optional[str] = None
+        try:
+            result = subprocess.run(
+                ["gst-device-monitor-1.0", "Video"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            lines = result.stdout.strip()
+
+        except FileNotFoundError as e:
+            return []
+        except subprocess.CalledProcessError as e:
+            logger.error("Failed to run 'gst-device-monitor-1.0':", e)
+
+        except Exception:
+            logger.error("Unexpected exception occurred: ", exc_info=True)
+
+        return GStreamerParser().parse(lines) if lines else []
+
     @staticmethod
     @lru_cache()
     def check_gstreamer() -> Tuple[bool, bool]:
@@ -61,25 +87,32 @@ class GstreamerManager:
         height: Optional[int] = None,
         fps: Optional[float] = None,
         pixel_format: Optional[str] = None,
+        media_type: Optional[str] = None,
     ) -> str:
 
         if width is None or height is None or fps is None or pixel_format is None:
-            default_props = V4L2.video_capture_format(device)
-            if default_props is None:
-                raise CameraInfoNotFound(f"Device info for {device} is not found")
 
-            width = width or default_props.get("width")
-            height = height or default_props.get("height")
-            pixel_format = pixel_format or default_props.get("pixel_format")
+            width = width
+            height = height
+            pixel_format = pixel_format
 
-        fps = int(fps or 30)
+        fps = int(fps) if fps else None
 
         return (
             GstreamerPipelineBuilder()
             .device(device)
+            .media_type(media_type)
             .fps(fps)
             .height(height)
             .width(width)
             .pixel_format(pixel_format)
             .build()
         )
+
+    @staticmethod
+    def list_camera_device_names() -> List[str]:
+        return [
+            item.get("key", "")
+            for item in GstreamerManager.list_video_devices_with_formats()
+            if item.get("key")
+        ]

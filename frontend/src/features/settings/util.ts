@@ -110,7 +110,7 @@ export const mapChildren = <DataItem>(
 
 export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
   const { device, fps, height, width, pixel_format } = item;
-  if (!device || !pixel_format || !width || !height) {
+  if (!device || !width || !height) {
     return;
   }
 
@@ -158,11 +158,7 @@ export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
 
 export const validateStepwiseData = (
   stepWiseDevice: StepwiseDeviceProps,
-  data: {
-    width?: number;
-    height?: number;
-    fps?: number;
-  },
+  data: Pick<CameraSettings, "fps" | "width" | "height">,
 ) => {
   if (!stepWiseDevice) {
     return {};

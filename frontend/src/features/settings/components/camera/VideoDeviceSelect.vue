@@ -144,7 +144,7 @@
     <Button
       v-if="selectedDevice && (selectedDevice as any).max_width"
       :disabled="disabled || loading"
-      @click="onSubmit"
+      @click="updateStepwiseDevice"
       >Submit</Button
     >
   </div>
@@ -162,7 +162,11 @@ import {
   mapChildren,
   validateStepwiseData,
 } from "@/features/settings/util";
-import { DiscreteDevice, DeviceStepwise } from "@/features/settings/interface";
+import {
+  DiscreteDevice,
+  DeviceStepwise,
+  CameraSettings,
+} from "@/features/settings/interface";
 
 import TreeSelect from "@/ui/TreeSelect.vue";
 import { roundNumber } from "@/util/number";
@@ -185,9 +189,9 @@ const useGstreamer = ref(camStore.data.use_gstreamer);
 
 const isStepwiseDevice = (data: any): data is DeviceStepwise => data?.max_width;
 
-const stepwiseData = ref({
-  width: camStore.data.width,
-  height: camStore.data.height,
+const stepwiseData = ref<Pick<CameraSettings, "width" | "fps" | "height">>({
+  width: camStore.data.width || 0,
+  height: camStore.data.height || 0,
   fps: camStore.data.fps,
 });
 
@@ -268,6 +272,7 @@ const isUnchanged = () => {
         width: (v) => v === sizeData.width,
         height: (v) => v === sizeData.height,
         fps: (v) => v === sizeData.fps,
+        media_type: (v) => v === selectedDevice.value?.media_type,
       },
       camStore.data,
     )
@@ -280,19 +285,21 @@ const disabled = computed(
 
 const loading = computed(() => camStore.loading);
 
-const updateStepwiseDevice = async (deviceData: {
-  width?: number;
-  height?: number;
-  fps?: number;
-}) => {
+const updateStepwiseDevice = async () => {
+  if (disabled.value || !stepwiseData.value || !validate()) {
+    return;
+  }
   if (!isStepwiseDevice(selectedDevice.value)) {
     return;
   }
 
+  const deviceData = stepwiseData.value;
+
   const stepwiseParams = selectedDevice.value;
+  const isValid = where({ width: isNumber, height: isNumber }, deviceData);
 
   if (
-    !where({ width: isNumber, height: isNumber, fps: isNumber }, deviceData) ||
+    !isValid ||
     !inRange(
       deviceData.width,
       stepwiseParams.min_width,
@@ -303,7 +310,12 @@ const updateStepwiseDevice = async (deviceData: {
       stepwiseParams.min_height,
       stepwiseParams.max_height,
     ) ||
-    !inRange(deviceData.fps, stepwiseParams.min_fps, stepwiseParams.max_fps) ||
+    (isNumber(deviceData.fps) &&
+      !inRange(
+        deviceData.fps,
+        stepwiseParams.min_fps,
+        stepwiseParams.max_fps,
+      )) ||
     (deviceData.width - stepwiseParams.min_width) %
       stepwiseParams.width_step !==
       0 ||
@@ -318,17 +330,13 @@ const updateStepwiseDevice = async (deviceData: {
     use_gstreamer: useGstreamer.value,
     pixel_format: stepwiseParams.pixel_format,
     device: stepwiseParams.device,
+    media_type: selectedDevice.value.media_type,
     width: roundNumber(deviceData.width),
     height: roundNumber(deviceData.height),
-    fps: roundNumber(deviceData.fps),
+    fps: isNumber(deviceData.fps)
+      ? roundNumber(deviceData.fps)
+      : deviceData.fps,
   });
-};
-
-const onSubmit = () => {
-  if (disabled.value || !stepwiseData.value || !validate()) {
-    return;
-  }
-  updateStepwiseDevice(stepwiseData.value);
 };
 
 const updateDevice = async (
@@ -352,7 +360,7 @@ const updateDevice = async (
   } else if (isStepwiseDevice(stepwiseParams)) {
     stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 
-    onSubmit();
+    updateStepwiseDevice();
   }
 };
 

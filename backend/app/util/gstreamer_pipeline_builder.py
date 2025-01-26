@@ -1,12 +1,16 @@
 from typing import Dict, Optional, Tuple
 
-from app.core.libcamera_parser import LibcameraParser
+from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 
 logger = Logger(__name__)
 
 
 class GstreamerPipelineBuilder:
+    decoders: Dict[str, str] = {
+        "image/jpeg": "jpegdec ! video/x-raw ! videoconvert",
+        "video/x-h264": "h264parse ! v4l2h264dec",
+    }
     pixel_format_props: Dict[str, Tuple[str, Optional[str]]] = {
         # MJPEG -> Decode images
         "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
@@ -40,49 +44,78 @@ class GstreamerPipelineBuilder:
         self._height: Optional[int] = None
         self._fps: Optional[int] = None
         self._pixel_format: Optional[str] = None
+        self._media_type: Optional[str] = None
+        self._api: Optional[str] = None
 
     def device(self, device: str) -> "GstreamerPipelineBuilder":
-        self._device = device
+        api, device_path = GStreamerParser.parse_device_path(device)
+
+        self._device = device_path
+        self._api = f"{api}src" if api and not api.endswith("src") else api
+
         return self
 
-    def width(self, width: int) -> "GstreamerPipelineBuilder":
+    def width(self, width: Optional[int]) -> "GstreamerPipelineBuilder":
         self._width = width
         return self
 
-    def height(self, height: int) -> "GstreamerPipelineBuilder":
+    def height(self, height: Optional[int]) -> "GstreamerPipelineBuilder":
         self._height = height
         return self
 
-    def fps(self, fps: int) -> "GstreamerPipelineBuilder":
+    def fps(self, fps: Optional[int]) -> "GstreamerPipelineBuilder":
         self._fps = fps
         return self
 
-    def pixel_format(self, pixel_format: str) -> "GstreamerPipelineBuilder":
+    def pixel_format(self, pixel_format: Optional[str]) -> "GstreamerPipelineBuilder":
         self._pixel_format = pixel_format
         return self
 
+    def media_type(self, media_type: Optional[str]) -> "GstreamerPipelineBuilder":
+        self._media_type = media_type
+        return self
+
     def build(self) -> str:
+        api = self._api or "v4l2src"
 
-        source = (
-            f"v4l2src device={self._device}"
-            if self._device and not LibcameraParser.is_libcamera_device(self._device)
-            else "libcamerasrc"
-        )
+        source = f"{api} device={self._device}" if self._device else api
 
-        source_format, decoder = (
-            self.pixel_format_props.get(
-                self._pixel_format,
-                (f"video/x-raw", "videoconvert"),
+        source_media_format = (
+            ", ".join(
+                [
+                    item
+                    for item in [
+                        self._media_type,
+                        f"format={self._pixel_format}" if self._pixel_format else None,
+                    ]
+                    if item
+                ]
             )
-            if self._pixel_format
-            else ("video/x-raw", "videoconvert")
+            if self._media_type
+            else None
         )
 
-        source_format = ",".join(
+        decoder: Optional[str] = (
+            self.decoders.get(self._media_type) if self._media_type else None
+        )
+
+        if source_media_format is None:
+            source_format, source_decoder = (
+                self.pixel_format_props.get(
+                    self._pixel_format,
+                    (f"video/x-raw, format={self._pixel_format}", "videoconvert"),
+                )
+                if self._pixel_format
+                else ("video/x-raw", "videoconvert")
+            )
+            source_media_format = source_format
+            decoder = source_decoder
+
+        source_format_data = ",".join(
             [
                 item
                 for item in [
-                    source_format,
+                    source_media_format,
                     f"width={self._width}" if self._width is not None else None,
                     f"height={self._height}" if self._height is not None else None,
                     f"framerate={self._fps}/1" if self._fps is not None else None,
@@ -95,8 +128,8 @@ class GstreamerPipelineBuilder:
             item
             for item in [
                 source,
-                source_format,
-                decoder,
+                source_format_data,
+                decoder if isinstance(decoder, str) else "videoconvert",
                 "appsink",
             ]
             if item

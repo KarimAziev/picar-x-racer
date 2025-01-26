@@ -92,12 +92,27 @@ class CameraSettings(BaseModel):
         ),
     ] = None
 
+    media_type: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            title="Media Type",
+            description="The media type. Will be used if GStreamer is installed "
+            "and opencv-python is compiled with GStreamer support.",
+            examples=[
+                "video/x-raw",
+                "video/x-h264",
+                "image/jpeg",
+            ],
+        ),
+    ] = None
     use_gstreamer: Annotated[
         Optional[bool],
         Field(
             ...,
             description="Whether to use GStreamer for streaming. "
-            "This settings should be enabled only if GStreamer is installed and opencv-python is compiled with GStreamer support.",
+            "This setting should be enabled only if GStreamer is "
+            "installed and opencv-python is compiled with GStreamer support.",
             examples=[True, False],
         ),
     ] = GstreamerManager.gstreamer_available()
@@ -141,8 +156,8 @@ class DeviceCommonProps(BaseModel):
         description="The device path of the camera the mode is associated with.",
         examples=["/dev/video0"],
     )
-    pixel_format: str = Field(
-        ...,
+    pixel_format: Optional[str] = Field(
+        None,
         description="The pixel format used by the camera mode, such as MJPG or YUYV.",
         examples=[
             "MJPG",
@@ -163,6 +178,20 @@ class DeviceCommonProps(BaseModel):
             "RX24",
         ],
     )
+    media_type: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            title="Media Type",
+            description="The media type. Will be used if GStreamer is installed "
+            "and opencv-python is compiled with GStreamer support.",
+            examples=[
+                "video/x-raw",
+                "video/x-h264",
+                "image/jpeg",
+            ],
+        ),
+    ] = None
 
 
 class DiscreteDevice(DeviceItem, DeviceCommonProps):
@@ -183,8 +212,8 @@ class DiscreteDevice(DeviceItem, DeviceCommonProps):
         description="The height of the camera frame in pixels.",
         examples=[180, 480, 600, 768, 720],
     )
-    fps: int = Field(
-        ...,
+    fps: Optional[int] = Field(
+        None,
         description="The frame rate of the camera mode, measured in frames per second (fps).",
         examples=[10, 20, 30],
     )
@@ -261,51 +290,51 @@ class DeviceNode(DeviceItem):
         examples=[
             [
                 {
-                    'children': [
+                    "children": [
                         {
-                            'key': '/dev/video0:MJPG:352x288:30',
-                            'label': 'MJPG, 352x288,  30 fps',
-                            'device': '/dev/video0',
-                            'width': 352,
-                            'height': 288,
-                            'fps': 30,
-                            'pixel_format': 'MJPG',
+                            "key": "/dev/video0:MJPG:352x288:30",
+                            "label": "MJPG, 352x288,  30 fps",
+                            "device": "/dev/video0",
+                            "width": 352,
+                            "height": 288,
+                            "fps": 30,
+                            "pixel_format": "MJPG",
                         },
                     ],
-                    'key': '/dev/video0:MJPG',
-                    'label': 'MJPG',
+                    "key": "/dev/video0:MJPG",
+                    "label": "MJPG",
                 },
                 {
-                    'key': '/dev/video1',
-                    'label': '/dev/video1 (mmal service 16.1)',
-                    'children': [
+                    "key": "/dev/video1",
+                    "label": "/dev/video1 (mmal service 16.1)",
+                    "children": [
                         {
-                            'key': '/dev/video1:YU12:32x32 - 2592x1944',
-                            'label': 'YU12 32x32 - 2592x1944',
-                            'device': '/dev/video1',
-                            'pixel_format': 'YU12',
-                            'min_width': 32,
-                            'max_width': 2592,
-                            'min_height': 32,
-                            'max_height': 1944,
-                            'height_step': 2,
-                            'width_step': 2,
-                            'min_fps': 1,
-                            'max_fps': 90,
+                            "key": "/dev/video1:YU12:32x32 - 2592x1944",
+                            "label": "YU12 32x32 - 2592x1944",
+                            "device": "/dev/video1",
+                            "pixel_format": "YU12",
+                            "min_width": 32,
+                            "max_width": 2592,
+                            "min_height": 32,
+                            "max_height": 1944,
+                            "height_step": 2,
+                            "width_step": 2,
+                            "min_fps": 1,
+                            "max_fps": 90,
                         },
                         {
-                            'key': '/dev/video1:YUYV:32x32 - 2592x1944',
-                            'label': 'YUYV 32x32 - 2592x1944',
-                            'device': '/dev/video1',
-                            'pixel_format': 'YUYV',
-                            'min_width': 32,
-                            'max_width': 2592,
-                            'min_height': 32,
-                            'max_height': 1944,
-                            'height_step': 2,
-                            'width_step': 2,
-                            'min_fps': 1,
-                            'max_fps': 90,
+                            "key": "/dev/video1:YUYV:32x32 - 2592x1944",
+                            "label": "YUYV 32x32 - 2592x1944",
+                            "device": "/dev/video1",
+                            "pixel_format": "YUYV",
+                            "min_width": 32,
+                            "max_width": 2592,
+                            "min_height": 32,
+                            "max_height": 1944,
+                            "height_step": 2,
+                            "width_step": 2,
+                            "min_fps": 1,
+                            "max_fps": 90,
                         },
                     ],
                 },

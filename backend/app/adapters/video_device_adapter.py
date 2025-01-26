@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 
 import cv2
+from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
@@ -20,8 +21,29 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         Initializes the VideoDeviceAdapater instance.
         """
         self.logger = Logger(name=__name__)
-        self.video_device: Optional[CameraInfo] = None
         self.video_devices: List[CameraInfo] = []
+
+    @staticmethod
+    def find_device_info(device: str) -> Optional[str]:
+        """
+        Finds the device info of a specific camera device from the list of available camera devices.
+
+        Searches for the given device in the list of available camera devices and
+        returns its associated information (e.g., device path and category).
+
+        Args:
+            device: The path to the camera device (e.g., `/dev/video0`).
+
+        Returns:
+            The device path.
+        """
+        devices = (
+            V4L2.list_camera_device_names()
+            + GstreamerManager.list_camera_device_names()
+        )
+        for device_path in devices:
+            if device_path == device:
+                return device_path
 
     @staticmethod
     def try_device_props(
@@ -34,6 +56,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 height=camera_settings.height,
                 fps=camera_settings.fps,
                 pixel_format=camera_settings.pixel_format,
+                media_type=camera_settings.media_type,
             )
             cap = try_video_path(pipeline, backend=cv2.CAP_GSTREAMER)
             if cap is None:
@@ -43,8 +66,9 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 "device": device,
             }
         else:
+            _, device_path = GStreamerParser.parse_device_path(device)
             cap = try_video_path(
-                device,
+                device_path,
                 backend=cv2.CAP_V4L2,
                 width=camera_settings.width,
                 height=camera_settings.height,
@@ -62,7 +86,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 )
             )
 
-            data = V4L2.video_capture_format(device) or {}
+            data = V4L2.video_capture_format(device_path) or {}
 
             updated_settings = {
                 **camera_settings.model_dump(),
@@ -75,27 +99,38 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
         return cap, CameraSettings(**updated_settings)
 
+    @staticmethod
+    def list_devices():
+        if GstreamerManager.gstreamer_available():
+            return (
+                GstreamerManager.list_video_devices_with_formats()
+                + V4L2.list_video_devices_with_formats()
+            )
+        else:
+            return V4L2.list_video_devices_with_formats()
+
     def setup_video_capture(
         self, camera_settings: CameraSettings
     ) -> Tuple[cv2.VideoCapture, CameraSettings]:
         if camera_settings.device is not None:
-            self.video_devices = V4L2.list_camera_devices()
-            self.video_device = V4L2.find_device_info(camera_settings.device)
-            if self.video_device is None:
+            video_device = self.find_device_info(camera_settings.device)
+            if video_device is None:
                 raise CameraNotFoundError("Video device is not available")
             else:
-                (device_path, _) = self.video_device
+                device_path = video_device
                 result = self.try_device_props(device_path, camera_settings)
                 if result is None:
                     raise CameraDeviceError("Video capture failed")
                 else:
                     return result
         else:
-            self.video_devices = V4L2.list_camera_devices()
+            devices = (
+                V4L2.list_camera_device_names()
+                + GstreamerManager.list_camera_device_names()
+            )
             result = None
-            if len(self.video_devices) > 0:
-                device, _ = self.video_devices[0]
-                result = self.try_device_props(device, camera_settings)
+            if len(devices) > 0:
+                result = self.try_device_props(devices[0], camera_settings)
 
             if result is None:
                 raise CameraNotFoundError("Couldn't find video device")

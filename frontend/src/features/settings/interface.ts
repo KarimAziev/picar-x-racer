@@ -95,13 +95,14 @@ export interface DeviceItem {
 
 export interface DeviceCommonProps {
   device: string;
-  pixel_format: string;
+  pixel_format?: string;
+  media_type?: string;
 }
 
 export interface DiscreteDevice extends DeviceItem, DeviceCommonProps {
   width: number;
   height: number;
-  fps: number;
+  fps?: number;
 }
 
 export interface StepwiseDeviceProps {
@@ -149,6 +150,7 @@ export interface CameraSettings {
    * The format for the pixels (e.g., 'RGB', 'GRAY').
    */
   pixel_format?: string;
+  media_type?: string;
   use_gstreamer?: boolean;
 }
 

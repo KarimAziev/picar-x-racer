@@ -227,7 +227,7 @@ class V4L2FormatParser:
             )
             if self.current_pixel_format
             else None
-        ) or (30, 120)
+        )
 
         if fps_intervals:
             min_fps, max_fps = fps_intervals

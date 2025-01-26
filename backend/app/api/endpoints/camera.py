@@ -13,13 +13,13 @@ from app.exceptions.camera import (
     CameraShutdownInProgressError,
 )
 from app.managers.gstreamer_manager import GstreamerManager
-from app.managers.v4l2_manager import V4L2
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.util.doc_util import build_response_description
 from app.util.photo import capture_photo
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
+    from app.adapters.video_device_adapter import VideoDeviceAdapater
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.file_service import FileService
@@ -118,14 +118,18 @@ def get_camera_settings(
         CameraDevicesResponse, "Available camera devices."
     ),
 )
-def get_camera_devices():
+def get_camera_devices(
+    video_device_adapter: "VideoDeviceAdapater" = Depends(
+        deps.get_video_device_adapter
+    ),
+):
     """
     Retrieve a list of available camera devices.
 
     This endpoint identifies primary and secondary camera devices based on categorized
     rules and available video devices in the system.
     """
-    devices = V4L2.list_video_devices_with_formats()
+    devices = video_device_adapter.list_devices()
     return {"devices": devices}
 
 

@@ -119,6 +119,10 @@ class V4L2:
         return [(device, "") for device in dev_video_files]
 
     @staticmethod
+    def list_camera_device_names() -> List[str]:
+        return [item for item, _ in V4L2.list_camera_devices() if item]
+
+    @staticmethod
     def list_device_formats_ext(device: str) -> List[Dict[str, Any]]:
         """
         Retrieve extended video format details for a specific video device.
