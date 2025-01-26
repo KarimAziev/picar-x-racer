@@ -161,6 +161,67 @@ def preprocess_frame(frame: np.ndarray) -> np.ndarray:
     return frame
 
 
+def preprocess_frame_soft_colors(frame: np.ndarray) -> np.ndarray:
+    """
+    Adjust colors to resemble the softer, natural tones.
+
+    Args:
+        frame (np.ndarray): The input frame.
+
+    Returns:
+        np.ndarray: The preprocessed frame with softer colors.
+    """
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    mono_frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+
+    alpha = 0.5
+    beta = 0.5
+    frame = cv2.addWeighted(frame, alpha, mono_frame, beta, 0)
+
+    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=10)
+
+    return frame
+
+
+def preprocess_frame_fisheye(frame: np.ndarray) -> np.ndarray:
+    """
+    Apply a fisheye-like distortion effect.
+
+    Args:
+        frame (np.ndarray): The input frame.
+
+    Returns:
+        np.ndarray: The processed frame.
+    """
+
+    height, width = frame.shape[:2]
+
+    camera_matrix = np.array(
+        [[width, 0, width / 2], [0, height, height / 2], [0, 0, 1]]
+    )
+    distortion_coefficients = np.array([-0.4, 0.2, 0, 0])
+
+    map1, map2 = cv2.fisheye.initUndistortRectifyMap(
+        camera_matrix,
+        distortion_coefficients,
+        np.eye(3),
+        camera_matrix,
+        (width, height),
+        cv2.CV_16SC2,
+    )
+    distorted_frame = cv2.remap(
+        frame,
+        map1,
+        map2,
+        interpolation=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+    )
+
+    return distorted_frame
+
+
 def preprocess_frame_clahe(frame: np.ndarray) -> np.ndarray:
     """
     Enhance contrast using CLAHE.
