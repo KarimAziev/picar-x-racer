@@ -174,10 +174,6 @@ class GStreamerParser:
 
                 fps = item.get("fps")
 
-                min_fps = item.get("min_fps")
-                max_fps = item.get("max_fps")
-                has_fps = fps or min_fps and max_fps
-
                 size = (
                     f"{width}x{height}"
                     if width and height
@@ -188,7 +184,7 @@ class GStreamerParser:
                     )
                 )
 
-                if size is None or not has_fps:
+                if size is None:
                     continue
 
                 parent_key = (
