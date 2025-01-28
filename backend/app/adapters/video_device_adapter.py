@@ -190,25 +190,21 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                     device = child.get("device")
                     min_width = child.get("min_width")
                     min_height = child.get("min_height")
-                    if subchild and not subchild.get("min_width"):
-                        filtered_children.append(child)
-                    elif subchild is None and not min_width:
-                        filtered_children.append(child)
-                    else:
-                        pixel_format = (
-                            subchild.get("pixel_format")
-                            if subchild is not None
-                            else child.get("pixel_format", subchild)
-                        )
-                        if not pixel_format:
-                            filtered_children.append(child)
-                        elif pixel_format and V4L2FormatParser.get_fps_intervals(
+                    pixel_format = (
+                        subchild.get("pixel_format")
+                        if subchild is not None
+                        else child.get("pixel_format", subchild)
+                    )
+                    if pixel_format and path and min_width and min_height:
+                        if V4L2FormatParser.get_fps_intervals(
                             device=device,
                             width=min_width,
                             height=min_height,
                             pixel_format=pixel_format,
                         ):
                             filtered_children.append(child)
+                    else:
+                        filtered_children.append(child)
 
                 if filtered_children:
                     item["children"] = filtered_children
