@@ -108,6 +108,20 @@ export const mapChildren = <DataItem>(
   });
 };
 
+export const extractDeviceId = (path?: string) => {
+  if (!path) {
+    return path;
+  }
+
+  const parts = path.split(":");
+  if (parts.shift()) {
+    return parts.join(":");
+  }
+  return path;
+};
+
+const checkPixelFormat = (a?: string, b?: string) => a === b || (!a && !b);
+
 export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
   const { device, fps, height, width, pixel_format } = item;
   if (!device || !width || !height) {
@@ -120,11 +134,13 @@ export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
   while (stack.length > 0) {
     const current = stack.pop();
     if (current) {
+      const currDevice = (current as any).device;
+
       if ((current as any).children) {
         stack.push(...(current as any).children);
       } else if (
-        (current as any).pixel_format === pixel_format &&
-        (current as any).device === device
+        extractDeviceId(device) === extractDeviceId(currDevice) &&
+        checkPixelFormat(pixel_format, (current as any).pixel_format)
       ) {
         if ((current as any).width) {
           const discretedDevice: DiscreteDevice = current as DiscreteDevice;

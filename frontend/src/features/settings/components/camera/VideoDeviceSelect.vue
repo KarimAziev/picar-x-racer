@@ -209,9 +209,7 @@ const stepwisePresetValue = ref<PresetOptionValue | undefined>(
 const label = computed(() => {
   const val = selectedDevice.value?.device;
 
-  return [`Camera:`, val ? val.split(":")[0] : val]
-    .filter((v) => !!v)
-    .join(" ");
+  return [`Camera:`, val].filter((v) => !!v).join(" ");
 });
 
 const invalidData = ref<Partial<Record<"width" | "height" | "fps", string>>>(
@@ -366,14 +364,21 @@ const updateDevice = async (
 
 const handleToggleGstreamer = async (value: boolean) => {
   useGstreamer.value = value;
+  const promises: Promise<any>[] = [];
   if (selectedDevice.value) {
-    await updateDevice(selectedDevice.value);
+    promises.push(updateDevice(selectedDevice.value));
   } else {
-    await camStore.updateData({
-      ...camStore.data,
-      use_gstreamer: value,
-    });
+    promises.push(
+      camStore.updateData({
+        ...camStore.data,
+        use_gstreamer: value,
+      }),
+    );
   }
+  promises.push(camStore.fetchDevices());
+  await Promise.all(promises);
+  selectedDevice.value = getInitialValue();
+  stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 };
 
 onMounted(async () => {

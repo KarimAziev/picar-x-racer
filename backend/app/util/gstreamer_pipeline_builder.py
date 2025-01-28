@@ -8,13 +8,14 @@ logger = Logger(__name__)
 
 class GstreamerPipelineBuilder:
     decoders: Dict[str, str] = {
-        "image/jpeg": "jpegdec ! video/x-raw ! videoconvert",
+        "image/jpeg": "jpegdec ! videoconvert",
         "video/x-h264": "h264parse ! v4l2h264dec",
     }
     device_api_prop = {
         "libcamerasrc": "camera-name",
         "v4l2src": "device",
     }
+
     pixel_format_props: Dict[str, Tuple[str, Optional[str]]] = {
         # MJPEG -> Decode images
         "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
