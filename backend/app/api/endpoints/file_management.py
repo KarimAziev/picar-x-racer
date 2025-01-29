@@ -437,7 +437,6 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
     Download the last video captured by the user.
     """
     videos = file_manager.list_user_videos()
-    logger.info("videos %s", videos)
 
     if not videos:
         raise HTTPException(status_code=404, detail="No videos found")
@@ -449,7 +448,12 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
         path=f"{directory}/{filename}",
         media_type="application/octet-stream",
         filename=filename,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Cache-Control": "no-store",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
     )
 
 
