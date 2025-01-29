@@ -204,10 +204,6 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                         else child.get("pixel_format")
                     )
                     if pixel_format and path and min_width and min_height:
-                        logger.info(
-                            "cache info before call %s",
-                            V4L2FormatParser.get_fps_intervals.cache_info(),
-                        )
                         if V4L2FormatParser.get_fps_intervals(
                             device=path,
                             width=min_width,
@@ -215,10 +211,6 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                             pixel_format=pixel_format,
                         ):
                             filtered_children.append(child)
-                        logger.info(
-                            "cache info before after call %s",
-                            V4L2FormatParser.get_fps_intervals.cache_info(),
-                        )
                     elif pixel_format:
                         filtered_children.append(child)
 
