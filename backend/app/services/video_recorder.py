@@ -48,7 +48,7 @@ class VideoRecorder(metaclass=SingletonMeta):
         video_dir_path = Path(self.file_manager.user_videos_dir)
         video_dir_path.mkdir(exist_ok=True, parents=True)
 
-        fourcc = cv2.VideoWriter.fourcc(*"H264")
+        fourcc = cv2.VideoWriter.fourcc(*"XVID")
         file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.avi"
         video_path = video_dir_path.joinpath(file_name).as_posix()
 
