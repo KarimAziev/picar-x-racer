@@ -223,7 +223,7 @@ def download_file(
     - **FileResponse**: A response containing the file to download.
     """
     try:
-        if media_type == 'data':
+        if media_type == "data":
             path = resolve_absolute_path(filename, file_manager.data_dir)
             return FileResponse(
                 path=path,
@@ -437,6 +437,7 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
     Download the last video captured by the user.
     """
     videos = file_manager.list_user_videos()
+    logger.info("videos %s", videos)
 
     if not videos:
         raise HTTPException(status_code=404, detail="No videos found")
