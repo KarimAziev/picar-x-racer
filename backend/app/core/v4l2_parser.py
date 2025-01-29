@@ -345,7 +345,7 @@ class V4L2FormatParser:
             ```
         """
         logger.info(
-            f"Device id: '{device}', device-id={id(device)}, Width='{width}' width-id: {id(width)}, height='{height}', height-id={id(height)} Pixel format={pixel_format} pixel_format-id='{id(pixel_format)}'"
+            f"Device id: '{device}', Width='{width}', height='{height}', Pixel format={pixel_format}"
         )
 
         try:
