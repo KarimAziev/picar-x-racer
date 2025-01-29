@@ -131,8 +131,10 @@ class CameraService(metaclass=SingletonMeta):
         should_restart = (
             not self.camera_run
             or self.camera_device_error
-            or settings.video_record
-            and not self.stream_settings.video_record
+            or settings.video_record != self.stream_settings.video_record
+        )
+        self.logger.info(
+            "Updating stream settings, should camera restart %s", should_restart
         )
         self.stream_settings = settings
         if should_restart:
@@ -402,6 +404,7 @@ class CameraService(metaclass=SingletonMeta):
         """
         Restarts the camera by stopping and reinitializing it.
         """
+        self.logger.info("Restarting camera")
         cam_running = self.camera_run
         if cam_running:
             self.stop_camera()
