@@ -323,6 +323,11 @@ class CameraService(metaclass=SingletonMeta):
             cap, props = self.video_device_adapter.setup_video_capture(
                 self.camera_settings
             )
+            self.logger.info(
+                "Camera props %s, video record is %s",
+                props,
+                self.stream_settings.video_record,
+            )
             self.cap = cap
             self.camera_settings = props
             if (
