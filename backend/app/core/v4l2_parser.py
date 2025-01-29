@@ -344,6 +344,9 @@ class V4L2FormatParser:
             print(fps_range)  # Output: (30, 60)
             ```
         """
+        logger.debug(
+            f"Device id: {id(device)}, Width id: {id(width)}, Pixel format id: {id(pixel_format)}"
+        )
         try:
             cmd = [
                 "v4l2-ctl",

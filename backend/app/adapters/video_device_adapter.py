@@ -211,7 +211,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                             pixel_format=pixel_format,
                         ):
                             filtered_children.append(child)
-                    elif pixel_format:
+                    else:
                         filtered_children.append(child)
 
                 if filtered_children:
