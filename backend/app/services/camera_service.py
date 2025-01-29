@@ -334,12 +334,12 @@ class CameraService(metaclass=SingletonMeta):
                 self.stream_settings.video_record
                 and self.camera_settings.width
                 and self.camera_settings.height
-                and self.camera_settings.fps
             ):
+                fps = self.camera_settings.fps or self.actual_fps
                 self.video_recorder.start_recording(
                     width=self.camera_settings.width,
                     height=self.camera_settings.height,
-                    fps=float(self.camera_settings.fps),
+                    fps=float(fps or 30),
                 )
             self.capture_thread = threading.Thread(
                 target=self._camera_thread_func, daemon=True
