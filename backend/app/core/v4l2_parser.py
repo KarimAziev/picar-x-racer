@@ -315,7 +315,7 @@ class V4L2FormatParser:
                 self.formats.append(child)
 
     @staticmethod
-    @lru_cache(maxsize=128)
+    @lru_cache()
     def get_fps_intervals(
         device: str, width: int, height: int, pixel_format: str
     ) -> Optional[Tuple[int, ...]]:
