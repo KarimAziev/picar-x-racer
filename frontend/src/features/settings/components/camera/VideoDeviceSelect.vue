@@ -5,7 +5,7 @@
         <TreeSelect
           @update:model-value="updateDevice"
           :nodes="devices"
-          v-model:model-value="selectedDevice"
+          v-model:model-value="selectedDevice as unknown as TreeNode"
         />
       </Field>
     </div>
@@ -153,19 +153,20 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
 import type { InputNumberInputEvent } from "primevue/inputnumber";
-
+import type { TreeNode } from "@/ui/Tree.vue";
 import { useCameraStore } from "@/features/settings/stores";
-
 import Field from "@/ui/Field.vue";
 import {
   findDevice,
   mapChildren,
   validateStepwiseData,
+  isStepwiseDevice,
+  isGstreamerStepwiseDevice,
 } from "@/features/settings/util";
 import {
   DiscreteDevice,
-  DeviceStepwise,
   CameraSettings,
+  Device,
 } from "@/features/settings/interface";
 
 import TreeSelect from "@/ui/TreeSelect.vue";
@@ -183,11 +184,10 @@ import { findStepwisePreset } from "@/features/settings/components/camera/util";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const camStore = useCameraStore();
+
 const devices = computed(() => mapChildren(camStore.devices));
 
 const useGstreamer = ref(camStore.data.use_gstreamer);
-
-const isStepwiseDevice = (data: any): data is DeviceStepwise => data?.max_width;
 
 const stepwiseData = ref<Pick<CameraSettings, "width" | "fps" | "height">>({
   width: camStore.data.width || 0,
@@ -198,9 +198,7 @@ const stepwiseData = ref<Pick<CameraSettings, "width" | "fps" | "height">>({
 const getInitialValue = () =>
   findDevice(camStore.data, camStore.devices) || null;
 
-const selectedDevice = ref<DiscreteDevice | DeviceStepwise | null>(
-  getInitialValue(),
-);
+const selectedDevice = ref<Device | null>(getInitialValue());
 
 const stepwisePresetValue = ref<PresetOptionValue | undefined>(
   findStepwisePreset(stepwiseData.value)?.value,
@@ -257,9 +255,11 @@ const handleChangeHeight = ({ value }: InputNumberInputEvent) => {
 };
 
 const isUnchanged = () => {
-  const sizeData = isStepwiseDevice(selectedDevice.value)
-    ? stepwiseData.value
-    : (selectedDevice.value as DiscreteDevice);
+  const sizeData =
+    isStepwiseDevice(selectedDevice.value) ||
+    isGstreamerStepwiseDevice(selectedDevice.value)
+      ? stepwiseData.value
+      : (selectedDevice.value as DiscreteDevice);
 
   return (
     useGstreamer.value === camStore.data.use_gstreamer &&
@@ -270,7 +270,7 @@ const isUnchanged = () => {
         width: (v) => v === sizeData.width,
         height: (v) => v === sizeData.height,
         fps: (v) => v === sizeData.fps,
-        media_type: (v) => v === selectedDevice.value?.media_type,
+        media_type: (v) => v === (selectedDevice.value as any).media_type,
       },
       camStore.data,
     )
@@ -328,7 +328,8 @@ const updateStepwiseDevice = async () => {
     use_gstreamer: useGstreamer.value,
     pixel_format: stepwiseParams.pixel_format,
     device: stepwiseParams.device,
-    media_type: selectedDevice.value.media_type,
+
+    media_type: stepwiseParams.media_type,
     width: roundNumber(deviceData.width),
     height: roundNumber(deviceData.height),
     fps: isNumber(deviceData.fps)
@@ -337,9 +338,7 @@ const updateStepwiseDevice = async () => {
   });
 };
 
-const updateDevice = async (
-  stepwiseParams: DiscreteDevice | DeviceStepwise,
-) => {
+const updateDevice = async (stepwiseParams: Device) => {
   selectedDevice.value = stepwiseParams;
 
   const valid = validate();

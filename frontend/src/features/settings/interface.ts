@@ -113,6 +113,7 @@ export interface StepwiseDeviceProps {
 
 export interface DeviceStepwise extends DeviceCommonProps, StepwiseDeviceProps {
   pixel_format: string;
+  media_type?: string;
 }
 
 export interface GstreamerDiscreteDevice
@@ -135,12 +136,12 @@ export type Device =
   | GstreamerStepwiseDevice;
 
 export type MappedDevice = Device & {
-  key: string | number;
+  key: string;
   label: string;
 };
 
 export interface DeviceNode {
-  key: string | number;
+  key: string;
   label: string;
   children: (MappedDevice | DeviceNode)[];
 }

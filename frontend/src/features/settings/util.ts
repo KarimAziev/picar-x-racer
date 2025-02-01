@@ -221,7 +221,7 @@ export const validateStepwiseData = (
   );
 };
 
-export const isStepwiseDevice = (data: any): data is DeviceStepwise =>
+export const isStepwiseDeviceStrict = (data: any): data is DeviceStepwise =>
   data.max_width && data.pixel_format && !data.media_type;
 
 export const isDiscreteDevice = (data: any): data is DiscreteDevice =>
@@ -235,10 +235,13 @@ export const isGstreamerDiscreteDevice = (
   data: any,
 ): data is GstreamerDiscreteDevice => data.width && data.media_type;
 
+export const isStepwiseDevice = (data: any): data is DeviceStepwise =>
+  data?.max_width;
+
 export const generateLabel = (device: Device) => {
   const isGstreamerStepwise = isGstreamerStepwiseDevice(device);
 
-  if (isGstreamerStepwiseDevice(device) || isStepwiseDevice(device)) {
+  if (isGstreamerStepwiseDevice(device) || isStepwiseDeviceStrict(device)) {
     const minSize = props(["min_width", "min_height"], device).join("x");
     const maxSize = props(["max_width", "max_height"], device).join("x");
     const fps = props(["min_fps", "max_fps"], device)
