@@ -178,30 +178,6 @@ class FileService(metaclass=SingletonMeta):
         """List sorted music tracks."""
         return [details["track"] for details in self.list_all_music_with_details()]
 
-    def prune_cache(self, max_entries=100) -> None:
-        """Limits the cache size by keeping only recent entries."""
-        if self.cache is not None and len(self.cache) > max_entries:
-            # Keeps the N most popular/most recent entries
-            self.cache = dict(list(self.cache.items())[-max_entries:])
-            self.save_music_cache()
-
-    def update_track_order_in_cache(self, ordered_tracks: List[str]) -> None:
-        """
-        Updates the order for tracks in the music cache.
-
-        Args:
-            ordered_tracks (List[str]): List of track filenames in the desired order.
-        """
-        if self.cache is None:
-            self.cache = self.load_music_cache()
-        for idx, track_filename in enumerate(ordered_tracks):
-            for _, cache_entry in self.cache.items():
-                if cache_entry["details"]["track"] == track_filename:
-                    self.logger.debug(f"Updating order for track: {track_filename}")
-                    cache_entry["details"]["order"] = idx
-                    break
-        self.save_music_cache()
-
     def _get_audio_file_details(self, file: str) -> Optional[Dict[str, Any]]:
         """
         Gets details of an audio file such as track name and duration.
@@ -594,7 +570,7 @@ class FileService(metaclass=SingletonMeta):
         Returns a structed list of all found models.
         """
         allowed_extensions = (
-            ('.tflite', '.pt') if is_google_coral_connected() else ('.pt')
+            (".tflite", ".pt") if is_google_coral_connected() else (".pt")
         )
         existing_set = set()
 
