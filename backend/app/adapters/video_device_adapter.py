@@ -166,7 +166,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
             video_device: Optional[str] = None
             for item in devices:
                 if device_path in (item.device, item.path):
-                    video_device = device_path
+                    video_device = camera_settings.device
                     break
 
             if video_device is None:
