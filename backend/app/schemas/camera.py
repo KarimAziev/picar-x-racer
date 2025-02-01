@@ -1,8 +1,5 @@
-from __future__ import annotations
-
 from typing import List, Optional, Union
 
-from app.managers.gstreamer_manager import GstreamerManager
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Annotated
 
@@ -115,7 +112,7 @@ class CameraSettings(BaseModel):
             "installed and opencv-python is compiled with GStreamer support.",
             examples=[True, False],
         ),
-    ] = GstreamerManager.gstreamer_available()
+    ] = False
 
     @model_validator(mode="after")
     def validate_dimensions(cls, values):
@@ -133,16 +130,11 @@ class DeviceItem(BaseModel):
     A model representing a camera device item, which serves as a base for other device-related models.
     """
 
-    key: str = Field(
-        ...,
-        description="A unique identifier for the camera device.",
-        examples=["/dev/video0", "/dev/video1"],
-    )
-    label: str = Field(
-        ...,
+    name: Optional[str] = Field(
+        None,
         description="A human-readable label for the camera device, "
         "including its device path and additional information such as the model or manufacturer.",
-        examples=["/dev/video0 (Integrated Camera: Integrated C)"],
+        examples=["(Integrated Camera: Integrated C)"],
     )
 
 
@@ -193,6 +185,31 @@ class DeviceCommonProps(BaseModel):
         ),
     ] = None
 
+    api: Annotated[
+        Optional[str],
+        Field(
+            None,
+            title="Device API",
+            description="The API used to interface with the device.",
+            examples=[
+                "libcamera",
+                "v4l2",
+            ],
+        ),
+    ]
+    path: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            title="Device path",
+            description="The device path without api prefix.",
+            examples=[
+                "/base/soc/i2c0mux/i2c@1/imx708@1a",
+                "/dev/video21",
+            ],
+        ),
+    ] = None
+
 
 class DiscreteDevice(DeviceItem, DeviceCommonProps):
     """
@@ -219,7 +236,7 @@ class DiscreteDevice(DeviceItem, DeviceCommonProps):
     )
 
 
-class DeviceStepwise(DeviceItem, DeviceCommonProps):
+class DeviceStepwiseBase(DeviceItem, DeviceCommonProps):
     """
     A model representing a stepwise configuration for a device with adjustable
     properties such as resolution, frame rate, and pixel format.
@@ -262,6 +279,13 @@ class DeviceStepwise(DeviceItem, DeviceCommonProps):
         examples=[1, 2, 10],
     )
 
+
+class DeviceStepwise(DeviceStepwiseBase):
+    """
+    A model representing a stepwise configuration for a device with adjustable
+    properties such as resolution, frame rate, and pixel format.
+    """
+
     min_fps: int = Field(
         ...,
         description="The minimal frame rate of the camera mode, measured in frames per second (fps).",
@@ -275,174 +299,52 @@ class DeviceStepwise(DeviceItem, DeviceCommonProps):
     )
 
 
-class DeviceNode(DeviceItem):
-    """
-    A model representing a node in the device hierarchy, which may contain child
-    nodes or configurations such as stepwise or discrete properties.
-    """
-
-    children: List[Union[DeviceStepwise, DeviceNode, DiscreteDevice]] = Field(
-        ...,
-        description=(
-            "A list of child nodes or configurations, "
-            "which can include stepwise configurations, discrete configurations, or other nested nodes."
-        ),
-        examples=[
-            [
-                {
-                    "children": [
-                        {
-                            "key": "/dev/video0:MJPG:352x288:30",
-                            "label": "MJPG, 352x288,  30 fps",
-                            "device": "/dev/video0",
-                            "width": 352,
-                            "height": 288,
-                            "fps": 30,
-                            "pixel_format": "MJPG",
-                        },
-                    ],
-                    "key": "/dev/video0:MJPG",
-                    "label": "MJPG",
-                },
-                {
-                    "key": "/dev/video1",
-                    "label": "/dev/video1 (mmal service 16.1)",
-                    "children": [
-                        {
-                            "key": "/dev/video1:YU12:32x32 - 2592x1944",
-                            "label": "YU12 32x32 - 2592x1944",
-                            "device": "/dev/video1",
-                            "pixel_format": "YU12",
-                            "min_width": 32,
-                            "max_width": 2592,
-                            "min_height": 32,
-                            "max_height": 1944,
-                            "height_step": 2,
-                            "width_step": 2,
-                            "min_fps": 1,
-                            "max_fps": 90,
-                        },
-                        {
-                            "key": "/dev/video1:YUYV:32x32 - 2592x1944",
-                            "label": "YUYV 32x32 - 2592x1944",
-                            "device": "/dev/video1",
-                            "pixel_format": "YUYV",
-                            "min_width": 32,
-                            "max_width": 2592,
-                            "min_height": 32,
-                            "max_height": 1944,
-                            "height_step": 2,
-                            "width_step": 2,
-                            "min_fps": 1,
-                            "max_fps": 90,
-                        },
-                    ],
-                },
-            ]
-        ],
-    )
-
-
 class CameraDevicesResponse(BaseModel):
     """
     Successful response for available camera devices.
     """
 
-    devices: List[DeviceNode] = Field(
+    devices: List[
+        Union[
+            DeviceStepwise,
+            DiscreteDevice,
+        ]
+    ] = Field(
         ...,
-        description=(
-            "A hierarchical list of camera devices and their configurations, "
-            "where each device can have child nodes or configurable properties."
-        ),
+        description=("A list of camera devices and their configurations."),
         examples=[
             [
                 {
-                    "key": "/dev/video0",
-                    "label": "/dev/video0 (Integrated Camera: Integrated C)",
-                    "children": [
-                        {
-                            "key": "/dev/video0:MJPG",
-                            "label": "MJPG",
-                            "children": [
-                                {
-                                    "device": "/dev/video0",
-                                    "pixel_format": "MJPG",
-                                    "key": "/dev/video0:MJPG:640x360:30",
-                                    "label": "MJPG, 640x360, 30 fps",
-                                    "width": 640,
-                                    "height": 360,
-                                    "fps": 30,
-                                },
-                                {
-                                    "device": "/dev/video0",
-                                    "pixel_format": "MJPG",
-                                    "key": "/dev/video0:MJPG:640x480:30",
-                                    "label": "MJPG, 640x480, 30 fps",
-                                    "width": 640,
-                                    "height": 480,
-                                    "fps": 30,
-                                },
-                            ],
-                        },
-                        {
-                            "key": "/dev/video0:YUYV",
-                            "label": "YUYV",
-                            "children": [
-                                {
-                                    "device": "/dev/video0",
-                                    "pixel_format": "YUYV",
-                                    "key": "/dev/video0:YUYV:640x480:30",
-                                    "label": "YUYV, 640x480, 30 fps",
-                                    "width": 640,
-                                    "height": 480,
-                                    "fps": 30,
-                                },
-                                {
-                                    "device": "/dev/video0",
-                                    "pixel_format": "YUYV",
-                                    "key": "/dev/video0:YUYV:320x180:30",
-                                    "label": "YUYV, 320x180, 30 fps",
-                                    "width": 320,
-                                    "height": 180,
-                                    "fps": 30,
-                                },
-                            ],
-                        },
-                    ],
+                    "device": "/dev/video0",
+                    "pixel_format": "MJPG",
+                    "label": "MJPG, 640x360, 30 fps",
+                    "width": 640,
+                    "height": 360,
+                    "fps": 30,
                 },
                 {
-                    "key": "/dev/video1",
-                    "label": "/dev/video1 (mmal service 16.1)",
-                    "children": [
-                        {
-                            "device": "/dev/video1",
-                            "pixel_format": "YU12",
-                            "key": "/dev/video1:YU12:32x32 - 2592x1944",
-                            "label": "YU12 32x32 - 2592x1944",
-                            "min_width": 32,
-                            "max_width": 2592,
-                            "min_height": 32,
-                            "max_height": 1944,
-                            "height_step": 2,
-                            "width_step": 2,
-                            "min_fps": 1,
-                            "max_fps": 90,
-                        },
-                        {
-                            "device": "/dev/video1",
-                            "pixel_format": "YUYV",
-                            "key": "/dev/video1:YUYV:32x32 - 2592x1944",
-                            "label": "YUYV 32x32 - 2592x1944",
-                            "min_width": 32,
-                            "max_width": 2592,
-                            "min_height": 32,
-                            "max_height": 1944,
-                            "height_step": 2,
-                            "width_step": 2,
-                            "min_fps": 1,
-                            "max_fps": 90,
-                        },
-                    ],
+                    "device": "/dev/video1",
+                    "pixel_format": "YU12",
+                    "min_width": 32,
+                    "max_width": 2592,
+                    "min_height": 32,
+                    "max_height": 1944,
+                    "height_step": 2,
+                    "width_step": 2,
+                    "min_fps": 1,
+                    "max_fps": 90,
+                },
+                {
+                    "device": "/dev/video1",
+                    "pixel_format": "YUYV",
+                    "min_width": 32,
+                    "max_width": 2592,
+                    "min_height": 32,
+                    "max_height": 1944,
+                    "height_step": 2,
+                    "width_step": 2,
+                    "min_fps": 1,
+                    "max_fps": 90,
                 },
             ]
         ],

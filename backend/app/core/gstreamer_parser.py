@@ -1,13 +1,13 @@
 import re
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from app.core.logger import Logger
+from app.schemas.camera import DeviceStepwise, DiscreteDevice
 
 logger = Logger(__name__)
 
 
 class GStreamerParser:
-
     GROUP_TYPE_PATTERN = r"^(name|caps|properties)\s*:\s*(.*)?$"
     MEDIA_TYPE_REGEX = r"^(?:[a-zA-Z0-9]+/[a-zA-Z0-9\+\.\-]+)$"
 
@@ -16,7 +16,7 @@ class GStreamerParser:
         self.name: Optional[str] = None
         self.props: Dict[str, Any] = {}
         self.caps: List[Dict[str, Any]] = []
-        self.result = []
+        self.result: List[Union[DiscreteDevice, DeviceStepwise]] = []
 
     @staticmethod
     def parse_device_path(input_string: str) -> Tuple[Optional[str], str]:
@@ -28,7 +28,7 @@ class GStreamerParser:
         else:
             return None, input_string
 
-    def parse(self, output: str) -> List[Dict[str, Any]]:
+    def parse(self, output: str) -> List[Union[DiscreteDevice, DeviceStepwise]]:
         lines = output.splitlines()
 
         for line in lines:
@@ -152,17 +152,9 @@ class GStreamerParser:
     def _finalize_group(self):
         obj_path = self.props.get("object.path")
         if self.caps and self.name and obj_path:
-            base_props = {
-                "key": obj_path,
-            }
-
-            formats: Dict[str, List[Dict[str, Any]]] = {}
-            children: List[Dict[str, Any]] = []
+            api, path = self.parse_device_path(obj_path)
 
             for item in self.caps:
-                media_type = item.get("media_type")
-                pixel_format = item.get("pixel_format")
-
                 width = item.get("width")
                 height = item.get("height")
 
@@ -172,67 +164,32 @@ class GStreamerParser:
                 max_height = item.get("max_height")
                 max_width = item.get("max_width")
 
-                fps = item.get("fps")
+                merged_data = {
+                    **item,
+                    "name": self.name,
+                    "device": obj_path,
+                    "api": api,
+                    "path": path,
+                }
 
-                size = (
-                    f"{width}x{height}"
-                    if width and height
+                data = (
+                    DiscreteDevice(**merged_data)
+                    if isinstance(width, int) and isinstance(height, int)
                     else (
-                        f"{min_width}x{min_height} - {max_width}x{max_height}"
-                        if max_width and min_width and max_height and min_height
+                        DeviceStepwise(**merged_data)
+                        if isinstance(min_height, int)
+                        and isinstance(min_width, int)
+                        and isinstance(max_height, int)
+                        and isinstance(max_width, int)
                         else None
                     )
                 )
 
-                if size is None:
+                if not data:
                     continue
 
-                parent_key = (
-                    ", ".join([item for item in [pixel_format, media_type] if item])
-                    if pixel_format or media_type
-                    else None
-                )
-                item_label = ", ".join(
-                    [f"{val}" for val in [parent_key, size, fps] if val]
-                )
+                self.result.append(data)
 
-                item_key = f"{obj_path}:" + ":".join(
-                    [f"{val}" for val in item.values() if val]
-                )
-                merged_data = {
-                    **base_props,
-                    **item,
-                    "device": obj_path,
-                    "key": item_key,
-                    "label": item_label,
-                }
-                if parent_key is None:
-                    children.append(merged_data)
-                elif formats.get(parent_key):
-                    formats[parent_key].append(merged_data)
-                else:
-                    formats[parent_key] = [merged_data]
-
-            for parent_key in formats.keys():
-                data = {
-                    **base_props,
-                    "label": parent_key,
-                    "key": f"{obj_path}:{parent_key}",
-                    "children": formats.get(parent_key),
-                }
-                children.append(data)
-
-            api, path = self.parse_device_path(obj_path)
-
-            item = {
-                "label": f"{path} {self.name}",
-                "api": api,
-                "path": path,
-                **base_props,
-                "children": children,
-            }
-            if len(children) > 0:
-                self.result.append(item)
             self.caps = []
             self.props = {}
             self.current_parser = None

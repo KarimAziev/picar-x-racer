@@ -1,26 +1,30 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
 
 import cv2
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.core.v4l2_parser import V4L2FormatParser
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.managers.gstreamer_manager import GstreamerManager
-from app.managers.v4l2_manager import V4L2
-from app.schemas.camera import CameraSettings
+from app.schemas.camera import CameraSettings, DeviceStepwise, DiscreteDevice
 from app.util.device import try_video_path
 
 logger = Logger(name=__name__)
 
+if TYPE_CHECKING:
+    from app.services.v4l2_service import V4L2Service
+
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
+    def __init__(self, v4l2: "V4L2Service"):
+        self.v4l2 = v4l2
+        self.devices: List[Union[DeviceStepwise, DiscreteDevice]] = []
+
     """
     A singleton class responsible for managing video capturing devices.
     """
 
-    @staticmethod
-    def find_device_info(device: str) -> Optional[str]:
+    def find_device_info(self, device: str) -> Optional[str]:
         """
         Finds the device info of a specific camera device from the list of available camera devices.
 
@@ -34,16 +38,29 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
             The device path.
         """
         devices = (
-            V4L2.list_camera_device_names()
+            self.v4l2.list_camera_device_names()
             + GstreamerManager.list_camera_device_names()
         )
-        for device_path in devices:
-            if device_path == device:
+        _, device_path = GStreamerParser.parse_device_path(device)
+        for device_str in devices:
+            _, known_device_path = GStreamerParser.parse_device_path(device_str)
+            if known_device_path == device_path:
                 return device_path
 
-    @staticmethod
+    def list_device_names(self):
+        v4l2_devices = self.v4l2.list_camera_device_names()
+        failed_devices = self.v4l2.failed_devices
+        gstreamer_devices = GstreamerManager.list_camera_device_names()
+        devices: Set[str] = set()
+
+        for device_str in gstreamer_devices:
+            if device_str not in failed_devices and device_str not in v4l2_devices:
+                devices.add(device_str)
+
+        return list(devices) + v4l2_devices
+
     def try_device_props(
-        device: str, camera_settings: CameraSettings
+        self, device: str, camera_settings: CameraSettings
     ) -> Optional[Tuple[cv2.VideoCapture, CameraSettings]]:
         if camera_settings.use_gstreamer:
             pipeline = GstreamerManager.setup_pipeline(
@@ -82,7 +99,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 )
             )
 
-            data = V4L2.video_capture_format(device_path) or {}
+            data = self.v4l2.video_capture_format(device_path) or {}
 
             updated_settings = {
                 **camera_settings.model_dump(),
@@ -95,154 +112,76 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
         return cap, CameraSettings(**updated_settings)
 
-    @staticmethod
-    def flattenize_children(items: List[Dict[str, Any]]):
-        stack = items.copy()
-        result: List[Dict[str, Any]] = []
-        while stack:
-            item = stack.pop()
-            children = item.get("children")
-            if children:
-                result.extend(children.copy())
-        return result
-
-    @staticmethod
-    def merge_devices(
-        items: List[Dict[str, Any]], items_to_exclude: List[Dict[str, Any]]
-    ):
-        flattenized = VideoDeviceAdapater.flattenize_children(items_to_exclude)
-        video_paths = [item.get("path") for item in items_to_exclude if item]
-        new_devices = []
-        devices_to_merge = {}
-        merged_result = []
-
-        keys_to_exclude = [
-            f"{item.get('path')}:{item.get('pixel_format')}"
-            for item in flattenized
-            if item.get("pixel_format")
+    def list_devices(self) -> List[
+        Union[
+            DeviceStepwise,
+            DiscreteDevice,
         ]
+    ]:
 
-        def filter_child(item: Dict[str, Any]):
-            if not item.get("children"):
-                key = f"{item.get('device')}:{item.get('pixel_format')}"
-                if key not in keys_to_exclude:
-                    return item
-            else:
-                children = item.get("children", [])
-                filtered_children = []
-                for child in children:
-                    if filter_child(child):
-                        filtered_children.append(child)
-                if len(filtered_children) > 0:
-                    return {**item, "children": filtered_children}
-
-        for device in items:
-            key = device.get("key")
-            if key not in video_paths:
-                new_devices.append(device)
-            else:
-                filtered_device = filter_child(device)
-                if filtered_device:
-                    devices_to_merge[key] = filtered_device.get("children")
-
-        for item in items_to_exclude:
-            path = item.get("path")
-            new_children = devices_to_merge.get(path)
-            if new_children:
-                data = {**item, "children": item.get("children") + new_children}
-                merged_result.append(data)
-            else:
-                merged_result.append(item)
-
-        return merged_result + new_devices
-
-    @staticmethod
-    def list_devices():
-        v4l2_devices = V4L2.list_video_devices_with_formats()
+        v4l2_devices = self.v4l2.list_video_devices_ext()
+        failed_devices = self.v4l2.failed_devices
         gstreamer_devices = (
             GstreamerManager.list_video_devices_with_formats()
             if GstreamerManager.gstreamer_available()
             else None
         )
         if gstreamer_devices is None:
+            self.devices = v4l2_devices
             return v4l2_devices
 
-        results = []
-        gstreamer_devices_paths: List[str] = []
+        results: List[
+            Union[
+                DeviceStepwise,
+                DiscreteDevice,
+            ]
+        ] = []
+        gstreamer_devices_paths = set()
 
         for item in gstreamer_devices:
-            path = item.get("path")
+            path = item.path
             if not isinstance(path, str):
                 continue
-            if item.get("api") != "v4l2":
+            if item.api != "v4l2":
                 results.append(item)
-                gstreamer_devices_paths.append(path)
-            else:
-                children: List[Dict[str, Any]] = item.get("children", [])
-                filtered_children: List[Dict[str, Any]] = []
-                for child in children:
-                    subchildren = child.get("children")
-                    if isinstance(subchildren, list) and len(subchildren) == 0:
-                        continue
-                    subchild = (
-                        subchildren[0] if isinstance(subchildren, list) else subchildren
-                    )
+                gstreamer_devices_paths.add(path)
+            elif path not in failed_devices and path not in self.v4l2.succeed_devices:
+                results.append(item)
 
-                    min_width = (
-                        subchild.get("min_width")
-                        if subchild is not None
-                        else child.get("min_width")
-                    )
-                    min_height = (
-                        subchild.get("min_height")
-                        if subchild is not None
-                        else child.get("min_height")
-                    )
-                    pixel_format = (
-                        subchild.get("pixel_format")
-                        if subchild is not None
-                        else child.get("pixel_format")
-                    )
-                    if pixel_format and path and min_width and min_height:
-                        if V4L2FormatParser.get_fps_intervals(
-                            device=path,
-                            width=min_width,
-                            height=min_height,
-                            pixel_format=pixel_format,
-                        ):
-                            filtered_children.append(child)
-                    elif pixel_format:
-                        filtered_children.append(child)
+        self.devices = [
+            item
+            for item in v4l2_devices
+            if item.device not in gstreamer_devices_paths
+            and f"{item.device}:{item.pixel_format}"
+        ] + results
 
-                if filtered_children:
-                    item["children"] = filtered_children
-                    results.append(item)
-                    gstreamer_devices_paths.append(path)
-
-        return VideoDeviceAdapater.merge_devices(v4l2_devices, results.copy())
+        return self.devices
 
     def setup_video_capture(
         self, camera_settings: CameraSettings
     ) -> Tuple[cv2.VideoCapture, CameraSettings]:
+        devices = self.list_devices()
         if camera_settings.device is not None:
-            video_device = self.find_device_info(camera_settings.device)
+            _, device_path = GStreamerParser.parse_device_path(camera_settings.device)
+            video_device: Optional[str] = None
+            for item in devices:
+                if device_path in (item.device, item.path):
+                    video_device = device_path
+                    break
+
             if video_device is None:
                 raise CameraNotFoundError("Video device is not available")
             else:
-                device_path = video_device
-                result = self.try_device_props(device_path, camera_settings)
+                result = self.try_device_props(video_device, camera_settings)
                 if result is None:
                     raise CameraDeviceError("Video capture failed")
                 else:
                     return result
         else:
-            devices = (
-                V4L2.list_camera_device_names()
-                + GstreamerManager.list_camera_device_names()
-            )
             result = None
             if len(devices) > 0:
-                result = self.try_device_props(devices[0], camera_settings)
+                device_name = devices[0].device
+                result = self.try_device_props(device_name, camera_settings)
 
             if result is None:
                 raise CameraNotFoundError("Couldn't find video device")

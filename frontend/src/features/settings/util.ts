@@ -7,7 +7,11 @@ import {
   DeviceStepwise,
   CameraSettings,
   StepwiseDeviceProps,
+  GstreamerDiscreteDevice,
+  GstreamerStepwiseDevice,
+  Device,
 } from "@/features/settings/interface";
+import { props } from "@/util/obj";
 import { isNumber } from "@/util/guards";
 import { inRange } from "@/util/number";
 
@@ -114,7 +118,7 @@ export const extractDeviceId = (path?: string) => {
   }
 
   const parts = path.split(":");
-  if (parts.shift()) {
+  if (parts.length > 1 && parts.shift()) {
     return parts.join(":");
   }
   return path;
@@ -215,4 +219,106 @@ export const validateStepwiseData = (
     },
     {} as Record<keyof typeof data, string>,
   );
+};
+
+export const isStepwiseDevice = (data: any): data is DeviceStepwise =>
+  data.max_width && data.pixel_format && !data.media_type;
+
+export const isDiscreteDevice = (data: any): data is DiscreteDevice =>
+  data.width && data.pixel_format && !data.media_type;
+
+export const isGstreamerStepwiseDevice = (
+  data: any,
+): data is GstreamerStepwiseDevice => data.max_width && data.media_type;
+
+export const isGstreamerDiscreteDevice = (
+  data: any,
+): data is GstreamerDiscreteDevice => data.width && data.media_type;
+
+export const generateLabel = (device: Device) => {
+  const isGstreamerStepwise = isGstreamerStepwiseDevice(device);
+
+  if (isGstreamerStepwiseDevice(device) || isStepwiseDevice(device)) {
+    const minSize = props(["min_width", "min_height"], device).join("x");
+    const maxSize = props(["max_width", "max_height"], device).join("x");
+    const fps = props(["min_fps", "max_fps"], device)
+      .map((v) => `${v}`)
+      .join("-")
+      .concat("FPS");
+    const size = `${minSize} - ${maxSize}`;
+    return [
+      device.pixel_format,
+      size,
+      fps,
+      isGstreamerStepwise ? device.media_type : null,
+    ]
+      .filter((val) => !!val)
+      .map((v) => `${v}`)
+      .join(" ");
+  }
+  const size = props(["width", "height"], device).join("x");
+  return [
+    device.pixel_format,
+    size,
+    device.fps ? `${device.fps}FPS` : device.fps,
+    isGstreamerDiscreteDevice(device) ? device.media_type : null,
+  ]
+    .filter((val) => !!val)
+    .map((v) => `${v}`)
+    .join(" ");
+};
+
+export const groupDevices = (devices: Device[]): DeviceNode[] => {
+  const deviceMap: { [key: string]: DeviceNode } = {};
+
+  for (const device of devices) {
+    const deviceKey = extractDeviceId(device.device);
+
+    if (!deviceKey) {
+      continue;
+    }
+    if (!deviceMap[deviceKey]) {
+      deviceMap[deviceKey] = {
+        key: deviceKey,
+        label: [deviceKey, device.name].filter((v) => !!v).join(" "),
+        children: [],
+      };
+    }
+
+    const root = deviceMap[deviceKey];
+
+    const pixelFormat: string =
+      device.pixel_format || (device as any).media_type;
+
+    const childLabel = generateLabel(device);
+
+    const childKey = `${deviceKey}:${childLabel}`;
+
+    if (!pixelFormat) {
+      root.children.push({ ...device, key: childKey, label: childLabel });
+      continue;
+    }
+    const pixelFormatKey = `${deviceKey}:${pixelFormat}`;
+
+    let pixelFormatNode = root.children.find(
+      (child) => (child as DeviceNode).key === pixelFormatKey,
+    ) as DeviceNode;
+
+    if (!pixelFormatNode) {
+      pixelFormatNode = {
+        key: pixelFormatKey,
+        label: pixelFormat,
+        children: [],
+      };
+      root.children.push(pixelFormatNode);
+    }
+
+    pixelFormatNode.children.push({
+      key: childKey,
+      label: childLabel,
+      ...device,
+    });
+  }
+
+  return Object.values(deviceMap);
 };

@@ -88,21 +88,16 @@ export interface RemoveFileResponse {
   error: string | null;
 }
 
-export interface DeviceItem {
-  key: string;
-  label: string;
-}
-
 export interface DeviceCommonProps {
   device: string;
-  pixel_format?: string;
-  media_type?: string;
+  name?: string;
 }
 
-export interface DiscreteDevice extends DeviceItem, DeviceCommonProps {
+export interface DiscreteDevice extends DeviceCommonProps {
   width: number;
   height: number;
-  fps?: number;
+  fps: number;
+  pixel_format: string;
 }
 
 export interface StepwiseDeviceProps {
@@ -116,13 +111,38 @@ export interface StepwiseDeviceProps {
   max_fps: number;
 }
 
-export interface DeviceStepwise
-  extends DeviceItem,
-    DeviceCommonProps,
-    StepwiseDeviceProps {}
+export interface DeviceStepwise extends DeviceCommonProps, StepwiseDeviceProps {
+  pixel_format: string;
+}
 
-export interface DeviceNode extends DeviceItem {
-  children: (DeviceStepwise | DeviceNode | DiscreteDevice)[];
+export interface GstreamerDiscreteDevice
+  extends Omit<DiscreteDevice, "fps" | "pixel_format"> {
+  fps?: number;
+  pixel_format?: string;
+  media_type: string;
+}
+
+export interface GstreamerStepwiseDevice
+  extends DeviceCommonProps,
+    StepwiseDeviceProps {
+  media_type: string;
+  pixel_format?: string;
+}
+export type Device =
+  | DeviceStepwise
+  | DiscreteDevice
+  | GstreamerDiscreteDevice
+  | GstreamerStepwiseDevice;
+
+export type MappedDevice = Device & {
+  key: string | number;
+  label: string;
+};
+
+export interface DeviceNode {
+  key: string | number;
+  label: string;
+  children: (MappedDevice | DeviceNode)[];
 }
 
 export interface CameraSettings {

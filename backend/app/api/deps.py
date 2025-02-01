@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from app.adapters.video_device_adapter import VideoDeviceAdapater
+from app.core.logger import Logger
 from app.services.audio_service import AudioService
 from app.services.audio_stream_service import AudioStreamService
 from app.services.battery_service import BatteryService
@@ -11,8 +12,8 @@ from app.services.file_service import FileService
 from app.services.music_service import MusicService
 from app.services.stream_service import StreamService
 from app.services.tts_service import TTSService
+from app.services.v4l2_service import V4L2Service
 from app.services.video_recorder import VideoRecorder
-from app.core.logger import Logger
 from fastapi import Depends
 
 logger = Logger(__name__)
@@ -28,8 +29,14 @@ def get_detection_notifier() -> ConnectionService:
     return ConnectionService()
 
 
-def get_video_device_adapter() -> VideoDeviceAdapater:
-    return VideoDeviceAdapater()
+def get_v4l2_manager() -> V4L2Service:
+    return V4L2Service()
+
+
+def get_video_device_adapter(
+    v4l2: V4L2Service = Depends(get_v4l2_manager),
+) -> VideoDeviceAdapater:
+    return VideoDeviceAdapater(v4l2=v4l2)
 
 
 def get_audio_manager() -> AudioService:

@@ -1,11 +1,12 @@
 import shutil
 import subprocess
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Set, Tuple, Union
 
 import cv2
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
+from app.schemas.camera import DeviceStepwise, DiscreteDevice
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
 
 logger = Logger(__name__)
@@ -14,7 +15,9 @@ logger = Logger(__name__)
 class GstreamerManager:
     @staticmethod
     @lru_cache()
-    def list_video_devices_with_formats() -> List[Dict[str, Any]]:
+    def list_video_devices_with_formats() -> (
+        List[Union[DeviceStepwise, DiscreteDevice]]
+    ):
         """
         Lists video capture devices using gst-device-monitor-1.0.
         """
@@ -111,8 +114,10 @@ class GstreamerManager:
 
     @staticmethod
     def list_camera_device_names() -> List[str]:
-        return [
-            item.get("key", "")
-            for item in GstreamerManager.list_video_devices_with_formats()
-            if item.get("key")
-        ]
+        devices: Set[str] = set()
+
+        for device_str in devices:
+            _, path = GStreamerParser.parse_device_path(device_str)
+            devices.add(path)
+
+        return list(devices)
