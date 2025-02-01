@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 import cv2
 from app.core.gstreamer_parser import GStreamerParser
@@ -23,41 +23,6 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
     """
     A singleton class responsible for managing video capturing devices.
     """
-
-    def find_device_info(self, device: str) -> Optional[str]:
-        """
-        Finds the device info of a specific camera device from the list of available camera devices.
-
-        Searches for the given device in the list of available camera devices and
-        returns its associated information (e.g., device path and category).
-
-        Args:
-            device: The path to the camera device (e.g., `/dev/video0`).
-
-        Returns:
-            The device path.
-        """
-        devices = (
-            self.v4l2.list_camera_device_names()
-            + GstreamerManager.list_camera_device_names()
-        )
-        _, device_path = GStreamerParser.parse_device_path(device)
-        for device_str in devices:
-            _, known_device_path = GStreamerParser.parse_device_path(device_str)
-            if known_device_path == device_path:
-                return device_path
-
-    def list_device_names(self):
-        v4l2_devices = self.v4l2.list_camera_device_names()
-        failed_devices = self.v4l2.failed_devices
-        gstreamer_devices = GstreamerManager.list_camera_device_names()
-        devices: Set[str] = set()
-
-        for device_str in gstreamer_devices:
-            if device_str not in failed_devices and device_str not in v4l2_devices:
-                devices.add(device_str)
-
-        return list(devices) + v4l2_devices
 
     def try_device_props(
         self, device: str, camera_settings: CameraSettings
