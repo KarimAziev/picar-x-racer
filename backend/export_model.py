@@ -48,14 +48,14 @@ This script streamlines YOLO model export to Edge TPU format, ensuring the model
 1. **Export using relative paths** (paths will expand to the project data directory, e.g.):
 
    ```bash
-   python export_model.py -m "my_model.pt" -o "your_output_file_edgetpu.tflite" -s 320
+   python export_model.py -m "my_model.pt" -o "your_output_file_edgetpu.tflite" -s 256
    -> "/path-to-project/data/my_model.pt" and "/path-to-project/your_output_file_edgetpu.tflite"
    ```
 
 2. **Export using absolute paths**:
 
    ```bash
-   python export_model.py -m "/path/to/your_model.pt" -o "/path/to/your_output_file_edgetpu.tflite" -s 320
+   python export_model.py -m "/path/to/your_model.pt" -o "/path/to/your_output_file_edgetpu.tflite" -s 256
    ```
 
 3. **Export using defaults specified in the `.env` file** (refer to `.env.example` for guidance):
@@ -125,14 +125,14 @@ def parse_arguments():
             "Example usage:\n"
             "--------------\n"
             "1. Export using relative paths:\n"
-            "   python export_model.py -m \"my_model.pt\" -o \"your_output_file_edgetpu.tflite\" -s 320\n"
+            "   python export_model.py -m \"my_model.pt\" -o \"your_output_file_edgetpu.tflite\" -s 256\n"
             "   -> Output: /path-to-project/data/my_model.pt & /path-to-project/your_output_file_edgetpu.tflite\n\n"
             "2. Export using absolute paths:\n"
-            "   python export_model.py -m \"/path/to/your_model.pt\" -o \"/path/to/your_output_file_edgetpu.tflite\" -s 320\n\n"
+            "   python export_model.py -m \"/path/to/your_model.pt\" -o \"/path/to/your_output_file_edgetpu.tflite\" -s 256\n\n"
             "3. Export using defaults from the .env file:\n"
             "   python export_model.py\n\n"
             "Key Notes:\n"
-            "- `-s` or `--imgsz`: Image size (default: 320).\n"
+            "- `-s` or `--imgsz`: Image size (default: 256).\n"
             "- `-m` or `--model`: Path to the YOLO model (default: as per .env or config file).\n"
             "- `-o` or `--out-model`: Output path for the exported .tflite file (defaults based on config).\n"
         ),
@@ -171,8 +171,8 @@ def parse_arguments():
         "-s",
         "--imgsz",
         type=int,
-        default=320,
-        help="Image size for the model export. (Default: 320)",
+        default=256,
+        help="Image size for the model export. (Default: 256)",
     )
 
     return parser.parse_args()
