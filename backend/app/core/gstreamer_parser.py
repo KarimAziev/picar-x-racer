@@ -115,18 +115,17 @@ class GStreamerParser:
                         case "framerate":
                             if value and isinstance(value, str):
                                 value = value.split("/")[0]
-                                value = int(value)
+                                value = float(value)
                                 cap["fps"] = value
                             elif isinstance(value, list) and len(value) == 2:
-                                cap["min_fps"] = int(value[0].split("/")[0])
-                                cap["max_fps"] = int(value[1].split("/")[0])
+                                cap["min_fps"] = float(value[0].split("/")[0])
+                                cap["max_fps"] = float(value[1].split("/")[0])
 
         if cap.keys():
             if cap.get("min_fps") or cap.get("max_fps"):
                 if not cap.get("min_width") or not cap.get("min_height"):
                     min_fps = cap.get("min_fps")
                     max_fps = cap.get("max_fps")
-                    print("max_fps", max_fps)
                     cap.pop("min_fps")
                     cap.pop("max_fps")
 

@@ -53,7 +53,7 @@ class CameraSettings(BaseModel):
         ),
     ] = None
     fps: Annotated[
-        Optional[int],
+        Optional[float],
         Field(
             ...,
             title="Frames Per Second",
@@ -229,7 +229,7 @@ class DiscreteDevice(DeviceItem, DeviceCommonProps):
         description="The height of the camera frame in pixels.",
         examples=[180, 480, 600, 768, 720],
     )
-    fps: Optional[int] = Field(
+    fps: Optional[float] = Field(
         None,
         description="The frame rate of the camera mode, measured in frames per second (fps).",
         examples=[10, 20, 30],
@@ -286,13 +286,13 @@ class DeviceStepwise(DeviceStepwiseBase):
     properties such as resolution, frame rate, and pixel format.
     """
 
-    min_fps: int = Field(
+    min_fps: float = Field(
         ...,
         description="The minimal frame rate of the camera mode, measured in frames per second (fps).",
         examples=[1, 20, 30],
     )
 
-    max_fps: int = Field(
+    max_fps: float = Field(
         ...,
         description="The maximum frame rate of the camera mode, measured in frames per second (fps).",
         examples=[90],

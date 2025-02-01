@@ -71,7 +71,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 "device": device,
                 "width": int(width),
                 "height": int(height),
-                "fps": int(fps),
+                "fps": float(fps),
                 "pixel_format": data.get("pixel_format", camera_settings.pixel_format),
             }
 
