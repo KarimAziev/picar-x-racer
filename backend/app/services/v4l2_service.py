@@ -437,7 +437,6 @@ class V4L2Service(metaclass=SingletonMeta):
                         ),  # might be None for continuous
                     }
 
-                    logger.info("DeviceStepwiseBase validation OK")
                     intervals = self.enumerate_frameintervals(
                         device_path, pixelfmt, min_w, min_h
                     )
