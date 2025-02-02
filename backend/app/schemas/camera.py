@@ -125,19 +125,6 @@ class CameraSettings(BaseModel):
         return values
 
 
-class DeviceItem(BaseModel):
-    """
-    A model representing a camera device item, which serves as a base for other device-related models.
-    """
-
-    name: Optional[str] = Field(
-        None,
-        description="A human-readable label for the camera device, "
-        "including its device path and additional information such as the model or manufacturer.",
-        examples=["(Integrated Camera: Integrated C)"],
-    )
-
-
 class DeviceCommonProps(BaseModel):
     """
     Model representing common properties shared by camera devices.
@@ -145,8 +132,21 @@ class DeviceCommonProps(BaseModel):
 
     device: str = Field(
         ...,
-        description="The device path of the camera the mode is associated with.",
-        examples=["/dev/video0"],
+        description="The device path of the camera the mode is associated with. "
+        "The path may be prefixed by an API (e.g., 'libcamera:' or 'v4l2:') to indicate "
+        "the API used to interact with the device. Classic V4L2 enumeration typically "
+        "results in paths such as '/dev/video0'. For APIs like libcamera, the path may include "
+        "additional information, such as 'libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a'.",
+        examples=[
+            "/dev/video0",
+            "v4l2:/dev/video0",
+            "libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a",
+        ],
+    )
+    name: Optional[str] = Field(
+        None,
+        description="A human-readable name for the camera device.",
+        examples=["Integrated Camera: Integrated C", "imx708_wide"],
     )
     pixel_format: Optional[str] = Field(
         None,
@@ -179,8 +179,8 @@ class DeviceCommonProps(BaseModel):
             "and opencv-python is compiled with GStreamer support.",
             examples=[
                 "video/x-raw",
-                "video/x-h264",
                 "image/jpeg",
+                "video/x-h264",
             ],
         ),
     ] = None
@@ -211,10 +211,12 @@ class DeviceCommonProps(BaseModel):
     ] = None
 
 
-class DiscreteDevice(DeviceItem, DeviceCommonProps):
+class DiscreteDevice(DeviceCommonProps):
     """
-    A model representing a discrete camera device configuration, including
-    resolution, frame rate, and pixel format.
+    Model representing a camera device configuration with discrete parameters.
+
+    A "discrete" configuration specifies fixed parameters for the camera mode.
+    This includes a single resolution (width, height) and a defined frame rate (fps).
     """
 
     width: int = Field(
@@ -236,10 +238,18 @@ class DiscreteDevice(DeviceItem, DeviceCommonProps):
     )
 
 
-class DeviceStepwiseBase(DeviceItem, DeviceCommonProps):
+class DeviceStepwise(DeviceCommonProps):
     """
-    A model representing a stepwise configuration for a device with adjustable
-    properties such as resolution, frame rate, and pixel format.
+    Model representing "stepwise" configurations, which also support "continuous" configurations.
+
+    "Stepwise" and "continuous" configurations allow adjustable parameters like
+    resolution (width, height) within a range. However, unlike "stepwise"
+    configurations, "continuous" configurations allow arbitrary adjustments within
+    similar ranges without the constraint of fixed step sizes.
+
+    To represent both configurations in a unified way, "continuous" parameters are extended
+    with fixed step sizes by using default minimal values - 1 px for resolutions and 1
+    framerate (fps) for frame rate adjustments.
     """
 
     min_width: int = Field(
@@ -267,24 +277,17 @@ class DeviceStepwiseBase(DeviceItem, DeviceCommonProps):
         examples=[720, 1080],
     )
     height_step: int = Field(
-        ...,
+        1,
         title="Height Step Size",
         description="The step size in pixels for adjusting frame height.",
         examples=[1, 2, 10],
     )
     width_step: int = Field(
-        ...,
+        1,
         title="Width Step Size",
         description="The step size in pixels for adjusting frame width.",
         examples=[1, 2, 10],
     )
-
-
-class DeviceStepwise(DeviceStepwiseBase):
-    """
-    A model representing a stepwise configuration for a device with adjustable
-    properties such as resolution, frame rate, and pixel format.
-    """
 
     min_fps: float = Field(
         ...,
@@ -297,19 +300,23 @@ class DeviceStepwise(DeviceStepwiseBase):
         description="The maximum frame rate of the camera mode, measured in frames per second (fps).",
         examples=[90],
     )
+    fps_step: Optional[float] = Field(
+        1,
+        title="FPS Step Size",
+        description="The step size in pixels for adjusting fps.",
+        examples=[1, 2, 5],
+    )
+
+
+DeviceType = Union[DeviceStepwise, DiscreteDevice]
 
 
 class CameraDevicesResponse(BaseModel):
     """
-    Successful response for available camera devices.
+    Successful response for available camera device configurations.
     """
 
-    devices: List[
-        Union[
-            DeviceStepwise,
-            DiscreteDevice,
-        ]
-    ] = Field(
+    devices: List[DeviceType] = Field(
         ...,
         description=("A list of camera devices and their configurations."),
         examples=[
