@@ -1,7 +1,7 @@
 import shutil
 import subprocess
 from functools import lru_cache
-from typing import List, Optional, Set, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import cv2
 from app.core.gstreamer_parser import GStreamerParser
