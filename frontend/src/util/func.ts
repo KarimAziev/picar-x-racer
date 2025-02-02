@@ -67,3 +67,11 @@ export function where<
           return !fn || fn(obj[k as keyof Obj]);
         });
 }
+
+export function isShallowEq<A, B extends A>(valueA: A): (valueB: B) => boolean;
+export function isShallowEq<A, B extends A>(valueA: A, valueB: B): boolean;
+export function isShallowEq<A, B extends A>(valueA: A, valueB?: B) {
+  return arguments.length === 1
+    ? (valueB: B) => valueA === valueB
+    : valueA === valueB!;
+}

@@ -3,7 +3,7 @@
     <div>
       <Field label="Detection" layout="row">
         <button
-          class="text-inherit font-inherit disabled:cursor-default hover:opacity-70 hover:disabled:opacity-70 disabled:opacity-70 bold"
+          class="px-2 py-0 border border-transparent rounded-md bg-transparent transition-opacity duration-300 ease-in-out hover:bg-button-text-primary-hover-background focus:opacity-70 focus:outline-none focus:ring-2 focus:ring-current font-bold"
           v-tooltip="'Toggle Object Detection'"
           :disabled="detectionStore.loading || !detectionStore.data.model"
           @click="
@@ -13,7 +13,7 @@
             }
           "
         >
-          {{ fields.active ? "On" : "Off" }}
+          {{ fields.active ? "ON" : "OFF" }}
         </button>
       </Field>
 

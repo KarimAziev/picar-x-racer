@@ -16,6 +16,7 @@
       :invalid="invalid"
       :disabled="readonly || disabled"
       v-bind="otherAttrs"
+      @input="handleInput"
       @update:model-value="onUpdate"
       @blur="onBlur"
     />
@@ -28,9 +29,11 @@ import { ref, watch, useAttrs } from "vue";
 import InputNumber, {
   InputNumberEmitsOptions,
   InputNumberProps,
+  InputNumberInputEvent,
 } from "primevue/inputnumber";
 import Field from "@/ui/Field.vue";
 import type { FieldLayout } from "@/ui/Field.vue";
+import { isString } from "@/util/guards";
 
 export type Props = {
   modelValue?: any;
@@ -59,6 +62,11 @@ watch(
 );
 
 const emit = defineEmits(["update:modelValue", "blur"]);
+
+const handleInput = (event: InputNumberInputEvent) => {
+  currentValue.value = isString(event.value) ? +event.value : event.value;
+  emit("update:modelValue", currentValue.value);
+};
 
 const onUpdate: InputNumberEmitsOptions["update:modelValue"] = (newValue) => {
   emit("update:modelValue", newValue);

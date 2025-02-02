@@ -3,8 +3,7 @@ robot-hat
 google_speech_pyplay
 pandas
 colorlog
-opencv-python
-platformdirs
+platformdirs>=4.3.6,<5.0.0
 pydantic
 pydantic-settings
 pydub
@@ -21,3 +20,4 @@ python-dotenv
 sounddevice
 dbus-python
 ncnn
+v4l2-python3

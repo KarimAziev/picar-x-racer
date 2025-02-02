@@ -7,17 +7,22 @@ from typing import TYPE_CHECKING
 
 from app.api import deps
 from app.core.logger import Logger
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.managers.v4l2_manager import V4L2
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraShutdownInProgressError,
+)
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.util.doc_util import build_response_description
 from app.util.photo import capture_photo
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
+    from app.adapters.video_device_adapter import VideoDeviceAdapater
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.file_service import FileService
+    from app.services.gstreamer_service import GStreamerService
 
 router = APIRouter()
 logger = Logger(__name__)
@@ -35,6 +40,7 @@ async def update_camera_settings(
     request: Request,
     payload: CameraSettings,
     camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    gstreamer_manager: "GStreamerService" = Depends(deps.get_gstreamer_manager),
 ):
     """
     Update the camera settings with new configurations and broadcast the updates.
@@ -42,52 +48,42 @@ async def update_camera_settings(
     This endpoint updates the camera's configurations (e.g., resolution, FPS, pixel format),
     handling retries when the specified device fails, and broadcasts the updated settings
     or errors to connected clients.
-
-    Broadcast Behavior:
-    --------------
-    - **On Success**: The successfully updated camera settings are broadcast via
-      `connection_manager.broadcast_json` to ensure all connected clients are up-to-date.
-    - **On Device Retry**: If the incoming payload specifies a `device` that fails
-      initialization, the service attempts to find and configure an alternate available device.
-      In such cases, the `self.camera_settings.device` may be updated to reflect the new device.
-      This updated value, along with the other camera settings, will then be broadcast.
-    - **On Failure**: If the update fails entirely (e.g., due to an invalid device or other issues),
-      an error message is broadcast to clients via the `connection_manager.error` channel.
-      Additionally, the current state of the camera settings (including any partial changes,
-      such as a modified `self.camera_settings.device` due to retries) is broadcast.
-
-    Workflow:
-    --------------
-    1. Accepts new camera settings via the `payload`.
-    2. Updates `self.camera_settings` with validated changes.
-    3. If the specified `device` fails initialization:
-       - Attempts to find and configure another device.
-       - Updates `self.camera_settings.device` if a different device is chosen.
-    4. Broadcasts the final `self.camera_settings` to clients, regardless of success or failure.
-    5. In the case of errors, also broadcasts an error message to clients.
-
-    Returns:
-    --------------
-    - `CameraSettings`: The updated camera settings.
-
-    - Additionally, broadcasts the updated settings to all connected clients.
     """
     logger.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
+
+    if payload.use_gstreamer and not gstreamer_manager.gstreamer_available():
+        gstreamer_in_cv2, gstreamer_on_system = gstreamer_manager.check_gstreamer()
+        reason = " and ".join(
+            [
+                item
+                for item in [
+                    gstreamer_on_system or "gst-launch-1.0 is not found in PATH",
+                    gstreamer_in_cv2
+                    or "opencv-python is not compiled with GStreamer support",
+                ]
+                if isinstance(item, str)
+            ]
+        )
+        msg = f"GStreamer will not be used, because {reason}."
+        logger.warning(msg)
+        raise HTTPException(status_code=400, detail=msg)
+
     try:
         result = await camera_manager.update_camera_settings(payload)
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": result.model_dump()}
         )
+        await camera_manager.notify_camera_error(camera_manager.camera_device_error)
         return result
     except (CameraDeviceError, CameraNotFoundError) as err:
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": camera_manager.camera_settings.model_dump()}
         )
         await connection_manager.error(str(err))
-        raise HTTPException(
-            status_code=400, detail=f"Couldn't update camera settings: {str(err)}"
-        )
+        raise HTTPException(status_code=400, detail=str(err))
+    except CameraShutdownInProgressError as err:
+        raise HTTPException(status_code=503, detail=str(err))
     except Exception as err:
         await connection_manager.broadcast_json(
             {"type": "camera", "payload": camera_manager.camera_settings.model_dump()}
@@ -123,14 +119,18 @@ def get_camera_settings(
         CameraDevicesResponse, "Available camera devices."
     ),
 )
-def get_camera_devices():
+def get_camera_devices(
+    video_device_adapter: "VideoDeviceAdapater" = Depends(
+        deps.get_video_device_adapter
+    ),
+):
     """
     Retrieve a list of available camera devices.
 
     This endpoint identifies primary and secondary camera devices based on categorized
     rules and available video devices in the system.
     """
-    devices = V4L2.list_video_devices_with_formats()
+    devices = video_device_adapter.list_devices()
     return {"devices": devices}
 
 
@@ -157,12 +157,18 @@ async def take_photo(
     """
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"
+    frame = (
+        camera_manager.stream_img
+        if camera_manager.stream_img is not None
+        else camera_manager.img
+    )
 
-    await camera_manager.start_camera_and_wait_for_stream_img()
+    if frame is None:
+        raise HTTPException(status_code=503, detail="Camera is not ready")
 
     status = (
         await capture_photo(
-            img=camera_manager.img.copy(),
+            img=frame.copy(),
             photo_name=name,
             path=file_manager.user_photos_dir,
         )

@@ -32,7 +32,6 @@ def get_async_task_manager() -> AsyncTaskManager:
 
 @lru_cache()
 def get_config_manager() -> JsonDataManager:
-
     return JsonDataManager(
         target_file=app_config.ROBOT_CONFIG_FILE,
         template_file=app_config.DEFAULT_ROBOT_CONFIG_FILE,

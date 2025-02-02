@@ -106,9 +106,9 @@ const handleUpdate = (node: TreeNode) => {
   color: var(--p-form-field-color);
 }
 .wrapper {
-  max-height: 300px;
+  max-height: 340px;
 }
 :deep(.p-scrollpanel-content) {
-  max-height: 300px;
+  max-height: 340px;
 }
 </style>

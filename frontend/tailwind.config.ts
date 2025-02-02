@@ -13,6 +13,7 @@ export default {
       },
       colors: {
         "--robo-color-primary": "var(--robo-color-primary)",
+        error: "var(--color-error)",
         "button-text-primary-hover-background":
           "var(--p-button-text-primary-hover-background)",
       },

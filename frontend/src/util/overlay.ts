@@ -1,4 +1,5 @@
 import type { DetectionResult } from "@/features/detection";
+import { where } from "@/util/func";
 
 /**
  * Draws keypoints on the canvas at the specified coordinates.
@@ -28,6 +29,11 @@ const SKELETON = [
   [14, 16], // right hip to right knee to right ankle
 ];
 
+const keystrokesPred = where({
+  x: (v: number) => v && v > 0,
+  y: (v: number) => v && v > 0,
+});
+
 export const drawKeypoints = (
   ctx: CanvasRenderingContext2D,
   scaleX: number,
@@ -48,7 +54,7 @@ export const drawKeypoints = (
   SKELETON.forEach(([startIdx, endIdx]) => {
     const start = keypoints[startIdx];
     const end = keypoints[endIdx];
-    if (start && end) {
+    if (keystrokesPred(start) && keystrokesPred(end)) {
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
     }

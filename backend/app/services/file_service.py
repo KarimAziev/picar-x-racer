@@ -12,6 +12,7 @@ from app.config.config import settings as app_config
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
+from app.managers.json_data_manager import JsonDataManager
 from app.util.atomic_write import atomic_write
 from app.util.file_util import (
     get_directory_structure,
@@ -63,10 +64,21 @@ class FileService(metaclass=SingletonMeta):
         self.audio_manager = audio_manager
 
         self.cache: Optional[Dict[str, Any]] = None
+        self.settings_manager = JsonDataManager(
+            target_file=self.user_settings_file,
+            template_file=self.default_user_settings_file,
+        )
+        self.settings_manager.on(
+            self.settings_manager.UPDATE_EVENT, self._reload_settings
+        )
 
-        self.last_modified_time = None
-        self.current_settings_file = None
-        self.settings: Dict[str, Any] = self.load_settings()
+        self.settings_manager.on(
+            self.settings_manager.LOAD_EVENT, self._reload_settings
+        )
+        self.settings: Dict[str, Any] = self.settings_manager.load_data()
+
+    def _reload_settings(self, data: Dict[str, Any]):
+        self.settings = data
 
     def load_music_cache(self) -> Dict[str, Any]:
         """Load cached audio file data from a persistent file."""
@@ -80,59 +92,15 @@ class FileService(metaclass=SingletonMeta):
         with atomic_write(self.music_cache_path) as tmp:
             json.dump(self.cache, tmp, indent=2)
 
-    def get_settings_file(self) -> str:
-        """Determines the current settings file to use"""
-        return (
-            self.user_settings_file
-            if os.path.exists(self.user_settings_file)
-            else self.default_user_settings_file
-        )
-
     def load_settings(self) -> Dict[str, Any]:
         """Loads user settings from a JSON file, using cache if file is not modified."""
-        settings_file = self.get_settings_file()
-
-        try:
-            current_modified_time = os.path.getmtime(settings_file)
-        except OSError:
-            current_modified_time = None
-
-        if (
-            not hasattr(self, 'cached_settings')
-            or self.cached_settings is None
-            or self.last_modified_time != current_modified_time
-            or self.current_settings_file != settings_file
-        ):
-            self.logger.info(f"Loading settings from {settings_file}")
-            self.cached_settings: Dict[str, Any] = load_json_file(settings_file)
-            self.last_modified_time = current_modified_time
-            self.current_settings_file = settings_file
-        else:
-            self.logger.debug(
-                f"Using cached settings from {self.current_settings_file}"
-            )
-
-        return self.cached_settings
+        return self.settings_manager.load_data()
 
     def save_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         """
         Saves new settings to the user settings file.
         """
-        existing_settings = self.load_settings()
-
-        self.logger.info(f"Saving settings to {self.user_settings_file}")
-
-        merged_settings = {
-            **existing_settings,
-            **new_settings,
-        }
-        self.logger.debug("New settings %s", new_settings)
-        self.logger.debug("Merged settings %s", merged_settings)
-        with atomic_write(self.user_settings_file) as tmp:
-            json.dump(merged_settings, tmp, indent=2)
-        self.settings = merged_settings
-        self.logger.info("Settings saved to %s", self.user_settings_file)
-        return self.settings
+        return self.settings_manager.merge(new_settings)
 
     def list_files(self, directory: str, full=False) -> List[str]:
         """
@@ -209,30 +177,6 @@ class FileService(metaclass=SingletonMeta):
     def list_music_tracks_sorted(self) -> List[str]:
         """List sorted music tracks."""
         return [details["track"] for details in self.list_all_music_with_details()]
-
-    def prune_cache(self, max_entries=100) -> None:
-        """Limits the cache size by keeping only recent entries."""
-        if self.cache is not None and len(self.cache) > max_entries:
-            # Keeps the N most popular/most recent entries
-            self.cache = dict(list(self.cache.items())[-max_entries:])
-            self.save_music_cache()
-
-    def update_track_order_in_cache(self, ordered_tracks: List[str]) -> None:
-        """
-        Updates the order for tracks in the music cache.
-
-        Args:
-            ordered_tracks (List[str]): List of track filenames in the desired order.
-        """
-        if self.cache is None:
-            self.cache = self.load_music_cache()
-        for idx, track_filename in enumerate(ordered_tracks):
-            for _, cache_entry in self.cache.items():
-                if cache_entry["details"]["track"] == track_filename:
-                    self.logger.debug(f"Updating order for track: {track_filename}")
-                    cache_entry["details"]["order"] = idx
-                    break
-        self.save_music_cache()
 
     def _get_audio_file_details(self, file: str) -> Optional[Dict[str, Any]]:
         """
@@ -626,7 +570,7 @@ class FileService(metaclass=SingletonMeta):
         Returns a structed list of all found models.
         """
         allowed_extensions = (
-            ('.tflite', '.pt') if is_google_coral_connected() else ('.pt')
+            (".tflite", ".pt") if is_google_coral_connected() else (".pt")
         )
         existing_set = set()
 

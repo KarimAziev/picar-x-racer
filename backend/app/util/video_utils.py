@@ -18,10 +18,6 @@ def encode(
     """
     Encode the frame array to the specified format.
 
-    Args:
-        frame_array (np.ndarray): Frame array to be encoded.
-        format (str): Encoding format (default is ".jpg").
-
     Returns:
         bytes: Encoded frame as a byte array.
     """

@@ -223,7 +223,7 @@ def download_file(
     - **FileResponse**: A response containing the file to download.
     """
     try:
-        if media_type == 'data':
+        if media_type == "data":
             path = resolve_absolute_path(filename, file_manager.data_dir)
             return FileResponse(
                 path=path,
@@ -448,7 +448,12 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
         path=f"{directory}/{filename}",
         media_type="application/octet-stream",
         filename=filename,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Cache-Control": "no-store",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
     )
 
 

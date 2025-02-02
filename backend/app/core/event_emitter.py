@@ -1,14 +1,15 @@
+import asyncio
 import inspect
 import threading
 import weakref
 from functools import partial
-from typing import Any, Callable, Optional, TypeVar, Union, overload
+from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, overload
 
 from app.core.logger import Logger
 
 logger = Logger(__name__)
 
-Listener = Callable[..., Any]
+Listener = Union[Callable[..., Any], Callable[..., Awaitable[Any]]]
 
 T = TypeVar("T", bound=Listener)
 
@@ -195,7 +196,18 @@ class EventEmitter:
                     event_name,
                     listener_name,
                 )
-                resolved_listener(*args, **kwargs)
+                if asyncio.iscoroutinefunction(resolved_listener):
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        loop = None
+
+                    if loop:
+                        asyncio.create_task(resolved_listener(*args, **kwargs))
+                    else:
+                        asyncio.run(resolved_listener(*args, **kwargs))
+                else:
+                    resolved_listener(*args, **kwargs)
             except Exception:
                 logger.error(
                     "Error running event '%s' listener '%s'",

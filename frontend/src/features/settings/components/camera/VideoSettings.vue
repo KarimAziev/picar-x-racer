@@ -1,6 +1,12 @@
 <template>
-  <VideoQualitySelect />
-  <VideoEnhancerSelect />
+  <div class="flex gap-2">
+    <div class="flex-1">
+      <VideoQualitySelect />
+    </div>
+    <div class="flex-1">
+      <VideoEnhancerSelect />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">

@@ -152,42 +152,23 @@ input {
 .p-cascadeselect,
 .tree-btn {
   display: flex;
-  align-items: center;
-  max-width: 140px;
-  height: 30px;
-
-  @media (min-width: 576px) {
-    max-width: 140px;
-  }
-  @media (min-width: 768px) {
-    max-width: 190px;
-  }
-
-  @media (min-width: 992px) {
-    max-width: 210px;
-  }
-  @media (min-width: 1200px) {
-    height: 40px;
-    max-width: 220px;
-  }
-
-  @media (min-width: 1440px) {
-    max-width: 230px;
-  }
-
-  @media (min-width: 1600px) {
-    max-width: 240px;
-  }
 }
-
+.p-inputtext:not(.p-select-filter),
+.p-treeselect,
+.p-select,
+.p-cascadeselect,
+.p-inputnumber,
+.p-cascadeselect,
+.tree-btn,
 .select-root {
   align-items: center;
-  max-width: 140px;
+  max-width: 120px;
   height: 30px;
 
-  @media (min-width: 576px) {
+  @media (min-width: 400px) {
     max-width: 140px;
   }
+
   @media (min-width: 768px) {
     max-width: 190px;
   }
@@ -208,6 +189,7 @@ input {
     max-width: 240px;
   }
 }
+
 .p-inputicon {
   font-size: 1rem;
   margin-top: calc(-1 * (1rem / 2)) !important;

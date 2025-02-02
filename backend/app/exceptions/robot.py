@@ -22,7 +22,7 @@ class RobotI2CTimeout(RobotI2CError):
         super().__init__(
             operation,
             addresses,
-            f"I2C timeout during '{operation}' (address: 0x{addresses:02X}).",
+            f"I2C timeout during '{operation}' (addresses: {', '.join([f'0x{addr:02X}' for addr in addresses])}).",
         )
 
 

@@ -52,6 +52,11 @@ export const pick = <V extends Record<string, any>, K extends keyof V>(
   }, {} as V);
 };
 
+export const props = <V extends Record<string, any>, K extends keyof V>(
+  props: K[],
+  data: V,
+): V[K][] => props.map((key) => data[key]);
+
 export const formatObj = (obj: Record<string, any>, separator = ", ") =>
   Object.entries(obj)
     .map(([k, v]) => `${k}: ${v}`)

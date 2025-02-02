@@ -1,14 +1,22 @@
 <template>
-  <div class="flex justify-between text-left" v-if="isLoaded">
-    <button
-      :disabled="avoidObstacles"
-      v-tooltip="'Click to toggle auto distance measure'"
-      @click="handleToggle"
-      class="font-bold text-inherit cursor-pointer p-0 border-none bg-transparent transition-opacity duration-300 ease-in-out hover:opacity-70 focus:outline-none"
-    >
-      {{ distanceLabel }}:
-    </button>
-    &nbsp;
+  <div class="flex justify-between text-left items-center" v-if="isLoaded">
+    <span clas="flex items-center">
+      <span class="font-bold">Distance</span> &nbsp;
+
+      <ButtonIcon
+        :disabled="avoidObstacles"
+        v-tooltip.left="
+          avoidObstacles
+            ? 'Disabled while avoid obstacles mode is active'
+            : 'Toggle auto distance measuring'
+        "
+        @click="handleToggle"
+        class="px-2 py-0 border border-current rounded-md"
+      >
+        {{ distanceLabel }}
+      </ButtonIcon>
+    </span>
+
     <samp>{{ distance }}</samp>
   </div>
 </template>
@@ -17,6 +25,7 @@
 import { useSettingsStore, useDistanceStore } from "@/features/settings/stores";
 import { computed } from "vue";
 import { useControllerStore } from "@/features/controller/store";
+import ButtonIcon from "@/ui/ButtonIcon.vue";
 
 const settingsStore = useSettingsStore();
 const distanceStore = useDistanceStore();
@@ -34,7 +43,5 @@ const handleToggle = () => {
   controllerStore.toggleAutoMeasureDistanceMode();
 };
 
-const distanceLabel = computed(() =>
-  isAutoMeasureMode.value ? "DISTANCE ON" : "DISTANCE OFF",
-);
+const distanceLabel = computed(() => (isAutoMeasureMode.value ? "ON" : "OFF"));
 </script>

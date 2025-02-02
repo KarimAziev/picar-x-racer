@@ -52,6 +52,7 @@ async def app_synchronizer(
             "active_connections": len(connection_manager.active_connections),
             "camera": camera_service.camera_settings.model_dump(),
             "stream": camera_service.stream_settings.model_dump(),
+            "camera_error": camera_service.camera_device_error,
         }
         for key, value in data.items():
             await connection_manager.broadcast_json({"type": key, "payload": value})
