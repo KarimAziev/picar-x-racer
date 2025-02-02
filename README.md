@@ -64,83 +64,114 @@
 
 ## Prerequisites
 
-- Python 3.10
-- Node.js and npm
+- Python 3.10 or higher (Python 3.9 might work, but it has not been tested)
+- Node.js (version 20 or higher)
 - make
 
 ## Raspberry OS Setup
 
-The `bullseye` version of Raspberry Pi OS has Python 3.9 preinstalled. However, since we need Python 3.10, the easiest way to install it is with [Pyenv](https://github.com/pyenv/pyenv).
+This project supports both the v4l2 stack and libcamera. In order to use libcamera, note that `opencv-python` must be compiled with **GStreamer** support. Although this compilation can take quite a long time, the project provides a script that installs and compiles everything automatically.
 
-```
-pyenv install 3.10
-```
-
-You can optionally make it the default:
-
-```
-pyenv global 3.10
-```
-
-This project uses neither `Picamera` nor `Picamera 2`; instead, it uses `OpenCV`. `Picamera` is much slower than `OpenCV`, which directly accesses the `/dev/video0` device to grab frames. To access the camera, you need to edit a configuration file in the boot partition of the Raspberry Pi:
-
-- If you are using the `bullseye` version of Raspberry Pi OS, the configuration file is located at `/boot/config.txt`.
-- If you are using the `bookworm` version, it is located at `/boot/firmware/config.txt`.
-
-In this file, you need to add the following lines:
-
-```
-# Disable the automatic detection of the camera
-camera_auto_detect=0
-
-# Enable the camera
-start_x=1
-
-# Set GPU memory allocation (in megabytes)
-gpu_mem=128
-
-# Enable the VC4 graphics driver for KMS (Kernel Mode Setting)
-dtoverlay=vc4-kms-v3d
-```
-
-By default, the config file contains the line `camera_auto_detect=1`. Either comment it out or replace it with `camera_auto_detect=0`.
-
-> [!WARNING]
-> These settings will make `libcamera-hello` unusable.
-
-Next, to make building and running the project easier, install `make` if you don't have it already:
+Before proceeding, install make if it isn’t already installed:
 
 ```bash
 sudo apt install make
 ```
 
-Also, ensure that you have `nodejs`, as it is used for building the UI.
+Also, ensure that Node.js is installed, as it is used for building the UI.
+
+<details>
+  <summary><strong>Install Node.js via NVM (Recommended)</strong></summary>
+
+Using [Node Version Manager (NVM)](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating) is often the easiest and most flexible way to install Node.js. It allows you to easily manage multiple Node.js versions.
+
+1. Install NVM by running the install script:
+
+   ```bash
+   wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bas
+   ```
+
+   Then, restart your shell (or source your profile):
+
+   ```bash
+   source ~/.bashrc
+   ```
+
+2. Install the desired version of Node.js (for example, the latest LTS version):
+
+   ```bash
+   nvm install --lts
+   ```
+
+3. Verify the installation:
+
+   ```bash
+   node -v
+   npm -v
+   ```
+
+For more details, refer to the [NVM repository](https://github.com/nvm-sh/nvm).
+
+</details>
+
+<details>
+  <summary><strong>Standard Installation without NVM</strong></summary>
+
+You can install Node.js using your package manager. Note that repositories sometimes offer older Node.js versions. To get a recent version, you might want to use NodeSource's binaries.
+
+**Option A: Use your distribution’s package manager (might not be the latest version):**
+
+```bash
+sudo apt update
+sudo apt install nodejs npm
+```
+
+**Option B: Use NodeSource to install a recent version (for example, version 20):**
+
+1.  Add the NodeSource repository:
+
+    ```bash
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    ```
+
+2.  Install Node.js:
+
+    ```bash
+    sudo apt-get install -y nodejs
+    ```
+
+3.  Verify the installation:
+    ```bash
+    node -v
+    npm -v
+    ```
+    </details>
 
 ### Installation
 
 1. Clone this repository to your Raspberry Pi:
 
-```bash
-git clone https://github.com/KarimAziev/picar-x-racer.git ~/picar-x-racer/
-```
+   ```bash
+   git clone https://github.com/KarimAziev/picar-x-racer.git ~/picar-x-racer/
+   ```
 
 2. Navigate to the project directory:
 
-```bash
-cd ~/picar-x-racer/
-```
+   ```bash
+   cd ~/picar-x-racer/
+   ```
 
-3. Install dependencies and build the project in a virtual environment:
+3. Install dependencies and build the project in a virtual environment. (Note that `opencv-python` will be compiled in this process. Although the compilation takes a long time, the resulting GStreamer support in OpenCV is worth it.)
 
-```bash
-make all
-```
+   ```bash
+   make all
+   ```
 
-4. If you want the ability to turn off and restart the machine from the UI, you need to create a corresponding `polkit` rule, as the app is not run with `sudo`. You can achieve this by running the script (located in the root of the project directory):
+4. If you want the ability to power off and restart the machine from the UI, you need to create a corresponding polkit rule (since the application isn’t run as sudo). You can set it up by running the following script from the root of the project directory:
 
-```bash
-bash ./setup-polkit-reboot-rule.sh
-```
+   ```bash
+   bash ./setup-polkit-reboot-rule.sh
+   ```
 
 That's all! This is a one-time setup.
 
