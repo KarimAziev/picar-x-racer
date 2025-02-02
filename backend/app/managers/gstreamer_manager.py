@@ -111,13 +111,3 @@ class GstreamerManager:
             .pixel_format(pixel_format)
             .build()
         )
-
-    @staticmethod
-    def list_camera_device_names() -> List[str]:
-        devices: Set[str] = set()
-
-        for device_str in devices:
-            _, path = GStreamerParser.parse_device_path(device_str)
-            devices.add(path)
-
-        return list(devices)

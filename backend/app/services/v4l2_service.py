@@ -117,9 +117,6 @@ class V4L2Service(metaclass=SingletonMeta):
 
         return all_configs
 
-    def list_camera_device_names(self) -> List[str]:
-        return list(self.succeed_devices)
-
     def list_video_devices(self) -> List[str]:
         """
         Look for devices in /dev whose name starts with 'video' (e.g. video0, video1…).
