@@ -408,6 +408,8 @@ class V4L2Service(metaclass=SingletonMeta):
                     # For stepwise and continuous modes, we use the minimum resolution to query fps range.
                     min_w = cast(int, size.get("min_width"))
                     min_h = cast(int, size.get("min_height"))
+                    w_step = size.get("step_width")  # might be None for continuous
+                    h_step = size.get("step_height")  # might be None for continuous
                     config: Dict[str, Any] = {
                         "device": device_path,
                         "pixel_format_raw": pixelfmt,
@@ -418,13 +420,12 @@ class V4L2Service(metaclass=SingletonMeta):
                         "max_width": size.get("max_width"),
                         "min_height": min_h,
                         "max_height": size.get("max_height"),
-                        "width_step": size.get(
-                            "step_width", 2
-                        ),  # might be None for continuous
-                        "height_step": size.get(
-                            "step_height", 2
-                        ),  # might be None for continuous
                     }
+
+                    if w_step is not None:
+                        config["width_step"] = int(w_step)
+                    if h_step is not None:
+                        config["height_step"] = int(h_step)
 
                     intervals = self.enumerate_frameintervals(
                         device_path, pixelfmt, min_w, min_h
@@ -437,10 +438,18 @@ class V4L2Service(metaclass=SingletonMeta):
                             # Use the lowest and highest fps from the discrete list.
                             config["min_fps"] = discrete_intervals[0]["fps"]
                             config["max_fps"] = discrete_intervals[-1]["fps"]
+
+                            config["fps_step"] = (
+                                discrete_intervals[-1]["fps"]
+                                - discrete_intervals[0]["fps"]
+                                if len(discrete_intervals) > 1
+                                else 1
+                            )
                         else:
                             step_info = intervals[0]
                             config["min_fps"] = step_info.get("min_fps")
                             config["max_fps"] = step_info.get("max_fps")
+                            config["fps_step"] = step_info.get("step_fps", 1)
                             configurations.append(DeviceStepwise(**config))
                     else:
                         self.failed_devices.add(device_path)

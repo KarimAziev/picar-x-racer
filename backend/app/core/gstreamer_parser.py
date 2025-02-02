@@ -1,8 +1,8 @@
 import re
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.core.logger import Logger
-from app.schemas.camera import DeviceStepwise, DiscreteDevice
+from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 
 logger = Logger(__name__)
 
@@ -16,7 +16,7 @@ class GStreamerParser:
         self.name: Optional[str] = None
         self.props: Dict[str, Any] = {}
         self.caps: List[Dict[str, Any]] = []
-        self.result: List[Union[DiscreteDevice, DeviceStepwise]] = []
+        self.result: List[DeviceType] = []
 
     @staticmethod
     def parse_device_path(input_string: str) -> Tuple[Optional[str], str]:
@@ -28,7 +28,7 @@ class GStreamerParser:
         else:
             return None, input_string
 
-    def parse(self, output: str) -> List[Union[DiscreteDevice, DeviceStepwise]]:
+    def parse(self, output: str) -> List[DeviceType]:
         lines = output.splitlines()
 
         for line in lines:

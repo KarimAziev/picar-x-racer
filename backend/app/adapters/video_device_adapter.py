@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import cv2
 from app.core.gstreamer_parser import GStreamerParser
@@ -6,7 +6,7 @@ from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.managers.gstreamer_manager import GstreamerManager
-from app.schemas.camera import CameraSettings, DeviceStepwise, DiscreteDevice
+from app.schemas.camera import CameraSettings, DeviceType
 from app.util.device import try_video_path
 
 logger = Logger(name=__name__)
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class VideoDeviceAdapater(metaclass=SingletonMeta):
     def __init__(self, v4l2: "V4L2Service"):
         self.v4l2 = v4l2
-        self.devices: List[Union[DeviceStepwise, DiscreteDevice]] = []
+        self.devices: List[DeviceType] = []
 
     """
     A singleton class responsible for managing video capturing devices.
@@ -77,12 +77,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
         return cap, CameraSettings(**updated_settings)
 
-    def list_devices(self) -> List[
-        Union[
-            DeviceStepwise,
-            DiscreteDevice,
-        ]
-    ]:
+    def list_devices(self) -> List[DeviceType]:
 
         v4l2_devices = self.v4l2.list_video_devices_ext()
         failed_devices = self.v4l2.failed_devices
@@ -95,12 +90,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
             self.devices = v4l2_devices
             return v4l2_devices
 
-        results: List[
-            Union[
-                DeviceStepwise,
-                DiscreteDevice,
-            ]
-        ] = []
+        results: List[DeviceType] = []
         gstreamer_devices_paths = set()
 
         for item in gstreamer_devices:
