@@ -12,6 +12,7 @@ from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
+from app.util.video_checksum import get_dev_video_checksum
 
 logger = Logger(__name__)
 
@@ -91,13 +92,61 @@ class GStreamerService(metaclass=SingletonMeta):
         )
 
     @staticmethod
-    @lru_cache()
     def list_video_devices() -> List[DeviceType]:
         """
-        Enumerate video source devices (e.g. Video/Source) and, using the native
-        getters on Gst.Structure and Gst.Caps, build DeviceType (either DiscreteDevice
-        or DeviceStepwise) objects.
-        Invalid/insufficient devices are silently skipped.
+        Cached method for enumerating video devices using GStreamer.
+
+        This method computes the state of video devices via a checksum derived from `/dev/video*`
+        and leverages a cached backend function to avoid redundant
+        computations. The checksum ensures that the cache is invalidated dynamically whenever
+        the state of `/dev/video*` changes (e.g., when a device is added or removed).
+
+        Details:
+        - First call after an application start or a state change triggers the enumeration of
+          devices and caches the result for subsequent calls.
+        - Subsequent calls with the same device state retrieve results from the cache, avoiding
+          recomputation.
+        - If the state of `/dev/video*` files changes, the checksum changes, invalidating the cache,
+          and triggering re-enumeration.
+
+        Returns:
+        --------
+        A list of DeviceType objects (`DiscreteDevice` or `DeviceStepwise`) describing
+        video devices detected by GStreamer with their capabilities.
+        """
+
+        checksum = get_dev_video_checksum()
+        return GStreamerService._list_video_devices(checksum)
+
+    @staticmethod
+    @lru_cache(maxsize=None)
+    def _list_video_devices(_: str) -> List[DeviceType]:
+        """
+        Low-level, cached method to enumerate video source devices using GStreamer.
+
+        This method uses GStreamer’s native getters (e.g. Gst.Structure and Gst.Caps) to
+        enumerate video devices and build `DeviceType` objects (`DiscreteDevice` or `DeviceStepwise`),
+        which is expensive operation.
+
+        The ignored argument _ is the checksum that ensures that the cache is
+        invalidated dynamically when any video device is added, removed, or updated on
+        the system.
+
+        Cache Behavior:
+        - Results of this method are dynamically cached leveraging the `lru_cache` decorator.
+        - The key to the cache is a checksum generated from the `/dev/video*` files.
+        - Cache invalidates automatically when the checksum changes, signaling a device state change.
+
+        Notes:
+        - Invalid or insufficient devices (e.g., those without properties or capabilities) are
+          skipped silently.
+        - For better performance in the application, avoid calling this function directly. Instead,
+          use `list_video_devices`, which handles checksum generation and cache management.
+
+        Returns:
+        --------
+        A list of DeviceType objects (`DiscreteDevice` or `DeviceStepwise`) describing
+        video devices detected by GStreamer with their capabilities.
         """
         try:
             import gi
