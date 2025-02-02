@@ -1,4 +1,4 @@
-![Python](https://img.shields.io/badge/python-3.10-blue) ![Raspberry Pi](https://img.shields.io/badge/platform-RaspberryPi-lightgrey) ![License](https://img.shields.io/github/license/KarimAziev/picar-x-racer)
+![Platform](<https://img.shields.io/badge/Platform-Raspberry%20PI%204%20%26%205-hsl(340%2C%2070%25%2C%2050%25)>) ![Python Support](https://img.shields.io/badge/Python-3.10%2B%20%7C%203.9%3F-blue?logo=python) ![Node.js Support](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js) ![License](https://img.shields.io/github/license/KarimAziev/picar-x-racer) ![Picar-X Racer](https://img.shields.io/badge/Picar--X%20Racer-Powered%20Car-8A2BE2?logo=car&logoColor=white)
 
 # Picar-X Racer
 
@@ -161,7 +161,10 @@ sudo apt install nodejs npm
    cd ~/picar-x-racer/
    ```
 
-3. Install dependencies and build the project in a virtual environment. (Note that `opencv-python` will be compiled in this process. Although the compilation takes a long time, the resulting GStreamer support in OpenCV is worth it.)
+3. Install dependencies and build the project in a virtual environment.
+
+   > [!NOTE]
+   > `opencv-python` will be compiled in this process. Although the compilation takes a long time (more than an hour), the resulting GStreamer support in OpenCV is worth it.
 
    ```bash
    make all
