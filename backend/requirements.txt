@@ -3,7 +3,6 @@ robot-hat
 google_speech_pyplay
 pandas
 colorlog
-opencv-python
 platformdirs
 pydantic
 pydantic-settings
