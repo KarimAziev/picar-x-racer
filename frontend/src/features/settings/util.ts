@@ -189,10 +189,7 @@ export const validateStepwiseData = (
       const stepKey = `${key}_step` as const;
       const minVal = stepWiseDevice[`min_${key}`];
       const maxVal = stepWiseDevice[`max_${key}`];
-      const step =
-        key === "fps"
-          ? 1
-          : stepWiseDevice[stepKey as Exclude<typeof stepKey, "fps_step">];
+      const step = stepWiseDevice[stepKey] || 1;
       if (!isNumber(val)) {
         acc[key] = "Required";
       } else if (

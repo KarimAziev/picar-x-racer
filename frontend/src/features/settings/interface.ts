@@ -109,6 +109,7 @@ export interface StepwiseDeviceProps {
   width_step: number;
   min_fps: number;
   max_fps: number;
+  fps_step?: number;
 }
 
 export interface DeviceStepwise extends DeviceCommonProps, StepwiseDeviceProps {
