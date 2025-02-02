@@ -14,11 +14,13 @@ Note:
 import ctypes
 import fcntl
 import os
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DiscreteDevice
+from app.util.video_checksum import get_dev_video_checksum
 from v4l2 import (
     _IOWR,
     V4L2_BUF_TYPE_VIDEO_CAPTURE,
@@ -90,10 +92,47 @@ class V4L2Service(metaclass=SingletonMeta):
 
     def list_video_devices_ext(self) -> List[Union[DeviceStepwise, DiscreteDevice]]:
         """
-        Wrapper method that combines multiple calls to enumerate video devices and their capabilities,
+        Cached method that combines multiple calls to enumerate video devices and their capabilities,
         gathering all configurations for the available devices.
+
+        This method uses a checksum derived from the `/dev/video*` files to cache results of
+        the expensive enumeration process. The checksum ensures that the cache is invalidated
+        whenever the state of `/dev/video*` changes (e.g., when a device is added or removed).
+
+        Details:
+        - First call after an application start or a state change triggers the enumeration of
+          devices and caches the result for subsequent calls.
+        - Subsequent calls with the same device state retrieve results from the cache, avoiding
+          recomputation of device configurations.
+        - If the state of the `/dev/video*` files changes (e.g., a camera is plugged or unplugged),
+          the checksum changes, invalidating the cache and forcing re-enumeration.
+
+        Returns:
+        --------
+        A list of device configurations (`DeviceStepwise` or `DiscreteDevice`) for all video devices.
         """
-        devices: List[str] = self.list_video_devices()
+        checksum = get_dev_video_checksum()
+        return self._list_video_devices_ext(checksum)
+
+    @lru_cache(maxsize=None)
+    def _list_video_devices_ext(
+        self, _: str
+    ) -> List[Union[DeviceStepwise, DiscreteDevice]]:
+        """
+        Expensive, cached method that enumerates video devices and their detailed capabilities.
+
+        The ignored argument _ is the checksum that ensures that the cache is
+        invalidated dynamically when any video device is added, removed, or updated on
+        the system.
+
+        Note:
+        - This is a lower-level method, intended to be accessed indirectly via `list_video_devices_ext`.
+
+        Returns:
+        --------
+        A list of device configurations (`DeviceStepwise` or `DiscreteDevice`) for all video devices.
+        """
+        devices: List[str] = self._list_video_devices()
         logger.debug("Found video devices: %s", devices)
 
         all_configs: List[Union[DeviceStepwise, DiscreteDevice]] = []
@@ -117,7 +156,7 @@ class V4L2Service(metaclass=SingletonMeta):
 
         return all_configs
 
-    def list_video_devices(self) -> List[str]:
+    def _list_video_devices(self) -> List[str]:
         """
         Look for devices in /dev whose name starts with 'video' (e.g. video0, video1...).
         Returns a sorted list of full device paths.
