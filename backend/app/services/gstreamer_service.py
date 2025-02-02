@@ -91,6 +91,7 @@ class GStreamerService(metaclass=SingletonMeta):
         )
 
     @staticmethod
+    @lru_cache()
     def list_video_devices() -> List[DeviceType]:
         """
         Enumerate video source devices (e.g. Video/Source) and, using the native
