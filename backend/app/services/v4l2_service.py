@@ -119,7 +119,7 @@ class V4L2Service(metaclass=SingletonMeta):
 
     def list_video_devices(self) -> List[str]:
         """
-        Look for devices in /dev whose name starts with 'video' (e.g. video0, video1…).
+        Look for devices in /dev whose name starts with 'video' (e.g. video0, video1...).
         Returns a sorted list of full device paths.
         """
         dev_dir: str = "/dev"
@@ -234,16 +234,8 @@ class V4L2Service(metaclass=SingletonMeta):
                     {
                         "type": "stepwise",
                         "min_width": frmsize_stepwise.min_width,
-                        "max_width": (
-                            frmsize_stepwise.max_width
-                            if hasattr(frmsize_stepwise, "max_width")
-                            else None
-                        ),
-                        "step_width": (
-                            frmsize_stepwise.step_width
-                            if hasattr(frmsize_stepwise, "step_width")
-                            else frmsize_stepwise.step_height
-                        ),
+                        "max_width": frmsize_stepwise.max_width,
+                        "step_width": frmsize_stepwise.step_width,
                         "min_height": frmsize_stepwise.min_height,
                         "max_height": frmsize_stepwise.max_height,
                         "step_height": frmsize_stepwise.step_height,
