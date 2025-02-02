@@ -1,7 +1,7 @@
 <template>
   <div class="flex gap-2">
     <div class="flex-1">
-      <Field :label="label">
+      <Field :label="label" labelClassName="truncate max-w-full">
         <TreeSelect
           @update:model-value="updateDevice"
           :nodes="devices"
@@ -10,7 +10,7 @@
       </Field>
     </div>
 
-    <div class="flex-1">
+    <div class="flex-1" v-if="isStepwiseDevice(selectedDevice)">
       <SelectField
         optionLabel="label"
         optionValue="value"
@@ -25,7 +25,10 @@
       />
     </div>
   </div>
-  <div class="flex gap-2 my-2">
+  <div
+    class="flex gap-2 my-2"
+    v-if="selectedDevice && (selectedDevice as any).max_width"
+  >
     <div class="flex flex-1 gap-x-2">
       <NumberInputField
         :useGrouping="false"
@@ -206,8 +209,9 @@ const stepwisePresetValue = ref<PresetOptionValue | undefined>(
 
 const label = computed(() => {
   const val = selectedDevice.value?.device;
+  const name = selectedDevice.value?.name;
 
-  return [`Camera:`, val].filter((v) => !!v).join(" ");
+  return [`Camera:`, name, val].filter((v) => !!v).join(" ");
 });
 
 const invalidData = ref<Partial<Record<"width" | "height" | "fps", string>>>(
