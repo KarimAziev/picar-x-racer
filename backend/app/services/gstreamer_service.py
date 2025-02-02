@@ -163,7 +163,6 @@ class GStreamerService(metaclass=SingletonMeta):
                 ok_f, num, den = structure.get_fraction("framerate")
                 logger.debug("num=%s, den=%s, ok_f=%s", num, den, ok_f)
 
-                ok_f, num, den = structure.get_fraction("framerate")
                 if ok_f and ok_w and ok_h:
                     fps = float(num) / float(den)
                     device_obj = DiscreteDevice(
@@ -197,12 +196,19 @@ class GStreamerService(metaclass=SingletonMeta):
                     else:
                         struct_str = structure.to_string()
                         fractions_fps = GStreamerParser.parse_framerate(struct_str)
-                        for fps in fractions_fps:
+                        if fractions_fps:
+                            for fps in fractions_fps:
+                                device_obj = DiscreteDevice(
+                                    **common, width=width, height=height, fps=fps
+                                )
+                                results.append(device_obj)
+                        else:
                             device_obj = DiscreteDevice(
-                                **common, width=width, height=height, fps=fps
+                                **common,
+                                width=width,
+                                height=height,
                             )
                             results.append(device_obj)
-
                 else:
 
                     ok_min_w, min_width = structure.get_int("min_width")
