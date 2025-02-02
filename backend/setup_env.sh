@@ -154,7 +154,7 @@ compile_cv2() {
 
   # we need this for:
   # python3 -c 'import gi; gi.require_version("Gst", "1.0"); from gi.repository import Gst; Gst.init(None); print("GStreamer version:", Gst.version())'
-  $SUDO apt-get install python3-gi gir1.2-gstreamer-1.0
+  $SUDO apt-get -y install python3-gi gir1.2-gstreamer-1.0
 
   log_info "Compiling open-cv2. Note, this may take a while..."
 
