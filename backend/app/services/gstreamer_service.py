@@ -241,6 +241,7 @@ class GStreamerService(metaclass=SingletonMeta):
                             pass
 
         monitor.stop()
+        logger.debug("gstreamer devices %s", results)
         return results
 
 
