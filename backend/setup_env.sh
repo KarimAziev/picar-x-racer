@@ -103,6 +103,9 @@ fi
 log_info "Installing dependencies from requirements.txt..."
 pip install -r requirements.txt
 
+# By default, Bookworm has preinstalled the old version of platformdirs 2.6.0, while we need at least 4.3.6.
+pip install platformdirs -U --force-reinstall
+
 is_raspberry_pi() {
   if [ -f /proc/device-tree/model ]; then
     if grep -qi "raspberry pi" /proc/device-tree/model; then

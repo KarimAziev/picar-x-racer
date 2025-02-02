@@ -3,7 +3,7 @@ robot-hat
 google_speech_pyplay
 pandas
 colorlog
-platformdirs
+platformdirs>=4.3.6,<5.0.0
 pydantic
 pydantic-settings
 pydub
