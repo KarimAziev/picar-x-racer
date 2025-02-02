@@ -41,7 +41,7 @@ from v4l2 import (
 )
 
 
-# original library didn't specify max_width and step_width in v4l2_frmsize_stepwise
+# original library didn't specify max_width in v4l2_frmsize_stepwise
 class v4l2_frmsize_stepwise(ctypes.Structure):
     _fields_ = [
         ("min_width", ctypes.c_uint32),
