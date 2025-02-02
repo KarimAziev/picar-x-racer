@@ -150,7 +150,8 @@ sudo apt install nodejs npm
 
 ### Installation
 
-> [!NOTE] > `opencv-python` will be compiled in this process. Although the compilation takes a long time (more than an hour), the resulting GStreamer support in OpenCV is worth it.
+> [!NOTE]
+> opencv-python will be compiled in this process. Although the compilation takes a long time (more than an hour), the resulting GStreamer support in OpenCV is worth it.
 
 1. Clone this repository to your Raspberry Pi:
 
