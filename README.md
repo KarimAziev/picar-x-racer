@@ -1,8 +1,8 @@
-![Platform](<https://img.shields.io/badge/Platform-Raspberry%20PI%204%20%26%205-hsl(340%2C%2070%25%2C%2050%25)>) ![Python Support](https://img.shields.io/badge/Python-3.10%2B%20%7C%203.9%3F-blue?logo=python) ![Node.js Support](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js) ![License](https://img.shields.io/github/license/KarimAziev/picar-x-racer) ![Picar-X Racer](https://img.shields.io/badge/Picar--X%20Racer-Powered%20Car-8A2BE2?logo=car&logoColor=white)
+![Platform](<https://img.shields.io/badge/Platform-Raspberry%20PI%204%20%26%205-hsl(340%2C%2070%25%2C%2050%25)>) ![Python Support](https://img.shields.io/badge/Python-3.10%2B%20%7C%203.9%3F-blue?logo=python) ![Node.js Support](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js) ![License](https://img.shields.io/github/license/KarimAziev/picar-x-racer) ![Picar-X Racer](https://img.shields.io/badge/Picar--X%20Racer-Powered%20Car-8A2BE2?logo=https://github.com/user-attachments/assets/9a735e3f-a0dd-4cff-aa90-19b28e251317)
 
 # Picar-X Racer
 
-`Picar-X Racer` is a project aimed at controlling the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) using a modern web interface inspired by racing video games. It integrates both frontend and backend components to manage the car's movement, camera, object detection with AI, and other functionalities. The new interface includes a speedometer, live camera feed, and multimedia controls.
+**Picar-X Racer** is a robotics and AI platform designed to control the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) on Raspberry Pi. It also supports AI, camera operations, multimedia functionality, and real-time object detection across other Linux-based systems like Ubuntu, with no robot required.
 
 ![Demo](./demo/picar-x-racer-demo.gif)
 
@@ -10,18 +10,19 @@
 
 ![Cat](./demo/demo-picarx-cat.gif)
 
+![Alt text](./demo/3d-picar-x.gif)
+
 ## Features
 
-- **Real-time Control with Video Game-like Precision**: Experience smooth and responsive control over your Picar-X car, similar to a video game interface.
-- **Advanced Object Detection with AI**: Integrate AI-powered [object detection modes](#object-detection) to recognize and track objects like cats, persons, and more in real-time. Google Coral accelerator is also [supported](#using-google-coral-accelerator).
-- **Dynamic Video Enhancements**: Apply various [video enhancements](#video-enhancers) to your live camera feed.
-- **Smooth Calibration**: Quickly switch to the [calibration mode](#calibration-mode) and adjust the settings.
-- **Acceleration and Speed Indicators**: Realistic acceleration, speed indicators, and smooth driving experience make navigating through tight spaces easy.
-- **Full Customization**: Change every shortcut, panel view, and more.
-- **Multimedia Functionality**: Play sounds and music, and convert text to speech for interactive experiences.
-- **3D Car Visualization**: A real-time 3D model of the Picar-X that reflects and displays the car's angles, providing an enhanced visual control experience.
-
-![Alt text](./demo/3d-picar-x.gif)
+- Precise control and calibration of the Picar-X vehicle, with smooth, video-game-like responsiveness.
+- Real-time object detection using YOLO-based models, with optional [support for Google Coral accelerators](#using-google-coral-accelerator).
+- On-the-fly camera management with `GStreamer`, `v4l2`, and `libcamera`, allowing seamless swapping between Raspberry Pi Camera Modules 2/3 and USB cameras directly from the UI, without stopping the robot or restarting the application.
+- Dynamic model management with support for pretrained YOLO-based models such as Ultralytics, as well as custom models, which can be uploaded and tested in real time without interrupting the running system.
+- A standalone web interface for experiments or development, including object detection, video streaming, and data collection, operable independently of the robot.
+- Photo capture tools with preview, downloading, and archiving options, useful for organizing data for AI projects.
+- Browser compatibility for both desktop and mobile platforms (except Safari on iOS), with extensive customization features.
+- Real-time 3D model visualization to monitor the robot's movement and orientation.
+- Multimedia features including sound playback, music, and text-to-speech functionality.
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 
@@ -149,6 +150,8 @@ sudo apt install nodejs npm
 
 ### Installation
 
+> [!NOTE] > `opencv-python` will be compiled in this process. Although the compilation takes a long time (more than an hour), the resulting GStreamer support in OpenCV is worth it.
+
 1. Clone this repository to your Raspberry Pi:
 
    ```bash
@@ -162,9 +165,6 @@ sudo apt install nodejs npm
    ```
 
 3. Install dependencies and build the project in a virtual environment.
-
-   > [!NOTE]
-   > `opencv-python` will be compiled in this process. Although the compilation takes a long time (more than an hour), the resulting GStreamer support in OpenCV is worth it.
 
    ```bash
    make all
