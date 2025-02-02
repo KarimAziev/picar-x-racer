@@ -70,7 +70,8 @@ async def lifespan(app: FastAPI):
             file_manager=file_manager,
             connection_manager=connection_manager,
             video_device_adapter=deps.get_video_device_adapter(
-                v4l2=deps.get_v4l2_manager()
+                v4l2_manager=deps.get_v4l2_manager(),
+                gstreamer_manager=deps.get_gstreamer_manager(),
             ),
             video_recorder=deps.get_video_recorder(file_manager=file_manager),
         )

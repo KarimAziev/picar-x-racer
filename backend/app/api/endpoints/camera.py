@@ -12,7 +12,6 @@ from app.exceptions.camera import (
     CameraNotFoundError,
     CameraShutdownInProgressError,
 )
-from app.managers.gstreamer_manager import GstreamerManager
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.util.doc_util import build_response_description
 from app.util.photo import capture_photo
@@ -23,6 +22,7 @@ if TYPE_CHECKING:
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.file_service import FileService
+    from app.services.gstreamer_service import GStreamerService
 
 router = APIRouter()
 logger = Logger(__name__)
@@ -40,6 +40,7 @@ async def update_camera_settings(
     request: Request,
     payload: CameraSettings,
     camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    gstreamer_manager: "GStreamerService" = Depends(deps.get_gstreamer_manager),
 ):
     """
     Update the camera settings with new configurations and broadcast the updates.
@@ -51,8 +52,8 @@ async def update_camera_settings(
     logger.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
-    if payload.use_gstreamer and not GstreamerManager.gstreamer_available():
-        gstreamer_in_cv2, gstreamer_on_system = GstreamerManager.check_gstreamer()
+    if payload.use_gstreamer and not gstreamer_manager.gstreamer_available():
+        gstreamer_in_cv2, gstreamer_on_system = gstreamer_manager.check_gstreamer()
         reason = " and ".join(
             [
                 item

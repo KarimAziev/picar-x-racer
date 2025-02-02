@@ -1,23 +1,26 @@
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import cv2
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.managers.gstreamer_manager import GstreamerManager
 from app.schemas.camera import CameraSettings, DeviceType
 from app.util.device import try_video_path
 
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
+    from app.services.gstreamer_service import GStreamerService
     from app.services.v4l2_service import V4L2Service
 
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
-    def __init__(self, v4l2: "V4L2Service"):
-        self.v4l2 = v4l2
+    def __init__(
+        self, v4l2_manager: "V4L2Service", gstreamer_manager: "GStreamerService"
+    ):
+        self.v4l2_manager = v4l2_manager
+        self.gstreamer_manager = gstreamer_manager
         self.devices: List[DeviceType] = []
 
     """
@@ -28,7 +31,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         self, device: str, camera_settings: CameraSettings
     ) -> Optional[Tuple[cv2.VideoCapture, CameraSettings]]:
         if camera_settings.use_gstreamer:
-            pipeline = GstreamerManager.setup_pipeline(
+            pipeline = self.gstreamer_manager.setup_pipeline(
                 device,
                 width=camera_settings.width,
                 height=camera_settings.height,
@@ -64,7 +67,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 )
             )
 
-            data = self.v4l2.video_capture_format(device_path) or {}
+            data = self.v4l2_manager.video_capture_format(device_path) or {}
 
             updated_settings = {
                 **camera_settings.model_dump(),
@@ -79,11 +82,11 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
     def list_devices(self) -> List[DeviceType]:
 
-        v4l2_devices = self.v4l2.list_video_devices_ext()
-        failed_devices = self.v4l2.failed_devices
+        v4l2_devices = self.v4l2_manager.list_video_devices_ext()
+        failed_devices = self.v4l2_manager.failed_devices
         gstreamer_devices = (
-            GstreamerManager.list_video_devices_with_formats()
-            if GstreamerManager.gstreamer_available()
+            self.gstreamer_manager.list_video_devices()
+            if self.gstreamer_manager.gstreamer_available()
             else None
         )
         if gstreamer_devices is None:
@@ -92,23 +95,32 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
         results: List[DeviceType] = []
         gstreamer_devices_paths = set()
+        device_names: Dict[str, Optional[str]] = {}
 
         for item in gstreamer_devices:
             path = item.path
+            if path:
+                device_names[path] = item.name
             if not isinstance(path, str):
                 continue
             if item.api != "v4l2":
                 results.append(item)
                 gstreamer_devices_paths.add(path)
-            elif path not in failed_devices and path not in self.v4l2.succeed_devices:
+            elif (
+                path not in failed_devices
+                and path not in self.v4l2_manager.succeed_devices
+            ):
                 results.append(item)
 
-        self.devices = [
-            item
-            for item in v4l2_devices
-            if item.device not in gstreamer_devices_paths
-            and f"{item.device}:{item.pixel_format}"
-        ] + results
+        devices = []
+
+        for item in v4l2_devices:
+            if item.device not in gstreamer_devices_paths:
+                if not item.name:
+                    item.name = device_names.get(item.device)
+                devices.append(item)
+
+        self.devices = devices + results
 
         return self.devices
 

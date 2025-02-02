@@ -20,6 +20,10 @@ class GStreamerParser:
 
     @staticmethod
     def parse_device_path(input_string: str) -> Tuple[Optional[str], str]:
+        """
+        If the object path has an api prefix (like "v4l2:/dev/video0"),
+        return a tuple (api, path); otherwise, return (None, device_path)
+        """
         match = re.match(r"([^:]+):/(.+)", input_string)
         if match:
             part1 = match.group(1)
@@ -27,6 +31,47 @@ class GStreamerParser:
             return part1, part2
         else:
             return None, input_string
+
+    @staticmethod
+    def parse_framerate(struct_str: str) -> List[float]:
+        fps_resutls: List[float] = []
+        # handling such format "framerate={ (fraction)15/1, (fraction)30/1 }"
+        if fractions := re.findall(r"\(fraction\)\s*([0-9]+/[0-9]+)", struct_str):
+            for frac in fractions:
+                try:
+                    num_str, den_str = frac.split("/")
+                    num = int(num_str)
+                    den = int(den_str)
+                    fps = float(num) / float(den)
+                    fps_resutls.append(fps)
+                except Exception as e:
+                    logger.error("Error processing fraction '%s': %s", frac, e)
+        # handling such format "framerate=(fraction){ 15/1, 30/1 }"
+        elif framerate_match := re.search(
+            r"framerate=\(fraction\)\{?\s*([^}]*)\}?", struct_str
+        ):
+            frac_list_str = framerate_match.group(1)
+            fractions = re.findall(r"([0-9]+/[0-9]+)", frac_list_str)
+            if fractions:
+                for frac_str in fractions:
+                    try:
+                        num_str, den_str = frac_str.split("/")
+                        num = int(num_str)
+                        den = int(den_str)
+                        fps = float(num) / float(den)
+                        fps_resutls.append(fps)
+                    except Exception as e:
+                        logger.error(
+                            "Error processing fraction '%s': %s",
+                            frac_str,
+                            e,
+                        )
+            else:
+                logger.warning(
+                    "No valid fractions found in framerate group: %s",
+                    frac_list_str,
+                )
+        return fps_resutls
 
     def parse(self, output: str) -> List[DeviceType]:
         lines = output.splitlines()

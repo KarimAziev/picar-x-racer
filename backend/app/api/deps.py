@@ -9,6 +9,7 @@ from app.services.camera_service import CameraService
 from app.services.connection_service import ConnectionService
 from app.services.detection_service import DetectionService
 from app.services.file_service import FileService
+from app.services.gstreamer_service import GStreamerService
 from app.services.music_service import MusicService
 from app.services.stream_service import StreamService
 from app.services.tts_service import TTSService
@@ -33,10 +34,17 @@ def get_v4l2_manager() -> V4L2Service:
     return V4L2Service()
 
 
+def get_gstreamer_manager() -> GStreamerService:
+    return GStreamerService()
+
+
 def get_video_device_adapter(
-    v4l2: V4L2Service = Depends(get_v4l2_manager),
+    v4l2_manager: V4L2Service = Depends(get_v4l2_manager),
+    gstreamer_manager: GStreamerService = Depends(get_v4l2_manager),
 ) -> VideoDeviceAdapater:
-    return VideoDeviceAdapater(v4l2=v4l2)
+    return VideoDeviceAdapater(
+        v4l2_manager=v4l2_manager, gstreamer_manager=gstreamer_manager
+    )
 
 
 def get_audio_manager() -> AudioService:
