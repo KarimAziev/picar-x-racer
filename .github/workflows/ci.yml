@@ -38,15 +38,15 @@ jobs:
         run: npm install -g pyright
 
       - name: Run Pyright static type checker
-        run: pyright
+        run: . .venv/bin/activate && pyright
 
       - name: Lint code
         run: |
-          black --check .
+          . .venv/bin/activate && black --check .
 
       - name: Run tests with coverage
         run: |
-          coverage run -m unittest discover
+          . .venv/bin/activate && coverage run -m unittest discover
           coverage xml
           coverage report
 
