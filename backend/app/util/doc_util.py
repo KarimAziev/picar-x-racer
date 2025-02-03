@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
 from pydantic import BaseModel
 
@@ -36,7 +36,7 @@ def build_response_description(
     return "\n".join(lines)
 
 
-def extract_clean_docstring(obj: type | object) -> str:
+def extract_clean_docstring(obj: Union[type, object]) -> str:
     """
     Extract and clean up the __doc__ string from a class, object, or enum.
 

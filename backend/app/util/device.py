@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 import cv2
 from app.core.logger import Logger
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 def try_video_path(
-    path: str | int,
+    path: Union[str, int],
     backend: Optional["VideoCaptureAPIs"] = None,
     width: Optional[int] = None,
     height: Optional[int] = None,

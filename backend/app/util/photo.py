@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import cv2
 import numpy as np
@@ -31,7 +31,7 @@ async def capture_photo(img: np.ndarray, photo_name: str, path: str) -> bool:
     return status
 
 
-def round_up_to_multiple_of(val: int | float, multiple: int):
+def round_up_to_multiple_of(val: Union[int, float], multiple: int):
     return ((val + multiple - 1) // multiple) * multiple
 
 
