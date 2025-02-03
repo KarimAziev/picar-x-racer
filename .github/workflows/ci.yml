@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  backend-lint-and-test:
+    name: Backend Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12, 3.13]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Node.js (for Pyright)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'current'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install opencv-python pytest pytest-cov
+
+      - name: Install Pyright
+        run: npm install -g pyright
+
+      - name: Run Pyright static type checker
+        run: pyright
+
+      - name: Lint code
+        run: |
+          black --check .
+
+      - name: Run tests with coverage
+        run: |
+          coverage run -m unittest discover
+          coverage xml
+          coverage report
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  frontend-build-test:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'current'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Run Frontend tests
+        run: npm run test
+
+      - name: Build frontend
+        run: npm run build
