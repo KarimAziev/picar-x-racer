@@ -70,14 +70,14 @@ class TestV4L2Service(unittest.TestCase):
             self.assertIn("/dev/video0", devices[0].device)
 
     @patch("fcntl.ioctl")
-    @patch("app.util.fd_utils.fd_open", new=fake_fd_open)
+    @patch("app.services.v4l2_service.fd_open", new=fake_fd_open)
     def test_query_capabilities_success(self, mock_ioctl):
         mock_ioctl.side_effect = lambda fd, req, cap: cap if req == 0x80685600 else None
-        result = self.service._query_capabilities("/dev/video0")
+        result = self.service._query_capabilities("/dev/video10")
         self.assertIsNotNone(result)
 
     @patch("fcntl.ioctl", side_effect=OSError("IOCTL Failure"))
-    @patch("app.util.fd_utils.fd_open", new=fake_fd_open)
+    @patch("app.services.v4l2_service.fd_open", new=fake_fd_open)
     def test_query_capabilities_failure(self, _):
         with patch("app.core.logger.Logger.warning") as mock_logger_warning:
             result = self.service._query_capabilities("/dev/video0")
@@ -111,7 +111,7 @@ class TestV4L2Service(unittest.TestCase):
         self.assertEqual(discrete_device.fps, 30)
 
     @patch("fcntl.ioctl")
-    @patch("app.util.fd_utils.fd_open", new=fake_fd_open)
+    @patch("app.services.v4l2_service.fd_open", new=fake_fd_open)
     def test_video_capture_format_success(self, mock_ioctl):
         v4l2_format_mock = MagicMock()
         v4l2_format_mock.type = 1
@@ -134,7 +134,7 @@ class TestV4L2Service(unittest.TestCase):
             self.assertEqual(result["pixel_format"], "I420")
 
     @patch("fcntl.ioctl", side_effect=OSError("IOCTL Failure"))
-    @patch("app.util.fd_utils.fd_open", new=fake_fd_open)
+    @patch("app.services.v4l2_service.fd_open", new=fake_fd_open)
     def test_video_capture_format_failure(self, mock_ioctl):
         with patch("app.core.logger.Logger.error") as mock_logger_error:
             result = self.service.video_capture_format("/dev/video0")
