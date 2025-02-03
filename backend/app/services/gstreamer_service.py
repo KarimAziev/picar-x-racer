@@ -116,11 +116,11 @@ class GStreamerService(metaclass=SingletonMeta):
         """
 
         checksum = get_dev_video_checksum()
-        return GStreamerService._list_video_devices(checksum)
+        return GStreamerService._cached_list_video_devices(checksum)
 
     @staticmethod
     @lru_cache(maxsize=None)
-    def _list_video_devices(_: str) -> List[DeviceType]:
+    def _cached_list_video_devices(_: str) -> List[DeviceType]:
         """
         Low-level, cached method to enumerate video source devices using GStreamer.
 
@@ -174,18 +174,11 @@ class GStreamerService(metaclass=SingletonMeta):
                 continue
 
             object_path = props_obj.get_string("object.path")
-            logger.debug(
-                "object_path='%s', display_name='%s'",
-                object_path,
-                display_name,
-            )
 
             if object_path is None:
                 continue
 
             api, path = GStreamerParser.parse_device_path(object_path)
-
-            logger.debug("api='%s', path=%s", api, path)
 
             caps_obj = dev.get_caps()
             if not caps_obj or caps_obj.get_size() == 0:
@@ -196,9 +189,6 @@ class GStreamerService(metaclass=SingletonMeta):
                 media_type = structure.get_name()
 
                 pixel_format = structure.get_string("format")
-                logger.debug(
-                    "pixel_format='%s', media_type='%s'", pixel_format, media_type
-                )
                 common = {
                     "name": display_name,
                     "device": object_path,
@@ -211,7 +201,16 @@ class GStreamerService(metaclass=SingletonMeta):
                 ok_w, width = structure.get_int("width")
                 ok_h, height = structure.get_int("height")
                 ok_f, num, den = structure.get_fraction("framerate")
-                logger.debug("num=%s, den=%s, ok_f=%s", num, den, ok_f)
+                logger.debug(
+                    "display_name=%s, object_path=%s, pixel_format='%s', media_type='%s' num='%s', den='%s', ok_f='%s'",
+                    display_name,
+                    object_path,
+                    pixel_format,
+                    media_type,
+                    num,
+                    den,
+                    ok_f,
+                )
 
                 if ok_f and ok_w and ok_h:
                     fps = float(num) / float(den)

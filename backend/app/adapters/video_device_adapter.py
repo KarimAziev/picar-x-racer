@@ -16,16 +16,16 @@ if TYPE_CHECKING:
 
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
+    """
+    A singleton class responsible for managing video capturing devices.
+    """
+
     def __init__(
         self, v4l2_manager: "V4L2Service", gstreamer_manager: "GStreamerService"
     ):
         self.v4l2_manager = v4l2_manager
         self.gstreamer_manager = gstreamer_manager
         self.devices: List[DeviceType] = []
-
-    """
-    A singleton class responsible for managing video capturing devices.
-    """
 
     def try_device_props(
         self, device: str, camera_settings: CameraSettings
@@ -81,8 +81,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         return cap, CameraSettings(**updated_settings)
 
     def list_devices(self) -> List[DeviceType]:
-
-        v4l2_devices = self.v4l2_manager.list_video_devices_ext()
+        v4l2_devices = self.v4l2_manager.list_video_devices()
         failed_devices = self.v4l2_manager.failed_devices
         gstreamer_devices = (
             self.gstreamer_manager.list_video_devices()
