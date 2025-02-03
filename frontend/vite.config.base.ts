@@ -1,6 +1,6 @@
 // https://vitejs.dev/config/
 import { fileURLToPath, URL } from "node:url";
-
+import postcss from "./postcss.config";
 import vue from "@vitejs/plugin-vue";
 import Components from "unplugin-vue-components/vite";
 
@@ -18,6 +18,9 @@ export const baseConfig = {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+  },
+  css: {
+    postcss,
   },
   build: {
     assetsDir: "assets",

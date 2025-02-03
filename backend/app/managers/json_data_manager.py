@@ -101,7 +101,7 @@ class JsonDataManager(EventEmitter):
             modified_time = None
 
         if (
-            not hasattr(self, '_cache')
+            not hasattr(self, "_cache")
             or self._cache is None
             or self._last_modified_time != modified_time
             or self._last_cached_file != source_file

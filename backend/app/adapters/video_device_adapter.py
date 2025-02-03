@@ -16,16 +16,16 @@ if TYPE_CHECKING:
 
 
 class VideoDeviceAdapater(metaclass=SingletonMeta):
+    """
+    A singleton class responsible for managing video capturing devices.
+    """
+
     def __init__(
         self, v4l2_manager: "V4L2Service", gstreamer_manager: "GStreamerService"
     ):
         self.v4l2_manager = v4l2_manager
         self.gstreamer_manager = gstreamer_manager
         self.devices: List[DeviceType] = []
-
-    """
-    A singleton class responsible for managing video capturing devices.
-    """
 
     def try_device_props(
         self, device: str, camera_settings: CameraSettings
@@ -47,7 +47,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 "device": device,
             }
         else:
-            _, device_path = GStreamerParser.parse_device_path(device)
+            device_path = GStreamerParser.strip_api_prefix(device)
             cap = try_video_path(
                 device_path,
                 backend=cv2.CAP_V4L2,
@@ -81,8 +81,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         return cap, CameraSettings(**updated_settings)
 
     def list_devices(self) -> List[DeviceType]:
-
-        v4l2_devices = self.v4l2_manager.list_video_devices_ext()
+        v4l2_devices = self.v4l2_manager.list_video_devices()
         failed_devices = self.v4l2_manager.failed_devices
         gstreamer_devices = (
             self.gstreamer_manager.list_video_devices()
@@ -129,7 +128,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
     ) -> Tuple[cv2.VideoCapture, CameraSettings]:
         devices = self.list_devices()
         if camera_settings.device is not None:
-            _, device_path = GStreamerParser.parse_device_path(camera_settings.device)
+            device_path = GStreamerParser.strip_api_prefix(camera_settings.device)
             video_device: Optional[str] = None
             for item in devices:
                 if device_path in (item.device, item.path):

@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  backend-lint-and-test:
+    name: Backend Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Node.js (for Pyright)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'current'
+      - name: Setup backend environment
+        run: bash setup_env.sh --minimal
+
+      - name: Install backend dependencies
+        run: . .venv/bin/activate && pip install pytest pytest-cov
+
+      - name: Install Pyright
+        run: npm install -g pyright
+
+      - name: Install project package
+        run: |
+         source .venv/bin/activate
+         pip install -e .
+
+      - name: Run Pyright static type checker
+        run: . .venv/bin/activate && pyright
+
+      - name: Lint code
+        run: |
+          . .venv/bin/activate && black --check .
+
+      - name: Run tests with coverage
+        run: |
+             source .venv/bin/activate
+             coverage run --source=app --omit="*/config.py,*/config-3.py" -m unittest discover
+             coverage xml
+             coverage report
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  frontend-build-test:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'current'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Run Frontend tests
+        run: npm run test
+
+      - name: Build frontend
+        run: npm run build

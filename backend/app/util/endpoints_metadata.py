@@ -77,7 +77,7 @@ def process_module_route(
             else "No description provided."
         ),
     }
-    tag = metadata['name']
+    tag = metadata["name"]
     if tag not in router.tags:
         router.tags.append(tag)
 

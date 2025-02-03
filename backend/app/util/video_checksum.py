@@ -1,4 +1,5 @@
 import os
+import re
 
 from app.core.logger import Logger
 
@@ -15,9 +16,10 @@ def get_dev_video_checksum() -> str:
     A unique string that changes when `/dev/video*` devices change.
     """
     try:
+
         dev_dir = "/dev"
         video_devices = [
-            name for name in os.listdir(dev_dir) if name.startswith("video")
+            name for name in os.listdir(dev_dir) if re.match(r"^video\d+$", name)
         ]
         video_devices.sort()
 

@@ -40,7 +40,7 @@ class ReloadHandler(FileSystemEventHandler):
             EVENT_TYPE_CREATED,
             EVENT_TYPE_MOVED,
         ]:
-            if not isinstance(file_name, str) or not Path(file_name).suffix == '.py':
+            if not isinstance(file_name, str) or not Path(file_name).suffix == ".py":
                 return
 
             if any(file_name.endswith(pattern) for pattern in self.ignore_patterns):

@@ -48,7 +48,7 @@ class BatchFilesRequest(BaseModel):
     """
 
     filenames: List[str] = Field(
-        None,
+        ...,
         description="The list of the filenames without directory, but with extension",
         examples=[["photo_2024-12-04-17-35-36.jpg", "photo_2024-12-04-17-35-33.jpg"]],
     )

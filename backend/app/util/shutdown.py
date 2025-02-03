@@ -1,4 +1,3 @@
-import dbus
 from app.core.logger import Logger
 
 logger = Logger(__name__)
@@ -22,11 +21,13 @@ def power_off():
     Raises:
         Exception: If the D-Bus interface is unavailable or the PowerOff request fails.
     """
+    import dbus
+
     try:
         bus = dbus.SystemBus()
 
-        systemd = bus.get_object('org.freedesktop.login1', '/org/freedesktop/login1')
-        manager = dbus.Interface(systemd, 'org.freedesktop.login1.Manager')
+        systemd = bus.get_object("org.freedesktop.login1", "/org/freedesktop/login1")
+        manager = dbus.Interface(systemd, "org.freedesktop.login1.Manager")
         logger.warning("Shutdown initiated via dbus")
         manager.PowerOff(True)
     except Exception:
@@ -51,11 +52,13 @@ def restart():
     Raises:
         Exception: If the D-Bus interface is unavailable or the Reboot request fails.
     """
+    import dbus
+
     try:
         bus = dbus.SystemBus()
 
-        systemd = bus.get_object('org.freedesktop.login1', '/org/freedesktop/login1')
-        manager = dbus.Interface(systemd, 'org.freedesktop.login1.Manager')
+        systemd = bus.get_object("org.freedesktop.login1", "/org/freedesktop/login1")
+        manager = dbus.Interface(systemd, "org.freedesktop.login1.Manager")
         logger.warning("Restart initiated via dbus")
         manager.Reboot(True)
     except Exception:

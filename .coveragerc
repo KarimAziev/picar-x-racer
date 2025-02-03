@@ -1,0 +1,4 @@
+[run]
+omit =
+    backend/config.py
+    backend/config-3.py

@@ -14,12 +14,14 @@ Note:
 import ctypes
 import fcntl
 import os
+import re
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.schemas.camera import DeviceStepwise, DiscreteDevice
+from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
+from app.util.fd_utils import fd_open
 from app.util.video_checksum import get_dev_video_checksum
 from v4l2 import (
     _IOWR,
@@ -90,273 +92,17 @@ class V4L2Service(metaclass=SingletonMeta):
         """
         return "".join(chr((fourcc >> (8 * i)) & 0xFF) for i in range(4))
 
-    def list_video_devices_ext(self) -> List[Union[DeviceStepwise, DiscreteDevice]]:
+    def list_video_devices(self) -> List[DeviceType]:
         """
-        Cached method that combines multiple calls to enumerate video devices and their capabilities,
-        gathering all configurations for the available devices.
-
-        This method uses a checksum derived from the `/dev/video*` files to cache results of
-        the expensive enumeration process. The checksum ensures that the cache is invalidated
-        whenever the state of `/dev/video*` changes (e.g., when a device is added or removed).
-
-        Details:
-        - First call after an application start or a state change triggers the enumeration of
-          devices and caches the result for subsequent calls.
-        - Subsequent calls with the same device state retrieve results from the cache, avoiding
-          recomputation of device configurations.
-        - If the state of the `/dev/video*` files changes (e.g., a camera is plugged or unplugged),
-          the checksum changes, invalidating the cache and forcing re-enumeration.
+        High-level public method to list video devices with caching.
+        Checks the checksum of `/dev/video*` to determine if reevaluation is necessary.
 
         Returns:
         --------
-        A list of device configurations (`DeviceStepwise` or `DiscreteDevice`) for all video devices.
+        A list of device configurations for all video devices.
         """
         checksum = get_dev_video_checksum()
-        return self._list_video_devices_ext(checksum)
-
-    @lru_cache(maxsize=None)
-    def _list_video_devices_ext(
-        self, _: str
-    ) -> List[Union[DeviceStepwise, DiscreteDevice]]:
-        """
-        Expensive, cached method that enumerates video devices and their detailed capabilities.
-
-        The ignored argument _ is the checksum that ensures that the cache is
-        invalidated dynamically when any video device is added, removed, or updated on
-        the system.
-
-        Note:
-        - This is a lower-level method, intended to be accessed indirectly via `list_video_devices_ext`.
-
-        Returns:
-        --------
-        A list of device configurations (`DeviceStepwise` or `DiscreteDevice`) for all video devices.
-        """
-        devices: List[str] = self._list_video_devices()
-        logger.debug("Found video devices: %s", devices)
-
-        all_configs: List[Union[DeviceStepwise, DiscreteDevice]] = []
-        for dev in devices:
-            cap = self.query_capabilities(dev)
-            if cap is None:
-                continue
-            if not (cap.capabilities & 0x00000001):
-                logger.debug("%s does not support capture", dev)
-                continue
-
-            configs: List[Union[DeviceStepwise, DiscreteDevice]] = (
-                self.get_device_configurations(dev)
-            )
-            all_configs.extend(configs)
-
-        for item in all_configs:
-            self.succeed_devices.add(item.device)
-            if item.device in self.failed_devices:
-                self.failed_devices.remove(item.device)
-
-        return all_configs
-
-    def _list_video_devices(self) -> List[str]:
-        """
-        Look for devices in /dev whose name starts with 'video' (e.g. video0, video1...).
-        Returns a sorted list of full device paths.
-        """
-        dev_dir: str = "/dev"
-        devices: List[str] = []
-        try:
-            for name in os.listdir(dev_dir):
-                if name.startswith("video"):
-                    devices.append(os.path.join(dev_dir, name))
-        except Exception as e:
-            logger.error(f"Could not list directory {dev_dir}: {e}")
-        return sorted(devices)
-
-    def query_capabilities(self, device_path: str) -> Optional[v4l2_capability]:
-        """
-        Query the device capabilities via VIDIOC_QUERYCAP.
-        Returns a v4l2_capability structure on success; otherwise, None.
-        """
-        try:
-            fd: int = os.open(device_path, os.O_RDWR)
-        except Exception as e:
-            logger.error(f"Could not open {device_path}: {e}")
-            return None
-
-        cap: v4l2_capability = v4l2_capability()
-        try:
-            fcntl.ioctl(fd, VIDIOC_QUERYCAP, cap)
-        except Exception as e:
-            logger.warning(f"VIDIOC_QUERYCAP failed on {device_path}: {e}")
-            os.close(fd)
-            return None
-        os.close(fd)
-        return cap
-
-    def enumerate_formats(self, device_path: str) -> List[Dict[str, Union[int, str]]]:
-        """
-        Enumerate the supported pixel formats using VIDIOC_ENUM_FMT.
-        Returns a list of dicts with "index", "pixelformat", and "description".
-        """
-        formats: List[Dict[str, Union[int, str]]] = []
-        try:
-            fd: int = os.open(device_path, os.O_RDWR)
-        except Exception as e:
-            logger.error(f"Failed to open {device_path} for enumerating formats: {e}")
-            return formats
-
-        index: int = 0
-        while True:
-            fmtdesc: v4l2_fmtdesc = v4l2_fmtdesc()
-            fmtdesc.index = index
-            fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
-            try:
-                fcntl.ioctl(fd, VIDIOC_ENUM_FMT, fmtdesc)
-            except Exception:
-                # Enumeration finished
-                break
-
-            # Decode the description (strip nulls)
-            desc: str = (
-                fmtdesc.description.decode("utf-8", errors="ignore")
-                .strip("\x00")
-                .strip()
-            )
-            formats.append(
-                {
-                    "index": index,
-                    "pixelformat": fmtdesc.pixelformat,
-                    "description": desc,
-                }
-            )
-            index += 1
-
-        os.close(fd)
-        return formats
-
-    def enumerate_framesizes(
-        self, device_path: str, pixelformat: int
-    ) -> List[Dict[str, Any]]:
-        """
-        Enumerate frame sizes for a given pixel format using VIDIOC_ENUM_FRAMESIZES.
-        For discrete modes, returns width/height.
-        For stepwise or continuous modes, returns min/max and step values.
-        """
-        frame_sizes: List[Dict[str, Any]] = []
-        try:
-            fd: int = os.open(device_path, os.O_RDWR)
-        except Exception as e:
-            logger.error(f"Failed to open {device_path} for framesize enumeration: {e}")
-            return frame_sizes
-
-        index: int = 0
-        while True:
-            frmsize: v4l2_frmsizeenum = v4l2_frmsizeenum()
-            frmsize.index = index
-            frmsize.pixel_format = pixelformat
-            try:
-                fcntl.ioctl(fd, VIDIOC_ENUM_FRAMESIZES, frmsize)
-            except Exception:
-                # enumeration is complete
-                break
-
-            if frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE:
-                frame_sizes.append(
-                    {
-                        "type": "discrete",
-                        "width": frmsize.discrete.width,
-                        "height": frmsize.discrete.height,
-                    }
-                )
-            elif frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE:
-                frmsize_stepwise = frmsize.stepwise
-                frame_sizes.append(
-                    {
-                        "type": "stepwise",
-                        "min_width": frmsize_stepwise.min_width,
-                        "max_width": frmsize_stepwise.max_width,
-                        "step_width": frmsize_stepwise.step_width,
-                        "min_height": frmsize_stepwise.min_height,
-                        "max_height": frmsize_stepwise.max_height,
-                        "step_height": frmsize_stepwise.step_height,
-                    }
-                )
-            elif frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS:
-                frame_sizes.append(
-                    {
-                        "type": "continuous",
-                        "min_width": frmsize.stepwise.min_width,
-                        "max_width": frmsize.stepwise.max_width,
-                        "min_height": frmsize.stepwise.min_height,
-                        "max_height": frmsize.stepwise.max_height,
-                    }
-                )
-            index += 1
-
-        os.close(fd)
-        return frame_sizes
-
-    def enumerate_frameintervals(
-        self, device_path: str, pixelformat: int, width: int, height: int
-    ) -> List[Dict[str, Any]]:
-        """
-        For a specific resolution (width and height) and pixel format, enumerate frame intervals
-        using VIDIOC_ENUM_FRAMEINTERVALS. Returns a list of dicts.
-          - For discrete intervals, computes fps = denominator / numerator.
-          - For stepwise/continuous, returns min/max and step fps.
-        """
-        intervals: List[Dict[str, Any]] = []
-        try:
-            fd: int = os.open(device_path, os.O_RDWR)
-        except Exception as e:
-            logger.error(
-                f"Failed to open {device_path} for frame interval enumeration: {e}"
-            )
-            return intervals
-
-        index: int = 0
-        while True:
-            frmival: v4l2_frmivalenum = v4l2_frmivalenum()
-            frmival.index = index
-            frmival.pixel_format = pixelformat
-            frmival.width = width
-            frmival.height = height
-            try:
-                fcntl.ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, frmival)
-            except Exception:
-                break
-
-            if frmival.type == V4L2_FRMIVAL_TYPE_DISCRETE:
-                # Compute fps = denominator/numerator (if numerator nonzero)
-                num = frmival.discrete.numerator
-                den = frmival.discrete.denominator
-                fps = den / num if num != 0 else 0
-                intervals.append({"type": "discrete", "fps": fps})
-            elif frmival.type in (
-                V4L2_FRMIVAL_TYPE_STEPWISE,
-                V4L2_FRMIVAL_TYPE_CONTINUOUS,
-            ):
-                min_num = frmival.stepwise.min.numerator
-                min_den = frmival.stepwise.min.denominator
-                max_num = frmival.stepwise.max.numerator
-                max_den = frmival.stepwise.max.denominator
-                step_num = frmival.stepwise.step.numerator
-                step_den = frmival.stepwise.step.denominator
-
-                min_fps = min_den / min_num if min_num != 0 else 0
-                max_fps = max_den / max_num if max_num != 0 else 0
-                step_fps = step_den / step_num if step_num != 0 else 0
-                intervals.append(
-                    {
-                        "type": "stepwise",
-                        "min_fps": min_fps,
-                        "max_fps": max_fps,
-                        "step_fps": step_fps,
-                    }
-                )
-            index += 1
-
-        os.close(fd)
-        return intervals
+        return self._cached_list_video_devices(checksum)
 
     def video_capture_format(self, device_path: str) -> Optional[Dict[str, Any]]:
         """
@@ -365,25 +111,17 @@ class V4L2Service(metaclass=SingletonMeta):
         Returns a dictionary with:
             width (int), height (int) and pixel_format (str)
         """
-        try:
-            fd = os.open(device_path, os.O_RDWR)
-        except Exception as e:
-            logger.error(f"VIDIOC_G_FMT failed on {device_path}: {e}")
-            return None
-
         fmt = v4l2_format()
-        # clear the struct before use
+        # Zero-out the struct before use
         # ctypes.memset(ctypes.byref(fmt), 0, ctypes.sizeof(fmt))
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
 
         try:
-            fcntl.ioctl(fd, VIDIOC_G_FMT, fmt)
+            with fd_open(device_path, os.O_RDWR) as fd:
+                fcntl.ioctl(fd, VIDIOC_G_FMT, fmt)
         except Exception as e:
             logger.error(f"VIDIOC_G_FMT failed on {device_path}: {e}")
-            os.close(fd)
             return None
-
-        os.close(fd)
 
         width = fmt.fmt.pix.width
         height = fmt.fmt.pix.height
@@ -396,9 +134,226 @@ class V4L2Service(metaclass=SingletonMeta):
             "pixel_format": pixel_format_str,
         }
 
-    def get_device_configurations(
-        self, device_path: str
-    ) -> List[Union[DeviceStepwise, DiscreteDevice]]:
+    @lru_cache(maxsize=None)
+    def _cached_list_video_devices(self, _: str) -> List[DeviceType]:
+        """
+        Cached, internal method to list video devices based on the checksum.
+
+        The ignored argument _ is the checksum that ensures that the cache is
+        invalidated dynamically when any video device is added, removed, or updated on
+        the system.
+
+        Returns:
+        --------
+        A list of device configurations for all video devices.
+        """
+        devices: List[str] = self._enumerate_video_devices()
+        logger.debug("Found video devices: %s", devices)
+
+        all_configs: List[DeviceType] = []
+        for dev in devices:
+            cap = self._query_capabilities(dev)
+            if cap is None:
+                continue
+            if not (cap.capabilities & 0x00000001):
+                logger.debug("%s does not support capture", dev)
+                continue
+
+            configs: List[DeviceType] = self._get_device_configurations(dev)
+            all_configs.extend(configs)
+
+        for item in all_configs:
+            self.succeed_devices.add(item.device)
+            if item.device in self.failed_devices:
+                self.failed_devices.remove(item.device)
+
+        return all_configs
+
+    def _enumerate_video_devices(self) -> List[str]:
+        """
+        Look for devices in /dev whose name starts with 'video' (e.g. video0, video1...).
+        Returns a sorted list of full device paths.
+        """
+        dev_dir: str = "/dev"
+        devices: List[str] = []
+        files = os.listdir(dev_dir)
+
+        try:
+            for name in files:
+                if re.match(r"^video\d+$", name):
+                    devices.append(os.path.join(dev_dir, name))
+        except Exception as e:
+            logger.error(f"Could not list directory {dev_dir}: {e}")
+        return sorted(devices)
+
+    def _query_capabilities(self, device_path: str) -> Optional[v4l2_capability]:
+        """
+        Query the device capabilities via VIDIOC_QUERYCAP.
+        Returns a v4l2_capability structure on success; otherwise, None.
+        """
+        cap = v4l2_capability()
+        try:
+            with fd_open(device_path, os.O_RDWR) as fd:
+                fcntl.ioctl(fd, VIDIOC_QUERYCAP, cap)
+        except Exception as e:
+            logger.warning(f"VIDIOC_QUERYCAP failed on {device_path}: {e}")
+            return None
+        return cap
+
+    def _enumerate_formats(self, device_path: str) -> List[Dict[str, Union[int, str]]]:
+        """
+        Enumerate the supported pixel formats using VIDIOC_ENUM_FMT.
+        Returns a list of dicts with "index", "pixelformat", and "description".
+        """
+        formats: List[Dict[str, Union[int, str]]] = []
+        try:
+            with fd_open(device_path, os.O_RDWR) as fd:
+                index = 0
+                while True:
+                    fmtdesc = v4l2_fmtdesc()
+                    fmtdesc.index = index
+                    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
+                    try:
+                        fcntl.ioctl(fd, VIDIOC_ENUM_FMT, fmtdesc)
+                    except Exception:
+                        # Enumeration finished
+                        break
+
+                    # Decode the description (strip nulls)
+                    desc = (
+                        fmtdesc.description.decode("utf-8", errors="ignore")
+                        .strip("\x00")
+                        .strip()
+                    )
+                    formats.append(
+                        {
+                            "index": index,
+                            "pixelformat": fmtdesc.pixelformat,
+                            "description": desc,
+                        }
+                    )
+                    index += 1
+        except Exception as e:
+            logger.error(f"Failed to enumerate formats on {device_path}: {e}")
+
+        return formats
+
+    def _enumerate_framesizes(
+        self, device_path: str, pixelformat: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Enumerate frame sizes for a given pixel format using VIDIOC_ENUM_FRAMESIZES.
+        For discrete modes, returns width/height.
+        For stepwise or continuous modes, returns min/max and step values.
+        """
+        frame_sizes: List[Dict[str, Any]] = []
+        try:
+            with fd_open(device_path, os.O_RDWR) as fd:
+                index: int = 0
+                while True:
+                    frmsize: v4l2_frmsizeenum = v4l2_frmsizeenum()
+                    frmsize.index = index
+                    frmsize.pixel_format = pixelformat
+                    try:
+                        fcntl.ioctl(fd, VIDIOC_ENUM_FRAMESIZES, frmsize)
+                    except Exception:
+                        # enumeration is complete
+                        break
+
+                    if frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE:
+                        frame_sizes.append(
+                            {
+                                "type": "discrete",
+                                "width": frmsize.discrete.width,
+                                "height": frmsize.discrete.height,
+                            }
+                        )
+                    elif frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE:
+                        frmsize_stepwise = frmsize.stepwise
+                        frame_sizes.append(
+                            {
+                                "type": "stepwise",
+                                "min_width": frmsize_stepwise.min_width,
+                                "max_width": frmsize_stepwise.max_width,
+                                "step_width": frmsize_stepwise.step_width,
+                                "min_height": frmsize_stepwise.min_height,
+                                "max_height": frmsize_stepwise.max_height,
+                                "step_height": frmsize_stepwise.step_height,
+                            }
+                        )
+                    elif frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS:
+                        frame_sizes.append(
+                            {
+                                "type": "continuous",
+                                "min_width": frmsize.stepwise.min_width,
+                                "max_width": frmsize.stepwise.max_width,
+                                "min_height": frmsize.stepwise.min_height,
+                                "max_height": frmsize.stepwise.max_height,
+                            }
+                        )
+                    index += 1
+        except Exception as e:
+            logger.error(f"Failed to enumerate frame sizes on {device_path}: {e}")
+        return frame_sizes
+
+    def _enumerate_frameintervals(
+        self, device_path: str, pixelformat: int, width: int, height: int
+    ) -> List[Dict[str, Any]]:
+        """
+        For a specific resolution (width and height) and pixel format, enumerate frame intervals
+        using VIDIOC_ENUM_FRAMEINTERVALS. Returns a list of dicts.
+          - For discrete intervals, computes fps = denominator / numerator.
+          - For stepwise/continuous, returns min/max and step fps.
+        """
+        intervals: List[Dict[str, Any]] = []
+        try:
+            with fd_open(device_path, os.O_RDWR) as fd:
+                index: int = 0
+                while True:
+                    frmival: v4l2_frmivalenum = v4l2_frmivalenum()
+                    frmival.index = index
+                    frmival.pixel_format = pixelformat
+                    frmival.width = width
+                    frmival.height = height
+                    try:
+                        fcntl.ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, frmival)
+                    except Exception:
+                        break
+
+                    if frmival.type == V4L2_FRMIVAL_TYPE_DISCRETE:
+                        # Compute fps = denominator/numerator (if numerator nonzero)
+                        num = frmival.discrete.numerator
+                        den = frmival.discrete.denominator
+                        fps = den / num if num != 0 else 0
+                        intervals.append({"type": "discrete", "fps": fps})
+                    elif frmival.type in (
+                        V4L2_FRMIVAL_TYPE_STEPWISE,
+                        V4L2_FRMIVAL_TYPE_CONTINUOUS,
+                    ):
+                        min_num = frmival.stepwise.min.numerator
+                        min_den = frmival.stepwise.min.denominator
+                        max_num = frmival.stepwise.max.numerator
+                        max_den = frmival.stepwise.max.denominator
+                        step_num = frmival.stepwise.step.numerator
+                        step_den = frmival.stepwise.step.denominator
+
+                        min_fps = min_den / min_num if min_num != 0 else 0
+                        max_fps = max_den / max_num if max_num != 0 else 0
+                        step_fps = step_den / step_num if step_num != 0 else 0
+                        intervals.append(
+                            {
+                                "type": "stepwise",
+                                "min_fps": min_fps,
+                                "max_fps": max_fps,
+                                "step_fps": step_fps,
+                            }
+                        )
+                    index += 1
+        except Exception as e:
+            logger.error(f"Failed to enumerate frame intervals on {device_path}: {e}")
+        return intervals
+
+    def _get_device_configurations(self, device_path: str) -> List[DeviceType]:
         """
         Combines enumeration routines to collect device configurations.
         For each supported pixel format:
@@ -408,18 +363,18 @@ class V4L2Service(metaclass=SingletonMeta):
           • For stepwise/continuous modes, return one configuration that contains the min/max fps range.
         Returns a list of configuration dictionaries.
         """
-        configurations: List[Union[DeviceStepwise, DiscreteDevice]] = []
-        fmts: List[Dict[str, Union[int, str]]] = self.enumerate_formats(device_path)
+        configurations: List[DeviceType] = []
+        fmts: List[Dict[str, Union[int, str]]] = self._enumerate_formats(device_path)
         for fmt in fmts:
             pixelfmt = cast(int, fmt["pixelformat"])
-            sizes: List[Dict[str, Any]] = self.enumerate_framesizes(
+            sizes: List[Dict[str, Any]] = self._enumerate_framesizes(
                 device_path, pixelfmt
             )
             for size in sizes:
                 if size.get("type") == "discrete":
                     width: int = size["width"]
                     height: int = size["height"]
-                    intervals: List[Dict[str, Any]] = self.enumerate_frameintervals(
+                    intervals: List[Dict[str, Any]] = self._enumerate_frameintervals(
                         device_path, pixelfmt, width, height
                     )
 
@@ -466,7 +421,7 @@ class V4L2Service(metaclass=SingletonMeta):
                     if h_step is not None:
                         config["height_step"] = int(h_step)
 
-                    intervals = self.enumerate_frameintervals(
+                    intervals = self._enumerate_frameintervals(
                         device_path, pixelfmt, min_w, min_h
                     )
                     if intervals:
@@ -497,6 +452,6 @@ class V4L2Service(metaclass=SingletonMeta):
 
 if __name__ == "__main__":
     service = V4L2Service()
-    all_configs = service.list_video_devices_ext()
+    all_configs = service.list_video_devices()
 
     logger.info("Result: %s", all_configs)

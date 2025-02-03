@@ -188,7 +188,7 @@ class DetectionService(metaclass=SingletonMeta):
                 )
                 msg = await asyncio.to_thread(self.out_queue.get)
                 logger.info("Received %s", msg)
-                err_msg = msg.get('error')
+                err_msg = msg.get("error")
                 if err_msg is not None:
                     raise DetectionModelLoadError(
                         err_msg
@@ -280,7 +280,7 @@ class DetectionService(metaclass=SingletonMeta):
                 try:
                     msg = await asyncio.to_thread(self.out_queue.get, timeout=1)
                     logger.debug("msg %s", msg)
-                    err = msg.get('error')
+                    err = msg.get("error")
                     if err is not None:
                         raise DetectionProcessError(err)
                 except queue.Empty:
@@ -429,7 +429,7 @@ class DetectionService(metaclass=SingletonMeta):
             "frame_queue",
         ]:
             try:
-                queue_item: Optional['mp.Queue'] = getattr(self, name, None)
+                queue_item: Optional["mp.Queue"] = getattr(self, name, None)
                 if not queue_item:
                     continue
                 if not queue_item.empty():

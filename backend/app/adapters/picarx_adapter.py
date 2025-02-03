@@ -124,7 +124,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 operation="set direction servo angle",
                 addresses=[self.steering_servo.servo.address],
                 errno=e.errno,
-                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+                strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
     def set_cam_pan_angle(self, value: int) -> None:
@@ -150,7 +150,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 operation="set camera pan angle",
                 addresses=[self.cam_pan_servo.servo.address],
                 errno=e.errno,
-                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+                strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
     def set_cam_tilt_angle(self, value: int) -> None:
@@ -176,7 +176,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 operation="set camera tilt angle",
                 addresses=[self.cam_tilt_servo.servo.address],
                 errno=e.errno,
-                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+                strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
     def move(self, speed: int, direction: int) -> None:
@@ -213,7 +213,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 operation=f"move forward ({speed})",
                 addresses=self.motor_addresses,
                 errno=e.errno,
-                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+                strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
     def backward(self, speed: int) -> None:
@@ -243,7 +243,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
                     self.motor_controller.right_motor.speed_pin.address,
                 ],
                 errno=e.errno,
-                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+                strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
     def stop(self) -> None:
@@ -266,5 +266,5 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 operation="stop motors",
                 addresses=self.motor_addresses,
                 errno=e.errno,
-                strerror=e.strerror if hasattr(e, 'strerror') else str(e),
+                strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )

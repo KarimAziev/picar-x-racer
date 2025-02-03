@@ -183,7 +183,7 @@ class CarService(metaclass=SingletonMeta):
                     await func(payload)
                 else:
                     func(payload)
-                if action == 'saveConfig':
+                if action == "saveConfig":
                     await self.connection_manager.info(
                         "The hardware configuration has been saved. Please reboot the machine for the changes to take effect."
                     )

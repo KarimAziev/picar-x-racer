@@ -1,8 +1,8 @@
-/** @type {import('tailwindcss').Config} */
 // @ts-ignore
 import primeui from "tailwindcss-primeui"; // @ts-ignore
+import { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
   content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
   darkMode: ["selector", '[class="p-dark"]'],
   plugins: [primeui],
@@ -27,3 +27,5 @@ export default {
     },
   },
 };
+
+export default config;

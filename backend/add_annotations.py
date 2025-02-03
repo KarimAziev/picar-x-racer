@@ -130,7 +130,7 @@ class ImageAnnotator:
     def get_label_file(self, img_path: str):
         """Determines the label file path for a given image."""
         if self.labels_dir is not None:
-            return os.path.join(self.labels_dir, Path(img_path).stem + '.txt')
+            return os.path.join(self.labels_dir, Path(img_path).stem + ".txt")
         else:
             parent_dir = file_name_parent_directory(img_path)
             parent_dir_name = get_directory_name(parent_dir)
@@ -138,7 +138,7 @@ class ImageAnnotator:
                 file_name_parent_directory(parent_dir)
             )
             label_txt_file = os.path.join(
-                labels_dir, "labels", parent_dir_name, Path(img_path).stem + '.txt'
+                labels_dir, "labels", parent_dir_name, Path(img_path).stem + ".txt"
             )
             return label_txt_file
 
@@ -174,7 +174,7 @@ class ImageAnnotator:
         """
         labels = []
 
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             for line in f:
                 parts = line.strip().split()
 
@@ -246,8 +246,8 @@ def main():
     )
 
     parser.add_argument(
-        '-i',
-        '--images_dir',
+        "-i",
+        "--images_dir",
         type=str,
         required=True,
         help="Path to the directory containing the images to be annotated. This directory should contain images in "
@@ -255,8 +255,8 @@ def main():
     )
 
     parser.add_argument(
-        '-o',
-        '--out_dir',
+        "-o",
+        "--out_dir",
         type=str,
         required=True,
         help="Directory where the processed images with annotations will be saved. The output directory will be created "
@@ -264,8 +264,8 @@ def main():
     )
 
     parser.add_argument(
-        '-l',
-        '--labels_dir',
+        "-l",
+        "--labels_dir",
         type=str,
         required=False,
         help="Optional path to the directory containing YOLO label files. Each image is expected to have a corresponding "
@@ -275,9 +275,9 @@ def main():
     )
 
     parser.add_argument(
-        '-n',
-        '--names',
-        nargs='*',
+        "-n",
+        "--names",
+        nargs="*",
         type=str,
         required=False,
         default=[],
@@ -287,9 +287,9 @@ def main():
     )
 
     parser.add_argument(
-        '-C',
-        '--clear_output',
-        action='store_true',
+        "-C",
+        "--clear_output",
+        action="store_true",
         required=False,
         help="If this flag is set, the output directory will be cleared before saving the new annotated images. This "
         "is useful if you want to avoid mixing previous results with the current run.",
@@ -322,11 +322,11 @@ def main():
 
 
 def signal_handler(sig, frame):
-    logger.info('You pressed Ctrl+C! Exiting gracefully...')
+    logger.info("You pressed Ctrl+C! Exiting gracefully...")
     sys.exit(0)
 
 
 signal.signal(signal.SIGINT, signal_handler)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
