@@ -125,10 +125,10 @@ def parse_arguments():
             "Example usage:\n"
             "--------------\n"
             "1. Export using relative paths:\n"
-            "   python export_model.py -m \"my_model.pt\" -o \"your_output_file_edgetpu.tflite\" -s 256\n"
+            '   python export_model.py -m "my_model.pt" -o "your_output_file_edgetpu.tflite" -s 256\n'
             "   -> Output: /path-to-project/data/my_model.pt & /path-to-project/your_output_file_edgetpu.tflite\n\n"
             "2. Export using absolute paths:\n"
-            "   python export_model.py -m \"/path/to/your_model.pt\" -o \"/path/to/your_output_file_edgetpu.tflite\" -s 256\n\n"
+            '   python export_model.py -m "/path/to/your_model.pt" -o "/path/to/your_output_file_edgetpu.tflite" -s 256\n\n'
             "3. Export using defaults from the .env file:\n"
             "   python export_model.py\n\n"
             "Key Notes:\n"
@@ -179,7 +179,7 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
-    env_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '.env')
+    env_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".env")
 
     if os.path.exists(env_file):
         print(f"Loading ENV file {env_file}")

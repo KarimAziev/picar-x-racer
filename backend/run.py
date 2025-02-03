@@ -26,7 +26,7 @@ def main():
     observer = None
 
     try:
-        env_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '.env')
+        env_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".env")
 
         if os.path.exists(env_file):
             print(f"Loading .env {env_file}")
@@ -93,7 +93,7 @@ def main():
                 os.path.dirname(os.path.realpath(__file__)), "app"
             )
 
-            ignore_patterns = ['*.log', 'tmp/*', ".venv", ".pyc", "temp.py"]
+            ignore_patterns = ["*.log", "tmp/*", ".venv", ".pyc", "temp.py"]
             reload_handler = ReloadHandler(
                 restart_app, ignore_patterns=ignore_patterns, debounce_duration=2
             )
@@ -130,5 +130,5 @@ def main():
         terminate_processes([websocket_app_process, main_app_process])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

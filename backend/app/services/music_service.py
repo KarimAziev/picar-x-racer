@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 original_stdout = sys.stdout
 try:
-    sys.stdout = open(os.devnull, 'w')
+    sys.stdout = open(os.devnull, "w")
     import pygame
 finally:
     sys.stdout.close()
@@ -72,7 +72,7 @@ class MusicService(metaclass=SingletonMeta):
         self.mode: MusicPlayerMode = (
             self.file_manager.load_settings()
             .get("music", {"mode": MusicPlayerMode.LOOP})
-            .get('mode', MusicPlayerMode.LOOP)
+            .get("mode", MusicPlayerMode.LOOP)
         )
         self.position = 0  # position in seconds
         self.is_playing = False
@@ -108,7 +108,7 @@ class MusicService(metaclass=SingletonMeta):
 
         file_path = self.music_track_to_absolute(track)
         details = self.file_manager.get_audio_file_details(file_path)
-        duration: float = details.get('duration', 0.0) if details else 0.0  # in seconds
+        duration: float = details.get("duration", 0.0) if details else 0.0  # in seconds
 
         return duration
 

@@ -25,8 +25,8 @@ def power_off():
     try:
         bus = dbus.SystemBus()
 
-        systemd = bus.get_object('org.freedesktop.login1', '/org/freedesktop/login1')
-        manager = dbus.Interface(systemd, 'org.freedesktop.login1.Manager')
+        systemd = bus.get_object("org.freedesktop.login1", "/org/freedesktop/login1")
+        manager = dbus.Interface(systemd, "org.freedesktop.login1.Manager")
         logger.warning("Shutdown initiated via dbus")
         manager.PowerOff(True)
     except Exception:
@@ -54,8 +54,8 @@ def restart():
     try:
         bus = dbus.SystemBus()
 
-        systemd = bus.get_object('org.freedesktop.login1', '/org/freedesktop/login1')
-        manager = dbus.Interface(systemd, 'org.freedesktop.login1.Manager')
+        systemd = bus.get_object("org.freedesktop.login1", "/org/freedesktop/login1")
+        manager = dbus.Interface(systemd, "org.freedesktop.login1.Manager")
         logger.warning("Restart initiated via dbus")
         manager.Reboot(True)
     except Exception:

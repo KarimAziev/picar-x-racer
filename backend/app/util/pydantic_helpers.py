@@ -73,7 +73,7 @@ def partial_model(model: Type[BaseModel]):
         return new.annotation, new
 
     return create_model(
-        f'Partial{model.__name__}',
+        f"Partial{model.__name__}",
         __base__=model,
         __module__=model.__module__,
         **{

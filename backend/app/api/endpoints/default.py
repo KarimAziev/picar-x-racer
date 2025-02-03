@@ -20,19 +20,19 @@ router = APIRouter()
             "content": {
                 "text/html": {
                     "example": "<!doctype html>"
-                    "<html lang=\"en\" class=\"p-dark\">"
+                    '<html lang="en" class="p-dark">'
                     "<head>"
-                    "<meta charset=\"UTF-8\" "
-                    "content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover\""
+                    '<meta charset="UTF-8" '
+                    'content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"'
                     " />"
-                    "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/logo.svg\" />"
-                    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />"
+                    '<link rel="icon" type="image/svg+xml" href="/logo.svg" />'
+                    '<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
                     "<title>Picar X Racer</title>"
-                    "<script type=\"module\" crossorigin src=\"/assets/index-CrzouHxf.js\"></script>"
-                    "<link rel=\"stylesheet\" crossorigin href=\"/assets/index-JaVzmKHq.css\">"
+                    '<script type="module" crossorigin src="/assets/index-CrzouHxf.js"></script>'
+                    '<link rel="stylesheet" crossorigin href="/assets/index-JaVzmKHq.css">'
                     "</head>"
                     "<body>"
-                    "<div id=\"app\"></div>"
+                    '<div id="app"></div>'
                     "</body>"
                     "</html>"
                 }

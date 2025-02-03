@@ -42,10 +42,10 @@ def start_frontend_app(
 
     node_modules_dir = os.path.join(frontend_app_directory, "node_modules")
 
-    vite_executable = os.path.join(node_modules_dir, '.bin', 'vite')
+    vite_executable = os.path.join(node_modules_dir, ".bin", "vite")
 
     # Wait for the signal that the backend is ready
-    signal_file_path = '/tmp/backend_ready.signal'
+    signal_file_path = "/tmp/backend_ready.signal"
     if not wait_for_backend_ready(signal_file_path):
         print("Backend did not start in time. Exiting.")
         return

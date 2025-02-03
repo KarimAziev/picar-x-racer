@@ -10,4 +10,4 @@ api_router = APIRouter()
 for router in routers:
     api_router.include_router(router, tags=router.tags)
 
-__all__ = ['api_router', "tags_metadata"]
+__all__ = ["api_router", "tags_metadata"]
