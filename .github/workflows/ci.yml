@@ -29,12 +29,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 'current'
-
+      - name: Setup backend environment
+        run: bash setup-env.sh --minimal
       - name: Install backend dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install opencv-python pytest pytest-cov
+        run: pip install pytest pytest-cov
 
       - name: Install Pyright
         run: npm install -g pyright
