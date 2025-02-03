@@ -97,7 +97,7 @@ run_cmd() {
     log_info "Dry-run: $*"
   else
     log_info "Executing: $*"
-    "$@"
+    eval "$*"
   fi
 }
 
