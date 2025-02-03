@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 'current'
       - name: Setup backend environment
-        run: bash setup-env.sh --minimal
+        run: bash setup_env.sh --minimal
       - name: Install backend dependencies
         run: pip install pytest pytest-cov
 
