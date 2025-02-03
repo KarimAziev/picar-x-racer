@@ -47,7 +47,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 "device": device,
             }
         else:
-            _, device_path = GStreamerParser.parse_device_path(device)
+            device_path = GStreamerParser.strip_api_prefix(device)
             cap = try_video_path(
                 device_path,
                 backend=cv2.CAP_V4L2,
@@ -128,7 +128,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
     ) -> Tuple[cv2.VideoCapture, CameraSettings]:
         devices = self.list_devices()
         if camera_settings.device is not None:
-            _, device_path = GStreamerParser.parse_device_path(camera_settings.device)
+            device_path = GStreamerParser.strip_api_prefix(camera_settings.device)
             video_device: Optional[str] = None
             for item in devices:
                 if device_path in (item.device, item.path):
