@@ -1,4 +1,3 @@
-import dbus
 from app.core.logger import Logger
 
 logger = Logger(__name__)
@@ -22,6 +21,8 @@ def power_off():
     Raises:
         Exception: If the D-Bus interface is unavailable or the PowerOff request fails.
     """
+    import dbus
+
     try:
         bus = dbus.SystemBus()
 
@@ -51,6 +52,8 @@ def restart():
     Raises:
         Exception: If the D-Bus interface is unavailable or the Reboot request fails.
     """
+    import dbus
+
     try:
         bus = dbus.SystemBus()
 
