@@ -14,12 +14,14 @@ Note:
 import ctypes
 import fcntl
 import os
+import re
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
+from app.util.fd_utils import fd_open
 from app.util.video_checksum import get_dev_video_checksum
 from v4l2 import (
     _IOWR,
@@ -102,6 +104,36 @@ class V4L2Service(metaclass=SingletonMeta):
         checksum = get_dev_video_checksum()
         return self._cached_list_video_devices(checksum)
 
+    def video_capture_format(self, device_path: str) -> Optional[Dict[str, Any]]:
+        """
+        Query the current video capture format using only low-level ioctls.
+
+        Returns a dictionary with:
+            width (int), height (int) and pixel_format (str)
+        """
+        fmt = v4l2_format()
+        # Zero-out the struct before use
+        # ctypes.memset(ctypes.byref(fmt), 0, ctypes.sizeof(fmt))
+        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
+
+        try:
+            with fd_open(device_path, os.O_RDWR) as fd:
+                fcntl.ioctl(fd, VIDIOC_G_FMT, fmt)
+        except Exception as e:
+            logger.error(f"VIDIOC_G_FMT failed on {device_path}: {e}")
+            return None
+
+        width = fmt.fmt.pix.width
+        height = fmt.fmt.pix.height
+        pixelformat = fmt.fmt.pix.pixelformat
+        pixel_format_str = self.fourcc_to_str(pixelformat)
+
+        return {
+            "width": width,
+            "height": height,
+            "pixel_format": pixel_format_str,
+        }
+
     @lru_cache(maxsize=None)
     def _cached_list_video_devices(self, _: str) -> List[DeviceType]:
         """
@@ -144,9 +176,11 @@ class V4L2Service(metaclass=SingletonMeta):
         """
         dev_dir: str = "/dev"
         devices: List[str] = []
+        files = os.listdir(dev_dir)
+
         try:
-            for name in os.listdir(dev_dir):
-                if name.startswith("video"):
+            for name in files:
+                if re.match(r"^video\d+$", name):
                     devices.append(os.path.join(dev_dir, name))
         except Exception as e:
             logger.error(f"Could not list directory {dev_dir}: {e}")
@@ -157,20 +191,13 @@ class V4L2Service(metaclass=SingletonMeta):
         Query the device capabilities via VIDIOC_QUERYCAP.
         Returns a v4l2_capability structure on success; otherwise, None.
         """
+        cap = v4l2_capability()
         try:
-            fd: int = os.open(device_path, os.O_RDWR)
-        except Exception as e:
-            logger.error(f"Could not open {device_path}: {e}")
-            return None
-
-        cap: v4l2_capability = v4l2_capability()
-        try:
-            fcntl.ioctl(fd, VIDIOC_QUERYCAP, cap)
+            with fd_open(device_path, os.O_RDWR) as fd:
+                fcntl.ioctl(fd, VIDIOC_QUERYCAP, cap)
         except Exception as e:
             logger.warning(f"VIDIOC_QUERYCAP failed on {device_path}: {e}")
-            os.close(fd)
             return None
-        os.close(fd)
         return cap
 
     def _enumerate_formats(self, device_path: str) -> List[Dict[str, Union[int, str]]]:
@@ -180,38 +207,35 @@ class V4L2Service(metaclass=SingletonMeta):
         """
         formats: List[Dict[str, Union[int, str]]] = []
         try:
-            fd: int = os.open(device_path, os.O_RDWR)
+            with fd_open(device_path, os.O_RDWR) as fd:
+                index = 0
+                while True:
+                    fmtdesc = v4l2_fmtdesc()
+                    fmtdesc.index = index
+                    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
+                    try:
+                        fcntl.ioctl(fd, VIDIOC_ENUM_FMT, fmtdesc)
+                    except Exception:
+                        # Enumeration finished
+                        break
+
+                    # Decode the description (strip nulls)
+                    desc = (
+                        fmtdesc.description.decode("utf-8", errors="ignore")
+                        .strip("\x00")
+                        .strip()
+                    )
+                    formats.append(
+                        {
+                            "index": index,
+                            "pixelformat": fmtdesc.pixelformat,
+                            "description": desc,
+                        }
+                    )
+                    index += 1
         except Exception as e:
-            logger.error(f"Failed to open {device_path} for enumerating formats: {e}")
-            return formats
+            logger.error(f"Failed to enumerate formats on {device_path}: {e}")
 
-        index: int = 0
-        while True:
-            fmtdesc: v4l2_fmtdesc = v4l2_fmtdesc()
-            fmtdesc.index = index
-            fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
-            try:
-                fcntl.ioctl(fd, VIDIOC_ENUM_FMT, fmtdesc)
-            except Exception:
-                # Enumeration finished
-                break
-
-            # Decode the description (strip nulls)
-            desc: str = (
-                fmtdesc.description.decode("utf-8", errors="ignore")
-                .strip("\x00")
-                .strip()
-            )
-            formats.append(
-                {
-                    "index": index,
-                    "pixelformat": fmtdesc.pixelformat,
-                    "description": desc,
-                }
-            )
-            index += 1
-
-        os.close(fd)
         return formats
 
     def _enumerate_framesizes(
@@ -224,56 +248,52 @@ class V4L2Service(metaclass=SingletonMeta):
         """
         frame_sizes: List[Dict[str, Any]] = []
         try:
-            fd: int = os.open(device_path, os.O_RDWR)
+            with fd_open(device_path, os.O_RDWR) as fd:
+                index: int = 0
+                while True:
+                    frmsize: v4l2_frmsizeenum = v4l2_frmsizeenum()
+                    frmsize.index = index
+                    frmsize.pixel_format = pixelformat
+                    try:
+                        fcntl.ioctl(fd, VIDIOC_ENUM_FRAMESIZES, frmsize)
+                    except Exception:
+                        # enumeration is complete
+                        break
+
+                    if frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE:
+                        frame_sizes.append(
+                            {
+                                "type": "discrete",
+                                "width": frmsize.discrete.width,
+                                "height": frmsize.discrete.height,
+                            }
+                        )
+                    elif frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE:
+                        frmsize_stepwise = frmsize.stepwise
+                        frame_sizes.append(
+                            {
+                                "type": "stepwise",
+                                "min_width": frmsize_stepwise.min_width,
+                                "max_width": frmsize_stepwise.max_width,
+                                "step_width": frmsize_stepwise.step_width,
+                                "min_height": frmsize_stepwise.min_height,
+                                "max_height": frmsize_stepwise.max_height,
+                                "step_height": frmsize_stepwise.step_height,
+                            }
+                        )
+                    elif frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS:
+                        frame_sizes.append(
+                            {
+                                "type": "continuous",
+                                "min_width": frmsize.stepwise.min_width,
+                                "max_width": frmsize.stepwise.max_width,
+                                "min_height": frmsize.stepwise.min_height,
+                                "max_height": frmsize.stepwise.max_height,
+                            }
+                        )
+                    index += 1
         except Exception as e:
-            logger.error(f"Failed to open {device_path} for framesize enumeration: {e}")
-            return frame_sizes
-
-        index: int = 0
-        while True:
-            frmsize: v4l2_frmsizeenum = v4l2_frmsizeenum()
-            frmsize.index = index
-            frmsize.pixel_format = pixelformat
-            try:
-                fcntl.ioctl(fd, VIDIOC_ENUM_FRAMESIZES, frmsize)
-            except Exception:
-                # enumeration is complete
-                break
-
-            if frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE:
-                frame_sizes.append(
-                    {
-                        "type": "discrete",
-                        "width": frmsize.discrete.width,
-                        "height": frmsize.discrete.height,
-                    }
-                )
-            elif frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE:
-                frmsize_stepwise = frmsize.stepwise
-                frame_sizes.append(
-                    {
-                        "type": "stepwise",
-                        "min_width": frmsize_stepwise.min_width,
-                        "max_width": frmsize_stepwise.max_width,
-                        "step_width": frmsize_stepwise.step_width,
-                        "min_height": frmsize_stepwise.min_height,
-                        "max_height": frmsize_stepwise.max_height,
-                        "step_height": frmsize_stepwise.step_height,
-                    }
-                )
-            elif frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS:
-                frame_sizes.append(
-                    {
-                        "type": "continuous",
-                        "min_width": frmsize.stepwise.min_width,
-                        "max_width": frmsize.stepwise.max_width,
-                        "min_height": frmsize.stepwise.min_height,
-                        "max_height": frmsize.stepwise.max_height,
-                    }
-                )
-            index += 1
-
-        os.close(fd)
+            logger.error(f"Failed to enumerate frame sizes on {device_path}: {e}")
         return frame_sizes
 
     def _enumerate_frameintervals(
@@ -287,95 +307,51 @@ class V4L2Service(metaclass=SingletonMeta):
         """
         intervals: List[Dict[str, Any]] = []
         try:
-            fd: int = os.open(device_path, os.O_RDWR)
+            with fd_open(device_path, os.O_RDWR) as fd:
+                index: int = 0
+                while True:
+                    frmival: v4l2_frmivalenum = v4l2_frmivalenum()
+                    frmival.index = index
+                    frmival.pixel_format = pixelformat
+                    frmival.width = width
+                    frmival.height = height
+                    try:
+                        fcntl.ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, frmival)
+                    except Exception:
+                        break
+
+                    if frmival.type == V4L2_FRMIVAL_TYPE_DISCRETE:
+                        # Compute fps = denominator/numerator (if numerator nonzero)
+                        num = frmival.discrete.numerator
+                        den = frmival.discrete.denominator
+                        fps = den / num if num != 0 else 0
+                        intervals.append({"type": "discrete", "fps": fps})
+                    elif frmival.type in (
+                        V4L2_FRMIVAL_TYPE_STEPWISE,
+                        V4L2_FRMIVAL_TYPE_CONTINUOUS,
+                    ):
+                        min_num = frmival.stepwise.min.numerator
+                        min_den = frmival.stepwise.min.denominator
+                        max_num = frmival.stepwise.max.numerator
+                        max_den = frmival.stepwise.max.denominator
+                        step_num = frmival.stepwise.step.numerator
+                        step_den = frmival.stepwise.step.denominator
+
+                        min_fps = min_den / min_num if min_num != 0 else 0
+                        max_fps = max_den / max_num if max_num != 0 else 0
+                        step_fps = step_den / step_num if step_num != 0 else 0
+                        intervals.append(
+                            {
+                                "type": "stepwise",
+                                "min_fps": min_fps,
+                                "max_fps": max_fps,
+                                "step_fps": step_fps,
+                            }
+                        )
+                    index += 1
         except Exception as e:
-            logger.error(
-                f"Failed to open {device_path} for frame interval enumeration: {e}"
-            )
-            return intervals
-
-        index: int = 0
-        while True:
-            frmival: v4l2_frmivalenum = v4l2_frmivalenum()
-            frmival.index = index
-            frmival.pixel_format = pixelformat
-            frmival.width = width
-            frmival.height = height
-            try:
-                fcntl.ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, frmival)
-            except Exception:
-                break
-
-            if frmival.type == V4L2_FRMIVAL_TYPE_DISCRETE:
-                # Compute fps = denominator/numerator (if numerator nonzero)
-                num = frmival.discrete.numerator
-                den = frmival.discrete.denominator
-                fps = den / num if num != 0 else 0
-                intervals.append({"type": "discrete", "fps": fps})
-            elif frmival.type in (
-                V4L2_FRMIVAL_TYPE_STEPWISE,
-                V4L2_FRMIVAL_TYPE_CONTINUOUS,
-            ):
-                min_num = frmival.stepwise.min.numerator
-                min_den = frmival.stepwise.min.denominator
-                max_num = frmival.stepwise.max.numerator
-                max_den = frmival.stepwise.max.denominator
-                step_num = frmival.stepwise.step.numerator
-                step_den = frmival.stepwise.step.denominator
-
-                min_fps = min_den / min_num if min_num != 0 else 0
-                max_fps = max_den / max_num if max_num != 0 else 0
-                step_fps = step_den / step_num if step_num != 0 else 0
-                intervals.append(
-                    {
-                        "type": "stepwise",
-                        "min_fps": min_fps,
-                        "max_fps": max_fps,
-                        "step_fps": step_fps,
-                    }
-                )
-            index += 1
-
-        os.close(fd)
+            logger.error(f"Failed to enumerate frame intervals on {device_path}: {e}")
         return intervals
-
-    def video_capture_format(self, device_path: str) -> Optional[Dict[str, Any]]:
-        """
-        Query the current video capture format using only low-level ioctls.
-
-        Returns a dictionary with:
-            width (int), height (int) and pixel_format (str)
-        """
-        try:
-            fd = os.open(device_path, os.O_RDWR)
-        except Exception as e:
-            logger.error(f"VIDIOC_G_FMT failed on {device_path}: {e}")
-            return None
-
-        fmt = v4l2_format()
-        # clear the struct before use
-        # ctypes.memset(ctypes.byref(fmt), 0, ctypes.sizeof(fmt))
-        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
-
-        try:
-            fcntl.ioctl(fd, VIDIOC_G_FMT, fmt)
-        except Exception as e:
-            logger.error(f"VIDIOC_G_FMT failed on {device_path}: {e}")
-            os.close(fd)
-            return None
-
-        os.close(fd)
-
-        width = fmt.fmt.pix.width
-        height = fmt.fmt.pix.height
-        pixelformat = fmt.fmt.pix.pixelformat
-        pixel_format_str = self.fourcc_to_str(pixelformat)
-
-        return {
-            "width": width,
-            "height": height,
-            "pixel_format": pixel_format_str,
-        }
 
     def _get_device_configurations(self, device_path: str) -> List[DeviceType]:
         """
