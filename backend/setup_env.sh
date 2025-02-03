@@ -174,6 +174,8 @@ install_system_deps() {
   run_cmd "$SUDO apt-get install -y build-essential meson"
   log_info "Installing system-level dependencies for pydub..."
   run_cmd "$SUDO apt-get install -y ffmpeg libavcodec-extra"
+  # for sounddevice
+  run_cmd "$SUDO apt-get install -y portaudio19-dev"
 
   if [[ $SKIP_DBUS -eq 0 ]]; then
     log_info "Installing dbus development libraries..."
