@@ -67,11 +67,11 @@ class LanguageOption(BaseModel):
     """
 
     value: str = Field(
-        None,
+        ...,
         description="The language code.",
         examples=["en", "en-us", "es"],
     )
-    label: str = Field(
+    label: Optional[str] = Field(
         None,
         description="Human readable description of language.",
         examples=["English", "English (US)", "Spanish"],

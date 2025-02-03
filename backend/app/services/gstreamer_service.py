@@ -149,7 +149,7 @@ class GStreamerService(metaclass=SingletonMeta):
         video devices detected by GStreamer with their capabilities.
         """
         try:
-            import gi
+            import gi  # type: ignore
 
             gi.require_version("Gst", "1.0")
             from gi.repository import Gst  # type: ignore
