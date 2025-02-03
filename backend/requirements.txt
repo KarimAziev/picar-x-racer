@@ -21,4 +21,3 @@ sounddevice
 dbus-python
 ncnn
 v4l2-python3
-audioop-lts
