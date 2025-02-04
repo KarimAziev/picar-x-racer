@@ -3,8 +3,11 @@ import unittest
 import warnings
 from multiprocessing.sharedctypes import Synchronized
 from multiprocessing.synchronize import Event
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
+
+if TYPE_CHECKING:
+    from robot_hat import Pin
 
 
 class DummyEvent:
@@ -39,7 +42,7 @@ class FakeUltrasonicValid:
 
     mock_read_result = 79.492
 
-    def __init__(self, trig_pin, echo_pin, timeout):
+    def __init__(self, trig_pin: "Pin", echo_pin: "Pin", timeout: float):
         self.trig_pin = trig_pin
         self.echo_pin = echo_pin
         self.timeout = timeout
@@ -56,7 +59,7 @@ class FakeUltrasonicInvalid:
     so that a ValueError is raised.
     """
 
-    def __init__(self, trig_pin, echo_pin, timeout):
+    def __init__(self, trig_pin: "Pin", echo_pin: "Pin", timeout: float):
         self.trig_pin = trig_pin
         self.echo_pin = echo_pin
         self.timeout = timeout
