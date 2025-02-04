@@ -1,5 +1,5 @@
 import collections
-from typing import Callable, Optional, Sequence, Union
+from typing import Callable, List, Literal, Optional, Sequence, Union, overload
 
 import cv2
 import numpy as np
@@ -25,9 +25,9 @@ def encode(
     if frame_enhancer:
         try:
             frame_array = frame_enhancer(frame_array)
-        except Exception as err:
-            logger.log_exception(
-                f"Error in frame enhancer '{frame_enhancer.__name__}': ", err
+        except Exception:
+            logger.error(
+                f"Error in frame enhancer '{frame_enhancer.__name__}'", exc_info=True
             )
 
     frame = frame_array
@@ -36,7 +36,15 @@ def encode(
     return buffer.tobytes()
 
 
-def resize_frame(frame: Optional[np.ndarray], width: int, height: int):
+@overload
+def resize_frame(frame: None, width: int, height: int) -> None: ...
+
+
+@overload
+def resize_frame(frame: np.ndarray, width: int, height: int) -> np.ndarray: ...
+def resize_frame(
+    frame: Optional[np.ndarray], width: int, height: int
+) -> Optional[np.ndarray]:
     if frame is None:
         return None
     frame = cv2.resize(frame, (width, height))
@@ -119,8 +127,24 @@ def resize_to_fixed_height(frame: np.ndarray, base_size=256):
     return (frame, original_width, original_height, resized_width, resized_height)
 
 
+@overload
 def calc_fps(
-    frame_timestamps: Union[collections.deque, list[float]], round_result: bool = False
+    frame_timestamps: Union[collections.deque, List[float]],
+    *,
+    round_result: Literal[True],
+) -> Optional[int]: ...
+
+
+@overload
+def calc_fps(
+    frame_timestamps: Union[collections.deque, List[float]],
+    *,
+    round_result: Literal[False] = False,
+) -> Optional[float]: ...
+def calc_fps(
+    frame_timestamps: Union[collections.deque, List[float]],
+    *,
+    round_result: bool = False,
 ) -> Optional[Union[float, int]]:
     """
     Calculate frames per second (FPS) based on a list or deque of frame timestamps.
