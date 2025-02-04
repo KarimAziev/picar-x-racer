@@ -29,6 +29,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 'current'
+
+      - name: Restore cached virtual environment
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('setup_env.sh', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ matrix.python-version }}-
+
       - name: Setup backend environment
         run: bash setup_env.sh --minimal
 
