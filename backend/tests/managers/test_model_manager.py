@@ -1,7 +1,7 @@
 import os
 import unittest
-from typing import TYPE_CHECKING, cast
-from unittest.mock import patch
+from typing import TYPE_CHECKING, Any, Dict, cast
+from unittest.mock import MagicMock, patch
 
 from app.managers.model_manager import ModelManager, settings
 
@@ -12,7 +12,10 @@ if TYPE_CHECKING:
 class DummyYOLO:
     def __init__(self, *args, **kwargs):
         self.args = args
-        self.kwargs = kwargs
+        self.kwargs: Dict[str, Any] = kwargs
+
+    def __call__(self, *args, **kwargs) -> "DummyYOLO":
+        return self
 
 
 class TestModelManager(unittest.TestCase):
@@ -37,7 +40,7 @@ class TestModelManager(unittest.TestCase):
         model, error = manager.__enter__()
         self.assertIsInstance(model, DummyYOLO)
         self.assertIsNone(error)
-        model = cast("YOLO", model)
+        model = cast("DummyYOLO", model)
 
         self.assertEqual(model.kwargs.get("model"), expected_path)
         self.assertEqual(model.kwargs.get("task"), "detect")
@@ -48,7 +51,9 @@ class TestModelManager(unittest.TestCase):
     @patch("app.managers.model_manager.os.path.exists")
     @patch("app.managers.model_manager.is_google_coral_connected")
     @patch("ultralytics.YOLO", new=DummyYOLO)
-    def test_default_edge_tpu_path_load_success(self, mock_coral, mock_exists):
+    def test_default_edge_tpu_path_load_success(
+        self, mock_coral: MagicMock, mock_exists: MagicMock
+    ):
         """
         Test that when no custom model_path is provided and the edge TPU model file exists
         (and Coral is connected), the YOLO_MODEL_EDGE_TPU_PATH is used.
@@ -73,7 +78,9 @@ class TestModelManager(unittest.TestCase):
     @patch("app.managers.model_manager.os.path.exists")
     @patch("app.managers.model_manager.is_google_coral_connected")
     @patch("ultralytics.YOLO", new=DummyYOLO)
-    def test_default_yolo_model_path_load_success(self, mock_coral, mock_exists):
+    def test_default_yolo_model_path_load_success(
+        self, mock_coral: MagicMock, mock_exists: MagicMock
+    ):
         """
         Test that when no custom model_path is provided and edge TPU model file does not exist
         (or Coral is not connected), the default YOLO_MODEL_PATH is used.
@@ -99,7 +106,7 @@ class TestModelManager(unittest.TestCase):
     @patch("app.managers.model_manager.logger.error")
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
     @patch("ultralytics.YOLO")
-    def test_file_not_found_error(self, mock_yolo, logger):
+    def test_file_not_found_error(self, mock_yolo, _: MagicMock):
         """
         Test that if YOLO initialization raises a FileNotFoundError,
         the error message is correctly set.
@@ -116,7 +123,7 @@ class TestModelManager(unittest.TestCase):
 
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
     @patch("ultralytics.YOLO")
-    def test_unexpected_exception(self, mock_yolo):
+    def test_unexpected_exception(self, mock_yolo: MagicMock):
         """
         Test that if YOLO initialization raises an unexpected Exception,
         the error message is correctly set.
@@ -134,7 +141,7 @@ class TestModelManager(unittest.TestCase):
 
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
     @patch("ultralytics.YOLO")
-    def test_keyboard_interrupt_handling(self, mock_yolo):
+    def test_keyboard_interrupt_handling(self, mock_yolo: MagicMock):
         """
         Test that if a KeyboardInterrupt is raised during model loading,
         the __enter__ method returns the expected message.
