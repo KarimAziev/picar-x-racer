@@ -1,10 +1,11 @@
 import os
-from typing import TYPE_CHECKING, Optional, Tuple
+from types import TracebackType
+from typing import TYPE_CHECKING, Optional, Tuple, Type
 
 from app.config.config import settings
+from app.core.logger import Logger
 from app.util.file_util import resolve_absolute_path
 from app.util.google_coral import is_google_coral_connected
-from app.core.logger import Logger
 
 logger = Logger(__name__)
 
@@ -81,7 +82,12 @@ class ModelManager:
             logger.warning("Detection model context received KeyboardInterrupt.")
             return self.model, "Detection model context received KeyboardInterrupt."
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         """
         Called upon exiting the context (i.e. after the 'with' block).
         Ensures proper cleanup of resources tied to the YOLO model, including memory deallocation and garbage collection.
