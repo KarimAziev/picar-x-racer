@@ -21,14 +21,14 @@ class ModelManager:
     The model loading path is selected dynamically based on available files.
     """
 
-    def __init__(self, model_path=None) -> None:
+    def __init__(self, model_path: Optional[str] = None) -> None:
         """
         Initializes the ModelManager with an optional model path.
 
         Parameters:
             model_path (str): An optional custom path to use for loading the model.
         """
-        self.model = None
+        self.model: Optional["YOLO"] = None
         self.error_msg = None
         self.model_path = (
             resolve_absolute_path(model_path, settings.DATA_DIR)
@@ -103,10 +103,12 @@ class ModelManager:
         logger.info("Cleaning up model resources.")
         if exc_type is not None:
             logger.error("An exception occurred during model execution")
-            logger.error(f"Exception type: {exc_type}")
-            logger.error(f"Exception value: {exc_value}")
+            logger.error(f"Exception type: {exc_type.__name__}")
+            if exc_value:
+                logger.error(f"Exception value: {exc_value}")
 
             import traceback as tb
 
-            logger.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
+            if traceback:
+                logger.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
         del self.model
