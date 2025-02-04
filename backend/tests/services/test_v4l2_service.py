@@ -1,6 +1,8 @@
+import logging
 import os
 import unittest
-from typing import Any, Dict, cast
+from types import TracebackType
+from typing import Any, Dict, Optional, Type, cast
 from unittest.mock import MagicMock, patch
 
 from app.schemas.camera import DiscreteDevice
@@ -11,14 +13,29 @@ class FakeFDContext:
     def __init__(self, fd: int = 3):
         self.fd = fd
 
-    def __enter__(self):
+    def __enter__(self) -> int:
         return self.fd
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
+        logging.debug(
+            "exc_type='%s', exc_value='%s', traceback='%s'",
+            exc_type,
+            exc_value,
+            traceback,
+        )
 
 
 def fake_fd_open(device_path: str, flags: int):
+    logging.debug(
+        "device_path='%s', flags='%s', traceback='%s'",
+        device_path,
+        flags,
+    )
     return FakeFDContext(3)
 
 
