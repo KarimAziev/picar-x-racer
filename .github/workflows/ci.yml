@@ -41,6 +41,9 @@ jobs:
       - name: Setup backend environment
         run: bash setup_env.sh --minimal
 
+      - name: Install Picamera2 dependencies
+        run: sudo apt install -y build-essential libcap-dev libfmt-dev libdrm-dev git python3-sphinx libyaml-dev python3-yaml python3-ply python3-jinja2 libgnutls28-dev openssl libboost-dev
+
       - name: Install backend dependencies
         run: . .venv/bin/activate && pip install pytest pytest-cov picamera2
 
