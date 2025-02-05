@@ -46,6 +46,7 @@ class PicameraCapture(VideoCaptureAdapter):
         config = self.picam2.create_video_configuration(
             main={"size": (width, height), "format": fmt}
         )
+        self.picam2.configure(config)
         logger.info("Picamera2 config: %s", config)
 
         if camera_settings.fps is not None:
@@ -60,8 +61,6 @@ class PicameraCapture(VideoCaptureAdapter):
         else:
             fps = None
             logger.warning("FrameDurationLimits not found in config")
-
-            self.picam2.configure(config)
 
         try:
             self.picam2.start()
