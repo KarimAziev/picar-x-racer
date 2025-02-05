@@ -145,14 +145,13 @@ class PicameraCapture(VideoCaptureAdapter):
 
         frame = cast(np.ndarray, frame)
 
-        captured_height, captured_width = frame.shape[:2]
         updated_settings = {
             **camera_settings.model_dump(),
             "fps": fps,
             "pixel_format": pixel_format,
             "device": device,
-            "width": captured_width,
-            "height": captured_height,
+            "width": width,
+            "height": height,
         }
 
         return self.picam2, CameraSettings(**updated_settings)
