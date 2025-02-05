@@ -22,7 +22,7 @@ pixel_formats_to_picamera2_format: Dict[str, str] = {
     "RGB": "RGB888",
     "BGR": "BGR888",
     "BGRx": "XBGR8888",
-    "RGB16": "RGB161616",
+    # "RGB16": "RGB161616",
     "YUY2": "YUYV",
     "UYVY": "UYVY",
     "JPEG": "MJPEG",
