@@ -62,7 +62,7 @@ jobs:
       - name: Run tests with coverage
         run: |
              source .venv/bin/activate
-             coverage run --source=app --omit="*/config.py,*/config-3.py" -m unittest discover
+             coverage run --source=app -m unittest discover
              coverage xml
              coverage report
 
