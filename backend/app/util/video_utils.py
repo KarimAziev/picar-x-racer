@@ -10,13 +10,15 @@ logger = Logger(__name__)
 
 
 def encode(
-    frame_array: np.ndarray,
+    frame: np.ndarray,
     format=".jpg",
     params: Sequence[int] = [],
     frame_enhancer: Optional[Callable[[np.ndarray], np.ndarray]] = None,
 ):
     """
     Encode the frame array to the specified format.
+    If the frame is 16-bit (for instance from a "RGB161616" or "BGR161616" format),
+    converts it to 8-bit before encoding.
 
     Returns:
         bytes: Encoded frame as a byte array.
@@ -24,15 +26,29 @@ def encode(
 
     if frame_enhancer:
         try:
-            frame_array = frame_enhancer(frame_array)
+            frame = frame_enhancer(frame)
         except Exception:
             logger.error(
                 f"Error in frame enhancer '{frame_enhancer.__name__}'", exc_info=True
             )
 
-    frame = frame_array
+    if frame.dtype == np.uint16:
+        # Shift right 8 bits;
+        frame = (frame >> 8).astype(np.uint8)
 
-    _, buffer = cv2.imencode(format, frame, params)
+    if frame.ndim == 2:
+        channels = 1
+    elif frame.ndim == 3:
+        channels = frame.shape[2]
+    else:
+        raise ValueError("Frame has an unexpected number of dimensions.")
+
+    if channels not in (1, 3, 4):
+        raise ValueError(f"After conversion, invalid number of channels: {channels}")
+
+    success, buffer = cv2.imencode(format, frame, params or [])
+    if not success:
+        raise ValueError("cv2.imencode failed to encode the frame.")
     return buffer.tobytes()
 
 
