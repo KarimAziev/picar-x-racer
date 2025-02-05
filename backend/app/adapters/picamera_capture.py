@@ -10,7 +10,10 @@ from app.schemas.camera import CameraSettings
 from cv2.typing import MatLike
 
 if TYPE_CHECKING:
-    from picamera2 import Picamera2
+    try:
+        from picamera2 import Picamera2
+    except Exception:
+        pass
 
 logger = Logger(name=__name__)
 
