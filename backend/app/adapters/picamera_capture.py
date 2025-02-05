@@ -135,9 +135,8 @@ class PicameraCapture(VideoCaptureAdapter):
 
         try:
             frame = self.picam2.capture_array()
-
         except Exception as err:
-            self.picam2.stop()
+            self.release()
             raise CameraDeviceError(f"Initial frame capture failed: {err}")
 
         if frame is None or not isinstance(frame, np.ndarray):
