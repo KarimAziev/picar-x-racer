@@ -46,7 +46,6 @@ rgb_conversions: Dict[str, Union[int, None]] = {
     "XRGB8888": None,  # Already BGR order.
     "BGR888": cv2.COLOR_RGB2BGR,
     "RGB888": None,  # Already in BGR order.
-    "RGB161616": cv2.COLOR_RGB2BGR,
     "BGR161616": None,  # Already in BGR order.
 }
 
