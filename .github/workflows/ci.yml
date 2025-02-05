@@ -42,7 +42,7 @@ jobs:
         run: bash setup_env.sh --minimal
 
       - name: Install backend dependencies
-        run: . .venv/bin/activate && pip install pytest pytest-cov
+        run: . .venv/bin/activate && pip install pytest pytest-cov picamera2
 
       - name: Install Pyright
         run: npm install -g pyright
