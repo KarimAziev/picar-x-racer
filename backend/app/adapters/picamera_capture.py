@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Tuple, cast
 
+import cv2
 import numpy as np
 from app.adapters.capture_adapter import VideoCaptureAdapter
 from app.core.gstreamer_parser import GStreamerParser
@@ -108,7 +109,8 @@ class PicameraCapture(VideoCaptureAdapter):
         try:
             frame = self.picam2.capture_array()
             if frame is not None:
-                return True, cast(np.ndarray, frame)
+                frame = cv2.cvtColor(cast(np.ndarray, frame), cv2.COLOR_RGB2BGR)
+                return True, frame
             else:
                 return False, np.empty((0, 0), dtype=np.uint8)
         except Exception as e:
