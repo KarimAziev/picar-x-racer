@@ -130,6 +130,7 @@ class PicameraCapture(VideoCaptureAdapter):
         try:
             self.picam2.start()
         except Exception as err:
+            self.release()
             raise CameraDeviceError(f"Failed to start Picamera2: {err}")
 
         try:
@@ -140,7 +141,7 @@ class PicameraCapture(VideoCaptureAdapter):
             raise CameraDeviceError(f"Initial frame capture failed: {err}")
 
         if frame is None or not isinstance(frame, np.ndarray):
-            self.picam2.stop()
+            self.release()
             raise CameraDeviceError("Initial frame capture failed: No image data")
 
         frame = cast(np.ndarray, frame)
@@ -187,6 +188,7 @@ class PicameraCapture(VideoCaptureAdapter):
         Stop the camera.
         """
         try:
+            self.picam2.stop()
             self.picam2.close()
         except Exception as e:
             logger.error("Exception occurred while stopping Picamera2: %s", e)
