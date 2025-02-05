@@ -35,7 +35,7 @@ yuv_conversions: Dict[str, Union[int, None]] = {
     "NV12": cv2.COLOR_YUV2BGR_NV12,
     "NV21": cv2.COLOR_YUV2BGR_NV21,
     "YUYV": cv2.COLOR_YUV2BGR_YUY2,
-    "YVYU": cv2.COLOR_YUV2BGR_YUY2,
+    "YVYU": cv2.COLOR_YUV2BGR_YVYU,
     "UYVY": cv2.COLOR_YUV2BGR_YUY2,
     "VYUY": cv2.COLOR_YUV2BGR_YUY2,
 }
