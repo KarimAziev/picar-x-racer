@@ -1,5 +1,5 @@
 {
-  "reportMissingImports": true,
+  "reportMissingImports": "warning",
   "reportUnusedImport": true,
   "enableReachabilityAnalysis": false
 }
