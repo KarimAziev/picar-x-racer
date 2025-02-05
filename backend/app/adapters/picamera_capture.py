@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union, cast
 
 import cv2
 import numpy as np
@@ -15,8 +15,50 @@ if TYPE_CHECKING:
 logger = Logger(name=__name__)
 
 
+pixel_formats_to_picamera2_format: Dict[str, str] = {
+    "I420": "YUV420",
+    "YV12": "YVU420",
+    "RGBx": "XRGB8888",
+    "RGB": "RGB888",
+    "BGR": "BGR888",
+    "BGRx": "XBGR8888",
+    "RGB16": "RGB161616",
+    "YUY2": "YUYV",
+    "UYVY": "UYVY",
+    "JPEG": "MJPEG",
+}
+
+
+yuv_conversions: Dict[str, Union[int, None]] = {
+    "YUV420": cv2.COLOR_YUV2BGR_I420,
+    "YVU420": cv2.COLOR_YUV2BGR_YV12,
+    "NV12": cv2.COLOR_YUV2BGR_NV12,
+    "NV21": cv2.COLOR_YUV2BGR_NV21,
+    "YUYV": cv2.COLOR_YUV2BGR_YUY2,
+    "YVYU": cv2.COLOR_YUV2BGR_YUY2,
+    "UYVY": cv2.COLOR_YUV2BGR_YUY2,
+    "VYUY": cv2.COLOR_YUV2BGR_YUY2,
+}
+
+
+rgb_conversions: Dict[str, Union[int, None]] = {
+    "XBGR8888": cv2.COLOR_RGBA2BGR,
+    "XRGB8888": None,  # Already BGR order.
+    "BGR888": cv2.COLOR_RGB2BGR,
+    "RGB888": None,  # Already in BGR order.
+    "RGB161616": cv2.COLOR_RGB2BGR,
+    "BGR161616": None,  # Already in BGR order.
+}
+
+color_conversions: Dict[str, Union[int, None]] = {
+    **yuv_conversions,
+    **rgb_conversions,
+}
+
+
 class PicameraCapture(VideoCaptureAdapter):
     def __init__(self, device: str, camera_settings: CameraSettings):
+        import picamera2.formats as formats
         from picamera2 import Picamera2
 
         device_id = GStreamerParser.strip_api_prefix(device)
@@ -26,6 +68,8 @@ class PicameraCapture(VideoCaptureAdapter):
             raise CameraDeviceError("Video device is not found in picam2")
 
         self.picam2 = Picamera2(index)
+        self.formats = formats
+        self.format: Optional[str] = None
         self._cap, self.settings = self._try_device_props(device, camera_settings)
 
     def _try_device_props(
@@ -34,7 +78,9 @@ class PicameraCapture(VideoCaptureAdapter):
         """
         Configure the Picamera2 instance using the supplied camera settings.
         """
-        fmt = "BGR888"
+
+        pixel_format = camera_settings.pixel_format
+        fmt = None
 
         if camera_settings.width is None or camera_settings.height is None:
             default_width, default_height = 1280, 720
@@ -44,9 +90,27 @@ class PicameraCapture(VideoCaptureAdapter):
             width = camera_settings.width
             height = camera_settings.height
 
-        config = self.picam2.create_video_configuration(
-            main={"size": (width, height), "format": fmt}
-        )
+        main_config: Dict[str, Any] = {"size": (width, height)}
+
+        if pixel_format:
+            if (
+                not self.formats.is_YUV(pixel_format)
+                and not self.formats.is_RGB(pixel_format)
+                and pixel_format != "MJPEG"
+            ):
+                fmt = pixel_formats_to_picamera2_format.get(pixel_format)
+            else:
+                fmt = pixel_format
+
+        if fmt is None:
+            pixel_format = None
+
+        if fmt:
+            main_config["format"] = fmt
+
+        config = self.picam2.create_video_configuration(main=main_config)
+        self.format = config.get("main", {}).get("format")
+
         self.picam2.configure(config)
         logger.info("Picamera2 config: %s", config)
 
@@ -80,19 +144,12 @@ class PicameraCapture(VideoCaptureAdapter):
             raise CameraDeviceError("Initial frame capture failed: No image data")
 
         frame = cast(np.ndarray, frame)
-        configuration = self.picam2.camera_configuration()
-        main_configuration = configuration["main"]
-
-        logger.info(
-            "configuration %s, main='%s'",
-            configuration,
-            main_configuration,
-        )
 
         captured_height, captured_width = frame.shape[:2]
         updated_settings = {
             **camera_settings.model_dump(),
             "fps": fps,
+            "pixel_format": pixel_format,
             "device": device,
             "width": captured_width,
             "height": captured_height,
@@ -107,9 +164,17 @@ class PicameraCapture(VideoCaptureAdapter):
         In the Picamera2 case, we use capture_array() to get the frame.
         """
         try:
+
             frame = self.picam2.capture_array()
+
             if frame is not None:
-                frame = cv2.cvtColor(cast(np.ndarray, frame), cv2.COLOR_RGB2BGR)
+                frame = cast(np.ndarray, frame)
+                if self.format:
+                    convert_color = color_conversions.get(self.format)
+
+                    frame = (
+                        cv2.cvtColor(frame, convert_color) if convert_color else frame
+                    )
                 return True, frame
             else:
                 return False, np.empty((0, 0), dtype=np.uint8)
