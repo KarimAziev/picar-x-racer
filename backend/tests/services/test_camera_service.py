@@ -5,8 +5,8 @@ import unittest
 from typing import Any, Optional, cast
 from unittest.mock import AsyncMock, patch
 
-import cv2
 import numpy as np
+from app.adapters.capture_adapter import VideoCaptureAdapter
 from app.adapters.video_device_adapter import VideoDeviceAdapater
 from app.exceptions.camera import CameraShutdownInProgressError
 from app.schemas.camera import CameraSettings
@@ -269,7 +269,7 @@ class TestCameraServiceSync(unittest.TestCase):
 
     def test_stop_camera_when_not_running(self):
         self.camera_service.camera_run = False
-        self.camera_service.cap = cast(cv2.VideoCapture, DummyVideoCapture())
+        self.camera_service.cap = cast(VideoCaptureAdapter, DummyVideoCapture())
         self.camera_service.stop_camera()
         self.assertIsNone(self.camera_service.cap)
 

@@ -1,12 +1,14 @@
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-import cv2
+from app.adapters.capture_adapter import VideoCaptureAdapter
+from app.adapters.gstreamer_capture import GStreamerCapture
+from app.adapters.picamera_capture import PicameraCapture
+from app.adapters.v4l2_capture import V4l2Capture
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings, DeviceType
-from app.util.device import try_video_path
 
 logger = Logger(name=__name__)
 
@@ -29,56 +31,23 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
     def try_device_props(
         self, device: str, camera_settings: CameraSettings
-    ) -> Optional[Tuple[cv2.VideoCapture, CameraSettings]]:
-        if camera_settings.use_gstreamer:
-            pipeline = self.gstreamer_manager.setup_pipeline(
-                device,
-                width=camera_settings.width,
-                height=camera_settings.height,
-                fps=camera_settings.fps,
-                pixel_format=camera_settings.pixel_format,
-                media_type=camera_settings.media_type,
+    ) -> Optional[Tuple[VideoCaptureAdapter, CameraSettings]]:
+        api, device_path = GStreamerParser.parse_device_path(device)
+
+        cap = (
+            GStreamerCapture(
+                device, camera_settings=camera_settings, manager=self.gstreamer_manager
             )
-            cap = try_video_path(pipeline, backend=cv2.CAP_GSTREAMER)
-            if cap is None:
-                return None
-            updated_settings = {
-                **camera_settings.model_dump(),
-                "device": device,
-            }
-        else:
-            device_path = GStreamerParser.strip_api_prefix(device)
-            cap = try_video_path(
-                device_path,
-                backend=cv2.CAP_V4L2,
-                width=camera_settings.width,
-                height=camera_settings.height,
-                fps=camera_settings.fps,
-                pixel_format=camera_settings.pixel_format,
-            )
-            if cap is None:
-                return None
-            width, height, fps = (
-                cap.get(x)
-                for x in (
-                    cv2.CAP_PROP_FRAME_WIDTH,
-                    cv2.CAP_PROP_FRAME_HEIGHT,
-                    cv2.CAP_PROP_FPS,
+            if camera_settings.use_gstreamer
+            else (
+                V4l2Capture(
+                    device, camera_settings=camera_settings, manager=self.v4l2_manager
                 )
+                if api == "v4l2" or device_path.startswith("/dev/video")
+                else PicameraCapture(device, camera_settings=camera_settings)
             )
-
-            data = self.v4l2_manager.video_capture_format(device_path) or {}
-
-            updated_settings = {
-                **camera_settings.model_dump(),
-                "device": device,
-                "width": int(width),
-                "height": int(height),
-                "fps": float(fps),
-                "pixel_format": data.get("pixel_format", camera_settings.pixel_format),
-            }
-
-        return cap, CameraSettings(**updated_settings)
+        )
+        return cap, cap.settings
 
     def list_devices(self) -> List[DeviceType]:
         v4l2_devices = self.v4l2_manager.list_video_devices()
@@ -125,7 +94,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
     def setup_video_capture(
         self, camera_settings: CameraSettings
-    ) -> Tuple[cv2.VideoCapture, CameraSettings]:
+    ) -> Tuple[VideoCaptureAdapter, CameraSettings]:
         devices = self.list_devices()
         if camera_settings.device is not None:
             device_path = GStreamerParser.strip_api_prefix(camera_settings.device)

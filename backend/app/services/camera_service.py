@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import cv2
 import numpy as np
+from app.adapters.capture_adapter import VideoCaptureAdapter
 from app.config.video_enhancers import frame_enhancers
 from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
@@ -18,7 +19,6 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.util.device import release_video_capture_safe
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 from cv2.typing import MatLike
 
@@ -69,7 +69,7 @@ class CameraService(metaclass=SingletonMeta):
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
-        self.cap: Union[cv2.VideoCapture, None] = None
+        self.cap: Union[VideoCaptureAdapter, None] = None
         self.camera_device_error: Optional[str] = None
         self.camera_loading: bool = False
         self.shutting_down = False
@@ -184,7 +184,8 @@ class CameraService(metaclass=SingletonMeta):
         """
         Safely releases the camera resource represented.
         """
-        release_video_capture_safe(self.cap)
+        if self.cap:
+            self.cap.release()
         self.cap = None
 
     def _camera_thread_func(self) -> None:
