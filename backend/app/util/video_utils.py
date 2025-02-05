@@ -36,15 +36,15 @@ def encode(
         # Shift right 8 bits;
         frame = (frame >> 8).astype(np.uint8)
 
-    if frame.ndim == 2:
-        channels = 1
-    elif frame.ndim == 3:
-        channels = frame.shape[2]
-    else:
-        raise ValueError("Frame has an unexpected number of dimensions.")
+    # if frame.ndim == 2:
+    #     channels = 1
+    # elif frame.ndim == 3:
+    #     channels = frame.shape[2]
+    # else:
+    #     raise ValueError("Frame has an unexpected number of dimensions.")
 
-    if channels not in (1, 3, 4):
-        raise ValueError(f"After conversion, invalid number of channels: {channels}")
+    # if channels not in (1, 3, 4):
+    #     raise ValueError(f"After conversion, invalid number of channels: {channels}")
 
     success, buffer = cv2.imencode(format, frame, params or [])
     if not success:
