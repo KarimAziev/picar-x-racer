@@ -33,6 +33,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         self, device: str, camera_settings: CameraSettings
     ) -> Optional[Tuple[VideoCaptureAdapter, CameraSettings]]:
         api, device_path = GStreamerParser.parse_device_path(device)
+        logger.info("device='%s', device_path='%s'", device, device_path)
 
         cap = (
             GStreamerCapture(
@@ -96,6 +97,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         self, camera_settings: CameraSettings
     ) -> Tuple[VideoCaptureAdapter, CameraSettings]:
         devices = self.list_devices()
+        logger.info("setup_video_capture device=%s", camera_settings.device)
         if camera_settings.device is not None:
             device_path = GStreamerParser.strip_api_prefix(camera_settings.device)
             video_device: Optional[str] = None
@@ -103,6 +105,12 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 if device_path in (item.device, item.path):
                     video_device = camera_settings.device
                     break
+
+            logger.info(
+                "video_device found=%s, camera_settings.device='%s'",
+                video_device,
+                camera_settings.device,
+            )
 
             if video_device is None:
                 raise CameraNotFoundError("Video device is not available")
