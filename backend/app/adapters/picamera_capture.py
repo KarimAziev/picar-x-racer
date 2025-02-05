@@ -189,6 +189,8 @@ class PicameraCapture(VideoCaptureAdapter):
         """
         try:
             self.picam2.stop()
+            logger.info("Picamera stopped")
             self.picam2.close()
+            logger.info("Picamera closed")
         except Exception as e:
             logger.error("Exception occurred while stopping Picamera2: %s", e)
