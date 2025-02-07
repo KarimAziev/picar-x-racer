@@ -140,14 +140,7 @@ export const isDeviceEq = (item: CameraSettings, device: Device) => {
     return;
   }
 
-  if (isDiscreteDevice(device)) {
-    const isSizeEq = width === device.width && height === device.height;
-    const fpsEq =
-      item.fps === device.fps || (!isNumber(item.fps) && !isNumber(device.fps));
-    return fpsEq && isSizeEq;
-  }
-
-  if (isStepwiseDevice(device)) {
+  if (isStepwiseDevice(device) || isGstreamerStepwiseDevice(device)) {
     const fpsEq = isNumber(item.fps)
       ? item.fps >= device.min_fps && item.fps <= device.max_fps
       : true;
@@ -160,6 +153,10 @@ export const isDeviceEq = (item: CameraSettings, device: Device) => {
       fpsEq
     );
   }
+  const isSizeEq = width === device.width && height === device.height;
+  const fpsEq =
+    item.fps === device.fps || (!isNumber(item.fps) && !isNumber(device.fps));
+  return fpsEq && isSizeEq;
 };
 
 export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
