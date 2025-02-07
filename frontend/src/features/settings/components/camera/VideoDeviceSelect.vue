@@ -379,26 +379,44 @@ const updateDevice = async (stepwiseParams: Device) => {
 
 const handleToggleGstreamer = async (value: boolean) => {
   useGstreamer.value = value;
+
   const data = {
     ...(selectedDevice.value ? selectedDevice.value : camStore.data),
     use_gstreamer: value,
   };
 
   const api = extractDeviceAPI(data.device);
+  const sizeData = isStepwiseDevice(selectedDevice.value)
+    ? stepwiseData.value
+    : (selectedDevice.value as DiscreteDevice);
 
   if (value && api === "picamera2") {
-    const found = findDevice(
-      { ...data, device: `libcamera:${extractDeviceId(data.device)}` },
-      devices.value,
-    );
+    const valid = validate();
+    const found =
+      valid &&
+      findDevice(
+        {
+          ...data,
+          ...sizeData,
+          device: `libcamera:${extractDeviceId(data.device)}`,
+        },
+        devices.value,
+      );
     if (found) {
       data.device = found.device;
     }
   } else if (!value && api === "libcamera") {
-    const found = findDevice(
-      { ...data, device: `picamera2:${extractDeviceId(data.device)}` },
-      devices.value,
-    );
+    const valid = validate();
+    const found =
+      valid &&
+      findDevice(
+        {
+          ...data,
+          ...sizeData,
+          device: `picamera2:${extractDeviceId(data.device)}`,
+        },
+        devices.value,
+      );
     if (found) {
       data.device = found.device;
     }
