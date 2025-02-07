@@ -1,5 +1,5 @@
-from functools import lru_cache
 import math
+from functools import lru_cache
 from typing import Dict, List, Tuple
 
 from app.core.logger import Logger
@@ -62,9 +62,9 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                     heights: List[float] = [size[1] for size in sizes if size]
 
                     if heights and widths and all_fps:
-                        min_width = int(min(widths))
+                        min_width = min(320, int(min(widths)))
                         max_width = int(max(widths))
-                        min_height = int(min(heights))
+                        min_height = min(240, int(min(heights)))
                         max_height = int(max(heights))
                         min_fps = math.ceil(min(all_fps))
                         max_fps = round(max(all_fps))
