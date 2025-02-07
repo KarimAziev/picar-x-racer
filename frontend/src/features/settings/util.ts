@@ -238,7 +238,11 @@ export const isStepwiseDevice = (data: any): data is DeviceStepwise =>
 export const generateLabel = (device: Device) => {
   const isGstreamerStepwise = isGstreamerStepwiseDevice(device);
 
-  if (isGstreamerStepwiseDevice(device) || isStepwiseDeviceStrict(device)) {
+  if (
+    isStepwiseDevice(device) ||
+    isGstreamerStepwise ||
+    isStepwiseDeviceStrict(device)
+  ) {
     const minSize = props(["min_width", "min_height"], device).join("x");
     const maxSize = props(["max_width", "max_height"], device).join("x");
     const fps = props(["min_fps", "max_fps"], device)
@@ -256,6 +260,7 @@ export const generateLabel = (device: Device) => {
       .map((v) => `${v}`)
       .join(" ");
   }
+
   const size = props(["width", "height"], device).join("x");
   return [
     device.pixel_format,
