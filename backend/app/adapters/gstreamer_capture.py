@@ -44,6 +44,7 @@ class GStreamerCapture(VideoCaptureAdapter):
             raise CameraDeviceError("Video capture failed")
         updated_settings = {
             **camera_settings.model_dump(),
+            "use_gstreamer": True,
             "device": device,
         }
 
