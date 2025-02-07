@@ -172,6 +172,8 @@ import {
   isStepwiseDevice,
   isGstreamerStepwiseDevice,
   groupDevices,
+  extractDeviceAPI,
+  extractDeviceId,
 } from "@/features/settings/util";
 import {
   DiscreteDevice,
@@ -377,19 +379,32 @@ const updateDevice = async (stepwiseParams: Device) => {
 
 const handleToggleGstreamer = async (value: boolean) => {
   useGstreamer.value = value;
-  const promises: Promise<any>[] = [];
-  if (selectedDevice.value) {
-    promises.push(updateDevice(selectedDevice.value));
-  } else {
-    promises.push(
-      camStore.updateData({
-        ...camStore.data,
-        use_gstreamer: value,
-      }),
+  const data = {
+    ...(selectedDevice.value ? selectedDevice.value : camStore.data),
+    use_gstreamer: value,
+  };
+
+  const api = extractDeviceAPI(data.device);
+
+  if (value && api === "picamera2") {
+    const found = findDevice(
+      { ...data, device: `libcamera:${extractDeviceId(data.device)}` },
+      devices.value,
     );
+    if (found) {
+      data.device = found.device;
+    }
+  } else if (!value && api === "libcamera") {
+    const found = findDevice(
+      { ...data, device: `picamera2:${extractDeviceId(data.device)}` },
+      devices.value,
+    );
+    if (found) {
+      data.device = found.device;
+    }
   }
-  promises.push(camStore.fetchDevices());
-  await Promise.all(promises);
+
+  await Promise.all([camStore.updateData(data), camStore.fetchDevices()]);
   selectedDevice.value = getInitialValue();
   stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 };

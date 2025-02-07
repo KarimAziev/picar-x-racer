@@ -113,6 +113,16 @@ export const mapChildren = <DataItem>(
   });
 };
 
+export const extractDeviceAPI = (path?: string) => {
+  if (!path) {
+    return path;
+  }
+
+  const parts = path.split(":");
+  if (parts.length > 1) {
+    return parts.shift();
+  }
+};
 export const extractDeviceId = (path?: string) => {
   if (!path) {
     return path;
