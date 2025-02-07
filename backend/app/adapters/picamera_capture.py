@@ -76,9 +76,9 @@ class PicameraCapture(VideoCaptureAdapter):
         return self._settings
 
     @staticmethod
-    def fps_to_frame_interval(fps: float) -> float:
+    def fps_to_frame_interval(fps: float) -> int:
         """Convert frames per second (fps) to a frame interval in microseconds."""
-        return 1_000_000 / fps
+        return int(1_000_000 / fps)
 
     @staticmethod
     def frame_interval_to_fps(interval: float) -> float:
