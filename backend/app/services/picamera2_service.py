@@ -70,7 +70,7 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                         max_fps = round(max(all_fps))
                         device_path: str = device.get("Id")
                         api = "picamera2"
-                        device_full = f"{api}:/{device_path}"
+                        device_full = f"{api}:{device_path}"
                         name = device.get("Model")
 
                         formats = [
