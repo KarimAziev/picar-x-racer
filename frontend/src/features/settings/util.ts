@@ -272,7 +272,7 @@ export const groupDevices = (devices: Device[]): DeviceNode[] => {
   const deviceMap: { [key: string]: DeviceNode } = {};
 
   for (const device of devices) {
-    const deviceKey = extractDeviceId(device.device);
+    const deviceKey = device.device;
 
     if (!deviceKey) {
       continue;
