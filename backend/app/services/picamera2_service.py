@@ -1,4 +1,5 @@
 from functools import lru_cache
+import math
 from typing import Dict, List, Tuple
 
 from app.core.logger import Logger
@@ -65,8 +66,8 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                         max_width = int(max(widths))
                         min_height = int(min(heights))
                         max_height = int(max(heights))
-                        min_fps = min(all_fps)
-                        max_fps = max(all_fps)
+                        min_fps = math.ceil(min(all_fps))
+                        max_fps = round(max(all_fps))
                         device_path: str = device.get("Id")
                         api = "picamera2"
                         device_full = f"{api}:/{device_path}"
