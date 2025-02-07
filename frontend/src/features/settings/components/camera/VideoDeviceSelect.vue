@@ -390,52 +390,30 @@ const handleToggleGstreamer = async (value: boolean) => {
     ? stepwiseData.value
     : (selectedDevice.value as DiscreteDevice);
 
-  if (value && api === "picamera2") {
-    const valid = validate();
-    const found =
-      valid &&
-      findDevice(
-        {
-          ...data,
-          ...sizeData,
-          device: `libcamera:${extractDeviceId(data.device)}`,
-        },
-        devices.value,
-      );
+  const found =
+    (value && api === "picamera2") || (!value && api === "libcamera")
+      ? findDevice(
+          {
+            ...data,
+            ...sizeData,
+            device: `${
+              ["picamera2", "libcamera"].find((a) => a !== api) as string
+            }:${extractDeviceId(data.device)}`,
+          },
+          devices.value,
+        )
+      : undefined;
 
-    if (found) {
-      data.device = found.device;
-      await Promise.all([
-        camStore.updateData({
-          ...data,
-          ...sizeData,
-          ...found,
-          device: found.device,
-        }),
-        camStore.fetchDevices(),
-      ]);
-    }
-  } else if (!value && api === "libcamera") {
-    const found = findDevice(
-      {
+  if (found) {
+    await Promise.all([
+      camStore.updateData({
         ...data,
         ...sizeData,
-        device: `picamera2:${extractDeviceId(data.device)}`,
-      },
-      devices.value,
-    );
-
-    if (found) {
-      await Promise.all([
-        camStore.updateData({
-          ...data,
-          ...sizeData,
-          ...found,
-          device: found.device,
-        }),
-        camStore.fetchDevices(),
-      ]);
-    }
+        ...found,
+        device: found?.device || data.device,
+      }),
+      camStore.fetchDevices(),
+    ]);
   } else {
     await Promise.all([camStore.updateData(data), camStore.fetchDevices()]);
   }
