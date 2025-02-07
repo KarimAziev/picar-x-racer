@@ -217,9 +217,7 @@ const label = computed(() => {
   const val = selectedDevice.value?.device;
   const name = selectedDevice.value?.name;
 
-  return [`Camera: `, name, val, name, val, name, val, name, val]
-    .filter((v) => !!v)
-    .join("");
+  return [`Camera: `, name, val].filter((v) => !!v).join(" ");
 });
 
 const invalidData = ref<Partial<Record<"width" | "height" | "fps", string>>>(
