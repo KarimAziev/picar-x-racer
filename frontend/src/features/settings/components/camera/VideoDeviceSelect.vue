@@ -402,27 +402,44 @@ const handleToggleGstreamer = async (value: boolean) => {
         },
         devices.value,
       );
+
     if (found) {
       data.device = found.device;
-    }
-  } else if (!value && api === "libcamera") {
-    const valid = validate();
-    const found =
-      valid &&
-      findDevice(
-        {
+      await Promise.all([
+        camStore.updateData({
           ...data,
           ...sizeData,
-          device: `picamera2:${extractDeviceId(data.device)}`,
-        },
-        devices.value,
-      );
-    if (found) {
-      data.device = found.device;
+          ...found,
+          device: found.device,
+        }),
+        camStore.fetchDevices(),
+      ]);
     }
+  } else if (!value && api === "libcamera") {
+    const found = findDevice(
+      {
+        ...data,
+        ...sizeData,
+        device: `picamera2:${extractDeviceId(data.device)}`,
+      },
+      devices.value,
+    );
+
+    if (found) {
+      await Promise.all([
+        camStore.updateData({
+          ...data,
+          ...sizeData,
+          ...found,
+          device: found.device,
+        }),
+        camStore.fetchDevices(),
+      ]);
+    }
+  } else {
+    await Promise.all([camStore.updateData(data), camStore.fetchDevices()]);
   }
 
-  await Promise.all([camStore.updateData(data), camStore.fetchDevices()]);
   selectedDevice.value = getInitialValue();
   stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 };
