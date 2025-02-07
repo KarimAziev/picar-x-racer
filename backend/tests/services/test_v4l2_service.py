@@ -2,11 +2,12 @@ import logging
 import os
 import unittest
 from types import TracebackType
-from typing import Any, Dict, Optional, Type, cast
+from typing import Optional, Type, cast
 from unittest.mock import MagicMock, patch
 
 from app.schemas.camera import DiscreteDevice
 from app.services.v4l2_service import V4L2Service
+from app.types.v4l2_types import VideoCaptureFormat
 
 
 class FakeFDContext:
@@ -46,7 +47,7 @@ class TestV4L2Service(unittest.TestCase):
         self.service._cached_list_video_devices.cache_clear()
 
     @patch("app.services.v4l2_service.os.listdir")
-    def test_enumerate_video_devices(self, mock_listdir):
+    def test_enumerate_video_devices(self, mock_listdir: MagicMock):
         mock_listdir.return_value = ["video2", "video3", "not_video", "video_dummy"]
         expected_devices = [
             os.path.join("/dev", "video2"),
@@ -56,7 +57,7 @@ class TestV4L2Service(unittest.TestCase):
         self.assertEqual(devices, expected_devices)
 
     @patch("app.services.v4l2_service.get_dev_video_checksum", return_value="dummy")
-    def test_list_video_devices(self, _):
+    def test_list_video_devices(self, _: MagicMock):
         with patch("app.services.v4l2_service.os.listdir") as mock_listdir, patch(
             "app.services.v4l2_service.V4L2Service._query_capabilities"
         ) as mock_query_capabilities, patch(
@@ -88,7 +89,7 @@ class TestV4L2Service(unittest.TestCase):
 
     @patch("fcntl.ioctl")
     @patch("app.services.v4l2_service.fd_open", new=fake_fd_open)
-    def test_query_capabilities_success(self, mock_ioctl):
+    def test_query_capabilities_success(self, mock_ioctl: MagicMock):
         mock_ioctl.side_effect = lambda fd, req, cap: cap if req == 0x80685600 else None
         result = self.service._query_capabilities("/dev/video10")
         self.assertIsNotNone(result)
@@ -105,7 +106,10 @@ class TestV4L2Service(unittest.TestCase):
     @patch("app.services.v4l2_service.V4L2Service._enumerate_framesizes")
     @patch("app.services.v4l2_service.V4L2Service._enumerate_frameintervals")
     def test_get_device_configurations_discrete(
-        self, mock_frameintervals, mock_framesizes, mock_formats
+        self,
+        mock_frameintervals: MagicMock,
+        mock_framesizes: MagicMock,
+        mock_formats: MagicMock,
     ):
 
         mock_formats.return_value = [
@@ -129,7 +133,7 @@ class TestV4L2Service(unittest.TestCase):
 
     @patch("fcntl.ioctl")
     @patch("app.services.v4l2_service.fd_open", new=fake_fd_open)
-    def test_video_capture_format_success(self, mock_ioctl):
+    def test_video_capture_format_success(self, mock_ioctl: MagicMock):
         v4l2_format_mock = MagicMock()
         v4l2_format_mock.type = 1
         v4l2_format_mock.fmt.pix.width = 1920
@@ -145,14 +149,14 @@ class TestV4L2Service(unittest.TestCase):
         ):
             result = self.service.video_capture_format("/dev/video0")
             self.assertIsNotNone(result)
-            result = cast(Dict[str, Any], result)
+            result = cast(VideoCaptureFormat, result)
             self.assertEqual(result["width"], 1920)
             self.assertEqual(result["height"], 1080)
             self.assertEqual(result["pixel_format"], "I420")
 
     @patch("fcntl.ioctl", side_effect=OSError("IOCTL Failure"))
     @patch("app.services.v4l2_service.fd_open", new=fake_fd_open)
-    def test_video_capture_format_failure(self, mock_ioctl):
+    def test_video_capture_format_failure(self, _: MagicMock):
         with patch("app.core.logger.Logger.error") as mock_logger_error:
             result = self.service.video_capture_format("/dev/video0")
             self.assertIsNone(result)

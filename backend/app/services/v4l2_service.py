@@ -16,11 +16,20 @@ import fcntl
 import os
 import re
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Set, Union, cast
+from typing import List, Optional, Set, Union, cast
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
+from app.types.v4l2_types import (
+    ContinuousFrameSizeConfig,
+    DiscreteFrameIntervalConfig,
+    DiscreteFrameSizeConfig,
+    PixelFormatConfig,
+    StepwiseFrameIntervalConfig,
+    StepwiseFrameSizeConfig,
+    VideoCaptureFormat,
+)
 from app.util.fd_utils import fd_open
 from app.util.video_checksum import get_dev_video_checksum
 from v4l2 import (
@@ -104,7 +113,7 @@ class V4L2Service(metaclass=SingletonMeta):
         checksum = get_dev_video_checksum()
         return self._cached_list_video_devices(checksum)
 
-    def video_capture_format(self, device_path: str) -> Optional[Dict[str, Any]]:
+    def video_capture_format(self, device_path: str) -> Optional[VideoCaptureFormat]:
         """
         Query the current video capture format using only low-level ioctls.
 
@@ -127,12 +136,13 @@ class V4L2Service(metaclass=SingletonMeta):
         height = fmt.fmt.pix.height
         pixelformat = fmt.fmt.pix.pixelformat
         pixel_format_str = self.fourcc_to_str(pixelformat)
-
-        return {
+        format_item: VideoCaptureFormat = {
             "width": width,
             "height": height,
             "pixel_format": pixel_format_str,
         }
+
+        return format_item
 
     @lru_cache(maxsize=None)
     def _cached_list_video_devices(self, _: str) -> List[DeviceType]:
@@ -200,12 +210,12 @@ class V4L2Service(metaclass=SingletonMeta):
             return None
         return cap
 
-    def _enumerate_formats(self, device_path: str) -> List[Dict[str, Union[int, str]]]:
+    def _enumerate_formats(self, device_path: str) -> List[PixelFormatConfig]:
         """
         Enumerate the supported pixel formats using VIDIOC_ENUM_FMT.
         Returns a list of dicts with "index", "pixelformat", and "description".
         """
-        formats: List[Dict[str, Union[int, str]]] = []
+        formats: List[PixelFormatConfig] = []
         try:
             with fd_open(device_path, os.O_RDWR) as fd:
                 index = 0
@@ -240,13 +250,23 @@ class V4L2Service(metaclass=SingletonMeta):
 
     def _enumerate_framesizes(
         self, device_path: str, pixelformat: int
-    ) -> List[Dict[str, Any]]:
+    ) -> List[
+        Union[
+            DiscreteFrameSizeConfig, StepwiseFrameSizeConfig, ContinuousFrameSizeConfig
+        ]
+    ]:
         """
         Enumerate frame sizes for a given pixel format using VIDIOC_ENUM_FRAMESIZES.
         For discrete modes, returns width/height.
         For stepwise or continuous modes, returns min/max and step values.
         """
-        frame_sizes: List[Dict[str, Any]] = []
+        frame_sizes: List[
+            Union[
+                DiscreteFrameSizeConfig,
+                StepwiseFrameSizeConfig,
+                ContinuousFrameSizeConfig,
+            ]
+        ] = []
         try:
             with fd_open(device_path, os.O_RDWR) as fd:
                 index: int = 0
@@ -261,36 +281,33 @@ class V4L2Service(metaclass=SingletonMeta):
                         break
 
                     if frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE:
-                        frame_sizes.append(
-                            {
-                                "type": "discrete",
-                                "width": frmsize.discrete.width,
-                                "height": frmsize.discrete.height,
-                            }
-                        )
+                        discrete_config: DiscreteFrameSizeConfig = {
+                            "type": "discrete",
+                            "width": frmsize.discrete.width,
+                            "height": frmsize.discrete.height,
+                        }
+                        frame_sizes.append(discrete_config)
                     elif frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE:
                         frmsize_stepwise = frmsize.stepwise
-                        frame_sizes.append(
-                            {
-                                "type": "stepwise",
-                                "min_width": frmsize_stepwise.min_width,
-                                "max_width": frmsize_stepwise.max_width,
-                                "step_width": frmsize_stepwise.step_width,
-                                "min_height": frmsize_stepwise.min_height,
-                                "max_height": frmsize_stepwise.max_height,
-                                "step_height": frmsize_stepwise.step_height,
-                            }
-                        )
+                        stepwise_config: StepwiseFrameSizeConfig = {
+                            "type": "stepwise",
+                            "min_width": frmsize_stepwise.min_width,
+                            "max_width": frmsize_stepwise.max_width,
+                            "step_width": frmsize_stepwise.step_width,
+                            "min_height": frmsize_stepwise.min_height,
+                            "max_height": frmsize_stepwise.max_height,
+                            "step_height": frmsize_stepwise.step_height,
+                        }
+                        frame_sizes.append(stepwise_config)
                     elif frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS:
-                        frame_sizes.append(
-                            {
-                                "type": "continuous",
-                                "min_width": frmsize.stepwise.min_width,
-                                "max_width": frmsize.stepwise.max_width,
-                                "min_height": frmsize.stepwise.min_height,
-                                "max_height": frmsize.stepwise.max_height,
-                            }
-                        )
+                        continuous_config: ContinuousFrameSizeConfig = {
+                            "type": "continuous",
+                            "min_width": frmsize.stepwise.min_width,
+                            "max_width": frmsize.stepwise.max_width,
+                            "min_height": frmsize.stepwise.min_height,
+                            "max_height": frmsize.stepwise.max_height,
+                        }
+                        frame_sizes.append(continuous_config)
                     index += 1
         except Exception as e:
             logger.error(f"Failed to enumerate frame sizes on {device_path}: {e}")
@@ -298,14 +315,16 @@ class V4L2Service(metaclass=SingletonMeta):
 
     def _enumerate_frameintervals(
         self, device_path: str, pixelformat: int, width: int, height: int
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Union[DiscreteFrameIntervalConfig, StepwiseFrameIntervalConfig]]:
         """
         For a specific resolution (width and height) and pixel format, enumerate frame intervals
         using VIDIOC_ENUM_FRAMEINTERVALS. Returns a list of dicts.
           - For discrete intervals, computes fps = denominator / numerator.
           - For stepwise/continuous, returns min/max and step fps.
         """
-        intervals: List[Dict[str, Any]] = []
+        intervals: List[
+            Union[DiscreteFrameIntervalConfig, StepwiseFrameIntervalConfig]
+        ] = []
         try:
             with fd_open(device_path, os.O_RDWR) as fd:
                 index: int = 0
@@ -364,22 +383,31 @@ class V4L2Service(metaclass=SingletonMeta):
         Returns a list of configuration dictionaries.
         """
         configurations: List[DeviceType] = []
-        fmts: List[Dict[str, Union[int, str]]] = self._enumerate_formats(device_path)
+        fmts: List[PixelFormatConfig] = self._enumerate_formats(device_path)
         for fmt in fmts:
             pixelfmt = cast(int, fmt["pixelformat"])
-            sizes: List[Dict[str, Any]] = self._enumerate_framesizes(
-                device_path, pixelfmt
-            )
+            sizes: List[
+                Union[
+                    DiscreteFrameSizeConfig,
+                    StepwiseFrameSizeConfig,
+                    ContinuousFrameSizeConfig,
+                ]
+            ] = self._enumerate_framesizes(device_path, pixelfmt)
             for size in sizes:
                 if size.get("type") == "discrete":
-                    width: int = size["width"]
-                    height: int = size["height"]
-                    intervals: List[Dict[str, Any]] = self._enumerate_frameintervals(
+                    discrete_item = cast(DiscreteFrameSizeConfig, size)
+                    width = discrete_item["width"]
+                    height = discrete_item["height"]
+                    intervals: List[
+                        Union[DiscreteFrameIntervalConfig, StepwiseFrameIntervalConfig]
+                    ] = self._enumerate_frameintervals(
                         device_path, pixelfmt, width, height
                     )
 
-                    discrete_intervals = [
-                        i for i in intervals if i.get("type") == "discrete"
+                    discrete_intervals: List[DiscreteFrameIntervalConfig] = [
+                        cast(DiscreteFrameIntervalConfig, i)
+                        for i in intervals
+                        if i.get("type") == discrete_item["type"]
                     ]
                     if discrete_intervals:
                         for interval in discrete_intervals:
@@ -400,14 +428,22 @@ class V4L2Service(metaclass=SingletonMeta):
 
                 elif size.get("type") in ("stepwise", "continuous"):
                     # For stepwise and continuous modes, we use the minimum resolution to query fps range.
-                    min_w = cast(int, size.get("min_width"))
-                    min_h = cast(int, size.get("min_height"))
-                    w_step = size.get("step_width")  # might be None for continuous
-                    h_step = size.get("step_height")  # might be None for continuous
-                    config: Dict[str, Any] = {
+                    item = cast(
+                        Union[
+                            StepwiseFrameSizeConfig,
+                            ContinuousFrameSizeConfig,
+                        ],
+                        size,
+                    )
+                    min_w = item.get("min_width")
+                    min_h = item.get("min_height")
+                    w_step = item.get("step_width")  # might be None for continuous
+                    h_step = item.get("step_height")  # might be None for continuous
+                    pixel_format_str = self.fourcc_to_str(pixelfmt)
+                    config = {
                         "device": device_path,
                         "pixel_format_raw": pixelfmt,
-                        "pixel_format": self.fourcc_to_str(pixelfmt),
+                        "pixel_format": pixel_format_str,
                         "format_desc": fmt["description"],
                         "mode_type": size["type"],
                         "min_width": min_w,
@@ -426,7 +462,9 @@ class V4L2Service(metaclass=SingletonMeta):
                     )
                     if intervals:
                         discrete_intervals = [
-                            i for i in intervals if i.get("type") == "discrete"
+                            cast(DiscreteFrameIntervalConfig, i)
+                            for i in intervals
+                            if i.get("type") == "discrete"
                         ]
                         if discrete_intervals:
                             # Use the lowest and highest fps from the discrete list.
@@ -440,7 +478,9 @@ class V4L2Service(metaclass=SingletonMeta):
                                 else 1
                             )
                         else:
-                            step_info = intervals[0]
+                            step_info: StepwiseFrameIntervalConfig = cast(
+                                StepwiseFrameIntervalConfig, intervals[0]
+                            )
                             config["min_fps"] = step_info.get("min_fps")
                             config["max_fps"] = step_info.get("max_fps")
                             config["fps_step"] = step_info.get("step_fps", 1)
