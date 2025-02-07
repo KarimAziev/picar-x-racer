@@ -6,7 +6,6 @@ from time import localtime, strftime
 from typing import TYPE_CHECKING
 
 from app.api import deps
-from app.api.endpoints.devices_mock import mocked_devices
 from app.core.logger import Logger
 from app.exceptions.camera import (
     CameraDeviceError,
