@@ -75,6 +75,16 @@ class PicameraCapture(VideoCaptureAdapter):
         """Concrete implementation of the abstract settings property."""
         return self._settings
 
+    @staticmethod
+    def fps_to_frame_interval(fps: float) -> float:
+        """Convert frames per second (fps) to a frame interval in microseconds."""
+        return 1_000_000 / fps
+
+    @staticmethod
+    def frame_interval_to_fps(interval: float) -> float:
+        """Convert a frame interval in microseconds to frames per second (fps)."""
+        return 1_000_000 / interval
+
     def _try_device_props(
         self, device: str, camera_settings: CameraSettings
     ) -> Tuple["Picamera2", CameraSettings]:
@@ -111,20 +121,32 @@ class PicameraCapture(VideoCaptureAdapter):
         if fmt:
             main_config["format"] = fmt
 
-        config = self.picam2.create_video_configuration(main=main_config)
+        fps_interval = (
+            self.fps_to_frame_interval(camera_settings.fps)
+            if camera_settings.fps is not None
+            else None
+        )
+
+        logger.info("fps='%s', fps_interval=%s", camera_settings.fps, fps_interval)
+
+        config = (
+            self.picam2.create_video_configuration(main=main_config)
+            if fps_interval is None
+            else self.picam2.create_video_configuration(
+                main=main_config,
+                controls={"FrameDurationLimits": (fps_interval, fps_interval)},
+            )
+        )
         self.format = config.get("main", {}).get("format")
 
         self.picam2.configure(config)
         logger.info("Picamera2 config: %s", config)
 
-        if camera_settings.fps is not None:
-            micro = int((1 / camera_settings.fps) * 1_000_000)
-            config["controls"]["FrameDurationLimits"] = (micro, micro)
-
         frame_limits = config.get("controls", {}).get("FrameDurationLimits")
+        logger.info("frame_limits=%s", frame_limits)
         if frame_limits and frame_limits[0]:
             min_duration: int = frame_limits[0]
-            fps = round(1_000_000 / min_duration)
+            fps = round(self.frame_interval_to_fps(min_duration))
             logger.info("Configured FPS: %.2f", fps)
         else:
             fps = None
@@ -159,7 +181,7 @@ class PicameraCapture(VideoCaptureAdapter):
             "fps": fps,
             "use_gstreamer": False,
             "pixel_format": pixel_format,
-            "device": device,
+            "device": f"{'picamera2'}:{device}",
             "width": width,
             "height": height,
         }
