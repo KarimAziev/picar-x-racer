@@ -62,9 +62,9 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
 
                     if heights and widths and all_fps:
                         min_width = int(min(widths))
-                        max_width = int(min(heights))
-                        max_height = int(max(heights))
+                        max_width = int(max(widths))
                         min_height = int(min(heights))
+                        max_height = int(max(heights))
                         min_fps = min(all_fps)
                         max_fps = max(all_fps)
                         device_path: str = device.get("Id")
