@@ -11,6 +11,7 @@ from app.services.detection_service import DetectionService
 from app.services.file_service import FileService
 from app.services.gstreamer_service import GStreamerService
 from app.services.music_service import MusicService
+from app.services.picamera2_service import PicameraService
 from app.services.stream_service import StreamService
 from app.services.tts_service import TTSService
 from app.services.v4l2_service import V4L2Service
@@ -38,12 +39,19 @@ def get_gstreamer_manager() -> GStreamerService:
     return GStreamerService()
 
 
+def get_picamera_manager() -> PicameraService:
+    return PicameraService()
+
+
 def get_video_device_adapter(
     v4l2_manager: V4L2Service = Depends(get_v4l2_manager),
     gstreamer_manager: GStreamerService = Depends(get_v4l2_manager),
+    picam_manager: PicameraService = Depends(get_picamera_manager),
 ) -> VideoDeviceAdapater:
     return VideoDeviceAdapater(
-        v4l2_manager=v4l2_manager, gstreamer_manager=gstreamer_manager
+        v4l2_manager=v4l2_manager,
+        gstreamer_manager=gstreamer_manager,
+        picam_manager=picam_manager,
     )
 
 

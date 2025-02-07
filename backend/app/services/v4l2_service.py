@@ -20,6 +20,7 @@ from typing import List, Optional, Set, Union, cast
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.core.video_device_abc import VideoDeviceABC
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.types.v4l2_types import (
     ContinuousFrameSizeConfig,
@@ -89,7 +90,7 @@ VIDIOC_ENUM_FRAMESIZES = _IOWR("V", 74, v4l2_frmsizeenum)
 logger = Logger(__name__)
 
 
-class V4L2Service(metaclass=SingletonMeta):
+class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
     def __init__(self):
         self.failed_devices: Set[str] = set()
         self.succeed_devices: Set[str] = set()

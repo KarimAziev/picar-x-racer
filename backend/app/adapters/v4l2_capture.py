@@ -16,12 +16,17 @@ if TYPE_CHECKING:
 
 
 class V4l2Capture(VideoCaptureAdapter):
-
     def __init__(
         self, device: str, camera_settings: CameraSettings, manager: "V4L2Service"
     ):
+        super().__init__(manager=manager)
         self.manager = manager
-        self._cap, self.settings = self._try_device_props(device, camera_settings)
+        self._cap, self._settings = self._try_device_props(device, camera_settings)
+
+    @property
+    def settings(self) -> CameraSettings:
+        """Concrete implementation of the abstract settings property."""
+        return self._settings
 
     def read(self) -> Tuple[bool, MatLike]:
         return self._cap.read()
@@ -62,14 +67,19 @@ class V4l2Capture(VideoCaptureAdapter):
             )
         )
 
-        data = self.manager.video_capture_format(device_path) or {}
+        data = self.manager.video_capture_format(device_path)
 
         updated_settings = {
             **camera_settings.model_dump(),
+            "use_gstreamer": False,
             "device": device,
             "width": int(width),
             "height": int(height),
             "fps": float(fps),
-            "pixel_format": data.get("pixel_format", camera_settings.pixel_format),
+            "pixel_format": (
+                data.get("pixel_format", camera_settings.pixel_format)
+                if data is not None
+                else None
+            ),
         }
         return cap, CameraSettings(**updated_settings)

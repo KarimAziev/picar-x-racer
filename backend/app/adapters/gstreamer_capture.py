@@ -18,8 +18,9 @@ class GStreamerCapture(VideoCaptureAdapter):
     def __init__(
         self, device: str, camera_settings: CameraSettings, manager: "GStreamerService"
     ):
+        super().__init__(manager=manager)
         self.manager = manager
-        self._cap, self.settings = self._try_device_props(device, camera_settings)
+        self._cap, self._settings = self._try_device_props(device, camera_settings)
 
     def read(self) -> Tuple[bool, MatLike]:
         return self._cap.read()
@@ -47,3 +48,8 @@ class GStreamerCapture(VideoCaptureAdapter):
         }
 
         return cap, CameraSettings(**updated_settings)
+
+    @property
+    def settings(self) -> CameraSettings:
+        """Concrete implementation of the abstract settings property."""
+        return self._settings

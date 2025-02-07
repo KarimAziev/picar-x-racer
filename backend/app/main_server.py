@@ -72,6 +72,7 @@ async def lifespan(app: FastAPI):
             video_device_adapter=deps.get_video_device_adapter(
                 v4l2_manager=deps.get_v4l2_manager(),
                 gstreamer_manager=deps.get_gstreamer_manager(),
+                picam_manager=deps.get_picamera_manager(),
             ),
             video_recorder=deps.get_video_recorder(file_manager=file_manager),
         )

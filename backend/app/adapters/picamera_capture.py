@@ -7,29 +7,21 @@ from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
+from app.services.picamera2_service import (
+    PICAMERA2_TO_PIXEL_FORMATS_MAP,
+    PIXEL_FORMATS_TO_PICAMERA2_MAP,
+)
 from cv2.typing import MatLike
 
 if TYPE_CHECKING:
+    from app.services.picamera2_service import PicameraService
+
     try:
         from picamera2 import Picamera2
     except Exception:
         pass
 
 logger = Logger(name=__name__)
-
-
-pixel_formats_to_picamera2_format: Dict[str, str] = {
-    "I420": "YUV420",
-    "YV12": "YVU420",
-    "RGBx": "XRGB8888",
-    "RGB": "RGB888",
-    "BGR": "BGR888",
-    "BGRx": "XBGR8888",
-    # "RGB16": "RGB161616",
-    "YUY2": "YUYV",
-    "UYVY": "UYVY",
-    "JPEG": "MJPEG",
-}
 
 
 yuv_conversions: Dict[str, Union[int, None]] = {
@@ -57,9 +49,15 @@ color_conversions: Dict[str, Union[int, None]] = {
 
 
 class PicameraCapture(VideoCaptureAdapter):
-    def __init__(self, device: str, camera_settings: CameraSettings):
+    def __init__(
+        self, device: str, camera_settings: CameraSettings, manager: "PicameraService"
+    ):
+        super().__init__(manager=manager)
+
         import picamera2.formats as formats
         from picamera2 import Picamera2
+
+        self.manager = manager
 
         device_id = GStreamerParser.strip_api_prefix(device)
         devices = Picamera2.global_camera_info()
@@ -70,7 +68,12 @@ class PicameraCapture(VideoCaptureAdapter):
         self.picam2 = Picamera2(index)
         self.formats = formats
         self.format: Optional[str] = None
-        self._cap, self.settings = self._try_device_props(device, camera_settings)
+        self._cap, self._settings = self._try_device_props(device, camera_settings)
+
+    @property
+    def settings(self) -> CameraSettings:
+        """Concrete implementation of the abstract settings property."""
+        return self._settings
 
     def _try_device_props(
         self, device: str, camera_settings: CameraSettings
@@ -98,7 +101,7 @@ class PicameraCapture(VideoCaptureAdapter):
                 and not self.formats.is_RGB(pixel_format)
                 and pixel_format != "MJPEG"
             ):
-                fmt = pixel_formats_to_picamera2_format.get(pixel_format)
+                fmt = PIXEL_FORMATS_TO_PICAMERA2_MAP.get(pixel_format)
             else:
                 fmt = pixel_format
 
@@ -145,9 +148,16 @@ class PicameraCapture(VideoCaptureAdapter):
 
         frame = cast(np.ndarray, frame)
 
+        pixel_format = (
+            PICAMERA2_TO_PIXEL_FORMATS_MAP.get(self.format)
+            if self.format and self.format != "MJPEG"
+            else self.format
+        )
+
         updated_settings = {
             **camera_settings.model_dump(),
             "fps": fps,
+            "use_gstreamer": False,
             "pixel_format": pixel_format,
             "device": device,
             "width": width,

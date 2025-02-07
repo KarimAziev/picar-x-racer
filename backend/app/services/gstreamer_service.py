@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.core.video_device_abc import VideoDeviceABC
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
 from app.util.video_checksum import get_dev_video_checksum
@@ -17,7 +18,7 @@ from app.util.video_checksum import get_dev_video_checksum
 logger = Logger(__name__)
 
 
-class GStreamerService(metaclass=SingletonMeta):
+class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
     @staticmethod
     @lru_cache()
     def check_gstreamer() -> Tuple[bool, bool]:
@@ -91,8 +92,7 @@ class GStreamerService(metaclass=SingletonMeta):
             .build()
         )
 
-    @staticmethod
-    def list_video_devices() -> List[DeviceType]:
+    def list_video_devices(self) -> List[DeviceType]:
         """
         Cached method for enumerating video devices using GStreamer.
 
@@ -148,6 +148,7 @@ class GStreamerService(metaclass=SingletonMeta):
         A list of DeviceType objects (`DiscreteDevice` or `DeviceStepwise`) describing
         video devices detected by GStreamer with their capabilities.
         """
+        logger.info("CACHED METHOD")
         try:
             import gi  # type: ignore
 
@@ -301,7 +302,7 @@ class GStreamerService(metaclass=SingletonMeta):
 
 
 if __name__ == "__main__":
-    devices = GStreamerService.list_video_devices()
+    devices = GStreamerService().list_video_devices()
     if not devices:
         print("No valid video devices found.")
     else:
