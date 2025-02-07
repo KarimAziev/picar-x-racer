@@ -171,11 +171,13 @@ import {
   validateStepwiseData,
   isStepwiseDevice,
   isGstreamerStepwiseDevice,
+  groupDevices,
 } from "@/features/settings/util";
 import {
   DiscreteDevice,
   CameraSettings,
   Device,
+  DeviceNode,
 } from "@/features/settings/interface";
 
 import TreeSelect from "@/ui/TreeSelect.vue";
@@ -194,7 +196,9 @@ import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const camStore = useCameraStore();
 
-const devices = computed(() => mapChildren(camStore.devices));
+const devices = computed(
+  () => mapChildren(groupDevices(camStore.devices)) as DeviceNode[],
+);
 
 const useGstreamer = ref(camStore.data.use_gstreamer);
 
@@ -204,10 +208,9 @@ const stepwiseData = ref<Pick<CameraSettings, "width" | "fps" | "height">>({
   fps: camStore.data.fps,
 });
 
-const getInitialValue = () =>
-  findDevice(camStore.data, camStore.devices) || null;
+const getInitialValue = () => findDevice(camStore.data, devices.value) || null;
 
-const selectedDevice = ref<Device | null>(getInitialValue());
+const selectedDevice = ref(getInitialValue());
 
 const stepwisePresetValue = ref<PresetOptionValue | undefined>(
   findStepwisePreset(stepwiseData.value)?.value,
@@ -216,8 +219,9 @@ const stepwisePresetValue = ref<PresetOptionValue | undefined>(
 const label = computed(() => {
   const val = selectedDevice.value?.device;
   const name = selectedDevice.value?.name;
+  const camLabel = [name, val].filter((v) => !!v).join(": ");
 
-  return [`Camera: `, name, val].filter((v) => !!v).join(" ");
+  return camLabel.length > 0 ? camLabel : "Camera Device: ";
 });
 
 const invalidData = ref<Partial<Record<"width" | "height" | "fps", string>>>(

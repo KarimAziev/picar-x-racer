@@ -10,6 +10,7 @@ import {
   GstreamerDiscreteDevice,
   GstreamerStepwiseDevice,
   Device,
+  MappedDevice,
 } from "@/features/settings/interface";
 import { props } from "@/util/obj";
 import { isNumber } from "@/util/guards";
@@ -126,54 +127,59 @@ export const extractDeviceId = (path?: string) => {
 
 const checkPixelFormat = (a?: string, b?: string) => a === b || (!a && !b);
 
+export const isDeviceEq = (item: CameraSettings, device: Device) => {
+  if (
+    item.device !== device.device ||
+    !checkPixelFormat(item.pixel_format, device.pixel_format)
+  ) {
+    return false;
+  }
+
+  const { height, width } = item;
+  if (!width || !height) {
+    return;
+  }
+
+  if (isDiscreteDevice(device)) {
+    const isSizeEq = width === device.width && height === device.height;
+    const fpsEq =
+      item.fps === device.fps || (!isNumber(item.fps) && !isNumber(device.fps));
+    return fpsEq && isSizeEq;
+  }
+
+  if (isStepwiseDevice(device)) {
+    const fpsEq = isNumber(item.fps)
+      ? item.fps >= device.min_fps && item.fps <= device.max_fps
+      : false;
+
+    return (
+      device.max_width >= width &&
+      device.min_width <= width &&
+      device.max_height >= height &&
+      device.min_height <= height &&
+      fpsEq
+    );
+  }
+};
+
 export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
-  const { device, fps, height, width, pixel_format } = item;
+  const { device, height, width } = item;
   if (!device || !width || !height) {
     return;
   }
 
-  const stack: (DeviceStepwise | DeviceNode | DiscreteDevice)[] = [...items];
-  const candidates: DiscreteDevice[] = [];
+  const stack = [...items];
 
   while (stack.length > 0) {
     const current = stack.pop();
     if (current) {
-      const currDevice = (current as any).device;
-
       if ((current as any).children) {
         stack.push(...(current as any).children);
-      } else if (
-        extractDeviceId(device) === extractDeviceId(currDevice) &&
-        checkPixelFormat(pixel_format, (current as any).pixel_format)
-      ) {
-        if ((current as any).width) {
-          const discretedDevice: DiscreteDevice = current as DiscreteDevice;
-          if (
-            discretedDevice.width === width &&
-            discretedDevice.height === height
-          ) {
-            if (fps === discretedDevice.fps) {
-              return discretedDevice;
-            } else {
-              candidates.push(discretedDevice);
-            }
-          }
-        } else {
-          const stepwiseDevice = current as DeviceStepwise;
-          if (
-            stepwiseDevice.max_width >= width &&
-            stepwiseDevice.min_width <= width &&
-            stepwiseDevice.max_height >= height &&
-            stepwiseDevice.min_height <= height
-          ) {
-            return stepwiseDevice;
-          }
-        }
+      } else if (isDeviceEq(item, current as unknown as MappedDevice)) {
+        return current as unknown as Device;
       }
     }
   }
-
-  return candidates[0];
 };
 
 export const validateStepwiseData = (

@@ -3,13 +3,8 @@ import { defineStore } from "pinia";
 
 import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
-import {
-  DeviceNode,
-  Device,
-  CameraSettings,
-} from "@/features/settings/interface";
+import { Device, CameraSettings } from "@/features/settings/interface";
 import { retrieveError } from "@/util/error";
-import { groupDevices } from "@/features/settings/util";
 
 export const dimensions = [
   [640, 480],
@@ -34,7 +29,7 @@ export interface PhotoCaptureResponse {
 export interface State {
   data: CameraSettings;
   loading: boolean;
-  devices: DeviceNode[];
+  devices: Device[];
   error: string | null;
 }
 
@@ -97,7 +92,7 @@ export const useStore = defineStore("camera", {
         const { data } = await axios.get<{ devices: Device[] }>(
           "/api/camera/devices",
         );
-        this.devices = groupDevices(data.devices);
+        this.devices = data.devices;
       } catch (error) {
         messager.handleError(error, "Error fetching camera devices");
       } finally {
