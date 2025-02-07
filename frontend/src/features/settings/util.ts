@@ -150,7 +150,7 @@ export const isDeviceEq = (item: CameraSettings, device: Device) => {
   if (isStepwiseDevice(device)) {
     const fpsEq = isNumber(item.fps)
       ? item.fps >= device.min_fps && item.fps <= device.max_fps
-      : false;
+      : true;
 
     return (
       device.max_width >= width &&
