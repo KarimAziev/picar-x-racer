@@ -1,7 +1,13 @@
 <template>
   <div class="flex gap-2">
-    <div class="flex-1">
-      <Field :label="label" labelClassName="truncate max-w-full">
+    <div class="flex-1 min-w-0">
+      <Field>
+        <span
+          v-tooltip="label"
+          class="truncated-label truncate block font-bold"
+          v-if="label"
+          >{{ label }}
+        </span>
         <TreeSelect
           @update:model-value="updateDevice"
           :nodes="devices"
@@ -10,7 +16,7 @@
       </Field>
     </div>
 
-    <div class="flex-1" v-if="isStepwiseDevice(selectedDevice)">
+    <div class="flex-1 min-w-0" v-if="isStepwiseDevice(selectedDevice)">
       <SelectField
         optionLabel="label"
         optionValue="value"
@@ -29,7 +35,7 @@
     class="flex gap-2 my-2"
     v-if="selectedDevice && (selectedDevice as any).max_width"
   >
-    <div class="flex flex-1 gap-x-2">
+    <div class="flex flex-1 min-w-0 gap-x-2">
       <NumberInputField
         :useGrouping="false"
         v-if="selectedDevice && (selectedDevice as any).max_width"
@@ -100,7 +106,7 @@
         />
       </NumberInputField>
     </div>
-    <div class="flex-1 flex">
+    <div class="flex-1 min-w-0 flex">
       <NumberInputField
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="FPS"
@@ -211,7 +217,9 @@ const label = computed(() => {
   const val = selectedDevice.value?.device;
   const name = selectedDevice.value?.name;
 
-  return [`Camera:`, name, val].filter((v) => !!v).join(" ");
+  return [`Camera: `, name, val, name, val, name, val, name, val]
+    .filter((v) => !!v)
+    .join("");
 });
 
 const invalidData = ref<Partial<Record<"width" | "height" | "fps", string>>>(
