@@ -200,45 +200,12 @@ class PicameraCaptureAdapter(VideoCaptureABC):
 
             if frame is not None:
                 frame = cast(np.ndarray, frame)
-                if (
-                    self.format == "YVU420"
-                    and self.settings.height
-                    and self.settings.width
-                ):
+                if self.format:
+                    convert_color = color_conversions.get(self.format)
 
-                    active_H = self.settings.height
-                    active_W = self.settings.width
-
-                    raw_total_rows, raw_stride = frame.shape
-
-                    expected_total_rows = active_H + active_H // 2
-
-                    if raw_total_rows == expected_total_rows:
-                        Y = frame[:active_H, 0:active_W]
-
-                        chroma_rows = raw_total_rows - active_H
-
-                        half_chroma = chroma_rows // 2
-
-                        V = frame[active_H : active_H + half_chroma, 0:active_W]
-                        U = frame[
-                            active_H + half_chroma : active_H + chroma_rows, 0:active_W
-                        ]
-
-                        yuv_reordered = np.vstack([Y, U, V])
-
-                        frame = cv2.cvtColor(yuv_reordered, cv2.COLOR_YUV2BGR_I420)
-                    else:
-                        if raw_stride >= active_W:
-                            frame = frame[0:active_H, 0:active_W]
-                            frame = cv2.cvtColor(frame, cv2.COLOR_YUV2BGR_I420)
-                        else:
-                            frame = cv2.cvtColor(frame, cv2.COLOR_YUV2BGR_I420)
-                elif convert_color := (
-                    color_conversions.get(self.format) if self.format else None
-                ):
-                    frame = cv2.cvtColor(frame, convert_color)
-
+                    frame = (
+                        cv2.cvtColor(frame, convert_color) if convert_color else frame
+                    )
                 return True, frame
             else:
                 return False, np.empty((0, 0), dtype=np.uint8)
