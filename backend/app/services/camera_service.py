@@ -356,7 +356,7 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.error(err_msg)
             raise
 
-        except Exception as e:
+        except Exception:
             self.stop_camera()
             self.camera_run = False
             self.logger.error("Unhandled exception", exc_info=True)
