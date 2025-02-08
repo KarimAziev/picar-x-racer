@@ -165,14 +165,7 @@ import type { InputNumberInputEvent } from "primevue/inputnumber";
 import type { TreeNode } from "@/ui/Tree.vue";
 import { useCameraStore } from "@/features/settings/stores";
 import Field from "@/ui/Field.vue";
-import {
-  mapChildren,
-  validateStepwiseData,
-  isStepwiseDevice,
-  groupDevices,
-  extractDeviceAPI,
-  findAlternative,
-} from "@/features/settings/util";
+
 import {
   DiscreteDevice,
   CameraSettings,
@@ -191,7 +184,15 @@ import {
   PresetOptionValue,
 } from "@/features/settings/components/camera/config";
 import SelectField from "@/ui/SelectField.vue";
-import { findStepwisePreset } from "@/features/settings/components/camera/util";
+import {
+  findStepwisePreset,
+  mapChildren,
+  validateStepwiseData,
+  isStepwiseDevice,
+  groupDevices,
+  extractDeviceAPI,
+  findAlternative,
+} from "@/features/settings/components/camera/util";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
 const camStore = useCameraStore();
@@ -240,6 +241,7 @@ const handleUpdateStepwisePreset = (preset?: PresetOptionValue) => {
   if (preset?.width && preset?.height) {
     stepwiseData.value.width = preset.width;
     stepwiseData.value.height = preset.height;
+    updateStepwiseDevice();
   }
 };
 
@@ -412,7 +414,9 @@ const handleToggleGstreamer = async (value: boolean) => {
   if (alternative && isStepwiseDevice(alternative)) {
     selectedDevice.value = alternative;
     stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
-    validate();
+    if (validate()) {
+      updateStepwiseDevice();
+    }
   } else if (alternative) {
     await Promise.all([
       camStore.updateData({
