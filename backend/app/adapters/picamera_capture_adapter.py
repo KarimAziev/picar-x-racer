@@ -200,12 +200,32 @@ class PicameraCaptureAdapter(VideoCaptureABC):
 
             if frame is not None:
                 frame = cast(np.ndarray, frame)
-                if self.format:
-                    convert_color = color_conversions.get(self.format)
+                if (
+                    self.format == "YVU420"
+                    and self.settings.height
+                    and self.settings.width
+                ):
+                    H = self.settings.height
+                    W = self.settings.width
 
-                    frame = (
-                        cv2.cvtColor(frame, convert_color) if convert_color else frame
-                    )
+                    if (
+                        frame.ndim != 2
+                        or frame.shape[0] != H + H // 2
+                        or frame.shape[1] != W
+                    ):
+                        frame = frame.reshape((H + H // 2, W))
+
+                    Y = frame[:H, :]
+                    V = frame[H : H + (H // 4), :]
+                    U = frame[H + (H // 4) : H + (H // 2), :]
+
+                    frame_reordered = np.vstack([Y, U, V])
+                    frame = cv2.cvtColor(frame_reordered, cv2.COLOR_YUV2BGR_I420)
+                elif convert_color := (
+                    color_conversions.get(self.format) if self.format else None
+                ):
+                    frame = cv2.cvtColor(frame, convert_color)
+
                 return True, frame
             else:
                 return False, np.empty((0, 0), dtype=np.uint8)
