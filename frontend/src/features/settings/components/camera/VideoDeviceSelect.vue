@@ -58,7 +58,7 @@
         <Slider
           class="my-2 cursor-pointer"
           v-if="selectedDevice && (selectedDevice as any).max_width"
-          v-model="stepwiseData.width"
+          v-model="stepwiseData.width as number"
           :disabled="loading"
           :loading="loading"
           :min="selectedDevice && (selectedDevice as any).min_width"
@@ -92,7 +92,7 @@
         <Slider
           class="my-2 cursor-pointer"
           v-if="selectedDevice && (selectedDevice as any).max_width"
-          v-model="stepwiseData.height"
+          v-model="stepwiseData.height as number"
           :disabled="loading"
           :loading="loading"
           :min="selectedDevice && (selectedDevice as any).min_height"
@@ -128,7 +128,7 @@
         <Slider
           class="my-2 cursor-pointer"
           v-if="selectedDevice && (selectedDevice as any).max_width"
-          v-model="stepwiseData.fps"
+          v-model="stepwiseData.fps as number"
           :disabled="loading"
           :loading="loading"
           :min="selectedDevice && (selectedDevice as any).min_fps"
@@ -166,14 +166,12 @@ import type { TreeNode } from "@/ui/Tree.vue";
 import { useCameraStore } from "@/features/settings/stores";
 import Field from "@/ui/Field.vue";
 import {
-  findDevice,
   mapChildren,
   validateStepwiseData,
   isStepwiseDevice,
-  isGstreamerStepwiseDevice,
   groupDevices,
   extractDeviceAPI,
-  extractDeviceId,
+  findAlternative,
 } from "@/features/settings/util";
 import {
   DiscreteDevice,
@@ -207,12 +205,20 @@ const useGstreamer = ref(camStore.data.use_gstreamer);
 const stepwiseData = ref<Pick<CameraSettings, "width" | "fps" | "height">>({
   width: camStore.data.width || 0,
   height: camStore.data.height || 0,
-  fps: camStore.data.fps,
+  fps: camStore.data.fps || 30,
 });
 
-const getInitialValue = () => findDevice(camStore.data, devices.value) || null;
+const getInitialValue = () =>
+  (camStore.data.device &&
+    findAlternative(
+      camStore.data.device,
+      camStore.data,
+      devices.value,
+      true,
+    )) ||
+  null;
 
-const selectedDevice = ref(getInitialValue());
+const selectedDevice = ref<Device | null>(getInitialValue());
 
 const stepwisePresetValue = ref<PresetOptionValue | undefined>(
   findStepwisePreset(stepwiseData.value)?.value,
@@ -258,6 +264,7 @@ const validate = () => {
 
 const handleChangeFPS = (newValue: number) => {
   stepwiseData.value.fps = newValue;
+  validate();
 };
 
 const handleChangeWidth = ({ value }: InputNumberInputEvent) => {
@@ -271,11 +278,9 @@ const handleChangeHeight = ({ value }: InputNumberInputEvent) => {
 };
 
 const isUnchanged = () => {
-  const sizeData =
-    isStepwiseDevice(selectedDevice.value) ||
-    isGstreamerStepwiseDevice(selectedDevice.value)
-      ? stepwiseData.value
-      : (selectedDevice.value as DiscreteDevice);
+  const sizeData = isStepwiseDevice(selectedDevice.value)
+    ? stepwiseData.value
+    : (selectedDevice.value as DiscreteDevice);
 
   return (
     useGstreamer.value === camStore.data.use_gstreamer &&
@@ -315,12 +320,12 @@ const updateStepwiseDevice = async () => {
   if (
     !isValid ||
     !inRange(
-      deviceData.width,
+      deviceData.width as number,
       stepwiseParams.min_width,
       stepwiseParams.max_width,
     ) ||
     !inRange(
-      deviceData.height,
+      deviceData.height as number,
       stepwiseParams.min_height,
       stepwiseParams.max_height,
     ) ||
@@ -330,10 +335,10 @@ const updateStepwiseDevice = async () => {
         stepwiseParams.min_fps,
         stepwiseParams.max_fps,
       )) ||
-    (deviceData.width - stepwiseParams.min_width) %
+    ((deviceData.width as number) - stepwiseParams.min_width) %
       stepwiseParams.width_step !==
       0 ||
-    (deviceData.height - stepwiseParams.min_height) %
+    ((deviceData.height as number) - stepwiseParams.min_height) %
       stepwiseParams.height_step !==
       0
   ) {
@@ -346,31 +351,31 @@ const updateStepwiseDevice = async () => {
     device: stepwiseParams.device,
 
     media_type: stepwiseParams.media_type,
-    width: roundNumber(deviceData.width),
-    height: roundNumber(deviceData.height),
+    width: roundNumber(deviceData.width as number),
+    height: roundNumber(deviceData.height as number),
     fps: isNumber(deviceData.fps)
       ? roundNumber(deviceData.fps)
       : deviceData.fps,
   });
 };
 
-const updateDevice = async (stepwiseParams: Device) => {
-  selectedDevice.value = stepwiseParams;
+const updateDevice = async (deviceParams: Device) => {
+  selectedDevice.value = deviceParams;
 
   const valid = validate();
 
-  if (!stepwiseParams || !valid || isUnchanged()) {
-    return stepwiseParams;
+  if (!deviceParams || !valid || isUnchanged()) {
+    return deviceParams;
   }
 
-  if ((stepwiseParams as any).width) {
-    const discreted = stepwiseParams as DiscreteDevice;
+  if ((deviceParams as any).width) {
+    const discreted = deviceParams as DiscreteDevice;
 
     await camStore.updateData({
       ...discreted,
       use_gstreamer: useGstreamer.value,
     });
-  } else if (isStepwiseDevice(stepwiseParams)) {
+  } else if (isStepwiseDevice(deviceParams)) {
     stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 
     updateStepwiseDevice();
@@ -385,41 +390,40 @@ const handleToggleGstreamer = async (value: boolean) => {
     use_gstreamer: value,
   };
 
+  const devicePath = selectedDevice.value?.device || camStore.data.device;
   const api = extractDeviceAPI(data.device);
+  const isAutoToggle = value ? api !== "libcamera" : api === "libcamera";
+  if (!isAutoToggle || !devicePath) {
+    await Promise.all([camStore.updateData(data), camStore.fetchDevices()]);
+    return;
+  }
+
   const sizeData = isStepwiseDevice(selectedDevice.value)
-    ? stepwiseData.value
+    ? {
+        width: stepwiseData.value.width,
+        height: stepwiseData.value.height,
+        pixel_format: selectedDevice.value.pixel_format,
+        fps: stepwiseData.value.fps,
+      }
     : (selectedDevice.value as DiscreteDevice);
 
-  const found =
-    (value && api === "picamera2") || (!value && api === "libcamera")
-      ? findDevice(
-          {
-            ...data,
-            ...sizeData,
-            device: `${
-              ["picamera2", "libcamera"].find((a) => a !== api) as string
-            }:${extractDeviceId(data.device)}`,
-          },
-          devices.value,
-        )
-      : undefined;
+  const alternative = findAlternative(devicePath, sizeData, devices.value);
 
-  if (found) {
+  if (alternative && isStepwiseDevice(alternative)) {
+    selectedDevice.value = alternative;
+    stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
+    validate();
+  } else if (alternative) {
     await Promise.all([
       camStore.updateData({
-        ...data,
-        ...sizeData,
-        ...found,
-        device: found?.device || data.device,
+        ...alternative,
+        use_gstreamer: data.use_gstreamer,
       }),
       camStore.fetchDevices(),
     ]);
   } else {
     await Promise.all([camStore.updateData(data), camStore.fetchDevices()]);
   }
-
-  selectedDevice.value = getInitialValue();
-  stepwisePresetValue.value = findStepwisePreset(stepwiseData.value)?.value;
 };
 
 onMounted(async () => {
@@ -435,9 +439,10 @@ watch(
     stepwiseData.value = {
       width: camStore.data.width,
       height: camStore.data.height,
-      fps: camStore.data.fps,
+      fps: camStore.data.fps || stepwiseData.value.fps,
     };
     useGstreamer.value = camStore.data.use_gstreamer;
+    validate();
   },
 );
 

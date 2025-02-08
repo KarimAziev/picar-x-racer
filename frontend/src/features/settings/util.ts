@@ -7,14 +7,13 @@ import {
   DeviceStepwise,
   CameraSettings,
   StepwiseDeviceProps,
-  GstreamerDiscreteDevice,
-  GstreamerStepwiseDevice,
   Device,
   MappedDevice,
 } from "@/features/settings/interface";
 import { props } from "@/util/obj";
 import { isNumber } from "@/util/guards";
 import { inRange } from "@/util/number";
+import type { Nullable } from "@/util/ts-helpers";
 
 export const objectKeysToOptions = (
   obj: Record<string, string[]> | string[],
@@ -113,7 +112,7 @@ export const mapChildren = <DataItem>(
   });
 };
 
-export const extractDeviceAPI = (path?: string) => {
+export const extractDeviceAPI = (path?: Nullable<string>) => {
   if (!path) {
     return path;
   }
@@ -123,7 +122,7 @@ export const extractDeviceAPI = (path?: string) => {
     return parts.shift();
   }
 };
-export const extractDeviceId = (path?: string) => {
+export const extractDeviceId = (path?: Nullable<string>) => {
   if (!path) {
     return path;
   }
@@ -135,46 +134,101 @@ export const extractDeviceId = (path?: string) => {
   return path;
 };
 
-const checkPixelFormat = (a?: string, b?: string) => a === b || (!a && !b);
+const checkPixelFormat = (a?: Nullable<string>, b?: Nullable<string>) =>
+  a === b || (!a && !b);
 
-export const isDeviceEq = (item: CameraSettings, device: Device) => {
-  if (
-    item.device !== device.device ||
-    !checkPixelFormat(item.pixel_format, device.pixel_format)
-  ) {
-    return false;
-  }
+export const checkStepwiseFPS = (
+  fps: Nullable<number>,
+  stepwiseDevice: Pick<DeviceStepwise, "min_fps" | "max_fps">,
+) =>
+  isNumber(fps)
+    ? inRange(fps, stepwiseDevice.min_fps, stepwiseDevice.max_fps)
+    : true;
 
-  const { height, width } = item;
-  if (!width || !height) {
-    return;
-  }
+export const checkStepwiseSize = (
+  deviceProps: Pick<CameraSettings, "width" | "height">,
+  stepwiseDevice: DeviceStepwise,
+) =>
+  isNumber(deviceProps.width) &&
+  isNumber(deviceProps.height) &&
+  inRange(
+    deviceProps.width,
+    stepwiseDevice.min_width,
+    stepwiseDevice.max_width,
+  ) &&
+  inRange(
+    deviceProps.height,
+    stepwiseDevice.min_height,
+    stepwiseDevice.max_height,
+  );
 
-  if (isStepwiseDevice(device) || isGstreamerStepwiseDevice(device)) {
-    const fpsEq = isNumber(item.fps)
-      ? item.fps >= device.min_fps && item.fps <= device.max_fps
-      : true;
+export const checkStepwiseProps = (
+  deviceProps: Pick<
+    CameraSettings,
+    "pixel_format" | "fps" | "width" | "height"
+  >,
+  stepwiseDevice: DeviceStepwise,
+) =>
+  checkPixelFormat(deviceProps.pixel_format, stepwiseDevice.pixel_format) &&
+  checkStepwiseSize(deviceProps, stepwiseDevice) &&
+  checkStepwiseFPS(deviceProps.fps, stepwiseDevice);
 
-    return (
-      device.max_width >= width &&
-      device.min_width <= width &&
-      device.max_height >= height &&
-      device.min_height <= height &&
-      fpsEq
-    );
-  }
-  const isSizeEq = width === device.width && height === device.height;
-  const fpsEq =
-    item.fps === device.fps || (!isNumber(item.fps) && !isNumber(device.fps));
-  return fpsEq && isSizeEq;
+export const checkNullableNumbers = (
+  a: Nullable<number>,
+  b: Nullable<number>,
+) => (isNumber(a) && isNumber(b) ? a === b : false);
+
+export const checkDiscreteProps = (
+  deviceProps: Pick<
+    CameraSettings,
+    "pixel_format" | "fps" | "width" | "height"
+  >,
+  discreteProps: Pick<
+    DiscreteDevice,
+    "pixel_format" | "fps" | "width" | "height"
+  >,
+  scrictFPS = true,
+) => {
+  return checkPixelFormat(
+    deviceProps.pixel_format,
+    discreteProps.pixel_format,
+  ) &&
+    deviceProps.width === discreteProps.width &&
+    deviceProps.height === discreteProps.height &&
+    scrictFPS
+    ? deviceProps.fps === discreteProps.fps
+    : checkNullableNumbers(deviceProps.fps, discreteProps.fps);
 };
 
-export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
-  const { device, height, width } = item;
-  if (!device || !width || !height) {
-    return;
+export const checkDeviceProps = (
+  item: Pick<CameraSettings, "pixel_format" | "fps" | "width" | "height">,
+  device: Device,
+  scrictFPS = true,
+) => {
+  if (isStepwiseDevice(device)) {
+    return checkStepwiseProps(item, device);
   }
+  return checkDiscreteProps(item, device, scrictFPS);
+};
 
+export const checkPath = (
+  item: Pick<CameraSettings, "pixel_format" | "fps" | "width" | "height">,
+  device: Device,
+  scrictFPS = true,
+) => {
+  if (isStepwiseDevice(device)) {
+    return checkStepwiseProps(item, device);
+  }
+  return checkDiscreteProps(item, device, scrictFPS);
+};
+
+export const findDevice = (
+  item: Pick<
+    CameraSettings,
+    "device" | "pixel_format" | "fps" | "width" | "height"
+  >,
+  items: DeviceNode[],
+) => {
   const stack = [...items];
 
   while (stack.length > 0) {
@@ -182,11 +236,80 @@ export const findDevice = (item: CameraSettings, items: DeviceNode[]) => {
     if (current) {
       if ((current as any).children) {
         stack.push(...(current as any).children);
-      } else if (isDeviceEq(item, current as unknown as MappedDevice)) {
+      } else if (
+        item.device === (current as any).device &&
+        checkDeviceProps(item, current as unknown as MappedDevice)
+      ) {
         return current as unknown as Device;
       }
     }
   }
+};
+
+export const findAlternative = (
+  devicePath: string,
+  data: Pick<CameraSettings, "pixel_format" | "fps" | "width" | "height">,
+  devices: DeviceNode[],
+  sameAPI?: boolean,
+) => {
+  const path = extractDeviceId(devicePath);
+  const api = extractDeviceAPI(devicePath) || "v4l2";
+
+  const alternatives: (Device & { score: number })[] = [];
+  const stack = [...devices];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current) {
+      if ((current as any).children) {
+        stack.push(...(current as any).children);
+      } else if (
+        (current as any).device &&
+        path === extractDeviceId((current as any).device)
+      ) {
+        const devApi = extractDeviceAPI((current as any).device) || "v4l2";
+        if (sameAPI) {
+          if (api !== devApi) {
+            continue;
+          }
+        } else {
+          if (api === devApi) {
+            continue;
+          }
+        }
+
+        const device = current as unknown as MappedDevice;
+        console.log(device.device, "DEVICE", device);
+        const isStepwise = isStepwiseDevice(device);
+        const pixelFormatMatch = checkPixelFormat(
+          data.pixel_format,
+          device.pixel_format,
+        );
+
+        const sizeMatch = isStepwise
+          ? checkStepwiseSize(data, device)
+          : data.width === device.width && data.height === device.height;
+
+        const fpsMatch = isStepwise
+          ? checkStepwiseFPS(data.fps, device)
+          : !isNumber(data.fps) || data.fps === device.fps;
+
+        const score = [
+          sizeMatch ? 10 : -10,
+          pixelFormatMatch ? 5 : -5,
+          fpsMatch ? 1 : -1,
+        ].reduce((acc, v) => acc + v, 0);
+
+        alternatives.push({ ...device, score });
+      }
+    }
+  }
+
+  const sortedAlternatives = alternatives.sort(
+    ({ score: a }, { score: b }) => b - a,
+  );
+
+  return sortedAlternatives[0];
 };
 
 export const validateStepwiseData = (
@@ -231,31 +354,11 @@ export const validateStepwiseData = (
   );
 };
 
-export const isStepwiseDeviceStrict = (data: any): data is DeviceStepwise =>
-  data.max_width && data.pixel_format && !data.media_type;
-
-export const isDiscreteDevice = (data: any): data is DiscreteDevice =>
-  data.width && data.pixel_format && !data.media_type;
-
-export const isGstreamerStepwiseDevice = (
-  data: any,
-): data is GstreamerStepwiseDevice => data.max_width && data.media_type;
-
-export const isGstreamerDiscreteDevice = (
-  data: any,
-): data is GstreamerDiscreteDevice => data.width && data.media_type;
-
 export const isStepwiseDevice = (data: any): data is DeviceStepwise =>
   data?.max_width;
 
 export const generateLabel = (device: Device) => {
-  const isGstreamerStepwise = isGstreamerStepwiseDevice(device);
-
-  if (
-    isStepwiseDevice(device) ||
-    isGstreamerStepwise ||
-    isStepwiseDeviceStrict(device)
-  ) {
+  if (isStepwiseDevice(device)) {
     const minSize = props(["min_width", "min_height"], device).join("x");
     const maxSize = props(["max_width", "max_height"], device).join("x");
     const fps = props(["min_fps", "max_fps"], device)
@@ -263,12 +366,7 @@ export const generateLabel = (device: Device) => {
       .join("-")
       .concat("FPS");
     const size = `${minSize} - ${maxSize}`;
-    return [
-      device.pixel_format,
-      size,
-      fps,
-      isGstreamerStepwise ? device.media_type : null,
-    ]
+    return [device.pixel_format, size, fps, device.media_type]
       .filter((val) => !!val)
       .map((v) => `${v}`)
       .join(" ");
@@ -279,7 +377,7 @@ export const generateLabel = (device: Device) => {
     device.pixel_format,
     size,
     device.fps ? `${device.fps}FPS` : device.fps,
-    isGstreamerDiscreteDevice(device) ? device.media_type : null,
+    device.media_type,
   ]
     .filter((val) => !!val)
     .map((v) => `${v}`)

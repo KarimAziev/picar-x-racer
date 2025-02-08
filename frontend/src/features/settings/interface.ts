@@ -2,7 +2,11 @@ import { ControllerActionName } from "@/features/controller/store";
 import type { DetectionSettings } from "@/features/detection";
 import type { StreamSettings } from "@/features/settings/stores/stream";
 import { MusicMode } from "@/features/music";
-import { FlattenBooleanObjectKeys, FlattenObject } from "@/util/ts-helpers";
+import type {
+  FlattenBooleanObjectKeys,
+  FlattenObject,
+  Nullable,
+} from "@/util/ts-helpers";
 
 export type APIMediaType = "image" | "sound" | "music" | "data";
 
@@ -90,15 +94,22 @@ export interface RemoveFileResponse {
 
 export interface DeviceCommonProps {
   device: string;
-  name?: string;
+  name?: Nullable<string>;
+  pixel_format: Nullable<string>;
+  media_type?: Nullable<string>;
+  api: Nullable<string>;
+  path: Nullable<string>;
 }
 
-export interface DiscreteDevice extends DeviceCommonProps {
+export interface DiscreteDeviceProps {
   width: number;
   height: number;
-  fps: number;
-  pixel_format: string;
+  fps: Nullable<number>;
 }
+
+export interface DiscreteDevice
+  extends DeviceCommonProps,
+    DiscreteDeviceProps {}
 
 export interface StepwiseDeviceProps {
   min_width: number;
@@ -109,32 +120,14 @@ export interface StepwiseDeviceProps {
   width_step: number;
   min_fps: number;
   max_fps: number;
-  fps_step?: number;
+  fps_step?: Nullable<number>;
 }
 
-export interface DeviceStepwise extends DeviceCommonProps, StepwiseDeviceProps {
-  pixel_format: string;
-  media_type?: string;
-}
-
-export interface GstreamerDiscreteDevice
-  extends Omit<DiscreteDevice, "fps" | "pixel_format"> {
-  fps?: number;
-  pixel_format?: string;
-  media_type: string;
-}
-
-export interface GstreamerStepwiseDevice
+export interface DeviceStepwise
   extends DeviceCommonProps,
-    StepwiseDeviceProps {
-  media_type: string;
-  pixel_format?: string;
-}
-export type Device =
-  | DeviceStepwise
-  | DiscreteDevice
-  | GstreamerDiscreteDevice
-  | GstreamerStepwiseDevice;
+    StepwiseDeviceProps {}
+
+export type Device = DeviceStepwise | DiscreteDevice;
 
 export type MappedDevice = Device & {
   key: string;
@@ -151,29 +144,29 @@ export interface CameraSettings {
   /**
    * The ID or name of the camera device.
    */
-  device?: string;
+  device?: Nullable<string>;
 
   /**
    * The width of the camera frame in pixels.
    */
-  width?: number;
+  width?: Nullable<number>;
 
   /**
    * The height of the camera frame in pixels.
    */
-  height?: number;
+  height?: Nullable<number>;
 
   /**
    * The number of frames per second the camera should capture.
    */
-  fps?: number;
+  fps?: Nullable<number>;
 
   /**
    * The format for the pixels (e.g., 'RGB', 'GRAY').
    */
-  pixel_format?: string;
-  media_type?: string;
-  use_gstreamer?: boolean;
+  pixel_format?: Nullable<string>;
+  media_type?: Nullable<string>;
+  use_gstreamer?: Nullable<boolean>;
 }
 
 export interface TreeNode {
