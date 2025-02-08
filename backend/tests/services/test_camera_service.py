@@ -6,8 +6,8 @@ from typing import Any, Optional, cast
 from unittest.mock import AsyncMock, patch
 
 import numpy as np
-from app.adapters.capture_adapter import VideoCaptureAdapter
-from app.adapters.video_device_adapter import VideoDeviceAdapater
+from app.adapters.video_device_adapter import VideoDeviceAdapter
+from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraShutdownInProgressError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
@@ -15,7 +15,7 @@ from app.services.camera_service import CameraService
 from app.services.connection_service import ConnectionService
 from app.services.detection_service import DetectionService
 from app.services.file_service import FileService
-from app.services.video_recorder import VideoRecorder
+from app.services.video_recorder_service import VideoRecorderService
 
 
 class DummyDetectionService:
@@ -138,8 +138,8 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
         self.detection_service = cast(DetectionService, DummyDetectionService())
         self.file_service = cast(FileService, DummyFileService())
         self.connection_service = cast(ConnectionService, DummyConnectionService())
-        self.video_device_adapter = cast(VideoDeviceAdapater, DummyVideoDeviceAdapter())
-        self.video_recorder = cast(VideoRecorder, DummyVideoRecorder())
+        self.video_device_adapter = cast(VideoDeviceAdapter, DummyVideoDeviceAdapter())
+        self.video_recorder = cast(VideoRecorderService, DummyVideoRecorder())
 
         patcher = patch("app.services.camera_service.Logger", dummy_logger_patch)
         self.addCleanup(patcher.stop)
@@ -251,8 +251,8 @@ class TestCameraServiceSync(unittest.TestCase):
         self.detection_service = cast(DetectionService, DummyDetectionService())
         self.file_service = cast(FileService, DummyFileService())
         self.connection_service = cast(ConnectionService, DummyConnectionService())
-        self.video_device_adapter = cast(VideoDeviceAdapater, DummyVideoDeviceAdapter())
-        self.video_recorder = cast(VideoRecorder, DummyVideoRecorder())
+        self.video_device_adapter = cast(VideoDeviceAdapter, DummyVideoDeviceAdapter())
+        self.video_recorder = cast(VideoRecorderService, DummyVideoRecorder())
 
         patcher = patch("app.services.camera_service.Logger", dummy_logger_patch)
         patcher.start()
@@ -269,7 +269,7 @@ class TestCameraServiceSync(unittest.TestCase):
 
     def test_stop_camera_when_not_running(self):
         self.camera_service.camera_run = False
-        self.camera_service.cap = cast(VideoCaptureAdapter, DummyVideoCapture())
+        self.camera_service.cap = cast(VideoCaptureABC, DummyVideoCapture())
         self.camera_service.stop_camera()
         self.assertIsNone(self.camera_service.cap)
 

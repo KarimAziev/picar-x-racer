@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Tuple
 
 import cv2
-from app.adapters.capture_adapter import VideoCaptureAdapter
 from app.core.logger import Logger
+from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
 from app.util.device import release_video_capture_safe, try_video_path
@@ -14,12 +14,12 @@ if TYPE_CHECKING:
     from app.services.gstreamer_service import GStreamerService
 
 
-class GStreamerCapture(VideoCaptureAdapter):
+class GStreamerCaptureAdapter(VideoCaptureABC):
     def __init__(
-        self, device: str, camera_settings: CameraSettings, manager: "GStreamerService"
+        self, device: str, camera_settings: CameraSettings, service: "GStreamerService"
     ):
-        super().__init__(manager=manager)
-        self.manager = manager
+        super().__init__(service=service)
+        self.service = service
         self._cap, self._settings = self._try_device_props(device, camera_settings)
 
     def read(self) -> Tuple[bool, MatLike]:
@@ -31,7 +31,7 @@ class GStreamerCapture(VideoCaptureAdapter):
     def _try_device_props(
         self, device: str, camera_settings: CameraSettings
     ) -> Tuple[cv2.VideoCapture, CameraSettings]:
-        pipeline = self.manager.setup_pipeline(
+        pipeline = self.service.setup_pipeline(
             device,
             width=camera_settings.width,
             height=camera_settings.height,

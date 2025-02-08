@@ -1,11 +1,3 @@
-"""
-Module: video_recorder
-Description: Provides functionalities to record video sequences. This module
-contains the `VideoRecorder` class which is implemented as a singleton.
-The class allows for starting, writing frames to, and safely stopping
-video recordings. Utilizes OpenCV for video operations.
-"""
-
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
@@ -21,9 +13,12 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 
-class VideoRecorder(metaclass=SingletonMeta):
+class VideoRecorderService(metaclass=SingletonMeta):
     """
     A singleton class responsible for handling video recording functionality.
+
+    The class allows for starting, writing frames to, and safely stopping
+    video recordings.
     """
 
     def __init__(self, file_manager: "FileService"):

@@ -9,13 +9,13 @@ from app.schemas.camera import CameraSettings
 logger = Logger(name=__name__)
 
 
-class VideoCaptureAdapter(metaclass=ABCMeta):
+class VideoCaptureABC(metaclass=ABCMeta):
     """
     Abstract class responsible for managing video capturing.
     """
 
-    def __init__(self, manager: VideoDeviceABC):
-        self.manager = manager
+    def __init__(self, service: VideoDeviceABC):
+        self.service = service
 
     @property
     @abstractmethod

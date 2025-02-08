@@ -18,7 +18,7 @@ from app.util.photo import capture_photo
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
-    from app.adapters.video_device_adapter import VideoDeviceAdapater
+    from app.adapters.video_device_adapter import VideoDeviceAdapter
     from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.file_service import FileService
@@ -39,8 +39,8 @@ logger = Logger(__name__)
 async def update_camera_settings(
     request: Request,
     payload: CameraSettings,
-    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
-    gstreamer_manager: "GStreamerService" = Depends(deps.get_gstreamer_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_service),
+    gstreamer_manager: "GStreamerService" = Depends(deps.get_gstreamer_service),
 ):
     """
     Update the camera settings with new configurations and broadcast the updates.
@@ -103,7 +103,7 @@ async def update_camera_settings(
     ),
 )
 def get_camera_settings(
-    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_service),
 ):
     """
     Retrieve the current camera settings.
@@ -120,9 +120,7 @@ def get_camera_settings(
     ),
 )
 def get_camera_devices(
-    video_device_adapter: "VideoDeviceAdapater" = Depends(
-        deps.get_video_device_adapter
-    ),
+    video_device_adapter: "VideoDeviceAdapter" = Depends(deps.get_video_device_adapter),
 ):
     """
     Retrieve a list of available camera devices.
@@ -149,7 +147,7 @@ def get_camera_devices(
     },
 )
 async def take_photo(
-    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_service),
     file_manager: "FileService" = Depends(deps.get_file_manager),
 ):
     """

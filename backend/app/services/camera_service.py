@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import cv2
 import numpy as np
-from app.adapters.capture_adapter import VideoCaptureAdapter
 from app.config.video_enhancers import frame_enhancers
 from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import (
     CameraDeviceError,
     CameraNotFoundError,
@@ -23,11 +23,11 @@ from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
 from cv2.typing import MatLike
 
 if TYPE_CHECKING:
-    from app.adapters.video_device_adapter import VideoDeviceAdapater
+    from app.adapters.video_device_adapter import VideoDeviceAdapter
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
     from app.services.file_service import FileService
-    from app.services.video_recorder import VideoRecorder
+    from app.services.video_recorder_service import VideoRecorderService
 
 
 class CameraService(metaclass=SingletonMeta):
@@ -43,8 +43,8 @@ class CameraService(metaclass=SingletonMeta):
         detection_service: "DetectionService",
         file_manager: "FileService",
         connection_manager: "ConnectionService",
-        video_device_adapter: "VideoDeviceAdapater",
-        video_recorder: "VideoRecorder",
+        video_device_adapter: "VideoDeviceAdapter",
+        video_recorder: "VideoRecorderService",
     ):
         """
         Initializes the `CameraService` singleton instance.
@@ -69,7 +69,7 @@ class CameraService(metaclass=SingletonMeta):
         self.camera_run = False
         self.img: Optional[np.ndarray] = None
         self.stream_img: Optional[np.ndarray] = None
-        self.cap: Union[VideoCaptureAdapter, None] = None
+        self.cap: Union[VideoCaptureABC, None] = None
         self.camera_device_error: Optional[str] = None
         self.camera_loading: bool = False
         self.shutting_down = False

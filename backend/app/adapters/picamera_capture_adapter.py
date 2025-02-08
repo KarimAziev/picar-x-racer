@@ -2,9 +2,9 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union, cast
 
 import cv2
 import numpy as np
-from app.adapters.capture_adapter import VideoCaptureAdapter
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
+from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
 from app.services.picamera2_service import (
@@ -48,16 +48,16 @@ color_conversions: Dict[str, Union[int, None]] = {
 }
 
 
-class PicameraCapture(VideoCaptureAdapter):
+class PicameraCaptureAdapter(VideoCaptureABC):
     def __init__(
-        self, device: str, camera_settings: CameraSettings, manager: "PicameraService"
+        self, device: str, camera_settings: CameraSettings, service: "PicameraService"
     ):
-        super().__init__(manager=manager)
+        super().__init__(service=service)
 
         import picamera2.formats as formats
         from picamera2 import Picamera2
 
-        self.manager = manager
+        self.service = service
 
         device_id = GStreamerParser.strip_api_prefix(device)
         devices = Picamera2.global_camera_info()

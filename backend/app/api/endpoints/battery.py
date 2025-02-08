@@ -4,7 +4,7 @@ Endpoints related to battery status and monitoring.
 
 from typing import TYPE_CHECKING
 
-from app.api.deps import get_battery_manager
+from app.api.deps import get_battery_service
 from app.schemas.battery import BatteryStatusResponse
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -20,7 +20,7 @@ router = APIRouter()
     summary="Retrieve the current battery status in volts.",
 )
 async def get_battery_voltage(
-    battery_manager: "BatteryService" = Depends(get_battery_manager),
+    battery_manager: "BatteryService" = Depends(get_battery_service),
 ):
     """
     Read the ADC (Analog-to-Digital Converter) value and convert it to a voltage.

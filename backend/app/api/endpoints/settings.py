@@ -50,7 +50,7 @@ async def update_settings(
     request: Request,
     new_settings: SettingsUpdateRequest,
     file_service: "FileService" = Depends(deps.get_file_manager),
-    battery_manager: "BatteryService" = Depends(deps.get_battery_manager),
+    battery_manager: "BatteryService" = Depends(deps.get_battery_service),
 ):
     """
     Update the application settings.

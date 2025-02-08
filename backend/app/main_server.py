@@ -25,7 +25,6 @@ from app.util.get_ip_address import get_ip_address
 
 if TYPE_CHECKING:
     from app.services.battery_service import BatteryService
-    from app.services.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.detection_service import DetectionService
     from app.services.music_service import MusicService
@@ -46,7 +45,6 @@ async def lifespan(app: FastAPI):
     detection_manager: Optional["DetectionService"] = None
     music_manager: Optional["MusicService"] = None
     signal_file_path: Optional[str] = None
-    camera_manager: Optional["CameraService"] = None
 
     try:
         from app.api import deps
@@ -54,29 +52,18 @@ async def lifespan(app: FastAPI):
         port = os.getenv("PX_MAIN_APP_PORT")
         mode = os.getenv("PX_APP_MODE")
 
-        file_manager = deps.get_file_manager(audio_manager=deps.get_audio_manager())
+        file_manager = deps.get_file_manager(audio_manager=deps.get_audio_service())
 
-        connection_manager = deps.get_connection_manager()
+        connection_manager = deps.get_connection_service()
         app_manager = connection_manager
-        battery_manager = deps.get_battery_manager(
+        battery_manager = deps.get_battery_service(
             connection_manager=connection_manager,
             file_manager=file_manager,
         )
-        detection_manager = deps.get_detection_manager(
+        detection_manager = deps.get_detection_service(
             file_manager=file_manager, connection_manager=connection_manager
         )
-        camera_manager = deps.get_camera_manager(
-            detection_service=detection_manager,
-            file_manager=file_manager,
-            connection_manager=connection_manager,
-            video_device_adapter=deps.get_video_device_adapter(
-                v4l2_manager=deps.get_v4l2_manager(),
-                gstreamer_manager=deps.get_gstreamer_manager(),
-                picam_manager=deps.get_picamera_manager(),
-            ),
-            video_recorder=deps.get_video_recorder(file_manager=file_manager),
-        )
-        music_manager = deps.get_music_manager(
+        music_manager = deps.get_music_service(
             file_manager=file_manager, connection_manager=connection_manager
         )
 
@@ -106,9 +93,6 @@ async def lifespan(app: FastAPI):
         )
     finally:
         app.state.cancelled = True
-        if camera_manager:
-            camera_manager.shutting_down = True
-            await asyncio.to_thread(camera_manager.shutdown)
 
         logger.info(f"Stopping 🚗 {app.title} application")
         try:

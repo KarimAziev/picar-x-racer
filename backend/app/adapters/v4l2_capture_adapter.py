@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING, Tuple
 
 import cv2
-from app.adapters.capture_adapter import VideoCaptureAdapter
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
+from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
 from app.util.device import release_video_capture_safe
@@ -15,12 +15,12 @@ if TYPE_CHECKING:
     from app.services.v4l2_service import V4L2Service
 
 
-class V4l2Capture(VideoCaptureAdapter):
+class V4l2CaptureAdapter(VideoCaptureABC):
     def __init__(
-        self, device: str, camera_settings: CameraSettings, manager: "V4L2Service"
+        self, device: str, camera_settings: CameraSettings, service: "V4L2Service"
     ):
-        super().__init__(manager=manager)
-        self.manager = manager
+        super().__init__(service=service)
+        self.service = service
         self._cap, self._settings = self._try_device_props(device, camera_settings)
 
     @property
@@ -67,7 +67,7 @@ class V4l2Capture(VideoCaptureAdapter):
             )
         )
 
-        data = self.manager.video_capture_format(device_path)
+        data = self.service.video_capture_format(device_path)
 
         updated_settings = {
             **camera_settings.model_dump(),

@@ -1,12 +1,12 @@
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
-from app.adapters.capture_adapter import VideoCaptureAdapter
-from app.adapters.gstreamer_capture import GStreamerCapture
-from app.adapters.picamera_capture import PicameraCapture
-from app.adapters.v4l2_capture import V4l2Capture
+from app.adapters.gstreamer_capture_adapter import GStreamerCaptureAdapter
+from app.adapters.picamera_capture_adapter import PicameraCaptureAdapter
+from app.adapters.v4l2_capture_adapter import V4l2CaptureAdapter
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings, DeviceType
 from app.util.os_checks import is_raspberry_pi
@@ -19,25 +19,25 @@ if TYPE_CHECKING:
     from app.services.v4l2_service import V4L2Service
 
 
-class VideoDeviceAdapater(metaclass=SingletonMeta):
+class VideoDeviceAdapter(metaclass=SingletonMeta):
     """
     A singleton class responsible for managing video capturing devices.
     """
 
     def __init__(
         self,
-        v4l2_manager: "V4L2Service",
-        gstreamer_manager: "GStreamerService",
-        picam_manager: "PicameraService",
+        v4l2_service: "V4L2Service",
+        gstreamer_service: "GStreamerService",
+        picam_service: "PicameraService",
     ):
-        self.v4l2_manager = v4l2_manager
-        self.gstreamer_manager = gstreamer_manager
-        self.picam_manager = picam_manager
+        self.v4l2_service = v4l2_service
+        self.gstreamer_service = gstreamer_service
+        self.picam_service = picam_service
         self.devices: List[DeviceType] = []
 
     def try_device_props(
         self, device: str, camera_settings: CameraSettings
-    ) -> Optional[Tuple[VideoCaptureAdapter, CameraSettings]]:
+    ) -> Optional[Tuple[VideoCaptureABC, CameraSettings]]:
         api, device_path = GStreamerParser.parse_device_path(device)
         logger.info("device='%s', device_path='%s'", device, device_path)
         if api is None:
@@ -47,25 +47,25 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 else "picamera2"
             )
 
-        api_workers: Dict[str, Callable[[], VideoCaptureAdapter]] = {
-            "picamera2": lambda: PicameraCapture(
-                device_path, camera_settings=camera_settings, manager=self.picam_manager
+        api_workers: Dict[str, Callable[[], VideoCaptureABC]] = {
+            "picamera2": lambda: PicameraCaptureAdapter(
+                device_path, camera_settings=camera_settings, service=self.picam_service
             ),
             "v4l2": lambda: (
-                V4l2Capture(
+                V4l2CaptureAdapter(
                     device_path,
                     camera_settings=camera_settings,
-                    manager=self.v4l2_manager,
+                    service=self.v4l2_service,
                 )
                 if not camera_settings.use_gstreamer
-                else GStreamerCapture(
+                else GStreamerCaptureAdapter(
                     device,
                     camera_settings=camera_settings,
-                    manager=self.gstreamer_manager,
+                    service=self.gstreamer_service,
                 )
             ),
-            "libcamera": lambda: GStreamerCapture(
-                device, camera_settings=camera_settings, manager=self.gstreamer_manager
+            "libcamera": lambda: GStreamerCaptureAdapter(
+                device, camera_settings=camera_settings, service=self.gstreamer_service
             ),
         }
 
@@ -77,14 +77,14 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
         return cap, cap.settings
 
     def list_devices(self) -> List[DeviceType]:
-        v4l2_devices = self.v4l2_manager.list_video_devices()
-        failed_devices = self.v4l2_manager.failed_devices
+        v4l2_devices = self.v4l2_service.list_video_devices()
+        failed_devices = self.v4l2_service.failed_devices
         gstreamer_devices = (
-            self.gstreamer_manager.list_video_devices()
-            if self.gstreamer_manager.gstreamer_available()
+            self.gstreamer_service.list_video_devices()
+            if self.gstreamer_service.gstreamer_available()
             else None
         )
-        picamera_devices = self.picam_manager.list_video_devices()
+        picamera_devices = self.picam_service.list_video_devices()
         if gstreamer_devices is None:
             self.devices = v4l2_devices + picamera_devices
             return v4l2_devices
@@ -104,7 +104,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
                 gstreamer_devices_paths.add(path)
             elif (
                 path not in failed_devices
-                and path not in self.v4l2_manager.succeed_devices
+                and path not in self.v4l2_service.succeed_devices
             ):
                 results.append(item)
 
@@ -122,7 +122,7 @@ class VideoDeviceAdapater(metaclass=SingletonMeta):
 
     def setup_video_capture(
         self, camera_settings: CameraSettings
-    ) -> Tuple[VideoCaptureAdapter, CameraSettings]:
+    ) -> Tuple[VideoCaptureABC, CameraSettings]:
         devices = self.list_devices()
         logger.info("setup_video_capture device=%s", camera_settings.device)
         if camera_settings.device is not None:

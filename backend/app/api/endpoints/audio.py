@@ -75,7 +75,7 @@ logger = Logger(__name__)
 async def set_volume(
     request: Request,
     payload: VolumeData,
-    audio_manager: "AudioService" = Depends(deps.get_audio_manager),
+    audio_manager: "AudioService" = Depends(deps.get_audio_service),
 ):
     """
     Set the playback volume level.
@@ -158,7 +158,7 @@ async def set_volume(
     },
 )
 async def get_volume(
-    audio_manager: "AudioService" = Depends(deps.get_audio_manager),
+    audio_manager: "AudioService" = Depends(deps.get_audio_service),
 ):
     """
     Retrieve the current playback volume level.

@@ -7,10 +7,10 @@ import json
 from typing import TYPE_CHECKING
 
 from app.api.deps import (
-    get_battery_manager,
-    get_camera_manager,
-    get_detection_manager,
-    get_music_manager,
+    get_battery_service,
+    get_camera_service,
+    get_detection_service,
+    get_music_service,
 )
 from app.core.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -33,10 +33,10 @@ router = APIRouter()
 @router.websocket("/ws/sync")
 async def app_synchronizer(
     websocket: WebSocket,
-    detection_service: "DetectionService" = Depends(get_detection_manager),
-    camera_service: "CameraService" = Depends(get_camera_manager),
-    music_service: "MusicService" = Depends(get_music_manager),
-    battery_manager: "BatteryService" = Depends(get_battery_manager),
+    detection_service: "DetectionService" = Depends(get_detection_service),
+    camera_service: "CameraService" = Depends(get_camera_service),
+    music_service: "MusicService" = Depends(get_music_service),
+    battery_manager: "BatteryService" = Depends(get_battery_service),
 ):
     """
     Websocket endpoint for synchronizing app state between several clients.

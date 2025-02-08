@@ -92,7 +92,7 @@ router = APIRouter()
 async def update_detection_settings(
     request: Request,
     payload: DetectionSettings,
-    detection_service: "DetectionService" = Depends(deps.get_detection_manager),
+    detection_service: "DetectionService" = Depends(deps.get_detection_service),
 ):
     """
     Endpoint to update object detection settings.
@@ -141,7 +141,7 @@ async def update_detection_settings(
     ),
 )
 def get_detection_settings(
-    detection_service: "DetectionService" = Depends(deps.get_detection_manager),
+    detection_service: "DetectionService" = Depends(deps.get_detection_service),
 ):
     """
     Endpoint to retrieve the current detection configuration.
@@ -154,7 +154,7 @@ def get_detection_settings(
 @router.websocket("/ws/object-detection")
 async def object_detection(
     websocket: WebSocket,
-    detection_service: "DetectionService" = Depends(deps.get_detection_manager),
+    detection_service: "DetectionService" = Depends(deps.get_detection_service),
     detection_notifier: "ConnectionService" = Depends(deps.get_detection_notifier),
 ):
     """

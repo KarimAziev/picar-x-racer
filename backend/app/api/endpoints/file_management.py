@@ -8,7 +8,7 @@ import zipfile
 from io import BytesIO
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
-from app.api.deps import get_file_manager, get_music_manager
+from app.api.deps import get_file_manager, get_music_service
 from app.core.logger import Logger
 from app.exceptions.file_exceptions import (
     DefaultFileRemoveAttempt,
@@ -147,7 +147,7 @@ async def remove_file(
     media_type: str,
     filename: str,
     file_manager: "FileService" = Depends(get_file_manager),
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Remove a file of a specific media type: 'music', 'video', 'image' or 'data'.
@@ -481,7 +481,7 @@ async def batch_remove_files(
     media_type: str,
     request_body: BatchRemoveFilesRequest,
     file_manager: "FileService" = Depends(get_file_manager),
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Batch remove multiple files of a specific media type: 'music', 'image', 'video', or 'data'.

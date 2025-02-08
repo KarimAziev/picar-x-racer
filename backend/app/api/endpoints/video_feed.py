@@ -33,7 +33,7 @@ router = APIRouter()
 async def update_video_feed_settings(
     request: Request,
     payload: StreamSettings,
-    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_service),
 ):
     """
     Update the video feed settings and broadcasts the updated settings to all
@@ -60,7 +60,7 @@ async def update_video_feed_settings(
     ),
 )
 def get_video_settings(
-    camera_manager: "CameraService" = Depends(deps.get_camera_manager),
+    camera_manager: "CameraService" = Depends(deps.get_camera_service),
 ):
     """
     Retrieve the current video feed settings.
@@ -73,7 +73,7 @@ def get_video_settings(
 )
 async def ws(
     websocket: WebSocket,
-    stream_service: "StreamService" = Depends(deps.get_stream_manager),
+    stream_service: "StreamService" = Depends(deps.get_stream_service),
 ):
     """
     WebSocket endpoint for providing a video stream, including an embedded timestamp.
