@@ -205,22 +205,35 @@ class PicameraCaptureAdapter(VideoCaptureABC):
                     and self.settings.height
                     and self.settings.width
                 ):
-                    H = self.settings.height
-                    W = self.settings.width
 
-                    if (
-                        frame.ndim != 2
-                        or frame.shape[0] != H + H // 2
-                        or frame.shape[1] != W
-                    ):
-                        frame = frame.reshape((H + H // 2, W))
+                    active_H = self.settings.height
+                    active_W = self.settings.width
 
-                    Y = frame[:H, :]
-                    V = frame[H : H + (H // 4), :]
-                    U = frame[H + (H // 4) : H + (H // 2), :]
+                    raw_total_rows, raw_stride = frame.shape
 
-                    frame_reordered = np.vstack([Y, U, V])
-                    frame = cv2.cvtColor(frame_reordered, cv2.COLOR_YUV2BGR_I420)
+                    expected_total_rows = active_H + active_H // 2
+
+                    if raw_total_rows == expected_total_rows:
+                        Y = frame[:active_H, 0:active_W]
+
+                        chroma_rows = raw_total_rows - active_H
+
+                        half_chroma = chroma_rows // 2
+
+                        V = frame[active_H : active_H + half_chroma, 0:active_W]
+                        U = frame[
+                            active_H + half_chroma : active_H + chroma_rows, 0:active_W
+                        ]
+
+                        yuv_reordered = np.vstack([Y, U, V])
+
+                        frame = cv2.cvtColor(yuv_reordered, cv2.COLOR_YUV2BGR_I420)
+                    else:
+                        if raw_stride >= active_W:
+                            frame = frame[0:active_H, 0:active_W]
+                            frame = cv2.cvtColor(frame, cv2.COLOR_YUV2BGR_I420)
+                        else:
+                            frame = cv2.cvtColor(frame, cv2.COLOR_YUV2BGR_I420)
                 elif convert_color := (
                     color_conversions.get(self.format) if self.format else None
                 ):
