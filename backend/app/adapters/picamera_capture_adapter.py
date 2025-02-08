@@ -26,7 +26,7 @@ logger = Logger(name=__name__)
 
 yuv_conversions: Dict[str, Union[int, None]] = {
     "YUV420": cv2.COLOR_YUV2BGR_I420,
-    "YVU420": cv2.COLOR_YUV2BGR_I420,
+    # "YVU420": cv2.COLOR_YUV2BGR_I420,
     "NV12": cv2.COLOR_YUV2BGR_NV12,
     "NV21": cv2.COLOR_YUV2BGR_NV21,
     "YUYV": cv2.COLOR_YUV2BGR_YUY2,
