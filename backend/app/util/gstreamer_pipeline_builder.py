@@ -111,7 +111,7 @@ class GstreamerPipelineBuilder:
 
     @staticmethod
     @lru_cache(maxsize=None)
-    def plugin_available(plugin) -> Optional[str]:
+    def plugin_available(plugin: str) -> Optional[str]:
         if Gst is None:
             return None
         return plugin if Gst.ElementFactory.find(plugin) else None
