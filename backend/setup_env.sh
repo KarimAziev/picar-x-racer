@@ -180,6 +180,9 @@ install_system_deps() {
   # for sounddevice
   run_cmd "$SUDO apt-get install -y portaudio19-dev"
 
+  # for PyGObject
+  run_cmd "$SUDO apt-get install -y cairo"
+
   if [[ $SKIP_DBUS -eq 0 ]]; then
     log_info "Installing dbus development libraries..."
     run_cmd "$SUDO apt-get install -y libdbus-1-dev libglib2.0-dev" || {
