@@ -1,46 +1,49 @@
-from typing import Dict, Optional, Tuple
+from functools import lru_cache
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
+from app.exceptions.camera import CameraDeviceError
 
 logger = Logger(__name__)
 
+try:
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst  # type: ignore
+
+    Gst.init(None)
+except ImportError:
+    Gst = None
+
+StringOrNoneFunction = Callable[[], Optional[str]]
+
+_PIXEL_FORMAT_PROPS: Dict[str, Tuple[str, Optional[str]]] = {
+    "YUYV": ("video/x-raw, format=YUY2", "videoconvert"),  # YUYV -> Convert to BGR
+    "RGB": ("video/x-raw, format=RGB", "videoconvert"),  # RGB directly
+    "GRAY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
+    "GREY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
+    "YU12": ("video/x-raw, format=I420", "videoconvert"),  # YUV 4:2:0 -> Convert
+    "YVYU": ("video/x-raw, format=YVYU", "videoconvert"),  # YUV variant -> Convert
+    "VYUY": ("video/x-raw, format=VYUY", "videoconvert"),  # YUV variant -> Convert
+    "UYVY": ("video/x-raw, format=UYVY", "videoconvert"),  # YUV variant -> Convert
+    "NV12": (
+        "video/x-raw, format=NV12",
+        "videoconvert",
+    ),  # YUV 4:2:0 -> Convert
+    "YV12": ("video/x-raw, format=YV12", "videoconvert"),  # YUV variant -> Convert
+    "NV21": ("video/x-raw, format=NV21", "videoconvert"),  # NV21 variant -> Convert
+    "RX24": ("video/x-raw, format=ABGR", "videoconvert"),  # 32-bit -> Convert
+    "RGB3": ("video/x-raw, format=RGB", "videoconvert"),  # RGB3 -> Convert to BGR
+    "BGR3": ("video/x-raw, format=BGR", ""),  # BGR3 directly -> Convert
+}
+
 
 class GstreamerPipelineBuilder:
-    decoders: Dict[str, str] = {
-        "image/jpeg": "jpegdec ! videoconvert",
-        "video/x-h264": "h264parse ! v4l2h264dec",
-    }
     device_api_prop = {
         "libcamerasrc": "camera-name",
         "v4l2src": "device",
-    }
-
-    pixel_format_props: Dict[str, Tuple[str, Optional[str]]] = {
-        # MJPEG -> Decode images
-        "MJPG": ("image/jpeg", "jpegdec ! videoconvert"),
-        "JPEG": ("image/jpeg", "v4l2jpegdec ! videoconvert"),
-        "YUYV": ("video/x-raw, format=YUY2", "videoconvert"),  # YUYV -> Convert to BGR
-        "RGB": ("video/x-raw, format=RGB", "videoconvert"),  # RGB directly
-        "GRAY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
-        "GREY": ("video/x-raw, format=GRAY8", "videoconvert"),  # Grayscale -> Convert
-        "YU12": ("video/x-raw, format=I420", "videoconvert"),  # YUV 4:2:0 -> Convert
-        "H264": (
-            "video/x-h264",
-            "h264parse ! v4l2h264dec",
-        ),  # H.264 -> Parse and decode
-        "YVYU": ("video/x-raw, format=YVYU", "videoconvert"),  # YUV variant -> Convert
-        "VYUY": ("video/x-raw, format=VYUY", "videoconvert"),  # YUV variant -> Convert
-        "UYVY": ("video/x-raw, format=UYVY", "videoconvert"),  # YUV variant -> Convert
-        "NV12": (
-            "video/x-raw, format=NV12",
-            "videoconvert",
-        ),  # YUV 4:2:0 -> Convert
-        "YV12": ("video/x-raw, format=YV12", "videoconvert"),  # YUV variant -> Convert
-        "NV21": ("video/x-raw, format=NV21", "videoconvert"),  # NV21 variant -> Convert
-        "RX24": ("video/x-raw, format=ABGR", "videoconvert"),  # 32-bit -> Convert
-        "RGB3": ("video/x-raw, format=RGB", "videoconvert"),  # RGB3 -> Convert to BGR
-        "BGR3": ("video/x-raw, format=BGR", ""),  # BGR3 directly -> Convert
     }
 
     def __init__(self):
@@ -51,6 +54,86 @@ class GstreamerPipelineBuilder:
         self._pixel_format: Optional[str] = None
         self._media_type: Optional[str] = None
         self._api: Optional[str] = None
+        self.decoders: Dict[
+            str, Union[None, str, List[Union[str, StringOrNoneFunction]]]
+        ] = {
+            "image/jpeg": [GstreamerPipelineBuilder.jpegdecoder, "videoconvert"],
+            "video/x-h264": [
+                GstreamerPipelineBuilder.h264parser,
+                GstreamerPipelineBuilder.h264decoder,
+            ],
+        }
+
+        self.pixel_format_props: Dict[
+            str,
+            Tuple[str, Union[None, str, List[Union[str, StringOrNoneFunction]]]],
+        ] = {
+            **_PIXEL_FORMAT_PROPS,
+            "MJPG": (
+                "image/jpeg",
+                [GstreamerPipelineBuilder.jpegdecoder, "videoconvert"],
+            ),
+            "JPEG": (
+                "image/jpeg",
+                [GstreamerPipelineBuilder.jpegdecoder, "videoconvert"],
+            ),
+            "H264": (
+                "video/x-h264",
+                [
+                    GstreamerPipelineBuilder.h264parser,
+                    GstreamerPipelineBuilder.h264decoder,
+                ],
+            ),
+        }
+
+    def _mapconcat_decoders(
+        self, decoders: List[Union[str, StringOrNoneFunction]]
+    ) -> str:
+        decoders_pipeline: List[str] = []
+
+        for decoder in decoders:
+            if callable(decoder):
+                decoder = decoder()
+                if decoder is None:
+                    raise CameraDeviceError("Failed to find decoder")
+                decoders_pipeline.append(decoder)
+            else:
+                decoders_pipeline.append(decoder)
+        return " ! ".join(decoders_pipeline)
+
+    @staticmethod
+    def find_alternative(plugins: List[str]) -> Optional[str]:
+        if Gst is None:
+            return None
+        for plugin_name in plugins:
+            if GstreamerPipelineBuilder.plugin_available(plugin_name):
+                return plugin_name
+
+    @lru_cache(maxsize=None)
+    @staticmethod
+    def plugin_available(plugin) -> Optional[str]:
+        if Gst is None:
+            return None
+        return plugin if Gst.ElementFactory.find(plugin) else None
+
+    @lru_cache()
+    @staticmethod
+    def h264decoder():
+        return GstreamerPipelineBuilder.find_alternative(
+            ["v4l2h264dec", "omxh264dec", "nvh264dec", "avdec_h264"]
+        )
+
+    @lru_cache()
+    @staticmethod
+    def h264parser():
+        return GstreamerPipelineBuilder.find_alternative(["v4l2h264parse", "h264parse"])
+
+    @lru_cache()
+    @staticmethod
+    def jpegdecoder():
+        return GstreamerPipelineBuilder.find_alternative(
+            ["v4l2jpegdec", "jpegdec", "avdec_mjpeg"]
+        )
 
     def device(self, device: str) -> "GstreamerPipelineBuilder":
         api, device_path = GStreamerParser.parse_device_path(device)
@@ -101,9 +184,7 @@ class GstreamerPipelineBuilder:
             else None
         )
 
-        decoder: Optional[str] = (
-            self.decoders.get(self._media_type) if self._media_type else None
-        )
+        decoder = self.decoders.get(self._media_type) if self._media_type else None
 
         if source_media_format is None:
             source_format, source_decoder = (
@@ -116,6 +197,14 @@ class GstreamerPipelineBuilder:
             )
             source_media_format = source_format
             decoder = source_decoder
+
+        if decoder and isinstance(decoder, list):
+            try:
+                decoder = self._mapconcat_decoders(decoder)
+            except CameraDeviceError:
+                raise CameraDeviceError(
+                    f"Failed to find decoder for '{self._pixel_format or source_media_format}'"
+                )
 
         source_format_data = ",".join(
             [
