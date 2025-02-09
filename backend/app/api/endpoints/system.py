@@ -52,9 +52,9 @@ router = APIRouter()
 )
 async def shutdown(
     request: Request,
-    music_manager: "MusicService" = Depends(deps.get_music_manager),
-    battery_manager: "BatteryService" = Depends(deps.get_battery_manager),
-    detection_manager: "DetectionService" = Depends(deps.get_detection_manager),
+    music_manager: "MusicService" = Depends(deps.get_music_service),
+    battery_manager: "BatteryService" = Depends(deps.get_battery_service),
+    detection_manager: "DetectionService" = Depends(deps.get_detection_service),
 ):
     """
     API endpoint to trigger an immediate system shutdown.
@@ -115,9 +115,9 @@ async def shutdown(
 )
 async def restart_system(
     request: Request,
-    music_manager: "MusicService" = Depends(deps.get_music_manager),
-    battery_manager: "BatteryService" = Depends(deps.get_battery_manager),
-    detection_manager: "DetectionService" = Depends(deps.get_detection_manager),
+    music_manager: "MusicService" = Depends(deps.get_music_service),
+    battery_manager: "BatteryService" = Depends(deps.get_battery_service),
+    detection_manager: "DetectionService" = Depends(deps.get_detection_service),
 ):
     """
     API endpoint to trigger an immediate system restart.

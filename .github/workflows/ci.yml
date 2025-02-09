@@ -39,10 +39,13 @@ jobs:
             ${{ runner.os }}-venv-${{ matrix.python-version }}-
 
       - name: Setup backend environment
-        run: bash setup_env.sh --minimal
+        run: bash setup_env.sh --skip-polkit
+
+      - name: Install Picamera2 dependencies
+        run: sudo apt install -y build-essential libcap-dev libfmt-dev libdrm-dev git python3-sphinx libyaml-dev python3-yaml python3-ply python3-jinja2 libgnutls28-dev openssl libboost-dev
 
       - name: Install backend dependencies
-        run: . .venv/bin/activate && pip install pytest pytest-cov
+        run: . .venv/bin/activate && pip install pytest pytest-cov picamera2
 
       - name: Install Pyright
         run: npm install -g pyright
@@ -62,7 +65,7 @@ jobs:
       - name: Run tests with coverage
         run: |
              source .venv/bin/activate
-             coverage run --source=app --omit="*/config.py,*/config-3.py" -m unittest discover
+             coverage run --source=app -m unittest discover
              coverage xml
              coverage report
 

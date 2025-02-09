@@ -1,9 +1,9 @@
 <template>
   <div class="flex gap-2">
-    <div class="flex-1">
+    <div class="flex-1 min-w-0">
       <VideoQualitySelect />
     </div>
-    <div class="flex-1">
+    <div class="flex-1 min-w-0">
       <VideoEnhancerSelect />
     </div>
   </div>

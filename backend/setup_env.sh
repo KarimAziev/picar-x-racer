@@ -5,7 +5,7 @@ set -o pipefail
 INTERACTIVE="non-interactive"
 SKIP_PROMPT="yes"
 SKIP_DBUS=0
-SKIP_CV2=0
+SKIP_GSTREAMER=0
 MINIMAL=0
 DRY_RUN=0
 POLKIT_RULE_FILE="/etc/polkit-1/rules.d/99-reboot-no-auth.rules"
@@ -33,7 +33,7 @@ is_raspberry_pi() {
   fi
   return 1
 }
-STEPS=(install_system_deps create_venv install_python_deps compile_cv2)
+STEPS=(install_system_deps setup_gstreamer create_venv install_python_deps)
 if is_raspberry_pi; then
   log_info "Raspberry Pi detected. Adding 'setup_polkit_rule' to the default steps."
   STEPS+=("setup_polkit_rule")
@@ -59,7 +59,7 @@ Options:
   -i                        Run in interactive mode (prompt before each step).
   -y                        Run in non-interactive mode (default).
   --skip-dbus               Skip dbus-related setup.
-  --skip-cv2                Skip OpenCV compilation.
+  --skip-gstreamer          Skip GStreamer installation.
   --skip-polkit             Skip adding the Polkit rule.
   --minimal                 Minimal installation (only mandatory steps).
   --system-site-packages    Enable shared system-level Python packages in the virtual environment
@@ -69,25 +69,28 @@ Options:
   -s STEPS                  Comma-separated list of steps to execute.
                             (Overrides default steps if provided.)
   -n STEPS                  Comma-separated list of steps to skip.
-                            Available steps: install_system_deps, create_venv,
-                            install_python_deps, compile_cv2, setup_polkit_rule.
+                            Available steps: install_system_deps, setup_gstreamer, create_venv,
+                            install_python_deps, setup_polkit_rule.
+  --dry-run                 Perform a dry run, showing commands without executing them.
 
 Available steps:
   install_system_deps       OS-level dependencies (apt-get update, install build tools, meson, etc.)
   create_venv               Create Python virtual environment (.venv)
   install_python_deps       Install pip packages from requirements.txt
-  compile_cv2               Uninstall opencv-python and re-install from source (with --no-binary)
+  setup_gstreamer           Install GStreamer and its OS-level dependencies
   setup_polkit_rule         Set up a Polkit rule to allow users in the 'sudo' group
                             to power off and reboot the system (useful for enabling these options
                             in the UI without requiring sudo).
 
 Examples:
-  $0                 Run all default steps in non-interactive mode.
-  $0 -i              Run interactively (prompt before each step)
-  $0 --skip-cv2      Skip OpenCV compilation and install it with standard pip installation
-  $0 --minimal       Only perform minimal installation (skip compile_cv2 and setup_polkit_rule)
-  $0 -s install_system_deps,create_venv,install_python_deps
-  $0 -n compile_cv2  Skip OpenCV compilation and install it with standard pip installation
+  $0                        Run all default steps in non-interactive mode.
+  $0 -i                     Run interactively (prompt before each step)
+  $0 --minimal              Only perform minimal installation (skip setup_gstreamer and setup_polkit_rule).
+  $0 -s setup_gstreamer     Install GStreamer.
+  $0 -s setup_polkit_rule   Setup polkit rule for power off and rebooting from UI.
+  $0 -s create_venv,install_python_deps Create venv and install pip dependencies.
+  $0 --dry-run              Perform a dry run, showing commands without executing them.
+  $0 -n setup_gstreamer     Skip GStreamer installation.
 EOF
   exit 0
 }
@@ -125,8 +128,8 @@ parse_args() {
       --skip-dbus)
         SKIP_DBUS=1
         ;;
-      --skip-cv2)
-        SKIP_CV2=1
+      --skip-gstreamer)
+        SKIP_GSTREAMER=1
         ;;
       --minimal)
         MINIMAL=1
@@ -176,6 +179,9 @@ install_system_deps() {
   run_cmd "$SUDO apt-get install -y ffmpeg libavcodec-extra"
   # for sounddevice
   run_cmd "$SUDO apt-get install -y portaudio19-dev"
+
+  # for PyGObject
+  run_cmd "$SUDO apt-get install -y libcairo2-dev pkg-config python3-dev libgirepository1.0-dev gir1.2-gtk-3.0"
 
   if [[ $SKIP_DBUS -eq 0 ]]; then
     log_info "Installing dbus development libraries..."
@@ -229,8 +235,9 @@ install_python_deps() {
   run_cmd "pip install -r requirements.txt"
   run_cmd "pip install platformdirs -U --force-reinstall"
 
-  if ! [[ $SKIP_CV2 -eq 1 || $MINIMAL -eq 1 ]]; then
-    run_cmd "pip install opencv-python"
+  if python -c "import sys; sys.exit(0) if sys.version_info < (3, 12) else sys.exit(1)"; then
+    log_info "Python version < 3.12: Installing tflite-runtime..."
+    run_cmd "pip install tflite-runtime"
   fi
 
   if ! is_raspberry_pi; then
@@ -239,27 +246,26 @@ install_python_deps() {
   fi
 }
 
-compile_cv2() {
-  if [[ $SKIP_CV2 -eq 1 || $MINIMAL -eq 1 ]]; then
-    log_info "Skipping OpenCV compilation with GStreamer support."
+setup_gstreamer() {
+  if [[ $SKIP_GSTREAMER -eq 1 || $MINIMAL -eq 1 ]]; then
+    log_info "Skipping GStreamer installation."
     return
   fi
+  log_info "Installing system dependencies for GStreamer support..."
 
-  run_cmd "pip uninstall opencv-python -y || true"
-
-  log_info "Installing system dependencies for OpenCV with GStreamer support..."
-  run_cmd "$SUDO apt-get install -y build-essential cmake git python3-dev python3-numpy \
-    libavcodec-dev libavformat-dev libswscale-dev \
-    libgstreamer-plugins-base1.0-dev \
-    libgstreamer1.0-dev libgtk-3-dev \
-    libpng-dev libjpeg-dev libopenexr-dev libtiff-dev libwebp-dev \
-    libopencv-dev x264 libx264-dev libssl-dev ffmpeg"
+  run_cmd "$SUDO apt-get install -y python3-dev python3-numpy \
+      libunwind-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
+      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
+      gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl \
+      gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio \
+      libavcodec-dev libavformat-dev libswscale-dev \
+      libgstreamer-plugins-base1.0-dev \
+      libgstreamer1.0-dev libgtk-3-dev \
+      libpng-dev libjpeg-dev libopenexr-dev libtiff-dev libwebp-dev \
+      libopencv-dev x264 libx264-dev libssl-dev ffmpeg"
 
   run_cmd "$SUDO apt-get install -y python3-gi gir1.2-gstreamer-1.0"
-
-  log_info "Compiling OpenCV from source with GStreamer support. This may take a while..."
-  run_cmd "python -m pip install --no-binary opencv-python opencv-python"
-  log_info "Successfully compiled and installed OpenCV with GStreamer support."
+  log_info "GStreamer is successfully installed"
 }
 
 setup_polkit_rule() {
@@ -330,7 +336,7 @@ main() {
     log_info "Minimal installation requested; optional steps will be removed."
     NEW_STEPS=()
     for s in "${STEPS[@]}"; do
-      if [[ "$s" == "compile_cv2" || "$s" == "setup_polkit_rule" ]]; then
+      if [[ "$s" == "setup_gstreamer" || "$s" == "setup_polkit_rule" ]]; then
         continue
       fi
       NEW_STEPS+=("$s")

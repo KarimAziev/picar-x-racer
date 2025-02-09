@@ -5,7 +5,7 @@ Endpoints related to music playing.
 import asyncio
 from typing import TYPE_CHECKING, List
 
-from app.api.deps import get_audio_manager, get_file_manager, get_music_manager
+from app.api.deps import get_audio_service, get_file_manager, get_music_service
 from app.core.logger import Logger
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.exceptions.music import MusicPlayerError
@@ -51,7 +51,7 @@ logger = Logger(__name__)
     },
 )
 async def toggle_play_music(
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Toggle play or pause of the current track.
@@ -103,7 +103,7 @@ async def toggle_play_music(
 )
 async def play_track(
     payload: MusicTrackPayload,
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Play a specified music track.
@@ -154,7 +154,7 @@ async def play_track(
     },
 )
 async def stop_playing(
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Stop playback of the current track.
@@ -197,7 +197,7 @@ async def stop_playing(
 )
 async def update_position(
     payload: MusicPositionPayload,
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Update the playback position of the current track.
@@ -249,7 +249,7 @@ async def update_position(
 )
 async def update_mode(
     payload: MusicModePayload,
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Endpoint to update the playback mode of the music player.
@@ -289,7 +289,7 @@ async def update_mode(
     },
 )
 async def next_track(
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Switch to the next track in the playlist.
@@ -335,7 +335,7 @@ async def next_track(
     },
 )
 async def prev_track(
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
 ):
     """
     Endpoint to switch to the previous track in the playlist.
@@ -385,7 +385,7 @@ async def prev_track(
 async def save_music_order(
     request: Request,
     order: List[str],
-    music_player: "MusicService" = Depends(get_music_manager),
+    music_player: "MusicService" = Depends(get_music_service),
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
@@ -436,7 +436,7 @@ async def save_music_order(
 )
 async def get_music_tracks(
     file_manager: "FileService" = Depends(get_file_manager),
-    audio_manager: "AudioService" = Depends(get_audio_manager),
+    audio_manager: "AudioService" = Depends(get_audio_service),
 ):
     """
     Retrieve the list of available music tracks.

@@ -21,6 +21,7 @@ import {
 
 import FullscreenContent from "@/ui/FullscreenContent.vue";
 import { useWindowSize } from "@/composables/useWindowSize";
+import type { Nullable } from "@/util/ts-helpers";
 
 const Resizers = defineAsyncComponent({
   loader: () => import("@/ui/Resizers.vue"),
@@ -29,8 +30,8 @@ const Resizers = defineAsyncComponent({
 const props = defineProps<{
   fullscreen?: boolean;
   isResizable?: boolean;
-  defaultWidth?: number;
-  defaultHeight?: number;
+  defaultWidth?: Nullable<number>;
+  defaultHeight?: Nullable<number>;
   class?: string;
 }>();
 const defaultWidth = computed(() => props.defaultWidth || 800);
