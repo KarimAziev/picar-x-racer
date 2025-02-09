@@ -118,19 +118,19 @@ class GstreamerPipelineBuilder:
 
     @staticmethod
     @lru_cache()
-    def h264decoder():
+    def h264decoder() -> Optional[str]:
         return GstreamerPipelineBuilder.find_alternative(
             ["v4l2h264dec", "omxh264dec", "nvh264dec", "avdec_h264"]
         )
 
     @staticmethod
     @lru_cache()
-    def h264parser():
+    def h264parser() -> Optional[str]:
         return GstreamerPipelineBuilder.find_alternative(["v4l2h264parse", "h264parse"])
 
     @staticmethod
     @lru_cache()
-    def jpegdecoder():
+    def jpegdecoder() -> Optional[str]:
         return GstreamerPipelineBuilder.find_alternative(
             ["v4l2jpegdec", "jpegdec", "avdec_mjpeg"]
         )
