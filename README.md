@@ -430,7 +430,7 @@ Then reboot.
 
 ## Video Enhancers
 
-Enhance your video streaming experience with real-time video enhancement modes.
+Enhance your video streaming experience with real-time video effects modes.
 
 ### Available Enhancement Modes
 

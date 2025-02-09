@@ -21,7 +21,7 @@ frame_enhancers = {
     "combined": preprocess_frame_combined,
     "edge_enhancement": preprocess_frame_edge_enhancement,
     "ycrcb": preprocess_frame_ycrcb,
-    "simulate_predator_vision": simulate_predator_vision,
-    "simulate_infrared_vision": simulate_infrared_vision,
-    "simulate_ultrasonic_vision": simulate_ultrasonic_vision,
+    "predator_vision": simulate_predator_vision,
+    "infrared_vision": simulate_infrared_vision,
+    "ultrasonic_vision": simulate_ultrasonic_vision,
 }
