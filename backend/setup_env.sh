@@ -235,6 +235,11 @@ install_python_deps() {
   run_cmd "pip install -r requirements.txt"
   run_cmd "pip install platformdirs -U --force-reinstall"
 
+  if python -c "import sys; sys.exit(0) if sys.version_info < (3, 12) else sys.exit(1)"; then
+    log_info "Python version < 3.12: Installing tflite-runtime..."
+    run_cmd "pip install tflite-runtime"
+  fi
+
   if ! is_raspberry_pi; then
     log_info "Non-Raspberry Pi system detected. Installing dev dependencies..."
     run_cmd "pip install -r requirements-dev.txt"
