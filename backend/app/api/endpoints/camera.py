@@ -53,18 +53,7 @@ async def update_camera_settings(
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
     if payload.use_gstreamer and not gstreamer_manager.gstreamer_available():
-        gstreamer_in_cv2, gstreamer_on_system = gstreamer_manager.check_gstreamer()
-        reason = " and ".join(
-            [
-                item
-                for item in [
-                    gstreamer_on_system or "gst-launch-1.0 is not found in PATH",
-                    gstreamer_in_cv2
-                    or "opencv-python is not compiled with GStreamer support",
-                ]
-                if isinstance(item, str)
-            ]
-        )
+        reason = "'gst-launch-1.0' is not found in PATH"
         msg = f"GStreamer will not be used, because {reason}."
         logger.warning(msg)
         raise HTTPException(status_code=400, detail=msg)

@@ -5,7 +5,7 @@ to yield a list of DeviceType objects.
 
 import shutil
 from functools import lru_cache
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
@@ -21,33 +21,19 @@ logger = Logger(__name__)
 class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
     @staticmethod
     @lru_cache()
-    def check_gstreamer() -> Tuple[bool, bool]:
+    def gstreamer_available() -> bool:
         """
-        Checks the availability of GStreamer in OpenCV and on the system.
+        Checks the availability of GStreamer on the system by looking for the `gst-launch-1.0`.
 
         Returns:
-        --------------
-            A tuple with two boolean values:
-            - Whether GStreamer is supported in OpenCV.
-            - Whether GStreamer is installed on the system by looking for the `gst-launch-1.0`.
+        True if GStreamer is installed, False otherwise.
 
         Example:
         --------------
         ```python
-        gstreamer_cv2, gstreamer_system = GStreamerService.check_gstreamer()
-        print(f"GStreamer in OpenCV: {gstreamer_cv2}")
+        gstreamer_system = GStreamerService.gstreamer_available()
         print(f"GStreamer on system: {gstreamer_system}")
-        ```
-        """
-        import cv2
-
-        gstreamer_in_cv2 = False
-        try:
-            build_info = cv2.getBuildInformation()
-            if "GStreamer" in build_info and "YES" in build_info:
-                gstreamer_in_cv2 = True
-        except Exception as e:
-            logger.error("Error while checking OpenCV build information: %s", e)
+        ```"""
 
         gstreamer_on_system = False
         try:
@@ -56,12 +42,7 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
         except Exception as e:
             logger.error("Error while checking system for GStreamer: %s", e)
 
-        return gstreamer_in_cv2, gstreamer_on_system
-
-    @staticmethod
-    def gstreamer_available():
-        gstreamer_cv2, gstreamer_system = GStreamerService.check_gstreamer()
-        return gstreamer_cv2 and gstreamer_system
+        return gstreamer_on_system
 
     @staticmethod
     def setup_pipeline(
