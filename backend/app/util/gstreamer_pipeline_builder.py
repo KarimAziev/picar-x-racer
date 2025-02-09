@@ -109,27 +109,27 @@ class GstreamerPipelineBuilder:
             if GstreamerPipelineBuilder.plugin_available(plugin_name):
                 return plugin_name
 
-    @lru_cache(maxsize=None)
     @staticmethod
+    @lru_cache(maxsize=None)
     def plugin_available(plugin) -> Optional[str]:
         if Gst is None:
             return None
         return plugin if Gst.ElementFactory.find(plugin) else None
 
-    @lru_cache()
     @staticmethod
+    @lru_cache()
     def h264decoder():
         return GstreamerPipelineBuilder.find_alternative(
             ["v4l2h264dec", "omxh264dec", "nvh264dec", "avdec_h264"]
         )
 
-    @lru_cache()
     @staticmethod
+    @lru_cache()
     def h264parser():
         return GstreamerPipelineBuilder.find_alternative(["v4l2h264parse", "h264parse"])
 
-    @lru_cache()
     @staticmethod
+    @lru_cache()
     def jpegdecoder():
         return GstreamerPipelineBuilder.find_alternative(
             ["v4l2jpegdec", "jpegdec", "avdec_mjpeg"]
