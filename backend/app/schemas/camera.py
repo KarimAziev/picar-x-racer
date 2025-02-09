@@ -30,8 +30,17 @@ class CameraSettings(BaseModel):
         Field(
             None,
             title="Device",
-            description="The path of the camera device.",
-            examples=["/dev/video0", "/dev/video1"],
+            description="The device path of the camera the mode is associated with. "
+            "The path may be prefixed by an API (e.g., 'libcamera:' or 'picamera2:') to indicate "
+            "the API used to interact with the device. Classic V4L2 enumeration typically "
+            "results in paths such as '/dev/video0'. For APIs like libcamera or picamera2, the path may include "
+            "additional information, such as 'libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a', "
+            "'picamera2:/base/soc/i2c0mux/i2c@1/imx708@1a' etc.",
+            examples=[
+                "/dev/video0",
+                "libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a",
+                "picamera2:/base/soc/i2c0mux/i2c@1/imx708@1a",
+            ],
         ),
     ] = None
     width: Annotated[
@@ -94,8 +103,7 @@ class CameraSettings(BaseModel):
         Field(
             ...,
             title="Media Type",
-            description="The media type. Will be used if GStreamer is installed "
-            "and opencv-python is compiled with GStreamer support.",
+            description="The media type. Will be used if GStreamer is installed.",
             examples=[
                 "video/x-raw",
                 "video/x-h264",
@@ -108,8 +116,7 @@ class CameraSettings(BaseModel):
         Field(
             ...,
             description="Whether to use GStreamer for streaming. "
-            "This setting should be enabled only if GStreamer is "
-            "installed and opencv-python is compiled with GStreamer support.",
+            "This setting should be enabled only if GStreamer is installed.",
             examples=[True, False],
         ),
     ] = False
@@ -133,14 +140,16 @@ class DeviceCommonProps(BaseModel):
     device: str = Field(
         ...,
         description="The device path of the camera the mode is associated with. "
-        "The path may be prefixed by an API (e.g., 'libcamera:' or 'v4l2:') to indicate "
+        "The path may be prefixed by an API (e.g., 'libcamera:' or 'picamera2:') to indicate "
         "the API used to interact with the device. Classic V4L2 enumeration typically "
-        "results in paths such as '/dev/video0'. For APIs like libcamera, the path may include "
-        "additional information, such as 'libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a'.",
+        "results in paths such as '/dev/video0'. For APIs like libcamera or picamera2, the path may include "
+        "additional information, such as 'libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a', "
+        "'picamera2:/base/soc/i2c0mux/i2c@1/imx708@1a' etc.",
         examples=[
             "/dev/video0",
             "v4l2:/dev/video0",
             "libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a",
+            "picamera2:/base/soc/i2c0mux/i2c@1/imx708@1a",
         ],
     )
     name: Optional[str] = Field(
@@ -175,8 +184,7 @@ class DeviceCommonProps(BaseModel):
         Field(
             ...,
             title="Media Type",
-            description="The media type. Will be used if GStreamer is installed "
-            "and opencv-python is compiled with GStreamer support.",
+            description="The media type. Will be used if GStreamer is installed.",
             examples=[
                 "video/x-raw",
                 "image/jpeg",
@@ -322,36 +330,43 @@ class CameraDevicesResponse(BaseModel):
         examples=[
             [
                 {
-                    "device": "/dev/video0",
-                    "pixel_format": "MJPG",
-                    "label": "MJPG, 640x360, 30 fps",
+                    "device": "libcamera:/base/soc/i2c0mux/i2c@1/imx708@1a",
+                    "name": "imx708_wide",
+                    "pixel_format": "NV21",
+                    "media_type": "video/x-raw",
+                    "api": "libcamera",
+                    "path": "/base/soc/i2c0mux/i2c@1/imx708@1a",
                     "width": 640,
-                    "height": 360,
+                    "height": 480,
+                    "fps": None,
+                },
+                {
+                    "device": "picamera2:/base/soc/i2c0mux/i2c@1/imx708@1a",
+                    "name": "imx708_wide",
+                    "pixel_format": "RGBx",
+                    "media_type": None,
+                    "api": "picamera2",
+                    "path": None,
+                    "min_width": 320,
+                    "max_width": 4608,
+                    "min_height": 240,
+                    "max_height": 2592,
+                    "height_step": 2,
+                    "width_step": 2,
+                    "min_fps": 15,
+                    "max_fps": 120,
+                    "fps_step": 1,
+                },
+                {
+                    "device": "/dev/video0",
+                    "name": "Integrated Camera",
+                    "pixel_format": "MJPG",
+                    "media_type": None,
+                    "api": None,
+                    "path": None,
+                    "width": 1920,
+                    "height": 1080,
                     "fps": 30,
-                },
-                {
-                    "device": "/dev/video1",
-                    "pixel_format": "YU12",
-                    "min_width": 32,
-                    "max_width": 2592,
-                    "min_height": 32,
-                    "max_height": 1944,
-                    "height_step": 2,
-                    "width_step": 2,
-                    "min_fps": 1,
-                    "max_fps": 90,
-                },
-                {
-                    "device": "/dev/video1",
-                    "pixel_format": "YUYV",
-                    "min_width": 32,
-                    "max_width": 2592,
-                    "min_height": 32,
-                    "max_height": 1944,
-                    "height_step": 2,
-                    "width_step": 2,
-                    "min_fps": 1,
-                    "max_fps": 90,
                 },
             ]
         ],
