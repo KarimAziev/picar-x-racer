@@ -12,7 +12,6 @@ VENV_DIR := $(BACKEND_DIR)/.venv
 # Default target
 all: build-all-no-sudo
 
-# Default target
 tests: backend-test frontend-test
 
 dev: dev-without-install
@@ -42,16 +41,19 @@ frontend-build:
 frontend-test:
 	cd $(FRONTEND_DIR) && npm run test
 
+
 # Build targets for production
 build-dev-all: frontend-install frontend-build backend-venv-install backend-venv-run
 
 # Build targets for production
-build-all-no-sudo: frontend-install frontend-build backend-venv-install
+build-all-no-sudo: frontend-install frontend-build
+	$(MAKE) backend-venv-install INSTALL_FLAGS="$(INSTALL_FLAGS)"
 
 
 # Backend setup in virtual environment
 backend-venv-install:
-	cd $(BACKEND_DIR) && bash ./setup_env.sh
+	cd $(BACKEND_DIR) && bash ./setup_env.sh $(INSTALL_FLAGS)
+
 
 # Run backend tests in virtual environment
 backend-test:
