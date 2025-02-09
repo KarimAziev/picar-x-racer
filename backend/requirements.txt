@@ -22,3 +22,6 @@ dbus-python
 ncnn
 v4l2-python3
 tflite-runtime
+opencv-python
+PyGObject
+PyGObject-stubs
