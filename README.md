@@ -55,11 +55,10 @@
 >   - [Avoid Obstacles Mode](#avoid-obstacles-mode)
 >   - [Calibration Mode](#calibration-mode)
 >     - [3D Virtual Mode](#3d-virtual-mode)
->   - [Development on Non-Raspberry OS](#development-on-non-raspberry-os)
->     - [Backend](#backend)
->       - [Documentation](#documentation)
->     - [Makefile Usage](#makefile-usage)
->       - [Development Environment Setup](#development-environment-setup)
+>   - [Development](#development)
+>     - [Development Environment Setup](#development-environment-setup)
+>     - [Running Tests](#running-tests)
+>     - [API Documentation](#api-documentation)
 >   - [Project Status](#project-status)
 
 <!-- markdown-toc end -->
@@ -431,7 +430,7 @@ Then reboot.
 
 ## Video Enhancers
 
-Enhance your video streaming experience with real-time video enhancement modes.
+Enhance your video streaming experience with real-time video effects modes.
 
 ### Available Enhancement Modes
 
@@ -481,61 +480,38 @@ In this mode, you can adjust the angle for servo direction, camera pan, and came
 Hides a video stream view and focuses on controlling the car using just a 3D model visualization.
 The mode is supposed to be used with active Auto Measure Distance Mode, which activates the ultrasonic measurement, and the 3D visualization will visualize the ultrasonic distance.
 
-## Development on Non-Raspberry OS
+## Development
 
-For running the server in watch mode (reload on file save) run:
+### Development Environment Setup
+
+To install dependencies, run:
+
+```bash
+make frontend-install backend-venv-install
+```
+
+To start both the backend and frontend servers in watch mode (automatically reloading on file save), run:
 
 ```bash
 make dev
 ```
 
-### Backend
+### Running Tests
 
-To install dependencies and run the project in development mode:
-
-```bash
-make dev-with-install
-```
-
-To run the project without installing dependencies:
+Run the following command to execute the tests:
 
 ```bash
-make dev
+make tests
 ```
 
-#### Documentation
+### API Documentation
 
-The project uses `FastAPI`, so you can access the documentation about API on `http://<your-raspberry-pi-ip>:8000/docs` or `http://<your-raspberry-pi-ip>:8000/redoc` and `http://<your-raspberry-pi-ip>:8001/docs` or `http://<your-raspberry-pi-ip>:8001/redoc` for car control server. We use two servers and run them in a separate process from the main server to ensure that control operations are never blocked.
+You can access the API documentation at:
 
-### Makefile Usage
+- `http://<your-raspberry-pi-ip>:8000/docs` or `http://<your-raspberry-pi-ip>:8000/redoc`
+- `http://<your-raspberry-pi-ip>:8001/docs` or `http://<your-raspberry-pi-ip>:8001/redoc` (for the car control server)
 
-You can also use the `Makefile` to manage various setup and development tasks more efficiently. Below are some of the make targets available:
-
-#### Development Environment Setup
-
-- **Setup and Run Development Environment**: Install dependencies and run the development environment.
-
-```bash
-make dev-with-install
-```
-
-- **Run Development Environment without Installing Dependencies**:
-
-```bash
-make dev-without-install
-```
-
-- **Run Frontend Development Server**:
-
-```bash
-make frontend-dev
-```
-
-- **Run Backend Development Server**:
-
-```bash
-make backend-dev-run
-```
+Two servers are used, with the car control server running in a separate process from the main server to ensure that control operations are never blocked.
 
 ## Project Status
 

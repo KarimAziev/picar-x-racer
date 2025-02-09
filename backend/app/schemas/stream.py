@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from app.config.video_enhancers import frame_enhancers
 from pydantic import BaseModel, Field
 
 
@@ -11,7 +12,7 @@ class StreamSettings(BaseModel):
     --------------
     - `format`: The file format to save frames (e.g., `.jpg`, `.png`).
     - `quality`: Quality compression level for frames (0–100).
-    - `enhance_mode`: Enhancer to apply to frames (e.g., `simulate_predator_vision`).
+    - `enhance_mode`: Video effect to apply to frames.
     - `video_record`: Whether the video stream should be recorded.
     - `render_fps`: Whether to render the video FPS.
     """
@@ -24,20 +25,8 @@ class StreamSettings(BaseModel):
     )
     enhance_mode: Optional[str] = Field(
         None,
-        description="Enhancer to apply to frames (e.g., `simulate_predator_vision`).",
-        examples=[
-            "simulate_robocop_vision",
-            "simulate_predator_vision",
-            "simulate_infrared_vision",
-            "simulate_ultrasonic_vision",
-            "preprocess_frame",
-            "preprocess_frame_clahe",
-            "preprocess_frame_edge_enhancement",
-            "preprocess_frame_ycrcb",
-            "preprocess_frame_hsv_saturation",
-            "preprocess_frame_kmeans",
-            "preprocess_frame_combined",
-        ],
+        description="Enhancer to apply to frames (e.g., `robocop_vision`).",
+        examples=list(frame_enhancers.keys()),
     )
     video_record: Optional[bool] = Field(
         None, description="Whether the video stream should be recorded."
@@ -56,18 +45,6 @@ class EnhancersResponse(BaseModel):
         ...,
         description="A list of video enhancer names.",
         examples=[
-            [
-                "simulate_robocop_vision",
-                "simulate_predator_vision",
-                "simulate_infrared_vision",
-                "simulate_ultrasonic_vision",
-                "preprocess_frame",
-                "preprocess_frame_clahe",
-                "preprocess_frame_edge_enhancement",
-                "preprocess_frame_ycrcb",
-                "preprocess_frame_hsv_saturation",
-                "preprocess_frame_kmeans",
-                "preprocess_frame_combined",
-            ]
+            list(frame_enhancers.keys()),
         ],
     )
