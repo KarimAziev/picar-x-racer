@@ -505,7 +505,7 @@ make dev
 
 #### Documentation
 
-The project uses `FastAPI`, so you can access the documentation about API on `http://<your-raspberry-pi-ip>:8000/docs` and `http://<your-raspberry-pi-ip>:8001/docs` for car control server. We use two servers and run them in a separate process from the main server to ensure that control operations are never blocked.
+The project uses `FastAPI`, so you can access the documentation about API on `http://<your-raspberry-pi-ip>:8000/docs` or `http://<your-raspberry-pi-ip>:8000/redoc` and `http://<your-raspberry-pi-ip>:8001/docs` or `http://<your-raspberry-pi-ip>:8001/redoc` for car control server. We use two servers and run them in a separate process from the main server to ensure that control operations are never blocked.
 
 ### Makefile Usage
 
