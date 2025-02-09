@@ -16,7 +16,7 @@
 
 - Precise control and calibration of the Picar-X vehicle, with smooth, video-game-like responsiveness.
 - Real-time object detection using YOLO-based models, with optional [support for Google Coral accelerators](#using-google-coral-accelerator).
-- On-the-fly camera management with `GStreamer`, `v4l2`, and `libcamera`, allowing seamless swapping between Raspberry Pi Camera Modules 2/3 and USB cameras directly from the UI, without stopping the robot or restarting the application.
+- On-the-fly camera management with `GStreamer`, `v4l2`, `Picamera2` and `libcamera`, allowing seamless swapping between Raspberry Pi Camera Modules 2/3 and USB cameras directly from the UI, without stopping the robot or restarting the application.
 - Dynamic model management with support for pretrained YOLO-based models such as Ultralytics, as well as custom models, which can be uploaded and tested in real time without interrupting the running system.
 - A standalone web interface for experiments or development, including object detection, video streaming, and data collection, operable independently of the robot.
 - Photo capture tools with preview, downloading, and archiving options, useful for organizing data for AI projects.
@@ -31,6 +31,7 @@
 > - [Picar-X Racer](#picar-x-racer)
 >   - [Features](#features)
 >   - [Prerequisites](#prerequisites)
+>   - [Supported Camera Backends](#supported-camera-backends)
 >   - [Raspberry OS Setup](#raspberry-os-setup)
 >     - [Installation](#installation)
 >     - [Usage](#usage)
@@ -69,9 +70,17 @@
 - Node.js (version 20 or higher)
 - make
 
-## Raspberry OS Setup
+## Supported Camera Backends
 
-This project supports both the v4l2 stack and libcamera. In order to use libcamera, note that `opencv-python` must be compiled with **GStreamer** support. Although this compilation can take quite a long time, the project provides a script that installs and compiles everything automatically.
+**Picar-X Racer** supports both the **V4L2** and **libcamera** stacks, with the following backends:
+
+- `V4L2` - Uses ioctl for device enumeration and direct video capture.
+- `GStreamer` (V4L2 & libcamera) - Interacts directly with GStreamer via PyGObject (gi.repository.Gst), eliminating the need for OpenCV compilation.
+- `Picamera2` - Python API for libcamera, optimized for Raspberry Pi.
+
+You can switch between them dynamically.
+
+## Raspberry OS Setup
 
 Before proceeding, install make if it isn’t already installed:
 
@@ -150,9 +159,6 @@ sudo apt install nodejs npm
 
 ### Installation
 
-> [!NOTE]
-> opencv-python will be compiled in this process. Although the compilation takes a long time (more than an hour), the resulting GStreamer support in OpenCV is worth it.
-
 1. Clone this repository to your Raspberry Pi:
 
    ```bash
@@ -171,11 +177,25 @@ sudo apt install nodejs npm
    make all
    ```
 
-4. If you want the ability to power off and restart the machine from the UI, you need to create a corresponding polkit rule (since the application isn’t run as sudo). You can set it up by running the following script from the root of the project directory:
+> [!NOTE]
+> You may be prompted to enter your password to create a `polkit` rule. This rule allows the application to power off and restart the machine from the UI, as it does not run with `sudo` privileges.
+> If you want to skip the creation of the `polkit` rule, run:
 
-   ```bash
-   bash ./setup-polkit-reboot-rule.sh
-   ```
+```bash
+make all INSTALL_FLAGS="--skip-polkit"
+```
+
+You can view all available installation options by running:
+
+```bash
+make backend-venv-install INSTALL_FLAGS="--help"
+```
+
+To preview the installation steps before executing them, run:
+
+```bash
+make backend-venv-install INSTALL_FLAGS="--dry-run"
+```
 
 That's all! This is a one-time setup.
 
