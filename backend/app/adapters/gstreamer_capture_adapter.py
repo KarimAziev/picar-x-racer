@@ -45,12 +45,11 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
             media_type=camera_settings.media_type,
         )
 
-        if "appsink" in pipeline_str and "name=" not in pipeline_str:
-            pipeline_str = pipeline_str.replace("appsink", "appsink name=appsink")
+        logger.info("GStreamer pipeline='%s'", pipeline_str)
 
-        logger.info("GStreamer pipeline: %s", pipeline_str)
+        elem = Gst.parse_launch(pipeline_str)
 
-        self.pipeline = cast(Gst.Pipeline, Gst.parse_launch(pipeline_str))
+        self.pipeline = cast(Gst.Pipeline, elem)
 
         self.appsink = self.pipeline.get_by_name("appsink")
         if self.appsink is None:

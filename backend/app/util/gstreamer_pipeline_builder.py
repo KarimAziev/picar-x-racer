@@ -136,7 +136,7 @@ class GstreamerPipelineBuilder:
                 source,
                 source_format_data,
                 decoder if isinstance(decoder, str) else "videoconvert",
-                "appsink",
+                "appsink name=appsink",
             ]
             if item
         )
