@@ -21,7 +21,6 @@ from app.exceptions.camera import (
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
 from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
-from cv2.typing import MatLike
 
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapter
@@ -29,6 +28,7 @@ if TYPE_CHECKING:
     from app.services.detection_service import DetectionService
     from app.services.file_service import FileService
     from app.services.video_recorder_service import VideoRecorderService
+    from cv2.typing import MatLike
 
 
 class CameraService(metaclass=SingletonMeta):
@@ -316,7 +316,7 @@ class CameraService(metaclass=SingletonMeta):
             self.stream_img = None
             self.logger.info("Camera loop terminated and camera released.")
 
-    def _process_frame(self, frame: MatLike) -> None:
+    def _process_frame(self, frame: "MatLike") -> None:
         """Handle frame detection."""
         if (
             self.detection_service.detection_settings.active
