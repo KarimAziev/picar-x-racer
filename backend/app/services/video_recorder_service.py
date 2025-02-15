@@ -46,8 +46,8 @@ class VideoRecorderService(metaclass=SingletonMeta):
         video_dir_path = Path(self.video_service.video_dir)
         video_dir_path.mkdir(exist_ok=True, parents=True)
 
-        fourcc = cv2.VideoWriter.fourcc(*"XVID")
-        file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.avi"
+        fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+        file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.mp4"
         video_path = video_dir_path.joinpath(file_name).as_posix()
 
         logger.info(f"Recording video at {video_path}, {width}x{height}, {fps}")
