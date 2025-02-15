@@ -175,7 +175,7 @@ class CameraService(metaclass=SingletonMeta):
         if should_restart:
             await asyncio.to_thread(self.restart_camera)
         elif is_recording_end and video_file:
-            self.video_recorder.stop_recording_safe()
+            await asyncio.to_thread(self.video_recorder.stop_recording_safe)
             await self.connection_manager.info(
                 f"Post processing video {os.path.basename(video_file)}"
             )
