@@ -8,6 +8,7 @@ export interface MessageItemParams {
   delay?: number;
   type: "success" | "info" | "error" | "warning";
   immediately?: boolean;
+  meta?: any;
 }
 
 export interface MessageItem {
@@ -17,6 +18,7 @@ export interface MessageItem {
   type: MessageItemParams["type"];
   id: number;
   immediately?: boolean;
+  meta?: any;
 }
 
 export type ShowMessageProps = Omit<MessageItemParams, "text">;
@@ -85,6 +87,33 @@ export const useStore = defineStore("messager", {
     },
     error(text: any, props?: ShowMessageTypeProps | string) {
       return this._show_type("error", text, props);
+    },
+
+    makeProgress(title: string) {
+      let lastProgress = 0;
+      const sym = Symbol("progress");
+      return (progress: number) => {
+        if (lastProgress !== progress) {
+          lastProgress = progress;
+          let found = false;
+          this.messages.forEach((v, i) => {
+            if (v.meta === sym) {
+              v.text = `${progress}%`;
+              this.messages[i] = v;
+              found = true;
+            }
+          });
+
+          if (!found) {
+            this.info(`${progress}%`, {
+              immediately: true,
+              title,
+              delay: 5000,
+              meta: sym,
+            });
+          }
+        }
+      };
     },
 
     info(text: any, props?: ShowMessageTypeProps | string) {

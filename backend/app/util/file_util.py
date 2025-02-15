@@ -1,9 +1,12 @@
 import json
 import os
 import shutil
+import tempfile
+import zipfile
+from io import BytesIO
 from os import path
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 
 def copy_file_if_not_exists(source: str, target: str):
@@ -249,3 +252,48 @@ def get_directory_structure(
         return children
 
     return walk_directory(initial_directory)
+
+
+def zip_files_generator(
+    filenames: List[str], directory_fn: Callable[[str], str]
+) -> Tuple[BytesIO, int]:
+    buffer = BytesIO()
+
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for filename in filenames:
+            file_path = os.path.join(directory_fn(filename), filename)
+
+            if not os.path.isfile(file_path):
+                continue
+
+            with open(file_path, "rb") as f:
+                zipf.writestr(filename, f.read())
+
+    buffer.seek(0)
+
+    return buffer, len(buffer.getvalue())
+
+
+def generate_zip_tempfile(
+    filenames: List[str], directory_fn: Callable[[str], str]
+) -> Tuple[str, int]:
+    """
+    Creates a temporary ZIP file containing the given filenames.
+
+    Args:
+        filenames: A list of filenames to include in the ZIP.
+        directory_fn: A function that returns the directory path for each filename.
+
+    Returns:
+        A tuple containing the temporary file path and the file's size in bytes.
+    """
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    with zipfile.ZipFile(temp_file, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for filename in filenames:
+            file_path = os.path.join(directory_fn(filename), filename)
+            if os.path.isfile(file_path):
+                with open(file_path, "rb") as f:
+                    zipf.writestr(filename, f.read())
+
+    temp_file.close()
+    return temp_file.name, os.path.getsize(temp_file.name)

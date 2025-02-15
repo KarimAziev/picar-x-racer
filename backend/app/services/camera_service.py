@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import os
 import struct
 import threading
 import time
@@ -84,6 +85,29 @@ class CameraService(metaclass=SingletonMeta):
             {"type": "camera_error", "payload": error}
         )
 
+    async def notify_video_record_end(self, task: asyncio.Task[Union[str, None]]):
+        try:
+            video_file = await task
+            self.logger.info("video_file result='%s'", video_file)
+            if video_file:
+                self.logger.info(f"Post-processing successful: {video_file}")
+                rel_name = self.file_manager.video_service.video_file_to_relative(
+                    video_file
+                )
+                await self.connection_manager.broadcast_json(
+                    {"type": "video_record_end", "payload": rel_name}
+                )
+            else:
+                self.logger.error("Video processing failed")
+                await self.connection_manager.broadcast_json(
+                    {"type": "video_record_error", "payload": "Video processing failed"}
+                )
+        except Exception:
+            self.logger.error(
+                "Unexpected error in video processing callback:", exc_info=True
+            )
+            self.emitter.emit("video_record_error", "Video processing error")
+
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
         Updates the camera's settings and restarts the device.
@@ -128,10 +152,21 @@ class CameraService(metaclass=SingletonMeta):
         if self.shutting_down:
             self.logger.warning("Service is shutting down.")
             raise CameraShutdownInProgressError("The camera is shutting down.")
+
+        is_recording_start = (
+            settings.video_record and not self.stream_settings.video_record
+        )
+
+        video_file = self.video_recorder.current_video_path
+
+        is_recording_end = (
+            self.stream_settings.video_record
+            and not settings.video_record
+            and video_file
+        )
+
         should_restart = (
-            not self.camera_run
-            or self.camera_device_error
-            or settings.video_record != self.stream_settings.video_record
+            self.camera_device_error or is_recording_start or not self.camera_run
         )
         self.logger.info(
             "Updating stream settings, should camera restart %s", should_restart
@@ -139,6 +174,20 @@ class CameraService(metaclass=SingletonMeta):
         self.stream_settings = settings
         if should_restart:
             await asyncio.to_thread(self.restart_camera)
+        elif is_recording_end and video_file:
+            self.video_recorder.stop_recording_safe()
+            await self.connection_manager.info(
+                f"Post procesing video {os.path.basename(video_file)}"
+            )
+            task = asyncio.create_task(
+                self.file_manager.video_service.convert_video_async(
+                    video_file, video_file
+                )
+            )
+            task.add_done_callback(
+                lambda t: asyncio.create_task(self.notify_video_record_end(t))
+            )
+
         return self.stream_settings
 
     def generate_frame(self) -> Optional[bytes]:
@@ -268,7 +317,7 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("Camera loop terminated and camera released.")
 
     def _process_frame(self, frame: MatLike) -> None:
-        """Task run by the ThreadPoolExecutor to handle frame detection."""
+        """Handle frame detection."""
         if (
             self.detection_service.detection_settings.active
             and not self.detection_service.loading

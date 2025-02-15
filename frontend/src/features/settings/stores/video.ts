@@ -9,11 +9,12 @@ import {
 } from "@/features/settings/api";
 import { APIMediaType } from "@/features/settings/interface";
 import { getBatchFilesErrorMessage } from "@/features/settings/util";
+import { Nullable } from "@/util/ts-helpers";
 
 export interface FileItem {
-  name: string;
-  path: string;
-  url: string;
+  track: string;
+  duration: number;
+  preview?: Nullable<string>;
 }
 
 export interface State {
@@ -24,11 +25,12 @@ export interface State {
 
 const defaultState: State = {
   loading: false,
-  emptyMessage: "No photos",
+  emptyMessage: "No videos",
   data: [],
 };
-export const mediaType: APIMediaType = "image";
-export const useStore = defineStore("images", {
+
+export const mediaType: APIMediaType = "video";
+export const useStore = defineStore("videos", {
   state: () => ({ ...defaultState }),
   actions: {
     async fetchData() {
@@ -36,13 +38,11 @@ export const useStore = defineStore("images", {
       try {
         this.loading = true;
         this.emptyMessage = defaultState["emptyMessage"];
-        const response = await axios.get<{ files: FileItem[] }>(
-          "/api/files/list/photos",
-        );
-        this.data = response.data.files;
+        const response = await axios.get<FileItem[]>("/api/files/list/videos");
+        this.data = response.data;
       } catch (error) {
-        messager.handleError(error, "Error fetching images");
-        this.emptyMessage = "Failed to fetch photos";
+        messager.handleError(error, "Error fetching videos");
+        this.emptyMessage = "Failed to fetch videos";
       } finally {
         this.loading = false;
       }
@@ -58,7 +58,6 @@ export const useStore = defineStore("images", {
     },
     async batchRemoveFiles(filenames: string[]) {
       const messager = useMessagerStore();
-
       try {
         this.loading = true;
         const { data } = await batchRemoveFiles(mediaType, filenames);
@@ -83,7 +82,8 @@ export const useStore = defineStore("images", {
     },
     async downloadFilesArchive(filenames: string[]) {
       const messager = useMessagerStore();
-      const progressFn = messager.makeProgress("Downloading archive");
+
+      const progressFn = messager.makeProgress("Downloading video archive");
       try {
         await downloadFilesAsArchive(mediaType, filenames, progressFn);
       } catch (error) {

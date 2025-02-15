@@ -1,6 +1,7 @@
 <template>
   <Dialog
     class="settings-popup"
+    content-class="min-h-[35vh]"
     v-model:visible="popupStore.isOpen"
     header="Settings"
     dismissableMask

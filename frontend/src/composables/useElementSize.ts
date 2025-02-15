@@ -1,7 +1,9 @@
 import { onMounted, onBeforeUnmount, reactive, type Ref } from "vue";
 import { roundNumber } from "@/util/number";
 
-export const useElementSize = (elementRef: Ref<HTMLElement | null>) => {
+export const useElementSize = (
+  elementRef: Ref<HTMLElement | null | undefined>,
+) => {
   const size = reactive({
     width: 0,
     height: 0,

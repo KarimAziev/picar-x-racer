@@ -54,6 +54,9 @@
 </template>
 <script setup lang="ts">
 import { ref } from "vue";
+import { roundNumber } from "@/util/number";
+import { isNumber } from "@/util/guards";
+import { constrain } from "@/util/constrain";
 
 const resizing = ref(false);
 const resizeType = ref("");
@@ -62,6 +65,12 @@ const startY = ref(0);
 const startWidth = ref(0);
 const startHeight = ref(0);
 const size = defineModel<{ width: number; height: number }>();
+
+const props = defineProps<{
+  minWidth?: number;
+  maxWidth?: number;
+  aspectRatio?: number;
+}>();
 
 const initResize = (event: MouseEvent) => {
   if (!size.value) {
@@ -93,15 +102,40 @@ const doResize = (event: MouseEvent) => {
   if (!resizing.value) {
     return;
   }
-  if (resizeType.value.includes("right")) {
-    size.value.width = startWidth.value + (event.clientX - startX.value);
-  } else if (resizeType.value.includes("left")) {
-    size.value.width = startWidth.value - (event.clientX - startX.value);
+
+  const constrainFn = (v: number) =>
+    constrain(props.minWidth || 0, props.maxWidth || v, v);
+
+  const newWidth = constrainFn(
+    resizeType.value.includes("right")
+      ? roundNumber(startWidth.value + (event.clientX - startX.value))
+      : resizeType.value.includes("left")
+        ? roundNumber(startWidth.value + (event.clientX - startX.value))
+        : size.value.width,
+  );
+
+  const newHeight = resizeType.value.includes("bottom")
+    ? roundNumber(startHeight.value + (event.clientY - startY.value))
+    : resizeType.value.includes("top")
+      ? roundNumber(startHeight.value - (event.clientY - startY.value))
+      : size.value.height;
+
+  const ratio = newWidth / newHeight;
+
+  if (!isNumber(props.aspectRatio)) {
+    size.value.width = newWidth;
+    size.value.height = newHeight;
+    return;
   }
-  if (resizeType.value.includes("bottom")) {
-    size.value.height = startHeight.value + (event.clientY - startY.value);
-  } else if (resizeType.value.includes("top")) {
-    size.value.height = startHeight.value - (event.clientY - startY.value);
+
+  const aspectRatio = props.aspectRatio;
+
+  if (ratio > aspectRatio) {
+    size.value.height = newHeight;
+    size.value.width = constrainFn(roundNumber(aspectRatio * newHeight));
+  } else {
+    size.value.width = newWidth;
+    size.value.height = roundNumber(newWidth / aspectRatio);
   }
 };
 

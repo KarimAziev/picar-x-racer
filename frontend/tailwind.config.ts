@@ -12,7 +12,7 @@ const config: Config = {
         "tt-octosquares": ["var(--font-family)", "sans-serif"],
       },
       colors: {
-        "--robo-color-primary": "var(--robo-color-primary)",
+        "robo-color-primary": "var(--robo-color-primary)",
         error: "var(--color-error)",
         "button-text-primary-hover-background":
           "var(--p-button-text-primary-hover-background)",

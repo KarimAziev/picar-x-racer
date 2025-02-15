@@ -9,16 +9,13 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useStreamStore, useSettingsStore } from "@/features/settings/stores";
+import { useStreamStore } from "@/features/settings/stores";
 
 const streamStore = useStreamStore();
-const settingsStore = useSettingsStore();
 
 const isRecording = computed(() => streamStore.data.video_record);
 
 const handleToggle = async () => {
-  await streamStore.toggleRecording(
-    settingsStore.data.general.auto_download_video,
-  );
+  await streamStore.toggleRecording();
 };
 </script>

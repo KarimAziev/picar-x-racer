@@ -8,7 +8,7 @@ import type {
   Nullable,
 } from "@/util/ts-helpers";
 
-export type APIMediaType = "image" | "sound" | "music" | "data";
+export type APIMediaType = "image" | "sound" | "music" | "data" | "video";
 
 export interface ValueLabelOption<T = string> {
   value: T;

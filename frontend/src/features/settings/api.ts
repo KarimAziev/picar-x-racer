@@ -4,12 +4,28 @@ import {
   RemoveFileResponse,
 } from "@/features/settings/interface";
 import { retrieveError } from "@/util/error";
+import { isString } from "@/util/guards";
 
-export const downloadFile = async (mediaType: string, fileName: string) => {
+export const downloadFile = async (
+  mediaType: string,
+  fileName: string,
+  onProgress?: (progress: number) => void,
+) => {
   const response = await axios.get(
-    `/api/files/download/${mediaType}/${fileName}`,
+    `/api/files/download/${mediaType}?filename=${encodeURIComponent(fileName)}`,
     {
       responseType: "blob",
+      onDownloadProgress: (progressEvent) => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total,
+          );
+
+          if (onProgress) {
+            onProgress(percentCompleted);
+          }
+        }
+      },
     },
   );
   const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -21,12 +37,27 @@ export const downloadFile = async (mediaType: string, fileName: string) => {
   link.click();
 };
 
+export const extractContentDispositionFilename = (
+  contentDisposition?: string,
+) => {
+  if (!isString(contentDisposition)) {
+    return;
+  }
+  const filenameMatch = contentDisposition.match(
+    /filename\*?=["']?(?:UTF-8'')?([^;"']+)["']?/,
+  );
+  if (filenameMatch && filenameMatch[1]) {
+    return decodeURIComponent(filenameMatch[1]);
+  }
+};
+
 export const downloadFilesAsArchive = async (
   mediaType: string,
   fileNames: string[],
+  onProgress?: (progress: number) => void,
 ) => {
   try {
-    const response = await axios.post(
+    const response = await axios.post<Blob>(
       `/api/files/download/archive`,
       {
         media_type: mediaType,
@@ -34,13 +65,31 @@ export const downloadFilesAsArchive = async (
       },
       {
         responseType: "blob",
+        headers: {
+          Accept: "application/zip",
+          "Content-Type": "application/json",
+        },
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+
+            if (onProgress) {
+              onProgress(percentCompleted);
+            }
+          }
+        },
       },
     );
 
+    const archiveName =
+      extractContentDispositionFilename(
+        response.headers["content-disposition"],
+      ) || `${mediaType}_files_archive.zip`;
+
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
-
-    const archiveName = `${mediaType}_files_archive.zip`;
 
     link.href = url;
     link.setAttribute("download", archiveName);
@@ -55,7 +104,9 @@ export const downloadFilesAsArchive = async (
 };
 
 export const removeFile = (mediaType: APIMediaType, file: string) =>
-  axios.delete<RemoveFileResponse>(`/api/files/remove/${mediaType}/${file}`);
+  axios.delete<RemoveFileResponse>(
+    `/api/files/remove/${mediaType}?filename=${encodeURIComponent(file)}`,
+  );
 
 export const batchRemoveFiles = (
   mediaType: APIMediaType,

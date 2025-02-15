@@ -10,6 +10,7 @@ import {
   useDistanceStore,
   useCameraStore,
   useStreamStore,
+  useVideoStore,
 } from "@/features/settings/stores";
 import { useMessagerStore } from "@/features/messager";
 import type { MessageItemParams } from "@/features/messager";
@@ -49,6 +50,7 @@ export const useStore = defineStore("syncer", {
       const imageStore = useImageStore();
       const batteryStore = useBatteryStore();
       const distanceStore = useDistanceStore();
+      const videoStore = useVideoStore();
 
       const handleMessage = (data: WSMessageData) => {
         if (!data) {
@@ -98,6 +100,7 @@ export const useStore = defineStore("syncer", {
               music: musicStore.fetchData,
               data: detectionStore.fetchModels,
               image: imageStore.fetchData,
+              video: videoStore.fetchData,
             };
             const items: { type: string; file: string }[] = payload;
             const groupped = groupWith("type", (item) => item.file, items);
@@ -121,6 +124,31 @@ export const useStore = defineStore("syncer", {
           case "battery": {
             batteryStore.voltage = payload.voltage;
             batteryStore.percentage = payload.percentage;
+            break;
+          }
+
+          case "video_record_error": {
+            if (streamStore.is_record_initiator) {
+              streamStore.is_record_initiator = false;
+            }
+            messager.error(payload, {
+              immediately: true,
+            });
+            break;
+          }
+
+          case "video_record_end": {
+            videoStore.fetchData();
+            if (
+              streamStore.is_record_initiator &&
+              settingsStore.data.general.auto_download_video
+            ) {
+              videoStore.downloadFile(payload);
+            }
+            if (streamStore.is_record_initiator) {
+              streamStore.is_record_initiator = false;
+            }
+
             break;
           }
 

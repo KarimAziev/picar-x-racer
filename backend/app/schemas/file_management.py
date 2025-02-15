@@ -1,6 +1,17 @@
-from typing import List, Literal, Optional
+from enum import Enum
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from typing_extensions import Annotated
+
+
+class MediaType(str, Enum):
+    """Enumeration of supported file operations scoped by type."""
+
+    video = "video"
+    image = "image"
+    music = "music"
+    data = "data"
 
 
 class UploadFileResponse(BaseModel):
@@ -67,11 +78,39 @@ class DownloadArchiveRequestPayload(BatchFilesRequest):
     A model to represent a request data for downloading multiple files as an archive.
     """
 
-    media_type: Literal["music", "image", "video", "data"] = Field(
+    media_type: MediaType = Field(
         ...,
         description="The media type of the file.",
-        examples=["image", "music" "video", "data"],
+        examples=[
+            MediaType.video.value,
+            MediaType.image.value,
+            MediaType.music.value,
+            MediaType.data.value,
+        ],
     )
+    archive_name: Annotated[
+        str,
+        Field(
+            ...,
+            description="The archive file name.",
+        ),
+    ] = ""
+
+    @model_validator(mode="after")
+    def validate_archive_name(self):
+        if not isinstance(self.archive_name, str) or not self.archive_name.strip():
+            media_type = self.media_type
+            if media_type:
+                self.archive_name = f"{media_type}_files_archive.zip"
+            else:
+                raise ValueError(
+                    "media_type must be provided if archive_name is missing"
+                )
+
+        if not self.archive_name.lower().endswith(".zip"):
+            self.archive_name = f"{self.archive_name}.zip"
+
+        return self
 
 
 class PhotoItem(BaseModel):
@@ -104,4 +143,26 @@ class PhotosResponse(BaseModel):
     files: List[PhotoItem] = Field(
         ...,
         description="The list of objects with metadata",
+    )
+
+
+class VideoDetail(BaseModel):
+    """
+    A model to represent a video filename's metadata.
+    """
+
+    track: str = Field(
+        ...,
+        description="The name of the video file without directory, but with extension",
+        examples=["recording_2024-12-12-17-42-05.avi"],
+    )
+    preview: Optional[str] = Field(
+        ...,
+        description="The name of the generated preview image without directory, but with extension",
+        examples=["recording_2024-12-12-17-42-05_1734018196.jpg"],
+    )
+    duration: float = Field(
+        ...,
+        description="The name of the generated preview iamge without directory, but with extension",
+        examples=[25.7, 2.733333],
     )

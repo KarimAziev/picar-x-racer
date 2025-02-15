@@ -5,8 +5,12 @@
     :default-width="defaultWidth"
     :default-height="defaultHeight"
   >
-    <ImageFeed />
-    <!-- <img src="@/assets/logo.svg" /> -->
+    <ImageFeed v-if="!hideCamera" />
+    <img
+      v-else
+      src="@/assets/logo.svg"
+      class="w-full block h-[99%] shadow-[0_0_4px_2px] shadow-primary-500 select-none cursor-grab touch-none"
+    />
   </ResizableContainer>
 </template>
 <script setup lang="ts">
@@ -16,6 +20,8 @@ import ResizableContainer from "@/ui/ResizableContainer.vue";
 import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 
 const isMobile = useDeviceWatcher();
+
+const hideCamera = import.meta.env.VITE_USE_CAMERA === "false";
 
 const ImageFeed = defineAsyncComponent({
   loader: () => import("@/ui/ImageFeed.vue"),
