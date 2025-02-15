@@ -58,7 +58,8 @@ class VideoService:
             "-y",
             "-fflags",
             "+genpts",
-            "-vsync", "vfr",
+            "-vsync",
+            "vfr",
             "-i",
             str(input_file),
             "-c:v",
@@ -93,7 +94,11 @@ class VideoService:
             stderr=asyncio.subprocess.PIPE,
         )
 
+        _log.info("starting ffmpeg subprocess %s", process)
+
         _, stderr = await process.communicate()
+
+        _log.info("after process.communicate %s", stderr)
 
         if process.returncode != 0:
             _log.error(f"FFmpeg failed with error: {stderr.decode()}")
@@ -242,7 +247,6 @@ class VideoService:
         except Exception as err:
             _log.error("Failed to get duration for '%s': %s", video_file, err)
             return None
-
 
     def preview_image_path(self, video_file: Union[str, PathLike[str]]):
         basename = str(
