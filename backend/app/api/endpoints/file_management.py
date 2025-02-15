@@ -23,14 +23,9 @@ from app.schemas.file_management import (
     UploadFileResponse,
     VideoDetail,
 )
-from app.util.file_util import (
-    generate_zip_tempfile,
-    resolve_absolute_path,
-    zip_files_generator,
-)
+from app.util.file_util import resolve_absolute_path, zip_files_generator
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     File,
     Header,
@@ -321,7 +316,6 @@ def download_file(
     },
 )
 def download_files_as_archive(
-    background_tasks: BackgroundTasks,
     payload: DownloadArchiveRequestPayload,
     file_manager: "FileService" = Depends(get_file_manager),
 ):
@@ -345,15 +339,10 @@ def download_files_as_archive(
         archive_name = payload.archive_name
 
         logger.info(f"Created archive {archive_name}")
-        # temp_file_path, content_length = generate_zip_tempfile(
-        #     payload.filenames, directory_fn
-        # )
-        # background_tasks.add_task(file_manager.remove_file_safe, temp_file_path)
         buffer, content_length = zip_files_generator(payload.filenames, directory_fn)
 
         return StreamingResponse(
             iter(lambda: buffer.read(4096), b""),
-            # open(temp_file_path, "rb"),
             media_type="application/zip",
             headers={
                 "Content-Disposition": f'attachment; filename="{archive_name}"',

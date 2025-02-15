@@ -3,7 +3,6 @@ from functools import lru_cache
 from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.config.config import settings as app_config
 from app.core.logger import Logger
-from app.services import video_service
 from app.services.audio_service import AudioService
 from app.services.audio_stream_service import AudioStreamService
 from app.services.battery_service import BatteryService
