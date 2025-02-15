@@ -177,7 +177,7 @@ class CameraService(metaclass=SingletonMeta):
         elif is_recording_end and video_file:
             self.video_recorder.stop_recording_safe()
             await self.connection_manager.info(
-                f"Post procesing video {os.path.basename(video_file)}"
+                f"Post processing video {os.path.basename(video_file)}"
             )
             task = asyncio.create_task(
                 self.file_manager.video_service.convert_video_async(

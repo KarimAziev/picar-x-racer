@@ -86,5 +86,7 @@ class VideoRecorderService(metaclass=SingletonMeta):
         Releases the OpenCV video writer and sets it to None.
         """
         if self.video_writer:
+            logger.info("Releasing video writer")
             self.video_writer.release()
+            logger.info("video writer released")
             self.video_writer = None
