@@ -6,7 +6,7 @@ It also manages user settings and loads audio details using the `AudioService`.
 import json
 import os
 from os import path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from app.config.config import settings as app_config
 from app.core.logger import Logger
@@ -599,10 +599,21 @@ class FileService(metaclass=SingletonMeta):
         Recursively scans the provided directory for .tflite, .onnx and .pt model files.
         Returns a structed list of all found models.
         """
-        allowed_extensions = (
-            (".tflite", ".pt") if is_google_coral_connected() else (".pt")
+
+        allowed_extensions: Tuple[str, ...] = tuple(
+            [
+                ext
+                for ext in [
+                    ".tflite" if is_google_coral_connected() else None,
+                    ".pt",
+                    ".hef",
+                    ".onnx",
+                ]
+                if ext
+            ]
         )
-        existing_set = set()
+
+        existing_set: Set[str] = set()
 
         result = get_directory_structure(
             app_config.DATA_DIR,
