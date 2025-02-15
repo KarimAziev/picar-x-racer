@@ -88,6 +88,7 @@ class VideoService:
         command.insert(0, "nice")
         command.insert(1, "-n")
         command.insert(2, "10")
+        _log.info("starting command %s", command)
         process = await asyncio.create_subprocess_exec(
             *command,
             stdout=asyncio.subprocess.PIPE,
