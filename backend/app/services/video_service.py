@@ -99,15 +99,13 @@ class VideoService:
 
         _, stderr = await process.communicate()
 
-        _log.info("after process.communicate %s", stderr)
-
         if process.returncode != 0:
             _log.error(f"FFmpeg failed with error: {stderr.decode()}")
             return None
 
         try:
-            temp_file.rename(output_file)
             output_file = Path(output_file)
+            temp_file.rename(output_file)
             if output_file.exists():
                 return output_file.as_posix()
         except Exception:
