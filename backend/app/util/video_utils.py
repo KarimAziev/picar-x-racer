@@ -1,5 +1,5 @@
 import collections
-from typing import Callable, List, Literal, Optional, Sequence, Union, overload
+from typing import Callable, List, Literal, Optional, Sequence, Tuple, Union, overload
 
 import cv2
 import numpy as np
@@ -209,3 +209,49 @@ def calc_fps(
             return None
 
         return round(fps) if round_result else int(fps * 10) / 10
+
+
+def letterbox(
+    image: np.ndarray,
+    expected_w: int,
+    expected_h: int,
+    color: Tuple[int, int, int] = (0, 0, 0),
+) -> np.ndarray:
+    """
+    Resize image to fit within (expected_w, expected_h) while preserving aspect ratio,
+    and pad the rest with a given color.
+
+    Args:
+        image: The source image.
+        expected_w: Target width.
+        expected_h: Target height.
+        color: Padding color.
+
+    Returns:
+        The padded image with shape (expected_h, expected_w, channels).
+    """
+    original_h, original_w = image.shape[:2]
+
+    scale = min(expected_w / original_w, expected_h / original_h)
+    new_w = int(original_w * scale)
+    new_h = int(original_h * scale)
+    resized = cv2.resize(image, (new_w, new_h))
+
+    pad_w = expected_w - new_w
+    pad_h = expected_h - new_h
+
+    pad_left = pad_w // 2
+    pad_right = pad_w - pad_left
+    pad_top = pad_h // 2
+    pad_bottom = pad_h - pad_top
+
+    padded = cv2.copyMakeBorder(
+        resized,
+        pad_top,
+        pad_bottom,
+        pad_left,
+        pad_right,
+        borderType=cv2.BORDER_CONSTANT,
+        value=color,
+    )
+    return padded

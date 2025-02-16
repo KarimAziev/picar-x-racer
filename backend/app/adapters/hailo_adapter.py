@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Dict, Optional
 
-import cv2
 import numpy as np
 from app.core.logger import Logger
+from app.util.video_utils import letterbox
 
 if TYPE_CHECKING:
     from ultralytics.engine.results import Keypoints
@@ -69,12 +69,12 @@ class YOLOHailoAdapter:
         expected_h, expected_w = expected_shape[:2]
         original_h, original_w = source.shape[:2]
 
-        if source.shape[0] != expected_h or source.shape[1] != expected_w:
+        if (source.shape[0] != expected_h) or (source.shape[1] != expected_w):
             if verbose:
                 logger.info(
-                    f"Resizing input from {source.shape[:2]} to {(expected_h, expected_w)}"
+                    f"Letterboxing input from {source.shape[:2]} to {(expected_h, expected_w)}"
                 )
-            source = cv2.resize(source, (expected_w, expected_h))
+            source = letterbox(source, expected_w, expected_h)
 
         try:
             raw_results = self.hailo.run(source)
@@ -103,7 +103,7 @@ class YOLOHailoAdapter:
                             "bbox": bbox,
                             "label": label,
                             "confidence": round(float(score), 2),
-                            "class_id": class_id,  # used later for dummy cls property
+                            "class_id": class_id,
                         }
                     )
         except Exception as e:
