@@ -20,7 +20,7 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.util.video_utils import calc_fps, encode, resize_to_fixed_height
+from app.util.video_utils import calc_fps, encode, letterbox
 
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapter
@@ -329,9 +329,12 @@ class CameraService(metaclass=SingletonMeta):
                 original_height,
                 resized_width,
                 resized_height,
-            ) = resize_to_fixed_height(
+                pad_left,
+                pad_top,
+            ) = letterbox(
                 frame.copy(),
-                base_size=self.detection_service.detection_settings.img_size,
+                self.detection_service.detection_settings.img_size,
+                self.detection_service.detection_settings.img_size,
             )
 
             self.current_frame_timestamp = time.time()
@@ -343,6 +346,8 @@ class CameraService(metaclass=SingletonMeta):
                 "original_width": original_width,
                 "resized_height": resized_height,
                 "resized_width": resized_width,
+                "pad_left": pad_left,
+                "pad_top": pad_top,
                 "should_resize": False,
             }
             if not self.detection_service.shutting_down:

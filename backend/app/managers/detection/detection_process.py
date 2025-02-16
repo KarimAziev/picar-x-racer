@@ -96,6 +96,8 @@ def detection_process_func(
                         original_width=frame_data["original_width"],
                         resized_height=frame_data["resized_height"],
                         resized_width=frame_data["resized_width"],
+                        pad_left=frame_data["pad_left"],
+                        pad_top=frame_data["pad_top"],
                         should_resize=frame_data["should_resize"],
                         labels_to_detect=labels,
                     )

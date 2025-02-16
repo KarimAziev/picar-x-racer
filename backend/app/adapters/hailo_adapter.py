@@ -74,7 +74,15 @@ class YOLOHailoAdapter:
                 logger.info(
                     f"Letterboxing input from {source.shape[:2]} to {(expected_h, expected_w)}"
                 )
-            source = letterbox(source, expected_w, expected_h)
+            (
+                source,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+            ) = letterbox(source, expected_w, expected_h)
 
         try:
             raw_results = self.hailo.run(source)
