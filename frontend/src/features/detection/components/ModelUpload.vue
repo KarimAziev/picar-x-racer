@@ -4,7 +4,7 @@
     mode="basic"
     multiple
     name="file"
-    accept=".pt,.tflite"
+    accept=".pt,.tflite,.onx,.hef"
     :auto="true"
     chooseLabel="Add model"
     :chooseButtonProps="{ outlined: true, text: true }"

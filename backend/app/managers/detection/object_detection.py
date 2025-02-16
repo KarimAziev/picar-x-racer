@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import numpy as np
 from app.core.logger import Logger
@@ -6,6 +6,7 @@ from app.exceptions.detection import DetectionDimensionMismatch
 from app.util.video_utils import resize_to_fixed_height
 
 if TYPE_CHECKING:
+    from app.adapters.hailo_adapter import YOLOHailoAdapter
     from ultralytics import YOLO
 
 logger = Logger(__name__)
@@ -13,7 +14,7 @@ logger = Logger(__name__)
 
 def perform_detection(
     frame: np.ndarray,
-    yolo_model: "YOLO",
+    yolo_model: Union["YOLO", "YOLOHailoAdapter"],
     resized_height: int,
     resized_width: int,
     original_width: int,
@@ -21,10 +22,12 @@ def perform_detection(
     labels_to_detect: Optional[List[str]] = None,
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
-    should_resize=False,
+    should_resize: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Performs object detection on a given frame and filters the results based on specified labels and confidence thresholds.
+
+    Works equally well with an ultralytics YOLO model or our Hailo adapter.
 
     Args:
         frame: The frame (image data) on which object detection is performed.
@@ -81,25 +84,24 @@ def perform_detection(
     scale_x = original_width / resized_width
     scale_y = original_height / resized_height
 
-    detection_results = []
-
-    if results.boxes is not None:
-        boxes = results.boxes
+    detection_results: List[Dict[str, Any]] = []
+    if hasattr(results, "boxes") and results.boxes is not None:
+        idx = 0
         keypoints = results.keypoints if results.keypoints is not None else None
 
-        idx = 0
-
-        for detection in boxes:
+        for detection in results.boxes:
             x1, y1, x2, y2 = detection.xyxy[0].tolist()
             conf = round(detection.conf.item(), 2)
             cls = int(detection.cls.item())
             label = None
-
             try:
+                # For ultralytics YOLO, the model has a names attribute.
                 label = yolo_model.names[cls]
-            except KeyError:
-                pass
-
+            except (AttributeError, KeyError):
+                # For Hailo adapter the dummy detection already contains a label.
+                label = detection._det.get("label", str(cls))
+            if conf < confidence_threshold:
+                continue
             if conf < confidence_threshold:
                 continue
 
@@ -126,7 +128,5 @@ def perform_detection(
                     detection_entry["keypoints"] = formatted_keypoints
 
                 detection_results.append(detection_entry)
-
             idx += 1
-
     return detection_results

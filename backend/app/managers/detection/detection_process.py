@@ -1,7 +1,7 @@
 import queue
 import sys
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 from app.core.logger import Logger
 from app.exceptions.detection import DetectionDimensionMismatch
@@ -60,7 +60,7 @@ def detection_process_func(
                 put_to_queue(out_queue, {"success": True}, reraise=True)
             confidence_threshold = 0.3
             prev_time = time.time()
-            labels = None
+            labels: Optional[List[str]] = None
 
             while not stop_event.is_set():
                 try:
