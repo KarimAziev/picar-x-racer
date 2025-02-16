@@ -10,7 +10,7 @@ import App from "@/App.vue";
 import router from "@/router";
 import "primeicons/primeicons.css";
 
-import "./assets/main.scss";
+import "./assets/main.css";
 
 import { pt } from "@/config/theme";
 
