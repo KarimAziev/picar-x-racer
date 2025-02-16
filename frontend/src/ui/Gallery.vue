@@ -27,12 +27,12 @@
         </button>
       </div>
     </div>
-    <div class="flex justify-center mt-4">
+    <div class="flex justify-center gap-1 flex-wrap px-4">
       <span
         v-for="(_, index) in images"
         :key="index"
         @click="handleUpdateActiveIndex(index)"
-        class="w-3 h-3 mx-1 cursor-pointer rounded-full transition-all duration-300"
+        class="w-3 h-3 cursor-pointer rounded-full transition-all duration-300"
         :class="{
           'bg-robo-color-primary scale-125': index === activeIndex,
           'bg-gray-400 hover:bg-gray-500': index !== activeIndex,
