@@ -217,45 +217,39 @@ def letterbox(
     image: np.ndarray,
     expected_w: int,
     expected_h: int,
-    round_up_to_multiple: int = 32,
     color: Tuple[int, int, int] = (0, 0, 0),
-) -> tuple[np.ndarray, int, int, int, int, int, int]:
+) -> Tuple[np.ndarray, int, int, int, int, int, int]:
     """
-    Resizes image so that its height equals the given base (expected_h)
-    while preserving the aspect ratio, and then pads the resized image to
-    achieve a fixed final size of (expected_w, expected_h).
+    Resize image to fit within (expected_w, expected_h) while preserving aspect ratio,
+    and pad the rest with the specified color.
 
-    Returns a tuple containing:
-      - padded: the letterboxed image (with final size (expected_h, expected_w))
-      - original_w: original width of the image
-      - original_h: original height of the image
-      - resized_w: width of the resized (unpadded) image
-      - resized_h: height of the resized image (this equals expected_h)
-      - pad_left: left padding added
-      - pad_top: top padding added
+    This version computes the scale as the minimum of (expected_w/original_w, expected_h/original_h)
+    so that the output has shape (expected_h,expected_w).
 
-    (Note: to map a detection box (x,y) from the network output back to the original image,
-           use:
-             x_old = (x - pad_left) * (original_w / resized_w)
-             y_old = (y - pad_top) * (original_h / resized_h) )
+    Returns:
+        padded: the letterboxed image of size (expected_h, expected_w)
+        original_w: original image width
+        original_h: original image height
+        new_w: width of the resized (unpadded) image
+        new_h: height of the resized (unpadded) image
+        pad_left: left padding offset
+        pad_top: top padding offset
     """
     original_h, original_w = image.shape[:2]
-    resized_h = expected_h
-    resized_w = height_to_width(
-        expected_h,
-        target_width=original_w,
-        target_height=original_h,
-        round_up_to_multiple=round_up_to_multiple,
-    )
 
-    resized = cv2.resize(image, (resized_w, resized_h))
+    scale = min(expected_w / original_w, expected_h / original_h)
+    new_w = int(original_w * scale)
+    new_h = int(original_h * scale)
 
-    pad_w = expected_w - resized_w
-    pad_h = expected_h - resized_h
-    pad_left = pad_w // 2 if pad_w > 0 else 0
-    pad_right = pad_w - pad_left if pad_w > 0 else 0
-    pad_top = pad_h // 2 if pad_h > 0 else 0
-    pad_bottom = pad_h - pad_top if pad_h > 0 else 0
+    resized = cv2.resize(image, (new_w, new_h))
+
+    pad_w = expected_w - new_w
+    pad_h = expected_h - new_h
+
+    pad_left = pad_w // 2
+    pad_right = pad_w - pad_left
+    pad_top = pad_h // 2
+    pad_bottom = pad_h - pad_top
 
     padded = cv2.copyMakeBorder(
         resized,
@@ -266,4 +260,5 @@ def letterbox(
         borderType=cv2.BORDER_CONSTANT,
         value=color,
     )
-    return padded, original_w, original_h, resized_w, resized_h, pad_left, pad_top
+
+    return padded, original_w, original_h, new_w, new_h, pad_left, pad_top
