@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from app.core.logger import Logger
+from app.util.perfomance import measure_time
 from app.util.video_utils import letterbox
 
 logger = Logger(__name__)
@@ -35,8 +38,8 @@ class YOLOHailoAdapter:
             ) from e
 
         self.hailo = Hailo(hef_path, batch_size=batch_size, output_type=output_type)
-        self.input_shape = self.hailo.get_input_shape()
-        self.names = labels if labels is not None else {}
+        self.input_shape: Tuple[int, ...] = self.hailo.get_input_shape()
+        self.names: Dict[int, str] = labels if labels is not None else {}
         self.is_pose: bool = self._detect_pose_model()
         logger.info("'%s' is_pose model='%s'", hef_path, self.is_pose)
 
@@ -56,7 +59,7 @@ class YOLOHailoAdapter:
 
     def predict(
         self,
-        source,
+        source: np.ndarray,
         verbose: Optional[bool] = False,
         conf=0.4,
         task="detect",
@@ -80,8 +83,8 @@ class YOLOHailoAdapter:
         Returns:
             list: A list containing one dummy result object.
         """
-        expected_shape = self.input_shape
-        expected_h, expected_w = expected_shape[:2]
+
+        expected_h, expected_w = self.input_shape[:2]
         original_h, original_w = source.shape[:2]
 
         if (source.shape[0] != expected_h) or (source.shape[1] != expected_w):
@@ -106,63 +109,81 @@ class YOLOHailoAdapter:
             raise
 
         if self.is_pose:
-            from app.util.pose_util import postproc_yolov8_pose
-
-            predictions = postproc_yolov8_pose(
-                num_of_classes=1,
-                raw_detections=raw_results,
-                img_size=(original_w, original_h),
+            return self._pose_task(
+                raw_results=raw_results, original_w=original_w, original_h=original_h
             )
-
-            bboxes = predictions["bboxes"][0]  # shape: (max_detections, 4)
-            scores = predictions["scores"][0]  # shape: (max_detections, 1)
-            keypoints = predictions["keypoints"][0]  # shape: (max_detections, 17, 2)
-            detections = []
-            num_detections = (
-                int(predictions["num_detections"])
-                if "num_detections" in predictions
-                else bboxes.shape[0]
-            )
-            for i in range(num_detections):
-                detection = {
-                    "bbox": [int(x) for x in bboxes[i].tolist()],
-                    "label": self.names.get(0, "0"),
-                    "confidence": round(float(scores[i][0]), 2),
-                    "keypoints": keypoints[i].tolist(),
-                }
-                detections.append(detection)
-
-            dummy_result = _DummyResult(detections, names=self.names)
-            dummy_result.keypoints = _DummyKeypoints(
-                np.array([det["keypoints"] for det in detections])
-            )
-            return [dummy_result]
-
         else:
-            detections = []
-            for class_id, class_results in enumerate(raw_results):
-                for detection in class_results:
-                    score = detection[4]
-                    if score < conf:
-                        continue
-                    y0, x0, y1, x1 = detection[:4]
-                    bbox = [
-                        int(x0 * original_w),
-                        int(y0 * original_h),
-                        int(x1 * original_w),
-                        int(y1 * original_h),
-                    ]
-                    label = self.names.get(class_id, str(class_id))
-                    detections.append(
-                        {
-                            "bbox": bbox,
-                            "label": label,
-                            "confidence": round(float(score), 2),
-                            "class_id": class_id,
-                        }
-                    )
-            dummy_result = _DummyResult(detections, names=self.names)
-            return [dummy_result]
+            return self._detect_task(
+                raw_results=raw_results,
+                original_w=original_w,
+                original_h=original_h,
+                conf=0.4,
+            )
+
+    @measure_time
+    def _pose_task(
+        self, raw_results, original_w: int, original_h: int
+    ) -> List["_DummyResult"]:
+        from app.util.pose_util import postproc_yolov8_pose
+
+        predictions = postproc_yolov8_pose(
+            num_of_classes=1,
+            raw_detections=raw_results,
+            img_size=(original_w, original_h),
+        )
+
+        bboxes = predictions["bboxes"][0]  # shape: (max_detections, 4)
+        scores = predictions["scores"][0]  # shape: (max_detections, 1)
+        keypoints = predictions["keypoints"][0]  # shape: (max_detections, 17, 2)
+        detections: List[Dict[str, Any]] = []
+        num_detections = (
+            int(predictions["num_detections"])
+            if "num_detections" in predictions
+            else bboxes.shape[0]
+        )
+        for i in range(num_detections):
+            detection = {
+                "bbox": [int(x) for x in bboxes[i].tolist()],
+                "label": self.names.get(0, "0"),
+                "confidence": round(float(scores[i][0]), 2),
+                "keypoints": keypoints[i].tolist(),
+            }
+            detections.append(detection)
+
+        dummy_result = _DummyResult(detections, names=self.names)
+        dummy_result.keypoints = _DummyKeypoints(
+            np.array([det["keypoints"] for det in detections])
+        )
+        return [dummy_result]
+
+    @measure_time
+    def _detect_task(
+        self, raw_results, original_w: int, original_h: int, conf: float
+    ) -> List["_DummyResult"]:
+        detections = []
+        for class_id, class_results in enumerate(raw_results):
+            for detection in class_results:
+                score = detection[4]
+                if score < conf:
+                    continue
+                y0, x0, y1, x1 = detection[:4]
+                bbox = [
+                    int(x0 * original_w),
+                    int(y0 * original_h),
+                    int(x1 * original_w),
+                    int(y1 * original_h),
+                ]
+                label = self.names.get(class_id, str(class_id))
+                detections.append(
+                    {
+                        "bbox": bbox,
+                        "label": label,
+                        "confidence": round(float(score), 2),
+                        "class_id": class_id,
+                    }
+                )
+        dummy_result = _DummyResult(detections, names=self.names)
+        return [dummy_result]
 
 
 class _DummyResult:
@@ -171,8 +192,8 @@ class _DummyResult:
     Its “boxes” attribute is an instance of _DummyBoxes.
     """
 
-    def __init__(self, detections, names: Dict):
-        self.boxes = _DummyBoxes(detections, names)
+    def __init__(self, detections: List[Dict[str, Any]], names: Dict[int, str]) -> None:
+        self.boxes: _DummyBoxes = _DummyBoxes(detections, names)
         self.keypoints: Optional[_DummyKeypoints] = None
 
 
@@ -196,44 +217,43 @@ class _DummyDetection:
     A dummy detection object that mimics one detection from ultralytics (with properties: xyxy, conf, cls).
     """
 
-    def __init__(self, det: Dict, names: Dict):
+    def __init__(self, det: Dict[str, Any], names: Dict[int, str]) -> None:
         self._det = det
         self.names = names
 
     @property
-    def xyxy(self):
+    def xyxy(self) -> np.ndarray:
         """
         Return a numpy array of shape (1,4) representing bounding box coordinates.
-
-        The expected format is [x1, y1, x2, y2]"""
-
+        The expected format is [x1, y1, x2, y2].
+        """
         return np.array([self._det["bbox"]])
 
     @property
-    def conf(self):
+    def conf(self) -> _Confidence:
         """Return a simple object that has an item() method."""
-
-        class Conf:
-            def __init__(self, value):
-                self._value = value
-
-            def item(self):
-                return self._value
-
-        return Conf(self._det["confidence"])
+        return _Confidence(self._det["confidence"])
 
     @property
-    def cls(self):
+    def cls(self) -> _ClassId:
         """Return a simple object with an item() method that returns class id."""
+        return _ClassId(self._det.get("class_id", 0))
 
-        class Cls:
-            def __init__(self, value):
-                self._value = value
 
-            def item(self):
-                return self._value
+class _Confidence:
+    def __init__(self, value: float) -> None:
+        self._value = value
 
-        return Cls(self._det.get("class_id", 0))
+    def item(self) -> float:
+        return self._value
+
+
+class _ClassId:
+    def __init__(self, value: int) -> None:
+        self._value = value
+
+    def item(self) -> int:
+        return self._value
 
 
 class _DummyKeypoints:
@@ -242,8 +262,8 @@ class _DummyKeypoints:
     a list of keypoints (one per detection) in the .xy attribute.
     """
 
-    def __init__(self, keypoints: Union[List[Any], np.ndarray]):
-        self.xy = keypoints
+    def __init__(self, keypoints: Union[List[Any], np.ndarray]) -> None:
+        self.xy: Union[List[Any], np.ndarray] = keypoints
 
     def __len__(self) -> int:
         return len(self.xy)

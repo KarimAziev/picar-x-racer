@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 import numpy as np
 from app.core.logger import Logger
 from app.exceptions.detection import DetectionDimensionMismatch
+from app.util.perfomance import measure_time
 from app.util.video_utils import letterbox
 
 if TYPE_CHECKING:
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 
+@measure_time
 def perform_detection(
     frame: np.ndarray,
     yolo_model: Union["YOLO", "YOLOHailoAdapter"],
