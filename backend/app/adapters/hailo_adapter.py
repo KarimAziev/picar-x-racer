@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from app.core.logger import Logger
@@ -134,7 +134,7 @@ class YOLOHailoAdapter:
 
             dummy_result = _DummyResult(detections, names=self.names)
             dummy_result.keypoints = _DummyKeypoints(
-                [det["keypoints"] for det in detections]
+                np.array([det["keypoints"] for det in detections])
             )
             return [dummy_result]
 
@@ -242,7 +242,7 @@ class _DummyKeypoints:
     a list of keypoints (one per detection) in the .xy attribute.
     """
 
-    def __init__(self, keypoints: List):
+    def __init__(self, keypoints: Union[List[Any], np.ndarray]):
         self.xy = keypoints
 
     def __len__(self) -> int:
