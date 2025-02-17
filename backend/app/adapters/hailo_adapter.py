@@ -114,12 +114,30 @@ class YOLOHailoAdapter:
                 img_size=(original_w, original_h),
             )
 
-            logger.info("predictions=%s", predictions)
+            bboxes = predictions["bboxes"][0]  # shape: (max_detections, 4)
+            scores = predictions["scores"][0]  # shape: (max_detections, 1)
+            keypoints = predictions["keypoints"][0]  # shape: (max_detections, 17, 2)
+            detections = []
+            num_detections = (
+                int(predictions["num_detections"])
+                if "num_detections" in predictions
+                else bboxes.shape[0]
+            )
+            for i in range(num_detections):
+                detection = {
+                    "bbox": [int(x) for x in bboxes[i].tolist()],
+                    "label": self.names.get(0, "0"),
+                    "confidence": round(float(scores[i][0]), 2),
+                    "keypoints": keypoints[i].tolist(),
+                }
+                detections.append(detection)
 
-            dummy_result = _DummyResult(detections=[], names=self.names)
-            keypoints_list = predictions["keypoints"][0].tolist()
-            dummy_result.keypoints = _DummyKeypoints(keypoints_list)
+            dummy_result = _DummyResult(detections, names=self.names)
+            dummy_result.keypoints = _DummyKeypoints(
+                [det["keypoints"] for det in detections]
+            )
             return [dummy_result]
+
         else:
             detections = []
             for class_id, class_results in enumerate(raw_results):
