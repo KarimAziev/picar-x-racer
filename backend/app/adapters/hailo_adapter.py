@@ -87,15 +87,15 @@ class YOLOHailoAdapter:
         try:
             raw_results = self.hailo.run(source)
         except Exception as e:
-            if verbose:
-                print("Error during Hailo inference:", e)
+            logger.error("Error during Hailo inference: %s", e)
             raise
 
         detections = []
         try:
             for class_id, class_results in enumerate(raw_results):
                 for detection in class_results:
-                    score = detection[4]
+                    logger.info("class id='%s', detection='%s'", class_id, detection)
+                    score = detection[4] if len(detection) >= 4 else conf
                     if score < conf:
                         continue
                     y0, x0, y1, x1 = detection[:4]
