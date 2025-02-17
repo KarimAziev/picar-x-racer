@@ -32,11 +32,11 @@ class YOLOHailoAdapter:
                 "Hailo module could not be imported. Ensure hailo dependencies are installed."
             ) from e
 
-        self.is_pose: bool = self._detect_pose_model()
-        logger.info("'%s' is_pose model='%s'", hef_path, self.is_pose)
         self.hailo = Hailo(hef_path, batch_size=batch_size, output_type=output_type)
         self.input_shape = self.hailo.get_input_shape()
         self.names = labels if labels is not None else {}
+        self.is_pose: bool = self._detect_pose_model()
+        logger.info("'%s' is_pose model='%s'", hef_path, self.is_pose)
 
     def _detect_pose_model(self) -> bool:
         """
