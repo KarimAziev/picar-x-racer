@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from app.core.logger import Logger
-from app.util.perfomance import measure_time
+from app.util.perfomance import Timer, measure_time
 from app.util.video_utils import letterbox
 
 logger = Logger(__name__)
@@ -103,7 +103,8 @@ class YOLOHailoAdapter:
             ) = letterbox(source, expected_w, expected_h)
 
         try:
-            raw_results = self.hailo.run(source)
+            with Timer("hailo.run"):
+                raw_results: Any = self.hailo.run(source)
         except Exception as e:
             logger.error("Error during Hailo inference: '%s'", e)
             raise
