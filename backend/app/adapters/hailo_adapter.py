@@ -1,11 +1,8 @@
-from typing import TYPE_CHECKING, Dict, Optional, cast
+from typing import Dict, List, Optional
 
 import numpy as np
 from app.core.logger import Logger
 from app.util.video_utils import letterbox
-
-if TYPE_CHECKING:
-    from ultralytics.engine.results import Keypoints
 
 logger = Logger(__name__)
 
@@ -35,9 +32,24 @@ class YOLOHailoAdapter:
                 "Hailo module could not be imported. Ensure hailo dependencies are installed."
             ) from e
 
+        self.is_pose: bool = self._detect_pose_model()
+        logger.info("'%s' is_pose model='%s'", hef_path, self.is_pose)
         self.hailo = Hailo(hef_path, batch_size=batch_size, output_type=output_type)
         self.input_shape = self.hailo.get_input_shape()
         self.names = labels if labels is not None else {}
+
+    def _detect_pose_model(self) -> bool:
+        """
+        Check if this model contains keypoint predictions by examining output shapes.
+        """
+        input_layers, output_layers = self.hailo.describe()
+        logger.info(
+            "input_layers='%s', output_layers='%s'", input_layers, output_layers
+        )
+        for _, shape, _ in output_layers:
+            if len(shape) == 4 and shape[-1] == 51:
+                return True
+        return False
 
     def predict(
         self,
@@ -46,7 +58,7 @@ class YOLOHailoAdapter:
         conf=0.4,
         task="detect",
         imgsz: Optional[int] = None,
-    ):
+    ) -> List["_DummyResult"]:
         """
         Mimics the ultralytics YOLO predict() method.
         It:
@@ -70,10 +82,10 @@ class YOLOHailoAdapter:
         original_h, original_w = source.shape[:2]
 
         if (source.shape[0] != expected_h) or (source.shape[1] != expected_w):
-            logger.info(
-                f"Letterboxing input from {source.shape[:2]} to {(expected_h, expected_w)}"
-            )
-
+            if verbose:
+                logger.info(
+                    f"Letterboxing input from {source.shape[:2]} to {(expected_h, expected_w)}"
+                )
             (
                 source,
                 _,
@@ -87,23 +99,32 @@ class YOLOHailoAdapter:
         try:
             raw_results = self.hailo.run(source)
         except Exception as e:
-            logger.error("Error during Hailo inference: %s", e)
+            logger.error("Error during Hailo inference: '%s'", e)
             raise
 
-        detections = []
-        try:
+        logger.info("raw_results='%s'", raw_results)
+
+        if self.is_pose:
+            from app.util.pose_util import postproc_yolov8_pose
+
+            predictions = postproc_yolov8_pose(
+                num_of_classes=1,
+                raw_detections=raw_results,
+                img_size=(original_w, original_h),
+            )
+
+            dummy_result = _DummyResult(detections=[], names=self.names)
+            keypoints_list = predictions["keypoints"][0].tolist()
+            dummy_result.keypoints = _DummyKeypoints(keypoints_list)
+            return [dummy_result]
+        else:
+            detections = []
             for class_id, class_results in enumerate(raw_results):
                 for detection in class_results:
-                    logger.info("class id='%s', detection='%s'", class_id, detection)
-
-                    if len(detection) < 5:
-                        continue
-
-                    y0, x0, y1, x1 = detection[:4]
-                    score = detection[4] if len(detection) >= 5 else conf
+                    score = detection[4]
                     if score < conf:
                         continue
-
+                    y0, x0, y1, x1 = detection[:4]
                     bbox = [
                         int(x0 * original_w),
                         int(y0 * original_h),
@@ -111,33 +132,16 @@ class YOLOHailoAdapter:
                         int(y1 * original_h),
                     ]
                     label = self.names.get(class_id, str(class_id))
-
-                    detection_entry = {
-                        "bbox": bbox,
-                        "label": label,
-                        "confidence": round(float(score), 2),
-                        "class_id": class_id,
-                    }
-
-                    if len(detection) > 5:
-                        num_keypoints = (len(detection) - 5) // 2
-                        keypoints = [
-                            {
-                                "x": int(detection[5 + i * 2] * original_w),
-                                "y": int(detection[5 + i * 2 + 1] * original_h),
-                            }
-                            for i in range(num_keypoints)
-                        ]
-                        detection_entry["keypoints"] = keypoints
-
-                    detections.append(detection_entry)
-
-        except Exception as e:
-            logger.error("Error processing Hailo output:", exc_info=True)
-            raise
-
-        dummy_result = _DummyResult(detections, names=self.names)
-        return [dummy_result]
+                    detections.append(
+                        {
+                            "bbox": bbox,
+                            "label": label,
+                            "confidence": round(float(score), 2),
+                            "class_id": class_id,
+                        }
+                    )
+            dummy_result = _DummyResult(detections, names=self.names)
+            return [dummy_result]
 
 
 class _DummyResult:
@@ -148,8 +152,7 @@ class _DummyResult:
 
     def __init__(self, detections, names: Dict):
         self.boxes = _DummyBoxes(detections, names)
-        _keypoints = [det["keypoints"] for det in detections if "keypoints" in det]
-        self.keypoints = cast("Keypoints", _keypoints)
+        self.keypoints: Optional[_DummyKeypoints] = None
 
 
 class _DummyBoxes:
@@ -210,3 +213,16 @@ class _DummyDetection:
                 return self._value
 
         return Cls(self._det.get("class_id", 0))
+
+
+class _DummyKeypoints:
+    """
+    A helper class mimicking ultralytics keypoint results. It stores
+    a list of keypoints (one per detection) in the .xy attribute.
+    """
+
+    def __init__(self, keypoints: List):
+        self.xy = keypoints
+
+    def __len__(self) -> int:
+        return len(self.xy)
