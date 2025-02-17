@@ -1,10 +1,12 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from app.core.logger import Logger
 from app.util.video_utils import letterbox
 
 logger = Logger(__name__)
+
+LayerInfo = Tuple[str, Tuple[int, ...], Any]
 
 
 class YOLOHailoAdapter:
@@ -42,12 +44,13 @@ class YOLOHailoAdapter:
         """
         Check if this model contains keypoint predictions by examining output shapes.
         """
-        input_layers, output_layers = self.hailo.describe()
+        info: Tuple[List[LayerInfo], List[LayerInfo]] = self.hailo.describe()
+        input_layers, output_layers = info
         logger.info(
             "input_layers='%s', output_layers='%s'", input_layers, output_layers
         )
         for _, shape, _ in output_layers:
-            if len(shape) == 4 and shape[-1] == 51:
+            if shape[-1] == 51:
                 return True
         return False
 
