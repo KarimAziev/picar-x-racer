@@ -54,7 +54,6 @@ def perform_detection(
             - 'confidence': confidence score
             - optionally, 'keypoints'
     """
-    logger.info("resized_height=%s, resized_width=%s", resized_height, resized_width)
 
     if should_resize:
         (
