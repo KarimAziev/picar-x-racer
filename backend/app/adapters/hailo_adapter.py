@@ -105,8 +105,6 @@ class YOLOHailoAdapter:
             logger.error("Error during Hailo inference: '%s'", e)
             raise
 
-        logger.info("raw_results='%s'", raw_results)
-
         if self.is_pose:
             from app.util.pose_util import postproc_yolov8_pose
 
@@ -115,6 +113,8 @@ class YOLOHailoAdapter:
                 raw_detections=raw_results,
                 img_size=(original_w, original_h),
             )
+
+            logger.info("predictions=%s", predictions)
 
             dummy_result = _DummyResult(detections=[], names=self.names)
             keypoints_list = predictions["keypoints"][0].tolist()
