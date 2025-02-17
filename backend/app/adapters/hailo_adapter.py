@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, cast
 
 import numpy as np
 from app.core.logger import Logger
@@ -95,10 +95,15 @@ class YOLOHailoAdapter:
             for class_id, class_results in enumerate(raw_results):
                 for detection in class_results:
                     logger.info("class id='%s', detection='%s'", class_id, detection)
-                    score = detection[4] if len(detection) >= 4 else conf
+
+                    if len(detection) < 5:
+                        continue
+
+                    y0, x0, y1, x1 = detection[:4]
+                    score = detection[4] if len(detection) >= 5 else conf
                     if score < conf:
                         continue
-                    y0, x0, y1, x1 = detection[:4]
+
                     bbox = [
                         int(x0 * original_w),
                         int(y0 * original_h),
@@ -106,17 +111,29 @@ class YOLOHailoAdapter:
                         int(y1 * original_h),
                     ]
                     label = self.names.get(class_id, str(class_id))
-                    detections.append(
-                        {
-                            "bbox": bbox,
-                            "label": label,
-                            "confidence": round(float(score), 2),
-                            "class_id": class_id,
-                        }
-                    )
+
+                    detection_entry = {
+                        "bbox": bbox,
+                        "label": label,
+                        "confidence": round(float(score), 2),
+                        "class_id": class_id,
+                    }
+
+                    if len(detection) > 5:
+                        num_keypoints = (len(detection) - 5) // 2
+                        keypoints = [
+                            {
+                                "x": int(detection[5 + i * 2] * original_w),
+                                "y": int(detection[5 + i * 2 + 1] * original_h),
+                            }
+                            for i in range(num_keypoints)
+                        ]
+                        detection_entry["keypoints"] = keypoints
+
+                    detections.append(detection_entry)
+
         except Exception as e:
-            if verbose:
-                print("Error processing Hailo output:", e)
+            logger.error("Error processing Hailo output:", exc_info=True)
             raise
 
         dummy_result = _DummyResult(detections, names=self.names)
@@ -131,7 +148,8 @@ class _DummyResult:
 
     def __init__(self, detections, names: Dict):
         self.boxes = _DummyBoxes(detections, names)
-        self.keypoints: Optional["Keypoints"] = None
+        _keypoints = [det["keypoints"] for det in detections if "keypoints" in det]
+        self.keypoints = cast("Keypoints", _keypoints)
 
 
 class _DummyBoxes:
