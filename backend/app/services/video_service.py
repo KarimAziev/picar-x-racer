@@ -134,9 +134,11 @@ class VideoService:
                 stdout=subprocess.PIPE if not debug else subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
             )
-            temp_file.rename(output_file)
+
             if not isinstance(output_file, Path):
                 output_file = Path(output_file)
+
+            temp_file.rename(output_file)
 
             if output_file.exists():
                 _log.info(
