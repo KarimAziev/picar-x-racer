@@ -36,16 +36,6 @@ def encode(
         # Shift right 8 bits;
         frame = (frame >> 8).astype(np.uint8)
 
-    # if frame.ndim == 2:
-    #     channels = 1
-    # elif frame.ndim == 3:
-    #     channels = frame.shape[2]
-    # else:
-    #     raise ValueError("Frame has an unexpected number of dimensions.")
-
-    # if channels not in (1, 3, 4):
-    #     raise ValueError(f"After conversion, invalid number of channels: {channels}")
-
     success, buffer = cv2.imencode(format, frame, params or [])
     if not success:
         raise ValueError("cv2.imencode failed to encode the frame.")
@@ -54,10 +44,10 @@ def encode(
 
 @overload
 def resize_frame(frame: None, width: int, height: int) -> None: ...
-
-
 @overload
 def resize_frame(frame: np.ndarray, width: int, height: int) -> np.ndarray: ...
+
+
 def resize_frame(
     frame: Optional[np.ndarray], width: int, height: int
 ) -> Optional[np.ndarray]:
@@ -67,6 +57,10 @@ def resize_frame(
     return frame
 
 
+@overload
+def get_frame_size(frame: None) -> Tuple[None, None]: ...
+@overload
+def get_frame_size(frame: np.ndarray) -> Tuple[int, int]: ...
 def get_frame_size(frame: Optional[np.ndarray]):
     if frame is None:
         return (None, None)
@@ -74,7 +68,7 @@ def get_frame_size(frame: Optional[np.ndarray]):
     return (original_width, original_height)
 
 
-def resize_by_width_maybe(frame: np.ndarray, width: int):
+def resize_by_width_maybe(frame: np.ndarray, width: int) -> np.ndarray:
     original_height, original_width = frame.shape[:2]
 
     if original_width == width:
@@ -87,7 +81,7 @@ def resize_by_width_maybe(frame: np.ndarray, width: int):
     return cv2.resize(frame, (width, height))
 
 
-def resize_by_height_maybe(frame: np.ndarray, height: int):
+def resize_by_height_maybe(frame: np.ndarray, height: int) -> np.ndarray:
     original_height, original_width = frame.shape[:2]
 
     if original_height == height:
