@@ -88,10 +88,10 @@ class YOLOHailoAdapter:
         original_h, original_w = source.shape[:2]
 
         if (source.shape[0] != expected_h) or (source.shape[1] != expected_w):
-            if verbose:
-                logger.info(
-                    f"Letterboxing input from {source.shape[:2]} to {(expected_h, expected_w)}"
-                )
+            logger.info(
+                f"Letterboxing input from {source.shape[:2]} to {(expected_h, expected_w)}"
+            )
+
             (
                 source,
                 _,
