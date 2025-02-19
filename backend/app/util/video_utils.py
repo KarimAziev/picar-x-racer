@@ -4,6 +4,7 @@ from typing import Callable, List, Literal, Optional, Sequence, Tuple, Union, ov
 import cv2
 import numpy as np
 from app.core.logger import Logger
+from app.util.perfomance import Timer, measure_time
 from app.util.photo import height_to_width, width_to_height
 
 logger = Logger(__name__)
@@ -207,6 +208,7 @@ def calc_fps(
         return round(fps) if round_result else int(fps * 10) / 10
 
 
+@measure_time
 def letterbox(
     image: np.ndarray,
     expected_w: int,
@@ -235,7 +237,8 @@ def letterbox(
     new_w = int(original_w * scale)
     new_h = int(original_h * scale)
 
-    resized = cv2.resize(image, (new_w, new_h))
+    with Timer("cv2 resize"):
+        resized = cv2.resize(image, (new_w, new_h))
 
     pad_w = expected_w - new_w
     pad_h = expected_h - new_h

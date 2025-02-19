@@ -20,6 +20,7 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
+from app.util.perfomance import Timer
 from app.util.video_utils import calc_fps, encode, letterbox
 
 if TYPE_CHECKING:
@@ -124,6 +125,7 @@ class CameraService(metaclass=SingletonMeta):
           devices.
         - `CameraDeviceError`: If the specified camera device cannot be initialized and
           no alternative device is available.
+        - `CameraShutdownInProgressError`: If The camera is shutting down.
         - `Exception`: If the camera restart or other related operations unexpectedly fail.
         """
         if self.shutting_down:
@@ -323,6 +325,9 @@ class CameraService(metaclass=SingletonMeta):
             and not self.detection_service.loading
             and not self.detection_service.shutting_down
         ):
+            with Timer("copying frame"):
+                copied_frame = frame.copy()
+
             (
                 resized_frame,
                 original_width,
@@ -332,7 +337,7 @@ class CameraService(metaclass=SingletonMeta):
                 pad_left,
                 pad_top,
             ) = letterbox(
-                frame.copy(),
+                copied_frame,
                 self.detection_service.detection_settings.img_size,
                 self.detection_service.detection_settings.img_size,
             )
@@ -351,7 +356,8 @@ class CameraService(metaclass=SingletonMeta):
                 "should_resize": False,
             }
             if not self.detection_service.shutting_down:
-                self.detection_service.put_frame(frame_data)
+                with Timer("putting resized frame to multiprocessing queue"):
+                    self.detection_service.put_frame(frame_data)
 
     def start_camera(self) -> None:
         """
