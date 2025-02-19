@@ -68,20 +68,20 @@ const SKELETON: SkeletonItem[] = normalizeSkeleton([
   [PARTS.LEFT_EYE, PARTS.LEFT_EAR, 25, "primary-900"], // left eye to left ear
   [PARTS.RIGHT_EYE, PARTS.RIGHT_EAR, 25, "primary-900"], // right eye to right ear
   // arms
-  [PARTS.LEFT_SHOULDER, PARTS.LEFT_ELBOW, 100, "yellow"], // left shoulder to left elbow
-  [PARTS.LEFT_ELBOW, PARTS.LEFT_WRIST, 90, "yellow-200"], // left elbow to left wrist
-  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_ELBOW, 100, "yellow"], // right shoulder to right elbow
-  [PARTS.RIGHT_ELBOW, PARTS.RIGHT_WRIST, 90, "yellow-200"], // right elbow to right wrist
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_ELBOW, 75, "violet"], // left shoulder to left elbow
+  [PARTS.LEFT_ELBOW, PARTS.LEFT_WRIST, 75, "violet"], // left elbow to left wrist
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_ELBOW, 75, "violet"], // right shoulder to right elbow
+  [PARTS.RIGHT_ELBOW, PARTS.RIGHT_WRIST, 75, "violet"], // right elbow to right wrist
   // body
-  [PARTS.LEFT_SHOULDER, PARTS.RIGHT_SHOULDER, 100, "primary-900"], // left shoulder to right shoulder
-  [PARTS.LEFT_SHOULDER, PARTS.LEFT_HIP, 90, "primary-800"], // left shoulder to left hip
-  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_HIP, 90, "primary-800"], // right shoulder to right Hip
-  [PARTS.LEFT_HIP, PARTS.RIGHT_HIP, 100, "primary-200"], // left hip to right hip
+  [PARTS.LEFT_SHOULDER, PARTS.RIGHT_SHOULDER, 75, "violet"], // left shoulder to right shoulder
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_HIP, 75, "violet"], // left shoulder to left hip
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_HIP, 75, "violet"], // right shoulder to right Hip
+  [PARTS.LEFT_HIP, PARTS.RIGHT_HIP, 75, "violet"], // left hip to right hip
   // legs
-  [PARTS.LEFT_HIP, PARTS.LEFT_KNEE, 90, "primary-900"], // left hip to left knee
-  [PARTS.LEFT_KNEE, PARTS.LEFT_ANKLE, 90, "primary-900"], // left knee to left ankle
-  [PARTS.RIGHT_HIP, PARTS.RIGHT_KNEE, 90, "primary-900"], // right hip to right knee
-  [PARTS.RIGHT_KNEE, PARTS.RIGHT_ANKLE, 90, "primary-900"], // right knee to right ankle
+  [PARTS.LEFT_HIP, PARTS.LEFT_KNEE, 75, "violet"], // left hip to left knee
+  [PARTS.LEFT_KNEE, PARTS.LEFT_ANKLE, 75, "violet"], // left knee to left ankle
+  [PARTS.RIGHT_HIP, PARTS.RIGHT_KNEE, 75, "violet"], // right hip to right knee
+  [PARTS.RIGHT_KNEE, PARTS.RIGHT_ANKLE, 75, "violet"], // right knee to right ankle
 ]);
 
 const keystrokesPred = where({
