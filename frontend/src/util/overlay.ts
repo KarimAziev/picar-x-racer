@@ -32,11 +32,11 @@ export enum PARTS {
 }
 
 const keypointsColors = mapObj(normalizeThemeName, {
-  [PARTS.NOSE]: "primary-600", // Nose
-  [PARTS.LEFT_EYE]: "indigo-950", // Left Eye
-  [PARTS.RIGHT_EYE]: "indigo-950", // Right Eye
-  [PARTS.LEFT_EAR]: "indigo-900", // Left Ear
-  [PARTS.RIGHT_EAR]: "indigo-900", // Right Ear
+  [PARTS.NOSE]: "none", // Nose
+  [PARTS.LEFT_EYE]: "red", // Left Eye
+  [PARTS.RIGHT_EYE]: "red", // Right Eye
+  [PARTS.LEFT_EAR]: "none", // Left Ear
+  [PARTS.RIGHT_EAR]: "none", // Right Ear
   [PARTS.LEFT_SHOULDER]: "lime", // Left Shoulder
   [PARTS.RIGHT_SHOULDER]: "lime", // Right Shoulder
   [PARTS.LEFT_ELBOW]: "pink", // Left Elbow
@@ -63,20 +63,20 @@ export const normalizeSkeleton = (skeletonItems: SkeletonItem[]) =>
 
 const SKELETON: SkeletonItem[] = normalizeSkeleton([
   // head
-  [PARTS.NOSE, PARTS.LEFT_EYE, 25, "primary-400"], // nose to left eye
-  [PARTS.NOSE, PARTS.RIGHT_EYE, 25, "primary-400"], // nose to right eye
-  [PARTS.LEFT_EYE, PARTS.LEFT_EAR, 25, "primary-400"], // left eye to left ear
-  [PARTS.RIGHT_EYE, PARTS.RIGHT_EAR, 25, "primary-400"], // right eye to right ear
+  [PARTS.NOSE, PARTS.LEFT_EYE, 25, "primary-900"], // nose to left eye
+  [PARTS.NOSE, PARTS.RIGHT_EYE, 25, "primary-900"], // nose to right eye
+  [PARTS.LEFT_EYE, PARTS.LEFT_EAR, 25, "primary-900"], // left eye to left ear
+  [PARTS.RIGHT_EYE, PARTS.RIGHT_EAR, 25, "primary-900"], // right eye to right ear
   // arms
-  [PARTS.LEFT_SHOULDER, PARTS.LEFT_ELBOW, 100, "indigo-900"], // left shoulder to left elbow
-  [PARTS.LEFT_ELBOW, PARTS.LEFT_WRIST, 90, "yellow"], // left elbow to left wrist
-  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_ELBOW, 100, "indigo-900"], // right shoulder to right elbow
-  [PARTS.RIGHT_ELBOW, PARTS.RIGHT_WRIST, 90, "yellow"], // right elbow to right wrist
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_ELBOW, 100, "yellow"], // left shoulder to left elbow
+  [PARTS.LEFT_ELBOW, PARTS.LEFT_WRIST, 90, "yellow-200"], // left elbow to left wrist
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_ELBOW, 100, "yellow"], // right shoulder to right elbow
+  [PARTS.RIGHT_ELBOW, PARTS.RIGHT_WRIST, 90, "yellow-200"], // right elbow to right wrist
   // body
   [PARTS.LEFT_SHOULDER, PARTS.RIGHT_SHOULDER, 100, "primary-900"], // left shoulder to right shoulder
-  [PARTS.LEFT_SHOULDER, PARTS.LEFT_HIP, 90, "primary-900"], // left shoulder to left hip
-  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_HIP, 90, "primary-900"], // right shoulder to right Hip
-  [PARTS.LEFT_HIP, PARTS.RIGHT_HIP, 100, "primary-900"], // left hip to right hip
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_HIP, 90, "primary-800"], // left shoulder to left hip
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_HIP, 90, "primary-800"], // right shoulder to right Hip
+  [PARTS.LEFT_HIP, PARTS.RIGHT_HIP, 100, "primary-200"], // left hip to right hip
   // legs
   [PARTS.LEFT_HIP, PARTS.LEFT_KNEE, 90, "primary-900"], // left hip to left knee
   [PARTS.LEFT_KNEE, PARTS.LEFT_ANKLE, 90, "primary-900"], // left knee to left ankle
@@ -136,7 +136,7 @@ export const drawKeypoints = (
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.lineWidth = lineWidth * 2;
-      ctx.strokeStyle = getVar("--p-primary-300");
+      ctx.strokeStyle = getVar("--p-primary-500");
       ctx.stroke();
 
       // the primary line
@@ -155,14 +155,18 @@ export const drawKeypoints = (
   SKELETON.forEach(renderGroup);
 
   keypoints.forEach(({ x, y }, i) => {
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, 2 * Math.PI);
     const keyColor = getVar(keypointsColors[i as keyof typeof keypointsColors]);
 
+    if (!keyColor) {
+      return;
+    }
+    ctx.beginPath();
     if ([PARTS.RIGHT_EYE, PARTS.LEFT_EYE].includes(i)) {
+      ctx.arc(x, y, 10, 0, 2 * Math.PI);
       ctx.strokeStyle = keyColor;
       ctx.stroke();
     } else {
+      ctx.arc(x, y, 7, 0, 2 * Math.PI);
       ctx.fillStyle = keyColor;
       ctx.fill();
     }
