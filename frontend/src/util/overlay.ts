@@ -152,6 +152,8 @@ export const drawKeypoints = (
     }
   };
 
+  const fontSize = parseFloat(ctx.font);
+
   SKELETON.forEach(renderGroup);
 
   keypoints.forEach(({ x, y }, i) => {
@@ -162,11 +164,11 @@ export const drawKeypoints = (
     }
     ctx.beginPath();
     if ([PARTS.RIGHT_EYE, PARTS.LEFT_EYE].includes(i)) {
-      ctx.arc(x, y, 10, 0, 2 * Math.PI);
+      ctx.arc(x, y, fontSize / 3, 0, 2 * Math.PI);
       ctx.strokeStyle = keyColor;
       ctx.stroke();
     } else {
-      ctx.arc(x, y, 7, 0, 2 * Math.PI);
+      ctx.arc(x, y, fontSize / 4, 0, 2 * Math.PI);
       ctx.fillStyle = keyColor;
       ctx.fill();
     }
