@@ -26,7 +26,8 @@
     sans-serif;
   --line-height: 1.5;
   --font-weight: 400;
-  --canvas-font: 24px TT-Octosquares-Regular;
+  --canvas-font-size: 14px;
+  --canvas-font: var(--canvas-font-size) TT-Octosquares-Regular;
   --color-background: var(--p-surface-900);
 }
 .p-dark {
@@ -69,11 +70,18 @@ html {
   html {
     font-size: 12px;
   }
+
+  :root {
+    --canvas-font-size: 18px;
+  }
 }
 
 @media (min-width: 1200px) {
   html {
     font-size: 14px;
+  }
+  :root {
+    --canvas-font-size: 24px;
   }
 }
 

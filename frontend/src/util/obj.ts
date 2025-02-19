@@ -452,3 +452,22 @@ export const isObjectShallowEquals = <
 
   return origEntries.every(([key, value]) => value === newData[key]);
 };
+
+export const mapObj = <
+  F extends (...args: any) => any,
+  V extends Record<string | number, unknown>,
+  K extends keyof V,
+  R extends { [Pattern in K]: ReturnType<F> },
+>(
+  f: F,
+  v: V,
+): R => {
+  const keys = Object.keys(v) as K[];
+  return keys.reduce(
+    (acc: R, k: K) => ({
+      ...acc,
+      [k]: f(v[k]),
+    }),
+    {} as R,
+  );
+};

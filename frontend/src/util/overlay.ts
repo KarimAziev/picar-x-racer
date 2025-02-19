@@ -1,5 +1,92 @@
 import type { DetectionResult } from "@/features/detection";
 import { where } from "@/util/func";
+import { mapObj } from "@/util/obj";
+import { getStyleVariable, normalizeThemeName } from "@/util/theme";
+import { takePercentage } from "@/util/number";
+
+/**
+ * 0: Nose 1: Left Eye 2: Right Eye 3: Left Ear 4: Right Ear 5: Left Shoulder 6:
+   Right Shoulder 7: Left Elbow 8: Right Elbow 9: Left Wrist 10: Right Wrist 11:
+   Left Hip 12: Right Hip 13: Left Knee 14: Right Knee 15: Left Ankle 16: Right
+   Ankle
+ */
+
+export enum PARTS {
+  NOSE = 0,
+  LEFT_EYE = 1,
+  RIGHT_EYE = 2,
+  LEFT_EAR = 3,
+  RIGHT_EAR = 4,
+  LEFT_SHOULDER = 5,
+  RIGHT_SHOULDER = 6,
+  LEFT_ELBOW = 7,
+  RIGHT_ELBOW = 8,
+  LEFT_WRIST = 9,
+  RIGHT_WRIST = 10,
+  LEFT_HIP = 11,
+  RIGHT_HIP = 12,
+  LEFT_KNEE = 13,
+  RIGHT_KNEE = 14,
+  LEFT_ANKLE = 15,
+  RIGHT_ANKLE = 16,
+}
+
+const keypointsColors = mapObj(normalizeThemeName, {
+  [PARTS.NOSE]: "primary-600", // Nose
+  [PARTS.LEFT_EYE]: "indigo-950", // Left Eye
+  [PARTS.RIGHT_EYE]: "indigo-950", // Right Eye
+  [PARTS.LEFT_EAR]: "indigo-900", // Left Ear
+  [PARTS.RIGHT_EAR]: "indigo-900", // Right Ear
+  [PARTS.LEFT_SHOULDER]: "lime", // Left Shoulder
+  [PARTS.RIGHT_SHOULDER]: "lime", // Right Shoulder
+  [PARTS.LEFT_ELBOW]: "pink", // Left Elbow
+  [PARTS.RIGHT_ELBOW]: "pink", // Right Elbow
+  [PARTS.LEFT_WRIST]: "yellow-200", // Left Wrist
+  [PARTS.RIGHT_WRIST]: "yellow-200", // Right Wrist
+  [PARTS.LEFT_HIP]: "lime", // Left Hip
+  [PARTS.RIGHT_HIP]: "lime", // Right Hip
+  [PARTS.LEFT_KNEE]: "lime", // Left Knee
+  [PARTS.RIGHT_KNEE]: "lime", // Right Knee
+  [PARTS.LEFT_ANKLE]: "lime", // Left Ankle
+  [PARTS.RIGHT_ANKLE]: "lime", // Right Ankle
+});
+
+export type SkeletonItem = [PARTS, PARTS, number, string];
+
+export const normalizeSkeleton = (skeletonItems: SkeletonItem[]) =>
+  skeletonItems.map(
+    (item) =>
+      (item as SkeletonItem)
+        .slice(0, -1)
+        .concat([normalizeThemeName(item.pop() as string)]) as SkeletonItem,
+  );
+
+const SKELETON: SkeletonItem[] = normalizeSkeleton([
+  // head
+  [PARTS.NOSE, PARTS.LEFT_EYE, 25, "primary-400"], // nose to left eye
+  [PARTS.NOSE, PARTS.RIGHT_EYE, 25, "primary-400"], // nose to right eye
+  [PARTS.LEFT_EYE, PARTS.LEFT_EAR, 25, "primary-400"], // left eye to left ear
+  [PARTS.RIGHT_EYE, PARTS.RIGHT_EAR, 25, "primary-400"], // right eye to right ear
+  // arms
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_ELBOW, 100, "indigo-900"], // left shoulder to left elbow
+  [PARTS.LEFT_ELBOW, PARTS.LEFT_WRIST, 90, "yellow"], // left elbow to left wrist
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_ELBOW, 100, "indigo-900"], // right shoulder to right elbow
+  [PARTS.RIGHT_ELBOW, PARTS.RIGHT_WRIST, 90, "yellow"], // right elbow to right wrist
+  // body
+  [PARTS.LEFT_SHOULDER, PARTS.RIGHT_SHOULDER, 100, "primary-900"], // left shoulder to right shoulder
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_HIP, 90, "primary-900"], // left shoulder to left hip
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_HIP, 90, "primary-900"], // right shoulder to right Hip
+  [PARTS.LEFT_HIP, PARTS.RIGHT_HIP, 100, "primary-900"], // left hip to right hip
+  // legs
+  [PARTS.LEFT_HIP, PARTS.LEFT_KNEE, 90, "primary-900"], // left hip to left knee
+  [PARTS.LEFT_KNEE, PARTS.LEFT_ANKLE, 90, "primary-900"], // left knee to left ankle
+  [PARTS.RIGHT_HIP, PARTS.RIGHT_KNEE, 90, "primary-900"], // right hip to right knee
+  [PARTS.RIGHT_KNEE, PARTS.RIGHT_ANKLE, 90, "primary-900"], // right knee to right ankle
+]);
+
+const keystrokesPred = where({
+  y: (v: number) => v && v >= 0,
+});
 
 /**
  * Draws keypoints on the canvas at the specified coordinates.
@@ -10,65 +97,75 @@ import { where } from "@/util/func";
  * @example
  * drawKeypoints(ctx, 1, 1, { keypoints: [{ x: 50, y: 50, conf: 0.9 }, ...] });
  */
-const SKELETON = [
-  [0, 1],
-  [0, 2], // nose to left eye, nose to right Eye
-  [1, 3],
-  [2, 4], // left eye to left ear, right eye to right ear
-  [5, 6], // left shoulder to right shoulder
-  [5, 7],
-  [7, 9], // left shoulder to left elbow to left wrist
-  [6, 8],
-  [8, 10], // right shoulder to right elbow to right wrist
-  [5, 11],
-  [6, 12], // shoulders to hips
-  [11, 12], // hip to hip
-  [11, 13],
-  [13, 15], // left hip to left knee to left ankle
-  [12, 14],
-  [14, 16], // right hip to right knee to right ankle
-];
-
-const keystrokesPred = where({
-  x: (v: number) => v && v > 0,
-  y: (v: number) => v && v > 0,
-});
-
 export const drawKeypoints = (
   ctx: CanvasRenderingContext2D,
   scaleX: number,
   scaleY: number,
   detection: DetectionResult,
 ) => {
-  if (!detection.keypoints || detection.keypoints.length < 2) return;
+  if (!detection.keypoints || detection.keypoints.length < 2) {
+    return;
+  }
 
   const styles = getComputedStyle(document.documentElement);
-  const color = styles.getPropertyValue("--color-text").trim();
+  const cachedVars = new Map<string, string | undefined>();
+  const getVar = (name: string) => {
+    if (cachedVars.has(name)) {
+      return cachedVars.get(name) || "";
+    }
+    const value = getStyleVariable(name, styles);
+    cachedVars.set(name, value);
+    return value || "";
+  };
 
   const keypoints = detection.keypoints.map(({ x, y }) => ({
     x: x * scaleX,
     y: y * scaleY,
   }));
 
-  ctx.beginPath();
-  SKELETON.forEach(([startIdx, endIdx]) => {
+  const maxLineWidth = ctx.lineWidth;
+
+  const renderGroup = ([startIdx, endIdx, lWidth, colName]: SkeletonItem) => {
     const start = keypoints[startIdx];
     const end = keypoints[endIdx];
+
     if (keystrokesPred(start) && keystrokesPred(end)) {
+      const lineWidth = takePercentage(maxLineWidth, lWidth);
+
+      ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
+      ctx.lineWidth = lineWidth * 2;
+      ctx.strokeStyle = getVar("--p-primary-300");
+      ctx.stroke();
+
+      // the primary line
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      const primaryCol = getVar(colName);
+      if (primaryCol) {
+        ctx.strokeStyle = primaryCol;
+      }
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
     }
-  });
+  };
 
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  SKELETON.forEach(renderGroup);
 
-  keypoints.forEach(({ x, y }) => {
+  keypoints.forEach(({ x, y }, i) => {
     ctx.beginPath();
     ctx.arc(x, y, 5, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
-    ctx.fill();
+    const keyColor = getVar(keypointsColors[i as keyof typeof keypointsColors]);
+
+    if ([PARTS.RIGHT_EYE, PARTS.LEFT_EYE].includes(i)) {
+      ctx.strokeStyle = keyColor;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = keyColor;
+      ctx.fill();
+    }
   });
 };
 
@@ -91,10 +188,12 @@ export const drawLabelWithConfidence = (
   x1: number,
   y1: number,
 ) => {
+  const y = parseFloat(ctx.font);
+
   ctx.fillText(
     `${label.toUpperCase()}: ${(confidence * 100).toFixed(1)}%`,
     x1 + 5,
-    y1 + 25,
+    y1 + y,
   );
 };
 
@@ -238,6 +337,8 @@ export const setupCtx = (canvas: HTMLCanvasElement, img: HTMLImageElement) => {
 
   const displayedWidth = img.clientWidth;
   const displayedHeight = img.clientHeight;
+  const scalingFactor = 0.004;
+  const maxLineWidth = 4;
 
   const scaleX = displayedWidth / originalWidth;
   const scaleY = displayedHeight / originalHeight;
@@ -251,7 +352,11 @@ export const setupCtx = (canvas: HTMLCanvasElement, img: HTMLImageElement) => {
   const color = styles.getPropertyValue("--color-text").trim();
   const font = styles.getPropertyValue("--canvas-font").trim();
 
-  ctx.lineWidth = 4;
+  ctx.lineWidth = Math.min(
+    maxLineWidth,
+    Math.max(1, displayedWidth * scalingFactor),
+  );
+
   ctx.font = font;
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
