@@ -20,7 +20,6 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.util.perfomance import Timer
 from app.util.video_utils import calc_fps, encode, letterbox
 
 if TYPE_CHECKING:
@@ -325,8 +324,7 @@ class CameraService(metaclass=SingletonMeta):
             and not self.detection_service.loading
             and not self.detection_service.shutting_down
         ):
-            with Timer("copying frame"):
-                copied_frame = frame.copy()
+            copied_frame = frame.copy()
 
             (
                 resized_frame,
@@ -356,8 +354,7 @@ class CameraService(metaclass=SingletonMeta):
                 "should_resize": False,
             }
             if not self.detection_service.shutting_down:
-                with Timer("putting resized frame to multiprocessing queue"):
-                    self.detection_service.put_frame(frame_data)
+                self.detection_service.put_frame(frame_data)
 
     def start_camera(self) -> None:
         """
