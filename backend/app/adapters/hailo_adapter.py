@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from app.core.logger import Logger
-from app.util.perfomance import Timer, measure_time
 from app.util.video_utils import letterbox
 
 logger = Logger(__name__)
@@ -103,8 +102,8 @@ class YOLOHailoAdapter:
             ) = letterbox(source, expected_w, expected_h)
 
         try:
-            with Timer("hailo.run"):
-                raw_results: Any = self.hailo.run(source)
+            raw_results: Any = self.hailo.run(source)
+
         except Exception as e:
             logger.error("Error during Hailo inference: '%s'", e)
             raise
@@ -121,7 +120,6 @@ class YOLOHailoAdapter:
                 conf=0.4,
             )
 
-    @measure_time
     def _pose_task(
         self, raw_results, original_w: int, original_h: int
     ) -> List["_DummyResult"]:
@@ -157,7 +155,6 @@ class YOLOHailoAdapter:
         )
         return [dummy_result]
 
-    @measure_time
     def _detect_task(
         self, raw_results, original_w: int, original_h: int, conf: float
     ) -> List["_DummyResult"]:
