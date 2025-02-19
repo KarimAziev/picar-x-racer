@@ -37,18 +37,18 @@ const keypointsColors = mapObj(normalizeThemeName, {
   [PARTS.RIGHT_EYE]: "red", // Right Eye
   [PARTS.LEFT_EAR]: "none", // Left Ear
   [PARTS.RIGHT_EAR]: "none", // Right Ear
-  [PARTS.LEFT_SHOULDER]: "lime", // Left Shoulder
-  [PARTS.RIGHT_SHOULDER]: "lime", // Right Shoulder
-  [PARTS.LEFT_ELBOW]: "pink", // Left Elbow
-  [PARTS.RIGHT_ELBOW]: "pink", // Right Elbow
-  [PARTS.LEFT_WRIST]: "yellow-200", // Left Wrist
-  [PARTS.RIGHT_WRIST]: "yellow-200", // Right Wrist
-  [PARTS.LEFT_HIP]: "lime", // Left Hip
-  [PARTS.RIGHT_HIP]: "lime", // Right Hip
-  [PARTS.LEFT_KNEE]: "lime", // Left Knee
-  [PARTS.RIGHT_KNEE]: "lime", // Right Knee
-  [PARTS.LEFT_ANKLE]: "lime", // Left Ankle
-  [PARTS.RIGHT_ANKLE]: "lime", // Right Ankle
+  [PARTS.LEFT_SHOULDER]: "violet-600", // Left Shoulder
+  [PARTS.RIGHT_SHOULDER]: "violet-600", // Right Shoulder
+  [PARTS.LEFT_ELBOW]: "violet-600", // Left Elbow
+  [PARTS.RIGHT_ELBOW]: "violet-600", // Right Elbow
+  [PARTS.LEFT_WRIST]: "violet-600", // Left Wrist
+  [PARTS.RIGHT_WRIST]: "violet-600", // Right Wrist
+  [PARTS.LEFT_HIP]: "violet-600", // Left Hip
+  [PARTS.RIGHT_HIP]: "violet-600", // Right Hip
+  [PARTS.LEFT_KNEE]: "violet-600", // Left Knee
+  [PARTS.RIGHT_KNEE]: "violet-600", // Right Knee
+  [PARTS.LEFT_ANKLE]: "violet-600", // Left Ankle
+  [PARTS.RIGHT_ANKLE]: "violet-600", // Right Ankle
 });
 
 export type SkeletonItem = [PARTS, PARTS, number, string];
