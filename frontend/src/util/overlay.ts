@@ -31,24 +31,36 @@ export enum PARTS {
   RIGHT_ANKLE = 16,
 }
 
+const headColor = "primary-900";
+const bodyColor = "primary-800";
+const armsColor = "primary-700";
+const legsColor = "primary-900";
+const keypointEyeColor = "primary-100";
+const keypointShoulderColor = "primary-600";
+const keypointElbowColor = "primary-600";
+const keypointWristColor = "primary-600";
+const keypointHipColor = "primary-600";
+const keypointKneeColor = "primary-600";
+const keypointAnkleColor = "primary-600";
+
 const keypointsColors = mapObj(normalizeThemeName, {
   [PARTS.NOSE]: "none", // Nose
-  [PARTS.LEFT_EYE]: "red", // Left Eye
-  [PARTS.RIGHT_EYE]: "red", // Right Eye
+  [PARTS.LEFT_EYE]: keypointEyeColor, // Left Eye
+  [PARTS.RIGHT_EYE]: keypointEyeColor, // Right Eye
   [PARTS.LEFT_EAR]: "none", // Left Ear
   [PARTS.RIGHT_EAR]: "none", // Right Ear
-  [PARTS.LEFT_SHOULDER]: "violet-600", // Left Shoulder
-  [PARTS.RIGHT_SHOULDER]: "violet-600", // Right Shoulder
-  [PARTS.LEFT_ELBOW]: "violet-600", // Left Elbow
-  [PARTS.RIGHT_ELBOW]: "violet-600", // Right Elbow
-  [PARTS.LEFT_WRIST]: "violet-600", // Left Wrist
-  [PARTS.RIGHT_WRIST]: "violet-600", // Right Wrist
-  [PARTS.LEFT_HIP]: "violet-600", // Left Hip
-  [PARTS.RIGHT_HIP]: "violet-600", // Right Hip
-  [PARTS.LEFT_KNEE]: "violet-600", // Left Knee
-  [PARTS.RIGHT_KNEE]: "violet-600", // Right Knee
-  [PARTS.LEFT_ANKLE]: "violet-600", // Left Ankle
-  [PARTS.RIGHT_ANKLE]: "violet-600", // Right Ankle
+  [PARTS.LEFT_SHOULDER]: keypointShoulderColor, // Left Shoulder
+  [PARTS.RIGHT_SHOULDER]: keypointShoulderColor, // Right Shoulder
+  [PARTS.LEFT_ELBOW]: keypointElbowColor, // Left Elbow
+  [PARTS.RIGHT_ELBOW]: keypointElbowColor, // Right Elbow
+  [PARTS.LEFT_WRIST]: keypointWristColor, // Left Wrist
+  [PARTS.RIGHT_WRIST]: keypointWristColor, // Right Wrist
+  [PARTS.LEFT_HIP]: keypointHipColor, // Left Hip
+  [PARTS.RIGHT_HIP]: keypointHipColor, // Right Hip
+  [PARTS.LEFT_KNEE]: keypointKneeColor, // Left Knee
+  [PARTS.RIGHT_KNEE]: keypointKneeColor, // Right Knee
+  [PARTS.LEFT_ANKLE]: keypointAnkleColor, // Left Ankle
+  [PARTS.RIGHT_ANKLE]: keypointAnkleColor, // Right Ankle
 });
 
 export type SkeletonItem = [PARTS, PARTS, number, string];
@@ -63,25 +75,25 @@ export const normalizeSkeleton = (skeletonItems: SkeletonItem[]) =>
 
 const SKELETON: SkeletonItem[] = normalizeSkeleton([
   // head
-  [PARTS.NOSE, PARTS.LEFT_EYE, 25, "primary-900"], // nose to left eye
-  [PARTS.NOSE, PARTS.RIGHT_EYE, 25, "primary-900"], // nose to right eye
-  [PARTS.LEFT_EYE, PARTS.LEFT_EAR, 25, "primary-900"], // left eye to left ear
-  [PARTS.RIGHT_EYE, PARTS.RIGHT_EAR, 25, "primary-900"], // right eye to right ear
+  [PARTS.NOSE, PARTS.LEFT_EYE, 25, headColor], // nose to left eye
+  [PARTS.NOSE, PARTS.RIGHT_EYE, 25, headColor], // nose to right eye
+  [PARTS.LEFT_EYE, PARTS.LEFT_EAR, 25, headColor], // left eye to left ear
+  [PARTS.RIGHT_EYE, PARTS.RIGHT_EAR, 25, headColor], // right eye to right ear
   // arms
-  [PARTS.LEFT_SHOULDER, PARTS.LEFT_ELBOW, 70, "fuchsia"], // left shoulder to left elbow
-  [PARTS.LEFT_ELBOW, PARTS.LEFT_WRIST, 70, "fuchsia"], // left elbow to left wrist
-  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_ELBOW, 70, "fuchsia"], // right shoulder to right elbow
-  [PARTS.RIGHT_ELBOW, PARTS.RIGHT_WRIST, 70, "fuchsia"], // right elbow to right wrist
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_ELBOW, 70, armsColor], // left shoulder to left elbow
+  [PARTS.LEFT_ELBOW, PARTS.LEFT_WRIST, 70, armsColor], // left elbow to left wrist
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_ELBOW, 70, armsColor], // right shoulder to right elbow
+  [PARTS.RIGHT_ELBOW, PARTS.RIGHT_WRIST, 70, armsColor], // right elbow to right wrist
   // body
-  [PARTS.LEFT_SHOULDER, PARTS.RIGHT_SHOULDER, 70, "fuchsia"], // left shoulder to right shoulder
-  [PARTS.LEFT_SHOULDER, PARTS.LEFT_HIP, 70, "fuchsia"], // left shoulder to left hip
-  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_HIP, 70, "fuchsia"], // right shoulder to right Hip
-  [PARTS.LEFT_HIP, PARTS.RIGHT_HIP, 70, "fuchsia"], // left hip to right hip
+  [PARTS.LEFT_SHOULDER, PARTS.RIGHT_SHOULDER, 70, bodyColor], // left shoulder to right shoulder
+  [PARTS.LEFT_SHOULDER, PARTS.LEFT_HIP, 70, bodyColor], // left shoulder to left hip
+  [PARTS.RIGHT_SHOULDER, PARTS.RIGHT_HIP, 70, bodyColor], // right shoulder to right Hip
+  [PARTS.LEFT_HIP, PARTS.RIGHT_HIP, 70, bodyColor], // left hip to right hip
   // legs
-  [PARTS.LEFT_HIP, PARTS.LEFT_KNEE, 70, "fuchsia"], // left hip to left knee
-  [PARTS.LEFT_KNEE, PARTS.LEFT_ANKLE, 70, "fuchsia"], // left knee to left ankle
-  [PARTS.RIGHT_HIP, PARTS.RIGHT_KNEE, 70, "fuchsia"], // right hip to right knee
-  [PARTS.RIGHT_KNEE, PARTS.RIGHT_ANKLE, 70, "fuchsia"], // right knee to right ankle
+  [PARTS.LEFT_HIP, PARTS.LEFT_KNEE, 70, legsColor], // left hip to left knee
+  [PARTS.LEFT_KNEE, PARTS.LEFT_ANKLE, 70, legsColor], // left knee to left ankle
+  [PARTS.RIGHT_HIP, PARTS.RIGHT_KNEE, 70, legsColor], // right hip to right knee
+  [PARTS.RIGHT_KNEE, PARTS.RIGHT_ANKLE, 70, legsColor], // right knee to right ankle
 ]);
 
 const keystrokesPred = where({
@@ -136,7 +148,7 @@ export const drawKeypoints = (
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.lineWidth = lineWidth * 2;
-      ctx.strokeStyle = getVar("--p-primary-500");
+      ctx.strokeStyle = getVar("--p-primary-100");
       ctx.stroke();
 
       // the primary line
