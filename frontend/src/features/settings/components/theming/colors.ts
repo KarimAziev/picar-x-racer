@@ -1,11 +1,7 @@
 import { preset as Robo } from "@/presets/RoboPreset";
+import { ValueLabelOption } from "@/types/common";
 
-export type ColorOption = {
-  value: string;
-  label: string;
-};
-
-export const colorOptions: ColorOption[] = [
+export const colorOptions: ValueLabelOption[] = [
   { label: "robo", value: Robo.semantic.primary[500] },
   {
     label: "emerald",

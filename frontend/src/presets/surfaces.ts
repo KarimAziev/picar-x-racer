@@ -249,19 +249,6 @@ export const surfaces = {
     900: "#111827",
     950: "#030712",
   },
-  zinc: {
-    50: "#fafafa",
-    100: "#f4f4f5",
-    200: "#e4e4e7",
-    300: "#d4d4d8",
-    400: "#a1a1aa",
-    500: "#71717a",
-    600: "#52525b",
-    700: "#3f3f46",
-    800: "#27272a",
-    900: "#18181b",
-    950: "#09090b",
-  },
   neutral: {
     50: "#fafafa",
     100: "#f5f5f5",
@@ -293,5 +280,5 @@ export const surfaces = {
 export const surfaceOptions = Object.keys(surfaces).map((key) => ({
   label: startCase(key),
   value: key,
-  bgColor: surfaces[key as keyof typeof surfaces][500],
+  color: surfaces[key as keyof typeof surfaces][500],
 }));
