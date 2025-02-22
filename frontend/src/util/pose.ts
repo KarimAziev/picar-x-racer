@@ -279,7 +279,7 @@ export const drawKeypoints = (
   [
     ...mergeSkeleton(HEAD_SKELETON, linesParams?.head),
     ...mergeSkeleton(ARMS_SKELETON, linesParams?.arms),
-    ...mergeSkeleton(BODY_SKELETON, linesParams?.torse),
+    ...mergeSkeleton(BODY_SKELETON, linesParams?.torso),
     ...mergeSkeleton(LEGS_SKELETON, linesParams?.legs),
   ].forEach(renderGroup);
 
@@ -304,10 +304,10 @@ export const drawKeypoints = (
     };
 
     const spineColor =
-      linesParams?.torse?.color || getVar(normalizeThemeName(bodyColor));
+      linesParams?.torso?.color || getVar(normalizeThemeName(bodyColor));
     const spineLineWidth = takePercentage(
       maxLineWidth,
-      linesParams?.torse.size || 40,
+      linesParams?.torso.size || 40,
     );
     ctx.beginPath();
     ctx.moveTo(spineTop.x, spineTop.y);

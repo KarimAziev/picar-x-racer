@@ -1,7 +1,7 @@
 <template>
   <Fieldset toggleable legend="Detection Theme">
     <div>
-      <Fieldset toggleable legend="Label and Box color">
+      <Fieldset toggleable legend="Label and Bounding Box Color">
         <DetectionBoxes />
       </Fieldset>
       <Fieldset toggleable legend="Pose Estimation">

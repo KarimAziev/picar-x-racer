@@ -31,7 +31,7 @@ export const defaultState = {
   dark: isDarkMode(),
   lines: {
     head: { size: 25 },
-    torse: { size: 60 },
+    torso: { size: 60 },
     arms: { size: 60 },
     legs: { size: 60 },
   },
@@ -123,7 +123,7 @@ export const useStore = defineStore("theme", {
       this.updateLegsSize(newSize);
     },
     updateBodyColor(newColor: string) {
-      this.lines.torse.color = newColor;
+      this.lines.torso.color = newColor;
     },
     updateHeadlineColor(newColor: string) {
       this.lines.head.color = newColor;
@@ -135,7 +135,7 @@ export const useStore = defineStore("theme", {
       this.lines.legs.color = newColor;
     },
     updateBodySize(newSize: number) {
-      this.lines.torse.size = newSize;
+      this.lines.torso.size = newSize;
     },
     updateHeadlineSize(newSize: number) {
       this.lines.head.size = newSize;

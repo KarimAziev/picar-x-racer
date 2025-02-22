@@ -36,6 +36,11 @@
           @update:model-value="handleUpdateColorPickerValue"
         />
       </Field>
+      <TextField
+        v-model:model-value="colorPickerValue"
+        @update:model-value="handleUpdateColorPickerValue"
+      />
+
       <template v-if="$slots.extra">
         <slot name="extra" />
       </template>
@@ -49,6 +54,7 @@ import { ref, watch } from "vue";
 import { startCase, ensurePrefix } from "@/util/str";
 import { ValueLabelOption } from "@/types/common";
 import Field from "@/ui/Field.vue";
+import TextField from "@/ui/TextField.vue";
 
 export interface ColorOption extends ValueLabelOption {
   color?: string;
@@ -68,13 +74,14 @@ const findColorPickerValue = () => {
     (opt) =>
       opt.color && (opt.color === color.value || opt.value === color.value),
   );
-  return matchedOption?.color || color.value;
+  const val = matchedOption?.color || color.value;
+  return val?.startsWith("#") ? val.substring(1) : val;
 };
 
 const colorPickerValue = ref(findColorPickerValue());
 
-const handleUpdateColorPickerValue = (newColor: string) => {
-  emit("update:color", ensurePrefix("#", newColor));
+const handleUpdateColorPickerValue = (newColor?: string) => {
+  emit("update:color", newColor ? ensurePrefix("#", newColor) : newColor);
 };
 
 const handleUpdateColor = (newColor: string) => {
@@ -86,9 +93,7 @@ watch(
   () => {
     const nextVal = findColorPickerValue();
 
-    colorPickerValue.value = nextVal?.startsWith("#")
-      ? nextVal.substring(1)
-      : nextVal;
+    colorPickerValue.value = nextVal;
   },
 );
 </script>

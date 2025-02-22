@@ -5,7 +5,7 @@ export interface OverlayParamItem {
 
 export interface OverlayLinesParams {
   head: OverlayParamItem;
-  torse: OverlayParamItem;
+  torso: OverlayParamItem;
   arms: OverlayParamItem;
   legs: OverlayParamItem;
 }

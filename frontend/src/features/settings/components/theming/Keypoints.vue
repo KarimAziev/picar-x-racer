@@ -1,5 +1,6 @@
 <template>
   <Popover
+    :style="{ color: store.keypointsColor || 'var(--p-primary-500)' }"
     class="!py-0"
     label="All"
     text
@@ -38,6 +39,7 @@
     </ColorOptions>
   </Popover>
   <Popover
+    :style="{ color: obj.color || 'var(--p-primary-500)' }"
     @show="handleSelectBeforeShow"
     @hide="handleSelectBeforeHide"
     v-for="(obj, name) in store.keypoints"

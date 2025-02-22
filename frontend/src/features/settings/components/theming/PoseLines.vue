@@ -1,6 +1,14 @@
 <template>
   <div class="flex items-center gap-4">
-    <div class="font-medium">Render Skeleton Fibers</div>
+    <div class="font-medium">
+      Render Skeleton Fibers
+      <span
+        class="relative hover:opacity-80 transition-opacity duration-200 ease-in-out after:content-['?'] after:text-[0.8rem] after:text-blue-500 after:relative after:-top-[5px] after:pointer-events-none"
+        v-tooltip="
+          'When enabled, the setting overlays additional curved lines along the primary skeleton connections. These extra fibers simulate muscle, adding depth and a more three-dimensional feel to the detected pose.'
+        "
+      ></span>
+    </div>
     <Checkbox v-model="store.skeletonFiber" binary />
   </div>
 
@@ -35,7 +43,7 @@
                 (v: number | number[]) => store.updateSkeletonSize(v as number)
               "
               :max="100"
-              v-model="store.lines.torse.size"
+              v-model="store.lines.torso.size"
             />
           </div>
         </template>
@@ -120,7 +128,7 @@ import ColorOptions from "@/features/settings/components/theming/ColorOptions.vu
 import { startCase } from "@/util/str";
 import Popover from "@/ui/Popover.vue";
 import ArmIcon from "@/ui/icons/ArmIcon.vue";
-import TorseIcon from "@/ui/icons/TorseIcon.vue";
+import TorsoIcon from "@/ui/icons/TorsoIcon.vue";
 import LegsIcon from "@/ui/icons/LegsIcon.vue";
 import SkullIcon from "@/ui/icons/SkullIcon.vue";
 import SkeletonIcon from "@/ui/icons/SkeletonIcon.vue";
@@ -140,7 +148,7 @@ const handleSelectBeforeHide = () => {
 
 const linesIcons = {
   head: SkullIcon,
-  torse: TorseIcon,
+  torso: TorsoIcon,
   arms: ArmIcon,
   legs: LegsIcon,
 };
