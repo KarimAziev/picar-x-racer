@@ -1,10 +1,13 @@
 <template>
   <div class="flex flex-col gap-2 items-start px-1">
-    <div class="inline-flex flex-col justify-start items-start gap-2">
-      <span class="text-sm font-medium">{{ title }}</span>
+    <div v-if="title" class="text-sm font-medium">
+      {{ title }}
+    </div>
+    <div class="inline-flex flex-col justify-start items-start gap-2 flex-wrap">
       <div
         class="self-stretch justify-start items-start gap-2 inline-flex flex-wrap"
       >
+        <span class="text-sm font-medium">Preset: </span>
         <button
           v-for="colorOption of options"
           :key="colorOption.label"
@@ -21,26 +24,29 @@
         ></button>
       </div>
     </div>
-    <Field label="Custom:" label-class-name="text-sm font-medium">
-      <ColorPicker
-        :inputId="colorPickerId"
-        v-model="colorPickerValue"
-        @update:model-value="handleUpdateColor"
-      />
-    </Field>
-    <Button
-      size="small"
-      :disabled="resetDisabled"
-      label="Reset"
-      @click="handleReset"
-    />
+    <div class="flex gap-4 items-center flex-wrap">
+      <Field
+        label="Custom:"
+        label-class-name="text-sm font-medium"
+        layout="row"
+      >
+        <ColorPicker
+          :inputId="colorPickerId"
+          v-model:model-value="colorPickerValue"
+          @update:model-value="handleUpdateColorPickerValue"
+        />
+      </Field>
+      <template v-if="$slots.extra">
+        <slot name="extra" />
+      </template>
+    </div>
     <slot></slot>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { startCase } from "@/util/str";
+import { startCase, ensurePrefix } from "@/util/str";
 import { ValueLabelOption } from "@/types/common";
 import Field from "@/ui/Field.vue";
 
@@ -50,13 +56,12 @@ export interface ColorOption extends ValueLabelOption {
 
 const props = defineProps<{
   colorPickerId: string;
-  resetDisabled?: boolean;
-  title?: string;
   options: ColorOption[];
+  title?: string;
 }>();
 
-const color = defineModel<string>("color", { required: true });
-const emit = defineEmits(["update:color", "reset:color"]);
+const color = defineModel<string>("color");
+const emit = defineEmits(["update:color"]);
 
 const findColorPickerValue = () => {
   const matchedOption = props.options.find(
@@ -68,18 +73,22 @@ const findColorPickerValue = () => {
 
 const colorPickerValue = ref(findColorPickerValue());
 
-const handleUpdateColor = (newColor: string) => {
-  emit("update:color", newColor);
+const handleUpdateColorPickerValue = (newColor: string) => {
+  emit("update:color", ensurePrefix("#", newColor));
 };
 
-const handleReset = () => {
-  emit("reset:color");
+const handleUpdateColor = (newColor: string) => {
+  emit("update:color", newColor);
 };
 
 watch(
   () => color.value,
   () => {
-    colorPickerValue.value = findColorPickerValue();
+    const nextVal = findColorPickerValue();
+
+    colorPickerValue.value = nextVal?.startsWith("#")
+      ? nextVal.substring(1)
+      : nextVal;
   },
 );
 </script>

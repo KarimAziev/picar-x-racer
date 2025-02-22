@@ -56,3 +56,6 @@ export const isButton = (v: unknown): v is HTMLButtonElement =>
   v instanceof HTMLButtonElement;
 
 export const isNil = (v: unknown): v is null | undefined => v == null;
+
+export const isImage = (v: unknown): v is HTMLImageElement =>
+  v instanceof HTMLImageElement;

@@ -1,14 +1,18 @@
 <template>
   <Fieldset toggleable legend="Surface Color">
     <ColorOptions
-      title="Preset Colors"
       color-picker-id="surface-color"
-      :reset-disabled="resetDisabled"
       v-model:color="store.surfaceColor"
       :options="surfaceOptions"
       @update:color="store.updateSurfaceColor"
-      @reset:color="store.resetSurface"
-    />
+    >
+      <Button
+        size="small"
+        :disabled="resetDisabled"
+        label="Reset"
+        @click="store.resetSurface"
+      />
+    </ColorOptions>
   </Fieldset>
 </template>
 

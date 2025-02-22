@@ -9,8 +9,8 @@
     <SwitchSettings />
     <PrimaryColor />
     <SurfaceColor />
+    <DetectionTheme />
   </Panel>
-
   <Panel header="Camera" toggleable>
     <Fieldset legend="Effects" toggleable>
       <VideoSettings />
@@ -33,6 +33,13 @@ import ErrorComponent from "@/ui/ErrorComponent.vue";
 const VideoSettings = defineAsyncComponent({
   loader: () =>
     import("@/features/settings/components/camera/VideoSettings.vue"),
+  loadingComponent: Skeleton,
+  delay: 0,
+  errorComponent: ErrorComponent,
+});
+const DetectionTheme = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/theming/DetectionTheme.vue"),
   loadingComponent: Skeleton,
   delay: 0,
   errorComponent: ErrorComponent,

@@ -213,8 +213,8 @@ export const formatObjectDiff = <
 };
 
 export const isObjectEquals = <
-  V extends Record<string, unknown>,
-  B extends Record<string, unknown>,
+  V extends Record<string, any>,
+  B extends Record<string, any>,
 >(
   origData: V,
   newData: B,
@@ -438,8 +438,8 @@ export const groupWith = <
   );
 
 export const isObjectShallowEquals = <
-  V extends Record<string, unknown>,
-  B extends Record<string, unknown>,
+  V extends Record<string, any>,
+  B extends Record<string, any>,
 >(
   origData: V,
   newData: B,

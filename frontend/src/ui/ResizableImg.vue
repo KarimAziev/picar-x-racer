@@ -86,7 +86,7 @@ const onImageLoad = () => {
     props.maxWidth,
     props.maxHeight,
   );
-  console.log(`${imgSize.width}x${imgSize.height} -> ${maxWidth}x${maxHeight}`);
+
   size.value.width = maxWidth;
   size.value.height = maxHeight;
   imgLoading.value = false;

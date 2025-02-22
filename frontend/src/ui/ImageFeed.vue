@@ -33,7 +33,7 @@
 import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { useCameraRotate } from "@/composables/useCameraRotate";
-import { useCameraStore } from "@/features/settings/stores";
+import { useCameraStore, useThemeStore } from "@/features/settings/stores";
 import { drawOverlay } from "@/util/overlay";
 import {
   useDetectionStore,
@@ -43,6 +43,7 @@ import {
 
 const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
+const themeStore = useThemeStore();
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 
 const imgRef = ref<HTMLImageElement>();
@@ -82,7 +83,16 @@ watch(
       const timeDiff = frameTimeStamp - detectionTimeStamp;
       const handler = overlayStyleHandlers[detectionStore.data.overlay_style];
       if (timeDiff <= detectionStore.data.overlay_draw_threshold) {
-        handler(overlayCanvas.value, imgRef.value, newResults);
+        handler(
+          overlayCanvas.value,
+          imgRef.value,
+          newResults,
+          undefined,
+          themeStore.bboxesColor,
+          themeStore.lines,
+          themeStore.keypoints,
+          themeStore.skeletonFiber,
+        );
       } else {
         handler(overlayCanvas.value, imgRef.value, []);
       }

@@ -1,14 +1,18 @@
 <template>
   <Fieldset toggleable legend="Primary Color">
     <ColorOptions
-      title="Preset Colors"
       color-picker-id="primary-color"
       :options="colorOptions"
-      :reset-disabled="resetDisabled"
       v-model:color="store.primaryColor"
       @update:color="store.updatePrimaryColor"
-      @reset:color="store.resetPrimaryColor"
-    />
+    >
+      <Button
+        size="small"
+        :disabled="resetDisabled"
+        label="Reset"
+        @click="store.resetPrimaryColor"
+      />
+    </ColorOptions>
   </Fieldset>
 </template>
 

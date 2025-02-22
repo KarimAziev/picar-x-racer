@@ -46,7 +46,10 @@ const isSaveDisabled = computed(() => settingsStore.isSaveButtonDisabled());
 
 const isClosable = computed(() => !popupStore.isKeyRecording);
 const isEscapeOnCloseEnabled = computed(
-  () => !popupStore.isKeyRecording && !popupStore.isPreviewImageOpen,
+  () =>
+    popupStore.isEscapable &&
+    !popupStore.isKeyRecording &&
+    !popupStore.isPreviewImageOpen,
 );
 
 const isCurrentTabSaveable = computed(
