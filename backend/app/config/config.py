@@ -201,7 +201,7 @@ class AppConfig(BaseSettings):
         Optional[str],
         Field(
             ...,
-            description="Path to a text file containing labels. If no labels file is provided, coco2017 will be used. ",
+            description="Path to a text file containing labels. If no labels file is provided, coco2017 will be used.",
         ),
     ] = path.join(_PROJECT_DIR, "coco2017.txt")
 
