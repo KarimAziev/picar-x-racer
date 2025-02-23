@@ -1,75 +1,27 @@
 import type { DetectionResult } from "@/features/detection";
-import { where } from "@/util/func";
+import { drawKeypoints } from "@/util/pose";
+import { isImage } from "@/util/guards";
+import { OverlayLinesParams, KeypointsParams } from "@/types/overlay";
 
-/**
- * Draws keypoints on the canvas at the specified coordinates.
- * @param ctx - The canvas rendering context.
- * @param scaleX - Horizontal scaling factor for the keypoint coordinates.
- * @param scaleY - Vertical scaling factor for the keypoint coordinates.
- * @param detection - Detection result containing keypoints.
- * @example
- * drawKeypoints(ctx, 1, 1, { keypoints: [{ x: 50, y: 50, conf: 0.9 }, ...] });
- */
-const SKELETON = [
-  [0, 1],
-  [0, 2], // nose to left eye, nose to right Eye
-  [1, 3],
-  [2, 4], // left eye to left ear, right eye to right ear
-  [5, 6], // left shoulder to right shoulder
-  [5, 7],
-  [7, 9], // left shoulder to left elbow to left wrist
-  [6, 8],
-  [8, 10], // right shoulder to right elbow to right wrist
-  [5, 11],
-  [6, 12], // shoulders to hips
-  [11, 12], // hip to hip
-  [11, 13],
-  [13, 15], // left hip to left knee to left ankle
-  [12, 14],
-  [14, 16], // right hip to right knee to right ankle
-];
-
-const keystrokesPred = where({
-  x: (v: number) => v && v > 0,
-  y: (v: number) => v && v > 0,
-});
-
-export const drawKeypoints = (
-  ctx: CanvasRenderingContext2D,
-  scaleX: number,
-  scaleY: number,
-  detection: DetectionResult,
-) => {
-  if (!detection.keypoints || detection.keypoints.length < 2) return;
-
-  const styles = getComputedStyle(document.documentElement);
-  const color = styles.getPropertyValue("--color-text").trim();
-
-  const keypoints = detection.keypoints.map(({ x, y }) => ({
-    x: x * scaleX,
-    y: y * scaleY,
-  }));
-
-  ctx.beginPath();
-  SKELETON.forEach(([startIdx, endIdx]) => {
-    const start = keypoints[startIdx];
-    const end = keypoints[endIdx];
-    if (keystrokesPred(start) && keystrokesPred(end)) {
-      ctx.moveTo(start.x, start.y);
-      ctx.lineTo(end.x, end.y);
-    }
-  });
-
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  keypoints.forEach(({ x, y }) => {
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
-    ctx.fill();
-  });
+export const defaults = {
+  lines: {
+    head: { color: "primary-600", size: 25 },
+    body: { color: "primary-600", size: 40 },
+    arms: { color: "primary-600", size: 40 },
+    legs: { color: "primary-600", size: 40 },
+  },
+  keypoints: {
+    eye: { color: "primary-600", size: 40 },
+    nose: { color: "primary-600", size: 40 },
+    shoulder: { color: "primary-600", size: 40 },
+    elbow: { color: "primary-600", size: 40 },
+    wrist: { color: "primary-600", size: 40 },
+    hip: { color: "primary-600", size: 40 },
+    knee: { color: "primary-600", size: 40 },
+    ankle: { color: "primary-600", size: 40 },
+  },
+  fontSizeVar: "--canvas-font",
+  colorVar: "--p-primary-500",
 };
 
 /**
@@ -91,10 +43,12 @@ export const drawLabelWithConfidence = (
   x1: number,
   y1: number,
 ) => {
+  const y = parseFloat(ctx.font);
+
   ctx.fillText(
     `${label.toUpperCase()}: ${(confidence * 100).toFixed(1)}%`,
     x1 + 5,
-    y1 + 25,
+    y1 + y,
   );
 };
 
@@ -113,6 +67,9 @@ export const drawDetectionOverlay = (
   scaleX: number,
   scaleY: number,
   detection: DetectionResult,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
   const { label, confidence, bbox, keypoints } = detection;
   if (bbox) {
@@ -128,7 +85,15 @@ export const drawDetectionOverlay = (
   }
 
   if (keypoints) {
-    drawKeypoints(ctx, scaleX, scaleY, detection);
+    drawKeypoints(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      renderFiber,
+    );
   }
 };
 
@@ -147,8 +112,11 @@ export const drawDetectionCrosshair = (
   scaleX: number,
   scaleY: number,
   detection: DetectionResult,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
-  const { label, confidence, bbox } = detection;
+  const { label, confidence, bbox, keypoints } = detection;
   let [x1, y1, x2, y2] = bbox;
 
   x1 = x1 * scaleX;
@@ -169,6 +137,17 @@ export const drawDetectionCrosshair = (
   ctx.lineTo(midX, y2);
   ctx.stroke();
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+  if (keypoints) {
+    drawKeypoints(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      renderFiber,
+    );
+  }
 };
 
 /**
@@ -179,13 +158,16 @@ export const drawDetectionCrosshair = (
  * @param scaleY - Vertical scaling factor for the bounding box coordinates.
  * @param detection - The detection result containing the label, confidence, and bounding box.
  * @example
- * drawDetectionCrosshair(ctx, 1, 1, { label: "Dog", confidence: 0.92, bbox: [50, 50, 150, 200] });
+ * drawFullDetectionCrosshair(ctx, 1, 1, { label: "Dog", confidence: 0.92, bbox: [50, 50, 150, 200] });
  */
 export const drawFullDetectionCrosshair = (
   ctx: CanvasRenderingContext2D,
   scaleX: number,
   scaleY: number,
   detection: DetectionResult,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
   const { label, confidence, bbox } = detection;
   let [x1, y1, x2, y2] = bbox;
@@ -209,21 +191,37 @@ export const drawFullDetectionCrosshair = (
   ctx.stroke();
 
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+  if (detection.keypoints) {
+    drawKeypoints(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      renderFiber,
+    );
+  }
 };
 
 /**
  * Sets up the canvas context for rendering.
  * Adjusts scaling based on the displayed size of the image and applies default styles.
  * @param canvas - The canvas element.
- * @param img - The image element used as a reference for rendering.
+ * @param elem - The HTML element used as a reference for rendering.
  * @returns An object containing the canvas rendering context, scaleX, and scaleY.
  * @example
  * const canvas = document.getElementById("canvas") as HTMLCanvasElement;
- * const img = document.getElementById("image") as HTMLImageElement;
- * const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+ * const elem = document.getElementById("image") as HTMLElement;
+ * const { ctx, scaleX, scaleY } = setupCtx(canvas, elem);
  */
-export const setupCtx = (canvas: HTMLCanvasElement, img: HTMLImageElement) => {
-  if (!canvas || !img) {
+export const setupCtx = (
+  canvas: HTMLCanvasElement,
+  elem: HTMLElement,
+  font?: string,
+  color?: string,
+) => {
+  if (!canvas) {
     return {};
   }
 
@@ -233,11 +231,15 @@ export const setupCtx = (canvas: HTMLCanvasElement, img: HTMLImageElement) => {
     return {};
   }
 
-  const originalWidth = img.naturalWidth;
-  const originalHeight = img.naturalHeight;
+  const isImg = isImage(elem);
 
-  const displayedWidth = img.clientWidth;
-  const displayedHeight = img.clientHeight;
+  const originalWidth = isImg ? elem.naturalWidth : elem.clientWidth;
+  const originalHeight = isImg ? elem.naturalHeight : elem.clientHeight;
+
+  const displayedWidth = elem.clientWidth;
+  const displayedHeight = elem.clientHeight;
+  const scalingFactor = 0.004;
+  const maxLineWidth = 4;
 
   const scaleX = displayedWidth / originalWidth;
   const scaleY = displayedHeight / originalHeight;
@@ -247,11 +249,17 @@ export const setupCtx = (canvas: HTMLCanvasElement, img: HTMLImageElement) => {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const styles = getComputedStyle(document.documentElement);
-  const color = styles.getPropertyValue("--color-text").trim();
-  const font = styles.getPropertyValue("--canvas-font").trim();
+  if (!font || !color) {
+    const styles = getComputedStyle(document.documentElement);
+    color = color || styles.getPropertyValue("--color-text").trim();
+    font = font || styles.getPropertyValue("--canvas-font").trim();
+  }
 
-  ctx.lineWidth = 4;
+  ctx.lineWidth = Math.min(
+    maxLineWidth,
+    Math.max(1, displayedWidth * scalingFactor),
+  );
+
   ctx.font = font;
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
@@ -267,10 +275,10 @@ export const setupCtx = (canvas: HTMLCanvasElement, img: HTMLImageElement) => {
  * Draws detections on the canvas using the supplied drawing function.
  * @param fn - The function to draw individual detections (e.g., `drawDetectionOverlay` or `drawDetectionCrosshair`).
  * @param canvas - The canvas element.
- * @param img - The image element used as a reference.
+ * @param elem - The HTML element used as a reference.
  * @param detectionData - An array of detection results.
  * @example
- * drawDetectionsWith(drawDetectionOverlay, canvas, img, detectionData);
+ * drawDetectionsWith(drawDetectionOverlay, canvas, elem, detectionData);
  */
 export const drawDetectionsWith = (
   fn: (
@@ -278,91 +286,129 @@ export const drawDetectionsWith = (
     scaleX: number,
     scaleY: number,
     detection: DetectionResult,
+    poseLines?: OverlayLinesParams,
+    poseKeystrokes?: KeypointsParams,
+    renderFiber?: boolean,
   ) => void,
   canvas: HTMLCanvasElement,
-  img: HTMLImageElement,
+  elem: HTMLElement,
   detectionData?: DetectionResult[],
+  font?: string,
+  color?: string,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
-  const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+  const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
     return;
   }
 
   detectionData?.forEach((detection) => {
-    fn(ctx, scaleX, scaleY, detection);
+    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes, renderFiber);
   });
 };
 
 /**
  * Draws overlay annotations on a canvas for the detected objects using bounding boxes and labels.
  * @param canvas - The canvas element.
- * @param img - The image element used as a reference.
+ * @param elem - The HTML element used as a reference.
  * @param detectionData - An array of detection results.
  * @example
- * drawOverlay(canvas, img, detectionData);
+ * drawOverlay(canvas, elem, detectionData);
  */
 export const drawOverlay = (
   canvas: HTMLCanvasElement,
-  img: HTMLImageElement,
+  elem: HTMLElement,
   detectionData?: DetectionResult[],
+  font?: string,
+  color?: string,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
-  return drawDetectionsWith(drawDetectionOverlay, canvas, img, detectionData);
+  return drawDetectionsWith(
+    drawDetectionOverlay,
+    canvas,
+    elem,
+    detectionData,
+    font,
+    color,
+    poseLines,
+    poseKeystrokes,
+    renderFiber,
+  );
 };
 
 /**
  * Draws crosshair annotations on a canvas for the detected objects.
  * @param canvas - The canvas element.
- * @param img - The image element used as a reference.
+ * @param elem - The HTML element used as a reference.
  * @param detectionData - An array of detection results.
  * @example
- * drawAimOverlay(canvas, img, detectionData);
+ * drawAimOverlay(canvas, elem, detectionData);
  */
 export const drawAimOverlay = (
   canvas: HTMLCanvasElement,
-  img: HTMLImageElement,
+  elem: HTMLElement,
   detectionData?: DetectionResult[],
+  font?: string,
+  color?: string,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
-  const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+  const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
     return;
   }
 
   detectionData?.forEach((detection, i) => {
     const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionCrosshair;
-    fn(ctx, scaleX, scaleY, detection);
+    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes, renderFiber);
   });
 };
 
 /**
  * Draws crosshair annotations on a canvas for the detected objects.
  * @param canvas - The canvas element.
- * @param img - The image element used as a reference.
+ * @param elem - The HTML element used as a reference.
  * @param detectionData - An array of detection results.
  * @example
- * drawAimOverlay(canvas, img, detectionData);
+ * drawAimMixedOverlay(canvas, elem, detectionData);
  */
 export const drawAimMixedOverlay = (
   canvas: HTMLCanvasElement,
-  img: HTMLImageElement,
+  elem: HTMLElement,
   detectionData?: DetectionResult[],
+  font?: string,
+  color?: string,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
-  const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+  const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
     return;
   }
 
   detectionData?.forEach((detection, i) => {
     const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionOverlay;
-    fn(ctx, scaleX, scaleY, detection);
+    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes, renderFiber);
   });
 };
 
 export const drawKeypointsOnly = (
   canvas: HTMLCanvasElement,
-  img: HTMLImageElement,
+  elem: HTMLElement,
   detectionData?: DetectionResult[],
+  font?: string,
+  color?: string,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  renderFiber?: boolean,
 ) => {
-  const { ctx, scaleX, scaleY } = setupCtx(canvas, img);
+  const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
     return;
   }
@@ -380,7 +426,15 @@ export const drawKeypointsOnly = (
     }
 
     if (keypoints) {
-      drawKeypoints(ctx, scaleX, scaleY, detection);
+      drawKeypoints(
+        ctx,
+        scaleX,
+        scaleY,
+        detection,
+        poseLines,
+        poseKeystrokes,
+        renderFiber,
+      );
     }
   });
 };

@@ -5,12 +5,12 @@ from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
-from cv2.typing import MatLike
 
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
     from app.services.gstreamer_service import GStreamerService
+    from cv2.typing import MatLike
 
 
 class GStreamerCaptureAdapter(VideoCaptureABC):
@@ -74,7 +74,7 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
             }
         )
 
-    def read(self) -> Tuple[bool, MatLike]:
+    def read(self) -> Tuple[bool, "MatLike"]:
         """
         Retrieves the next available frame from the GStreamer pipeline.
         Returns a tuple (status, frame) where status is True if a frame was

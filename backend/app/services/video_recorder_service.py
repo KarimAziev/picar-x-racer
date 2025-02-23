@@ -9,6 +9,7 @@ from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.file_service import FileService
+    from app.services.video_service import VideoService
 
 logger = Logger(__name__)
 
@@ -21,9 +22,11 @@ class VideoRecorderService(metaclass=SingletonMeta):
     video recordings.
     """
 
-    def __init__(self, file_manager: "FileService"):
+    def __init__(self, file_manager: "FileService", video_service: "VideoService"):
         self.file_manager = file_manager
         self.video_writer: Optional[cv2.VideoWriter] = None
+        self.current_video_path: Optional[str] = None
+        self.video_service = video_service
 
     def start_recording(self, width: int, height: int, fps: float) -> None:
         """
@@ -40,15 +43,16 @@ class VideoRecorderService(metaclass=SingletonMeta):
         Raises:
             Exception: If the video directory cannot be created or video writer fails to initialize.
         """
-        video_dir_path = Path(self.file_manager.user_videos_dir)
+        video_dir_path = Path(self.video_service.video_dir)
         video_dir_path.mkdir(exist_ok=True, parents=True)
 
-        fourcc = cv2.VideoWriter.fourcc(*"XVID")
-        file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.avi"
+        fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+        file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.mp4"
         video_path = video_dir_path.joinpath(file_name).as_posix()
 
         logger.info(f"Recording video at {video_path}, {width}x{height}, {fps}")
         self.video_writer = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
+        self.current_video_path = video_path
 
     def write_frame(self, frame: np.ndarray) -> None:
         """
@@ -82,5 +86,7 @@ class VideoRecorderService(metaclass=SingletonMeta):
         Releases the OpenCV video writer and sets it to None.
         """
         if self.video_writer:
+            logger.info("Releasing video writer")
             self.video_writer.release()
+            logger.info("video writer released")
             self.video_writer = None

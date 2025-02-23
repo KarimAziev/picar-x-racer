@@ -15,7 +15,7 @@
 ## Features
 
 - Precise control and calibration of the Picar-X vehicle, with smooth, video-game-like responsiveness.
-- Real-time object detection using YOLO-based models, with optional [support for Google Coral accelerators](#using-google-coral-accelerator).
+- Real-time object detection using YOLO-based models, with optional [Google Coral](#using-google-coral-accelerator) or [Hailo](#using-hailo-accelerator) accelerators support.
 - On-the-fly camera management with `GStreamer`, `v4l2`, `Picamera2` and `libcamera`, allowing seamless swapping between Raspberry Pi Camera Modules 2/3 and USB cameras directly from the UI, without stopping the robot or restarting the application.
 - Dynamic model management with support for pretrained YOLO-based models such as Ultralytics, as well as custom models, which can be uploaded and tested in real time without interrupting the running system.
 - A standalone web interface for experiments or development, including object detection, video streaming, and data collection, operable independently of the robot.
@@ -46,6 +46,9 @@
 >   - [Object Detection](#object-detection)
 >     - [How to Use](#how-to-use)
 >     - [Using Custom Models](#using-custom-models)
+>     - [Using Hailo Accelerator](#using-hailo-accelerator)
+>       - [Configuring Labels](#configuring-labels)
+>       - [Image Size Configuration](#image-size-configuration)
 >     - [Using Google Coral Accelerator](#using-google-coral-accelerator)
 >       - [Google Coral Troubleshooting](#google-coral-troubleshooting)
 >   - [Video Enhancers](#video-enhancers)
@@ -311,10 +314,26 @@ Output results, such as bounding boxes and labels, will immediately appear on th
 
 ### Using Custom Models
 
-You can upload pre-trained YOLO `.pt` or TFLite models for Edge TPU via the UI. Simply click **Add Model**, browse for your file, and verify that the settings correspond to your model's requirements.
+You can upload pre-trained YOLO (.pt), Hailo (.hef), or TFLite models for Edge TPU via the UI. Simply click **Add Model**, browse for your file, and verify that the settings correspond to your model's requirements.
 
 > [!NOTE]
-> Ensure the configuration (e.g., image size) matches your model during export or detection.
+> Ensure that the configuration (for example, the image size) matches your model during export or detection, unless you are using a Hailo model (its input shape is extracted automatically).
+
+### Using Hailo Accelerator
+
+If you want to harness the Hailo Accelerator for real-time object detection, you can load your Hailo model (in the `.hef` format) via the UI - just as you would with any custom model.
+
+To use it, simply upload your Hailo model via the **Add Model** button in the UI. Alternatively, you can manually place your model file (ensuring it has a `.hef` extension) into the project's data directory.
+
+#### Configuring Labels
+
+Unlike other models, the Hailo Accelerator requires you to explicitly specify detection labels. By default, the system uses the standard [coco2017](./coco2017.txt) labels. To customize these labels, set the `HAILO_LABELS` environment variable (or configure it in the `.env` file) to point to your custom labels file. If your labels file resides in the project's data directory, you can specify a relative path; otherwise, provide an absolute path.
+
+#### Image Size Configuration
+
+No manual configuration of the image size is required when using a Hailo model - the app automatically reads the model’s native input shape. As a result, any image size settings specified in the UI will be disregarded.
+
+Once loaded, your Hailo-based model will deliver fast and efficient object detection on your Raspberry Pi or other supported platforms.
 
 ### Using Google Coral Accelerator
 

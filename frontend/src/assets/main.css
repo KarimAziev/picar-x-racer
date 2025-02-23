@@ -1,0 +1,29 @@
+@import "./base.scss";
+@import "./treeselect.css";
+@import "./input-number.css";
+@import "./animation.css";
+@import "tailwindcss";
+@plugin "tailwindcss-primeui";
+@config "../../tailwind.config.js";
+
+@layer components {
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+}
+
+#app {
+  margin: 0 auto;
+  font-weight: normal;
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-text);
+  transition: 0.4s;
+  padding: 3px;
+}

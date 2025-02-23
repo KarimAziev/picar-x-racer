@@ -6,4 +6,5 @@ export enum SettingsTab {
   MODELS = "Models",
   MUSIC = "Music",
   ROBOT = "Robot",
+  VIDEOS = "Videos",
 }

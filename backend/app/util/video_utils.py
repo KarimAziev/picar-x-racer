@@ -1,5 +1,5 @@
 import collections
-from typing import Callable, List, Literal, Optional, Sequence, Union, overload
+from typing import Callable, List, Literal, Optional, Sequence, Tuple, Union, overload
 
 import cv2
 import numpy as np
@@ -36,16 +36,6 @@ def encode(
         # Shift right 8 bits;
         frame = (frame >> 8).astype(np.uint8)
 
-    # if frame.ndim == 2:
-    #     channels = 1
-    # elif frame.ndim == 3:
-    #     channels = frame.shape[2]
-    # else:
-    #     raise ValueError("Frame has an unexpected number of dimensions.")
-
-    # if channels not in (1, 3, 4):
-    #     raise ValueError(f"After conversion, invalid number of channels: {channels}")
-
     success, buffer = cv2.imencode(format, frame, params or [])
     if not success:
         raise ValueError("cv2.imencode failed to encode the frame.")
@@ -54,10 +44,10 @@ def encode(
 
 @overload
 def resize_frame(frame: None, width: int, height: int) -> None: ...
-
-
 @overload
 def resize_frame(frame: np.ndarray, width: int, height: int) -> np.ndarray: ...
+
+
 def resize_frame(
     frame: Optional[np.ndarray], width: int, height: int
 ) -> Optional[np.ndarray]:
@@ -67,6 +57,10 @@ def resize_frame(
     return frame
 
 
+@overload
+def get_frame_size(frame: None) -> Tuple[None, None]: ...
+@overload
+def get_frame_size(frame: np.ndarray) -> Tuple[int, int]: ...
 def get_frame_size(frame: Optional[np.ndarray]):
     if frame is None:
         return (None, None)
@@ -74,7 +68,7 @@ def get_frame_size(frame: Optional[np.ndarray]):
     return (original_width, original_height)
 
 
-def resize_by_width_maybe(frame: np.ndarray, width: int):
+def resize_by_width_maybe(frame: np.ndarray, width: int) -> np.ndarray:
     original_height, original_width = frame.shape[:2]
 
     if original_width == width:
@@ -87,7 +81,7 @@ def resize_by_width_maybe(frame: np.ndarray, width: int):
     return cv2.resize(frame, (width, height))
 
 
-def resize_by_height_maybe(frame: np.ndarray, height: int):
+def resize_by_height_maybe(frame: np.ndarray, height: int) -> np.ndarray:
     original_height, original_width = frame.shape[:2]
 
     if original_height == height:
@@ -100,7 +94,9 @@ def resize_by_height_maybe(frame: np.ndarray, height: int):
     return cv2.resize(frame, (width, height))
 
 
-def resize_to_fixed_height(frame: np.ndarray, base_size=256):
+def resize_to_fixed_height(
+    frame: np.ndarray, base_size=256
+) -> Tuple[np.ndarray, int, int, int, int]:
     """
     Resizes the input frame to a specified base height while maintaining aspect ratio.
 
@@ -209,3 +205,54 @@ def calc_fps(
             return None
 
         return round(fps) if round_result else int(fps * 10) / 10
+
+
+def letterbox(
+    image: np.ndarray,
+    expected_w: int,
+    expected_h: int,
+    color: Tuple[int, int, int] = (0, 0, 0),
+) -> Tuple[np.ndarray, int, int, int, int, int, int]:
+    """
+    Resize image to fit within (expected_w, expected_h) while preserving aspect ratio,
+    and pad the rest with the specified color.
+
+    This version computes the scale as the minimum of (expected_w/original_w, expected_h/original_h)
+    so that the output has shape (expected_h,expected_w).
+
+    Returns:
+        padded: the letterboxed image of size (expected_h, expected_w)
+        original_w: original image width
+        original_h: original image height
+        new_w: width of the resized (unpadded) image
+        new_h: height of the resized (unpadded) image
+        pad_left: left padding offset
+        pad_top: top padding offset
+    """
+    original_h, original_w = image.shape[:2]
+
+    scale = min(expected_w / original_w, expected_h / original_h)
+    new_w = int(original_w * scale)
+    new_h = int(original_h * scale)
+
+    resized = cv2.resize(image, (new_w, new_h))
+
+    pad_w = expected_w - new_w
+    pad_h = expected_h - new_h
+
+    pad_left = pad_w // 2
+    pad_right = pad_w - pad_left
+    pad_top = pad_h // 2
+    pad_bottom = pad_h - pad_top
+
+    padded = cv2.copyMakeBorder(
+        resized,
+        pad_top,
+        pad_bottom,
+        pad_left,
+        pad_right,
+        borderType=cv2.BORDER_CONSTANT,
+        value=color,
+    )
+
+    return padded, original_w, original_h, new_w, new_h, pad_left, pad_top

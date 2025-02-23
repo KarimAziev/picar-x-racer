@@ -1,8 +1,8 @@
 <template>
   <DataTable
-    :value="files"
+    :value="images"
     :loading="loading"
-    dataKey="url"
+    dataKey="src"
     scrollable
     v-model:selection="markedItems"
     scrollHeight="400px"
@@ -50,11 +50,11 @@
     </template>
 
     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-    <Column class="preview-col" header="Preview" field="url">
+    <Column class="preview-col" header="Preview" field="src">
       <template #body="slotProps">
         <Photo
           className="thumbnail"
-          :src="slotProps.data.url"
+          :src="slotProps.data.src"
           :width="itemSize"
           @click="openImage(slotProps.data)"
         />
@@ -95,28 +95,30 @@
   </DataTable>
 
   <Dialog
+    :content-class="
+      isMaximized
+        ? 'w-full h-full'
+        : 'sm:w-[600px] md:w-[700px] lg:w-[1000px] xl:w-[1200px] h-[85vh]'
+    "
+    class="gallery-popup"
+    :header="header"
+    maximizable
     v-model:visible="popupStore.isPreviewImageOpen"
-    class="image-dialog"
     dismissableMask
     modal
-    @after-hide="removeKeyEventListeners"
+    @maximize="handleMaximize"
+    @unmaximize="handleUnmaximize"
   >
-    <Photo className="w-full h-auto" :src="selectedImage?.url" :width="380" />
-    <ButtonGroup class="flex justify-center w-full items-center pt-5">
-      <Button
-        text
-        aria-label="Previous image"
-        icon="pi pi-chevron-left"
-        @click="handlePrevImagePreview"
-      ></Button>
-      <div class="text-center flex-auto">{{ selectedImage.name }}</div>
-      <Button
-        text
-        aria-label="Next image"
-        icon="pi pi-chevron-right"
-        @click="handleNextImagePreview"
-      ></Button>
-    </ButtonGroup>
+    <Gallery
+      v-model:activeIndex="activeIndex"
+      :images="images"
+      :numVisible="10"
+      :maxWidth="maxWidth"
+      :minWidth="minWidth"
+      :maxHeight="maxHeight"
+      :minHeight="minHeight"
+    >
+    </Gallery>
   </Dialog>
 </template>
 
@@ -126,11 +128,12 @@ import { watch, computed, onMounted, ref } from "vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import ButtonGroup from "primevue/buttongroup";
-
 import { usePopupStore, useImageStore } from "@/features/settings/stores";
-import { cycleValue } from "@/util/cycleValue";
-import { formatKeyEventItem } from "@/util/keyboard-util";
 import Photo from "@/ui/Photo.vue";
+import { isNumber } from "@/util/guards";
+import { useWindowSize } from "@/composables/useWindowSize";
+import Gallery from "@/ui/Gallery.vue";
+import { takePercentage } from "@/util/number";
 
 const store = useImageStore();
 
@@ -140,11 +143,46 @@ const downloading = ref<Record<string, boolean>>({});
 const removing = ref<Record<string, boolean>>({});
 const emptyMessage = computed(() => store.emptyMessage);
 
-const selectedImage = ref({ url: "", name: "" });
-
 const itemSize = 50;
 
-const files = computed(() => store.data);
+const isMaximized = ref(false);
+
+const wndSize = useWindowSize();
+const minWidth = computed(() => Math.min(640, wndSize.width.value));
+
+const maxWidth = computed(() =>
+  Math.max(minWidth.value, takePercentage(wndSize.width.value, 90)),
+);
+const minHeight = computed(() => takePercentage(wndSize.height.value, 75));
+
+const maxHeight = computed(() => minHeight.value);
+
+const handleMaximize = () => {
+  isMaximized.value = true;
+};
+
+const handleUnmaximize = () => {
+  isMaximized.value = false;
+};
+
+const activeIndex = ref<number>(0);
+
+const images = computed(() =>
+  store.data.map(({ url, name }) => ({
+    name,
+    title: name,
+    url: url,
+    alt: name,
+    src: `/api/files/image/preview?filename=${encodeURIComponent(url)}`,
+  })),
+);
+
+const header = computed(() => {
+  const result = isNumber(activeIndex.value)
+    ? store.data[activeIndex.value]?.name
+    : undefined;
+  return result;
+});
 const markedItems = ref<FileItem[]>([]);
 
 const markedItemsLen = computed(() => markedItems.value.length);
@@ -153,32 +191,6 @@ const batchButtonsDisabled = computed(
     !markedItemsLen.value ||
     Object.keys({ ...removing.value, ...downloading.value }).length > 0,
 );
-
-const handleNextImagePreview = () => {
-  const nextImg = cycleValue(
-    ({ url }) => url === selectedImage.value.url,
-    files.value,
-    1,
-  );
-  selectedImage.value.url = nextImg.url;
-  selectedImage.value.name = nextImg.name;
-  if (!popupStore.isPreviewImageOpen) {
-    popupStore.isPreviewImageOpen = true;
-  }
-};
-
-const handlePrevImagePreview = () => {
-  const nextImg = cycleValue(
-    ({ url }) => url === selectedImage.value.url,
-    files.value,
-    -1,
-  );
-  selectedImage.value.url = nextImg.url;
-  selectedImage.value.name = nextImg.name;
-  if (!popupStore.isPreviewImageOpen) {
-    popupStore.isPreviewImageOpen = true;
-  }
-};
 
 const handleDownloadFile = (name: string) => {
   store.downloadFile(name);
@@ -221,30 +233,10 @@ const handleRemove = async (name: string) => {
   await store.removeFile(name);
 };
 
-const keyHandlers: { [key: string]: Function } = {
-  ArrowLeft: handlePrevImagePreview,
-  ArrowRight: handleNextImagePreview,
-};
-
-const handleKeyUp = (event: KeyboardEvent) => {
-  const key = formatKeyEventItem(event);
-  if (keyHandlers[key]) {
-    keyHandlers[key]();
-  }
-};
-
-const addKeyEventListeners = () => {
-  window.addEventListener("keyup", handleKeyUp);
-};
-
-const removeKeyEventListeners = () => {
-  window.removeEventListener("keyup", handleKeyUp);
-};
-
 const openImage = (item: FileItem) => {
-  selectedImage.value.url = item.url;
-  selectedImage.value.name = item.name;
-  addKeyEventListeners();
+  activeIndex.value = images.value.findIndex(
+    ({ title, url }) => item.name === title && url === item.url,
+  );
   popupStore.isPreviewImageOpen = true;
 };
 
@@ -258,3 +250,8 @@ watch(
 
 onMounted(store.fetchData);
 </script>
+<style scoped lang="scss">
+.gallery-popup.p-dialog {
+  background-color: transparent;
+}
+</style>

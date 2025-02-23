@@ -26,20 +26,14 @@
     sans-serif;
   --line-height: 1.5;
   --font-weight: 400;
-  --canvas-font: 24px TT-Octosquares-Regular;
+  --canvas-font-size: 14px;
+  --canvas-font: var(--canvas-font-size) TT-Octosquares-Regular;
   --color-background: var(--p-surface-900);
 }
 .p-dark {
   --color-background: var(--p-surface-900);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  font-weight: normal;
-}
 html,
 body {
   margin: 0;
@@ -58,9 +52,6 @@ body {
 body {
   color: var(--color-text);
   background: var(--color-background);
-  transition:
-    color 0.5s,
-    background-color 0.5s;
   line-height: 1.6;
   font-family: var(--font-family);
   text-rendering: optimizeLegibility;
@@ -76,22 +67,21 @@ html {
   html {
     font-size: 12px;
   }
+
+  :root {
+    --canvas-font-size: 18px;
+  }
 }
 
 @media (min-width: 1200px) {
   html {
     font-size: 14px;
   }
+  :root {
+    --canvas-font-size: 24px;
+  }
 }
-ul {
-  margin-block-start: 0em;
-  margin-block-end: 0em;
-  margin-inline-start: 0px;
-  margin-inline-end: 0px;
-  padding-inline-start: 0px;
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-  scrollbar-width: none; /* Firefox */
-}
+
 ul::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
 }
@@ -215,9 +205,6 @@ input {
 }
 
 .settings-popup.p-dialog.p-component {
-  width: 95%;
-  min-height: 35vh;
-  max-width: 650px;
   .p-dialog-footer {
     border-top: 1px solid var(--p-content-border-color);
   }

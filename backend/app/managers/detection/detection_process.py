@@ -1,12 +1,22 @@
 import queue
 import sys
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from app.core.logger import Logger
 from app.exceptions.detection import DetectionDimensionMismatch
 from app.managers.detection.object_detection import perform_detection
 from app.managers.model_manager import ModelManager
+from app.types.detection import (
+    DetectionControlMessage,
+    DetectionErrorMessage,
+    DetectionFrameData,
+    DetectionLoadErrorMessage,
+    DetectionPoseResult,
+    DetectionQueueData,
+    DetectionReadyMessage,
+    DetectionResult,
+)
 from app.util.queue_helpers import put_to_queue
 
 if TYPE_CHECKING:
@@ -21,10 +31,10 @@ verbose_enabled = sys.stdout.isatty()
 def detection_process_func(
     model: str,
     stop_event: "Event",
-    frame_queue: "mp.Queue",
-    detection_queue: "mp.Queue",
-    control_queue: "mp.Queue",
-    out_queue: "mp.Queue",
+    frame_queue: "mp.Queue[DetectionFrameData]",
+    detection_queue: "mp.Queue[DetectionQueueData]",
+    control_queue: "mp.Queue[DetectionControlMessage]",
+    out_queue: "mp.Queue[Union[DetectionReadyMessage, DetectionLoadErrorMessage, DetectionErrorMessage]]",
 ):
     """
     A function that runs in a separate multiprocessing process to perform object detection on input frames.
@@ -54,20 +64,26 @@ def detection_process_func(
                     or f"Failed to load the model {model}. Exiting detection process."
                 )
                 logger.error(msg)
-                put_to_queue(out_queue, {"success": False, "error": msg}, reraise=True)
+                data: DetectionLoadErrorMessage = {"success": False, "error": msg}
+                put_to_queue(out_queue, data, reraise=True)
                 return
             else:
-                put_to_queue(out_queue, {"success": True}, reraise=True)
+                ready_msg: DetectionReadyMessage = {"success": True}
+                put_to_queue(out_queue, ready_msg, reraise=True)
             confidence_threshold = 0.3
             prev_time = time.time()
-            labels = None
+            labels: Optional[List[str]] = None
 
             while not stop_event.is_set():
                 try:
                     while not control_queue.empty():
-                        control_message = control_queue.get_nowait()
+                        control_message: DetectionControlMessage = (
+                            control_queue.get_nowait()
+                        )
                         if control_message.get("command") == "set_detect_mode":
-                            confidence: float = control_message.get("confidence")
+                            confidence: Union[float, None] = control_message.get(
+                                "confidence"
+                            )
                             labels = control_message.get("labels")
 
                             logger.info(f"confidence: {confidence}")
@@ -77,7 +93,7 @@ def detection_process_func(
                     pass
 
                 try:
-                    frame_data = frame_queue.get(timeout=1)
+                    frame_data: DetectionFrameData = frame_queue.get(timeout=1)
                     frame = frame_data["frame"]
                     frame_timestamp = frame_data["timestamp"]
                 except queue.Empty:
@@ -87,7 +103,9 @@ def detection_process_func(
                 verbose = verbose_enabled and curr_time - prev_time >= 5
 
                 try:
-                    detection_result = perform_detection(
+                    detection_result: List[
+                        Union[DetectionResult, DetectionPoseResult]
+                    ] = perform_detection(
                         frame=frame,
                         yolo_model=yolo_model,
                         confidence_threshold=confidence_threshold,
@@ -96,20 +114,24 @@ def detection_process_func(
                         original_width=frame_data["original_width"],
                         resized_height=frame_data["resized_height"],
                         resized_width=frame_data["resized_width"],
+                        pad_left=frame_data["pad_left"],
+                        pad_top=frame_data["pad_top"],
                         should_resize=frame_data["should_resize"],
                         labels_to_detect=labels,
                     )
                 except DetectionDimensionMismatch as e:
-                    put_to_queue(out_queue, {"error": str(e)}, reraise=True)
+                    err: DetectionErrorMessage = {"error": str(e)}
+                    put_to_queue(out_queue, err, reraise=True)
                     break
                 except Exception as e:
+                    err: DetectionErrorMessage = {"error": str(e)}
                     logger.error(
                         "Unhandled exception in detection process", exc_info=True
                     )
-                    put_to_queue(out_queue, {"error": str(e)}, reraise=True)
+                    put_to_queue(out_queue, err, reraise=True)
                     break
 
-                detection_result_with_timestamp = {
+                detection_result_with_timestamp: DetectionQueueData = {
                     "detection_result": detection_result,
                     "timestamp": frame_timestamp,
                 }

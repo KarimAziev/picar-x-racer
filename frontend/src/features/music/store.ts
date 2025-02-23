@@ -205,8 +205,9 @@ export const useStore = defineStore("music", {
     },
     async downloadFile(fileName: string) {
       const messager = useMessagerStore();
+      const progressFn = messager.makeProgress("Downloading archive");
       try {
-        await downloadFile(mediaType, fileName);
+        await downloadFile(mediaType, fileName, progressFn);
       } catch (error) {
         messager.handleError(error);
       }

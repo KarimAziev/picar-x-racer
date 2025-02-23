@@ -1,6 +1,7 @@
 <template>
   <Dialog
     class="settings-popup"
+    content-class="min-h-[35vh]"
     v-model:visible="popupStore.isOpen"
     header="Settings"
     dismissableMask
@@ -45,7 +46,10 @@ const isSaveDisabled = computed(() => settingsStore.isSaveButtonDisabled());
 
 const isClosable = computed(() => !popupStore.isKeyRecording);
 const isEscapeOnCloseEnabled = computed(
-  () => !popupStore.isKeyRecording && !popupStore.isPreviewImageOpen,
+  () =>
+    popupStore.isEscapable &&
+    !popupStore.isKeyRecording &&
+    !popupStore.isPreviewImageOpen,
 );
 
 const isCurrentTabSaveable = computed(

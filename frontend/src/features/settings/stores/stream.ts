@@ -35,6 +35,7 @@ export interface State {
   data: StreamSettings;
   loading: boolean;
   enhancers: string[];
+  is_record_initiator: boolean;
 }
 
 export const defaultState: State = {
@@ -45,6 +46,7 @@ export const defaultState: State = {
     render_fps: false,
   },
   enhancers: [],
+  is_record_initiator: false,
 };
 
 export const useStore = defineStore("stream", {
@@ -137,32 +139,13 @@ export const useStore = defineStore("stream", {
         quality: newValue,
       });
     },
-    async toggleRecording(download?: boolean) {
-      const messager = useMessagerStore();
+    async toggleRecording() {
+      const isRecording = this.data.video_record;
+      this.is_record_initiator = true;
       await this.updateData({
         ...this.data,
-        video_record: !this.data.video_record,
+        video_record: !isRecording,
       });
-
-      if (!this.data.video_record && download) {
-        try {
-          const response = await axios.get(`/api/files/download-last-video`, {
-            responseType: "blob",
-          });
-          const fileName = response.headers["content-disposition"]
-            ? response.headers["content-disposition"].split("filename=")[1]
-            : "picar-x-recording.avi";
-          const url = window.URL.createObjectURL(new Blob([response.data]));
-          const link = document.createElement("a");
-
-          link.href = url;
-          link.setAttribute("download", fileName);
-          document.body.appendChild(link);
-          link.click();
-        } catch (error) {
-          messager.handleError(error);
-        }
-      }
     },
   },
 });

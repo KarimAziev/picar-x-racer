@@ -58,6 +58,7 @@ export const useStore = defineStore("images", {
     },
     async batchRemoveFiles(filenames: string[]) {
       const messager = useMessagerStore();
+
       try {
         this.loading = true;
         const { data } = await batchRemoveFiles(mediaType, filenames);
@@ -73,16 +74,18 @@ export const useStore = defineStore("images", {
     },
     async downloadFile(fileName: string) {
       const messager = useMessagerStore();
+      const progressFn = messager.makeProgress("Downloading");
       try {
-        await downloadFile(mediaType, fileName);
+        await downloadFile(mediaType, fileName, progressFn);
       } catch (error) {
         messager.handleError(error);
       }
     },
     async downloadFilesArchive(filenames: string[]) {
       const messager = useMessagerStore();
+      const progressFn = messager.makeProgress("Downloading archive");
       try {
-        await downloadFilesAsArchive(mediaType, filenames);
+        await downloadFilesAsArchive(mediaType, filenames, progressFn);
       } catch (error) {
         messager.handleError(error);
       }

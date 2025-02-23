@@ -8,8 +8,8 @@
     <img
       class="auto transition-opacity cursor-pointer"
       @load="handleImageOnLoad"
-      :style="`width: ${width}px;`"
       :class="imgClass"
+      :style="`width: ${width}px;`"
       v-bind="otherAttrs"
     />
   </div>

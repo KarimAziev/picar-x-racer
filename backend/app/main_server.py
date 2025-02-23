@@ -52,7 +52,10 @@ async def lifespan(app: FastAPI):
         port = os.getenv("PX_MAIN_APP_PORT")
         mode = os.getenv("PX_APP_MODE")
 
-        file_manager = deps.get_file_manager(audio_manager=deps.get_audio_service())
+        file_manager = deps.get_file_manager(
+            audio_service=deps.get_audio_service(),
+            video_service=deps.get_video_service(),
+        )
 
         connection_manager = deps.get_connection_service()
         app_manager = connection_manager

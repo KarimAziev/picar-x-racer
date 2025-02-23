@@ -6,13 +6,14 @@ It also manages user settings and loads audio details using the `AudioService`.
 import json
 import os
 from os import path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from app.config.config import settings as app_config
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
 from app.managers.json_data_manager import JsonDataManager
+from app.services.video_service import FileDetails
 from app.util.atomic_write import atomic_write
 from app.util.file_util import (
     get_directory_structure,
@@ -25,6 +26,9 @@ from ultralytics.utils.downloads import GITHUB_ASSETS_STEMS
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
+    from app.services.video_service import VideoService
+
+logger = Logger(name=__name__)
 
 
 class FileService(metaclass=SingletonMeta):
@@ -34,8 +38,8 @@ class FileService(metaclass=SingletonMeta):
 
     def __init__(
         self,
-        audio_manager: "AudioService",
-        user_videos_dir=app_config.PX_VIDEO_DIR,
+        audio_service: "AudioService",
+        video_service: "VideoService",
         user_music_dir=app_config.PX_MUSIC_DIR,
         user_photos_dir=app_config.PX_PHOTO_DIR,
         user_settings_file=app_config.PX_SETTINGS_FILE,
@@ -48,20 +52,18 @@ class FileService(metaclass=SingletonMeta):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.logger = Logger(name=__name__)
+        self.video_service = video_service
 
         self.default_user_settings_file = default_user_settings_file
         self.default_user_music_dir = default_user_music_dir
         self.user_settings_file = user_settings_file
         self.user_photos_dir = user_photos_dir
-        self.user_videos_dir = user_videos_dir
         self.user_music_dir = user_music_dir
         self.config_file = config_file
+        self.audio_service = audio_service
 
         self.music_cache_path = music_cache_path
         self.data_dir = data_dir
-
-        self.audio_manager = audio_manager
 
         self.cache: Optional[Dict[str, Any]] = None
         self.settings_manager = JsonDataManager(
@@ -189,12 +191,12 @@ class FileService(metaclass=SingletonMeta):
             dict: A dictionary with track name and duration.
         """
         try:
-            duration = self.audio_manager.get_audio_duration(file)
+            duration = self.audio_service.get_audio_duration(file)
             track: str = path.basename(file)
             result = {"track": track, "duration": duration}
             return result
-        except Exception as err:
-            self.logger.log_exception(f"Error getting details for file {file}", err)
+        except Exception:
+            logger.error(f"Error getting details for file {file}", exc_info=True)
 
     def get_audio_file_details(self, file: str) -> Optional[Dict[str, Any]]:
         """
@@ -210,13 +212,13 @@ class FileService(metaclass=SingletonMeta):
             cached_mod_time = cached_data["modified_time"]
 
             if cached_mod_time == file_mod_time:
-                self.logger.debug(
+                logger.debug(
                     "Using cached details for %s",
                     file,
                 )
                 return cached_data["details"]
 
-        self.logger.debug(
+        logger.debug(
             "Refreshing details for %s",
             file,
         )
@@ -292,7 +294,15 @@ class FileService(metaclass=SingletonMeta):
         Returns:
             List[str]: List of user-uploaded video files.
         """
-        return self.list_files_sorted(self.user_videos_dir, full)
+        return self.list_files_sorted(self.video_service.video_dir, full)
+
+    def list_user_videos_detailed(self) -> List[FileDetails]:
+        """Recursively lists all video files in the video directory and returns their details."""
+        return self.video_service.list_videos_with_details()
+
+    def preview_video_image(self, image_filename: str) -> str:
+        """Return full filename for image filename, relative to video preview cache directory."""
+        return self.video_service.expand_preview_image(image_filename)
 
     def list_user_photos_with_preview(self) -> List[dict[str, str]]:
         """
@@ -308,7 +318,7 @@ class FileService(metaclass=SingletonMeta):
             file_item = {
                 "name": file,
                 "path": file_path,
-                "url": f"/api/files/preview/{file}",
+                "url": file,
             }
             files.append(file_item)
 
@@ -328,6 +338,19 @@ class FileService(metaclass=SingletonMeta):
         """
         return self.list_files(self.user_music_dir, full)
 
+    @staticmethod
+    def remove_file_safe(file_path: str) -> None:
+        """Deletes a given file from disk."""
+        logger.info("Removing '%s'", file_path)
+        try:
+            os.remove(file_path)
+        except FileNotFoundError:
+            pass
+        except Exception:
+            logger.error(
+                f"Unexpected error while removing '{file_path}'", exc_info=True
+            )
+
     def remove_file(self, file: str, directory: str):
         """
         Removes a file from a specified directory.
@@ -339,7 +362,7 @@ class FileService(metaclass=SingletonMeta):
         Returns:
             bool: True if the file was successfully removed.
         """
-        self.logger.info(f"Request to remove {file} in directory {directory}")
+        logger.info(f"Request to remove {file} in directory {directory}")
         full_name = os.path.join(directory, file)
 
         os.remove(full_name)
@@ -362,6 +385,12 @@ class FileService(metaclass=SingletonMeta):
         Saves the uploaded file to the data directory.
         """
         return self.save_uploaded_file(file, app_config.DATA_DIR)
+
+    def save_video(self, file: UploadFile) -> str:
+        """
+        Saves the uploaded file to the data directory.
+        """
+        return self.save_uploaded_file(file, app_config.PX_VIDEO_DIR)
 
     def remove_photo(self, filename: str) -> bool:
         """
@@ -387,7 +416,8 @@ class FileService(metaclass=SingletonMeta):
             bool: True if the file was successfully removed.
         """
 
-        return self.remove_file(filename, self.user_videos_dir)
+        self.video_service.remove_video(filename)
+        return True
 
     def remove_music(self, filename: str) -> bool:
         """
@@ -404,7 +434,7 @@ class FileService(metaclass=SingletonMeta):
             bool: True if the file was successfully removed.
         """
 
-        self.logger.info(f"Removing music file {filename}")
+        logger.info(f"Removing music file {filename}")
         if path.exists(path.join(self.user_music_dir, filename)):
             self.remove_file(filename, self.user_music_dir)
 
@@ -417,7 +447,7 @@ class FileService(metaclass=SingletonMeta):
         elif path.exists(path.join(self.default_user_music_dir, filename)):
             raise DefaultFileRemoveAttempt("Cannot remove the default file.")
         else:
-            self.logger.error("The file '%s' was not found", filename)
+            logger.error("The file '%s' was not found", filename)
             raise FileNotFoundError("File not found")
 
     def remove_data(self, filename: str) -> bool:
@@ -452,7 +482,7 @@ class FileService(metaclass=SingletonMeta):
         if path.exists(user_file):
             return self.user_photos_dir
         else:
-            self.logger.error("The file '%s' was not found", user_file)
+            logger.error("The file '%s' was not found", user_file)
             raise FileNotFoundError("File not found")
 
     def get_video_directory(self, filename: str) -> str:
@@ -469,11 +499,11 @@ class FileService(metaclass=SingletonMeta):
             str: Directory path of the video file.
         """
 
-        user_file = path.join(self.user_videos_dir, filename)
+        user_file = path.join(self.video_service.video_dir, filename)
         if path.exists(user_file):
-            return self.user_videos_dir
+            return self.video_service.video_dir
         else:
-            self.logger.error("The file '%s' was not found", user_file)
+            logger.error("The file '%s' was not found", user_file)
             raise FileNotFoundError("File not found")
 
     def get_music_directory(self, filename: str) -> str:
@@ -496,7 +526,7 @@ class FileService(metaclass=SingletonMeta):
         elif path.exists(path.join(self.default_user_music_dir, filename)):
             return self.default_user_music_dir
         else:
-            self.logger.error("The file '%s' was not found", user_file)
+            logger.error("The file '%s' was not found", user_file)
             raise FileNotFoundError("File not found")
 
     def save_uploaded_file(self, file: UploadFile, directory: str) -> str:
@@ -569,10 +599,21 @@ class FileService(metaclass=SingletonMeta):
         Recursively scans the provided directory for .tflite, .onnx and .pt model files.
         Returns a structed list of all found models.
         """
-        allowed_extensions = (
-            (".tflite", ".pt") if is_google_coral_connected() else (".pt")
+
+        allowed_extensions: Tuple[str, ...] = tuple(
+            [
+                ext
+                for ext in [
+                    ".tflite" if is_google_coral_connected() else None,
+                    ".pt",
+                    ".hef",
+                    ".onnx",
+                ]
+                if ext
+            ]
         )
-        existing_set = set()
+
+        existing_set: Set[str] = set()
 
         result = get_directory_structure(
             app_config.DATA_DIR,

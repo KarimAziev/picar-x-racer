@@ -88,6 +88,7 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                                 max_height=max_height,
                                 min_fps=min_fps,
                                 max_fps=max_fps,
+                                path=device_path,
                             )
                             for pixel_fmt in PIXEL_FORMATS_TO_PICAMERA2_MAP.keys()
                         ]
@@ -107,6 +108,7 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                                 max_height=max_height,
                                 min_fps=min_fps,
                                 max_fps=max_fps,
+                                path=device_path,
                             )
                         )
                         detected.extend(formats)

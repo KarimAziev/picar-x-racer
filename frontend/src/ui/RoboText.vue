@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 
 const props = defineProps<{
   text?: string;
@@ -28,6 +28,18 @@ const msg = ref("");
 const elem = ref<HTMLElement | null>();
 const isCaretVisible = ref(true);
 const title = ref("");
+const cancelled = ref(false);
+
+watch(
+  () => props.text,
+  (newText) => {
+    if (newText) {
+      cancelled.value = true;
+      isCaretVisible.value = false;
+      msg.value = newText;
+    }
+  },
+);
 
 const typeTitle = () => {
   return new Promise<void>((resolve) => {
@@ -55,12 +67,12 @@ const typeTitle = () => {
 
 const typeText = () => {
   typeTitle().then(() => {
-    if (!props.text) return;
+    if (!props.text || cancelled.value) return;
 
     let index = 0;
 
     const typeNextChar = () => {
-      if (!props.text) {
+      if (!props.text || cancelled.value) {
         return;
       }
       if (index < props.text.length) {
@@ -69,7 +81,7 @@ const typeText = () => {
       } else {
         setTimeout(() => {
           isCaretVisible.value = false;
-        }, 200);
+        }, 50);
       }
     };
 

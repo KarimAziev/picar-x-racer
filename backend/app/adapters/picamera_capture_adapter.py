@@ -11,10 +11,10 @@ from app.services.picamera2_service import (
     PICAMERA2_TO_PIXEL_FORMATS_MAP,
     PIXEL_FORMATS_TO_PICAMERA2_MAP,
 )
-from cv2.typing import MatLike
 
 if TYPE_CHECKING:
     from app.services.picamera2_service import PicameraService
+    from cv2.typing import MatLike
 
     try:
         from picamera2 import Picamera2
@@ -188,7 +188,7 @@ class PicameraCaptureAdapter(VideoCaptureABC):
 
         return self.picam2, CameraSettings(**updated_settings)
 
-    def read(self) -> Tuple[bool, MatLike]:
+    def read(self) -> Tuple[bool, "MatLike"]:
         """
         Capture a single frame from the camera.
         Returns a tuple: (success, frame).

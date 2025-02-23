@@ -13,6 +13,5 @@
 <script setup lang="ts">
 import RoboText from "@/ui/RoboText.vue";
 import type { MessageItem } from "@/features/messager";
-
 defineProps<{ class?: string; messages: MessageItem[] }>();
 </script>

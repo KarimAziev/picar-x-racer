@@ -7,12 +7,12 @@ from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
 from app.util.device import release_video_capture_safe
-from cv2.typing import MatLike
 
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
     from app.services.v4l2_service import V4L2Service
+    from cv2.typing import MatLike
 
 
 class V4l2CaptureAdapter(VideoCaptureABC):
@@ -28,7 +28,7 @@ class V4l2CaptureAdapter(VideoCaptureABC):
         """Concrete implementation of the abstract settings property."""
         return self._settings
 
-    def read(self) -> Tuple[bool, MatLike]:
+    def read(self) -> Tuple[bool, "MatLike"]:
         return self._cap.read()
 
     def release(self) -> None:

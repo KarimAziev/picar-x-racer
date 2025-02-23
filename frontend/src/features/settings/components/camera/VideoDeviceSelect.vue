@@ -40,7 +40,7 @@
         :useGrouping="false"
         v-if="selectedDevice && (selectedDevice as any).max_width"
         fieldClassName="w-20"
-        inputClass="w-20"
+        inputClass="!w-20"
         label="Width"
         field="step-width"
         v-model="stepwiseData.width"
@@ -68,7 +68,7 @@
         />
       </NumberInputField>
       <NumberInputField
-        inputClass="w-20"
+        inputClass="!w-20"
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="Height"
         allowEmpty
@@ -111,7 +111,7 @@
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="FPS"
         allowEmpty
-        inputClass="w-20"
+        inputClass="!w-20"
         fieldClassName="w-20 self-end"
         field="step-fps"
         v-model="stepwiseData.fps"

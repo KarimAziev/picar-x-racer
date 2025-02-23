@@ -22,3 +22,23 @@ export const generateMultiplesOf32 = (limit: number): number[] => {
 
 export const inRange = (value: number, minValue: number, maxValue: number) =>
   value >= minValue && value <= maxValue;
+
+export const resizeToFit = (
+  width: number,
+  height: number,
+  maxWidth: number,
+  maxHeight: number,
+): [number, number] => {
+  const scaleW = maxWidth / width;
+  const scaleH = maxHeight / height;
+
+  const scale = Math.min(scaleW, scaleH);
+
+  const newWidth = Math.round(width * scale);
+  const newHeight = Math.round(height * scale);
+
+  return [newWidth, newHeight];
+};
+
+export const takePercentage = (value: number, percent: number): number =>
+  (value * percent) / 100;

@@ -6,6 +6,14 @@ export type MethodsWithoutParams<T> = {
     : never]: T[K] extends (...args: infer _P) => any ? T[K] : never;
 };
 
+export type MethodsWithOneStringParam<T> = {
+  [K in keyof T as T[K] extends (...args: infer P) => any
+    ? P extends [string]
+      ? K
+      : never
+    : never]: T[K] extends (...args: infer _P) => any ? T[K] : never;
+};
+
 /**
  * Cast type A to type B if A is assignable to B, otherwise, default to B.
  * @param A - The type to cast.
@@ -123,4 +131,8 @@ export type MapObjectsDeepTo<Obj, Value> = {
   [P in keyof Obj]: Obj[P] extends Record<string, any>
     ? MapObjectsDeepTo<Obj[P], Value>
     : Value;
+};
+
+export type PropertiesOfType<T, U> = {
+  [K in keyof T as T[K] extends U ? K : never]: T[K];
 };

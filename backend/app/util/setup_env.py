@@ -6,8 +6,11 @@ from app.util.os_checks import is_raspberry_pi
 
 def setup_env():
     is_os_raspberry = is_raspberry_pi()
+    default_gpio_factory = "rpigpio" if is_os_raspberry else "mock"
 
-    os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio" if is_os_raspberry else "mock"
+    os.environ["GPIOZERO_PIN_FACTORY"] = os.getenv(
+        "GPIOZERO_PIN_FACTORY", default_gpio_factory
+    )
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
     if not is_os_raspberry:
         os.environ["ROBOT_HAT_MOCK_SMBUS"] = "1"

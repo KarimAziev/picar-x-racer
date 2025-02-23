@@ -52,6 +52,14 @@ class AppConfig(BaseSettings):
         str, Field(..., description="The location to write music cache metadata.")
     ] = path.join(user_cache_dir(), APP_NAME, "music_cache.json")
 
+    VIDEO_CACHE_FILE_PATH: Annotated[
+        str, Field(..., description="The location to write video cache metadata.")
+    ] = path.join(user_cache_dir(), APP_NAME, "video_cache.json")
+
+    VIDEO_CACHE_PREVIEW_DIR: Annotated[
+        str, Field(..., description="The directory to save preview images for videos.")
+    ] = path.join(user_cache_dir(), APP_NAME, "video_preview")
+
     PX_SETTINGS_FILE: Annotated[
         str, Field(..., description="The location to write user settings.")
     ] = path.join(_USER_CONFIG_DIR, APP_NAME, "user_settings.json")
@@ -188,6 +196,14 @@ class AppConfig(BaseSettings):
             examples=[10],
         ),
     ] = 20
+
+    HAILO_LABELS: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            description="Path to a text file containing labels. If no labels file is provided, coco2017 will be used.",
+        ),
+    ] = path.join(_PROJECT_DIR, "coco2017.txt")
 
 
 settings = AppConfig()

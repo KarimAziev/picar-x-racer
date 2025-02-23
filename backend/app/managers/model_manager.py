@@ -1,6 +1,6 @@
 import os
 from types import TracebackType
-from typing import TYPE_CHECKING, Optional, Tuple, Type
+from typing import TYPE_CHECKING, Optional, Tuple, Type, Union
 
 from app.config.config import settings
 from app.core.logger import Logger
@@ -10,25 +10,18 @@ from app.util.google_coral import is_google_coral_connected
 logger = Logger(__name__)
 
 if TYPE_CHECKING:
+    from app.adapters.hailo_adapter import YOLOHailoAdapter
     from ultralytics import YOLO
 
 
 class ModelManager:
     """
-    ModelManager class is a context manager used for loading and managing the lifecycle of a YOLO object detection model.
-
-    This class ensures that the model is loaded when entering the context and properly cleaned up upon exiting the context.
-    The model loading path is selected dynamically based on available files.
+    ModelManager is a context manager for loading and managing a YOLO detection model.
+    It supports both standard ultralytics YOLO and Hailo HEF models via an adapter.
     """
 
     def __init__(self, model_path: Optional[str] = None) -> None:
-        """
-        Initializes the ModelManager with an optional model path.
-
-        Parameters:
-            model_path (str): An optional custom path to use for loading the model.
-        """
-        self.model: Optional["YOLO"] = None
+        self.model = None
         self.error_msg = None
         self.model_path = (
             resolve_absolute_path(model_path, settings.DATA_DIR)
@@ -36,47 +29,63 @@ class ModelManager:
             else model_path
         )
 
-    def __enter__(self) -> Tuple[Optional["YOLO"], Optional[str]]:
-        """
-        Called when entering the context (i.e. using the 'with' statement).
-        Tries to load the YOLO object detection model from the model paths defined in configuration.
-
-        - If a pre-compiled model for Google's Coral Edge TPU exists (`YOLO_MODEL_EDGE_TPU_PATH`),
-          it is loaded.
-        - Otherwise, the default YOLO model from `YOLO_MODEL_PATH` is loaded.
-
-        The method also sets an image input size configuration for the model.
-
-        Returns:
-            YOLO: An instance of the YOLO model, ready for use.
-
-        Raises:
-            FileNotFoundError: If none of the pre-configured model paths exist.
-        """
+    def __enter__(
+        self,
+    ) -> Tuple[Union["YOLO", "YOLOHailoAdapter", None], Optional[str]]:
         try:
-            from ultralytics import YOLO
+            if self.model_path and self.model_path.endswith(".hef"):
+                logger.info(f"Loading Hailo model {self.model_path}")
+                try:
+                    from app.adapters.hailo_adapter import YOLOHailoAdapter
+                except ImportError as e:
+                    msg = f"Failed to import Hailo adapter: {e}"
+                    logger.error(msg)
+                    self.error_msg = msg
+                    return None, self.error_msg
 
-            if self.model_path is None:
-                self.model_path = (
-                    settings.YOLO_MODEL_EDGE_TPU_PATH
-                    if os.path.exists(settings.YOLO_MODEL_EDGE_TPU_PATH)
-                    and is_google_coral_connected()
-                    else settings.YOLO_MODEL_PATH
-                )
+                labels = {}
 
-            logger.info(f"Loading model {self.model_path}")
-            try:
-                self.model = YOLO(model=self.model_path, task="detect")
-                logger.info(f"Model {self.model_path} loaded successfully")
-            except FileNotFoundError:
-                msg = f"Model's file {self.model_path} is not found"
-                logger.error(msg)
-                self.error_msg = msg
-            except Exception:
-                msg = f"Unexpected error while loading {self.model_path}"
-                logger.error(msg, exc_info=True)
-                self.error_msg = msg
+                if (
+                    hasattr(settings, "HAILO_LABELS")
+                    and settings.HAILO_LABELS is not None
+                    and os.path.exists(
+                        resolve_absolute_path(settings.HAILO_LABELS, settings.DATA_DIR)
+                    )
+                ):
+                    with open(settings.HAILO_LABELS, "r", encoding="utf-8") as f:
+                        lines = f.read().splitlines()
+                        for idx, name in enumerate(lines):
+                            labels[idx] = name
+                self.model = YOLOHailoAdapter(self.model_path, labels=labels)
+                logger.info("Hailo model loaded successfully")
+            else:
+                from ultralytics import YOLO
 
+                if YOLO is None:
+                    msg = "ultralytics YOLO not available."
+                    logger.error(msg)
+                    self.error_msg = msg
+                else:
+                    if self.model_path is None:
+                        if (
+                            os.path.exists(settings.YOLO_MODEL_EDGE_TPU_PATH)
+                            and is_google_coral_connected()
+                        ):
+                            self.model_path = settings.YOLO_MODEL_EDGE_TPU_PATH
+                        else:
+                            self.model_path = settings.YOLO_MODEL_PATH
+                    logger.info(f"Loading YOLO model {self.model_path}")
+                    try:
+                        self.model = YOLO(model=self.model_path, task="detect")
+                        logger.info("YOLO model loaded successfully")
+                    except FileNotFoundError:
+                        msg = f"Model's file {self.model_path} is not found"
+                        logger.error(msg)
+                        self.error_msg = msg
+                    except Exception:
+                        msg = f"Unexpected error while loading {self.model_path}"
+                        logger.error(msg, exc_info=True)
+                        self.error_msg = msg
             return self.model, self.error_msg
         except KeyboardInterrupt:
             logger.warning("Detection model context received KeyboardInterrupt.")

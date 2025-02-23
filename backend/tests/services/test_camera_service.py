@@ -84,6 +84,9 @@ class DummyVideoCapture:
 
 
 class DummyVideoRecorder:
+    def __init__(self):
+        self.current_video_path = None
+
     def start_recording(self, width, height, fps):
         self.recording = True
         self.width = width
@@ -139,6 +142,7 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
         self.file_service = cast(FileService, DummyFileService())
         self.connection_service = cast(ConnectionService, DummyConnectionService())
         self.video_device_adapter = cast(VideoDeviceAdapter, DummyVideoDeviceAdapter())
+
         self.video_recorder = cast(VideoRecorderService, DummyVideoRecorder())
 
         patcher = patch("app.services.camera_service.Logger", dummy_logger_patch)
