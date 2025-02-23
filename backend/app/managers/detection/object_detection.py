@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy as np
 from app.core.logger import Logger
 from app.exceptions.detection import DetectionDimensionMismatch
+from app.types.detection import DetectionKeypoint, DetectionPoseResult, DetectionResult
 from app.util.video_utils import letterbox
 
 if TYPE_CHECKING:
@@ -25,7 +26,7 @@ def perform_detection(
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
     should_resize: bool = False,
-) -> List[Dict[str, Any]]:
+) -> List[Union[DetectionResult, DetectionPoseResult]]:
     """
     Performs object detection on a given frame and adjusts detected bounding boxes by undoing the letterbox
     padding before scaling the coordinates back to the original image dimensions.
@@ -89,7 +90,7 @@ def perform_detection(
     scale_x = original_width / float(resized_width)
     scale_y = original_height / float(resized_height)
 
-    detection_results: List[Dict[str, Any]] = []
+    detection_results: List[Union[DetectionResult, DetectionPoseResult]] = []
     if hasattr(results, "boxes") and results.boxes is not None:
         idx = 0
         keypoints = results.keypoints if results.keypoints is not None else None
@@ -118,22 +119,28 @@ def perform_detection(
                 x2_final = int(x2_adj * scale_x)
                 y2_final = int(y2_adj * scale_y)
 
-                detection_entry = {
+                detection_entry: DetectionResult = {
                     "bbox": [x1_final, y1_final, x2_final, y2_final],
                     "label": label,
                     "confidence": conf,
                 }
                 if keypoints is not None and idx < len(keypoints):
                     raw_keypoints = keypoints.xy[idx].tolist()
-                    formatted_keypoints = [
+                    formatted_keypoints: List[DetectionKeypoint] = [
                         {
                             "x": int((x - pad_left) * scale_x),
                             "y": int((y - pad_top) * scale_y),
                         }
                         for (x, y) in raw_keypoints
                     ]
-                    detection_entry["keypoints"] = formatted_keypoints
-
-                detection_results.append(detection_entry)
+                    detection_pose_entry: DetectionPoseResult = {
+                        "bbox": detection_entry["bbox"],
+                        "label": detection_entry["label"],
+                        "confidence": detection_entry["confidence"],
+                        "keypoints": formatted_keypoints,
+                    }
+                    detection_results.append(detection_pose_entry)
+                else:
+                    detection_results.append(detection_entry)
             idx += 1
     return detection_results

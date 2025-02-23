@@ -3,20 +3,29 @@ import multiprocessing as mp
 import queue
 import re
 import time
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
+from app.core.logger import Logger
+from app.core.singleton_meta import SingletonMeta
 from app.exceptions.detection import (
     DetectionModelLoadError,
     DetectionProcessClosing,
     DetectionProcessError,
     DetectionProcessLoading,
 )
-from app.schemas.detection import DetectionSettings
 from app.managers.detection.detection_process import detection_process_func
+from app.schemas.detection import DetectionSettings
+from app.types.detection import (
+    DetectionControlMessage,
+    DetectionErrorMessage,
+    DetectionFrameData,
+    DetectionLoadErrorMessage,
+    DetectionQueueData,
+    DetectionReadyMessage,
+    DetectionResultData,
+)
 from app.util.file_util import resolve_absolute_path
-from app.core.logger import Logger
 from app.util.queue_helpers import clear_queue
-from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -44,12 +53,18 @@ class DetectionService(metaclass=SingletonMeta):
         )
         self.task_event = asyncio.Event()
         self.stop_event = mp.Event()
-        self.frame_queue = mp.Queue(maxsize=1)
-        self.detection_queue = mp.Queue(maxsize=1)
-        self.control_queue = mp.Queue(maxsize=1)
-        self.out_queue = mp.Queue(maxsize=1)
+        self.frame_queue: mp.Queue[DetectionFrameData] = mp.Queue(maxsize=1)
+        self.detection_queue: mp.Queue[DetectionQueueData] = mp.Queue(maxsize=1)
+        self.control_queue: mp.Queue[DetectionControlMessage] = mp.Queue(maxsize=1)
+        self.out_queue: mp.Queue[
+            Union[
+                DetectionReadyMessage, DetectionLoadErrorMessage, DetectionErrorMessage
+            ]
+        ] = mp.Queue(maxsize=1)
         self.detection_process = None
-        self.detection_result: Optional[Dict[str, Any]] = None
+        self.detection_result: Optional[
+            Union[DetectionQueueData, DetectionResultData]
+        ] = None
         self.detection_process_task: Optional[asyncio.Task] = None
         self.loading = False
         self.shutting_down = False
@@ -85,8 +100,13 @@ class DetectionService(metaclass=SingletonMeta):
             "model",
         }
 
-        runtime_data_keys = {"confidence", "labels"}
-        runtime_data = {}
+        runtime_data: DetectionControlMessage = {
+            "command": "set_detect_mode",
+            "confidence": None,
+            "labels": None,
+        }
+
+        has_runtime_data = False
 
         for key, value in dict_data.items():
             old_value = detection_data.get(key)
@@ -96,7 +116,8 @@ class DetectionService(metaclass=SingletonMeta):
                 )
                 if key == "active" and value is not None:
                     detection_action = value
-                elif key in runtime_data_keys:
+                elif key in runtime_data:
+                    has_runtime_data = True
                     runtime_data[key] = value
                 elif key in detection_keys_to_restart and detection_action is None:
                     detection_action = settings.active
@@ -117,9 +138,7 @@ class DetectionService(metaclass=SingletonMeta):
                     self.detection_watcher()
                 )
         elif (
-            not self.shutting_down
-            and detection_action is None
-            and len(runtime_data.items()) > 0
+            not self.shutting_down and detection_action is None and has_runtime_data > 0
         ):
             async with self.lock:
                 if (
@@ -130,7 +149,7 @@ class DetectionService(metaclass=SingletonMeta):
                     await asyncio.to_thread(
                         self.clear_and_put,
                         self.control_queue,
-                        {"command": "set_detect_mode", **runtime_data},
+                        runtime_data,
                     )
 
         return self.detection_settings
@@ -177,7 +196,7 @@ class DetectionService(metaclass=SingletonMeta):
                 else:
                     logger.info("Skipping starting of detection process: already alive")
 
-                command = {
+                command: DetectionControlMessage = {
                     "command": "set_detect_mode",
                     "confidence": self.detection_settings.confidence,
                     "labels": self.detection_settings.labels,
@@ -453,7 +472,7 @@ class DetectionService(metaclass=SingletonMeta):
                     type(e).__name__,
                 )
 
-    def put_frame(self, frame_data: Dict[str, Any]) -> None:
+    def put_frame(self, frame_data: DetectionFrameData) -> None:
         """Puts the frame data into the frame queue after clearing it."""
         if self.shutting_down:
             logger.warning(
@@ -518,7 +537,7 @@ class DetectionService(metaclass=SingletonMeta):
             )
 
     @property
-    def current_state(self):
+    def current_state(self) -> Union[DetectionResultData, DetectionQueueData]:
         """
         Retrieves the current state of the detection service, including the latest detection results.
 
@@ -528,18 +547,15 @@ class DetectionService(metaclass=SingletonMeta):
                 - `timestamp`: The timestamp associated with the detection results.
                 - `loading`: A flag indicating whether a detection load operation is in progress.
         """
-        data = (
-            self.detection_result
-            if self.detection_result is not None
-            else {
-                "detection_result": [],
-                "timestamp": time.time(),
-            }
-        )
-        return {
-            **data,
+        if self.detection_result is not None:
+            return self.detection_result
+
+        data: DetectionResultData = {
+            "detection_result": [],
+            "timestamp": time.time(),
             "loading": self.loading,
         }
+        return data
 
     async def cleanup(self) -> None:
         """

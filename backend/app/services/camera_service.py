@@ -20,6 +20,7 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
+from app.types.detection import DetectionFrameData
 from app.util.video_utils import calc_fps, encode, letterbox
 
 if TYPE_CHECKING:
@@ -342,7 +343,7 @@ class CameraService(metaclass=SingletonMeta):
 
             self.current_frame_timestamp = time.time()
 
-            frame_data = {
+            frame_data: DetectionFrameData = {
                 "frame": resized_frame,
                 "timestamp": self.current_frame_timestamp,
                 "original_height": original_height,
