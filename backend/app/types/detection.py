@@ -109,7 +109,6 @@ class DetectionLoadErrorMessage(DetectionErrorMessage):
     Provides additional information on whether the model loading operation was successful.
     """
 
-    error: str
     success: bool
 
 
