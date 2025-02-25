@@ -120,3 +120,10 @@ export const videoQualityOptions = numberSequence(10, 100, 10).map((value) => ({
   value: value,
   label: `${value}`,
 }));
+
+export const videoEncodeFormatOptions = [
+  { value: ".jpg", label: "JPG" },
+  { value: ".jpeg", label: "JPEG" },
+  { value: ".webp", label: "WEBP" },
+  { value: ".png", label: "PNG" },
+];

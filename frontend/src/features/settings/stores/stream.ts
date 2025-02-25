@@ -29,6 +29,7 @@ export interface StreamSettings {
    * Whether the frames per second (FPS) should be rendered.
    */
   render_fps: boolean;
+  auto_stop_camera_on_disconnect?: boolean;
 }
 
 export interface State {
@@ -44,6 +45,7 @@ export const defaultState: State = {
     format: ".jpg",
     quality: 100,
     render_fps: false,
+    auto_stop_camera_on_disconnect: true,
   },
   enhancers: [],
   is_record_initiator: false,

@@ -157,5 +157,12 @@ class StreamService(metaclass=SingletonMeta):
                 "Video Stream WebSocket connection %s is ended.",
                 self.active_clients,
             )
-            if self.active_clients == 0:
+
+            if (
+                self.camera_service.stream_settings.auto_stop_camera_on_disconnect
+                and self.active_clients == 0
+            ) and not (
+                self.camera_service.stream_settings.video_record
+                and not self.camera_service.camera_device_error
+            ):
                 await asyncio.to_thread(self.camera_service.stop_camera)

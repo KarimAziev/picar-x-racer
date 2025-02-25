@@ -2,38 +2,52 @@ from typing import List, Optional
 
 from app.config.video_enhancers import frame_enhancers
 from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 
 class StreamSettings(BaseModel):
     """
     Model for video stream settings.
-
-    Attributes:
-    --------------
-    - `format`: The file format to save frames (e.g., `.jpg`, `.png`).
-    - `quality`: Quality compression level for frames (0–100).
-    - `enhance_mode`: Video effect to apply to frames.
-    - `video_record`: Whether the video stream should be recorded.
-    - `render_fps`: Whether to render the video FPS.
     """
 
-    format: str = Field(
-        ".jpg", description="The file format to save frames (e.g., `.jpg`, `.png`)."
-    )
-    quality: Optional[int] = Field(
-        100, ge=0, le=100, description="Quality compression level for frames (0–100)."
-    )
-    enhance_mode: Optional[str] = Field(
-        None,
-        description="Enhancer to apply to frames (e.g., `robocop_vision`).",
-        examples=list(frame_enhancers.keys()),
-    )
-    video_record: Optional[bool] = Field(
-        None, description="Whether the video stream should be recorded."
-    )
-    render_fps: Optional[bool] = Field(
-        None, description="Whether to render the video FPS."
-    )
+    format: Annotated[
+        str,
+        Field(
+            ..., description="The file format to save frames (e.g., `.jpg`, `.png`)."
+        ),
+    ] = ".jpg"
+    quality: Annotated[
+        Optional[int],
+        Field(
+            ...,
+            ge=0,
+            le=100,
+            description="Quality compression level for frames (0–100).",
+        ),
+    ] = 100
+    enhance_mode: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            description="Enhancer to apply to frames (e.g., `robocop_vision`).",
+            examples=list(frame_enhancers.keys()),
+        ),
+    ] = None
+    video_record: Annotated[
+        Optional[bool],
+        Field(..., description="Whether the video stream should be recorded."),
+    ] = None
+    render_fps: Annotated[
+        Optional[bool], Field(..., description="Whether to render the video FPS.")
+    ] = None
+
+    auto_stop_camera_on_disconnect: Annotated[
+        bool,
+        Field(
+            ...,
+            description="If set to True, the camera will be auto-stopped when the last websocket client disconnects.",
+        ),
+    ] = True
 
 
 class EnhancersResponse(BaseModel):

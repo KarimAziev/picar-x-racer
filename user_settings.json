@@ -14,7 +14,7 @@
     "show_auto_measure_distance_button": true,
     "show_audio_stream_button": true,
     "show_photo_capture_button": true,
-    "show_video_record_button": false,
+    "show_video_record_button": true,
     "show_fullscreen_button": true,
     "show_shutdown_reboot_button": true,
     "show_avoid_obstacles_button": true,
@@ -56,7 +56,8 @@
     "format": ".jpg",
     "enhance_mode": null,
     "video_record": false,
-    "render_fps": true
+    "render_fps": true,
+    "auto_stop_camera_on_disconnect": true
   },
   "detection": {
     "model": null,

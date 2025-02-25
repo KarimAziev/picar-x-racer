@@ -1,12 +1,12 @@
 <template>
   <SelectField
-    label="Video Quality"
-    field="video_feed_quality"
-    v-model="streamStore.data.quality"
-    tooltip="Quality compression level for frames (%s)"
+    label="Video format"
+    field="format"
+    v-model="streamStore.data.format"
+    tooltip="This setting defines the container and codec used when encoding video streams."
     optionLabel="label"
     optionValue="value"
-    :options="videoQualityOptions"
+    :options="videoEncodeFormatOptions"
     :loading="streamStore.loading"
     @update:model-value="updateStreamParams"
   />
@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import SelectField from "@/ui/SelectField.vue";
 import { useSettingsStore, useStreamStore } from "@/features/settings/stores";
-import { videoQualityOptions } from "@/features/settings/config";
+import { videoEncodeFormatOptions } from "@/features/settings/config";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 
 const settingsStore = useSettingsStore();
@@ -24,5 +24,5 @@ const streamStore = useStreamStore();
 const updateStreamParams = useAsyncDebounce(async () => {
   settingsStore.data.stream = streamStore.data;
   await streamStore.updateData(streamStore.data);
-}, 1000);
+}, 500);
 </script>

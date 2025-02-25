@@ -215,10 +215,16 @@ class CameraService(metaclass=SingletonMeta):
             raise CameraDeviceError(self.camera_device_error)
         if self.stream_img is not None:
             frame = self.stream_img
+            format_quolity_params = {
+                ".jpg": cv2.IMWRITE_JPEG_QUALITY,
+                ".webp": cv2.IMWRITE_WEBP_QUALITY,
+                ".jpeg": cv2.IMWRITE_JPEG_QUALITY,
+            }
+
+            quolity_param = format_quolity_params.get(self.stream_settings.format)
+
             encode_params = (
-                [cv2.IMWRITE_JPEG_QUALITY, self.stream_settings.quality]
-                if self.stream_settings.format == ".jpg"
-                else []
+                [quolity_param, self.stream_settings.quality] if quolity_param else []
             )
 
             encoded_frame = encode(frame, self.stream_settings.format, encode_params)

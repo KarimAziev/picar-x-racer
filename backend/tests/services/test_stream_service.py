@@ -4,6 +4,7 @@ from typing import Any, Optional, Union, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.exceptions.camera import CameraDeviceError
+from app.schemas.stream import StreamSettings
 from app.services.camera_service import CameraService
 from app.services.stream_service import StreamService
 from fastapi.websockets import WebSocket
@@ -59,6 +60,7 @@ class DummyCameraService:
         self.start_camera = MagicMock()
         self.stop_camera = MagicMock()
         self.notify_camera_error = AsyncMock()
+        self.stream_settings = StreamSettings()
 
     def start_camera(self) -> None:
         pass
@@ -152,9 +154,6 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
     async def test_video_stream_normal(self):
         """
         Test the video_stream method under normal conditions.
-        We replace generate_video_stream_for_websocket with a dummy coroutine so that we can
-        verify that active_clients is incremented and later decremented.
-        Also, verify that start_camera is called if required.
         """
         ws = FakeWebSocket(cancelled=False)
 
@@ -175,6 +174,30 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.stream_service.active_clients, 0)
         # When active_clients becomes 0, stop_camera is expected.
         self.dummy_cam.stop_camera.assert_called()
+
+    async def test_video_stream_normal_with_video_record(self):
+        """
+        Test the video_stream doesn't stop the camera with video recording and no active clients.
+        """
+        ws = FakeWebSocket(cancelled=False)
+
+        async def fake_generate_video_stream(websocket: WebSocket) -> None:
+            logging.debug("websocket=%s", websocket)
+            return
+
+        self.stream_service.generate_video_stream_for_websocket = (
+            fake_generate_video_stream
+        )
+
+        self.dummy_cam.camera_run = False
+        self.dummy_cam.camera_device_error = None
+        self.dummy_cam.stream_settings.video_record = True
+
+        with patch("asyncio.to_thread", new=fake_to_thread):
+            await self.stream_service.video_stream(cast(WebSocket, ws))
+
+        self.assertEqual(self.stream_service.active_clients, 0)
+        self.dummy_cam.stop_camera.assert_not_called()
 
     async def test_video_stream_with_camera_error(self):
         """
@@ -197,6 +220,33 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
 
         self.dummy_cam.notify_camera_error.assert_called_with("Fake camera error")
         self.assertTrue(ws.closed)
+        self.dummy_cam.stop_camera.assert_called()
+
+    async def test_video_stream_with_camera_error_and_video_record(self):
+        """
+        Test the video_stream disconnects with no active clients, but with camera error.
+        """
+        ws = FakeWebSocket(cancelled=False)
+
+        def fake_start_camera():
+            raise CameraDeviceError("Failed to read frame from the camera.")
+
+        self.dummy_cam.camera_run = False
+        self.dummy_cam.camera_device_error = None
+        self.dummy_cam.start_camera = fake_start_camera
+        self.dummy_cam.stream_settings.video_record = True
+
+        self.stream_service.generate_video_stream_for_websocket = AsyncMock()
+
+        with patch("asyncio.to_thread", new=fake_to_thread):
+            await self.stream_service.video_stream(cast(WebSocket, ws))
+
+        self.dummy_cam.notify_camera_error.assert_called_with(
+            "Failed to read frame from the camera."
+        )
+        self.assertTrue(ws.closed)
+
+        self.assertEqual(self.stream_service.active_clients, 0)
         self.dummy_cam.stop_camera.assert_called()
 
 
