@@ -100,6 +100,7 @@ def setup_env() -> AppEnvironment:
             - mode: Application mode ('dev' if --dev is used, otherwise 'prod').
             - frontend_port: Port for the frontend as string.
     """
+    setup_env_vars()
     args = parse_cli_args()
 
     main_app_port = str(args.port)
