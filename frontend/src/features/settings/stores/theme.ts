@@ -10,7 +10,10 @@ import { isDarkMode } from "@/util/theme";
 import { surfaces } from "@/presets/surfaces";
 import { ensurePrefix } from "@/util/str";
 import { MethodsWithOneStringParam, PropertiesOfType } from "@/util/ts-helpers";
-import { OverlayLinesParams, KeypointsParams } from "@/types/overlay";
+import {
+  OverlayLinesParams,
+  KeypointsParams,
+} from "@/features/detection/interface";
 import { cloneDeep } from "@/util/obj";
 
 export const defaultLightState = {
@@ -25,15 +28,15 @@ export const defaultDarkState = {
 
 export const defaultState = {
   ...defaultDarkState,
-  keypointsColor: defaultPrimaryColor,
-  skeletonColor: defaultPrimaryColor,
-  bboxesColor: defaultPrimaryColor,
+  keypointsColor: undefined,
+  skeletonColor: undefined,
+  bboxesColor: undefined,
   dark: isDarkMode(),
   lines: {
-    head: { size: 25 },
-    torso: { size: 60 },
-    arms: { size: 60 },
-    legs: { size: 60 },
+    head: { size: 25, renderFiber: false },
+    torso: { size: 60, renderFiber: false },
+    arms: { size: 60, renderFiber: false },
+    legs: { size: 60, renderFiber: false },
   },
   keypoints: {
     ear: { size: 1 },
@@ -88,6 +91,7 @@ export const useStore = defineStore("theme", {
       const newPalette = palette(ensurePrefix("#", newColor));
       this.primaryColor = newColor;
       updatePrimaryPalette(newPalette);
+
       window.dispatchEvent(
         new CustomEvent("update-primary-palette", {
           bubbles: true,
@@ -179,7 +183,7 @@ export const useStore = defineStore("theme", {
       }
 
       if (this.bboxesColor && this.bboxesColor !== defaultState.bboxesColor) {
-        this.updateBBoxesColor(this.bboxesColor);
+        this.bboxesColor = this.bboxesColor;
       }
 
       if (
@@ -196,9 +200,6 @@ export const useStore = defineStore("theme", {
         this.keypoints = cloneDeep(defaultState.keypoints);
       }
 
-      if (!this.bboxesColor) {
-        this.updateBBoxesColor(this.primaryColor);
-      }
       if (!this.isSurfaceColorDefault) {
         this.updateSurfaceColor(this.surfaceColor);
       }

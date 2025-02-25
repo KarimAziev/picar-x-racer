@@ -1,3 +1,4 @@
+import { palette } from "@primevue/themes";
 import { preset as Robo } from "@/presets/RoboPreset";
 import { ValueLabelOption } from "@/types/common";
 

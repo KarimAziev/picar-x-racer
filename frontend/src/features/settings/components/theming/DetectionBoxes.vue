@@ -11,7 +11,7 @@
       :disabled="isResetDisabled"
       @click="
         () => {
-          store.bboxesColor = defaultState.bboxesColor;
+          store.bboxesColor = undefined;
         }
       "
     />
@@ -26,7 +26,10 @@ import ColorOptions from "@/features/settings/components/theming/ColorOptions.vu
 import { defaultState } from "@/features/settings/stores/theme";
 
 const store = useThemeStore();
+
 const isResetDisabled = computed(
-  () => store.bboxesColor === defaultState.bboxesColor,
+  () =>
+    store.bboxesColor === defaultState.bboxesColor ||
+    store.bboxesColor === store.primaryColor,
 );
 </script>

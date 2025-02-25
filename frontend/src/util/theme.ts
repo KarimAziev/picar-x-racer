@@ -21,3 +21,6 @@ export const getStyleVariable = (
     return value;
   }
 };
+
+export const getRootStyleVariable = (varname: string) =>
+  getComputedStyle(document.documentElement).getPropertyValue(varname).trim();

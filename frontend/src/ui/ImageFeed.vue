@@ -34,12 +34,12 @@ import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
 import ScanLines from "@/ui/ScanLines.vue";
 import { useCameraRotate } from "@/composables/useCameraRotate";
 import { useCameraStore, useThemeStore } from "@/features/settings/stores";
-import { drawOverlay } from "@/util/overlay";
 import {
   useDetectionStore,
   useWebsocketStream,
   overlayStyleHandlers,
 } from "@/features/detection";
+import { drawOverlay } from "@/features/detection/overlays/overlay";
 
 const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
@@ -91,7 +91,6 @@ watch(
           themeStore.bboxesColor,
           themeStore.lines,
           themeStore.keypoints,
-          themeStore.skeletonFiber,
         );
       } else {
         handler(overlayCanvas.value, imgRef.value, []);

@@ -1,28 +1,10 @@
-import type { DetectionResult } from "@/features/detection";
-import { drawKeypoints } from "@/util/pose";
 import { isImage } from "@/util/guards";
-import { OverlayLinesParams, KeypointsParams } from "@/types/overlay";
-
-export const defaults = {
-  lines: {
-    head: { color: "primary-600", size: 25 },
-    body: { color: "primary-600", size: 40 },
-    arms: { color: "primary-600", size: 40 },
-    legs: { color: "primary-600", size: 40 },
-  },
-  keypoints: {
-    eye: { color: "primary-600", size: 40 },
-    nose: { color: "primary-600", size: 40 },
-    shoulder: { color: "primary-600", size: 40 },
-    elbow: { color: "primary-600", size: 40 },
-    wrist: { color: "primary-600", size: 40 },
-    hip: { color: "primary-600", size: 40 },
-    knee: { color: "primary-600", size: 40 },
-    ankle: { color: "primary-600", size: 40 },
-  },
-  fontSizeVar: "--canvas-font",
-  colorVar: "--p-primary-500",
-};
+import { drawKeypoints } from "@/features/detection/overlays/pose/canvasPoseRenderer";
+import type {
+  DetectionResult,
+  OverlayLinesParams,
+  KeypointsParams,
+} from "@/features/detection/interface";
 
 /**
  * Draws a label with confidence percentage above the bounding box on the canvas.
@@ -69,7 +51,6 @@ export const drawDetectionOverlay = (
   detection: DetectionResult,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
 ) => {
   const { label, confidence, bbox, keypoints } = detection;
   if (bbox) {
@@ -85,15 +66,7 @@ export const drawDetectionOverlay = (
   }
 
   if (keypoints) {
-    drawKeypoints(
-      ctx,
-      scaleX,
-      scaleY,
-      detection,
-      poseLines,
-      poseKeystrokes,
-      renderFiber,
-    );
+    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
   }
 };
 
@@ -114,7 +87,6 @@ export const drawDetectionCrosshair = (
   detection: DetectionResult,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
 ) => {
   const { label, confidence, bbox, keypoints } = detection;
   let [x1, y1, x2, y2] = bbox;
@@ -138,15 +110,7 @@ export const drawDetectionCrosshair = (
   ctx.stroke();
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
   if (keypoints) {
-    drawKeypoints(
-      ctx,
-      scaleX,
-      scaleY,
-      detection,
-      poseLines,
-      poseKeystrokes,
-      renderFiber,
-    );
+    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
   }
 };
 
@@ -167,7 +131,6 @@ export const drawFullDetectionCrosshair = (
   detection: DetectionResult,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
 ) => {
   const { label, confidence, bbox } = detection;
   let [x1, y1, x2, y2] = bbox;
@@ -192,15 +155,7 @@ export const drawFullDetectionCrosshair = (
 
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
   if (detection.keypoints) {
-    drawKeypoints(
-      ctx,
-      scaleX,
-      scaleY,
-      detection,
-      poseLines,
-      poseKeystrokes,
-      renderFiber,
-    );
+    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
   }
 };
 
@@ -306,135 +261,5 @@ export const drawDetectionsWith = (
 
   detectionData?.forEach((detection) => {
     fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes, renderFiber);
-  });
-};
-
-/**
- * Draws overlay annotations on a canvas for the detected objects using bounding boxes and labels.
- * @param canvas - The canvas element.
- * @param elem - The HTML element used as a reference.
- * @param detectionData - An array of detection results.
- * @example
- * drawOverlay(canvas, elem, detectionData);
- */
-export const drawOverlay = (
-  canvas: HTMLCanvasElement,
-  elem: HTMLElement,
-  detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
-  poseLines?: OverlayLinesParams,
-  poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
-) => {
-  return drawDetectionsWith(
-    drawDetectionOverlay,
-    canvas,
-    elem,
-    detectionData,
-    font,
-    color,
-    poseLines,
-    poseKeystrokes,
-    renderFiber,
-  );
-};
-
-/**
- * Draws crosshair annotations on a canvas for the detected objects.
- * @param canvas - The canvas element.
- * @param elem - The HTML element used as a reference.
- * @param detectionData - An array of detection results.
- * @example
- * drawAimOverlay(canvas, elem, detectionData);
- */
-export const drawAimOverlay = (
-  canvas: HTMLCanvasElement,
-  elem: HTMLElement,
-  detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
-  poseLines?: OverlayLinesParams,
-  poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
-) => {
-  const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
-  if (!ctx) {
-    return;
-  }
-
-  detectionData?.forEach((detection, i) => {
-    const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionCrosshair;
-    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes, renderFiber);
-  });
-};
-
-/**
- * Draws crosshair annotations on a canvas for the detected objects.
- * @param canvas - The canvas element.
- * @param elem - The HTML element used as a reference.
- * @param detectionData - An array of detection results.
- * @example
- * drawAimMixedOverlay(canvas, elem, detectionData);
- */
-export const drawAimMixedOverlay = (
-  canvas: HTMLCanvasElement,
-  elem: HTMLElement,
-  detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
-  poseLines?: OverlayLinesParams,
-  poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
-) => {
-  const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
-  if (!ctx) {
-    return;
-  }
-
-  detectionData?.forEach((detection, i) => {
-    const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionOverlay;
-    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes, renderFiber);
-  });
-};
-
-export const drawKeypointsOnly = (
-  canvas: HTMLCanvasElement,
-  elem: HTMLElement,
-  detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
-  poseLines?: OverlayLinesParams,
-  poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
-) => {
-  const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
-  if (!ctx) {
-    return;
-  }
-
-  detectionData?.forEach((detection) => {
-    const { label, confidence, bbox, keypoints } = detection;
-    if (bbox) {
-      let [x1, y1, x2, y2] = bbox;
-
-      x1 = x1 * scaleX;
-      y1 = y1 * scaleY;
-      x2 = x2 * scaleX;
-      y2 = y2 * scaleY;
-      drawLabelWithConfidence(label, confidence, ctx, x1, y1);
-    }
-
-    if (keypoints) {
-      drawKeypoints(
-        ctx,
-        scaleX,
-        scaleY,
-        detection,
-        poseLines,
-        poseKeystrokes,
-        renderFiber,
-      );
-    }
   });
 };

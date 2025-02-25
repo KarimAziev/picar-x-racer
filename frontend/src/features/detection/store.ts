@@ -4,55 +4,12 @@ import axios from "axios";
 import type { TreeNode } from "primevue/treenode";
 import { useMessagerStore } from "@/features/messager";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
+import {
+  DetectionSettings,
+  DetectionResponse,
+} from "@/features/detection/interface";
+import { OverlayStyle } from "@/features/detection/enums";
 
-export enum OverlayStyle {
-  BOX = "box",
-  AIM = "aim",
-  MIXED = "mixed",
-  POSE = "pose",
-}
-
-export interface DetectionSettings {
-  /**
-   * The name or ID of the detection model to be used.
-   */
-  model: string | null;
-
-  /**
-   * The confidence threshold for detections (e.g., a value between 0 and 1).
-   */
-  confidence: number;
-
-  /**
-   * Indicates whether detection is active.
-   */
-  active: boolean;
-
-  /**
-   * The size of the image for detection (default is 640).
-   */
-  img_size: number;
-
-  /**
-   * A list of labels (e.g., object categories) to filter detections.
-   */
-  labels: string[] | null;
-  /**
-   * The maximum allowable time difference (in seconds) between the frame
-   *  timestamp and the detection timestamp for overlay drawing to occur.
-   */
-  overlay_draw_threshold: number;
-  /**
-   * The detection overlay styles
-   */
-  overlay_style: OverlayStyle;
-}
-
-export interface DetectionResponse {
-  detection_result: DetectionResult[];
-  timestamp: number | null;
-  loading: boolean;
-}
 export interface State extends DetectionResponse {
   data: DetectionSettings;
   loading: boolean;
@@ -77,12 +34,6 @@ export const defaultState: State = {
   connection: null,
 };
 
-export interface DetectionResult {
-  bbox: [number, number, number, number];
-  label: string;
-  confidence: number;
-  keypoints?: { x: number; y: number; conf?: number }[];
-}
 export const msg = {
   retry: "Retrying object detection connection...",
   closing: "Closing object detection connection...",

@@ -92,7 +92,7 @@ import { startCase } from "@/util/str";
 import Popover from "@/ui/Popover.vue";
 import { isObjectShallowEquals, cloneDeep } from "@/util/obj";
 import { defaultState } from "@/features/settings/stores/theme";
-import { KeypointsParams } from "@/types/overlay";
+import { KeypointsParams } from "@/features/detection/interface";
 
 const popupStore = usePopupStore();
 

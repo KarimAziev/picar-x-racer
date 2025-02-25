@@ -24,6 +24,30 @@
         ></button>
       </div>
     </div>
+    <div
+      v-if="!!extraOptions.length"
+      class="inline-flex flex-col justify-start items-start gap-2 flex-wrap"
+    >
+      <div
+        class="self-stretch justify-start items-start gap-2 inline-flex flex-wrap"
+      >
+        <span class="text-sm font-medium">Extra palette: </span>
+        <button
+          v-for="colorOption of extraOptions"
+          :key="colorOption.label"
+          type="button"
+          :title="startCase(colorOption.label)"
+          @click="handleUpdateColor(colorOption.value)"
+          class="outline outline-2 outline-offset-2 outline-transparent cursor-pointer p-0 rounded-[50%] w-5 h-5 focus:ring"
+          :style="{
+            backgroundColor: `${colorOption.value}`,
+            outlineColor: `${
+              color === colorOption.value ? 'var(--p-primary-color)' : ''
+            }`,
+          }"
+        ></button>
+      </div>
+    </div>
     <div class="flex gap-4 items-center flex-wrap">
       <Field
         label="Custom:"
@@ -55,6 +79,7 @@ import { startCase, ensurePrefix } from "@/util/str";
 import { ValueLabelOption } from "@/types/common";
 import Field from "@/ui/Field.vue";
 import TextField from "@/ui/TextField.vue";
+import { palette } from "@primevue/themes";
 
 export interface ColorOption extends ValueLabelOption {
   color?: string;
@@ -69,6 +94,25 @@ const props = defineProps<{
 const color = defineModel<string>("color");
 const emit = defineEmits(["update:color"]);
 
+const extraOptions = ref<ValueLabelOption[]>([]);
+
+const getNewOptions = () => {
+  if (extraOptions.value.find((opt) => opt.value === color.value)) {
+    return extraOptions.value;
+  }
+  const option = props.options.find(({ value }) => value === color.value);
+
+  if (!option) {
+    return [];
+  }
+  const extraColors = palette(option.value);
+
+  const newOptions = Object.entries(extraColors).flatMap(([key, value]) =>
+    key === "500" ? [] : [{ value, label: `${option.label}-${key}` }],
+  );
+  return newOptions;
+};
+
 const findColorPickerValue = () => {
   const matchedOption = props.options.find(
     (opt) =>
@@ -81,7 +125,8 @@ const findColorPickerValue = () => {
 const colorPickerValue = ref(findColorPickerValue());
 
 const handleUpdateColorPickerValue = (newColor?: string) => {
-  emit("update:color", newColor ? ensurePrefix("#", newColor) : newColor);
+  const normalized = newColor ? ensurePrefix("#", newColor) : newColor;
+  emit("update:color", normalized);
 };
 
 const handleUpdateColor = (newColor: string) => {
@@ -90,10 +135,12 @@ const handleUpdateColor = (newColor: string) => {
 
 watch(
   () => color.value,
-  () => {
+  (newVal) => {
     const nextVal = findColorPickerValue();
+    console.log("newVal", newVal, "nextVal", nextVal);
 
     colorPickerValue.value = nextVal;
+    extraOptions.value = getNewOptions();
   },
 );
 </script>

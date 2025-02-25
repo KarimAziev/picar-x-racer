@@ -175,6 +175,30 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         # When active_clients becomes 0, stop_camera is expected.
         self.dummy_cam.stop_camera.assert_called()
 
+    async def test_video_stream_auto_stop_camera_disabled(self):
+        """
+        Test the video_stream doesn't stop the camera if the corresponding setting is disabled.
+        """
+        ws = FakeWebSocket(cancelled=False)
+
+        async def fake_generate_video_stream(websocket: WebSocket) -> None:
+            logging.debug("websocket=%s", websocket)
+            return
+
+        self.stream_service.generate_video_stream_for_websocket = (
+            fake_generate_video_stream
+        )
+
+        self.dummy_cam.camera_run = False
+        self.dummy_cam.camera_device_error = None
+        self.dummy_cam.stream_settings.auto_stop_camera_on_disconnect = False
+
+        with patch("asyncio.to_thread", new=fake_to_thread):
+            await self.stream_service.video_stream(cast(WebSocket, ws))
+
+        self.assertEqual(self.stream_service.active_clients, 0)
+        self.dummy_cam.stop_camera.assert_not_called()
+
     async def test_video_stream_normal_with_video_record(self):
         """
         Test the video_stream doesn't stop the camera with video recording and no active clients.
