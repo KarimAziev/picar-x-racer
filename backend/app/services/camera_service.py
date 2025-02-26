@@ -331,8 +331,6 @@ class CameraService(metaclass=SingletonMeta):
             and not self.detection_service.loading
             and not self.detection_service.shutting_down
         ):
-            copied_frame = frame.copy()
-
             (
                 resized_frame,
                 original_width,
@@ -342,7 +340,7 @@ class CameraService(metaclass=SingletonMeta):
                 pad_left,
                 pad_top,
             ) = letterbox(
-                copied_frame,
+                frame,
                 self.detection_service.detection_settings.img_size,
                 self.detection_service.detection_settings.img_size,
             )
