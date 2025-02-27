@@ -1,9 +1,10 @@
 <template>
   <SelectField
+    :class="class"
     label="Video format"
     field="format"
     v-model="streamStore.data.format"
-    tooltip="This setting defines the container and codec used when encoding video streams."
+    tooltipHelp="This setting defines the container and codec used when encoding video streams."
     optionLabel="label"
     optionValue="value"
     :options="videoEncodeFormatOptions"
@@ -17,6 +18,8 @@ import SelectField from "@/ui/SelectField.vue";
 import { useSettingsStore, useStreamStore } from "@/features/settings/stores";
 import { videoEncodeFormatOptions } from "@/features/settings/config";
 import { useAsyncDebounce } from "@/composables/useDebounce";
+
+defineProps<{ class?: string }>();
 
 const settingsStore = useSettingsStore();
 const streamStore = useStreamStore();

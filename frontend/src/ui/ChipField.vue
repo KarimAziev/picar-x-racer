@@ -1,9 +1,10 @@
 <template>
   <Field
+    :message="message"
+    :label="label"
     :fieldClassName="fieldClassName"
     :labelClassName="labelClassName"
-    :label="label"
-    :message="msg"
+    :tooltipHelp="tooltipHelp"
     :layout="layout"
   >
     <TextInput
@@ -39,19 +40,16 @@ import TextInput from "primevue/inputtext";
 import type { InputTextProps } from "primevue/inputtext";
 
 import Field from "@/ui/Field.vue";
-import type { FieldLayout } from "@/ui/Field.vue";
+import type { Props as FieldProps } from "@/ui/Field.vue";
 import { omit } from "@/util/obj";
 
-export interface Props {
+export interface Props extends FieldProps {
   modelValue: string[] | null;
   label?: string;
   field?: string;
-  fieldClassName?: string;
-  labelClassName?: string;
   inputClass?: string;
   readonly?: boolean;
   disabled?: boolean;
-  layout?: FieldLayout;
   size?: "small" | "large" | undefined;
   tooltip?: string;
 }

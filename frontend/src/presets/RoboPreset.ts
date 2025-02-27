@@ -395,5 +395,8 @@ export const preset = {
       paddingY: "0.5rem 0.5rem",
       paddingX: "0.5rem 0.75rem",
     },
+    fieldset: {
+      legend: {},
+    },
   },
 };

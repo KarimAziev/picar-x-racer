@@ -5,6 +5,12 @@ import type {
   OverlayLinesParams,
   KeypointsParams,
 } from "@/features/detection/interface";
+import {
+  MAX_LINE_WIDTH,
+  LINE_WIDTH_SCALING_FACTOR,
+} from "@/features/detection/overlays/config";
+import { Nullable } from "@/util/ts-helpers";
+import { BODY_PARTS } from "@/features/detection/enums";
 
 /**
  * Draws a label with confidence percentage above the bounding box on the canvas.
@@ -89,6 +95,8 @@ export const drawDetectionCrosshair = (
   poseKeystrokes?: KeypointsParams,
 ) => {
   const { label, confidence, bbox, keypoints } = detection;
+
+  const noseCoords = keypoints && keypoints[BODY_PARTS.NOSE];
   let [x1, y1, x2, y2] = bbox;
 
   x1 = x1 * scaleX;
@@ -96,8 +104,14 @@ export const drawDetectionCrosshair = (
   x2 = x2 * scaleX;
   y2 = y2 * scaleY;
 
-  const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
+  let midX = (x1 + x2) / 2;
+  let midY = (y1 + y2) / 2;
+
+  if (noseCoords) {
+    const noseCoords = keypoints[BODY_PARTS.NOSE];
+    midX = noseCoords.x * scaleX;
+    midY = noseCoords.y * scaleY;
+  }
 
   ctx.beginPath();
   ctx.moveTo(x1, midY);
@@ -132,7 +146,7 @@ export const drawFullDetectionCrosshair = (
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
 ) => {
-  const { label, confidence, bbox } = detection;
+  const { label, confidence, bbox, keypoints } = detection;
   let [x1, y1, x2, y2] = bbox;
 
   x1 = x1 * scaleX;
@@ -140,8 +154,14 @@ export const drawFullDetectionCrosshair = (
   x2 = x2 * scaleX;
   y2 = y2 * scaleY;
 
-  const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
+  let midX = (x1 + x2) / 2;
+  let midY = (y1 + y2) / 2;
+
+  if (keypoints && keypoints[BODY_PARTS.NOSE]) {
+    const noseCoords = keypoints[BODY_PARTS.NOSE];
+    midX = noseCoords.x * scaleX;
+    midY = noseCoords.y * scaleY;
+  }
 
   ctx.beginPath();
   ctx.moveTo(0, midY);
@@ -154,6 +174,7 @@ export const drawFullDetectionCrosshair = (
   ctx.stroke();
 
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+
   if (detection.keypoints) {
     drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
   }
@@ -173,8 +194,8 @@ export const drawFullDetectionCrosshair = (
 export const setupCtx = (
   canvas: HTMLCanvasElement,
   elem: HTMLElement,
-  font?: string,
-  color?: string,
+  font?: Nullable<string>,
+  color?: Nullable<string>,
 ) => {
   if (!canvas) {
     return {};
@@ -193,8 +214,6 @@ export const setupCtx = (
 
   const displayedWidth = elem.clientWidth;
   const displayedHeight = elem.clientHeight;
-  const scalingFactor = 0.004;
-  const maxLineWidth = 4;
 
   const scaleX = displayedWidth / originalWidth;
   const scaleY = displayedHeight / originalHeight;
@@ -211,8 +230,8 @@ export const setupCtx = (
   }
 
   ctx.lineWidth = Math.min(
-    maxLineWidth,
-    Math.max(1, displayedWidth * scalingFactor),
+    MAX_LINE_WIDTH,
+    Math.max(1, displayedWidth * LINE_WIDTH_SCALING_FACTOR),
   );
 
   ctx.font = font;
@@ -248,8 +267,8 @@ export const drawDetectionsWith = (
   canvas: HTMLCanvasElement,
   elem: HTMLElement,
   detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
+  font?: Nullable<string>,
+  color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
   renderFiber?: boolean,

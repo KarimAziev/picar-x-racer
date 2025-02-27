@@ -6,17 +6,17 @@
         label="Detection"
         field="settings.detection.active"
         @update:model-value="updateDebounced"
-        tooltip="Toggle object detection"
+        tooltipHelp="Toggle object detection"
         v-model="fields.active"
       />
       <SelectField
-        fieldClassName="w-20"
+        fieldClassName="min-w-20"
         inputId="settings.detection.img_size"
         v-model="fields.img_size"
         placeholder="Image size"
         label="Image size"
         filter
-        tooltip="The image size for the detection process"
+        tooltipHelp="The image size for the detection process"
         :loading="loading"
         @update:model-value="updateDebounced"
         :options="imgSizeOptions"
@@ -27,7 +27,7 @@
         :normalizeValue="roundToOneDecimalPlace"
         @update:model-value="updateDebounced"
         v-model="fields.confidence"
-        tooltip="'The confidence threshold for detections'"
+        tooltipHelp="The confidence threshold for detections"
         :loading="loading"
         :min="0.1"
         :max="1.0"
@@ -35,9 +35,7 @@
       />
       <NumberField
         :normalizeValue="roundToOneDecimalPlace"
-        tooltip="
-          The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.
-        "
+        tooltipHelp="The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur."
         field="settings.detection.overlay_draw_threshold"
         label="Threshold"
         v-model="fields.overlay_draw_threshold"
@@ -53,6 +51,7 @@
         inputId="settings.detection.overlay_style"
         v-model="fields.overlay_style"
         label="Style"
+        tooltipHelp="Style of bounding boxes"
         :loading="loading"
         @update:model-value="updateDebounced"
         :options="overlayStyleOptions"
@@ -61,7 +60,7 @@
         label="Labels"
         field="settings.detection.labels"
         v-model="fields.labels"
-        tooltip="A list of labels to filter for specific object detections"
+        tooltipHelp="A list of labels to filter for specific object detections. Type label and press 'Enter'."
         @update:model-value="updateDebounced"
       />
     </div>

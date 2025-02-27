@@ -3,7 +3,7 @@
     v-for="(item, field) in fields"
     :key="field"
     :label="item.label"
-    :tooltip="item.description"
+    :tooltipHelp="item.description"
     layout="row-reverse"
     field-class-name="flex-row-reverse gap-2.5 items-center justify-end my-1"
     @update:model-value="(value) => onUpdate(field as string, value)"

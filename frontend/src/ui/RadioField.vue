@@ -4,6 +4,7 @@
     :labelClassName="labelClassName"
     :label="label"
     :message="message"
+    :tooltipHelp="tooltipHelp"
     :layout="layout"
   >
     <div
@@ -52,7 +53,7 @@ import { ref, watch, useAttrs } from "vue";
 import InputText from "primevue/inputtext";
 import RadioButton from "primevue/radiobutton";
 import Field from "@/ui/Field.vue";
-import type { FieldLayout } from "@/ui/Field.vue";
+import type { Props as FieldProps } from "@/ui/Field.vue";
 import { isNumber, isString } from "@/util/guards";
 
 export type Option = {
@@ -60,21 +61,17 @@ export type Option = {
   label: string;
 };
 
-export type Props = {
+export interface Props extends FieldProps {
   modelValue?: any;
   options: Option[];
   invalid?: boolean;
-  message?: string | null;
   label?: string;
   field?: string;
-  fieldClassName?: string;
-  labelClassName?: string;
   inputClassName?: string;
   readonly?: boolean;
   disabled?: boolean;
-  layout?: FieldLayout;
   tooltip?: string;
-};
+}
 
 const props = defineProps<Props>();
 

@@ -2,8 +2,8 @@ import { where } from "@/util/func";
 import { BODY_PARTS } from "@/features/detection/enums";
 import { getStyleVariable } from "@/util/theme";
 import type {
-  OverlayParamItem,
   Keypoint,
+  OverlayLinesParams,
 } from "@/features/detection/interface";
 
 export type SkeletonItem = [BODY_PARTS, BODY_PARTS, number, string];
@@ -13,6 +13,7 @@ export type SkeletonLineSpec = [
   number,
   string,
   boolean,
+  string,
 ];
 
 export const keystrokesPred = where({
@@ -23,9 +24,21 @@ export const isSkeletonFullfilled = (
   detectionKeypoints: { x: number; y: number }[],
 ) => detectionKeypoints.every(keystrokesPred);
 
-export const mergeSkeleton = (
-  skeletonItems: SkeletonItem[],
-  params?: OverlayParamItem,
+export const scaleKeypoints = (
+  scaleX: number,
+  scaleY: number,
+  keypoints: Keypoint[],
+) =>
+  keypoints.map(({ x, y }) => ({
+    x: x * scaleX,
+    y: y * scaleY,
+  }));
+
+export const mergeSkeletonLines = (
+  groupedLines: {
+    [P in keyof OverlayLinesParams]: SkeletonItem[];
+  },
+  params?: OverlayLinesParams,
 ) => {
   let styles: CSSStyleDeclaration;
   let cachedVars: Map<string, string | undefined>;
@@ -43,25 +56,19 @@ export const mergeSkeleton = (
     cachedVars.set(name, value);
     return value || "";
   };
-  return skeletonItems.map(
-    ([startIdx, endIdx, lWidth, colName]: SkeletonItem): SkeletonLineSpec => {
-      return [
-        startIdx,
-        endIdx,
-        params ? params.size : lWidth,
-        params?.color || getVar(colName),
-        params?.renderFiber || false,
-      ];
-    },
-  );
+  return Object.entries(groupedLines).flatMap(([key, skeletonItems]) => {
+    const groupParams = params ? params[key as keyof OverlayLinesParams] : null;
+    return skeletonItems.map(
+      ([startIdx, endIdx, lWidth, colName]: SkeletonItem): SkeletonLineSpec => {
+        return [
+          startIdx,
+          endIdx,
+          groupParams ? groupParams.size : lWidth,
+          groupParams?.color || getVar(colName),
+          groupParams?.renderFiber || false,
+          key,
+        ];
+      },
+    );
+  });
 };
-
-export const scaleKeypoints = (
-  scaleX: number,
-  scaleY: number,
-  keypoints: Keypoint[],
-) =>
-  keypoints.map(({ x, y }) => ({
-    x: x * scaleX,
-    y: y * scaleY,
-  }));

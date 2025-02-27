@@ -1,11 +1,13 @@
 <template>
   <SelectField
+    :class="class"
     optionLabel="label"
     optionValue="value"
-    label="Enhance Mode"
+    label="Video Effect"
     field="video_feed_enhance_mode"
-    tooltip="Video effect to apply (%s)"
-    placeholder="Video Effect"
+    tooltipHelp="Video effect to apply"
+    tooltip="%s"
+    placeholder="Effect"
     v-model="streamStore.data.enhance_mode"
     :loading="streamStore.loading"
     :options="enhancers"
@@ -22,6 +24,8 @@ import { useAsyncDebounce } from "@/composables/useDebounce";
 
 const streamStore = useStreamStore();
 
+defineProps<{ class?: string }>();
+
 const enhancers = computed(() => [
   ...objectKeysToOptions(streamStore.enhancers),
   { label: "None", value: null },
@@ -29,7 +33,7 @@ const enhancers = computed(() => [
 
 const updateStreamParams = useAsyncDebounce(async () => {
   await streamStore.updateData(streamStore.data);
-}, 2000);
+}, 500);
 
 onMounted(async () => {
   if (!streamStore.enhancers.length) {

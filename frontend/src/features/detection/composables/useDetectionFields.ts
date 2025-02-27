@@ -1,5 +1,5 @@
 import { onMounted, watch, reactive } from "vue";
-import type { DetectionSettings } from "@/features/detection/store";
+import type { DetectionSettings } from "@/features/detection";
 import { useStore as useDetectionStore } from "@/features/detection/store";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import { roundNumber } from "@/util/number";

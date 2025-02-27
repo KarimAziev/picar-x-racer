@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[35vh] max-w-[680px]">
+  <div class="min-h-[35vh]">
     <Tabs v-model:value="popupStore.tab" class="font-sans" lazy scrollable>
       <TabList ref="tabList">
         <Tab :value="SettingsTab.GENERAL">General</Tab>

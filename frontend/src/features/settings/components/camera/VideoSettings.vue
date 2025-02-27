@@ -1,10 +1,10 @@
 <template>
   <div class="flex gap-2">
-    <div class="flex-1 min-w-0">
+    <div class="flex-1 min-w-0 flex flex-col gap-2">
       <VideoFormatSelect />
       <VideoQualitySelect />
     </div>
-    <div class="flex-1 min-w-0">
+    <div class="flex-1 min-w-0 flex flex-col gap-2">
       <VideoEnhancerSelect />
       <AutoStopCameraToggle />
     </div>

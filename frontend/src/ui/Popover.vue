@@ -2,38 +2,28 @@
   <template v-if="$slots.button">
     <slot name="button" @click="toggle" :toggle="toggle" />
   </template>
-  <Button v-bind="omit(['dialogProps'], props)" v-else @click="toggle">
-  </Button>
-  <Dialog
-    closable
-    dismissableMask
-    closeOnEscape
-    v-model:visible="visible"
-    v-bind="props.dialogProps"
+  <ButtonText v-bind="omit(['popoverProps'], props)" v-else @click="toggle">
+    {{ label }}
+  </ButtonText>
+  <Popover
+    ref="popoverEl"
+    v-bind="props.popoverProps"
     @show="onShow"
     @hide="onHide"
   >
-    <div ref="modalRef">
-      <slot></slot>
-    </div>
-  </Dialog>
+    <slot></slot>
+  </Popover>
 </template>
 
 <script setup lang="ts">
-import { ref, useTemplateRef } from "vue";
-import type { DialogProps } from "primevue/dialog";
+import { ref } from "vue";
+import { Popover } from "primevue";
+import type { PopoverProps, PopoverMethods } from "primevue/popover";
 import type { ButtonProps } from "primevue/button";
-import { onClickOutside } from "@vueuse/core";
 import { omit } from "@/util/obj";
+import ButtonText from "@/ui/ButtonText.vue";
 
 const emit = defineEmits(["show", "hide"]);
-const visible = ref(false);
-const modalRef = useTemplateRef("modalRef");
-
-onClickOutside(modalRef, (event) => {
-  console.log(event);
-  visible.value = false;
-});
 
 const onShow = () => {
   emit("show");
@@ -74,15 +64,14 @@ export type BtnProps = {
 
 export interface Props extends BtnProps {
   disabled?: boolean;
-  dialogProps?: DialogProps;
+  popoverProps?: PopoverProps;
 }
 
 const props = defineProps<Props>();
 
-const toggle = () => {
-  visible.value = !visible.value;
-  /**
-   * popoverEl.value?.toggle(event);
-   */
+const popoverEl = ref<PopoverMethods>();
+
+const toggle = (event: Event) => {
+  popoverEl.value?.toggle(event);
 };
 </script>

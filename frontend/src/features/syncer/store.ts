@@ -118,7 +118,10 @@ export const useStore = defineStore("syncer", {
           }
           case "stream": {
             diffMsg = formatObjectDiff(streamStore.data, payload);
-            streamStore.data = payload;
+            if (diffMsg) {
+              streamStore.data = payload;
+            }
+
             break;
           }
           case "battery": {

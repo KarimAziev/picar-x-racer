@@ -7,7 +7,7 @@
     dataKey="key"
     :metaKeySelection="false"
     selectionMode="single"
-    filterMode="lenient"
+    filterMode="strict"
     :filters="filters"
     @update:selectionKeys="updateDebounced"
     scrollHeight="350px"

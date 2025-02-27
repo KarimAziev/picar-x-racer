@@ -1,6 +1,6 @@
 <template>
   <ToggleSwitchField
-    v-tooltip="'Whether to use dark theme'"
+    tooltipHelp="'Whether to use dark theme'"
     label="Dark Theme"
     layout="row-reverse"
     fieldClassName="flex-row-reverse gap-2.5 items-center justify-end"

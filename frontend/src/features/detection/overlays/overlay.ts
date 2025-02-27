@@ -12,6 +12,8 @@ import {
   drawLabelWithConfidence,
 } from "@/features/detection/overlays/util";
 import { drawKeypoints } from "@/features/detection/overlays/pose/canvasPoseRenderer";
+import { Nullable } from "@/util/ts-helpers";
+
 /**
  * Draws overlay annotations on a canvas for the detected objects using bounding boxes and labels.
  * @param canvas - The canvas element.
@@ -24,8 +26,8 @@ export const drawOverlay = (
   canvas: HTMLCanvasElement,
   elem: HTMLElement,
   detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
+  font?: Nullable<string>,
+  color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
 ) => {
@@ -53,8 +55,8 @@ export const drawAimOverlay = (
   canvas: HTMLCanvasElement,
   elem: HTMLElement,
   detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
+  font?: Nullable<string>,
+  color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
 ) => {
@@ -81,8 +83,8 @@ export const drawAimMixedOverlay = (
   canvas: HTMLCanvasElement,
   elem: HTMLElement,
   detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
+  font?: Nullable<string>,
+  color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
 ) => {
@@ -101,8 +103,8 @@ export const drawKeypointsOnly = (
   canvas: HTMLCanvasElement,
   elem: HTMLElement,
   detectionData?: DetectionResult[],
-  font?: string,
-  color?: string,
+  font?: Nullable<string>,
+  color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
 ) => {

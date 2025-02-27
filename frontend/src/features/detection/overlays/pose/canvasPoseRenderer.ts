@@ -7,19 +7,16 @@ import type {
   Keypoint,
 } from "@/features/detection/interface";
 import {
-  HEAD_SKELETON,
-  ARMS_SKELETON,
-  BODY_SKELETON,
-  LEGS_SKELETON,
   keypointsGroups,
   keypointsColors,
+  overlayLinesGrouped,
 } from "@/features/detection/overlays/pose/config";
 
 import {
   keystrokesPred,
   SkeletonLineSpec,
-  mergeSkeleton,
   scaleKeypoints,
+  mergeSkeletonLines,
 } from "@/features/detection/overlays/pose/util";
 import { BODY_PARTS } from "@/features/detection/enums";
 
@@ -52,12 +49,7 @@ export const drawKeypoints = (
     return value || "";
   };
 
-  [
-    ...mergeSkeleton(HEAD_SKELETON, linesParams?.head),
-    ...mergeSkeleton(ARMS_SKELETON, linesParams?.arms),
-    ...mergeSkeleton(BODY_SKELETON, linesParams?.torso),
-    ...mergeSkeleton(LEGS_SKELETON, linesParams?.legs),
-  ].forEach((item) => {
+  mergeSkeletonLines(overlayLinesGrouped, linesParams).forEach((item) => {
     renderMeshLine(ctx, keypoints, item, maxLineWidth);
   });
 

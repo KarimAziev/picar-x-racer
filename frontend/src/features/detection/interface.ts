@@ -63,8 +63,10 @@ export interface OverlayParamItem extends ItemConfig {
 export interface OverlayLinesParams {
   head: OverlayParamItem;
   torso: OverlayParamItem;
-  arms: OverlayParamItem;
-  legs: OverlayParamItem;
+  upper_arm: OverlayParamItem;
+  lower_arm: OverlayParamItem;
+  thigh: OverlayParamItem;
+  lower_leg: OverlayParamItem;
 }
 
 export interface KeypointsParams {

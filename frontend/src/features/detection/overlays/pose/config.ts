@@ -1,5 +1,8 @@
 import { BODY_PARTS } from "@/features/detection/enums";
-import { KeypointGroupProp } from "@/features/detection/interface";
+import {
+  KeypointGroupProp,
+  OverlayLinesParams,
+} from "@/features/detection/interface";
 import { normalizeThemeName } from "@/util/theme";
 import { mapObj } from "@/util/obj";
 
@@ -79,10 +82,14 @@ export const HEAD_SKELETON: SkeletonItem[] = [
   [BODY_PARTS.LEFT_EYE, BODY_PARTS.LEFT_EAR, 25, headColor], // left eye to left ear
   [BODY_PARTS.RIGHT_EYE, BODY_PARTS.RIGHT_EAR, 25, headColor], // right eye to right ear
 ] as const;
-export const ARMS_SKELETON: SkeletonItem[] = [
+
+export const UPPER_ARMS_SKELETON: SkeletonItem[] = [
   [BODY_PARTS.LEFT_SHOULDER, BODY_PARTS.LEFT_ELBOW, 40, armsColor], // left shoulder to left elbow
-  [BODY_PARTS.LEFT_ELBOW, BODY_PARTS.LEFT_WRIST, 40, armsColor], // left elbow to left wrist
   [BODY_PARTS.RIGHT_SHOULDER, BODY_PARTS.RIGHT_ELBOW, 40, armsColor], // right shoulder to right elbow
+] as const;
+
+export const LOWER_ARMS_SKELETON: SkeletonItem[] = [
+  [BODY_PARTS.LEFT_ELBOW, BODY_PARTS.LEFT_WRIST, 40, armsColor], // left elbow to left wrist
   [BODY_PARTS.RIGHT_ELBOW, BODY_PARTS.RIGHT_WRIST, 40, armsColor], // right elbow to right wrist
 ] as const;
 
@@ -93,9 +100,23 @@ export const BODY_SKELETON: SkeletonItem[] = [
   [BODY_PARTS.LEFT_HIP, BODY_PARTS.RIGHT_HIP, 40, bodyColor], // left hip to right hip
 ] as const;
 
-export const LEGS_SKELETON: SkeletonItem[] = [
-  [BODY_PARTS.LEFT_HIP, BODY_PARTS.LEFT_KNEE, 40, legsColor], // left hip to left knee
+export const LOWER_LEGS_SKELETON: SkeletonItem[] = [
   [BODY_PARTS.LEFT_KNEE, BODY_PARTS.LEFT_ANKLE, 40, legsColor], // left knee to left ankle
-  [BODY_PARTS.RIGHT_HIP, BODY_PARTS.RIGHT_KNEE, 40, legsColor], // right hip to right knee
   [BODY_PARTS.RIGHT_KNEE, BODY_PARTS.RIGHT_ANKLE, 40, legsColor], // right knee to right ankle
 ] as const;
+
+export const THIGH_LEGS_SKELETON: SkeletonItem[] = [
+  [BODY_PARTS.LEFT_HIP, BODY_PARTS.LEFT_KNEE, 40, legsColor],
+  [BODY_PARTS.RIGHT_HIP, BODY_PARTS.RIGHT_KNEE, 40, legsColor],
+] as const;
+
+export const overlayLinesGrouped: {
+  [P in keyof OverlayLinesParams]: SkeletonItem[];
+} = {
+  head: HEAD_SKELETON,
+  torso: BODY_SKELETON,
+  upper_arm: UPPER_ARMS_SKELETON,
+  lower_arm: LOWER_ARMS_SKELETON,
+  thigh: THIGH_LEGS_SKELETON,
+  lower_leg: LOWER_LEGS_SKELETON,
+};

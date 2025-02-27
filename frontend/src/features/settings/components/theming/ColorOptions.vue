@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-2 items-start px-1">
+  <div class="flex flex-col items-start gap-2 py-2">
     <div v-if="title" class="text-sm font-medium">
       {{ title }}
     </div>
@@ -61,6 +61,7 @@
         />
       </Field>
       <TextField
+        :field="`${colorPickerId}-color-text`"
         v-model:model-value="colorPickerValue"
         @update:model-value="handleUpdateColorPickerValue"
       />
@@ -74,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { startCase, ensurePrefix } from "@/util/str";
 import { ValueLabelOption } from "@/types/common";
 import Field from "@/ui/Field.vue";
@@ -135,12 +136,17 @@ const handleUpdateColor = (newColor: string) => {
 
 watch(
   () => color.value,
-  (newVal) => {
+  () => {
     const nextVal = findColorPickerValue();
-    console.log("newVal", newVal, "nextVal", nextVal);
 
     colorPickerValue.value = nextVal;
     extraOptions.value = getNewOptions();
   },
 );
+
+onMounted(() => {
+  const nextVal = findColorPickerValue();
+  colorPickerValue.value = nextVal;
+  extraOptions.value = getNewOptions();
+});
 </script>

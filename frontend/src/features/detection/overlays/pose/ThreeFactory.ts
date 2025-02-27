@@ -80,11 +80,11 @@ export class ThreeFactory {
         color,
       );
 
-    fibers.push(createFiberLine(cpOuterPos, 1.5));
-    fibers.push(createFiberLine(cpOuterNeg, 1.5));
+    fibers.push(createFiberLine(cpOuterPos, 0.3));
+    fibers.push(createFiberLine(cpOuterNeg, 0.1));
 
-    fibers.push(createFiberLine(cpInnerPos, 0.8));
-    fibers.push(createFiberLine(cpInnerNeg, 0.8));
+    fibers.push(createFiberLine(cpInnerPos, 0.3));
+    fibers.push(createFiberLine(cpInnerNeg, 0.1));
 
     return fibers;
   }

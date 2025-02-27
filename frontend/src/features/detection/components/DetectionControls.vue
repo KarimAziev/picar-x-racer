@@ -23,7 +23,7 @@
         v-model="fields.model"
         :options="nodes"
         placeholder="Model"
-        tooltip="Object detection model '%s'"
+        panelClass="max-w-[250px]"
         filter
         :disabled="detectionStore.loading"
         @before-show="handleSelectBeforeShow"
