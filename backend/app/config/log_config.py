@@ -32,6 +32,10 @@ class LogConfig:
             "()": RateLimitFilter,
             "limit": 10,
         },
+        "exclude_paths": {
+            "()": "app.core.log_filters.ExcludePathFilter",
+            "excluded_paths": ["Execute job: <picamera2.job.Job object"],
+        },
     }
 
     @staticmethod
@@ -148,6 +152,11 @@ class LogConfig:
                     "class": "logging.StreamHandler",
                     "formatter": "default",
                 },
+                "picamera2.picamera2": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "default",
+                    "filters": ["exclude_paths"],
+                },
                 "uvicorn": {
                     "formatter": "uvicorn",
                     "class": "logging.StreamHandler",
@@ -182,6 +191,11 @@ class LogConfig:
                 },
                 "robot_hat": {
                     "handlers": ["robot_hat"],
+                    "level": level,
+                    "propagate": False,
+                },
+                "picamera2.picamera2": {
+                    "handlers": ["picamera2.picamera2"],
                     "level": level,
                     "propagate": False,
                 },
