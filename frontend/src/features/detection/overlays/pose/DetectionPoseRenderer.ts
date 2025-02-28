@@ -41,6 +41,8 @@ export class DetectionPoseRenderer {
   private bboxGroup: THREE.Group;
   private skeletonGroup: THREE.Group;
   private keypointsGroup: THREE.Group;
+  private orbitNeedsUpdate = false;
+  private needUpdate = false;
 
   private tooltipElement: HTMLElement;
   private tooltipTimer: number | null = null;
@@ -78,6 +80,9 @@ export class DetectionPoseRenderer {
       this.camera,
       this.renderer.domElement,
     );
+    this.orbitControls.addEventListener("change", () => {
+      this.orbitNeedsUpdate = true;
+    });
     this.orbitControls.enableDamping = true;
     this.orbitControls.enableRotate = true;
     this.orbitControls.mouseButtons = {
@@ -123,11 +128,13 @@ export class DetectionPoseRenderer {
   public zoomIn(factor = 0.9): void {
     this.camera.position.z *= factor;
     this.orbitControls.update();
+    this.needUpdate = true;
   }
 
   public zoomOut(factor = 1.1): void {
     this.camera.position.z *= factor;
     this.orbitControls.update();
+    this.needUpdate = true;
   }
 
   private handleMouseMove(event: MouseEvent): void {
@@ -212,24 +219,28 @@ export class DetectionPoseRenderer {
     this.camera.position.y -= distance;
     this.orbitControls.target.y -= distance;
     this.orbitControls.update();
+    this.needUpdate = true;
   }
 
   public moveDown(distance = 20): void {
     this.camera.position.y += distance;
     this.orbitControls.target.y += distance;
     this.orbitControls.update();
+    this.needUpdate = true;
   }
 
   public moveLeft(distance = 20): void {
     this.camera.position.x += distance;
     this.orbitControls.target.x += distance;
     this.orbitControls.update();
+    this.needUpdate = true;
   }
 
   public moveRight(distance = 20): void {
     this.camera.position.x -= distance;
     this.orbitControls.target.x -= distance;
     this.orbitControls.update();
+    this.needUpdate = true;
   }
 
   private showTooltip(event: MouseEvent, data: Metadata): void {
@@ -272,6 +283,7 @@ export class DetectionPoseRenderer {
     this.camera.position.set(center.x, center.y + 50, center.z + 800);
     this.camera.lookAt(center);
     this.orbitControls.update();
+    this.needUpdate = true;
   }
 
   private toAbsSize(percentage: number): number {
@@ -401,18 +413,23 @@ export class DetectionPoseRenderer {
         });
       }
     });
+    this.needUpdate = true;
   }
 
   public setSize(width: number, height: number): void {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.needUpdate = true;
   }
 
   public dispose(): void {
+    this.needUpdate = false;
+    this.orbitNeedsUpdate = false;
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
     }
+    this.orbitControls.dispose();
     this.renderer.domElement.removeEventListener("click", this.handleClick);
     this.renderer.domElement.removeEventListener(
       "mousemove",
@@ -422,8 +439,16 @@ export class DetectionPoseRenderer {
   }
 
   private animate(): void {
-    this.orbitControls.update();
-    this.renderer.render(this.scene, this.camera);
+    const orbitUpdate = this.orbitNeedsUpdate;
+    if (orbitUpdate) {
+      this.orbitControls.update();
+      this.orbitNeedsUpdate = false;
+    }
+    if (orbitUpdate || this.needUpdate) {
+      this.renderer.render(this.scene, this.camera);
+      this.needUpdate = false;
+    }
+
     this.animationId = requestAnimationFrame(this.animate.bind(this));
   }
 }
