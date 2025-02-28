@@ -139,6 +139,8 @@ class PicameraCaptureAdapter(VideoCaptureABC):
         )
         self.format = config.get("main", {}).get("format")
 
+        self.picam2.align_configuration(config)
+
         self.picam2.configure(config)
         logger.info("Picamera2 config: %s", config)
 
