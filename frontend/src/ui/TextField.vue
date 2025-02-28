@@ -10,6 +10,7 @@
     <InputText
       v-tooltip="tooltip"
       :inputId="field"
+      :id="field"
       :pt="{ pcInput: { id: field } }"
       :class="props.inputClassName"
       v-model="currentValue"
