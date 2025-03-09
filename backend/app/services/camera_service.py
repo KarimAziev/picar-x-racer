@@ -1,12 +1,10 @@
 import asyncio
 import collections
 import os
-import struct
 import threading
 import time
 from typing import TYPE_CHECKING, Optional, Union
 
-import cv2
 import numpy as np
 from app.config.video_enhancers import frame_enhancers
 from app.core.event_emitter import EventEmitter
@@ -21,7 +19,7 @@ from app.exceptions.camera import (
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
 from app.types.detection import DetectionFrameData
-from app.util.video_utils import calc_fps, encode, letterbox
+from app.util.video_utils import calc_fps, letterbox
 
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapter
@@ -191,51 +189,6 @@ class CameraService(metaclass=SingletonMeta):
             )
 
         return self.stream_settings
-
-    def generate_frame(self) -> Optional[bytes]:
-        """
-        Generates a video frame for streaming, including an embedded timestamp and FPS.
-
-        Encodes the video frame in the specified format and returns it as a byte array
-        with additional metadata. The frame is prefixed by the frame's timestamp and FPS,
-        both packed in binary format as double-precision floating-point numbers.
-
-        The structure of the returned byte array is as follows:
-            - First 8 bytes: Timestamp (double-precision float) in seconds since the epoch.
-            - Next 8 bytes: FPS (double-precision float) representing the current frame rate.
-            - Remaining bytes: Encoded video frame in the specified format (e.g., JPEG).
-
-        Returns:
-            The encoded video frame as a byte array, prefixed with the timestamp
-            and FPS, or None if no frame is available.
-        """
-        if self.shutting_down:
-            raise CameraShutdownInProgressError("The camera is is shutting down")
-        if self.camera_device_error:
-            raise CameraDeviceError(self.camera_device_error)
-        if self.stream_img is not None:
-            frame = self.stream_img
-            format_quolity_params = {
-                ".jpg": cv2.IMWRITE_JPEG_QUALITY,
-                ".webp": cv2.IMWRITE_WEBP_QUALITY,
-                ".jpeg": cv2.IMWRITE_JPEG_QUALITY,
-            }
-
-            quolity_param = format_quolity_params.get(self.stream_settings.format)
-
-            encode_params = (
-                [quolity_param, self.stream_settings.quality] if quolity_param else []
-            )
-
-            encoded_frame = encode(frame, self.stream_settings.format, encode_params)
-
-            timestamp = self.current_frame_timestamp or time.time()
-            timestamp_bytes = struct.pack("d", timestamp)
-
-            fps = self.actual_fps or 0.0
-            fps_bytes = struct.pack("d", fps)
-
-            return timestamp_bytes + fps_bytes + encoded_frame
 
     def _release_cap_safe(self) -> None:
         """

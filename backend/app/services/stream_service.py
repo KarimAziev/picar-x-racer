@@ -1,6 +1,10 @@
 import asyncio
-from typing import TYPE_CHECKING
+import struct
+import time
+from typing import TYPE_CHECKING, Optional
 
+import cv2
+import numpy as np
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.camera import (
@@ -8,6 +12,7 @@ from app.exceptions.camera import (
     CameraNotFoundError,
     CameraShutdownInProgressError,
 )
+from app.util.video_utils import encode
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
@@ -33,6 +38,56 @@ class StreamService(metaclass=SingletonMeta):
             self.logger.warning("Streaming loop breaks due to cancelled app state.")
             return True
 
+    def generate_frame(self, frame: np.ndarray) -> Optional[bytes]:
+        """
+        Generates a video frame for streaming, including an embedded timestamp and FPS.
+
+        Encodes the video frame in the specified format and returns it as a byte array
+        with additional metadata. The frame is prefixed by the frame's timestamp and FPS,
+        both packed in binary format as double-precision floating-point numbers.
+
+        The structure of the returned byte array is as follows:
+            - First 8 bytes: Timestamp (double-precision float) in seconds since the epoch.
+            - Next 8 bytes: FPS (double-precision float) representing the current frame rate.
+            - Remaining bytes: Encoded video frame in the specified format (e.g., JPEG).
+
+        Returns:
+            The encoded video frame as a byte array, prefixed with the timestamp
+            and FPS, or None if no frame is available.
+        """
+        if self.camera_service.shutting_down:
+            raise CameraShutdownInProgressError("The camera is is shutting down")
+        if self.camera_service.camera_device_error:
+            raise CameraDeviceError(self.camera_service.camera_device_error)
+        if frame is not None:
+            format_quolity_params = {
+                ".jpg": cv2.IMWRITE_JPEG_QUALITY,
+                ".webp": cv2.IMWRITE_WEBP_QUALITY,
+                ".jpeg": cv2.IMWRITE_JPEG_QUALITY,
+            }
+
+            quolity_param = format_quolity_params.get(
+                self.camera_service.stream_settings.format
+            )
+
+            encode_params = (
+                [quolity_param, self.camera_service.stream_settings.quality]
+                if quolity_param
+                else []
+            )
+
+            encoded_frame = encode(
+                frame, self.camera_service.stream_settings.format, encode_params
+            )
+
+            timestamp = self.camera_service.current_frame_timestamp or time.time()
+            timestamp_bytes = struct.pack("d", timestamp)
+
+            fps = self.camera_service.actual_fps or 0.0
+            fps_bytes = struct.pack("d", fps)
+
+            return timestamp_bytes + fps_bytes + encoded_frame
+
     async def generate_video_stream_for_websocket(self, websocket: WebSocket) -> None:
         """
         Streams video frames to the connected WebSocket client.
@@ -44,18 +99,22 @@ class StreamService(metaclass=SingletonMeta):
             and not self._check_app_cancelled(websocket)
         ):
             try:
-                encoded_frame = await asyncio.to_thread(
-                    self.camera_service.generate_frame
-                )
-
-                if self._check_app_cancelled(websocket):
-                    break
-
-                if last_frame is encoded_frame:
+                frame = self.camera_service.stream_img
+                if last_frame is frame and last_frame is not None:
+                    if last_frame is not None:
+                        self.logger.info("Skipping sending frame")
                     await asyncio.sleep(0.001)
                     continue
                 else:
-                    last_frame = encoded_frame
+                    last_frame = frame
+
+                encoded_frame = None
+
+                if frame is not None:
+                    encoded_frame = await asyncio.to_thread(self.generate_frame, frame)
+
+                if self._check_app_cancelled(websocket):
+                    break
 
                 if encoded_frame is not None:
                     skip_count = 0

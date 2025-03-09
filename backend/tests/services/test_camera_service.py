@@ -194,23 +194,6 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(ret.video_record)
             mock_restart.assert_called_once()
 
-    async def test_generate_frame_returns_correct_bytes(self):
-        """Test generate_frame returns a bytes object when therea are no errors and not shutting down."""
-        self.camera_service.shutting_down = False
-        frame_bytes = self.camera_service.generate_frame()
-        self.assertIsInstance(frame_bytes, bytes)
-        frame_bytes = cast(bytes, frame_bytes)
-        # Unpack first 16 bytes as two doubles.
-        timestamp, fps = struct.unpack("dd", frame_bytes[:16])
-        self.assertIsInstance(timestamp, float)
-        self.assertEqual(fps, 25.0)
-        self.assertGreater(len(frame_bytes), 16)  # more than header bytes
-
-    async def test_generate_frame_raises_shutdown_error(self):
-        self.camera_service.shutting_down = True
-        with self.assertRaises(CameraShutdownInProgressError):
-            self.camera_service.generate_frame()
-
     async def test_notify_camera_error_broadcasts_message(self):
         test_error = "Test camera error."
 
