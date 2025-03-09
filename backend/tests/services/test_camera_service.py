@@ -1,5 +1,4 @@
 import logging
-import struct
 import time
 import unittest
 from typing import Any, Optional, cast
@@ -8,7 +7,6 @@ from unittest.mock import AsyncMock, patch
 import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.core.video_capture_abc import VideoCaptureABC
-from app.exceptions.camera import CameraShutdownInProgressError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
 from app.services.camera_service import CameraService
