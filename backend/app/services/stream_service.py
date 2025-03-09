@@ -40,7 +40,7 @@ class StreamService(metaclass=SingletonMeta):
 
     def generate_frame(self, frame: np.ndarray) -> Optional[bytes]:
         """
-        Generates a video frame for streaming, including an embedded timestamp and FPS.
+        Encode video frame for streaming, including an embedded timestamp and FPS.
 
         Encodes the video frame in the specified format and returns it as a byte array
         with additional metadata. The frame is prefixed by the frame's timestamp and FPS,
@@ -55,6 +55,7 @@ class StreamService(metaclass=SingletonMeta):
             The encoded video frame as a byte array, prefixed with the timestamp
             and FPS, or None if no frame is available.
         """
+
         if self.camera_service.shutting_down:
             raise CameraShutdownInProgressError("The camera is is shutting down")
         if self.camera_service.camera_device_error:
@@ -100,9 +101,10 @@ class StreamService(metaclass=SingletonMeta):
         ):
             try:
                 frame = self.camera_service.stream_img
-                if last_frame is frame and last_frame is not None:
-                    if last_frame is not None:
-                        self.logger.info("Skipping sending frame")
+                if (
+                    last_frame is self.camera_service.stream_img
+                    and last_frame is not None
+                ):
                     await asyncio.sleep(0.001)
                     continue
                 else:
@@ -143,7 +145,7 @@ class StreamService(metaclass=SingletonMeta):
                     if skip_count < 2:
                         self.logger.info("No encoded frame, waiting %s.", skip_count)
                         skip_count += 1
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.5)
 
             except asyncio.CancelledError:
                 self.logger.info("Streaming loop got CancelledError.")
