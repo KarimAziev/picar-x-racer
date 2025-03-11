@@ -48,10 +48,11 @@ import { computed, onMounted, onBeforeUnmount } from "vue";
 import { isNumber } from "@/util/guards";
 import ResizableImg from "@/ui/ResizableImg.vue";
 import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
+import { Nullable } from "@/util/ts-helpers";
 
 export interface ImageItem {
-  title?: string;
-  alt?: string;
+  title?: Nullable<string>;
+  alt?: Nullable<string>;
   src: string;
 }
 
