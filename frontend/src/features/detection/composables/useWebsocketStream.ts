@@ -36,7 +36,7 @@ export const useWebsocketStream = (params: WebsocketStreamParams) => {
     const perf = performance.now();
 
     if (perf - lastPerf >= 1000) {
-      const fps = lastFPS + 1;
+      const fps = lastFPS;
       lastPerf = perf;
       lastFPS = 0;
       fpsStore.updateFPS(fps);
