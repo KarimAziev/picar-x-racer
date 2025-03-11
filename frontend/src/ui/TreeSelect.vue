@@ -21,6 +21,8 @@
     <ScrollPanel class="wrapper">
       <Tree
         :modelValue="modelValue"
+        :key-prop="keyProp"
+        :label-prop="labelProp"
         :nodes="nodes"
         @update:model-value="handleUpdate"
       />
@@ -32,14 +34,15 @@
 import { ref } from "vue";
 import Popover from "primevue/popover";
 import Tree from "@/ui/Tree.vue";
-import type { TreeNode } from "@/ui/Tree.vue";
+import type { TreeNode } from "@/types/tree";
+import type { Props as TreeProps } from "@/ui/Tree.vue";
 
-defineProps<{
-  nodes: TreeNode[];
-  modelValue: TreeNode | null;
+export interface Props extends TreeProps {
   loading?: boolean;
   disabled?: boolean;
-}>();
+}
+
+defineProps<Props>();
 
 const op = ref<InstanceType<typeof Popover>>();
 const btnRef = ref<HTMLButtonElement>();

@@ -9,6 +9,8 @@
           >{{ label }}
         </span>
         <TreeSelect
+          key-prop="key"
+          label-prop="label"
           @update:model-value="updateDevice"
           :nodes="devices"
           v-model:model-value="selectedDevice as unknown as TreeNode"
@@ -162,7 +164,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
 import type { InputNumberInputEvent } from "primevue/inputnumber";
-import type { TreeNode } from "@/ui/Tree.vue";
+import type { TreeNode } from "@/types/tree";
 import { useCameraStore } from "@/features/settings/stores";
 import Field from "@/ui/Field.vue";
 
