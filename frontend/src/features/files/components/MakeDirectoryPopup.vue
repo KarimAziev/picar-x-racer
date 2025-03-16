@@ -14,6 +14,7 @@
       :name="`new-dir`"
       v-model="newDir"
       class="!w-50"
+      autocomplete="off"
       autofocus
       ref="inputRef"
     />

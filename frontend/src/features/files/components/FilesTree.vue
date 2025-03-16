@@ -335,6 +335,11 @@
     :saveUrl="makeSaveURL(store.mediaType)"
     @submit:save="handleSubmitNewTextFile"
     v-model:visible="textFilePopupVisible"
+    @after-hide="
+      () => {
+        selectedTextFile = {};
+      }
+    "
     :path="selectedTextFile?.path"
   />
 </template>

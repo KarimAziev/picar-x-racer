@@ -9,6 +9,7 @@
     v-model:visible="visible"
     dismissableMask
     @show="openPopup"
+    @hide="afterHide"
     maximizable
     @maximize="
       () => {
@@ -26,6 +27,7 @@
     <div v-if="!path" class="flex flex-col">
       <div class="font-bold">Filename:</div>
       <InputText
+        autocomplete="off"
         inputId="new-text-file"
         class="!w-50"
         id="new-text-file"

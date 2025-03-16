@@ -822,11 +822,18 @@ async def save_file(
     try:
         manager = file_manager.get_handler_by_dir_alias(media_type)
         dir = (
-            resolve_absolute_path(manager.root_directory, payload.dir)
+            resolve_absolute_path(payload.dir, manager.root_directory)
             if payload.dir
             else manager.root_directory
         )
+
         full_path = resolve_absolute_path(payload.path, dir)
+        logger.info(
+            "Writing the file %s, resolved dir %s, payload.dir %s",
+            full_path,
+            dir,
+            payload.dir,
+        )
         with atomic_write(full_path, mode="w") as f:
             f.write(payload.content)
         return payload
