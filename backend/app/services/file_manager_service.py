@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import os
+import shutil
 import zoneinfo
 from dataclasses import dataclass
 from os import PathLike
@@ -233,7 +234,7 @@ class FileManagerService:
         if not file_path.exists():
             return False
         elif file_path.is_dir():
-            file_path.rmdir()
+            shutil.rmtree(file_path)
             return True
         else:
             file_path.unlink()
@@ -260,7 +261,7 @@ class FileManagerService:
             result = False
             error: Optional[str] = None
             try:
-                file_path.rmdir() if file_path.is_dir() else file_path.unlink()
+                shutil.rmtree(file_path) if file_path.is_dir() else file_path.unlink()
                 result = not file_path.exists()
             except FileNotFoundError:
                 error = "File not found"
