@@ -3,7 +3,7 @@
     :header="header"
     v-model:visible="newDirectoryPopupVisible"
     dismissableMask
-    :content-class="'sm:w-[360px] w-[480px]'"
+    content-class="w-[vw] sm:w-[480px]"
     @show="openCreateDirectoryPopup"
     modal
     @after-hide="afterHide"
@@ -13,6 +13,7 @@
       @keydown.prevent.stop.esc="handleDiscardNewDirectoryPopup"
       :name="`new-dir`"
       v-model="newDir"
+      class="!w-50"
       autofocus
       ref="inputRef"
     />

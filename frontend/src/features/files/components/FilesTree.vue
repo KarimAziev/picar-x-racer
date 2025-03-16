@@ -128,7 +128,7 @@
       @update:filters="store.fetchData"
     />
     <Divider />
-    <div class="h-[400px] relative" :class="listClass">
+    <div class="h-[300px] sm:h-[400px] relative" :class="listClass">
       <Preloader
         v-if="loading"
         class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[0.8rem] leading-[1.3]"
@@ -320,6 +320,7 @@
   <MakeDirectoryPopup
     v-model:visible="newDirectoryPopupVisible"
     :currentDirectory="store.dir || store.root_dir"
+    @submit:dir="props.store.makeDir"
     @after-hide="
       () => {
         popupStore.isEscapable =

@@ -3,7 +3,7 @@
     :content-class="
       isMaximized
         ? 'w-full h-full p-10'
-        : 'sm:w-[600px] md:w-[700px] lg:w-[1000px] xl:w-[1200px] min-h-[55vh] p-10'
+        : 'w-[95vw] sm:w-[600px] md:w-[700px] lg:w-[1000px] xl:w-[1200px] min-h-[55vh] p-10'
     "
     :header="header || path"
     v-model:visible="visible"
@@ -27,6 +27,7 @@
       <div class="font-bold">Filename:</div>
       <InputText
         inputId="new-text-file"
+        class="!w-50"
         id="new-text-file"
         :pt="{ pcInput: { id: 'new-text-file' } }"
         @update:model-value="handleValidateFilename"

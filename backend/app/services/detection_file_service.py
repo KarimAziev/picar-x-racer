@@ -44,7 +44,6 @@ class DetectionFileService(FileManagerService):
     def list_files(self, subdir: Optional[str] = None) -> List[FileDetail]:
 
         files = super().list_files(subdir=subdir)
-        print("files", files[0])
 
         if subdir is None:
             loaded_models: Set[str] = set()
