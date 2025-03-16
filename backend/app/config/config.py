@@ -40,6 +40,10 @@ class AppConfig(BaseSettings):
         str, Field(..., description="The directory to save captured photos.")
     ] = path.join(user_pictures_dir(), APP_NAME)
 
+    PX_CACHE_DIR: Annotated[
+        str, Field(..., description="The directory to save captured photos.")
+    ] = path.join(user_cache_dir(), APP_NAME)
+
     PX_VIDEO_DIR: Annotated[
         str, Field(..., description="The directory to save recorded videos.")
     ] = path.join(user_videos_dir(), APP_NAME)

@@ -9,7 +9,6 @@ from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.file_service import FileService
-    from app.services.video_service import VideoService
 
 logger = Logger(__name__)
 
@@ -22,11 +21,11 @@ class VideoRecorderService(metaclass=SingletonMeta):
     video recordings.
     """
 
-    def __init__(self, file_manager: "FileService", video_service: "VideoService"):
+    def __init__(self, file_manager: "FileService"):
         self.file_manager = file_manager
         self.video_writer: Optional[cv2.VideoWriter] = None
         self.current_video_path: Optional[str] = None
-        self.video_service = video_service
+        self.video_file_service = self.file_manager.video_file_manager
 
     def start_recording(self, width: int, height: int, fps: float) -> None:
         """
@@ -43,11 +42,11 @@ class VideoRecorderService(metaclass=SingletonMeta):
         Raises:
             Exception: If the video directory cannot be created or video writer fails to initialize.
         """
-        video_dir_path = Path(self.video_service.video_dir)
+        video_dir_path = Path(self.video_file_service.root_directory)
         video_dir_path.mkdir(exist_ok=True, parents=True)
 
-        fourcc = cv2.VideoWriter.fourcc(*"XVID")
-        file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.avi"
+        fourcc = cv2.VideoWriter.fourcc(*"MP4V")
+        file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.mp4"
         video_path = video_dir_path.joinpath(file_name).as_posix()
 
         logger.info(f"Recording video at {video_path}, {width}x{height}, {fps}")

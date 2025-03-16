@@ -1,11 +1,11 @@
 <template>
   <div class="flex relative" :class="classObject">
-    <span class="font-bold" v-if="label" :class="labelClassName"
-      >{{ label }}
+    <span class="font-bold" v-if="label" :class="labelClassName">
+      {{ label }}
       <TooltipHelp v-if="tooltipHelp" :tooltip="tooltipHelp" />
     </span>
     <slot></slot>
-    <span v-if="message" class="bg-transparent text-red-500 text-sm">
+    <span class="bg-transparent text-red-500 text-sm">
       {{ message }}
     </span>
   </div>

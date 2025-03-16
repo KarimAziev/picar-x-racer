@@ -70,7 +70,6 @@
 <script setup lang="ts">
 import { inject } from "vue";
 import FieldSet from "primevue/fieldset";
-import type { TreeTableFilterMeta } from "primevue/treetable";
 import type { DetectionFields } from "@/features/detection/composables/useDetectionFields";
 import { useDetectionStore, OverlayStyle } from "@/features/detection";
 import { ValueLabelOption } from "@/features/settings/interface";
@@ -82,7 +81,6 @@ import { roundToOneDecimalPlace } from "@/util/number";
 
 const detectionStore = useDetectionStore();
 const fields = inject<DetectionFields["fields"]>("fields");
-const filters = inject<TreeTableFilterMeta>("filters");
 const updateDebounced =
   inject<DetectionFields["updateDebounced"]>("updateDebounced");
 
@@ -92,7 +90,7 @@ defineProps<{
   loading?: boolean;
 }>();
 
-if (!fields || !filters) {
-  throw new Error("fields and filters must be provided!");
+if (!fields) {
+  throw new Error("fields must be provided!");
 }
 </script>

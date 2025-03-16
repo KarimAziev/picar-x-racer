@@ -24,3 +24,4 @@ v4l2-python3
 opencv-python
 PyGObject
 PyGObject-stubs
+rapidfuzz

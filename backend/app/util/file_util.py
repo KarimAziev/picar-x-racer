@@ -1,12 +1,16 @@
 import json
+import mimetypes
 import os
+import re
 import shutil
 import tempfile
 import zipfile
 from io import BytesIO
 from os import path
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
+
+T = TypeVar("T")
 
 
 def copy_file_if_not_exists(source: str, target: str):
@@ -261,16 +265,29 @@ def zip_files_generator(
 
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
         for filename in filenames:
-            file_path = os.path.join(directory_fn(filename), filename)
+            root = directory_fn(filename)
+            file_path = os.path.join(root, filename)
 
-            if not os.path.isfile(file_path):
+            if os.path.isdir(file_path):
+                for dirpath, _, files in os.walk(file_path):
+                    rel_dir = os.path.relpath(dirpath, root)
+                    if rel_dir != ".":
+                        zip_dir_name = rel_dir.replace(os.path.sep, "/") + "/"
+                        zipf.writestr(zip_dir_name, "")
+                    for f in files:
+                        full_path = os.path.join(dirpath, f)
+                        rel_file = os.path.join(os.path.relpath(dirpath, root), f)
+                        archive_name = rel_file.replace(os.path.sep, "/")
+                        with open(full_path, "rb") as fileobj:
+                            zipf.writestr(archive_name, fileobj.read())
+
+            elif os.path.isfile(file_path):
+                with open(file_path, "rb") as f:
+                    zipf.writestr(filename, f.read())
+            else:
                 continue
 
-            with open(file_path, "rb") as f:
-                zipf.writestr(filename, f.read())
-
     buffer.seek(0)
-
     return buffer, len(buffer.getvalue())
 
 
@@ -297,3 +314,143 @@ def generate_zip_tempfile(
 
     temp_file.close()
     return temp_file.name, os.path.getsize(temp_file.name)
+
+
+def file_details(filename: str, directory: Optional[str] = None):
+    content_type = guess_mime_type(filename)
+    file_stat = Path(filename).stat()
+    file_mod_time = file_stat.st_mtime
+    file_size = file_stat.st_size
+    return {
+        "content_type": content_type,
+        "path": filename,
+        "name": (
+            file_to_relative(filename, directory) if directory is not None else filename
+        ),
+        "file_size": file_size,
+        "modified": file_mod_time,
+    }
+
+
+def directory_files_recursively(
+    directory: str,
+    regexp: Optional[str] = None,
+    include_directories: Optional[bool] = False,
+    predicate: Optional[Callable[[str], bool]] = None,
+    file_processor: Callable[[str, str], T] = file_details,
+) -> List[T]:
+
+    if directory.startswith("~"):
+        directory = os.path.expanduser(directory)
+
+    if not os.path.exists(directory):
+        return []
+
+    pattern = re.compile(regexp) if regexp is not None else None
+
+    result: List[T] = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+            print(f"file_path {file_path}")
+
+            if pattern and not pattern.search(file_path):
+                continue
+
+            if (not include_directories and os.path.isfile(file_path)) or (
+                include_directories
+                and (predicate(file_path) if predicate is not None else True)
+            ):
+                details = file_processor(file_path, directory)
+                if details is not None:
+                    result.append(details)
+    return result
+
+
+def abbreviate_path(path: str) -> str:
+    home = os.path.expanduser("~")
+    if home == os.path.sep:
+        return path
+    if path.startswith(home):
+        if path == home:
+            return "~"
+        return "~" + path[len(home) :]
+    return path
+
+
+def exclude_nested_files(filenames: List[str]) -> List[Path]:
+    paths = [Path(p).resolve() for p in filenames]
+
+    directories = {p for p in paths if p.is_dir()}
+
+    result = []
+    for p in paths:
+        if p.is_file() and any(parent in directories for parent in p.parents):
+            continue
+        result.append(p)
+    return result
+
+
+def guess_mime_type(filename: str) -> Optional[str]:
+    filepath = Path(filename)
+    extension = filepath.suffix
+
+    text_extensions = {
+        ".param",
+        ".html",
+        ".htm",
+        ".xml",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".csv",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".properties",
+        ".py",
+        ".java",
+        ".c",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".cs",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".rb",
+        ".php",
+        ".pl",
+        ".go",
+        ".swift",
+        ".kt",
+        ".scala",
+        ".rs",
+        ".sh",
+        ".bat",
+        ".ps1",
+        ".r",
+        ".m",
+        ".jl",
+        ".css",
+        ".scss",
+        ".less",
+        ".vue",
+        ".svelte",
+        ".tmpl",
+        ".tpl",
+        ".md",
+        ".markdown",
+        ".txt",
+        ".org",
+        ".log",
+        ".logs",
+        ".dockerfile",
+    }
+    content_type = "text/plain" if extension in text_extensions else None
+    if not content_type:
+        content_type, _ = mimetypes.guess_type(filename)
+
+    return content_type

@@ -18,6 +18,7 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
+from app.services.video_converter import VideoConverter
 from app.types.detection import DetectionFrameData
 from app.util.video_utils import calc_fps, letterbox
 
@@ -90,9 +91,7 @@ class CameraService(metaclass=SingletonMeta):
             self.logger.info("video_file result='%s'", video_file)
             if video_file:
                 self.logger.info(f"Post-processing successful: {video_file}")
-                rel_name = self.file_manager.video_service.video_file_to_relative(
-                    video_file
-                )
+                rel_name = os.path.basename(video_file)
                 await self.connection_manager.broadcast_json(
                     {"type": "video_record_end", "payload": rel_name}
                 )
@@ -180,9 +179,7 @@ class CameraService(metaclass=SingletonMeta):
                 f"Post processing video {os.path.basename(video_file)}"
             )
             task = asyncio.create_task(
-                self.file_manager.video_service.convert_video_async(
-                    video_file, video_file
-                )
+                VideoConverter.convert_video_async(video_file, video_file)
             )
             task.add_done_callback(
                 lambda t: asyncio.create_task(self.notify_video_record_end(t))

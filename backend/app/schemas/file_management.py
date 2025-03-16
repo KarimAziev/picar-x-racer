@@ -6,7 +6,13 @@ from typing_extensions import Annotated
 
 
 class MediaType(str, Enum):
-    """Enumeration of supported file operations scoped by type."""
+    """
+    Directory alias for application content.
+
+    This enumeration maps media type labels to their corresponding directory names used
+    for storing various content (such as video, image, music, or miscellaneous data).
+    Filenames in other models are always specified relative to the associated media type directory.
+    """
 
     video = "video"
     image = "image"
@@ -16,71 +22,141 @@ class MediaType(str, Enum):
 
 class UploadFileResponse(BaseModel):
     """
-    A model to represent a response after uploading a file.
+    Response model returned after a file upload.
     """
 
     success: bool = Field(
         ...,
-        description="Indicator of whether the upload was successful",
+        description="A boolean flag indicating whether the file upload was successful.",
         examples=[True, False],
     )
     filename: str = Field(
         ...,
-        description="The name of the uploaded file",
+        description="The name of the uploaded file (relative to the media type directory). Example: 'my-song.mp3'.",
         examples=["my-song.mp3"],
     )
 
 
-class RemoveFileResponse(BaseModel):
+class BatchFileResult(BaseModel):
     """
-    A model to represent a response after removing a file.
+    Result model for a single file operation in a batch process (e.g. removal or movement).
     """
 
     success: bool = Field(
         ...,
-        description="Indicator of whether the file was removed",
+        description="A boolean flag indicating whether the file operation was successful.",
         examples=[True, False],
     )
     filename: str = Field(
         ...,
-        description="The name of the removed file",
+        description="The filename (relative to its media type directory) that was processed.",
         examples=["photo_2024-12-04-17-35-36.jpg"],
     )
     error: Optional[str] = Field(
         None,
-        description="An error message if the file wasn't removed successfully",
+        description="An error message if there was an issue processing the file.",
         examples=["Not found"],
     )
 
 
 class BatchFilesRequest(BaseModel):
     """
-    A model to represent a request body for operations on multiple files.
+    Request model for performing an operation on multiple files.
     """
 
     filenames: List[str] = Field(
         ...,
-        description="The list of the filenames without directory, but with extension",
+        description="A list of filenames (with extensions), each relative to its media type directory.",
         examples=[["photo_2024-12-04-17-35-36.jpg", "photo_2024-12-04-17-35-33.jpg"]],
+    )
+
+
+class BatchFilesMoveRequest(BatchFilesRequest):
+    """
+    Request model for moving multiple files to a new directory.
+    """
+
+    dir: str = Field(
+        ...,
+        description="The target directory alias where the files will be moved.",
+        examples=["my_dir"],
     )
 
 
 class BatchRemoveFilesRequest(BatchFilesRequest):
     """
-    A model to represent a request body for removing multiple files.
+    Request model for removing multiple files.
     """
 
     pass
 
 
+class MakeDirRequest(BaseModel):
+    """
+    Request model for creating a new directory.
+    """
+
+    filename: str = Field(
+        ...,
+        description="The name of the directory to create (relative to the media type directory).",
+        examples=["my_dir"],
+    )
+
+
+class MakeDirResponse(MakeDirRequest):
+    """
+    Response model returned after attempting to create a new directory.
+    """
+
+    success: bool = Field(
+        ...,
+        description="A boolean flag indicating whether the directory was successfully created.",
+        examples=[True, False],
+    )
+
+
+class RenameFileRequest(BaseModel):
+    """
+    Request model for renaming a file.
+    """
+
+    filename: str = Field(
+        ...,
+        description="The current name of the file (relative to the media type directory) to be renamed.",
+        examples=["my_photo.jpg"],
+    )
+    new_name: str = Field(
+        ...,
+        description="The new filename to assign to the file (relative to the media type directory).",
+        examples=["my_new_photo.jpg"],
+    )
+
+
+class RenameFileResponse(RenameFileRequest):
+    """
+    Response model returned after a file renaming operation.
+    """
+
+    success: bool = Field(
+        ...,
+        description="A boolean flag indicating whether the file was successfully renamed.",
+        examples=[True, False],
+    )
+    error: Optional[str] = Field(
+        None,
+        description="An error message if the rename operation failed.",
+        examples=["Not found"],
+    )
+
+
 class DownloadArchiveRequestPayload(BatchFilesRequest):
     """
-    A model to represent a request data for downloading multiple files as an archive.
+    Request model for downloading multiple files as a ZIP archive.
     """
 
     media_type: MediaType = Field(
         ...,
-        description="The media type of the file.",
+        description="Specifies the media type (directory alias) of the files to archive.",
         examples=[
             MediaType.video.value,
             MediaType.image.value,
@@ -92,77 +168,48 @@ class DownloadArchiveRequestPayload(BatchFilesRequest):
         str,
         Field(
             ...,
-            description="The archive file name.",
+            description="The desired archive file name. If empty or invalid, a default name based on the media type is generated.",
         ),
     ] = ""
 
     @model_validator(mode="after")
     def validate_archive_name(self):
         if not isinstance(self.archive_name, str) or not self.archive_name.strip():
-            media_type = self.media_type
-            if media_type:
-                self.archive_name = f"{media_type}_files_archive.zip"
+            if self.media_type:
+                self.archive_name = f"{self.media_type}_files_archive.zip"
             else:
                 raise ValueError(
                     "media_type must be provided if archive_name is missing"
                 )
-
         if not self.archive_name.lower().endswith(".zip"):
             self.archive_name = f"{self.archive_name}.zip"
-
         return self
 
 
-class PhotoItem(BaseModel):
+class SaveFileRequest(BaseModel):
     """
-    A model to represent a response containing a user photo.
-    """
-
-    name: str = Field(
-        ...,
-        description="The name of the filename without directory, but with extension",
-        examples=["photo_2024-12-04-17-35-36.jpg"],
-    )
-    path: str = Field(
-        ...,
-        description="Full path of the file",
-        examples=["/home/pi/Pictures/picar-x-racer/photo_2024-12-04-17-35-36.jpg"],
-    )
-    url: str = Field(
-        ...,
-        description="Preview URL",
-        examples=["/api/files/preview/photo_2024-12-04-17-35-36.jpg"],
-    )
-
-
-class PhotosResponse(BaseModel):
-    """
-    A model to represent a response containing a list of user photos.
+    Request model for saving or updating file content.
     """
 
-    files: List[PhotoItem] = Field(
-        ...,
-        description="The list of objects with metadata",
-    )
-
-
-class VideoDetail(BaseModel):
-    """
-    A model to represent a video filename's metadata.
-    """
-
-    track: str = Field(
-        ...,
-        description="The name of the video file without directory, but with extension",
-        examples=["recording_2024-12-12-17-42-05.avi"],
-    )
-    preview: Optional[str] = Field(
-        ...,
-        description="The name of the generated preview image without directory, but with extension",
-        examples=["recording_2024-12-12-17-42-05_1734018196.jpg"],
-    )
-    duration: float = Field(
-        ...,
-        description="The name of the generated preview iamge without directory, but with extension",
-        examples=[25.7, 2.733333],
-    )
+    path: Annotated[
+        str,
+        Field(
+            ...,
+            description="The target file path (relative to its media type directory) where the content will be saved.",
+        ),
+    ]
+    content: Annotated[
+        str,
+        Field(
+            ...,
+            description="The text content to write into the file.",
+        ),
+    ]
+    dir: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            description="Optional directory alias which, if provided, specifies the media type directory in which to save the file.",
+            examples=["my_dir"],
+        ),
+    ] = None

@@ -9,7 +9,6 @@ import type {
 } from "@/util/ts-helpers";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import {
-  useImageStore,
   useSettingsStore,
   usePopupStore,
   useBatteryStore,
@@ -21,6 +20,7 @@ import {
 import { useDetectionStore } from "@/features/detection";
 import { useMessagerStore } from "@/features/messager";
 import { useMusicStore } from "@/features/music";
+import { useImageStore } from "@/features/files/stores";
 import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";

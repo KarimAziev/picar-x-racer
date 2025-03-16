@@ -77,18 +77,6 @@ export const useStore = defineStore("detection-settings", {
       }
     },
 
-    async fetchModels() {
-      const messager = useMessagerStore();
-      this.loading = true;
-      try {
-        const response = await axios.get<TreeNode[]>("/api/detection/models");
-        this.detectors = response.data;
-      } catch (error) {
-        messager.handleError(error, "Error fetching detection models");
-      } finally {
-        this.loading = false;
-      }
-    },
     async toggleDetection() {
       await this.updateData({
         ...this.data,

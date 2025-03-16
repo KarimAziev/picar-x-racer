@@ -1,7 +1,6 @@
 from functools import lru_cache
 
 from app.adapters.video_device_adapter import VideoDeviceAdapter
-from app.config.config import settings as app_config
 from app.core.logger import Logger
 from app.services.audio_service import AudioService
 from app.services.audio_stream_service import AudioStreamService
@@ -17,7 +16,6 @@ from app.services.stream_service import StreamService
 from app.services.tts_service import TTSService
 from app.services.v4l2_service import V4L2Service
 from app.services.video_recorder_service import VideoRecorderService
-from app.services.video_service import VideoService
 from fastapi import Depends
 
 logger = Logger(__name__)
@@ -31,19 +29,6 @@ def get_connection_service() -> ConnectionService:
 @lru_cache()
 def get_detection_notifier() -> ConnectionService:
     return ConnectionService()
-
-
-@lru_cache()
-def get_video_service() -> VideoService:
-    user_videos_dir = app_config.PX_VIDEO_DIR
-    video_cache_path = app_config.VIDEO_CACHE_FILE_PATH
-    video_cache_preview_dir = app_config.VIDEO_CACHE_PREVIEW_DIR
-
-    return VideoService(
-        video_cache_path=video_cache_path,
-        preview_cache_dir=video_cache_preview_dir,
-        video_dir=user_videos_dir,
-    )
 
 
 def get_v4l2_service() -> V4L2Service:
@@ -80,16 +65,15 @@ def get_audio_stream_service() -> AudioStreamService:
 
 def get_file_manager(
     audio_service: AudioService = Depends(get_audio_service),
-    video_service: VideoService = Depends(get_video_service),
 ) -> FileService:
-    return FileService(audio_service=audio_service, video_service=video_service)
+
+    return FileService(audio_service=audio_service)
 
 
 def get_video_recorder_service(
     file_manager: FileService = Depends(get_file_manager),
-    video_service: VideoService = Depends(get_video_service),
 ) -> VideoRecorderService:
-    return VideoRecorderService(file_manager=file_manager, video_service=video_service)
+    return VideoRecorderService(file_manager=file_manager)
 
 
 def get_detection_service(

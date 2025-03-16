@@ -101,10 +101,7 @@ class StreamService(metaclass=SingletonMeta):
         ):
             try:
                 frame = self.camera_service.stream_img
-                if (
-                    last_frame is self.camera_service.stream_img
-                    and last_frame is not None
-                ):
+                if last_frame is frame and last_frame is not None:
                     await asyncio.sleep(0.001)
                     continue
                 else:
@@ -145,7 +142,7 @@ class StreamService(metaclass=SingletonMeta):
                     if skip_count < 2:
                         self.logger.info("No encoded frame, waiting %s.", skip_count)
                         skip_count += 1
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(1)
 
             except asyncio.CancelledError:
                 self.logger.info("Streaming loop got CancelledError.")

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="px-3 py-1 text-robo-color-primary bg-transparent border-none outline-none cursor-pointer uppercase tracking-widest hover:opacity-70 animate-pulse font-tt-octosquares"
+    class="px-3 py-1 text-robo-color-primary bg-transparent border-none outline-none cursor-pointer uppercase tracking-widest hover:opacity-70 animate-pulse font-mono"
     v-if="isRecording"
   >
     <button @click="handleToggle" text class="btn blink">RECORD</button>

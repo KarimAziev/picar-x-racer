@@ -1,3 +1,15 @@
+#app {
+  margin: 0 auto;
+  font-weight: normal;
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-text);
+  transition: 0.4s;
+  padding: 3px;
+}
+
 :root {
   --app-height: 100vh;
 }

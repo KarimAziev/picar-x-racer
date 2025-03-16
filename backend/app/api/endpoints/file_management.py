@@ -2,8 +2,11 @@
 Endpoints for managing files, including uploading, listing, downloading, and deleting files.
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
+import pathlib
 from typing import TYPE_CHECKING, Annotated, Callable, Dict, Generator, List, Optional
 
 from app.api.deps import get_file_manager, get_music_service
@@ -13,21 +16,32 @@ from app.exceptions.file_exceptions import (
     InvalidFileName,
     InvalidMediaType,
 )
-from app.exceptions.music import ActiveMusicTrackRemovalError, MusicPlayerError
+from app.exceptions.music import ActiveMusicTrackRemovalError
+from app.schemas.file_filter import FileFilterRequest, FileResponseModel, OrderingModel
 from app.schemas.file_management import (
+    BatchFileResult,
+    BatchFilesMoveRequest,
     BatchRemoveFilesRequest,
     DownloadArchiveRequestPayload,
+    MakeDirRequest,
+    MakeDirResponse,
     MediaType,
-    PhotosResponse,
-    RemoveFileResponse,
+    RenameFileRequest,
+    RenameFileResponse,
+    SaveFileRequest,
     UploadFileResponse,
-    VideoDetail,
 )
-from app.util.file_util import resolve_absolute_path, zip_files_generator
+from app.util.atomic_write import atomic_write
+from app.util.file_util import (
+    guess_mime_type,
+    resolve_absolute_path,
+    zip_files_generator,
+)
 from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     Header,
     HTTPException,
     Path,
@@ -40,6 +54,7 @@ from starlette.responses import FileResponse
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
+    from app.services.file_manager_service import FileManagerService
     from app.services.file_service import FileService
     from app.services.music_service import MusicService
 
@@ -49,7 +64,7 @@ logger = Logger(__name__)
 octet_stream_response = {
     "content": {
         "application/octet-stream": {
-            "example": "This is a binary content, example isn't directly usable for file download."
+            "example": "This is binary content; the example is not directly usable for file downloads."
         }
     },
 }
@@ -58,7 +73,7 @@ octet_stream_response = {
 @router.post(
     "/files/upload/{media_type}",
     response_model=UploadFileResponse,
-    response_description="A response object with the filename and the status of uploading.",
+    response_description="A response describing the result of the file upload.",
     responses={
         400: {
             "description": "Bad Request. Invalid filename or media type.",
@@ -67,7 +82,7 @@ octet_stream_response = {
             },
         },
         500: {
-            "description": "Internal Server Error: Unexpected error occurred.",
+            "description": "Internal Server Error. An unexpected error occurred.",
             "content": {
                 "application/json": {"example": {"detail": "Failed to upload the file"}}
             },
@@ -78,24 +93,16 @@ async def upload_file(
     request: Request,
     media_type: MediaType,
     file: UploadFile = File(...),
+    dir: Optional[str] = Form(None),
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Upload a file of a specific media type: 'music', 'image', 'video' or 'data'.
+    Upload a file for the specified media type ('music', 'image', 'video', or 'data').
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
-    handlers: Dict[MediaType, Callable[[UploadFile], str]] = {
-        MediaType.music: file_manager.save_music,
-        MediaType.image: file_manager.save_photo,
-        MediaType.data: file_manager.save_data,
-        MediaType.video: file_manager.save_video,
-    }
-
+    manager = file_manager.get_handler_by_dir_alias(media_type)
     try:
-        handler = handlers.get(media_type)
-        if not handler:
-            raise InvalidMediaType("Invalid media type.")
-        result = await asyncio.to_thread(handler, file)
+        result = await asyncio.to_thread(manager.save_uploaded_file, file, dir)
         if result:
             await connection_manager.broadcast_json(
                 {
@@ -106,31 +113,18 @@ async def upload_file(
         return {"success": True, "filename": file.filename}
     except InvalidFileName:
         raise HTTPException(status_code=400, detail="Invalid filename.")
-    except InvalidMediaType:
-        logger.error(f"Invalid media type '{media_type}' for '{file.filename}'")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid media type {media_type}. Should be one of "
-            + ", ".join(list(handlers.keys())),
-        )
     except Exception:
         logger.error("Unhandled exception during file upload", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to upload the file.",
-        )
+        raise HTTPException(status_code=500, detail="Failed to upload the file.")
 
 
 @router.delete(
     "/files/remove/{media_type}",
-    response_model=RemoveFileResponse,
-    response_description="A response object with the filename, "
-    "the status of removal, and "
-    "optionally an error message if the file wasn't removed successfully.",
+    response_model=BatchFileResult,
+    response_description="A response indicating the result of the removal operation.",
     responses={
         400: {
-            "description": "Bad Request. Invalid media type is given; "
-            "default file or active music track is trying to be removed.",
+            "description": "Bad Request. Invalid media type; removal of a default file or an active music track is not allowed.",
             "content": {
                 "application/json": {
                     "example": {"detail": "Cannot remove the default file."}
@@ -138,13 +132,11 @@ async def upload_file(
             },
         },
         404: {
-            "description": "Not Found. The file is not found or can't be resolved.",
-            "content": {
-                "application/json": {"example": {"detail": "File is not found."}}
-            },
+            "description": "Not Found. The file could not be found or resolved.",
+            "content": {"application/json": {"example": {"detail": "File not found."}}},
         },
         500: {
-            "description": "Internal Server Error. Unexpected error occurred.",
+            "description": "Internal Server Error. An unexpected error occurred.",
             "content": {
                 "application/json": {
                     "example": {"detail": "Failed to remove 'my_file.wav'"}
@@ -156,27 +148,24 @@ async def upload_file(
 async def remove_file(
     request: Request,
     media_type: Annotated[MediaType, Path(description="The type of the file.")],
-    filename: str = Query(..., description="The name of the file"),
+    filename: str = Query(
+        ..., description="The file's name (relative to its media type directory)"
+    ),
     file_manager: "FileService" = Depends(get_file_manager),
     music_player: "MusicService" = Depends(get_music_service),
 ):
     """
-    Remove a file of a specific media type.
-
-    Returns:
-    --------------
-    - **RemoveFileResponse**: A response object containing the success status and the filename.
+    Remove a file for the specified media type.
     """
+    manager = file_manager.get_handler_by_dir_alias(media_type)
     handlers: Dict[MediaType, Callable[[str], bool]] = {
         MediaType.music: music_player.remove_music_track,
-        MediaType.image: file_manager.remove_photo,
-        MediaType.video: file_manager.remove_video,
-        MediaType.data: file_manager.remove_data,
+        MediaType.image: manager.remove_file,
+        MediaType.video: manager.remove_file,
+        MediaType.data: manager.remove_file,
     }
-
     handler = handlers.get(media_type)
     connection_manager: "ConnectionService" = request.app.state.app_manager
-
     logger.info("Removing file '%s' of type '%s'", filename, media_type)
     try:
         if not handler:
@@ -190,19 +179,20 @@ async def remove_file(
     except InvalidMediaType:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid media type {media_type}. Should be one of "
-            + ", ".join(list(handlers.keys())),
+            detail=f"Invalid media type {media_type}. Should be one of: "
+            + ", ".join(map(str, handlers.keys())),
         )
-
     except (ActiveMusicTrackRemovalError, DefaultFileRemoveAttempt) as e:
         logger.warning(str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except FileNotFoundError:
-        logger.warning(f"File %s is not found", filename)
-        raise HTTPException(status_code=404, detail="File is not found")
+        logger.warning("File %s not found", filename)
+        raise HTTPException(status_code=404, detail="File not found")
     except Exception:
         logger.error(
-            f"Unhandled error while removing file '{filename}' with media type '{media_type}'",
+            "Unhandled error while removing file '%s' with media type '%s'",
+            filename,
+            media_type,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=f"Failed to remove '{filename}'")
@@ -210,63 +200,74 @@ async def remove_file(
 
 @router.get(
     "/files/download/{media_type}",
-    response_description="The file response to download.",
+    response_description="A file for download.",
     response_class=FileResponse,
     responses={
         200: {
             **octet_stream_response,
-            "description": "A file will be returned.",
+            "description": "A file is returned.",
         },
-        400: {"description": "Invalid media type"},
-        404: {"description": "File not found"},
+        400: {"description": "Invalid media type."},
+        404: {"description": "File not found."},
     },
 )
 def download_file(
     media_type: Annotated[MediaType, Path(description="The type of the file")],
-    filename: str = Query(..., description="The name of the file"),
+    filename: str = Query(
+        ..., description="The file's name (relative to its media type directory)"
+    ),
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Download a file of a specific media type: 'music', 'image', 'video' or 'data'.
-
-    Returns:
-    --------------
-    - **FileResponse**: A response containing the file to download.
+    Download a file for the specified media type.
     """
     try:
-
-        if media_type == MediaType.data:
-            path = resolve_absolute_path(filename, file_manager.data_dir)
+        manager = file_manager.get_handler_by_dir_alias(media_type)
+        directory = manager.root_directory
+        full_path = resolve_absolute_path(filename, directory)
+        if not os.path.isdir(full_path):
+            guessed_mime_type = guess_mime_type(full_path)
             return FileResponse(
-                path=path,
-                media_type="application/octet-stream",
+                path=f"{directory}/{filename}",
+                media_type=guessed_mime_type or "application/octet-stream",
                 filename=filename,
             )
-        if media_type == MediaType.music:
-            directory = file_manager.get_music_directory(filename)
-        elif media_type == MediaType.image:
-            directory = file_manager.get_photo_directory(filename)
-        elif media_type == MediaType.video:
-            directory = file_manager.get_video_directory(filename)
         else:
-            raise HTTPException(status_code=400, detail="Invalid Media Type")
-        return FileResponse(
-            path=f"{directory}/{filename}",
-            media_type="application/octet-stream",
-            filename=filename,
-        )
+            try:
+                directory_fn = lambda _: manager.root_directory
+                archive_name = f"{filename}.zip"
+                logger.info(f"Created archive {archive_name}")
+                buffer, content_length = zip_files_generator(
+                    filenames=[filename], directory_fn=directory_fn
+                )
+                return StreamingResponse(
+                    iter(lambda: buffer.read(4096), b""),
+                    media_type="application/zip",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{archive_name}"',
+                        "Cache-Control": "no-store",
+                        "Pragma": "no-cache",
+                        "Expires": "0",
+                        "Content-Length": str(content_length),
+                    },
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Error creating archive: {e}")
+                raise HTTPException(status_code=500, detail="Internal server error")
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
 
 
 @router.post(
     "/files/download/archive",
-    response_description="A successful response delivering the ZIP archive containing the requested files.",
+    response_description="A ZIP archive containing the requested files is delivered.",
     response_class=StreamingResponse,
     responses={
         200: {
             **octet_stream_response,
-            "description": "An archive will be returned containing the requested files.",
+            "description": "An archive containing the requested files is returned.",
             "headers": {
                 "Content-Disposition": {
                     "description": "Specifies that the response content is an attachment.",
@@ -275,15 +276,15 @@ def download_file(
             },
         },
         404: {
-            "description": "One or more files not found",
+            "description": "One or more files were not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "File not found: my_unexisting_file"}
+                    "example": {"detail": "File not found: my_nonexistent_file"}
                 }
             },
         },
         422: {
-            "description": "Validation error",
+            "description": "Validation error.",
             "content": {
                 "application/json": {
                     "example": {
@@ -303,12 +304,11 @@ def download_file(
             },
         },
         400: {
-            "description": "Invalid file request",
+            "description": "Invalid file request.",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Invalid media type 'my_media_type'. Should be one of: "
-                        "'music', 'image', 'video', 'data'. "
+                        "detail": "Invalid media type 'my_media_type'. Should be one of: 'music', 'image', 'video', 'data'."
                     }
                 }
             },
@@ -320,27 +320,14 @@ def download_files_as_archive(
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Download multiple files of a specific media type as an archive.
+    Download multiple files as a ZIP archive for the specified media type.
     """
-    directory_resolvers: Dict[MediaType, Callable[[str], str]] = {
-        MediaType.music: file_manager.get_music_directory,
-        MediaType.image: file_manager.get_photo_directory,
-        MediaType.video: file_manager.get_video_directory,
-        MediaType.data: lambda _: file_manager.data_dir,
-    }
-
+    manager = file_manager.get_handler_by_dir_alias(payload.media_type)
     try:
-
-        directory_fn = directory_resolvers.get(payload.media_type)
-
-        if directory_fn is None:
-            raise InvalidMediaType("Invalid media type.")
-
+        directory_fn = lambda _: manager.root_directory
         archive_name = payload.archive_name
-
         logger.info(f"Created archive {archive_name}")
         buffer, content_length = zip_files_generator(payload.filenames, directory_fn)
-
         return StreamingResponse(
             iter(lambda: buffer.read(4096), b""),
             media_type="application/zip",
@@ -352,12 +339,6 @@ def download_files_as_archive(
                 "Content-Length": str(content_length),
             },
         )
-    except InvalidMediaType:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid media type '{payload.media_type}'. Should be one of: "
-            + ", ".join(list(directory_resolvers.keys())),
-        )
     except HTTPException:
         raise
     except Exception as e:
@@ -366,42 +347,49 @@ def download_files_as_archive(
 
 
 @router.get(
-    "/files/image/preview",
+    "/files/preview-image/{media_type}",
     response_class=FileResponse,
-    response_description="A response containing the preview image.",
+    response_description="A preview image is returned.",
     responses={
         200: {
             "content": {
                 "image/jpeg": {
-                    "example": "This is a binary content, "
-                    "example isn't directly usable for file download."
+                    "example": "Binary JPEG content; the example is not directly usable."
                 },
                 "image/png": {
-                    "example": "This is a binary content, "
-                    "example isn't directly usable for file download."
+                    "example": "Binary PNG content; the example is not directly usable."
                 },
             },
-            "description": "A preview image will be returned.",
+            "description": "A preview image is returned.",
         },
-        404: {"description": "File not found"},
+        404: {"description": "File not found."},
     },
 )
 def preview_image(
-    filename: str = Query(..., description="The name of the file"),
+    media_type: Annotated[MediaType, Path(description="The type of the file.")],
+    filename: str = Query(
+        ..., description="The file's name (relative to its media type directory)"
+    ),
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Provide a preview image of a specific file.
+    Return a preview image for the specified file.
     """
+    file_managers: Dict[MediaType, FileManagerService] = {
+        MediaType.music: file_manager.music_file_manager,
+        MediaType.image: file_manager.photo_file_manager,
+        MediaType.video: file_manager.video_file_manager,
+        MediaType.data: file_manager.data_file_manager,
+    }
+    manager = file_managers[media_type]
     try:
-        directory = file_manager.get_photo_directory(filename)
+        directory = manager.root_directory
         full_path = f"{directory}/{filename}"
         return FileResponse(
             path=full_path,
             media_type=(
                 "image/jpeg"
-                if filename.lower().endswith(".jpg")
-                or filename.lower().endswith(".jpeg")
+                if filename.lower().endswith((".jpg", ".jpeg"))
                 else "image/png"
             ),
             filename=os.path.basename(filename),
@@ -411,45 +399,44 @@ def preview_image(
 
 
 @router.get(
-    "/files/video/preview",
+    "/files/preview-video/{media_type}",
     response_class=FileResponse,
-    response_description="A response containing the preview image.",
+    response_description="A preview image for the video file is returned.",
     responses={
         200: {
             "content": {
                 "image/jpeg": {
-                    "example": "This is a binary content, "
-                    "example isn't directly usable for file download."
+                    "example": "Binary JPEG content; the example is not directly usable."
                 },
                 "image/png": {
-                    "example": "This is a binary content, "
-                    "example isn't directly usable for file download."
+                    "example": "Binary PNG content; the example is not directly usable."
                 },
             },
-            "description": "A preview image will be returned.",
+            "description": "A preview image is returned.",
         },
-        404: {"description": "File not found"},
+        404: {"description": "File not found."},
     },
 )
 def preview_video(
-    filename: str = Query(..., description="The name of the file"),
+    media_type: Annotated[MediaType, Path(description="The type of the file.")],
+    filename: str = Query(
+        ..., description="The file's name (relative to its media type directory)"
+    ),
     file_manager: "FileService" = Depends(get_file_manager),
 ):
     """
-    Provide a preview image of a specific video file.
+    Return a preview image for the specified video file.
     """
     try:
-        full_path = file_manager.preview_video_image(filename)
-        logger.info("full_path=%s, filename='%s'", full_path, filename)
-
-        if not os.path.exists(full_path):
+        manager = file_manager.get_handler_by_dir_alias(media_type)
+        full_path = manager.video_preview(filename)
+        if not full_path or not os.path.exists(full_path):
             raise HTTPException(status_code=404, detail=f"File {filename} not found")
         return FileResponse(
             path=full_path,
             media_type=(
                 "image/jpeg"
-                if filename.lower().endswith(".jpg")
-                or filename.lower().endswith(".jpeg")
+                if filename.lower().endswith((".jpg", ".jpeg"))
                 else "image/png"
             ),
             filename=os.path.basename(full_path),
@@ -458,63 +445,58 @@ def preview_video(
         raise HTTPException(status_code=404, detail="File not found")
 
 
-@router.get(
-    "/files/list/videos",
-    response_model=List[VideoDetail],
-    response_description="List of the a video filename's metadata."
-    "Each filename contains the name "
-    "of the video filename relative to video directory, preview filename and duration.",
+@router.post(
+    "/files/list/{media_type}",
+    response_model=FileResponseModel,
+    response_description="A listing of files in the specified media type directory.",
 )
-def list_videos(file_manager: "FileService" = Depends(get_file_manager)):
+def list_files(
+    media_type: Annotated[MediaType, Path(description="The type of the file.")],
+    request_data: FileFilterRequest,
+    file_manager: "FileService" = Depends(get_file_manager),
+):
     """
-    List the captured by user videos.
+    Return a list of files for the specified media type.
     """
-
-    return file_manager.list_user_videos_detailed()
-
-
-@router.get(
-    "/files/list/photos",
-    response_model=PhotosResponse,
-    response_description="List of the user photos. "
-    "Each photo contains the name "
-    "of the filename without directory, but with extension, "
-    "full path, and preview URL.",
-)
-def list_photos(file_manager: "FileService" = Depends(get_file_manager)):
-    """
-    List the captured by user photos.
-    """
-
-    return {"files": file_manager.list_user_photos_with_preview()}
+    manager = file_manager.get_handler_by_dir_alias(media_type)
+    result = manager.get_files(
+        filter_model=request_data.filters,
+        search=request_data.search,
+        ordering=request_data.ordering,
+        subdir=request_data.dir,
+    )
+    return result
 
 
 @router.get(
     "/files/download-last-video",
-    response_description="A response containing the most recent video to download.",
+    response_description="A response containing the most recent video for download.",
     response_class=FileResponse,
     responses={
         200: {
             **octet_stream_response,
-            "description": "A file will be returned.",
+            "description": "A video file is returned.",
         },
-        404: {"description": "File not found"},
+        404: {"description": "File not found."},
     },
 )
 def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
     """
-    Download the last video captured by the user.
+    Return the most recent video file.
     """
-    videos = file_manager.list_user_videos()
-
-    if not videos:
+    result = file_manager.video_file_manager.get_files(ordering=OrderingModel())
+    video_file: Optional[str] = None
+    for file in result.data:
+        if file_manager.video_file_manager.is_video(file):
+            video_file = os.path.join(
+                file_manager.video_file_manager.root_directory, file.path
+            )
+            break
+    if video_file is None:
         raise HTTPException(status_code=404, detail="No videos found")
-
-    filename = videos[0]
-    directory = file_manager.get_video_directory(filename)
-
+    filename = os.path.basename(video_file)
     return FileResponse(
-        path=f"{directory}/{filename}",
+        path=video_file,
         media_type="application/octet-stream",
         filename=filename,
         headers={
@@ -528,13 +510,11 @@ def fetch_last_video(file_manager: "FileService" = Depends(get_file_manager)):
 
 @router.post(
     "/files/remove-batch/{media_type}",
-    response_model=List[RemoveFileResponse],
-    response_description="A list of objects with the filename, "
-    "the status of removal, and "
-    "optionally an error message if the file wasn't removed successfully.",
+    response_model=List[BatchFileResult],
+    response_description="A list of responses indicating the result for each file's removal.",
     responses={
         400: {
-            "description": "Bad Request. Invalid media type is given.",
+            "description": "Bad Request. Invalid media type.",
             "content": {
                 "application/json": {
                     "example": {
@@ -553,73 +533,57 @@ async def batch_remove_files(
     music_player: "MusicService" = Depends(get_music_service),
 ):
     """
-    Batch remove multiple files of a specific media type: 'music', 'image', 'video', or 'data'.
-
-    Returns:
-    --------------
-    A list of response objects for each file with success status and the filename.
+    Remove multiple files for the specified media type.
     """
+    connection_manager: "ConnectionService" = request.app.state.app_manager
     filenames = request_body.filenames
     if len(filenames) <= 0:
         raise HTTPException(status_code=400, detail="No files to remove!")
-    handlers: Dict[str, Callable[[str], bool]] = {
-        MediaType.music: music_player.remove_music_track,
-        MediaType.image: file_manager.remove_photo,
-        MediaType.video: file_manager.remove_video,
-        MediaType.data: file_manager.remove_data,
-    }
-
-    handler = handlers.get(media_type)
-    connection_manager: "ConnectionService" = request.app.state.app_manager
-
-    if not handler:
+    excluded_files: List[BatchFileResult] = []
+    custom_order: Optional[List[str]] = None
+    manager = file_manager.get_handler_by_dir_alias(media_type)
+    if media_type == MediaType.music:
+        custom_order = file_manager.get_custom_music_order()
+        curr_state = music_player.current_state
+        curr_track = curr_state["track"]
+        if any(file == curr_track for file in filenames):
+            music_player.next_track()
+            if music_player.track == curr_track:
+                filenames = [file for file in filenames if file != curr_track]
+                excluded_files.append(
+                    BatchFileResult(
+                        success=False,
+                        filename=curr_track,
+                        error="The last music track cannot be removed",
+                    )
+                )
+    if not manager:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid media type {media_type}. Should be one of: "
-            + ", ".join(list(handlers.keys())),
+            + ", ".join(map(str, manager.keys())),
         )
-    responses: List[RemoveFileResponse] = []
-    success_responses = []
-    for filename in filenames:
-        logger.info("Removing file '%s' of type '%s'", filename, media_type)
-        result = False
-        error: Optional[str] = None
-        try:
-            result = await asyncio.to_thread(handler, filename)
-        except (DefaultFileRemoveAttempt, MusicPlayerError) as e:
-            error = str(e)
-            logger.warning(error)
-        except FileNotFoundError:
-            error = "File not found"
-            logger.warning("Failed to remove file %s: not found", filename)
-        except Exception:
-            error = "Internal server error"
-            logger.error(
-                f"Unhandled error while removing file '{filename}' with media type '{media_type}'",
-                exc_info=True,
-            )
-        finally:
-            responses.append(
-                RemoveFileResponse(
-                    **{"success": result, "filename": filename, "error": error}
-                )
-            )
-            if result:
-                success_responses.append({"file": filename, "type": media_type})
-
+    responses, success_responses = await asyncio.to_thread(
+        manager.batch_remove_files, filenames
+    )
+    success_responses: List[Dict[str, str]] = [
+        {**item, "type": media_type} for item in success_responses
+    ]
+    if custom_order:
+        for item in success_responses:
+            file = item.get("file")
+            if file:
+                custom_order.remove(file)
+        await asyncio.to_thread(file_manager.save_custom_music_order, custom_order)
     if success_responses:
         await connection_manager.broadcast_json(
-            {
-                "type": "removed",
-                "payload": success_responses,
-            }
+            {"type": "removed", "payload": success_responses}
         )
-
-    return responses
+    return responses + excluded_files
 
 
 @router.get(
-    "/files/stream/video",
+    "/files/stream/{media_type}",
     response_class=StreamingResponse,
     responses={
         200: {
@@ -629,7 +593,7 @@ async def batch_remove_files(
                 "video/quicktime": {"example": "This is a streamed video response."},
                 "video/x-matroska": {"example": "This is a streamed video response."},
             },
-            "description": "A video file will be streamed.",
+            "description": "A video file is streamed.",
         },
         206: {
             "content": {
@@ -637,34 +601,33 @@ async def batch_remove_files(
                     "example": "This is a streamed video response supporting partial content."
                 },
                 "video/x-msvideo": {
-                    "example": "This is a streamed video response with byte-ranges."
+                    "example": "This is a streamed video response with byte ranges."
                 },
             },
             "description": "Partial content streaming for video.",
         },
-        404: {"description": "File not found"},
-        416: {"description": "Invalid byte range"},
+        404: {"description": "File not found."},
+        416: {"description": "Invalid byte range."},
     },
 )
 def stream_video(
+    media_type: Annotated[MediaType, Path(description="The type of the file")],
     filename: str = Query(..., min_length=1, description="The name of the video file"),
     range_header: Optional[str] = Header(None),
     file_manager: "FileService" = Depends(get_file_manager),
 ):
-    """Supports partial content video streaming with FastAPI."""
-
+    """
+    Stream a video file with support for partial content.
+    """
+    logger.info("Streaming video %s, media_type=%s", filename, media_type)
     try:
-        directory = file_manager.get_video_directory(filename)
-
-        file_path = os.path.join(directory, filename)
-        file_path = file_manager.video_service.convert_to_mp4(file_path)
+        manager = file_manager.get_handler_by_dir_alias(media_type)
+        file_path = manager.video_stream(filename)
         if file_path is None:
             raise HTTPException(status_code=503, detail="Failed to stream file")
-
         file_size = os.path.getsize(file_path)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
-
     media_types = {
         "mp4": "video/mp4",
         "avi": "video/x-msvideo",
@@ -672,10 +635,9 @@ def stream_video(
         "mkv": "video/x-matroska",
     }
     file_extension = filename.split(".")[-1].lower()
-
-    content_type = media_types.get(file_extension, "video/mp4")
+    guessed_mime_type = guess_mime_type(file_path)
+    content_type = guessed_mime_type or media_types.get(file_extension, "video/mp4")
     logger.info(f"file_extension='{file_extension}', content_type='{content_type}'")
-
     CHUNK_SIZE = 1024 * 1024  # 1MB chunks
 
     def file_generator(start: int, end: int) -> Generator[bytes, None, None]:
@@ -695,10 +657,8 @@ def stream_video(
             range_end = int(range_end) if range_end else file_size - 1
         except ValueError:
             raise HTTPException(status_code=416, detail="Invalid byte range")
-
         if range_start >= file_size or range_end >= file_size:
             raise HTTPException(status_code=416, detail="Invalid byte range")
-
         content_length = range_end - range_start + 1
         headers = {
             "Content-Range": f"bytes {range_start}-{range_end}/{file_size}",
@@ -706,14 +666,12 @@ def stream_video(
             "Content-Length": str(content_length),
             "Content-Type": content_type,
         }
-
         return StreamingResponse(
             file_generator(range_start, range_end + 1),
-            status_code=206,  # Partial Content
+            status_code=206,
             headers=headers,
             media_type=content_type,
         )
-
     headers = {
         "Accept-Ranges": "bytes",
         "Content-Length": str(file_size),
@@ -722,3 +680,155 @@ def stream_video(
     return StreamingResponse(
         file_generator(0, file_size), headers=headers, media_type=content_type
     )
+
+
+@router.post(
+    "/files/mkdir/{media_type}",
+    response_model=MakeDirResponse,
+    responses={
+        400: {
+            "description": "Bad Request. Invalid media type.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid media type 'photo'. Should be one of: music, image, video, data."
+                    }
+                }
+            },
+        },
+    },
+)
+async def mkdir(
+    request: Request,
+    media_type: Annotated[MediaType, Path(description="The type of the file")],
+    request_body: MakeDirRequest,
+    file_manager: "FileService" = Depends(get_file_manager),
+):
+    """
+    Create a new directory in the specified media type.
+    """
+    connection_manager: "ConnectionService" = request.app.state.app_manager
+    filename = request_body.filename
+    manager = file_manager.get_handler_by_dir_alias(media_type)
+    logger.info("Creating directory %s", filename)
+    file_path = pathlib.Path(os.path.join(manager.root_directory, filename))
+    await asyncio.to_thread(file_path.mkdir, parents=True)
+    await connection_manager.broadcast_json(
+        {"type": "created", "payload": [{"type": media_type, "file": filename}]}
+    )
+    return {"success": file_path.exists(), "filename": filename}
+
+
+@router.post(
+    "/files/rename/{media_type}",
+    response_model=RenameFileResponse,
+    responses={
+        400: {
+            "description": "Bad Request. Invalid media type.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid media type 'photo'. Should be one of: music, image, video, data."
+                    }
+                }
+            },
+        },
+    },
+)
+async def mv(
+    request: Request,
+    media_type: Annotated[MediaType, Path(description="The type of the file")],
+    request_body: RenameFileRequest,
+    file_manager: "FileService" = Depends(get_file_manager),
+):
+    """
+    Rename a file or directory for the specified media type.
+    """
+    connection_manager: "ConnectionService" = request.app.state.app_manager
+    filename = request_body.filename
+    new_name = request_body.new_name
+    manager = file_manager.get_handler_by_dir_alias(media_type)
+    old_file_path = pathlib.Path(os.path.join(manager.root_directory, filename))
+    file_path = pathlib.Path(os.path.join(manager.root_directory, new_name))
+    await asyncio.to_thread(file_path.parent.mkdir, exist_ok=True, parents=True)
+    await asyncio.to_thread(old_file_path.rename, file_path)
+    await connection_manager.broadcast_json(
+        {"type": "renamed", "payload": [{"type": media_type, "file": filename}]}
+    )
+    return {
+        "success": file_path.exists() and not old_file_path.exists(),
+        "error": None,
+        "filename": filename,
+        "new_name": new_name,
+    }
+
+
+@router.post(
+    "/files/move/{media_type}",
+    response_model=List[BatchFileResult],
+    responses={
+        400: {
+            "description": "Bad Request. Invalid media type.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid media type 'photo'. Should be one of: music, image, video, data."
+                    }
+                }
+            },
+        },
+    },
+)
+async def move_files(
+    request: Request,
+    media_type: Annotated[MediaType, Path(description="The type of the file")],
+    request_body: BatchFilesMoveRequest,
+    file_manager: "FileService" = Depends(get_file_manager),
+):
+    """
+    Move multiple files or directories within the specified media type.
+    """
+    connection_manager: "ConnectionService" = request.app.state.app_manager
+    manager = file_manager.get_handler_by_dir_alias(media_type)
+    responses, success_responses = await asyncio.to_thread(
+        manager.batch_move_files, request_body.filenames, request_body.dir
+    )
+    success_responses: List[Dict[str, str]] = [
+        {**item, "type": media_type} for item in success_responses
+    ]
+    if success_responses:
+        await connection_manager.broadcast_json(
+            {"type": "moved", "payload": success_responses}
+        )
+    return responses
+
+
+@router.put(
+    "/files/save/{media_type}",
+    response_model=SaveFileRequest,
+    responses={
+        400: {"description": "Bad Request: Error writing file."},
+        500: {"description": "Internal Server Error: Error writing file."},
+    },
+)
+async def save_file(
+    media_type: Annotated[MediaType, Path(description="The type of the file")],
+    payload: SaveFileRequest,
+    file_manager: "FileService" = Depends(get_file_manager),
+):
+    """
+    Save or update the content of a file.
+    """
+    try:
+        manager = file_manager.get_handler_by_dir_alias(media_type)
+        dir = (
+            resolve_absolute_path(manager.root_directory, payload.dir)
+            if payload.dir
+            else manager.root_directory
+        )
+        full_path = resolve_absolute_path(payload.path, dir)
+        with atomic_write(full_path, mode="w") as f:
+            f.write(payload.content)
+        return payload
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=f"Error writing file: {ex}")

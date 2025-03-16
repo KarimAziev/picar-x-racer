@@ -471,3 +471,30 @@ export const mapObj = <
     {} as R,
   );
 };
+
+export const findAncestors = <
+  TreeNode extends {
+    children?: TreeNode[];
+    [key: string]: any;
+  },
+  K extends keyof Omit<TreeNode, "children">,
+>(
+  keyProp: K,
+  nodes: TreeNode[],
+  targetKey: string,
+  currentPath: string[] = [],
+): string[] => {
+  for (const node of nodes) {
+    const path = [...currentPath, node[keyProp]];
+    if (node[keyProp] === targetKey) {
+      return path.slice(0, -1);
+    }
+    if (node.children) {
+      const result = findAncestors(keyProp, node.children, targetKey, path);
+      if (result.length) {
+        return result;
+      }
+    }
+  }
+  return [];
+};

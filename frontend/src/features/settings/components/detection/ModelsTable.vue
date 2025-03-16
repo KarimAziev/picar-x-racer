@@ -1,82 +1,52 @@
 <template>
-  <TreeTable
-    :rowHover="true"
-    v-model:selectionKeys="fields.model"
-    :value="items"
-    :loading="loading"
-    dataKey="key"
-    :metaKeySelection="false"
-    selectionMode="single"
-    filterMode="strict"
-    :filters="filters"
-    @update:selectionKeys="updateDebounced"
-    scrollHeight="350px"
-    :virtualScrollerOptions="{
-      itemSize: 30,
-      lazy: true,
-      showLoader: true,
-      orientation: 'vertical',
-    }"
+  <FilesTree
+    :uploadURL="uploadURL"
+    :store="store"
+    list-class="h-[350px]"
+    rowClass="grid grid-cols-[4%_10%_10%_30%_15%_15%_20%] gap-y-2 items-center h-[50px] hover:bg-mask relative"
   >
-    <Column field="name" header="Model" expander> </Column>
-    <Column field="type" header="Type"></Column>
-    <Column :exportable="false" header="Actions">
-      <template #body="slotProps">
-        <ButtonGroup class="whitespace-nowrap">
-          <Button
-            rounded
-            v-tooltip="'Download file'"
-            severity="secondary"
-            text
-            icon="pi pi-download"
-            :disabled="slotProps.node?.data?.type !== 'File'"
-            @click="handleDownloadFile(slotProps.node.key)"
-          >
-          </Button>
-          <Button
-            icon="pi pi-trash"
-            size="small"
-            severity="danger"
-            :disabled="slotProps.node?.data?.type !== 'File'"
-            text
-            @click="handleRemove(slotProps.node.key)"
-          />
-        </ButtonGroup>
-      </template>
-    </Column>
-  </TreeTable>
+    <template #checkbox="{ path, is_dir }">
+      <CheckboxCell :path="path" class="justify-between gap-4">
+        <RadioButton
+          :disabled="!isSelectableModel(path, is_dir)"
+          @update:modelValue="handleUpdateModel"
+          v-model="detectionStore.data.model"
+          v-tooltip="'Select a model as default'"
+          :inputId="`model-${path}`"
+          :name="`model-${path}`"
+          :value="path"
+        />
+      </CheckboxCell>
+    </template>
+  </FilesTree>
 </template>
 
 <script setup lang="ts">
-import TreeTable, { TreeTableFilterMeta } from "primevue/treetable";
-import ButtonGroup from "primevue/buttongroup";
-import { useStore as useDetectionStore } from "@/features/detection/store";
-import Button from "primevue/button";
 import { inject, computed } from "vue";
-import { downloadFile, removeFile } from "@/features/settings/api";
+import FilesTree from "@/features/files/components/FilesTree.vue";
+import { makeUploadURL } from "@/features/files/api";
+import { useDataStore } from "@/features/files/stores";
+import { useStore as useDetectionStore } from "@/features/detection/store";
+import { isSelectableModel } from "@/features/settings/util";
 import type { DetectionFields } from "@/features/detection/composables/useDetectionFields";
+import { normalizeValue } from "@/features/detection/composables/useDetectionFields";
+import CheckboxCell from "@/features/files/components/Cells/CheckboxCell.vue";
+
+const store = useDataStore();
+
+const uploadURL = computed(() => makeUploadURL(store.mediaType));
 
 const fields = inject<DetectionFields["fields"]>("fields");
-const filters = inject<TreeTableFilterMeta>("filters");
-const updateDebounced =
-  inject<DetectionFields["updateDebounced"]>("updateDebounced");
+const updateData = inject<DetectionFields["updateData"]>("updateData");
+
 const detectionStore = useDetectionStore();
 
-if (!fields || !filters || !updateDebounced || !detectionStore) {
-  throw new Error(
-    "fields, filters, updateDebounced, and detectionStore must be provided!",
-  );
+if (!fields || !updateData || !detectionStore) {
+  throw new Error("fields, updateData, and detectionStore must be provided!");
 }
 
-const items = computed(() => detectionStore.detectors);
-const loading = computed(() => detectionStore.loading);
-
-const handleRemove = async (key: string) => {
-  await removeFile("data", key);
-  await detectionStore.fetchModels();
-};
-
-const handleDownloadFile = (key: string) => {
-  downloadFile("data", key);
+const handleUpdateModel = (newValue: string) => {
+  fields.model = normalizeValue(newValue);
+  updateData();
 };
 </script>

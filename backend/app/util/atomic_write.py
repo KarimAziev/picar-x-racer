@@ -1,11 +1,13 @@
 import os
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 
 @contextmanager
-def atomic_write(file_name: Union[str, Path], mode: str = "w"):
+def atomic_write(
+    file_name: Union[str, Path], mode: str = "w", encoding: Optional[str] = None
+):
     """
     Context manager for atomic writing to a file.
 
@@ -28,7 +30,7 @@ def atomic_write(file_name: Union[str, Path], mode: str = "w"):
     file_path.parent.mkdir(exist_ok=True, parents=True)
 
     try:
-        with open(temp_name, mode) as tmp:
+        with open(temp_name, mode=mode, encoding=encoding) as tmp:
             yield tmp
 
         os.rename(temp_name, file_path)

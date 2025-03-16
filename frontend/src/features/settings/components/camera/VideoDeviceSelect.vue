@@ -6,13 +6,17 @@
           v-tooltip="label"
           class="truncated-label truncate block font-bold"
           v-if="label"
-          >{{ label }}
+        >
+          {{ label }}
         </span>
+
         <TreeSelect
+          :itemSize="40"
           key-prop="key"
           label-prop="label"
+          placeholder="Camera"
           @update:model-value="updateDevice"
-          :nodes="devices"
+          :nodes="devices as TreeNode[]"
           v-model:model-value="selectedDevice as unknown as TreeNode"
         />
       </Field>
@@ -156,8 +160,9 @@
       v-if="selectedDevice && (selectedDevice as any).max_width"
       :disabled="disabled || loading"
       @click="updateStepwiseDevice"
-      >Submit</Button
     >
+      Submit
+    </Button>
   </div>
 </template>
 

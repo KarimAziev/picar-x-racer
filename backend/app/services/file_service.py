@@ -1,32 +1,25 @@
 """
 This module handles file operations such as listing, saving, and removing photos, music, and sound files.
-It also manages user settings and loads audio details using the `AudioService`.
 """
 
 import json
 import os
 from os import path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.config.config import settings as app_config
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
+from app.exceptions.file_exceptions import DefaultFileRemoveAttempt
 from app.managers.json_data_manager import JsonDataManager
-from app.services.video_service import FileDetails
+from app.schemas.file_management import MediaType
+from app.services.detection_file_service import DetectionFileService
+from app.services.file_manager_service import FileManagerService
 from app.util.atomic_write import atomic_write
-from app.util.file_util import (
-    get_directory_structure,
-    load_json_file,
-    resolve_absolute_path,
-)
-from app.util.google_coral import is_google_coral_connected
-from fastapi import UploadFile
-from ultralytics.utils.downloads import GITHUB_ASSETS_STEMS
+from app.util.file_util import load_json_file
 
 if TYPE_CHECKING:
     from app.services.audio_service import AudioService
-    from app.services.video_service import VideoService
 
 logger = Logger(name=__name__)
 
@@ -39,10 +32,10 @@ class FileService(metaclass=SingletonMeta):
     def __init__(
         self,
         audio_service: "AudioService",
-        video_service: "VideoService",
         user_music_dir=app_config.PX_MUSIC_DIR,
         user_photos_dir=app_config.PX_PHOTO_DIR,
         user_settings_file=app_config.PX_SETTINGS_FILE,
+        video_dir=app_config.PX_VIDEO_DIR,
         music_cache_path=app_config.MUSIC_CACHE_FILE_PATH,
         default_user_settings_file=app_config.DEFAULT_USER_SETTINGS,
         default_user_music_dir=app_config.DEFAULT_MUSIC_DIR,
@@ -52,18 +45,32 @@ class FileService(metaclass=SingletonMeta):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.video_service = video_service
 
         self.default_user_settings_file = default_user_settings_file
         self.default_user_music_dir = default_user_music_dir
         self.user_settings_file = user_settings_file
         self.user_photos_dir = user_photos_dir
         self.user_music_dir = user_music_dir
+        self.data_dir = data_dir
         self.config_file = config_file
         self.audio_service = audio_service
 
+        self.photo_file_manager = FileManagerService(
+            self.user_photos_dir, os.path.join(app_config.PX_CACHE_DIR, "Pictures")
+        )
+        self.video_file_manager = FileManagerService(
+            video_dir, os.path.join(app_config.PX_CACHE_DIR, "Video")
+        )
+
+        self.music_file_manager = FileManagerService(
+            self.user_music_dir, os.path.join(app_config.PX_CACHE_DIR, "Music")
+        )
+
+        self.data_file_manager = DetectionFileService(
+            self.data_dir, os.path.join(app_config.PX_CACHE_DIR, "data")
+        )
+
         self.music_cache_path = music_cache_path
-        self.data_dir = data_dir
 
         self.cache: Optional[Dict[str, Any]] = None
         self.settings_manager = JsonDataManager(
@@ -124,32 +131,6 @@ class FileService(metaclass=SingletonMeta):
             if os.path.isfile(file_path):
                 files.append(file if not full else file_path)
         return files
-
-    def list_files_sorted(self, directory: str, full=False) -> List[str]:
-        """
-        Lists all files in the specified directory, sorted by modified time.
-
-        Args:
-            directory (str): The directory to list files from.
-            full (bool, optional): Whether to return full file paths. Defaults to False.
-
-        Returns:
-            List[str]: List of files in the directory.
-        """
-        if not os.path.exists(directory):
-            return []
-
-        files = []
-        for file in os.listdir(directory):
-            file_path = os.path.join(directory, file)
-            if os.path.isfile(file_path):
-                files.append(
-                    (file if not full else file_path, os.path.getmtime(file_path))
-                )
-
-        files.sort(key=lambda x: x[1], reverse=True)
-
-        return [file[0] for file in files]
 
     def list_all_music_with_details(self) -> List[Dict[str, Any]]:
         """List all music files with cached details, applying the user-defined order if available."""
@@ -272,60 +253,6 @@ class FileService(metaclass=SingletonMeta):
 
         return self.list_files(self.default_user_music_dir, full)
 
-    def list_user_photos(self, full=False) -> List[str]:
-        """
-        Lists captured by user photo files.
-
-        Args:
-            full (bool, optional): Whether to return full file paths. Defaults to False.
-
-        Returns:
-            List[str]: List of user-uploaded photo files.
-        """
-        return self.list_files_sorted(self.user_photos_dir, full)
-
-    def list_user_videos(self, full=False) -> List[str]:
-        """
-        Lists captured by user video files.
-
-        Args:
-            full (bool, optional): Whether to return full file paths. Defaults to False.
-
-        Returns:
-            List[str]: List of user-uploaded video files.
-        """
-        return self.list_files_sorted(self.video_service.video_dir, full)
-
-    def list_user_videos_detailed(self) -> List[FileDetails]:
-        """Recursively lists all video files in the video directory and returns their details."""
-        return self.video_service.list_videos_with_details()
-
-    def preview_video_image(self, image_filename: str) -> str:
-        """Return full filename for image filename, relative to video preview cache directory."""
-        return self.video_service.expand_preview_image(image_filename)
-
-    def list_user_photos_with_preview(self) -> List[dict[str, str]]:
-        """
-        Lists captured by user photo files.
-        """
-        files = []
-        directory = self.user_photos_dir
-        if not path.exists(directory):
-            return files
-
-        for file in os.listdir(directory):
-            file_path = os.path.join(directory, file)
-            file_item = {
-                "name": file,
-                "path": file_path,
-                "url": file,
-            }
-            files.append(file_item)
-
-        files.sort(key=lambda x: os.path.getmtime(x["path"]), reverse=True)
-
-        return files
-
     def list_user_music(self, full=False) -> List[str]:
         """
         Lists user-uploaded music files.
@@ -351,6 +278,16 @@ class FileService(metaclass=SingletonMeta):
                 f"Unexpected error while removing '{file_path}'", exc_info=True
             )
 
+    def get_handler_by_dir_alias(self, media_type: MediaType) -> FileManagerService:
+        file_managers: Dict[MediaType, FileManagerService] = {
+            MediaType.music: self.music_file_manager,
+            MediaType.image: self.photo_file_manager,
+            MediaType.video: self.video_file_manager,
+            MediaType.data: self.data_file_manager,
+        }
+
+        return file_managers[media_type]
+
     def remove_file(self, file: str, directory: str):
         """
         Removes a file from a specified directory.
@@ -366,57 +303,6 @@ class FileService(metaclass=SingletonMeta):
         full_name = os.path.join(directory, file)
 
         os.remove(full_name)
-        return True
-
-    def save_music(self, file: UploadFile) -> str:
-        """
-        Saves the uploaded file to the user's music directory.
-        """
-        return self.save_uploaded_file(file, self.user_music_dir)
-
-    def save_photo(self, file: UploadFile) -> str:
-        """
-        Saves the uploaded file to the user's photos directory.
-        """
-        return self.save_uploaded_file(file, self.user_photos_dir)
-
-    def save_data(self, file: UploadFile) -> str:
-        """
-        Saves the uploaded file to the data directory.
-        """
-        return self.save_uploaded_file(file, app_config.DATA_DIR)
-
-    def save_video(self, file: UploadFile) -> str:
-        """
-        Saves the uploaded file to the data directory.
-        """
-        return self.save_uploaded_file(file, app_config.PX_VIDEO_DIR)
-
-    def remove_photo(self, filename: str) -> bool:
-        """
-        Removes a photo file from the user's photo directory.
-
-        Args:
-            filename (str): Name of the photo file to be removed.
-
-        Returns:
-            bool: True if the file was successfully removed.
-        """
-
-        return self.remove_file(filename, self.user_photos_dir)
-
-    def remove_video(self, filename: str) -> bool:
-        """
-        Removes a video file from the user's video directory.
-
-        Args:
-            filename (str): Name of the video file to be removed.
-
-        Returns:
-            bool: True if the file was successfully removed.
-        """
-
-        self.video_service.remove_video(filename)
         return True
 
     def remove_music(self, filename: str) -> bool:
@@ -450,62 +336,6 @@ class FileService(metaclass=SingletonMeta):
             logger.error("The file '%s' was not found", filename)
             raise FileNotFoundError("File not found")
 
-    def remove_data(self, filename: str) -> bool:
-        """
-        Removes a file from the data directory.
-
-        Args:
-            filename (str): Name of the file to be removed.
-
-        Returns:
-            bool: True if the file was successfully removed.
-        """
-
-        os.remove(resolve_absolute_path(filename, app_config.DATA_DIR))
-        return True
-
-    def get_photo_directory(self, filename: str) -> str:
-        """
-        Retrieves the directory of a specified photo file.
-
-        Args:
-            filename (str): Name of the photo file.
-
-        Raises:
-            FileNotFoundError: If the file doesn't exist.
-
-        Returns:
-            str: Directory path of the photo file.
-        """
-
-        user_file = path.join(self.user_photos_dir, filename)
-        if path.exists(user_file):
-            return self.user_photos_dir
-        else:
-            logger.error("The file '%s' was not found", user_file)
-            raise FileNotFoundError("File not found")
-
-    def get_video_directory(self, filename: str) -> str:
-        """
-        Retrieves the directory of a specified video file.
-
-        Args:
-            filename (str): Name of the video file.
-
-        Raises:
-            FileNotFoundError: If the file doesn't exist.
-
-        Returns:
-            str: Directory path of the video file.
-        """
-
-        user_file = path.join(self.video_service.video_dir, filename)
-        if path.exists(user_file):
-            return self.video_service.video_dir
-        else:
-            logger.error("The file '%s' was not found", user_file)
-            raise FileNotFoundError("File not found")
-
     def get_music_directory(self, filename: str) -> str:
         """
         Retrieves the directory of a specified music file.
@@ -528,30 +358,6 @@ class FileService(metaclass=SingletonMeta):
         else:
             logger.error("The file '%s' was not found", user_file)
             raise FileNotFoundError("File not found")
-
-    def save_uploaded_file(self, file: UploadFile, directory: str) -> str:
-        """
-        Saves an uploaded file to the specified directory.
-
-        Args:
-            file (UploadFile): The uploaded file.
-            directory (str): The directory where the file should be saved.
-
-        Raises:
-            ValueError: If the filename is invalid.
-
-        Returns:
-            str: The path of the saved file.
-        """
-        filename = file.filename
-        if not filename:
-            raise InvalidFileName("Invalid filename.")
-
-        file_path = os.path.join(directory, filename)
-
-        with atomic_write(file_path, mode="wb") as buffer:
-            buffer.write(file.file.read())
-        return file_path
 
     def get_calibration_config(self) -> Dict[str, Any]:
         """
@@ -592,50 +398,3 @@ class FileService(metaclass=SingletonMeta):
         if path.exists(self.config_file):
             return load_json_file(self.config_file)
         return load_json_file(app_config.DEFAULT_ROBOT_CONFIG_FILE)
-
-    @staticmethod
-    def get_available_models() -> List[Dict[str, Any]]:
-        """
-        Recursively scans the provided directory for .tflite, .onnx and .pt model files.
-        Returns a structed list of all found models.
-        """
-
-        allowed_extensions: Tuple[str, ...] = tuple(
-            [
-                ext
-                for ext in [
-                    ".tflite" if is_google_coral_connected() else None,
-                    ".pt",
-                    ".hef",
-                    ".onnx",
-                ]
-                if ext
-            ]
-        )
-
-        existing_set: Set[str] = set()
-
-        result = get_directory_structure(
-            app_config.DATA_DIR,
-            allowed_extensions,
-            directory_suffix="_ncnn_model",
-            exclude_empty_dirs=True,
-            absolute=False,
-            file_processor=lambda file_path: existing_set.add(
-                os.path.basename(file_path)
-            ),
-        )
-
-        for key in GITHUB_ASSETS_STEMS:
-            if not key in existing_set and not key.endswith(
-                ("-cls", "-seg", ".npy", "-obb")
-            ):
-                item = {
-                    "label": key,
-                    "key": key,
-                    "selectable": True,
-                    "data": {"name": key, "type": "Loadable model"},
-                }
-                result.append(item)
-
-        return result

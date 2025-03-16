@@ -10,12 +10,14 @@
         </button>
       </div>
       <ResizableImg
+        v-if="selectedImageURL"
         :minHeight="minHeight"
         :minWidth="minWidth"
         :maxHeight="maxHeight"
         :maxWidth="adjustedMaxWidth"
-        :alt="selectedImage?.alt"
-        :src="selectedImage?.src"
+        :alt="altProp ? selectedImage[altProp] : selectedImage.alt"
+        :title="titleProp ? selectedImage[titleProp] : selectedImage.title"
+        :src="selectedImageURL"
       />
 
       <div class="flex-1">
@@ -53,24 +55,35 @@ import { Nullable } from "@/util/ts-helpers";
 export interface ImageItem {
   title?: Nullable<string>;
   alt?: Nullable<string>;
-  src: string;
+  src?: string;
+  [key: string]: any;
 }
 
 const activeIndex = defineModel<number>("activeIndex", { required: true });
 const emit = defineEmits(["update:activeIndex"]);
 
-const props = defineProps<{
+export interface Props {
   images: ImageItem[];
   numVisible?: number;
   minWidth: number;
   maxWidth: number;
   minHeight: number;
   maxHeight: number;
-}>();
+  titleProp?: keyof ImageItem;
+  altProp?: keyof ImageItem;
+  getItemURL?: (item: ImageItem) => string | undefined;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  getItemURL: (item: ImageItem) => item.src,
+  titleProp: "title",
+  altProp: "alt",
+});
 
 const btnWidth = 80;
 
 const selectedImage = computed(() => props.images[activeIndex.value]);
+const selectedImageURL = computed(() => props.getItemURL(selectedImage.value));
 
 const adjustedMaxWidth = computed(() => props.maxWidth - btnWidth * 2);
 

@@ -2,9 +2,37 @@
 @import "./treeselect.css";
 @import "./input-number.css";
 @import "./animation.css";
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 @plugin "tailwindcss-primeui";
-@config "../../tailwind.config.js";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif: var(--font-family);
+  --font-mono: var(--font-family), SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --color-form-field-border: var(--p-form-field-border-color);
+  --color-error: var(--color-error);
+  --color-mask: var(--p-mask-background);
+  --color-robo-color-primary: var(--robo-color-primary);
+  --color-primary: var(--robo-color-primary);
+  --color-button-text-primary-hover-background: var(
+    --p-button-text-primary-active-background
+  );
+  --color-form-field-background: var(--p-form-field-background);
+  --color-form-field-border-radius: var(--p-form-field-border-radius);
+  --color-form-field-icon-color: var(--p-form-field-icon-color);
+  --color-form-field-focus-border-color: var(--p-form-field-focus-border-color);
+  --color-form-field-hover-border-color: var(--p-form-field-hover-border-color);
+  --color-form-field-placeholder: var(--p-form-field-placeholder-color);
+  --color-form-field-color: var(--p-form-field-color);
+  --color-form-field-disabled-color: var(--p-form-field-disabled-color);
+
+  --radius-form-field: var(--p-form-field-border-radius);
+}
+
+@custom-variant dark (&:where(.p-dark, .p-dark *));
 
 @layer components {
   button {
@@ -14,16 +42,4 @@
   button:disabled {
     cursor: default;
   }
-}
-
-#app {
-  margin: 0 auto;
-  font-weight: normal;
-}
-
-a {
-  text-decoration: none;
-  color: var(--color-text);
-  transition: 0.4s;
-  padding: 3px;
 }

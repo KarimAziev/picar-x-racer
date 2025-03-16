@@ -271,7 +271,7 @@ export const useStore = defineStore("music", {
       try {
         this.loading = true;
         const { data } = await batchRemoveFiles(mediaType, filenames);
-        const msgParams = getBatchFilesErrorMessage(data);
+        const msgParams = getBatchFilesErrorMessage(data, "remove");
         if (msgParams) {
           messager.error(msgParams.error, msgParams.title);
         }

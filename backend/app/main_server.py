@@ -54,7 +54,6 @@ async def lifespan(app: FastAPI):
 
         file_manager = deps.get_file_manager(
             audio_service=deps.get_audio_service(),
-            video_service=deps.get_video_service(),
         )
 
         connection_manager = deps.get_connection_service()
