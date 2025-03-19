@@ -26,7 +26,7 @@
           :poster="selectedPosterURL || undefined"
           class="h-auto max-w-[80%]"
         >
-          <source :src="selectedItemURL" :type="selectedItemContentType" />
+          <source :src="selectedItemURL" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
 
@@ -75,16 +75,6 @@ const selectedItemURL = computed(() =>
     ? props.makeVideoURL(selectedItem.value.path)
     : selectedItem.value,
 );
-
-const selectedItemContentType = computed(() => {
-  const contentType = selectedItem.value?.content_type;
-  console.log(
-    "%c<VideoGallery.vue 81>     contentType: %o :\n",
-    "background-color: #00ced1; color: white",
-    contentType,
-  );
-  return contentType || "video/mp4";
-});
 
 const selectedPosterURL = computed(() =>
   selectedItem.value
