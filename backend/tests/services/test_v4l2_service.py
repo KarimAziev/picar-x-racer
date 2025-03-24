@@ -56,9 +56,13 @@ class TestV4L2Service(unittest.TestCase):
         devices = self.service._enumerate_video_devices()
         self.assertEqual(devices, expected_devices)
 
-    @patch("app.services.camera.v4l2_service.get_dev_video_checksum", return_value="dummy")
+    @patch(
+        "app.services.camera.v4l2_service.get_dev_video_checksum", return_value="dummy"
+    )
     def test_list_video_devices(self, _: MagicMock):
-        with patch("app.services.camera.v4l2_service.os.listdir") as mock_listdir, patch(
+        with patch(
+            "app.services.camera.v4l2_service.os.listdir"
+        ) as mock_listdir, patch(
             "app.services.camera.v4l2_service.V4L2Service._query_capabilities"
         ) as mock_query_capabilities, patch(
             "app.services.camera.v4l2_service.V4L2Service._enumerate_formats",
@@ -145,7 +149,8 @@ class TestV4L2Service(unittest.TestCase):
         mock_ioctl.side_effect = lambda fd, req, fmt: fmt if req == 0x806C5604 else None
 
         with patch(
-            "app.services.camera.v4l2_service.v4l2_format", return_value=v4l2_format_mock
+            "app.services.camera.v4l2_service.v4l2_format",
+            return_value=v4l2_format_mock,
         ):
             result = self.service.video_capture_format("/dev/video0")
             self.assertIsNotNone(result)
