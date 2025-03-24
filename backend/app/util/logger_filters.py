@@ -1,9 +1,9 @@
-import logging.config
 import time
 from collections import defaultdict
+from logging import Filter
 
 
-class RateLimitFilter(logging.Filter):
+class RateLimitFilter(Filter):
     def __init__(self, limit=10):
         super().__init__()
         self.limit = limit
@@ -22,7 +22,7 @@ class RateLimitFilter(logging.Filter):
             return False
 
 
-class ExcludeBinaryAndAssetsFilter(logging.Filter):
+class ExcludeBinaryAndAssetsFilter(Filter):
     def filter(self, record) -> bool:
         msg = record.getMessage()
         return "> BINARY " not in msg and "GET /assets/" not in msg
