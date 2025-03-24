@@ -1,24 +1,49 @@
 import os
-from typing import List, Optional, Set
+from typing import Optional, Set
 
 from app.schemas.file_filter import (
-    FileDetail,
     FileFilterModel,
     FileResponseModel,
     FilterInfo,
+    GroupedFile,
     OrderingModel,
     SearchModel,
     ValueLabelOption,
 )
-from app.services.file_manager_service import FileManagerService
-from ultralytics.utils.downloads import GITHUB_ASSETS_NAMES
+from app.services.file_management.file_manager_service import FileManagerService
+
+GITHUB_ASSETS_NAMES = (
+    [
+        f"yolov8{k}{suffix}.pt"
+        for k in "nsmlx"
+        for suffix in ("", "-cls", "-seg", "-pose", "-obb", "-oiv7")
+    ]
+    + [
+        f"yolo11{k}{suffix}.pt"
+        for k in "nsmlx"
+        for suffix in ("", "-cls", "-seg", "-pose", "-obb")
+    ]
+    + [f"yolo12{k}{suffix}.pt" for k in "nsmlx" for suffix in ("",)]
+    + [f"yolov5{k}{resolution}u.pt" for k in "nsmlx" for resolution in ("", "6")]
+    + [f"yolov3{k}u.pt" for k in ("", "-spp", "-tiny")]
+    + [f"yolov8{k}-world.pt" for k in "smlx"]
+    + [f"yolov8{k}-worldv2.pt" for k in "smlx"]
+    + [f"yolov9{k}.pt" for k in "tsmce"]
+    + [f"yolov10{k}.pt" for k in "nsmblx"]
+    + [f"yolo_nas_{k}.pt" for k in "sml"]
+    + [f"sam_{k}.pt" for k in "bl"]
+    + [f"FastSAM-{k}.pt" for k in "sx"]
+    + [f"rtdetr-{k}.pt" for k in "lx"]
+    + ["mobile_sam.pt"]
+    + ["calibration_image_sample_data_20x128x128x3_float32.npy.zip"]
+)
 
 
 class DetectionFileService(FileManagerService):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def get_files(
+    def get_files_tree(
         self,
         filter_model: Optional[FileFilterModel] = None,
         search: Optional[SearchModel] = None,
@@ -29,7 +54,8 @@ class DetectionFileService(FileManagerService):
         Walk the directory tree and apply searching, filtering, and ordering.
         Finally, group the results by their directories.
         """
-        result = super().get_files(
+
+        result = super().get_files_tree(
             filter_model=filter_model, search=search, ordering=ordering, subdir=subdir
         )
         result.filter_info = FilterInfo(
@@ -39,13 +65,8 @@ class DetectionFileService(FileManagerService):
                 for item in ["_ncnn_model", ".pt", ".tflite", ".hef", ".onnx"]
             ],
         )
-        return result
 
-    def list_files(self, subdir: Optional[str] = None) -> List[FileDetail]:
-
-        files = super().list_files(subdir=subdir)
-
-        if subdir is None:
+        if result.dir is None:
             loaded_models: Set[str] = set()
             for file in os.listdir(self.root_directory):
                 loaded_models.add(file)
@@ -55,7 +76,7 @@ class DetectionFileService(FileManagerService):
                     not key.endswith(("-cls.pt", "-seg.pt", ".npy.pt", "-obb.pt"))
                     and not key in loaded_models
                 ):
-                    detail = FileDetail(
+                    detail = GroupedFile(
                         name=key,
                         size=0,
                         type="loadable",
@@ -63,6 +84,6 @@ class DetectionFileService(FileManagerService):
                         path=key,
                         modified=None,
                     )
-                    files.append(detail)
+                    result.data.append(detail)
 
-        return files
+        return result

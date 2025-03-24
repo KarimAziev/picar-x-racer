@@ -8,7 +8,10 @@ export const makeImagePreviewURL = (path: string, mediaType: APIMediaType) =>
 export const makeVideoPreviewURL = (path: string, mediaType: APIMediaType) =>
   `/api/files/preview-video/${mediaType}?filename=${encodeURIComponent(path)}`;
 export const makeVideoURL = (path: string, mediaType: APIMediaType) =>
-  `/api/files/stream/${mediaType}?filename=${encodeURIComponent(path)}`;
+  `/api/files/video-stream/${mediaType}?filename=${encodeURIComponent(path)}`;
+
+export const makeAudioURL = (path: string, mediaType: APIMediaType) =>
+  `/api/files/audio-stream/${mediaType}?filename=${encodeURIComponent(path)}`;
 
 export const makeUploadURL = (mediaType: APIMediaType) =>
   `/api/files/upload/${mediaType}`;
@@ -17,7 +20,7 @@ export const makeDownloadURL = (mediaType: APIMediaType, fileName: string) =>
   `/api/files/download/${mediaType}?filename=${encodeURIComponent(fileName)}`;
 
 export const makeSaveURL = (mediaType: APIMediaType) =>
-  `/api/files/save/${mediaType}`;
+  `/api/files/write/${mediaType}`;
 
 export const downloadFile = async (
   mediaType: APIMediaType,
@@ -49,15 +52,16 @@ export const downloadFile = async (
 };
 
 export const downloadFilesAsArchive = async (
-  mediaType: string,
   fileNames: string[],
+  aliasDir?: string,
+  downloadName?: string,
   onProgress?: (progress: number) => void,
 ) => {
   try {
     const response = await axios.post<Blob>(
-      `/api/files/download/archive`,
+      [`/api/files/download/archive`, aliasDir].filter((v) => v).join("/"),
       {
-        media_type: mediaType,
+        archive_name: downloadName || aliasDir || "files_archive.zip",
         filenames: fileNames,
       },
       {
@@ -83,7 +87,7 @@ export const downloadFilesAsArchive = async (
     const archiveName =
       extractContentDispositionFilename(
         response.headers["content-disposition"],
-      ) || `${mediaType}_files_archive.zip`;
+      ) || [aliasDir, `files_archive.zip`].filter((v) => v).join("_");
 
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");

@@ -29,7 +29,7 @@ class JsonDataManager(EventEmitter):
 
     Usage Example:
     ```python
-    from app.managers.json_data_manager import JsonDataManager
+    from app.managers.file_management.json_data_manager import JsonDataManager
 
     # Initialize the manager
     json_manager = JsonDataManager("path/to/target.json", "path/to/template.json")

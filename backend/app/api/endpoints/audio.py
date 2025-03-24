@@ -12,9 +12,9 @@ from app.schemas.audio import VolumeData
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket
 
 if TYPE_CHECKING:
-    from app.services.audio_service import AudioService
-    from app.services.audio_stream_service import AudioStreamService
     from app.services.connection_service import ConnectionService
+    from app.services.media.audio_service import AudioService
+    from app.services.media.audio_stream_service import AudioStreamService
 
 router = APIRouter()
 logger = Logger(__name__)

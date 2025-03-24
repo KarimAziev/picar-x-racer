@@ -71,7 +71,6 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
-from ultralytics import YOLO
 
 from app.util.file_util import (
     file_to_relative,
@@ -83,6 +82,8 @@ from app.util.file_util import (
 def export_yolo_model_to_edgetpu(
     yolo_model_path: str, target_path: Optional[str], imgsz: int
 ):
+    from ultralytics import YOLO
+
     from app.config.config import settings
 
     yolo_model_path = resolve_absolute_path(yolo_model_path, settings.DATA_DIR)

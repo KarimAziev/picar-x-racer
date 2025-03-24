@@ -9,11 +9,11 @@ from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.core.video_capture_abc import VideoCaptureABC
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.services.camera_service import CameraService
+from app.services.camera.camera_service import CameraService
 from app.services.connection_service import ConnectionService
-from app.services.detection_service import DetectionService
-from app.services.file_service import FileService
-from app.services.video_recorder_service import VideoRecorderService
+from app.services.detection.detection_service import DetectionService
+from app.services.domain.settings_service import SettingsService
+from app.services.media.video_recorder_service import VideoRecorderService
 
 
 class DummyDetectionService:
@@ -137,19 +137,19 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
         SingletonMeta._instances.pop(CameraService, None)
 
         self.detection_service = cast(DetectionService, DummyDetectionService())
-        self.file_service = cast(FileService, DummyFileService())
+        self.settings_service = cast(SettingsService, DummyFileService())
         self.connection_service = cast(ConnectionService, DummyConnectionService())
         self.video_device_adapter = cast(VideoDeviceAdapter, DummyVideoDeviceAdapter())
 
         self.video_recorder = cast(VideoRecorderService, DummyVideoRecorder())
 
-        patcher = patch("app.services.camera_service.Logger", dummy_logger_patch)
+        patcher = patch("app.services.camera.camera_service.Logger", dummy_logger_patch)
         self.addCleanup(patcher.stop)
         patcher.start()
 
         self.camera_service = CameraService(
             detection_service=self.detection_service,
-            file_manager=self.file_service,
+            settings_service=self.settings_service,
             connection_manager=self.connection_service,
             video_device_adapter=self.video_device_adapter,
             video_recorder=self.video_recorder,
@@ -234,18 +234,18 @@ class TestCameraServiceSync(unittest.TestCase):
         SingletonMeta._instances.pop(CameraService, None)
 
         self.detection_service = cast(DetectionService, DummyDetectionService())
-        self.file_service = cast(FileService, DummyFileService())
+        self.settings_service = cast(SettingsService, DummyFileService())
         self.connection_service = cast(ConnectionService, DummyConnectionService())
         self.video_device_adapter = cast(VideoDeviceAdapter, DummyVideoDeviceAdapter())
         self.video_recorder = cast(VideoRecorderService, DummyVideoRecorder())
 
-        patcher = patch("app.services.camera_service.Logger", dummy_logger_patch)
+        patcher = patch("app.services.camera.camera_service.Logger", dummy_logger_patch)
         patcher.start()
         self.addCleanup(patcher.stop)
 
         self.camera_service = CameraService(
             detection_service=self.detection_service,
-            file_manager=self.file_service,
+            settings_service=self.settings_service,
             connection_manager=self.connection_service,
             video_device_adapter=self.video_device_adapter,
             video_recorder=self.video_recorder,

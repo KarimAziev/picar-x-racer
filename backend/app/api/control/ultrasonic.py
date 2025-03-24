@@ -10,7 +10,7 @@ from app.core.logger import Logger
 from fastapi import APIRouter, Depends
 
 if TYPE_CHECKING:
-    from app.services.distance_service import DistanceService
+    from app.services.sensors.distance_service import DistanceService
 
 logger = Logger(name=__name__)
 

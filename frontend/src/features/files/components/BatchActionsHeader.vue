@@ -70,7 +70,7 @@ const batchButtonsDisabled = computed(
 
 const handleRemoveMarked = () => {
   const filenames = markedFilenames.value;
-  emit("download:file", filenames);
+  emit("remove:batch", filenames);
   markedNodes.value = omit(filenames, markedNodes.value);
 };
 

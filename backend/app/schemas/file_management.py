@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Annotated
 
 
-class MediaType(str, Enum):
+class AliasDir(str, Enum):
     """
     Directory alias for application content.
 
@@ -103,6 +103,24 @@ class MakeDirRequest(BaseModel):
     )
 
 
+class MakeDirCustomRequest(BaseModel):
+    """
+    Request model for creating a new directory in a custom dir.
+    """
+
+    root_dir: str = Field(
+        ...,
+        description="The name of the directory to create (relative to the media type directory).",
+        examples=["my_dir"],
+    )
+
+    filename: str = Field(
+        ...,
+        description="The name of the directory to create (relative to the media type directory).",
+        examples=["my_dir"],
+    )
+
+
 class MakeDirResponse(MakeDirRequest):
     """
     Response model returned after attempting to create a new directory.
@@ -149,43 +167,6 @@ class RenameFileResponse(RenameFileRequest):
     )
 
 
-class DownloadArchiveRequestPayload(BatchFilesRequest):
-    """
-    Request model for downloading multiple files as a ZIP archive.
-    """
-
-    media_type: MediaType = Field(
-        ...,
-        description="Specifies the media type (directory alias) of the files to archive.",
-        examples=[
-            MediaType.video.value,
-            MediaType.image.value,
-            MediaType.music.value,
-            MediaType.data.value,
-        ],
-    )
-    archive_name: Annotated[
-        str,
-        Field(
-            ...,
-            description="The desired archive file name. If empty or invalid, a default name based on the media type is generated.",
-        ),
-    ] = ""
-
-    @model_validator(mode="after")
-    def validate_archive_name(self):
-        if not isinstance(self.archive_name, str) or not self.archive_name.strip():
-            if self.media_type:
-                self.archive_name = f"{self.media_type}_files_archive.zip"
-            else:
-                raise ValueError(
-                    "media_type must be provided if archive_name is missing"
-                )
-        if not self.archive_name.lower().endswith(".zip"):
-            self.archive_name = f"{self.archive_name}.zip"
-        return self
-
-
 class SaveFileRequest(BaseModel):
     """
     Request model for saving or updating file content.
@@ -213,3 +194,32 @@ class SaveFileRequest(BaseModel):
             examples=["my_dir"],
         ),
     ] = None
+
+
+class DownloadArchiveRequestPayload(BaseModel):
+    """
+    Request model for downloading multiple files as a ZIP archive.
+    """
+
+    filenames: List[str] = Field(
+        ...,
+        description="A list of absolute filenames (with extensions).",
+        min_length=1,
+    )
+
+    archive_name: Annotated[
+        str,
+        Field(
+            ...,
+            description="The desired archive file name.",
+        ),
+    ] = ""
+
+    @model_validator(mode="after")
+    def validate_archive_name(self):
+        if not isinstance(self.archive_name, str) or not self.archive_name.strip():
+            self.archive_name = "archive"
+
+        if not self.archive_name.lower().endswith(".zip"):
+            self.archive_name = f"{self.archive_name}.zip"
+        return self

@@ -85,6 +85,12 @@ class FilterFieldDatetime(BaseModel):
     constraints: List[FilterField] = Field(
         ...,
         description="A list of constraints for the datetime filter.",
+        examples=[
+            [
+                {"value": "2020-01-01T00:00:00.000+0000", "match_mode": "dateAfter"},
+                {"value": "2025-01-01T00:00:00.000+0000", "match_mode": "dateBefore"},
+            ]
+        ],
     )
     value: Optional[str] = Field(
         None,
@@ -133,6 +139,15 @@ class FilterFieldDatetime(BaseModel):
             if start_date or end_date:
                 return (start_date, end_date)
         return (None, None)
+
+
+Filter = Union[
+    FilterField,
+    FilterBoolField,
+    FilterField,
+    FilterFieldDatetime,
+    FilterFieldStringArray,
+]
 
 
 class SortDirection(str, Enum):
@@ -241,7 +256,7 @@ class FileDetail(BaseModel):
         str,
         Field(
             ...,
-            description="File name relative to its media type directory (without any directory path).",
+            description="File name relative to its aliased directory (without any directory path).",
             examples=["recording_2024-10-04-13-22-54.avi"],
         ),
     ]
@@ -249,7 +264,7 @@ class FileDetail(BaseModel):
         str,
         Field(
             ...,
-            description="File path (relative to its media type directory), including any nested directory structure.",
+            description="File path (relative to its aliased directory), including any nested directory structure.",
             examples=["nested_videos/recording_2025-01-16-19-12-25.avi"],
         ),
     ]
@@ -308,6 +323,24 @@ class FileDetail(BaseModel):
             examples=[25.7, 2.733333],
         ),
     ] = None
+
+    order: Annotated[
+        Optional[int],
+        Field(
+            ...,
+            description="Custom order",
+            examples=[1, 3],
+        ),
+    ] = None
+
+    removable: Annotated[
+        bool,
+        Field(
+            ...,
+            description="Whether the file is allowed to remove",
+            examples=[1, 3],
+        ),
+    ] = True
 
 
 class GroupedFile(FileDetail):
@@ -392,6 +425,10 @@ class FilterInfo(BaseModel):
 
 
 class FileResponseModel(BaseModel):
+    """
+    A hierarchical files tree in the specified aliased directory.
+    """
+
     data: List[GroupedFile] = Field(
         ...,
         description="A list of grouped files and directories.",
@@ -402,7 +439,7 @@ class FileResponseModel(BaseModel):
     )
     dir: Optional[str] = Field(
         None,
-        description="The subdirectory (relative to its media type directory) that was queried.",
+        description="The subdirectory (relative to its aliased directory) that was queried.",
     )
     root_dir: str = Field(
         ...,
@@ -437,6 +474,54 @@ class FileFilterRequest(BaseModel):
         Optional[str],
         Field(
             ...,
-            description="The subdirectory within the media type directory to filter files from.",
+            description="The subdirectory within the aliased directory to filter files from.",
         ),
     ] = None
+
+
+class FileFlatFilterRequest(BaseModel):
+    """
+    Model representing compounded filter, search, and ordering criteria for files.
+    """
+
+    filters: Annotated[
+        Optional[FileFilterModel],
+        Field(
+            ...,
+            description="Filter criteria for files.",
+        ),
+    ] = None
+    search: Optional[SearchModel] = Field(
+        None,
+        description="Search criteria for files.",
+    )
+    ordering: Annotated[
+        Optional[OrderingModel],
+        Field(
+            ...,
+            description="Ordering criteria for the file list.",
+        ),
+    ] = None
+    root_dir: Annotated[
+        str,
+        Field(..., description="The root directory.", examples=["~/", "/"]),
+    ]
+
+
+class FileFlatResponseModel(BaseModel):
+    data: List[FileDetail] = Field(
+        ...,
+        description="A list of files and directories.",
+    )
+    filter_info: FilterInfo = Field(
+        ...,
+        description="Information about available filters.",
+    )
+    dir: Optional[str] = Field(
+        None,
+        description="The subdirectory (relative to its aliased directory) that was queried.",
+    )
+    root_dir: str = Field(
+        ...,
+        description="The root directory (typically the media type base) for the returned files.",
+    )

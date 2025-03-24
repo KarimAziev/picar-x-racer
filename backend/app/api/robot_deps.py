@@ -5,11 +5,11 @@ from app.config.config import settings as app_config
 from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
 from app.managers.async_task_manager import AsyncTaskManager
-from app.managers.json_data_manager import JsonDataManager
-from app.services.car_control.calibration_service import CalibrationService
-from app.services.car_control.car_service import CarService
+from app.managers.file_management.json_data_manager import JsonDataManager
 from app.services.connection_service import ConnectionService
-from app.services.distance_service import DistanceService
+from app.services.control.calibration_service import CalibrationService
+from app.services.control.car_service import CarService
+from app.services.sensors.distance_service import DistanceService
 from fastapi import Depends
 
 logger = Logger(__name__)

@@ -17,7 +17,10 @@ export function bytesToSize(bytes: number, decimals = 1) {
   return result;
 }
 
-export const getBatchFilesErrorMessage = (data: BatchFileStatus[]) => {
+export const getBatchFilesErrorMessage = (
+  data: BatchFileStatus[],
+  operation: string,
+) => {
   const { success, failed } = data.reduce(
     (acc, obj) => {
       const prop = obj.success ? "success" : "failed";
@@ -33,9 +36,9 @@ export const getBatchFilesErrorMessage = (data: BatchFileStatus[]) => {
     const prefix =
       success.length > 0
         ? failed.length > 0
-          ? "Failed to remove some files: "
-          : "Failed to remove the file: "
-        : "Failed to remove: ";
+          ? `Failed to ${operation} some files: `
+          : `Failed to ${operation} the file: `
+        : `Failed to ${operation}: `;
     return {
       error: failed.map(({ filename }) => filename).join(", "),
       title: prefix,

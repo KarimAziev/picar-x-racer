@@ -155,6 +155,7 @@ input {
 .tree-btn {
   display: flex;
 }
+
 .truncated-label,
 .p-inputtext:not(.p-select-filter),
 .p-treeselect,
@@ -189,6 +190,7 @@ input {
     max-width: 240px;
   }
 }
+
 .p-inputtext:not(.p-select-filter),
 .p-treeselect,
 .p-select,
@@ -196,13 +198,20 @@ input {
 .p-inputnumber,
 .p-cascadeselect,
 .tree-btn,
-.select-root {
+.select-root,
+.p-datepicker-input,
+.p-multiselect {
   align-items: center;
   height: 30px;
 
   @media (min-width: 1200px) {
     height: 40px;
   }
+}
+
+.p-multiselect-label-container {
+  display: flex !important;
+  align-items: center;
 }
 
 .p-inputicon {

@@ -9,6 +9,7 @@ from app.util.google_coral import is_google_coral_connected
 
 logger = Logger(__name__)
 
+
 if TYPE_CHECKING:
     from app.adapters.hailo_adapter import YOLOHailoAdapter
     from ultralytics import YOLO

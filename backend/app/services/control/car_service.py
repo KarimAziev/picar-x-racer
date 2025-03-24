@@ -10,10 +10,10 @@ from fastapi import WebSocket
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
-    from app.managers.json_data_manager import JsonDataManager
-    from app.services.car_control.calibration_service import CalibrationService
+    from app.managers.file_management.json_data_manager import JsonDataManager
+    from app.services.control.calibration_service import CalibrationService
     from app.services.connection_service import ConnectionService
-    from app.services.distance_service import DistanceService
+    from app.services.sensors.distance_service import DistanceService
 
 
 class CarService(metaclass=SingletonMeta):

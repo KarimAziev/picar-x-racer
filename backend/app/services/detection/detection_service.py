@@ -29,7 +29,8 @@ from app.util.queue_helpers import clear_queue
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.file_service import FileService
+    from app.services.domain.settings_service import SettingsService
+    from app.services.file_management.file_manager_service import FileManagerService
 
 logger = Logger(__name__)
 
@@ -42,14 +43,18 @@ class DetectionService(metaclass=SingletonMeta):
     """
 
     def __init__(
-        self, file_manager: "FileService", connection_manager: "ConnectionService"
+        self,
+        settings_service: "SettingsService",
+        file_manager: "FileManagerService",
+        connection_manager: "ConnectionService",
     ):
         self.lock = asyncio.Lock()
-        self.file_manager = file_manager
+        self.settings_service = settings_service
         self.connection_manager = connection_manager
+        self.file_manager = file_manager
 
         self.detection_settings = DetectionSettings(
-            **self.file_manager.settings.get("detection", {})
+            **self.settings_service.settings.get("detection", {})
         )
         self.task_event = asyncio.Event()
         self.stop_event = mp.Event()
@@ -182,7 +187,7 @@ class DetectionService(metaclass=SingletonMeta):
                         args=(
                             resolve_absolute_path(
                                 self.detection_settings.model,
-                                self.file_manager.data_dir,
+                                self.file_manager.root_directory,
                             ),
                             self.stop_event,
                             self.frame_queue,

@@ -50,7 +50,7 @@ class AppConfig(BaseSettings):
 
     PX_MUSIC_DIR: Annotated[
         str, Field(..., description="The directory to store uploaded music.")
-    ] = path.join(user_music_dir(), APP_NAME, "music")
+    ] = path.join(user_music_dir(), APP_NAME)
 
     MUSIC_CACHE_FILE_PATH: Annotated[
         str, Field(..., description="The location to write music cache metadata.")

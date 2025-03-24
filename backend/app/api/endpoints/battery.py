@@ -9,7 +9,7 @@ from app.schemas.battery import BatteryStatusResponse
 from fastapi import APIRouter, Depends, HTTPException
 
 if TYPE_CHECKING:
-    from app.services.battery_service import BatteryService
+    from app.services.sensors.battery_service import BatteryService
 
 router = APIRouter()
 

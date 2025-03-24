@@ -7,8 +7,8 @@ import cv2
 import numpy as np
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.stream import StreamSettings
-from app.services.camera_service import CameraService
-from app.services.stream_service import StreamService
+from app.services.camera.camera_service import CameraService
+from app.services.camera.stream_service import StreamService
 
 
 class DummyCameraServiceWithProps:
@@ -51,7 +51,7 @@ class TestGenerateFrame(unittest.TestCase):
         expected_encoded = b"ENCODED_FRAME"
 
         with patch(
-            "app.services.stream_service.encode", return_value=expected_encoded
+            "app.services.camera.stream_service.encode", return_value=expected_encoded
         ) as mocked_encode:
 
             self.dummy_cam.camera_device_error = None

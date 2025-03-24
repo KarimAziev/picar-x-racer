@@ -18,16 +18,16 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.services.video_converter import VideoConverter
+from app.services.media.video_converter import VideoConverter
 from app.types.detection import DetectionFrameData
 from app.util.video_utils import calc_fps, letterbox
 
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapter
     from app.services.connection_service import ConnectionService
-    from app.services.detection_service import DetectionService
-    from app.services.file_service import FileService
-    from app.services.video_recorder_service import VideoRecorderService
+    from app.services.detection.detection_service import DetectionService
+    from app.services.domain.settings_service import SettingsService
+    from app.services.media.video_recorder_service import VideoRecorderService
     from cv2.typing import MatLike
 
 
@@ -42,7 +42,7 @@ class CameraService(metaclass=SingletonMeta):
     def __init__(
         self,
         detection_service: "DetectionService",
-        file_manager: "FileService",
+        settings_service: "SettingsService",
         connection_manager: "ConnectionService",
         video_device_adapter: "VideoDeviceAdapter",
         video_recorder: "VideoRecorderService",
@@ -51,7 +51,7 @@ class CameraService(metaclass=SingletonMeta):
         Initializes the `CameraService` singleton instance.
         """
         self.logger = Logger(name=__name__)
-        self.file_manager = file_manager
+        self.file_manager = settings_service
         self.detection_service = detection_service
         self.video_device_adapter = video_device_adapter
         self.connection_manager = connection_manager

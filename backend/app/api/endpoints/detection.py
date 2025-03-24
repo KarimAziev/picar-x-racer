@@ -28,7 +28,7 @@ from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.detection_service import DetectionService
+    from app.services.detection.detection_service import DetectionService
 
 logger = Logger(__name__)
 

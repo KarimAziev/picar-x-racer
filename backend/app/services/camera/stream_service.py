@@ -18,7 +18,7 @@ from starlette.websockets import WebSocketState
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 if TYPE_CHECKING:
-    from app.services.camera_service import CameraService
+    from app.services.camera.camera_service import CameraService
 
 
 class StreamService(metaclass=SingletonMeta):

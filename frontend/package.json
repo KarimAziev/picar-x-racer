@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.0.4",
+    "@types/luxon": "^3.4.2",
     "@vueuse/core": "^12.2.0",
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.4",
+    "luxon": "^3.5.0",
     "nipplejs": "^0.10.2",
     "pinia": "^2.1.7",
     "postcss": "^8.4.41",

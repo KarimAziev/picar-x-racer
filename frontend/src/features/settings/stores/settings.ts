@@ -126,7 +126,6 @@ export const useStore = defineStore("settings", {
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
-      const musicStore = useMusicStore();
       const streamStore = useStreamStore();
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
@@ -135,7 +134,6 @@ export const useStore = defineStore("settings", {
         this.loading = true;
         const [response] = await Promise.all([
           axios.get<Settings>("/api/settings"),
-          musicStore.fetchData(),
           streamStore.fetchEnhancers(),
         ]);
         this.data = response.data;

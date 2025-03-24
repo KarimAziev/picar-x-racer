@@ -9,7 +9,7 @@ from app.schemas.camera import CameraSettings
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
-    from app.services.gstreamer_service import GStreamerService
+    from app.services.camera.gstreamer_service import GStreamerService
     from cv2.typing import MatLike
 
 

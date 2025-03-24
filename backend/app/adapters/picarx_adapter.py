@@ -9,7 +9,7 @@ from robot_hat import MotorConfig, MotorFabric, MotorService, ServoService
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
-    from app.managers.json_data_manager import JsonDataManager
+    from app.managers.file_management.json_data_manager import JsonDataManager
 
 
 class PicarxAdapter(metaclass=SingletonMeta):

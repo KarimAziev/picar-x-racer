@@ -1,6 +1,6 @@
 <template>
   <Cell>
-    <span v-if="modified !== null">
+    <span v-if="modified !== null && modified !== undefined">
       {{ formatModifiedTime(modified) }}
     </span>
   </Cell>
@@ -8,7 +8,6 @@
 
 <script setup lang="ts">
 import type { UploadingFileDetail } from "@/features/files/interface";
-
 import Cell from "@/features/files/components/Cell.vue";
 import { formatModifiedTime } from "@/features/files/components/util";
 

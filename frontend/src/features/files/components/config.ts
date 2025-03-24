@@ -24,3 +24,18 @@ export const columnsConfig: TableColumnsConfig<FileDetail> = {
     title: "Actions",
   },
 };
+
+export const directoryChooserColumnsConfig: TableColumnsConfig<FileDetail> = {
+  name: {
+    title: "Name",
+    sortable: true,
+  },
+  size: {
+    title: "Size",
+    sortable: true,
+  },
+  modified: {
+    title: "Date",
+    sortable: true,
+  },
+};

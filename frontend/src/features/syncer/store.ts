@@ -13,16 +13,17 @@ import {
 } from "@/features/settings/stores";
 import { useMessagerStore } from "@/features/messager";
 import type { MessageItemParams } from "@/features/messager";
-import { useMusicStore } from "@/features/music";
 import { isPlainObject } from "@/util/guards";
 import {
   useImageStore,
   useVideoStore,
   useDetectionDataStore,
   useDataStore,
+  useMusicFileStore,
 } from "@/features/files/stores";
 import { SettingsTab } from "@/features/settings/enums";
 import { useDetectionStore } from "@/features/detection";
+import { useMusicStore } from "@/features/music";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
@@ -49,13 +50,14 @@ export const useStore = defineStore("syncer", {
       }
       const messager = useMessagerStore();
       const popupStore = usePopupStore();
+      const musicFileStore = useMusicFileStore();
       const settingsStore = useSettingsStore();
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
       const detectionStore = useDetectionStore();
+      const musicStore = useMusicStore();
       const detectionDataStore = useDetectionDataStore();
       const dataTableStore = useDataStore();
-      const musicStore = useMusicStore();
       const imageStore = useImageStore();
       const batteryStore = useBatteryStore();
       const distanceStore = useDistanceStore();
@@ -115,7 +117,12 @@ export const useStore = defineStore("syncer", {
               return detectionDataStore.fetchData();
             };
             const mediaTypeRefreshers: { [key: string]: () => Promise<any> } = {
-              music: musicStore.fetchData,
+              music: async () => {
+                if (popupStore.isOpen) {
+                  await musicFileStore.fetchData();
+                  await musicStore.fetchData();
+                }
+              },
               data: dataRefresher,
               image: imageStore.fetchData,
               video: videoStore.fetchData,

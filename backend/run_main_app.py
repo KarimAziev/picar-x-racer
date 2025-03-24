@@ -1,10 +1,10 @@
+import sys
 from typing import Union
 
 import uvicorn
 
 
 def start_main_app(port: Union[str, int], log_level: str):
-
     uvicorn_config = {
         "app": "app.main_server:app",
         "host": "0.0.0.0",
@@ -26,6 +26,8 @@ def main():
 
     from app.core.logger import Logger
     from app.util.setup_env import setup_env
+
+    print("sys.path", sys.path)
 
     (
         px_main_app_port,

@@ -14,9 +14,9 @@ from app.util.os_checks import is_raspberry_pi
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
-    from app.services.gstreamer_service import GStreamerService
-    from app.services.picamera2_service import PicameraService
-    from app.services.v4l2_service import V4L2Service
+    from app.services.camera.gstreamer_service import GStreamerService
+    from app.services.camera.picamera2_service import PicameraService
+    from app.services.camera.v4l2_service import V4L2Service
 
 
 class VideoDeviceAdapter(metaclass=SingletonMeta):

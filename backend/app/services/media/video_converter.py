@@ -194,13 +194,13 @@ class VideoConverter:
             return None
 
     @staticmethod
-    def generate_video_preview(video_file: str, preview_path: str) -> Optional[str]:
+    def generate_video_poster(video_file: str, output_path: str) -> Optional[str]:
         """
         Generates a preview image (thumbnail) for the given video file.
         The preview filename incorporates the file modification time so that it
         gets refreshed if the video file changes.
         """
-        parent_path = file_name_parent_directory(preview_path)
+        parent_path = file_name_parent_directory(output_path)
 
         try:
             parent_path.mkdir(exist_ok=True, parents=True)
@@ -219,13 +219,13 @@ class VideoConverter:
             "1",
             "-q:v",
             "2",
-            preview_path,
+            output_path,
         ]
         try:
             subprocess.run(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
             )
-            return preview_path if os.path.exists(preview_path) else None
+            return output_path if os.path.exists(output_path) else None
 
         except Exception as err:
             _log.error("Failed to generate preview for '%s': %s", video_file, err)

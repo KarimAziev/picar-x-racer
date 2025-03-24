@@ -3,7 +3,8 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, cast
 from unittest.mock import MagicMock, patch
 
-from app.managers.model_manager import ModelManager, settings
+from app.config.config import settings
+from app.managers.model_manager import ModelManager
 
 if TYPE_CHECKING:
     from ultralytics import YOLO
@@ -11,6 +12,7 @@ if TYPE_CHECKING:
 
 class DummyYOLO:
     def __init__(self, *args, **kwargs):
+
         self.args = args
         self.kwargs: Dict[str, Any] = kwargs
 

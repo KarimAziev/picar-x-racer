@@ -17,11 +17,11 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
-    from app.services.battery_service import BatteryService
-    from app.services.camera_service import CameraService
+    from app.services.sensors.battery_service import BatteryService
+    from app.services.camera.camera_service import CameraService
     from app.services.connection_service import ConnectionService
-    from app.services.detection_service import DetectionService
-    from app.services.music_service import MusicService
+    from app.services.detection.detection_service import DetectionService
+    from app.services.media.music_service import MusicService
 
 
 logger = Logger(__name__)

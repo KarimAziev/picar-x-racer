@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.stream import StreamSettings
-from app.services.camera_service import CameraService
-from app.services.stream_service import StreamService
+from app.services.camera.camera_service import CameraService
+from app.services.camera.stream_service import StreamService
 from fastapi.websockets import WebSocket
 from starlette.websockets import WebSocketState
 

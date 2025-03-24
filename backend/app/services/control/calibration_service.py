@@ -9,7 +9,7 @@ from robot_hat.motor.config import MotorDirection
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
-    from app.managers.json_data_manager import JsonDataManager
+    from app.managers.file_management.json_data_manager import JsonDataManager
     from robot_hat import Motor, ServoService
 
 
@@ -24,7 +24,7 @@ class CalibrationService(metaclass=SingletonMeta):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.logger = Logger(__name__)
+        self.logger = Logger(__name__, app_name="px_robot")
         self.px = picarx
         self.config_manager = config_manager
         self.step = 0.1

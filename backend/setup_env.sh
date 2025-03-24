@@ -181,7 +181,7 @@ install_system_deps() {
   run_cmd "$SUDO apt-get install -y portaudio19-dev"
 
   # for PyGObject
-  run_cmd "$SUDO apt-get install -y libcairo2-dev pkg-config python3-dev libgirepository1.0-dev gir1.2-gtk-3.0"
+  run_cmd "$SUDO apt-get install -y libcairo2-dev pkg-config python3-dev libgirepository-2.0-dev libgirepository1.0-dev gir1.2-gtk-3.0"
 
   if [[ $SKIP_DBUS -eq 0 ]]; then
     log_info "Installing dbus development libraries..."

@@ -13,8 +13,8 @@ from app.util.doc_util import build_response_description
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:
-    from app.services.camera_service import CameraService
-    from app.services.stream_service import StreamService
+    from app.services.camera.camera_service import CameraService
+    from app.services.camera.stream_service import StreamService
 
 logger = Logger(__name__)
 

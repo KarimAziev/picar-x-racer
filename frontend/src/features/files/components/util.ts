@@ -124,7 +124,7 @@ export const uploadingFileToRow = (
   type: "",
   is_dir: false,
   size: file.size,
-  modified: file.lastModified,
+  modified: Math.floor(file.lastModified / 1000),
   progress,
 });
 
@@ -162,5 +162,8 @@ export const mergeRows = (
   ];
 };
 
+export const formatModifiedTimeToDate = (modified: number) =>
+  new Date(modified * 1000);
+
 export const formatModifiedTime = (modified: number) =>
-  new Date(modified * 1000).toLocaleDateString();
+  formatModifiedTimeToDate(modified).toLocaleDateString();

@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType
-from app.services.v4l2_service import VideoDeviceABC
+from app.services.camera.v4l2_service import VideoDeviceABC
 from app.types.picamera_types import GlobalCameraInfo
 
 logger = Logger(name=__name__)

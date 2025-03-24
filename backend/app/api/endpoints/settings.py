@@ -14,9 +14,9 @@ from app.util.pydantic_helpers import schema_to_dynamic_json
 from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
-    from app.services.battery_service import BatteryService
     from app.services.connection_service import ConnectionService
-    from app.services.file_service import FileService
+    from app.services.domain.settings_service import SettingsService
+    from app.services.sensors.battery_service import BatteryService
 
 logger = Logger(__name__)
 
@@ -31,7 +31,7 @@ router = APIRouter()
         Settings, "Successful response with current settings."
     ),
 )
-def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
+def get_settings(file_service: "SettingsService" = Depends(deps.get_settings_service)):
     """
     Retrieve the current application settings.
     """
@@ -49,7 +49,7 @@ def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
 async def update_settings(
     request: Request,
     new_settings: SettingsUpdateRequest,
-    file_service: "FileService" = Depends(deps.get_file_manager),
+    file_service: "SettingsService" = Depends(deps.get_settings_service),
     battery_manager: "BatteryService" = Depends(deps.get_battery_service),
 ):
     """
@@ -80,7 +80,7 @@ async def update_settings(
     ),
 )
 def get_config_settings(
-    file_service: "FileService" = Depends(deps.get_file_manager),
+    file_service: "SettingsService" = Depends(deps.get_settings_service),
 ):
     """
     Retrieve the robot config.
@@ -98,7 +98,7 @@ def get_fields_config():
 
 @router.get("/settings/calibration", response_model=CalibrationConfig)
 def get_calibration_settings(
-    file_service: "FileService" = Depends(deps.get_file_manager),
+    file_service: "SettingsService" = Depends(deps.get_settings_service),
 ):
     """
     Retrieve the calibration settings.

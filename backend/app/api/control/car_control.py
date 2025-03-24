@@ -14,14 +14,14 @@ from starlette.websockets import WebSocketState
 
 Logger._app_logger_name = "robot"
 
-logger = Logger(name=__name__)
+logger = Logger(name=__name__, app_name="robot")
 
 router = APIRouter()
 
 if TYPE_CHECKING:
-    from app.services.car_control.calibration_service import CalibrationService
-    from app.services.car_control.car_service import CarService
     from app.services.connection_service import ConnectionService
+    from app.services.control.calibration_service import CalibrationService
+    from app.services.control.car_service import CarService
 
 
 @router.websocket("/px/ws")

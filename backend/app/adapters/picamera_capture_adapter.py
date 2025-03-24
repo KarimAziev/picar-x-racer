@@ -7,13 +7,13 @@ from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
-from app.services.picamera2_service import (
+from app.services.camera.picamera2_service import (
     PICAMERA2_TO_PIXEL_FORMATS_MAP,
     PIXEL_FORMATS_TO_PICAMERA2_MAP,
 )
 
 if TYPE_CHECKING:
-    from app.services.picamera2_service import PicameraService
+    from app.services.camera.picamera2_service import PicameraService
     from cv2.typing import MatLike
 
     try:

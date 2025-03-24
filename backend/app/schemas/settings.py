@@ -5,7 +5,7 @@ from app.schemas.camera import CameraSettings
 from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
 from app.schemas.tts import TTSSettings
-from app.services.detection_service import DetectionSettings
+from app.services.detection.detection_service import DetectionSettings
 from app.util.pydantic_helpers import partial_model
 from pydantic import BaseModel, Field
 

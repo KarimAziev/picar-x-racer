@@ -8,7 +8,7 @@ from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
-    from app.services.file_service import FileService
+    from app.services.file_management.file_manager_service import FileManagerService
 
 logger = Logger(__name__)
 
@@ -21,11 +21,11 @@ class VideoRecorderService(metaclass=SingletonMeta):
     video recordings.
     """
 
-    def __init__(self, file_manager: "FileService"):
+    def __init__(self, file_manager: "FileManagerService"):
         self.file_manager = file_manager
         self.video_writer: Optional[cv2.VideoWriter] = None
         self.current_video_path: Optional[str] = None
-        self.video_file_service = self.file_manager.video_file_manager
+        self.video_file_service = self.file_manager
 
     def start_recording(self, width: int, height: int, fps: float) -> None:
         """

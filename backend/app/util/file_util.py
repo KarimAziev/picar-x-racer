@@ -1,5 +1,4 @@
 import json
-import mimetypes
 import os
 import re
 import shutil
@@ -8,7 +7,9 @@ import zipfile
 from io import BytesIO
 from os import path
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, List, Optional, Tuple, TypeVar, Union
+
+from app.util.mime_type_helper import guess_mime_type
 
 T = TypeVar("T")
 
@@ -190,74 +191,6 @@ def is_parent_directory(parent_dir: str, file_path: str):
         return False
 
 
-def get_directory_structure(
-    initial_directory: str,
-    extension: Optional[Union[str, Tuple[str, ...]]] = None,
-    directory_suffix: Optional[Union[str, Tuple[str, ...]]] = None,
-    exclude_empty_dirs=True,
-    absolute=True,
-    file_processor: Optional[Callable[[str], Any]] = None,
-) -> list[Dict[str, Any]]:
-    def walk_directory(current_path: str):
-        children = []
-        entries = sorted(
-            os.listdir(current_path),
-            key=lambda entry: (
-                not os.path.isdir(os.path.join(current_path, entry)),
-                entry,
-            ),
-        )
-
-        for entry in entries:
-            entry_path = os.path.join(current_path, entry)
-            key_path = (
-                entry_path
-                if absolute
-                else file_to_relative(entry_path, initial_directory)
-            )
-            is_directory = os.path.isdir(entry_path)
-            if (
-                is_directory
-                and directory_suffix
-                and entry_path.endswith(directory_suffix)
-            ):
-                children.append(
-                    {
-                        "key": key_path,
-                        "label": entry,
-                        "selectable": True,
-                        "data": {"name": entry, "type": "Folder"},
-                    }
-                )
-            elif is_directory:
-                subchildren = walk_directory(entry_path)
-                if not exclude_empty_dirs or len(subchildren) > 0:
-                    children.append(
-                        {
-                            "key": key_path,
-                            "label": entry,
-                            "selectable": False,
-                            "children": subchildren,
-                            "data": {"name": entry, "type": "Folder"},
-                        }
-                    )
-            elif extension is None or entry_path.endswith(extension):
-                if file_processor is not None:
-                    file_processor(entry_path)
-                children.append(
-                    {
-                        "key": key_path,
-                        "label": entry,
-                        "selectable": True,
-                        "data": {"name": entry, "type": "File"},
-                    }
-                )
-
-        return children
-
-    return walk_directory(initial_directory)
-
-
 def zip_files_generator(
     filenames: List[str], directory_fn: Callable[[str], str]
 ) -> Tuple[BytesIO, int]:
@@ -266,7 +199,7 @@ def zip_files_generator(
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
         for filename in filenames:
             root = directory_fn(filename)
-            file_path = os.path.join(root, filename)
+            file_path = resolve_absolute_path(filename, root)
 
             if os.path.isdir(file_path):
                 for dirpath, _, files in os.walk(file_path):
@@ -283,7 +216,7 @@ def zip_files_generator(
 
             elif os.path.isfile(file_path):
                 with open(file_path, "rb") as f:
-                    zipf.writestr(filename, f.read())
+                    zipf.writestr(file_to_relative(file_path, root), f.read())
             else:
                 continue
 
@@ -332,6 +265,12 @@ def file_details(filename: str, directory: Optional[str] = None):
     }
 
 
+def expand_home_dir(directory: str):
+    if directory.startswith("~"):
+        directory = os.path.expanduser(directory)
+    return directory
+
+
 def directory_files_recursively(
     directory: str,
     regexp: Optional[str] = None,
@@ -352,7 +291,6 @@ def directory_files_recursively(
     for root, _, files in os.walk(directory):
         for file in files:
             file_path = os.path.join(root, file)
-            print(f"file_path {file_path}")
 
             if pattern and not pattern.search(file_path):
                 continue
@@ -391,66 +329,7 @@ def exclude_nested_files(filenames: List[str]) -> List[Path]:
     return result
 
 
-def guess_mime_type(filename: str) -> Optional[str]:
-    filepath = Path(filename)
-    extension = filepath.suffix
+def file_in_directory(file: str, dir: str) -> bool:
+    parents = Path(file).parents
 
-    text_extensions = {
-        ".param",
-        ".html",
-        ".htm",
-        ".xml",
-        ".json",
-        ".yaml",
-        ".yml",
-        ".toml",
-        ".csv",
-        ".ini",
-        ".cfg",
-        ".conf",
-        ".properties",
-        ".py",
-        ".java",
-        ".c",
-        ".cpp",
-        ".h",
-        ".hpp",
-        ".cs",
-        ".js",
-        ".ts",
-        ".jsx",
-        ".tsx",
-        ".rb",
-        ".php",
-        ".pl",
-        ".go",
-        ".swift",
-        ".kt",
-        ".scala",
-        ".rs",
-        ".sh",
-        ".bat",
-        ".ps1",
-        ".r",
-        ".m",
-        ".jl",
-        ".css",
-        ".scss",
-        ".less",
-        ".vue",
-        ".svelte",
-        ".tmpl",
-        ".tpl",
-        ".md",
-        ".markdown",
-        ".txt",
-        ".org",
-        ".log",
-        ".logs",
-        ".dockerfile",
-    }
-    content_type = "text/plain" if extension in text_extensions else None
-    if not content_type:
-        content_type, _ = mimetypes.guess_type(filename)
-
-    return content_type
+    return dir in [item.as_posix() for item in parents]

@@ -15,7 +15,6 @@
         :key="`${field as string}-column`"
         v-bind="col"
         :field="field as string"
-        class="pr-4"
         v-if="filters && groupKey === 'filterable'"
         v-model:filter="
           (
@@ -33,7 +32,6 @@
         :key="`${field as string}-column-non-filter`"
         v-bind="col"
         :field="field as string"
-        class="pr-4"
         v-else
         v-model:ordering="ordering"
         @update:ordering="handleSort"

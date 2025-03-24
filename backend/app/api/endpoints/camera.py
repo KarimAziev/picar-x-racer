@@ -19,10 +19,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapter
-    from app.services.camera_service import CameraService
+    from app.services.camera.camera_service import CameraService
+    from app.services.camera.gstreamer_service import GStreamerService
     from app.services.connection_service import ConnectionService
-    from app.services.file_service import FileService
-    from app.services.gstreamer_service import GStreamerService
+    from app.services.file_management.file_manager_service import FileManagerService
 
 router = APIRouter()
 logger = Logger(__name__)
@@ -137,7 +137,7 @@ def get_camera_devices(
 )
 async def take_photo(
     camera_manager: "CameraService" = Depends(deps.get_camera_service),
-    file_manager: "FileService" = Depends(deps.get_file_manager),
+    file_manager: "FileManagerService" = Depends(deps.get_photo_file_manager),
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
@@ -157,7 +157,7 @@ async def take_photo(
         await capture_photo(
             img=frame.copy(),
             photo_name=name,
-            path=file_manager.user_photos_dir,
+            path=file_manager.root_directory,
         )
         if camera_manager.img is not None
         else False

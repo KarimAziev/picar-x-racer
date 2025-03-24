@@ -2,29 +2,32 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Optional, Tuple
 
-from app.schemas.battery import BatterySettings
-from app.schemas.connection import ConnectionEvent
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.schemas.battery import BatterySettings
+from app.schemas.connection import ConnectionEvent
 from robot_hat.battery import Battery
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.file_service import FileService
+    from app.services.domain.settings_service import SettingsService
 
 
 class BatteryService(metaclass=SingletonMeta):
     def __init__(
-        self, file_manager: "FileService", connection_manager: "ConnectionService"
+        self,
+        settings_service: "SettingsService",
+        connection_manager: "ConnectionService",
+        battery_adapter: Battery,
     ):
         """
         Initializes the BatteryService with required file and connection services.
         """
 
         self._logger = Logger(__name__)
-        self.battery_adapter = Battery()
+        self.battery_adapter = battery_adapter
         self.connection_manager = connection_manager
-        self.settings = file_manager.load_settings()
+        self.settings = settings_service.load_settings()
         self.battery = BatterySettings(
             **self.settings.get(
                 "battery",

@@ -19,13 +19,14 @@ import type {
   FileFilterModel,
   FilterInfo,
 } from "@/features/files/interface";
-import { getBatchFilesErrorMessage } from "@/features/settings/util";
+
 import { SortDirection } from "@/features/files/enums";
 import type { Nullable } from "@/util/ts-helpers";
 import { omit, cloneDeep } from "@/util/obj";
 import { FilterMatchMode } from "@/features/files/enums";
 import { isArray, isEmpty } from "@/util/guards";
 import { where, allPass } from "@/util/func";
+import { getBatchFilesErrorMessage } from "@/features/files/util";
 
 export interface State {
   data: GroupedFile[];
@@ -42,7 +43,7 @@ export interface State {
   root_dir?: string;
 }
 
-const defaultState: State = {
+export const defaultState: State = {
   loading: false,
   emptyMessage: "No data",
   data: [],
@@ -59,6 +60,20 @@ const defaultState: State = {
     file_suffixes: {
       value: null,
       match_mode: FilterMatchMode.IN,
+    },
+    modified: {
+      value: null,
+      constraints: [
+        {
+          value: null,
+          match_mode: FilterMatchMode.DATE_AFTER,
+        },
+        {
+          value: null,
+          match_mode: FilterMatchMode.DATE_BEFORE,
+        },
+      ],
+      operator: null,
     },
   },
   filter_info: {
@@ -236,7 +251,8 @@ export const makeFileStore = (
             },
             { ...this.removingRows },
           );
-          await downloadFilesAsArchive(scope, filenames, progressFn);
+
+          await downloadFilesAsArchive(filenames, scope, scope, progressFn);
         } catch (error) {
           messager.handleError(error);
         } finally {

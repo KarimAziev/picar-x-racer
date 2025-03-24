@@ -5,7 +5,7 @@ import { ValueLabelOption } from "@/types/common";
 export type APIMediaType = "image" | "music" | "data" | "video";
 
 export interface FilterField {
-  value?: string;
+  value: Nullable<string>;
   match_mode: FilterMatchMode;
 }
 
@@ -15,15 +15,21 @@ export interface FilterBoolField {
 }
 
 export interface FilterFieldStringArray {
-  value?: Nullable<string[]>;
+  value: Nullable<string[]>;
   match_mode: FilterMatchMode;
 }
 
 export interface FilterFieldDatetime {
-  operator?: string;
-  constraints: FilterField[];
+  operator: Nullable<string>;
+  constraints: [FilterField, FilterField];
   value: Nullable<string>;
 }
+
+export type Filter =
+  | FilterFieldDatetime
+  | FilterFieldStringArray
+  | FilterBoolField
+  | FilterField;
 
 export interface SearchModel {
   value: string;
@@ -38,6 +44,7 @@ export interface OrderingModel {
 export interface FileFilterModel {
   type: FilterFieldStringArray;
   file_suffixes: FilterFieldStringArray;
+  modified: FilterFieldDatetime;
 }
 
 export interface FileDetail {
@@ -45,7 +52,7 @@ export interface FileDetail {
   path: string;
   size: number;
   is_dir: boolean;
-  modified: number;
+  modified: Nullable<number>;
   type: string;
   content_type?: string;
   duration?: number;
@@ -60,7 +67,9 @@ export interface UploadingFileDetail extends GroupedFile {
 }
 
 export type FilterInfo = {
-  [P in keyof FileFilterModel]: ValueLabelOption[];
+  [P in keyof FileFilterModel as FileFilterModel[P] extends FilterFieldStringArray
+    ? P
+    : never]: ValueLabelOption[];
 };
 
 export interface FileResponseModel {

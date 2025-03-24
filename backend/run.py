@@ -41,11 +41,13 @@ def main():
         ) = setup_env()
 
         reset_mcu_sync()
+
         main_app_process = mp.Process(
             target=start_main_app,
             args=(px_main_app_port, px_log_level),
             name="px_main_server",
         )
+
         websocket_app_process = mp.Process(
             target=start_control_app,
             args=(px_control_app_port, px_log_level),
@@ -53,6 +55,7 @@ def main():
         )
 
         main_app_process.start()
+
         websocket_app_process.start()
 
         frontend_dev_process = None

@@ -22,6 +22,6 @@ dbus-python
 ncnn
 v4l2-python3
 opencv-python
-PyGObject
+PyGObject==3.50.0
 PyGObject-stubs
 rapidfuzz

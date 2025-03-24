@@ -5,14 +5,14 @@ import time
 from os import path
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from app.exceptions.music import ActiveMusicTrackRemovalError, MusicPlayerError
-from app.schemas.music import MusicPlayerMode
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.exceptions.music import MusicPlayerError
+from app.schemas.music import MusicPlayerMode
+from app.services.media.music_file_service import FileDetail
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.file_service import FileService
 
 original_stdout = sys.stdout
 try:
@@ -32,48 +32,33 @@ class MusicService(metaclass=SingletonMeta):
         - Controlling playback (play, pause, stop, next/prev track).
         - Configuring playback modes (single track, loop, queue).
         - Broadcasting the player state to connected clients.
-
-    Attributes:
-        logger (Logger): The logger instance to log messages.
-        file_manager (FileService): Service instance for managing files and directories.
-        connection_manager (ConnectionService): Service instance for managing client connections.
-        playlist (List[str]): Ordered list of music tracks in the playlist.
-        track (Optional[str]): The currently playing track, if any.
-        duration (float): The total duration of the current track in seconds.
-        mode (MusicPlayerMode): The playback mode (e.g., LOOP, SINGLE, QUEUE).
-        position (float): The current playback position of the active track in seconds.
-        is_playing (bool): True if the music is currently playing, False otherwise.
-        stop_event (asyncio.Event): Event to signal cancellation of broadcast tasks.
-        play_task (Optional[asyncio.Task]): The currently running broadcast task.
-        pygame (pygame): The pygame library instance for music playback.
     """
 
     def __init__(
-        self, file_manager: "FileService", connection_manager: "ConnectionService"
+        self,
+        connection_manager: "ConnectionService",
+        tracks: List[FileDetail],
+        mode: MusicPlayerMode,
+        music_dir: str,
+        default_music_dir: str,
     ):
         """
         Initializes the MusicService with required file and connection services.
-
-        Args:
-            file_manager (FileService): The service responsible for file management.
-            connection_manager (ConnectionService): The service responsible for managing client connections.
         """
 
         self.logger = Logger(__name__)
-        self.file_manager = file_manager
+        self.default_music_dir = default_music_dir
+        self.music_dir = music_dir
         self.connection_manager = connection_manager
-        self.playlist: List[str] = self.file_manager.list_music_tracks_sorted()
+        self.playlist: List[str] = [item.path for item in tracks]
+        self.details = {item.path: item for item in tracks}
         self.track = (
             self.playlist[0] if len(self.playlist) > 0 else None
         )  # current track
         self.duration: float = (
             0.0 if self.track is None else self.get_track_duration(self.track)
         )  # total duration of current track in seconds
-        self.mode: MusicPlayerMode = (
-            self.file_manager.load_settings()
-            .get("music", {"mode": MusicPlayerMode.LOOP})
-            .get("mode", MusicPlayerMode.LOOP)
-        )
+        self.mode: MusicPlayerMode = mode
         self.position = 0  # position in seconds
         self.is_playing = False
         self.last_update_time = time.time()
@@ -95,6 +80,29 @@ class MusicService(metaclass=SingletonMeta):
         self.last_update_time = time.time()
         return self.position
 
+    def get_music_directory(self, filename: str) -> str:
+        """
+        Retrieves the directory of a specified music file.
+
+        Args:
+            filename: Name of the music file.
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist.
+
+        Returns:
+            str: Directory path of the music file.
+        """
+
+        user_file = path.join(self.music_dir, filename)
+        if path.exists(user_file):
+            return self.music_dir
+        elif path.exists(path.join(self.default_music_dir, filename)):
+            return self.default_music_dir
+        else:
+            self.logger.error("The file '%s' was not found", user_file)
+            raise FileNotFoundError("File not found")
+
     def get_track_duration(self, track: str) -> float:
         """
         Retrieves the duration of a specified music track.
@@ -106,11 +114,10 @@ class MusicService(metaclass=SingletonMeta):
             float: The duration of the track in seconds.
         """
 
-        file_path = self.music_track_to_absolute(track)
-        details = self.file_manager.get_audio_file_details(file_path)
-        duration: float = details.get("duration", 0.0) if details else 0.0  # in seconds
+        file_detail = self.details.get(track)
+        duration = file_detail.duration if file_detail else None
 
-        return duration
+        return duration or 0.0
 
     def music_track_to_absolute(self, track: str) -> str:
         """
@@ -123,7 +130,7 @@ class MusicService(metaclass=SingletonMeta):
             str: The absolute file path of the track.
         """
 
-        dir = self.file_manager.get_music_directory(track)
+        dir = self.get_music_directory(track)
         return path.join(dir, track)
 
     async def cancel_broadcast_task(self) -> None:
@@ -175,39 +182,21 @@ class MusicService(metaclass=SingletonMeta):
             {"type": "player", "payload": self.current_state}
         )
 
-    def remove_music_track(self, track: str) -> bool:
-        """
-        Removes a music track from the playlist.
-
-        Args:
-            track (str): The name of the track to remove.
-
-        Returns:
-            bool: True if the track is successfully removed, False otherwise.
-
-        Raises:
-            MusicPlayerError: If the track to be removed is currently playing.
-            DefaultFileRemoveAttempt: If attempting to remove a default music file.
-            FileNotFoundError: If the file doesn't exist.
-        """
-        if self.track == track:
-            self.next_track()
-        if self.track == track and self.is_playing:
-            raise ActiveMusicTrackRemovalError("Can't remove the playing track.")
-
-        return self.file_manager.remove_music(track)
-
-    def update_tracks(self, new_tracks: List[str]) -> None:
+    def update_tracks(self, files_details: List[FileDetail]) -> None:
         """
         Updates the playlist with a new track order.
 
         Args:
-            new_tracks (List[str]): The new list of tracks.
+            files_details: The new list of tracks.
 
         Behavior:
             If the currently playing track is removed from the playlist,
             playback will stop or advance to the next available track.
         """
+        new_tracks = [item.path for item in files_details]
+        details = {item.path: item for item in files_details}
+        self.logger.debug("new_tracks=%s", new_tracks)
+
         track = self.track
         if track is not None and not track in new_tracks:
             self.next_track()
@@ -217,11 +206,11 @@ class MusicService(metaclass=SingletonMeta):
         elif not self.is_playing:
             self.track = new_tracks[0] if len(new_tracks) > 0 else None
             self.position = 0
-            if self.track:
-                self.duration = self.get_track_duration(self.track)
 
         self.playlist = new_tracks
-        self.file_manager.save_custom_music_order(new_tracks)
+        self.details = details
+        if self.track:
+            self.duration = self.get_track_duration(self.track)
 
     def start_broadcast_task(self) -> None:
         """
@@ -254,8 +243,11 @@ class MusicService(metaclass=SingletonMeta):
                 if self.track is None:
                     raise MusicPlayerError("No music track.")
                 file_path = self.music_track_to_absolute(self.track)
-                self.pygame.mixer.music.load(file_path)
-                self.pygame.mixer.music.play(start=self.position)
+                try:
+                    self.pygame.mixer.music.load(file_path)
+                    self.pygame.mixer.music.play(start=self.position)
+                except (ValueError, RuntimeError, SystemError) as e:
+                    raise MusicPlayerError(f"{e}")
             else:
                 self.pygame.mixer.music.unpause()
 
@@ -380,7 +372,10 @@ class MusicService(metaclass=SingletonMeta):
 
         file_path = self.music_track_to_absolute(self.track)
         self.pygame_mixer_ensure()
-        self.pygame.mixer.music.load(file_path)
+        try:
+            self.pygame.mixer.music.load(file_path)
+        except ValueError as e:
+            raise MusicPlayerError(f"{e}")
         self.pygame.mixer.music.play()
         self.position = 0
         self.is_playing = True

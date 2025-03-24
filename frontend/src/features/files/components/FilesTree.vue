@@ -1,36 +1,56 @@
 <template>
-  <Fieldset legend="Filters" toggleable>
-    <div class="flex items-center gap-2 flex-wrap">
-      <template
-        v-for="(options, field) in store.filter_info"
-        :key="`filter-${field}`"
-      >
-        <div class="flex flex-col" v-if="options && options?.length > 0">
-          <div class="font-bold">By&nbsp;{{ startCase(field) }}:</div>
-          <MultiSelect
-            :maxSelectedLabels="1"
-            :selectedItemsLabel="`${store.filters[field] && store.filters[field]?.value && store.filters[field]?.value.length} items`"
-            :pt="{
-              input: {
-                id: `filter-id-${field}`,
-                name: `filter-name-${field}`,
-              },
-            }"
-            :options="options"
-            class="w-38"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="`${startCase(field)} filter`"
-            v-model:model-value="store.filters[field].value"
+  <Fieldset
+    legend="Filters"
+    toggleable
+    collapsed
+    class="min-w-[350px] sm:w-[630px]"
+  >
+    <div class="flex flex-col gap-y-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <template
+          v-for="(options, field) in store.filter_info"
+          :key="`filter-${field}`"
+        >
+          <div class="flex flex-col" v-if="options && options?.length > 0">
+            <div class="font-bold">By&nbsp;{{ startCase(field) }}:</div>
+            <MultiSelect
+              :maxSelectedLabels="1"
+              :selectedItemsLabel="`${store.filters[field] && store.filters[field]?.value && store.filters[field]?.value.length} items`"
+              :inputId="`filter-id-${field}-${store.mediaType}`"
+              :options="options"
+              class="w-40"
+              optionLabel="label"
+              optionValue="value"
+              :placeholder="`${startCase(field)} filter`"
+              v-model:model-value="store.filters[field].value"
+              @update:model-value="store.fetchData"
+            >
+              <template #dropdownicon>
+                <i class="pi pi-angle-down" />
+              </template>
+            </MultiSelect>
+          </div>
+        </template>
+        <div class="flex gap-2 items-center">
+          <DatePickerField
+            showButtonBar
+            :inputId="`from-date-${store.mediaType}`"
+            class="w-40"
             @update:model-value="store.fetchData"
-          >
-            <template #dropdownicon>
-              <i class="pi pi-angle-down" />
-            </template>
-          </MultiSelect>
+            v-model:model-value="store.filters.modified.constraints[0].value"
+            label="From Date"
+          />
+          <DatePickerField
+            showButtonBar
+            :inputId="`to-date-${store.mediaType}`"
+            class="w-40"
+            @update:model-value="store.fetchData"
+            v-model:model-value="store.filters.modified.constraints[1].value"
+            label="To Date"
+          />
         </div>
-      </template>
-      <div class="flex gap-2 justify-end flex-auto text-right">
+      </div>
+      <div class="flex gap-2">
         <Button
           severity="contrast"
           outlined
@@ -48,6 +68,7 @@
       </div>
     </div>
   </Fieldset>
+
   <div class="flex flex-col gap-2 mb-2">
     <BatchActionsHeader
       :loadingRows="loadingRows"
@@ -113,12 +134,17 @@
       </ButtonIcon>
     </template>
   </Breadcrumb>
-  <Button text label="Expand all" icon="pi pi-plus" @click="expandAll" />
-  <Button text label="Collapse all" icon="pi pi-minus" @click="collapseAll" />
+  <div class="flex gap-2 items-center">
+    <Button text label="Expand all" icon="pi pi-plus" @click="expandAll" />
+    <Button text label="Collapse all" icon="pi pi-minus" @click="collapseAll" />
+    <template v-if="$slots.headerButtons">
+      <slot name="headerButtons" />
+    </template>
+  </div>
 
   <BlockUI :blocked="loading">
     <HeaderRow
-      class="grid grid-cols-[4%_4%_46%_15%_15%_20%] gap-y-2 items-center h-[50px] relative"
+      class="grid grid-cols-[4%_4%_42%_15%_15%_20%] gap-y-2 items-center h-[50px] relative"
       :config="columnsConfig"
       v-model:filters="store.filters"
       v-model:ordering="store.ordering"
@@ -144,7 +170,7 @@
             @move="handleMoveDrop"
             v-bind="node"
             :draggable="!store.uploadingData[node.path]"
-            class="grid grid-cols-[4%_4%_10%_36%_15%_15%_20%] gap-y-2 items-center h-[50px] hover:bg-mask relative"
+            class="grid grid-cols-[4%_4%_10%_32%_15%_15%_20%] gap-y-2 items-center h-[50px] hover:bg-mask relative"
             :class="rowClass"
           >
             <template v-if="$slots.nodeExpand">
@@ -202,6 +228,9 @@
                   );
                   textFilePopupVisible = true;
                 }
+              "
+              :makeAudioURL="
+                (path: string) => makeAudioURL(path, store.mediaType)
               "
               :makeImagePreviewURL="
                 (path: string) => makeImagePreviewURL(path, store.mediaType)
@@ -289,9 +318,10 @@
     "
   />
   <DirectoryChooser
-    :scope="props.store.mediaType"
+    :scope="store.mediaType"
     v-model:visible="isDirChooseOpen"
     :header="movePopupHeader"
+    :dir="store.dir"
     @dir:submit="handleMoveMarked"
     @after-hide="
       () => {
@@ -357,6 +387,7 @@ import {
   makeVideoURL,
   makeDownloadURL,
   makeSaveURL,
+  makeAudioURL,
 } from "@/features/files/api";
 import VirtualTree from "@/features/files/components/VirtualTree.vue";
 import { isNumber, isEmpty } from "@/util/guards";
@@ -391,6 +422,7 @@ import Uploader from "@/features/files/components/Uploader.vue";
 import Preloader from "@/features/files/components/Preloader.vue";
 import EmptyMessage from "@/features/files/components/EmptyMessage.vue";
 import TextPopup from "@/features/files/components/TextPopup.vue";
+import DatePickerField from "@/ui/DatePickerField.vue";
 
 const props = withDefaults(
   defineProps<{

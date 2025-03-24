@@ -45,7 +45,8 @@
     </div>
     <BlockUI :blocked="loading">
       <HeaderRow
-        :config="columnsConfig"
+        class="grid grid-cols-[4%_4%_62%_15%_15%] gap-y-2 items-center h-[50px] relative"
+        :config="directoryChooserColumnsConfig"
         v-model:ordering="ordering"
         :selectable="false"
         @update:ordering="handleSort"
@@ -70,16 +71,16 @@
             <RowWrapper
               v-bind="node"
               :draggable="false"
-              class="grid grid-cols-[3%_5%_10%_50%_15%_15%] gap-y-2 items-center h-[50px] hover:bg-mask relative"
+              class="grid grid-cols-[4%_4%_10%_52%_15%_15%] gap-y-2 items-center h-[40px] hover:bg-mask relative"
             >
-              <div>
+              <Cell>
                 <RadioButton
                   v-if="isDirectoryType(node.type)"
                   v-model="selectedItem"
                   :inputId="`${node.path}-dir-choose`"
                   :value="node.path"
                 />
-              </div>
+              </Cell>
               <NodeExpand :path="node.path" :children="node.children" />
               <FileType
                 :path="node.path"
@@ -105,7 +106,7 @@
           <Button
             type="button"
             label="Move"
-            :disabled="!selectedItem"
+            :disabled="submitDisabled"
             @click="handleSubmit"
           ></Button>
           <Button
@@ -130,6 +131,7 @@ import type {
   OrderingModel,
 } from "@/features/files/interface";
 import VirtualTree from "@/features/files/components/VirtualTree.vue";
+import Cell from "@/features/files/components/Cell.vue";
 import {
   getExpandableIds,
   toBreadcrumbs,
@@ -140,9 +142,7 @@ import ButtonIcon from "@/ui/ButtonIcon.vue";
 import { FilterMatchMode, SortDirection } from "@/features/files/enums";
 import { Nullable } from "@/util/ts-helpers";
 import { useMessagerStore } from "@/features/messager";
-import type { FileDetail } from "@/features/files/interface";
-
-import type { TableColumnsConfig } from "@/features/files/components/config";
+import { directoryChooserColumnsConfig } from "@/features/files/components/config";
 import HeaderRow from "@/features/files/components/HeaderRow.vue";
 
 import RowWrapper from "@/features/files/components/RowWrapper.vue";
@@ -157,33 +157,32 @@ const props = withDefaults(
     itemSize?: number;
     scope: string;
     header?: string;
+    dir?: Nullable<string>;
   }>(),
   {
-    itemSize: 40,
+    itemSize: 50,
   },
 );
 
-const columnsConfig: TableColumnsConfig<FileDetail> = {
-  name: {
-    class: "block w-[50%] truncate",
-    title: "Name",
-    sortable: true,
-  },
-  size: {
-    title: "Size",
-    sortable: true,
-    class: "flex-auto justify-self-end justify-end",
-  },
-};
 const visible = defineModel<boolean>("visible", { required: true });
 const emit = defineEmits(["show", "after-hide", "dir:submit"]);
-const selectedItem = ref<string>();
+const selectedItem = ref<Nullable<string>>(null);
+const initialDir = ref<Nullable<string>>(null);
+
+const submitDisabled = computed(
+  () => !selectedItem.value && initialDir.value === currentDir.value,
+);
 
 const handleShow = () => {
+  initialDir.value = props.dir;
+  currentDir.value = props.dir;
   fetchData();
   emit("show");
 };
 const handleHide = () => {
+  initialDir.value = null;
+  selectedItem.value = null;
+  currentDir.value = null;
   emit("after-hide");
 };
 
@@ -192,7 +191,7 @@ const handleSubmit = () => {
 
   if (selectedItem.value) {
     emit("dir:submit", selectedItem.value);
-    selectedItem.value = undefined;
+    selectedItem.value = null;
   }
 };
 
@@ -201,7 +200,7 @@ const handleCancel = () => {
   visible.value = false;
 };
 
-const currentDir = ref<Nullable<string>>();
+const currentDir = ref<Nullable<string>>(props.dir);
 
 const rows = ref<GroupedFile[]>([]);
 const rootDir = ref<string>();
@@ -284,5 +283,3 @@ const handleUpdateDir = (filepath: string) => {
 
 provide("expandedNodes", expandedNodes);
 </script>
-
-<style scoped lang="scss"></style>

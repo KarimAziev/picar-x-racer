@@ -5,7 +5,7 @@ Endpoints related to music playing.
 import asyncio
 from typing import TYPE_CHECKING, List
 
-from app.api.deps import get_audio_service, get_file_manager, get_music_service
+from app.api import deps
 from app.core.logger import Logger
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.exceptions.music import MusicPlayerError
@@ -17,13 +17,13 @@ from app.schemas.music import (
     MusicResponse,
     MusicTrackPayload,
 )
+from app.services.media.music_file_service import MusicFileService
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
-    from app.services.audio_service import AudioService
     from app.services.connection_service import ConnectionService
-    from app.services.file_service import FileService
-    from app.services.music_service import MusicService
+    from app.services.media.audio_service import AudioService
+    from app.services.media.music_service import MusicService
 
 router = APIRouter()
 logger = Logger(__name__)
@@ -51,7 +51,7 @@ logger = Logger(__name__)
     },
 )
 async def toggle_play_music(
-    music_player: "MusicService" = Depends(get_music_service),
+    music_player: "MusicService" = Depends(deps.get_music_service),
 ):
     """
     Toggle play or pause of the current track.
@@ -103,7 +103,7 @@ async def toggle_play_music(
 )
 async def play_track(
     payload: MusicTrackPayload,
-    music_player: "MusicService" = Depends(get_music_service),
+    music_player: "MusicService" = Depends(deps.get_music_service),
 ):
     """
     Play a specified music track.
@@ -154,7 +154,7 @@ async def play_track(
     },
 )
 async def stop_playing(
-    music_player: "MusicService" = Depends(get_music_service),
+    music_player: "MusicService" = Depends(deps.get_music_service),
 ):
     """
     Stop playback of the current track.
@@ -197,7 +197,7 @@ async def stop_playing(
 )
 async def update_position(
     payload: MusicPositionPayload,
-    music_player: "MusicService" = Depends(get_music_service),
+    music_player: "MusicService" = Depends(deps.get_music_service),
 ):
     """
     Update the playback position of the current track.
@@ -249,7 +249,7 @@ async def update_position(
 )
 async def update_mode(
     payload: MusicModePayload,
-    music_player: "MusicService" = Depends(get_music_service),
+    music_player: "MusicService" = Depends(deps.get_music_service),
 ):
     """
     Endpoint to update the playback mode of the music player.
@@ -289,7 +289,7 @@ async def update_mode(
     },
 )
 async def next_track(
-    music_player: "MusicService" = Depends(get_music_service),
+    music_player: "MusicService" = Depends(deps.get_music_service),
 ):
     """
     Switch to the next track in the playlist.
@@ -335,7 +335,7 @@ async def next_track(
     },
 )
 async def prev_track(
-    music_player: "MusicService" = Depends(get_music_service),
+    music_player: "MusicService" = Depends(deps.get_music_service),
 ):
     """
     Endpoint to switch to the previous track in the playlist.
@@ -385,8 +385,8 @@ async def prev_track(
 async def save_music_order(
     request: Request,
     order: List[str],
-    music_player: "MusicService" = Depends(get_music_service),
-    file_manager: "FileService" = Depends(get_file_manager),
+    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_file_service: "MusicFileService" = Depends(deps.get_music_file_service),
 ):
     """
     Save the custom order of music tracks in the playlist.
@@ -404,13 +404,12 @@ async def save_music_order(
     logger.info("Music order update %s", order)
     connection_manager: "ConnectionService" = request.app.state.app_manager
     try:
-        await asyncio.to_thread(music_player.update_tracks, order)
+        sorted_tracks = await asyncio.to_thread(
+            music_file_service.save_custom_music_order, order
+        )
         await music_player.broadcast_state()
-        files = await asyncio.to_thread(file_manager.list_all_music_with_details)
-        settings = await asyncio.to_thread(file_manager.load_settings)
-        await connection_manager.broadcast_json({"type": "music", "payload": files})
         await connection_manager.broadcast_json(
-            {"type": "settings", "payload": {"music": settings.get("music")}}
+            {"type": "music", "payload": [item.model_dump() for item in sorted_tracks]}
         )
         return {"message": "Music order saved successfully!"}
     except Exception:
@@ -435,8 +434,8 @@ async def save_music_order(
     },
 )
 async def get_music_tracks(
-    file_manager: "FileService" = Depends(get_file_manager),
-    audio_manager: "AudioService" = Depends(get_audio_service),
+    file_manager: "MusicFileService" = Depends(deps.get_music_file_service),
+    audio_manager: "AudioService" = Depends(deps.get_audio_service),
 ):
     """
     Retrieve the list of available music tracks.
@@ -453,7 +452,7 @@ async def get_music_tracks(
     except Exception:
         logger.error("Unexpected error while getting the volume level", exc_info=True)
     try:
-        files = file_manager.list_all_music_with_details()
+        files = file_manager.list_sorted_tracks()
         return {
             "files": files,
             "volume": music_volume,
