@@ -10,6 +10,7 @@ import {
   watchIgnorable,
   UseMediaTextTrack,
   UseMediaControlsReturn,
+  UseMediaSource,
 } from "@vueuse/core";
 import { watch, watchEffect, ref } from "vue";
 
@@ -21,7 +22,7 @@ function usingElRef(source: UseMediaControlsTarget, cb: (...args: any) => any) {
   if (toValue(source)) cb(toValue(source));
 }
 function timeRangeToArray(timeRanges: TimeRanges) {
-  let ranges = [];
+  let ranges: [number, number][] = [];
   for (let i = 0; i < timeRanges.length; ++i)
     ranges = [...ranges, [timeRanges.start(i), timeRanges.end(i)]];
   return ranges;
@@ -79,7 +80,7 @@ export function useMediaControls(
   const playing = ref(false);
   const rate = ref(1);
   const stalled = ref(false);
-  const buffered = ref([]);
+  const buffered = ref<[number, number][]>([]);
   const tracks = ref<UseMediaTextTrack[]>([]);
   const selectedTrack = ref(-1);
   const isPictureInPicture = ref(false);
@@ -106,10 +107,12 @@ export function useMediaControls(
     disableTracks = true,
   ) => {
     usingElRef(target, (el) => {
-      const id = typeof track === "number" ? track : track.id;
+      const id = typeof track === "number" ? track : track?.id;
       if (disableTracks) disableTrack();
-      el.textTracks[id].mode = "showing";
-      selectedTrack.value = id;
+      if (id) {
+        el.textTracks[id].mode = "showing";
+        selectedTrack.value = id;
+      }
     });
   };
 
@@ -132,7 +135,7 @@ export function useMediaControls(
     const el = toValue(target);
     if (!el) return;
     const src = toValue(options.src);
-    let sources = [];
+    let sources: UseMediaSource[] = [];
     if (!src) return;
     if (typeof src === "string") sources = [{ src }];
     else if (Array.isArray(src)) sources = src;
@@ -236,16 +239,20 @@ export function useMediaControls(
 
   useEventListener(target, "timeupdate", () =>
     ignoreCurrentTimeUpdates(() => {
-      currentTime.value = toValue(target).currentTime;
+      currentTime.value = toValue(
+        target as unknown as HTMLMediaElement,
+      ).currentTime;
     }),
   );
 
   useEventListener(target, "durationchange", () => {
-    duration.value = toValue(target).duration;
+    duration.value = toValue(target as unknown as HTMLMediaElement).duration;
   });
 
   useEventListener(target, "progress", () => {
-    buffered.value = timeRangeToArray(toValue(target).buffered);
+    buffered.value = timeRangeToArray(
+      toValue(target as unknown as HTMLMediaElement).buffered,
+    );
   });
 
   useEventListener(target, "seeking", () => {
@@ -272,7 +279,7 @@ export function useMediaControls(
   });
 
   useEventListener(target, "ratechange", () => {
-    rate.value = toValue(target).playbackRate;
+    rate.value = toValue(target as unknown as HTMLMediaElement).playbackRate;
   });
 
   useEventListener(target, "stalled", () => {
@@ -302,7 +309,7 @@ export function useMediaControls(
     muted.value = el.muted;
   });
 
-  const listeners = [];
+  const listeners: ReturnType<typeof useEventListener>[] = [];
   const stop = watch([target], () => {
     const el = toValue(target);
     if (!el) return;
