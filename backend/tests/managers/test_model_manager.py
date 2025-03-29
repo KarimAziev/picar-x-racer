@@ -1,3 +1,41 @@
+# Monkey patch for matplotlib.ft2font module:
+# When using ultralytics, matplotlib is imported and its _check_versions
+# function attempts to load the ft2font C-extension. On some systems during
+# test discovery, this results in a segmentation fault
+import sys
+import types
+
+
+class DummyFT2Font:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def some_method(self, *args, **kwargs):
+        pass
+
+
+class DummyFT2Image:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def some_image_method(self, *args, **kwargs):
+        pass
+
+
+class DummyKerning:
+    DEFAULT = 0
+
+
+DummyLoadFlags = 0
+
+dummy_ft2font = types.ModuleType("matplotlib.ft2font")
+dummy_ft2font.FT2Font = DummyFT2Font  # type: ignore
+dummy_ft2font.FT2Image = DummyFT2Image  # type: ignore
+dummy_ft2font.Kerning = DummyKerning  # type: ignore
+dummy_ft2font.LoadFlags = DummyLoadFlags  # type: ignore
+
+sys.modules["matplotlib.ft2font"] = dummy_ft2font
+
 import os
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, cast
@@ -89,14 +127,12 @@ class TestModelManager(unittest.TestCase):
         """
         manager = ModelManager()
 
-        # Simulate that the edge TPU file does not exist.
         def fake_exists(path):
             if path == settings.YOLO_MODEL_EDGE_TPU_PATH:
                 return False
             return True
 
         mock_exists.side_effect = fake_exists
-        # Simulate Coral not connected (or it doesn’t matter in this scenario).
         mock_coral.return_value = False
 
         model, error = manager.__enter__()
