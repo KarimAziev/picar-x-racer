@@ -31,6 +31,7 @@ DummyLoadFlags = 0
 # Additional stubs for Python 3.9+
 KERNING_DEFAULT = 0
 LOAD_NO_HINTING = 0
+LOAD_TARGET_LIGHT = 0
 
 dummy_ft2font = types.ModuleType("matplotlib.ft2font")
 dummy_ft2font.FT2Font = DummyFT2Font  # type: ignore
@@ -39,10 +40,10 @@ dummy_ft2font.Kerning = DummyKerning  # type: ignore
 dummy_ft2font.LoadFlags = DummyLoadFlags  # type: ignore
 dummy_ft2font.KERNING_DEFAULT = KERNING_DEFAULT  # type: ignore
 dummy_ft2font.LOAD_NO_HINTING = LOAD_NO_HINTING  # type: ignore
+dummy_ft2font.LOAD_TARGET_LIGHT = LOAD_TARGET_LIGHT  # type: ignore
 
 sys.modules["matplotlib.ft2font"] = dummy_ft2font
 
-sys.modules["matplotlib.ft2font"] = dummy_ft2font
 
 import os
 import unittest
