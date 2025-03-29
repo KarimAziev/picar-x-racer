@@ -66,7 +66,6 @@ async def lifespan(app: FastAPI):
         browser_url = f"http://{ip_address}:{port}"
 
         signal_file_path = "/tmp/backend_ready.signal" if mode == "dev" else None
-        logger.info("signal_file_path %s", signal_file_path)
 
         battery_manager.setup_connection_manager()
         sorted_tracks = music_file_service.list_sorted_tracks()
