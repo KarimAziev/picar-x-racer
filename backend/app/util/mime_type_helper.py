@@ -56,6 +56,10 @@ text_extensions = {
     ".log",
     ".logs",
     ".dockerfile",
+    ".el",
+    ".lisp",
+    ".tex",
+    ".elc",
 }
 
 
