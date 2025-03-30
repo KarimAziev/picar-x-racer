@@ -102,13 +102,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from "vue";
+import { isAxiosError } from "axios";
 import axios from "axios";
 import type { DialogProps } from "primevue/dialog";
 import { usePopupStore } from "@/features/settings/stores";
 import { retrieveError } from "@/util/error";
 import Preloader from "@/features/files/components/Preloader.vue";
 import EmptyMessage from "@/features/files/components/EmptyMessage.vue";
-import { isNumber, isEmptyString } from "@/util/guards";
+import { isNumber, isEmptyString, isString } from "@/util/guards";
 import type { Nullable } from "@/util/ts-helpers";
 import SelectField from "@/ui/SelectField.vue";
 
@@ -268,8 +269,15 @@ const openPopup = async () => {
     origContent.value = response.data;
     content.value = response.data;
   } catch (error) {
-    const errData = retrieveError(error);
-    emptyMessage.value = errData.text.length > 0 ? errData.text : errData.title;
+    if (isAxiosError(error) && isString(error.response?.data)) {
+      try {
+        emptyMessage.value = JSON.parse(error.response?.data)?.detail;
+      } catch (jsonErr) {
+        console.log("Couldn't parse error", jsonErr);
+      }
+    } else {
+      emptyMessage.value = retrieveError(error).text;
+    }
   } finally {
     progress.value = null;
     loading.value = false;

@@ -291,8 +291,8 @@ def download_file(
 
     try:
         basename = os.path.basename(filename)
-        if os.path.isfile(filename) and not os.path.isdir(filename):
-            raise FileNotFoundError(f"File {filename} not found")
+        if not os.path.isfile(filename) and not os.path.isdir(filename):
+            raise HTTPException(status_code=404, detail="Not a readable file")
         if not os.path.isdir(filename):
             guessed_mime_type = guess_mime_type(filename)
             return FileResponse(
