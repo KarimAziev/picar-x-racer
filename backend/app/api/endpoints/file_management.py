@@ -288,8 +288,11 @@ def download_file(
     Download a file.
     """
     filename = expand_home_dir(filename)
-    basename = os.path.basename(filename)
+
     try:
+        basename = os.path.basename(filename)
+        if os.path.isfile(filename) and not os.path.isdir(filename):
+            raise FileNotFoundError(f"File {filename} not found")
         if not os.path.isdir(filename):
             guessed_mime_type = guess_mime_type(filename)
             return FileResponse(
@@ -323,7 +326,32 @@ def download_file(
                 logger.error(f"Error creating archive: {e}")
                 raise HTTPException(status_code=500, detail="Internal server error")
     except FileNotFoundError:
+        logger.warning("File %s not found", filename)
         raise HTTPException(status_code=404, detail="File not found")
+    except InvalidFileName:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    except PermissionError as e:
+        logger.error("Permission denied: %s", e)
+        raise HTTPException(status_code=403, detail="Permission denied")
+    except RuntimeError:
+        logger.error(
+            "Runtime error while processing file '%s'", filename, exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")
+    except OSError:
+        logger.error(
+            "OS error while accessing file '%s'",
+            filename,
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to download '{filename}'")
+    except Exception:
+        logger.error(
+            "Unhandled error '%s'",
+            filename,
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to download '{filename}'")
 
 
 @router.get(
