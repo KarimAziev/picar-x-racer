@@ -13,7 +13,6 @@ from app.exceptions.detection import (
     DetectionProcessError,
     DetectionProcessLoading,
 )
-from app.managers.detection.detection_process import detection_process_func
 from app.schemas.detection import DetectionSettings
 from app.types.detection import (
     DetectionControlMessage,
@@ -172,6 +171,8 @@ class DetectionService(metaclass=SingletonMeta):
             DetectionModelLoadError: If the detection model fails to load.
             Exception: For unhandled errors during initialization.
         """
+        from app.managers.detection.detection_process import detection_process_func
+
         try:
             async with self.lock:
                 if self.detection_settings.model is None:

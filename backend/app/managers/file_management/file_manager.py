@@ -62,15 +62,19 @@ class FileManager:
         file_path = Path(filename)
 
         if not file_path.exists():
+            _log.warning(f"Failed to rename: '{filename}' does not exist")
             raise FileNotFoundError(f"File '{filename}' does not exist")
 
         if not new_name:
             raise InvalidFileName(f"Invalid filename for renaming '%s'", filename)
 
         parent_dir = Path(file_name_parent_directory(new_name))
+        _log.info("Creating parent dir: %s ", parent_dir)
 
         parent_dir.mkdir(parents=True, exist_ok=True)
+        _log.info("Replacing parent file path: %s with %s", file_path, new_name)
         file_path.replace(new_name)
+        _log.info("Replaced parent file path: %s with %s", file_path, new_name)
 
     def remove_file(self, filename: str) -> bool:
         if not filename:
@@ -175,6 +179,16 @@ class FileManager:
 
         return responses, success_responses
 
+    @staticmethod
+    def get_directory_size(directory: str):
+        total_size = 0
+        for dirpath, _, filenames in os.walk(directory):
+            for f in filenames:
+                filepath = os.path.join(dirpath, f)
+                if not os.path.islink(filepath):
+                    total_size += os.path.getsize(filepath)
+        return total_size
+
     def _file_to_model(
         self, full_path: str, root_dir: Optional[str] = None
     ) -> FileDetail:
@@ -190,20 +204,27 @@ class FileManager:
             file_type = (
                 content_type.split("/").pop(0) if content_type is not None else None
             )
+            children_count = None
         else:
             content_type = "directory"
             file_type = "directory"
+            children_count = None
+            try:
+                children_count = len(os.listdir(full_path))
+            except Exception as e:
+                _log.error("An error occured %s", e)
 
         relative_path = file_to_relative(full_path, root_dir) if root_dir else full_path
         return FileDetail(
             name=name,
             path=relative_path,
-            size=stat_info.st_size if not is_directory else 0,
+            size=stat_info.st_size,
             is_dir=is_directory,
             modified=stat_info.st_mtime,
             type=file_type,
             content_type=content_type,
             duration=None,
+            children_count=children_count,
         )
 
     def list_files_recursively(
@@ -312,7 +333,7 @@ class FileManager:
             data=grouped_files,
             filter_info=filter_info,
             dir=subdir,
-            root_dir=abbreviate_path(root_dir),
+            root_dir=root_dir,
         )
 
     def get_files_tree(
@@ -349,7 +370,7 @@ class FileManager:
             data=grouped_files,
             filter_info=filter_info,
             dir=subdir,
-            root_dir=abbreviate_path(root_dir),
+            root_dir=root_dir,
         )
 
     def get_files_flat(

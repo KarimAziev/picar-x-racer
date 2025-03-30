@@ -14,12 +14,12 @@
   </ResizableContainer>
 </template>
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from "vue";
+import { computed, defineAsyncComponent, inject } from "vue";
 import { usePopupStore, useCameraStore } from "@/features/settings/stores";
 import ResizableContainer from "@/ui/ResizableContainer.vue";
-import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import type { Ref } from "vue";
 
-const isMobile = useDeviceWatcher();
+const isMobile = inject<Ref<boolean, boolean>>("isMobile");
 
 const hideCamera = import.meta.env.VITE_USE_CAMERA === "false";
 

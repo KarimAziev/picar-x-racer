@@ -12,8 +12,7 @@
       label="Download archive"
       @click="handleDownloadArchive"
       :disabled="batchButtonsDisabled"
-      severity="success"
-      outlined
+      severity="secondary"
       icon="pi pi-download"
     ></Button>
     <Button

@@ -333,3 +333,11 @@ def file_in_directory(file: str, dir: str) -> bool:
     parents = Path(file).parents
 
     return dir in [item.as_posix() for item in parents]
+
+
+resolve_absolute_path(
+    file_to_relative(
+        "/home/km/Music/picar-x-racer/robsso.mp3", "/home/km/Music/picar-x-racer"
+    ),
+    "/home/km/Music/picar-x-racer",
+)

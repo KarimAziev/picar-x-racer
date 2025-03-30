@@ -105,6 +105,7 @@ export const saveableTabs = {
   [SettingsTab.MODELS]: true,
   [SettingsTab.ROBOT]: false,
   [SettingsTab.VIDEOS]: false,
+  [SettingsTab.FILES]: false,
 };
 
 export const imgSizeOptions = generateMultiplesOf32(2000).map((value) => ({

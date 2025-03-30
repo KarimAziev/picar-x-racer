@@ -9,13 +9,6 @@
     @after-hide="handleHide"
   >
     <div class="flex items-center">
-      <Button text label="Expand all" icon="pi pi-plus" @click="expandAll" />
-      <Button
-        text
-        label="Collapse all"
-        icon="pi pi-minus"
-        @click="collapseAll"
-      />
       <div class="flex flex-auto justify-end">
         <div class="search-field">
           <InputText
@@ -71,7 +64,7 @@
             <RowWrapper
               v-bind="node"
               :draggable="false"
-              class="grid grid-cols-[4%_4%_10%_52%_15%_15%] gap-y-2 items-center h-[40px] hover:bg-mask relative"
+              class="grid grid-cols-[4%_10%_52%_15%_15%] gap-y-2 items-center h-[40px] hover:bg-mask relative"
             >
               <Cell>
                 <RadioButton
@@ -81,7 +74,6 @@
                   :value="node.path"
                 />
               </Cell>
-              <NodeExpand :path="node.path" :children="node.children" />
               <FileType
                 :path="node.path"
                 :type="node.type"
@@ -133,7 +125,6 @@ import type {
 import VirtualTree from "@/features/files/components/VirtualTree.vue";
 import Cell from "@/features/files/components/Cell.vue";
 import {
-  getExpandableIds,
   toBreadcrumbs,
   isDirectoryType,
 } from "@/features/files/components/util";
@@ -148,10 +139,8 @@ import HeaderRow from "@/features/files/components/HeaderRow.vue";
 import RowWrapper from "@/features/files/components/RowWrapper.vue";
 import Filename from "@/features/files/components/Cells/Filename.vue";
 import Size from "@/features/files/components/Cells/Size.vue";
-import NodeExpand from "@/features/files/components/Cells/NodeExpand.vue";
 import FileType from "@/features/files/components/Cells/FileType.vue";
 import ModifiedTime from "@/features/files/components/Cells/ModifiedTime.vue";
-import { mapConcat } from "@/features/files/util";
 
 const props = withDefaults(
   defineProps<{
@@ -207,7 +196,6 @@ const handleCancel = () => {
 const currentDir = ref<Nullable<string>>(props.dir);
 
 const rows = ref<GroupedFile[]>([]);
-const rootDir = ref<string>();
 const search = ref<FileFilterRequest["search"]>({
   value: "",
   field: "name",
@@ -220,30 +208,18 @@ const ordering = ref<OrderingModel>({
 });
 
 const breadcrumbHome = computed(() => ({
-  label: rootDir.value,
+  label: "/",
+  value: "/",
 }));
 
-const breadcrumbItems = computed(() =>
-  currentDir.value ? toBreadcrumbs(currentDir.value) : [],
-);
+const breadcrumbItems = computed(() => toBreadcrumbs(currentDir.value || "/"));
 
 const expandedNodes = ref<Set<string>>(new Set());
 
 const emptyMessage = ref("No data");
 
-const expandAll = () => {
-  expandedNodes.value = getExpandableIds("path", rows.value);
-};
-
-const collapseAll = () => {
-  expandedNodes.value = new Set<string>();
-};
-
-const handleSearch = useAsyncDebounce(async (value: string | undefined) => {
+const handleSearch = useAsyncDebounce(async () => {
   await fetchData();
-  if (value && value.length > 0) {
-    expandAll();
-  }
 }, 500);
 
 const handleSort = () => {
@@ -254,25 +230,20 @@ async function fetchData() {
   const messager = useMessagerStore();
   try {
     loading.value = true;
-    const response = await axios.post<FileResponseModel>(
-      mapConcat(["/api/files/list", props.scope], "/"),
-      {
-        root_dir: "~/",
-        dir: currentDir.value,
-        search: search.value,
-        filters: {
-          type: {
-            match_mode: FilterMatchMode.IN,
-            value: [],
-          },
+    const response = await axios.post<FileResponseModel>("/api/files/list", {
+      root_dir: currentDir.value,
+      search: search.value,
+      filters: {
+        type: {
+          match_mode: FilterMatchMode.IN,
+          value: [],
         },
-        ordering: ordering.value,
       },
-    );
+      ordering: ordering.value,
+    });
 
     rows.value = response.data.data;
-    currentDir.value = response.data.dir;
-    rootDir.value = response.data.root_dir;
+    currentDir.value = response.data.root_dir;
   } catch (error) {
     messager.handleError(error, "Error fetching data");
     emptyMessage.value = "Failed to fetch data";

@@ -15,7 +15,10 @@ from app.exceptions.camera import (
 from app.util.video_utils import encode
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
-from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
+
+# from wsproto import ConnectionState
+
+# from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 if TYPE_CHECKING:
     from app.services.camera.camera_service import CameraService
@@ -132,8 +135,8 @@ class StreamService(metaclass=SingletonMeta):
                     except (
                         WebSocketDisconnect,
                         ConnectionResetError,
-                        ConnectionClosedError,
-                        ConnectionClosedOK,
+                        # ConnectionClosedError,
+                        # ConnectionClosedOK,
                         KeyboardInterrupt,
                     ):
                         self.logger.info("Video stream WebSocket connection lost")
@@ -196,8 +199,8 @@ class StreamService(metaclass=SingletonMeta):
             await self.camera_service.notify_camera_error(str(e))
         except (
             WebSocketDisconnect,
-            ConnectionClosedError,
-            ConnectionClosedOK,
+            # ConnectionClosedError,
+            # ConnectionClosedOK,
             CameraShutdownInProgressError,
         ):
             self.logger.info("Video Stream disconnected")

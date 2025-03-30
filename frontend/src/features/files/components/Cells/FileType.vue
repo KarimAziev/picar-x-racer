@@ -45,26 +45,26 @@
 </template>
 
 <script setup lang="ts">
-import { inject } from "vue";
-import type { Ref } from "vue";
+import Cell from "@/features/files/components/Cell.vue";
+import {
+  isDirectoryType,
+  isImageType,
+  isLoadable,
+  isMusicType,
+  isTextFile,
+  isVideoType,
+} from "@/features/files/components/util";
+import type {
+  GroupedFile,
+  UploadingFileDetail,
+} from "@/features/files/interface";
+import AudioPlayer from "@/ui/AudioPlayer.vue";
+import ButtonIcon from "@/ui/ButtonIcon.vue";
 import Photo from "@/ui/Photo.vue";
 import { isNumber } from "@/util/guards";
 import { secondsToReadableString } from "@/util/time";
-import type {
-  UploadingFileDetail,
-  GroupedFile,
-} from "@/features/files/interface";
-import ButtonIcon from "@/ui/ButtonIcon.vue";
-import {
-  isVideoType,
-  isImageType,
-  isDirectoryType,
-  isTextFile,
-  isLoadable,
-  isMusicType,
-} from "@/features/files/components/util";
-import Cell from "@/features/files/components/Cell.vue";
-import AudioPlayer from "@/ui/AudioPlayer.vue";
+import type { Ref } from "vue";
+import { inject } from "vue";
 
 export interface Props
   extends Pick<UploadingFileDetail, "type" | "path" | "duration"> {

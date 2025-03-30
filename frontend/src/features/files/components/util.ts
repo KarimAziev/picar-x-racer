@@ -106,11 +106,12 @@ export const getExpandableIds = <DataItem>(
 };
 
 export const toBreadcrumbs = (path: string): ValueLabelOption[] => {
-  const segments = path.split("/").filter(Boolean);
+  const segments = path.split("/");
 
-  return segments.map((segment, index) => {
+  return segments.flatMap((segment, index) => {
     const value = segments.slice(0, index + 1).join("/");
-    return { label: segment, value };
+
+    return value.length > 0 ? [{ label: segment, value }] : [];
   });
 };
 

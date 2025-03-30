@@ -96,17 +96,20 @@ class FileManagerService:
         )
 
     def rename_file(self, relative_name: str, new_name: str) -> None:
+        _log.info("Renaming filename %s to %s", relative_name, new_name)
         files_cache = self.cache_manager.get_cache()
 
         full_name = resolve_absolute_path(relative_name, self.root_directory)
         new_full_name = resolve_absolute_path(new_name, self.root_directory)
+
+        _log.info("Renaming absolute filename %s to %s", full_name, new_full_name)
 
         self.file_manager.rename_file(full_name, new_full_name)
 
         file_cached_detail = files_cache.get(relative_name)
 
         if file_cached_detail:
-            file_cached_detail.modified_time = os.path.getmtime(full_name)
+            file_cached_detail.modified_time = os.path.getmtime(new_full_name)
             files_cache[new_name] = file_cached_detail
             del files_cache[relative_name]
             self.cache_manager.save_cache()

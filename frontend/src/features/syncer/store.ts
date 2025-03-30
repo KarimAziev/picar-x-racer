@@ -20,6 +20,7 @@ import {
   useDetectionDataStore,
   useDataStore,
   useMusicFileStore,
+  useFileExplorer,
 } from "@/features/files/stores";
 import { SettingsTab } from "@/features/settings/enums";
 import { useDetectionStore } from "@/features/detection";
@@ -62,6 +63,7 @@ export const useStore = defineStore("syncer", {
       const batteryStore = useBatteryStore();
       const distanceStore = useDistanceStore();
       const videoStore = useVideoStore();
+      const fileExplorer = useFileExplorer();
 
       const handleMessage = (data: WSMessageData) => {
         if (!data) {
@@ -116,7 +118,12 @@ export const useStore = defineStore("syncer", {
               }
               return detectionDataStore.fetchData();
             };
-            const mediaTypeRefreshers: { [key: string]: () => Promise<any> } = {
+            const fileExplorerRefresher = () => {
+              if (popupStore.isOpen && popupStore.tab === SettingsTab.FILES) {
+                fileExplorer.fetchData();
+              }
+            };
+            const mediaTypeRefreshers: { [key: string]: () => any } = {
               music: async () => {
                 if (popupStore.isOpen) {
                   await musicFileStore.fetchData();
@@ -126,9 +133,11 @@ export const useStore = defineStore("syncer", {
               data: dataRefresher,
               image: imageStore.fetchData,
               video: videoStore.fetchData,
+              files: fileExplorerRefresher,
             };
             const items: { type: string; file: string; msg?: string }[] =
               payload;
+
             const groupped = groupWith(
               "type",
               (item) => item.msg || item.file,
@@ -142,7 +151,9 @@ export const useStore = defineStore("syncer", {
                 `${prefix} ${msgs.length < 2 ? msgs.join(", ") : ""}`.trim();
               messager.info(msg);
 
-              mediaTypeRefreshers[mediaType]();
+              if (mediaTypeRefreshers[mediaType]) {
+                mediaTypeRefreshers[mediaType]();
+              }
             });
             break;
           }

@@ -18,13 +18,13 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent } from "vue";
+import { defineAsyncComponent, inject } from "vue";
 import { usePopupStore } from "@/features/settings/stores";
-import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import type { Ref } from "vue";
+
+const isMobile = inject<Ref<boolean, boolean>>("isMobile");
 
 const popupStore = usePopupStore();
-
-const isMobile = useDeviceWatcher();
 
 const MediaControls = defineAsyncComponent({
   loader: () => import("@/ui/MediaControls.vue"),

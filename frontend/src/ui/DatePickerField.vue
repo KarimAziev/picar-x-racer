@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, defineAsyncComponent } from "vue";
 import type {
   DatePickerProps,
   DatePickerEmitsOptions,
@@ -60,6 +60,10 @@ export interface Props
   disabled?: boolean;
   tooltip?: string;
 }
+
+const DatePicker = defineAsyncComponent({
+  loader: () => import("primevue/datepicker"),
+});
 
 const props = withDefaults(defineProps<Props>(), {
   showTime: true,

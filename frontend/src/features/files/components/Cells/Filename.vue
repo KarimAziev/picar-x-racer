@@ -10,6 +10,7 @@
         @keydown.prevent.stop.esc="handleDiscardRename"
         :name="`rename-${path}`"
         v-model="newName"
+        @blur="handleBlur"
         autofocus
         ref="inputRef"
       />
@@ -34,9 +35,8 @@
     <div
       v-else
       class="w-full block truncate"
-      @click="startRename"
       v-tooltip="name"
-      :class="{ 'cursor-pointer': !isUploadingRow }"
+      @click="startRename"
     >
       {{ name }}
     </div>
@@ -81,6 +81,12 @@ const newName = ref(props.name);
 const renaming = ref(false);
 
 const isUploadingRow = computed(() => isNumber(props.progress));
+
+const handleBlur = () => {
+  if (props.name === newName.value) {
+    handleDiscardRename();
+  }
+};
 
 const inputRef = ref<
   (ComponentPublicInstance<{}, any> & { $el: HTMLInputElement }) | null

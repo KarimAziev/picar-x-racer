@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Annotated, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Annotated
 
 TIMEZONE_UTC = zoneinfo.ZoneInfo("UTC")
@@ -338,9 +338,18 @@ class FileDetail(BaseModel):
         Field(
             ...,
             description="Whether the file is allowed to remove",
-            examples=[1, 3],
+            examples=[True, False],
         ),
     ] = True
+
+    children_count: Annotated[
+        Optional[int],
+        Field(
+            ...,
+            description="Number of children if it is a directory",
+            examples=[3],
+        ),
+    ] = None
 
 
 class GroupedFile(FileDetail):
@@ -403,6 +412,8 @@ class FilterInfo(BaseModel):
     Model offering available filtering options.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     type: Annotated[
         Optional[Union[List[ValueLabelOption], List[str]]],
         Field(
@@ -419,9 +430,6 @@ class FilterInfo(BaseModel):
             examples=[[".hef", ".pt"]],
         ),
     ] = None
-
-    class Config:
-        extra = "allow"
 
 
 class FileResponseModel(BaseModel):

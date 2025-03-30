@@ -57,6 +57,7 @@ import {
   computed,
   onMounted,
   onBeforeMount,
+  provide,
 } from "vue";
 import { RouterView } from "vue-router";
 import Messager from "@/features/messager/components/Messager.vue";
@@ -143,4 +144,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   syncStore.cleanup();
 });
+
+provide("isMobile", isMobile);
 </script>

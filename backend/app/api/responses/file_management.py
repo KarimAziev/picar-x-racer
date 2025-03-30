@@ -64,6 +64,14 @@ remove_file_responses: ResponsesDict = {
             }
         },
     },
+    400: {
+        "description": "Bad Request. Invalid filename",
+        "content": {"application/json": {"example": {"detail": "Invalid filename."}}},
+    },
+    403: {
+        "description": "Permission denied",
+        "content": {"application/json": {"example": {"detail": "Permission denied."}}},
+    },
 }
 
 

@@ -26,7 +26,12 @@ import { omit, cloneDeep } from "@/util/obj";
 import { FilterMatchMode } from "@/features/files/enums";
 import { isArray, isEmpty } from "@/util/guards";
 import { where, allPass } from "@/util/func";
-import { getBatchFilesErrorMessage } from "@/features/files/util";
+import {
+  getBatchFilesErrorMessage,
+  mapConcat,
+  expandFileName,
+} from "@/features/files/util";
+import { retrieveError } from "@/util/error";
 
 export interface State {
   data: GroupedFile[];
@@ -90,13 +95,13 @@ export const defaultState: State = {
 };
 
 export const makeFileStore = (
-  scope: APIMediaType,
+  name: string,
+  scope: Nullable<APIMediaType>,
   initialState?: Partial<
-    Pick<State, "filters" | "filter_info" | "ordering" | "search">
+    Pick<State, "filters" | "filter_info" | "ordering" | "search" | "root_dir">
   >,
-  name?: string,
 ) =>
-  defineStore(name || scope, {
+  defineStore(name, {
     state: () => ({ ...cloneDeep(defaultState), ...cloneDeep(initialState) }),
     getters: {
       mediaType() {
@@ -110,18 +115,20 @@ export const makeFileStore = (
     },
 
     actions: {
-      async fetchData() {
+      async fetchData(rootDir?: string) {
         const messager = useMessagerStore();
+        const prevRootDir = this.root_dir;
         try {
           this.loading = true;
           this.emptyMessage = defaultState["emptyMessage"];
           const response = await axios.post<FileResponseModel>(
-            `/api/files/list/${scope}`,
+            mapConcat(["/api/files/list", scope], "/"),
             {
               dir: this.dir,
               search: this.search,
               filters: this.filters,
               ordering: this.ordering,
+              root_dir: rootDir || this.root_dir,
             },
           );
           this.filter_info = response.data.filter_info;
@@ -130,7 +137,9 @@ export const makeFileStore = (
           this.root_dir = response.data.root_dir;
         } catch (error) {
           messager.handleError(error, "Error fetching data");
-          this.emptyMessage = "Failed to fetch data";
+          const errMsg = retrieveError(error);
+          this.emptyMessage = errMsg.text;
+          this.root_dir = prevRootDir;
         } finally {
           this.loading = false;
         }
@@ -140,7 +149,12 @@ export const makeFileStore = (
         const messager = useMessagerStore();
         try {
           this.removingRows[fileName] = true;
-          await removeFile(scope, fileName);
+          const absName =
+            fileName.startsWith("/") || fileName.startsWith("~/")
+              ? fileName
+              : expandFileName(fileName, this.root_dir);
+
+          await removeFile(absName);
         } catch (error) {
           messager.handleError(error);
         } finally {
@@ -160,7 +174,7 @@ export const makeFileStore = (
             { ...this.removingRows },
           );
           this.removingRows = removingHash;
-          const { data } = await batchRemoveFiles(scope, filenames);
+          const { data } = await batchRemoveFiles(filenames, scope);
           const msgParams = getBatchFilesErrorMessage(data, "remove");
           if (msgParams) {
             messager.error(msgParams.error, msgParams.title);
@@ -176,12 +190,12 @@ export const makeFileStore = (
         const messager = useMessagerStore();
         try {
           this.downloadingRows[fileName] = true;
+          const absName =
+            fileName.startsWith("/") || fileName.startsWith("~/")
+              ? fileName
+              : expandFileName(fileName, this.root_dir);
 
-          await renameFile(
-            scope,
-            fileName,
-            this.dir ? `${this.dir}/${newName}` : newName,
-          );
+          await renameFile(absName, newName);
         } catch (error) {
           messager.handleError(error);
         } finally {
@@ -195,7 +209,7 @@ export const makeFileStore = (
           this.loading = true;
           this.downloadingRows[fileName] = true;
 
-          await makeDir(scope, this.dir ? `${this.dir}/${fileName}` : fileName);
+          await makeDir(this.dir ? `${this.dir}/${fileName}` : fileName, scope);
         } catch (error) {
           messager.handleError(error);
         } finally {
@@ -233,7 +247,7 @@ export const makeFileStore = (
         const progressFn = messager.makeProgress("Downloading");
         try {
           this.downloadingRows[fileName] = true;
-          await downloadFile(scope, fileName, progressFn);
+          await downloadFile(fileName, scope, progressFn);
         } catch (error) {
           messager.handleError(error);
         } finally {
@@ -252,7 +266,7 @@ export const makeFileStore = (
             { ...this.removingRows },
           );
 
-          await downloadFilesAsArchive(filenames, scope, scope, progressFn);
+          await downloadFilesAsArchive(filenames, scope, name, progressFn);
         } catch (error) {
           messager.handleError(error);
         } finally {

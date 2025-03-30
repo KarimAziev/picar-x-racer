@@ -89,24 +89,25 @@
           textFilePopupVisible = true;
         }
       "
-      label="New text file"
-      icon="pi pi-plus"
+      label="New  file"
+      icon="pi pi-file-plus"
     ></Button>
     <Button
       severity="secondary"
       outlined
       @click="
         () => {
-          store.fetchData();
+          store.fetchData(currentDir);
         }
       "
       label="Refresh"
       icon="pi pi-refresh"
     ></Button>
+
     <Uploader
       class="!rounded-s-none"
-      v-if="uploadURL"
       :currentDir="currentDir"
+      v-if="uploadURL"
       ref="uploaderRef"
       :url="uploadURL"
       :store="store"
@@ -129,10 +130,9 @@
     </div>
   </div>
 
-  <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems">
+  <Breadcrumb :model="breadcrumbItems" :home="breadcrumbHome">
     <template #item="{ item }">
       <ButtonIcon
-        :disabled="store.dir === item.value"
         :icon="item.icon"
         text
         class="font-bold"
@@ -143,8 +143,6 @@
     </template>
   </Breadcrumb>
   <div class="flex gap-2 items-center">
-    <Button text label="Expand all" icon="pi pi-plus" @click="expandAll" />
-    <Button text label="Collapse all" icon="pi pi-minus" @click="collapseAll" />
     <template v-if="$slots.headerButtons">
       <slot name="headerButtons" />
     </template>
@@ -152,7 +150,7 @@
 
   <BlockUI :blocked="loading">
     <HeaderRow
-      class="grid grid-cols-[7%_6%_40%_15%_15%_17%] gap-y-2 items-center h-[50px] relative"
+      class="grid grid-cols-[2%_6%_40%_15%_20%_17%] gap-y-2 items-center h-[50px] relative"
       :config="columnsConfig"
       v-model:filters="store.filters"
       v-model:ordering="store.ordering"
@@ -178,19 +176,9 @@
             @move="handleMoveDrop"
             v-bind="node"
             :draggable="!store.uploadingData[node.path]"
-            class="grid grid-cols-[4%_4%_10%_32%_15%_15%_20%] gap-y-2 items-center h-[50px] hover:bg-mask relative"
+            class="grid grid-cols-[4%_10%_32%_20%_15%_20%] gap-y-2 items-center h-[50px] hover:bg-mask relative"
             :class="rowClass"
           >
-            <template v-if="$slots.nodeExpand">
-              <slot
-                name="nodeExpand"
-                :path="node.path"
-                :children="node.children"
-                v-bind="node"
-              ></slot>
-            </template>
-            <NodeExpand v-else :path="node.path" :children="node.children" />
-
             <template v-if="$slots.checkbox">
               <slot
                 name="checkbox"
@@ -325,11 +313,10 @@
       }
     "
   />
-  <DirectoryChooser
+  <GlobalDirChooser
     :scope="store.mediaType"
     v-model:visible="isDirChooseOpen"
     :header="movePopupHeader"
-    :dir="store.dir"
     @dir:submit="handleMoveMarked"
     @after-hide="
       () => {
@@ -357,8 +344,8 @@
   />
   <MakeDirectoryPopup
     v-model:visible="newDirectoryPopupVisible"
-    :currentDirectory="store.dir || store.root_dir"
-    @submit:dir="props.store.makeDir"
+    :currentDirectory="store.root_dir || store.dir"
+    @submit:dir="store.makeDir"
     @after-hide="
       () => {
         popupStore.isEscapable =
@@ -367,18 +354,18 @@
     "
   />
   <CodeEditorPopup
-    :header="!selectedTextFile?.path ? 'New file' : selectedTextFile?.path"
     :url="selectedTextFile?.url"
+    :header="!selectedTextFile?.path ? 'New file' : selectedTextFile?.path"
     :saveUrl="makeSaveURL(store.mediaType)"
     @submit:save="handleSubmitNewTextFile"
+    v-model:visible="textFilePopupVisible"
     :normalizePayload="
       (content, filename) => ({
         path: filename,
         content: content,
-        dir: store.dir,
+        dir: store.root_dir,
       })
     "
-    v-model:visible="textFilePopupVisible"
     @after-hide="
       () => {
         selectedTextFile = {};
@@ -397,7 +384,6 @@ import {
   useTemplateRef,
   defineAsyncComponent,
 } from "vue";
-import type { FileStore } from "@/features/files/store-fabric";
 import type { GroupedFile } from "@/features/files/interface";
 import InputText from "primevue/inputtext";
 import HeaderRow from "@/features/files/components/HeaderRow.vue";
@@ -409,13 +395,13 @@ import {
   makeDownloadURL,
   makeSaveURL,
   makeAudioURL,
+  makeUploadURL,
 } from "@/features/files/api";
 import VirtualTree from "@/features/files/components/VirtualTree.vue";
 import { isNumber, isEmpty } from "@/util/guards";
 
 import {
   flattenExpandedTree,
-  getExpandableIds,
   toBreadcrumbs,
   mergeRows,
 } from "@/features/files/components/util";
@@ -431,7 +417,6 @@ import ModifiedTime from "@/features/files/components/Cells/ModifiedTime.vue";
 import Size from "@/features/files/components/Cells/Size.vue";
 import Filename from "@/features/files/components/Cells/Filename.vue";
 import FileType from "@/features/files/components/Cells/FileType.vue";
-import NodeExpand from "@/features/files/components/Cells/NodeExpand.vue";
 
 import { startCase } from "@/util/str";
 import BatchActionsHeader from "@/features/files/components/BatchActionsHeader.vue";
@@ -439,8 +424,17 @@ import Uploader from "@/features/files/components/Uploader.vue";
 import Preloader from "@/features/files/components/Preloader.vue";
 import EmptyMessage from "@/features/files/components/EmptyMessage.vue";
 import DatePickerField from "@/ui/DatePickerField.vue";
-import { expandFileName } from "@/features/files/util";
+import { useFileExplorer } from "@/features/files/stores";
 import CodeEditorPopup from "@/ui/CodeEditorPopup.vue";
+import { expandFileName } from "@/features/files/util";
+
+withDefaults(
+  defineProps<{
+    rowClass?: string;
+    listClass?: string;
+  }>(),
+  {},
+);
 
 const GalleryPopup = defineAsyncComponent({
   loader: () => import("@/features/files/components/GalleryPopup.vue"),
@@ -450,22 +444,14 @@ const MakeDirectoryPopup = defineAsyncComponent({
   loader: () => import("@/features/files/components/MakeDirectoryPopup.vue"),
 });
 
-const DirectoryChooser = defineAsyncComponent({
-  loader: () => import("@/features/files/components/DirectoryChooser.vue"),
+const GlobalDirChooser = defineAsyncComponent({
+  loader: () => import("@/features/files/components/GlobalDirChooser.vue"),
 });
 const VideoGallery = defineAsyncComponent({
   loader: () => import("@/ui/VideoGallery.vue"),
 });
-
-const props = withDefaults(
-  defineProps<{
-    store: FileStore;
-    uploadURL?: string;
-    rowClass?: string;
-    listClass?: string;
-  }>(),
-  {},
-);
+const store = useFileExplorer();
+const uploadURL = computed(() => makeUploadURL(null));
 
 const uploaderRef = useTemplateRef("uploaderRef");
 
@@ -474,11 +460,10 @@ const selectedVideo = ref<GroupedFile>();
 
 const galleryPopupVisible = ref<boolean>(false);
 
-const loading = computed(() => props.store.loading);
-const currentDir = computed(() => props.store.dir);
+const loading = computed(() => store.loading);
 const expandedNodes = ref<Set<string>>(new Set());
 const markedNodes = ref<Record<string, boolean>>({});
-const emptyMessage = computed(() => props.store.emptyMessage);
+const emptyMessage = computed(() => store.emptyMessage);
 
 const popupStore = usePopupStore();
 const newDirectoryPopupVisible = ref<boolean>(false);
@@ -486,9 +471,11 @@ const newDirectoryPopupVisible = ref<boolean>(false);
 const selectedTextFile = ref<Partial<GroupedFile & { url: string }>>({});
 const textFilePopupVisible = ref<boolean>(false);
 
+const currentDir = computed(() => store.root_dir);
+
 const selectedImageIdx = ref<number>(0);
 const expandedFlattenItems = computed(() =>
-  flattenExpandedTree("path", props.store.data, expandedNodes.value),
+  flattenExpandedTree("path", store.data, expandedNodes.value),
 );
 
 const dirs = computed(() =>
@@ -509,34 +496,33 @@ const markedFilenames = computed(() =>
 );
 
 const loadingRows = computed(() => ({
-  ...props.store.removingRows,
-  ...props.store.downloadingRows,
+  ...store.removingRows,
+  ...store.downloadingRows,
 }));
 
 const rows = computed(() => {
-  if (isEmpty(props.store.uploadingData)) {
-    return props.store.data;
+  if (isEmpty(store.uploadingData)) {
+    return store.data;
   }
-  const currentDir = props.store.dir;
+  const currentDir = store.root_dir;
   if (currentDir) {
-    return mergeRows(props.store.data, currentDir, props.store.uploadingData);
+    return mergeRows(store.data, currentDir, store.uploadingData);
   }
 
-  return mergeRows(props.store.data, "", props.store.uploadingData);
+  return mergeRows(store.data, "", store.uploadingData);
 });
 
 const isAllChecked = ref<boolean>(false);
 const isDirChooseOpen = ref<boolean>(false);
 
+const breadcrumbItems = computed(() => toBreadcrumbs(store.root_dir || "/"));
+
 const breadcrumbHome = computed(() => ({
-  label: props.store.root_dir,
+  label: "/",
+  value: "/",
 }));
 
 const markedLen = computed(() => markedFilenames.value.length);
-
-const breadcrumbItems = computed(() =>
-  props.store.dir ? toBreadcrumbs(props.store.dir) : [],
-);
 
 const movePopupHeader = computed(() =>
   markedLen.value === 1
@@ -546,7 +532,7 @@ const movePopupHeader = computed(() =>
 
 const handleSubmitNewTextFile = ({ path }: { path: string }) => {
   selectedTextFile.value.path = path;
-  props.store.fetchData();
+  store.fetchData();
 };
 
 const handleCancelUpload = (filepath: string) => {
@@ -555,15 +541,15 @@ const handleCancelUpload = (filepath: string) => {
 
 const handleMoveMarked = async (targetDir: string) => {
   const filenames = markedFilenames.value;
-  await props.store.batchMoveFiles(filenames, targetDir);
+  await store.batchMoveFiles(filenames, targetDir);
   markedNodes.value = omit(filenames, markedNodes.value);
 };
 
 const handleMoveDrop = async (targetDir: string, filePaths: string[]) => {
   if (filePaths.length > 1) {
-    await props.store.batchMoveFiles(filePaths, targetDir);
+    await store.batchMoveFiles(filePaths, targetDir);
   } else {
-    await props.store.batchMoveFiles(filePaths, targetDir);
+    await store.batchMoveFiles(filePaths, targetDir);
   }
   markedNodes.value = omit(filePaths, markedNodes.value);
 };
@@ -573,19 +559,11 @@ const openCreateDirectoryPopup = async () => {
 };
 
 const handleDownloadFile = (name: string) => {
-  props.store.downloadFile(name);
+  store.downloadFile(name);
 };
 
 const handleRemoveFile = async (name: string) => {
-  await props.store.removeFile(name);
-};
-
-const expandAll = () => {
-  expandedNodes.value = getExpandableIds("path", props.store.data);
-};
-
-const collapseAll = () => {
-  expandedNodes.value = new Set<string>();
+  await store.removeFile(name);
 };
 
 const markAll = () => {
@@ -600,17 +578,14 @@ const unmarkAll = () => {
   });
 };
 
-const handleUpdateDir = (path: string) => {
-  props.store.dir = path;
-  props.store.data = [];
-  props.store.fetchData();
+const handleUpdateDir = async (path: string) => {
+  store.data = [];
+  store.search.value = "";
+  await store.fetchData(path);
 };
 
 const handleRename = (path: string, newName: string) => {
-  props.store.renameFile(
-    path,
-    expandFileName(newName, props.store.root_dir, currentDir.value),
-  );
+  store.renameFile(path, expandFileName(newName, currentDir.value));
 };
 
 const groupedItems = computed(() =>
@@ -648,15 +623,12 @@ const openSelectedVideo = (itemPath: string) => {
   }
 };
 
-const handleSearch = useAsyncDebounce(async (value: string | undefined) => {
-  await props.store.fetchData();
-  if (value && value.length > 0) {
-    expandAll();
-  }
+const handleSearch = useAsyncDebounce(async () => {
+  await store.fetchData();
 }, 500);
 
 const handleSort = () => {
-  props.store.fetchData();
+  store.fetchData();
 };
 
 const handleMarkAll = (value: boolean) => {
@@ -670,5 +642,6 @@ const handleMarkAll = (value: boolean) => {
 provide("expandedNodes", expandedNodes);
 provide("markedNodes", markedNodes);
 provide("markedFilenames", markedFilenames);
-onMounted(props.store.fetchData);
+
+onMounted(store.fetchData);
 </script>

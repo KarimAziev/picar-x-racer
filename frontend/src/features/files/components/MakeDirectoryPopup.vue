@@ -53,7 +53,7 @@ const newDirectoryPopupVisible = defineModel<boolean>("visible", {
 const newDir = ref<string>();
 
 const props = defineProps<{
-  currentDirectory?: string;
+  currentDirectory?: string | null;
 }>();
 
 const inputRef = ref<

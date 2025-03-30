@@ -12,12 +12,12 @@
   </GaugesBlock>
 </template>
 <script setup lang="ts">
-import { defineAsyncComponent } from "vue";
+import { defineAsyncComponent, inject } from "vue";
 import GaugesBlock from "@/features/controller/components/GaugesBlock.vue";
-import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import ToggleableView from "@/ui/ToggleableView.vue";
+import type { Ref } from "vue";
 
-const isMobile = useDeviceWatcher();
+const isMobile = inject<Ref<boolean, boolean>>("isMobile");
 
 const CarModelViewer = defineAsyncComponent({
   loader: () =>

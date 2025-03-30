@@ -1,9 +1,7 @@
 <template>
   <Cell>
-    <span v-if="isDirectoryType(type) && children">
-      {{ children.length }}&nbsp; items
-    </span>
-    <span v-else>{{ bytesToSize(size, 0) }}</span>
+    <span v-if="isDirectoryType(type)">{{ children_count }}&nbsp; items</span>
+    <span v-else>{{ bytesToSize(size || 0, 0) }}</span>
   </Cell>
 </template>
 
@@ -14,7 +12,7 @@ import Cell from "@/features/files/components/Cell.vue";
 import { bytesToSize } from "@/features/files/util";
 
 export interface Props
-  extends Pick<UploadingFileDetail, "children" | "size" | "type"> {
+  extends Pick<UploadingFileDetail, "size" | "type" | "children_count"> {
   disabled?: boolean;
 }
 defineProps<Props>();

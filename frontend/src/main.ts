@@ -9,7 +9,6 @@ import { RoboPreset } from "@/config/theme";
 import App from "@/App.vue";
 import router from "@/router";
 import "primeicons/primeicons.css";
-
 import "./assets/main.css";
 
 import { pt } from "@/config/theme";

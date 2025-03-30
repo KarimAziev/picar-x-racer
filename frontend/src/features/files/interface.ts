@@ -60,6 +60,7 @@ export interface FileDetail {
 
 export interface GroupedFile extends FileDetail {
   children?: GroupedFile[];
+  children_count?: number;
 }
 
 export interface UploadingFileDetail extends GroupedFile {

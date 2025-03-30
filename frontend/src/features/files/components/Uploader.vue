@@ -2,15 +2,22 @@
   <FileUpload
     :auto="true"
     :disabled="loading"
+    :chooseButtonProps="{
+      severity: 'contrast',
+      type: 'button',
+
+      ...chooseButtonProps,
+    }"
     mode="basic"
     size="small"
     name="file"
     multiple
-    outlined
     :customUpload="true"
-    @uploader="uploader"
-    v-bind="props"
-  ></FileUpload>
+    @uploader="uploadParams.uploader"
+    v-bind="omit(['chooseButtonProps', 'store'], props)"
+  >
+    <template #chooseicon><i class="pi pi-upload" /></template>
+  </FileUpload>
 </template>
 
 <script setup lang="ts">
@@ -20,6 +27,8 @@ import type { UploadingFileDetail } from "@/features/files/interface";
 import type { FileUploadProps } from "primevue/fileupload";
 import { uploadingFileToRow } from "@/features/files/components/util";
 import { useFileUploader } from "@/composables/useFileUploader";
+import { omit } from "@/util/obj";
+import { expandFileName } from "@/features/files/util";
 
 export interface Props
   extends Omit<
@@ -34,16 +43,22 @@ export interface Props
   > {
   url: string;
   store: FileStore;
+  loading?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   chooseLabel: "Upload",
 });
 
-const loading = computed(() => props.store.loading);
-const currentDir = computed(() => props.store.dir);
+const currentDir = computed(() =>
+  props.store.dir
+    ? expandFileName(props.store.dir, props.store.root_dir)
+    : props.store.root_dir,
+);
 
-const { uploader, cancelSources } = useFileUploader({
+const loading = computed(() => props.store.loading);
+
+const uploadParams = useFileUploader({
   url: props.url || "",
   dir: currentDir,
   onBeforeStart: (files, dir) => {
@@ -73,13 +88,17 @@ const { uploader, cancelSources } = useFileUploader({
 });
 
 const handleCancelUpload = (filepath: string) => {
-  if (cancelSources.value[filepath]) {
-    cancelSources.value[filepath].cancel();
+  if (uploadParams.cancelSources.value[filepath]) {
+    uploadParams.cancelSources.value[filepath].cancel();
     if (props.store.uploadingData[filepath]) {
       delete props.store.uploadingData[filepath];
     }
   }
 };
 
-defineExpose({ handleCancelUpload, uploader, cancelSources });
+defineExpose({
+  handleCancelUpload,
+  uploader: uploadParams.uploader,
+  cancelSources: uploadParams.cancelSources,
+});
 </script>

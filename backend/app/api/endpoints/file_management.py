@@ -18,17 +18,12 @@ from app.api.responses.file_management import (
     download_video_responses,
     image_preview_responses,
     remove_file_responses,
-    remove_file_responses_in_aliased_dir,
     upload_responses,
     video_stream_responses,
     write_file_responses,
 )
 from app.core.logger import Logger
-from app.exceptions.file_exceptions import (
-    DefaultFileRemoveAttempt,
-    InvalidFileName,
-    InvalidMediaType,
-)
+from app.exceptions.file_exceptions import DefaultFileRemoveAttempt, InvalidFileName
 from app.exceptions.music import ActiveMusicTrackRemovalError
 from app.managers.file_management.file_manager import FileManager
 from app.schemas.file_filter import (
@@ -52,12 +47,15 @@ from app.schemas.file_management import (
     UploadFileResponse,
 )
 from app.services.file_management.file_manager_service import FileManagerService
+from app.services.media.music_file_service import MusicFileService
 from app.util.atomic_write import atomic_write
 from app.util.doc_util import build_response_description
+from app.util.file_handlers import find_file_handler
 from app.util.file_stream import stream_file_response
 from app.util.file_util import (
     expand_home_dir,
     file_name_parent_directory,
+    file_to_relative,
     resolve_absolute_path,
     zip_files_generator,
 )
@@ -88,7 +86,7 @@ abs_file_name_query = Annotated[
     str,
     Query(
         ...,
-        description="Absolute file path to remove. Must start with '/' (for an absolute path) or '~/' (to refer to the home directory), followed by the path.",
+        description="Absolute file path. Must start with '/' (for an absolute path) or '~/' (to refer to the home directory), followed by the path.",
         pattern=r"^(?:/|~/).+$",
     ),
 ]
@@ -108,6 +106,25 @@ relative_file_name_query = Annotated[
 ]
 
 manager = Annotated[FileManagerService, Depends(deps.get_directory_handler_by_alias)]
+
+photo_file_manager_dep = Annotated[
+    FileManagerService, Depends(deps.get_photo_file_manager)
+]
+video_file_manager_dep = Annotated[
+    FileManagerService, Depends(deps.get_video_file_manager)
+]
+music_file_manager_dep = Annotated[
+    MusicFileService, Depends(deps.get_music_file_service)
+]
+data_file_manager_dep = Annotated[
+    FileManagerService, Depends(deps.get_data_file_manager)
+]
+
+global_file_manager_dep = Annotated[FileManager, Depends(deps.get_custom_file_manager)]
+
+alias_handlers = Annotated[
+    Dict[AliasDir, FileManagerService], Depends(deps.get_directory_handlers)
+]
 
 
 @router.post(
@@ -145,7 +162,7 @@ async def upload_custom_file(
             await connection_manager.broadcast_json(
                 {
                     "type": "uploaded",
-                    "payload": [{"file": file.filename, "type": dir}],
+                    "payload": [{"file": file.filename, "type": "files"}],
                 }
             )
         return {"success": True, "filename": file.filename}
@@ -199,21 +216,36 @@ async def upload_file_in_aliased_dir(
 async def remove_file(
     request: Request,
     filename: abs_file_name_query,
-    file_manager: "FileManager" = Depends(deps.get_custom_file_manager),
+    handlers: alias_handlers,
+    file_manager: global_file_manager_dep,
 ):
     """
     Remove a file for the specified media type.
     """
-
-    filename = expand_home_dir(filename)
-
     connection_manager: "ConnectionService" = request.app.state.app_manager
+    filename = expand_home_dir(filename)
+    alias_dir, handler = find_file_handler(filename, handlers)
+
     logger.info("Removing file '%s'", filename)
     try:
-        result = await asyncio.to_thread(file_manager.remove_file, filename)
+
+        if handler:
+            result = await asyncio.to_thread(
+                handler.remove_file, file_to_relative(filename, handler.root_directory)
+            )
+        else:
+            result = await asyncio.to_thread(file_manager.remove_file, filename)
         if result:
             await connection_manager.broadcast_json(
-                {"type": "removed", "payload": [{"file": filename, "type": ""}]}
+                {
+                    "type": "removed",
+                    "payload": [
+                        {
+                            "file": filename,
+                            "type": alias_dir.value if alias_dir else "files",
+                        }
+                    ],
+                }
             )
         return {"success": result, "filename": filename}
     except (ActiveMusicTrackRemovalError, DefaultFileRemoveAttempt) as e:
@@ -222,53 +254,22 @@ async def remove_file(
     except FileNotFoundError:
         logger.warning("File %s not found", filename)
         raise HTTPException(status_code=404, detail="File not found")
-    except Exception:
+    except InvalidFileName:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    except PermissionError as e:
+        logger.error("Permission denied: %s", e)
+        raise HTTPException(status_code=403, detail="Permission denied")
+    except OSError:
         logger.error(
-            "Unhandled error while removing file '%s'",
+            "OS error while removing file '%s'",
             filename,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=f"Failed to remove '{filename}'")
-
-
-@router.delete(
-    "/files/remove/{alias_dir}",
-    response_model=BatchFileResult,
-    response_description="A response indicating the result of the removal operation.",
-    responses=remove_file_responses_in_aliased_dir,
-)
-async def remove_file_in_aliased_dir(
-    request: Request,
-    alias_dir: alias_dir_param,
-    filename: relative_file_name_query,
-    handler: manager,
-):
-    """
-    Remove a file for the specified media type.
-    """
-
-    connection_manager: "ConnectionService" = request.app.state.app_manager
-    logger.info("Removing file '%s' of type '%s'", filename, alias_dir)
-    try:
-        if not handler:
-            raise InvalidMediaType("Invalid media type.")
-        result = await asyncio.to_thread(handler.remove_file, filename)
-        if result:
-            await connection_manager.broadcast_json(
-                {"type": "removed", "payload": [{"file": filename, "type": alias_dir}]}
-            )
-        return {"success": result, "filename": filename}
-    except (ActiveMusicTrackRemovalError, DefaultFileRemoveAttempt) as e:
-        logger.warning(str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-    except FileNotFoundError:
-        logger.warning("File %s not found", filename)
-        raise HTTPException(status_code=404, detail="File not found")
     except Exception:
         logger.error(
-            "Unhandled error while removing file '%s' with media type '%s'",
+            "Unhandled error while removing file '%s'",
             filename,
-            alias_dir,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=f"Failed to remove '{filename}'")
@@ -552,13 +553,17 @@ def list_files(
     Return a list of files for the specified media type.
     """
 
-    result = file_manager.get_files_in_dir(
-        root_dir=request_data.root_dir,
-        filter_model=request_data.filters,
-        search=request_data.search,
-        ordering=request_data.ordering,
-    )
-    return result
+    try:
+        result = file_manager.get_files_in_dir(
+            root_dir=request_data.root_dir,
+            filter_model=request_data.filters,
+            search=request_data.search,
+            ordering=request_data.ordering,
+        )
+        return result
+    except PermissionError as e:
+        logger.error("Permission denied: %s", e)
+        raise HTTPException(status_code=403, detail="Permission denied")
 
 
 @router.post(
@@ -573,13 +578,17 @@ def list_files_in_aliased_dir(
     """
     Return a list of files for the specified media type.
     """
-    result = manager.get_files_tree(
-        filter_model=request_data.filters,
-        search=request_data.search,
-        ordering=request_data.ordering,
-        subdir=request_data.dir,
-    )
-    return result
+    try:
+        result = manager.get_files_tree(
+            filter_model=request_data.filters,
+            search=request_data.search,
+            ordering=request_data.ordering,
+            subdir=request_data.dir,
+        )
+        return result
+    except PermissionError as e:
+        logger.error("Permission denied: %s", e)
+        raise HTTPException(status_code=403, detail="Permission denied")
 
 
 @router.get(
@@ -695,35 +704,87 @@ async def mkdir_in_aliased_dir(
 
 
 @router.post(
-    "/files/rename/{alias_dir}",
+    "/files/rename",
     response_model=RenameFileResponse,
-    responses=alias_dir_validation_error_response,
 )
-async def rename_file_in_aliased_dir(
+async def rename_file(
     request: Request,
-    alias_dir: alias_dir_param,
     request_body: RenameFileRequest,
-    manager: manager,
+    handlers: alias_handlers,
+    file_manager: global_file_manager_dep,
 ):
     """
     Rename a file or directory for the specified media type.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
+
     filename = request_body.filename
     new_name = request_body.new_name
-    old_file_path = pathlib.Path(os.path.join(manager.root_directory, filename))
-    file_path = pathlib.Path(os.path.join(manager.root_directory, new_name))
-    await asyncio.to_thread(file_path.parent.mkdir, exist_ok=True, parents=True)
-    await asyncio.to_thread(old_file_path.rename, file_path)
-    await connection_manager.broadcast_json(
-        {"type": "renamed", "payload": [{"type": alias_dir, "file": filename}]}
+    alias_dir, handler = find_file_handler(filename, handlers)
+    logger.info(
+        "renaming filename %s to %s, alias_dir=%s", filename, new_name, alias_dir
     )
-    return {
-        "success": file_path.exists() and not old_file_path.exists(),
-        "error": None,
-        "filename": filename,
-        "new_name": new_name,
-    }
+    try:
+        if handler:
+            await asyncio.to_thread(
+                handler.rename_file,
+                file_to_relative(filename, handler.root_directory),
+                file_to_relative(new_name, handler.root_directory),
+            )
+        else:
+            await asyncio.to_thread(
+                file_manager.rename_file,
+                filename,
+                new_name,
+            )
+
+        logger.info("Renamed file")
+        await connection_manager.broadcast_json(
+            {
+                "type": "renamed",
+                "payload": [
+                    {
+                        "type": alias_dir.value if alias_dir else "files",
+                        "file": filename,
+                    }
+                ],
+            }
+        )
+        logger.info("New name exists")
+        return {
+            "success": os.path.exists(new_name),
+            "error": None,
+            "filename": filename,
+            "new_name": new_name,
+        }
+    except FileNotFoundError as e:
+        logger.error("Failed to rename file: %s", e)
+        raise HTTPException(status_code=404, detail="File not found")
+    except InvalidFileName:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    except PermissionError as e:
+        logger.error("Permission denied: %s", e)
+        raise HTTPException(status_code=403, detail="Permission denied")
+    except OSError:
+        logger.error(
+            "OS error while renaming file '%s' to '%s'",
+            filename,
+            new_name,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Failed to rename '{filename}' to '{new_name}'"
+        )
+    except Exception:
+        logger.error(
+            "Unhandled error while renaming file '%s' to '%s'",
+            filename,
+            new_name,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Failed to rename '{filename}' to '{new_name}'"
+        )
 
 
 @router.post(
@@ -743,7 +804,7 @@ async def move_files(
         file_manager.batch_move_files, request_body.filenames, request_body.dir
     )
     success_responses: List[Dict[str, str]] = [
-        {**item, "type": request_body.dir} for item in success_responses
+        {**item, "type": "files"} for item in success_responses
     ]
     if success_responses:
         await connection_manager.broadcast_json(
@@ -825,11 +886,10 @@ async def write_file(
     Save or update the content of a file.
     """
     try:
-        full_path = resolve_absolute_path(payload.path, dir)
+        full_path = resolve_absolute_path(payload.path, payload.dir)
         logger.info(
-            "Writing the file %s, resolved dir %s, payload.dir %s",
+            "Writing the file %s, payload.dir %s",
             full_path,
-            dir,
             payload.dir,
         )
         with atomic_write(full_path, mode="w") as f:

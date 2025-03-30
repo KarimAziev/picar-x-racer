@@ -42,26 +42,6 @@ const DetectionTheme = defineAsyncComponent({
   errorComponent: ErrorComponent,
 });
 
-/**
- * const VideoSettings = defineAsyncComponent({
- *   loader: () =>
- *     import("@/features/settings/components/camera/VideoSettings.vue"),
- *   loadingComponent: Skeleton,
- *   delay: 0,
- *   errorComponent: ErrorComponent,
- * });
- */
-
-/**
- * const VideoDeviceSelect = defineAsyncComponent({
- *   loader: () =>
- *     import("@/features/settings/components/camera/VideoDeviceSelect.vue"),
- *   loadingComponent: Skeleton,
- *   delay: 0,
- *   errorComponent: ErrorComponent,
- * });
- */
-
 const Shutdown = defineAsyncComponent({
   loader: () => import("@/features/settings/components/system/Shutdown.vue"),
   loadingComponent: Skeleton,

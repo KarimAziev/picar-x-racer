@@ -3,6 +3,8 @@ import type {
   BatchFileStatus,
   FilterFieldStringArray,
 } from "@/features/files/interface";
+import { Nullable } from "@/util/ts-helpers";
+import { allPass } from "@/util/func";
 
 export function bytesToSize(bytes: number, decimals = 1) {
   const sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "YB"];
@@ -89,3 +91,14 @@ export const mapChildren = <DataItem>(
 
 export const isPlainFilter = (filter: any): filter is FilterFieldStringArray =>
   filter && Object.hasOwn(filter, "match_mode") && filter.match_mode;
+
+export const mapConcat = (vals: Nullable<string>[], separator = "") =>
+  vals.filter((v) => v).join(separator);
+
+export const expandFileName = (
+  file: string,
+  ...dirs: (string | null | undefined)[]
+) => {
+  const filteredDirs = dirs.filter(allPass([isString, (v) => v.length > 0]));
+  return [...filteredDirs, file].join("/");
+};

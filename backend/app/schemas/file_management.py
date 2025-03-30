@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from app.util.file_util import expand_home_dir
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Annotated
 
 
@@ -140,14 +141,24 @@ class RenameFileRequest(BaseModel):
 
     filename: str = Field(
         ...,
-        description="The current name of the file (relative to the media type directory) to be renamed.",
-        examples=["my_photo.jpg"],
+        description=f"Absolute file path to rename. "
+        "Must start with '/' (for an absolute path) or '~/' (to refer to the home directory), "
+        "followed by the path.",
+        examples=["~/my_photo.jpg"],
+        pattern=r"^(?:/|~/).+$",
     )
     new_name: str = Field(
         ...,
-        description="The new filename to assign to the file (relative to the media type directory).",
-        examples=["my_new_photo.jpg"],
+        description=f"The new name. Absolute file path. "
+        "Must start with '/' (for an absolute path) or '~/' (to refer to the home directory), "
+        "followed by the path.",
+        examples=["~/my_new_photo.jpg"],
+        pattern=r"^(?:/|~/).+$",
     )
+
+    @field_validator("filename", "new_name", mode="before")
+    def expand_home_directory(cls, value: str) -> str:
+        return expand_home_dir(value)
 
 
 class RenameFileResponse(RenameFileRequest):

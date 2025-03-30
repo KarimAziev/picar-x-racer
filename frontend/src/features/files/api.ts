@@ -1,33 +1,63 @@
 import axios from "axios";
 import { APIMediaType, BatchFileStatus } from "@/features/files/interface";
 import { retrieveError } from "@/util/error";
-import { extractContentDispositionFilename } from "@/features/files/util";
+import {
+  extractContentDispositionFilename,
+  mapConcat,
+} from "@/features/files/util";
+import { Nullable } from "@/util/ts-helpers";
 
-export const makeImagePreviewURL = (path: string, mediaType: APIMediaType) =>
-  `/api/files/preview-image/${mediaType}?filename=${encodeURIComponent(path)}`;
-export const makeVideoPreviewURL = (path: string, mediaType: APIMediaType) =>
-  `/api/files/preview-video/${mediaType}?filename=${encodeURIComponent(path)}`;
-export const makeVideoURL = (path: string, mediaType: APIMediaType) =>
-  `/api/files/video-stream/${mediaType}?filename=${encodeURIComponent(path)}`;
+export const makeImagePreviewURL = (
+  path: string,
+  mediaType: Nullable<APIMediaType>,
+) =>
+  `${mapConcat(
+    ["/api/files/preview-image", mediaType],
+    "/",
+  )}?filename=${encodeURIComponent(path)}`;
 
-export const makeAudioURL = (path: string, mediaType: APIMediaType) =>
-  `/api/files/audio-stream/${mediaType}?filename=${encodeURIComponent(path)}`;
+export const makeVideoPreviewURL = (
+  path: string,
+  mediaType: Nullable<APIMediaType>,
+) =>
+  `${mapConcat(
+    ["/api/files/preview-video", mediaType],
+    "/",
+  )}?filename=${encodeURIComponent(path)}`;
 
-export const makeUploadURL = (mediaType: APIMediaType) =>
-  `/api/files/upload/${mediaType}`;
+export const makeVideoURL = (path: string, mediaType: Nullable<APIMediaType>) =>
+  `${mapConcat(
+    ["/api/files/video-stream", mediaType],
+    "/",
+  )}?filename=${encodeURIComponent(path)}`;
 
-export const makeDownloadURL = (mediaType: APIMediaType, fileName: string) =>
-  `/api/files/download/${mediaType}?filename=${encodeURIComponent(fileName)}`;
+export const makeAudioURL = (path: string, mediaType: Nullable<APIMediaType>) =>
+  `${mapConcat(
+    ["/api/files/audio-stream", mediaType],
+    "/",
+  )}?filename=${encodeURIComponent(path)}`;
 
-export const makeSaveURL = (mediaType: APIMediaType) =>
-  `/api/files/write/${mediaType}`;
+export const makeUploadURL = (mediaType: Nullable<APIMediaType>) =>
+  mapConcat(["/api/files/upload", mediaType], "/");
+
+export const makeDownloadURL = (
+  fileName: string,
+  mediaType: Nullable<APIMediaType>,
+) =>
+  `${mapConcat(
+    ["/api/files/download", mediaType],
+    "/",
+  )}?filename=${encodeURIComponent(fileName)}`;
+
+export const makeSaveURL = (mediaType: Nullable<APIMediaType>) =>
+  mapConcat(["/api/files/write", mediaType], "/");
 
 export const downloadFile = async (
-  mediaType: APIMediaType,
   fileName: string,
+  mediaType: Nullable<APIMediaType>,
   onProgress?: (progress: number) => void,
 ) => {
-  const response = await axios.get(makeDownloadURL(mediaType, fileName), {
+  const response = await axios.get(makeDownloadURL(fileName, mediaType), {
     responseType: "blob",
     onDownloadProgress: (progressEvent) => {
       if (progressEvent.total) {
@@ -53,13 +83,13 @@ export const downloadFile = async (
 
 export const downloadFilesAsArchive = async (
   fileNames: string[],
-  aliasDir?: string,
+  aliasDir?: Nullable<string>,
   downloadName?: string,
   onProgress?: (progress: number) => void,
 ) => {
   try {
     const response = await axios.post<Blob>(
-      [`/api/files/download/archive`, aliasDir].filter((v) => v).join("/"),
+      mapConcat(["/api/files/download/archive", aliasDir], "/"),
       {
         archive_name: downloadName || aliasDir || "files_archive.zip",
         filenames: fileNames,
@@ -104,60 +134,45 @@ export const downloadFilesAsArchive = async (
   }
 };
 
-export const removeFile = (mediaType: APIMediaType, file: string) =>
+export const removeFile = (file: string) =>
   axios.delete<BatchFileStatus>(
-    `/api/files/remove/${mediaType}?filename=${encodeURIComponent(file)}`,
+    `/api/files/remove?filename=${encodeURIComponent(file)}`,
   );
 
 export const batchRemoveFiles = (
-  mediaType: APIMediaType,
   filenames: string[],
+  mediaType: Nullable<APIMediaType>,
 ) =>
-  axios.post<BatchFileStatus[]>(`/api/files/remove-batch/${mediaType}`, {
-    filenames,
-  });
+  axios.post<BatchFileStatus[]>(
+    mapConcat(["/api/files/remove-batch", mediaType], "/"),
+    {
+      filenames,
+    },
+  );
 
 export const batchMoveFiles = (
-  mediaType: APIMediaType,
+  mediaType: Nullable<APIMediaType>,
   filenames: string[],
   dir: string,
 ) =>
-  axios.post<BatchFileStatus[]>(`/api/files/move/${mediaType}`, {
-    filenames,
-    dir,
-  });
+  axios.post<BatchFileStatus[]>(
+    mapConcat(["/api/files/move", mediaType], "/"),
+    {
+      filenames,
+      dir,
+    },
+  );
 
-export const renameFile = (
-  mediaType: APIMediaType,
-  filename: string,
-  new_name: string,
-) =>
-  axios.post<BatchFileStatus[]>(`/api/files/rename/${mediaType}`, {
+export const renameFile = (filename: string, new_name: string) =>
+  axios.post<BatchFileStatus[]>("/api/files/rename", {
     filename,
     new_name,
   });
 
-export const makeDir = (mediaType: APIMediaType, filename: string) =>
-  axios.post<BatchFileStatus[]>(`/api/files/mkdir/${mediaType}`, {
-    filename,
-  });
-
-export const loadTextFile = async (
-  mediaType: APIMediaType,
-  fileName: string,
-  onProgress?: (progress: number) => void,
-) =>
-  await axios.get<string>(makeDownloadURL(mediaType, fileName), {
-    responseType: "text",
-    onDownloadProgress: (progressEvent) => {
-      if (progressEvent.total) {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total,
-        );
-
-        if (onProgress) {
-          onProgress(percentCompleted);
-        }
-      }
+export const makeDir = (filename: string, mediaType: Nullable<APIMediaType>) =>
+  axios.post<BatchFileStatus[]>(
+    mapConcat(["/api/files/mkdir", mediaType], "/"),
+    {
+      filename,
     },
-  });
+  );

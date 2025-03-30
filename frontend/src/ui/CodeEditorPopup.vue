@@ -1,16 +1,12 @@
 <template>
   <Dialog
-    :content-class="
-      isMaximized
-        ? 'w-full h-full p-10'
-        : 'w-[95vw] sm:w-[600px] md:w-[700px] lg:w-[1000px] xl:w-[1200px] min-h-[55vh] p-10'
-    "
-    :header="header || path"
+    :content-class="contentClass"
+    :header="path"
     v-model:visible="visible"
-    dismissableMask
+    :closeOnEscape="false"
+    closable
     @show="openPopup"
     @hide="afterHide"
-    maximizable
     @maximize="
       () => {
         isMaximized = true;
@@ -21,8 +17,13 @@
         isMaximized = false;
       }
     "
-    modal
     @after-hide="afterHide"
+    v-bind="
+      omit(
+        ['url', 'path', 'saveUrl', 'normalizePayload', 'responseContentProp'],
+        props,
+      )
+    "
   >
     <template #header>
       <div v-if="!path" class="flex flex-col">
@@ -41,10 +42,11 @@
           {{ invalidMessages.filename }}&nbsp;
         </div>
       </div>
-      <div v-else>{{ header || path }}</div>
+      <div v-else>{{ path }}</div>
       <div class="flex-auto flex justify-end">
         <SelectField
           class="w-40"
+          label="Language"
           :options="languagesOptions"
           v-model="selectedLanguage"
           @update:model-value="
@@ -59,6 +61,8 @@
     <EmptyMessage v-else-if="emptyMessage" :message="emptyMessage" />
     <div style="position: relative">
       <CodeMirror
+        @search:open="handleSearchOpen"
+        @search:close="handleSearchClose"
         :class="heightClass"
         v-model:model-value="content"
         @update:model-value="handleValidateText"
@@ -68,13 +72,6 @@
             : guessedLanguage
         "
       />
-
-      <!-- <MonacoEditor
-        :class="heightClass"
-        :language="selectedLanguage || guessedLanguage?.name"
-        v-model:model-value="content"
-        @update:model-value="handleValidateText"
-      /> -->
     </div>
     <Skeleton v-if="loading" :class="heightClass"></Skeleton>
     <div v-if="isNumber(progress)">
@@ -104,33 +101,25 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, ComponentPublicInstance, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import axios from "axios";
-/**
- * import * as monaco from "monaco-editor";
- */
+import type { DialogProps } from "primevue/dialog";
 import { usePopupStore } from "@/features/settings/stores";
 import { retrieveError } from "@/util/error";
 import Preloader from "@/features/files/components/Preloader.vue";
 import EmptyMessage from "@/features/files/components/EmptyMessage.vue";
 import { isNumber, isEmptyString } from "@/util/guards";
 import type { Nullable } from "@/util/ts-helpers";
-/**
- * import MonacoEditor from "@/ui/MonacoEditor.vue";
- */
-/**
- * import { startCase } from "@/util/str";
- */
 import SelectField from "@/ui/SelectField.vue";
-/**
- * import { findLang } from "@/util/monaco";
- */
+
 import {
   findLang,
   getLanguageOptions,
   mapLanguagesHash,
 } from "@/util/codemirror";
 import CodeMirror from "@/ui/CodeMirror.vue";
+import { omit } from "@/util/obj";
+import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
 
 const popupStore = usePopupStore();
 
@@ -139,36 +128,71 @@ const loading = ref(false);
 const saving = ref(false);
 const emptyMessage = ref<Nullable<string>>(null);
 
-const props = defineProps<{
+type NormalizePayload = (content: string, filename: string) => any;
+
+export interface Props
+  extends Omit<
+    DialogProps,
+    "visible" | "header" | "contentClass" | "closeOnEscape" | "closable"
+  > {
   path?: string;
-  header?: string;
   url?: string;
   saveUrl?: string;
-  dir?: Nullable<string>;
-}>();
+  normalizePayload: NormalizePayload;
+  responseContentProp?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  responseContentProp: "content",
+  maximizable: true,
+  modal: true,
+  dismissableMask: true,
+  autoZIndex: true,
+  showHeader: true,
+  draggable: true,
+});
+
+const closeOnEscape = ref(true);
+
+const handleSearchOpen = () => {
+  closeOnEscape.value = false;
+};
+
+const handleSearchClose = async () => {
+  await nextTick();
+  closeOnEscape.value = true;
+};
+
+const maybeClose = () => {
+  if (closeOnEscape.value) {
+    handleCancel();
+  }
+};
+const { addKeyEventListeners, removeKeyEventListeners } = useKeyboardHandlers({
+  Escape: maybeClose,
+});
+
+const visible = defineModel<boolean>("visible", {
+  required: true,
+});
 
 const invalidMessages = ref<{
   filename: Nullable<string>;
   text: Nullable<string>;
 }>({ filename: null, text: null });
 
-const visible = defineModel<boolean>("visible", {
-  required: true,
-});
-
 const isLangManuallyChoosen = ref(false);
 
 const languagesOptions = computed(() => getLanguageOptions());
+const heightClass = computed(() =>
+  isMaximized.value ? "min-h-[90vh]" : "min-h-[55vh]",
+);
 
-/**
- * const languages = computed(() => monaco.languages.getLanguages());
- * const languagesOptions = computed(() =>
- *   languages.value.map((lang) => ({
- *     label: (lang.aliases && lang.aliases[0]) || startCase(lang.id),
- *     value: lang.id,
- *   })),
- * );
- */
+const contentClass = computed(() =>
+  isMaximized.value
+    ? "w-[100vw] h-[100vh] p-10"
+    : "w-[95vw] sm:w-[600px] md:w-[700px] lg:w-[1000px] xl:w-[1200px] min-h-[55vh] p-10",
+);
 
 const progress = ref<Nullable<number>>(null);
 
@@ -186,36 +210,19 @@ const guessedLanguage = computed(() => {
   }
   return findLang(filePath);
 });
-const getCodemirrorLang = (name?: string) => {
-  if (!name) {
-    return;
-  }
 
-  return languagesHash.value.get(name);
-};
 const selectedLanguage = ref(guessedLanguage.value?.name);
-/**
- * const guessedLanguage = computed(() =>
- *   findLang(
- *     (props.path || filePathName.value)?.split("/").pop() || "",
- *     languages.value,
- *     content.value || origContent.value,
- *   ),
- * );
- *
- * const selectedLanguage = ref<string | undefined | null>(
- *   guessedLanguage.value?.id,
- * );
- */
-
-const heightClass = computed(() =>
-  isMaximized.value ? "min-h-[90vh]" : "min-h-[55vh]",
+const isDisabled = computed(
+  () =>
+    !!invalidMessages.value.filename ||
+    !!invalidMessages.value.text ||
+    saving.value ||
+    loading.value ||
+    origContent.value === content.value,
 );
 
-const textAreaRef =
-  ref<
-    Nullable<ComponentPublicInstance<{}, any> & { $el: HTMLTextAreaElement }>
-  >(null);
+const getCodemirrorLang = (name?: string) =>
+  name ? languagesHash.value.get(name) : undefined;
 
 const handleValidateText = (newValue?: Nullable<string>) => {
   if (newValue && !isEmptyString(newValue.trim())) {
@@ -236,17 +243,10 @@ const handleValidateFilename = (newValue?: Nullable<string>) => {
     invalidMessages.value.filename = "Required";
   }
 };
-const isDisabled = computed(
-  () =>
-    !!invalidMessages.value.filename ||
-    !!invalidMessages.value.text ||
-    saving.value ||
-    loading.value ||
-    origContent.value === content.value,
-);
 
 const openPopup = async () => {
   popupStore.isEscapable = false;
+  addKeyEventListeners();
   try {
     if (!props.url) {
       return;
@@ -274,30 +274,25 @@ const openPopup = async () => {
     progress.value = null;
     loading.value = false;
   }
-
-  await nextTick();
-  const inputEl = textAreaRef.value?.$el;
-  if (inputEl) {
-    inputEl?.focus();
-  }
 };
 
 const handleSave = async () => {
-  if (!props.saveUrl) {
+  const filename = props.path || filePathName.value;
+
+  if (!props.saveUrl || !content.value || !filename) {
     return;
   }
   try {
     emptyMessage.value = null;
     saving.value = true;
-    const data = {
-      path: props.path || filePathName.value,
-      content: content.value,
-      dir: props.dir,
-    };
-    const response = await axios.put(props.saveUrl, data);
+    const payload = props.normalizePayload(content.value, filename);
 
-    if (response.data.content) {
-      origContent.value = response.data.content;
+    const response = await axios.put(props.saveUrl, payload);
+    const savedContent =
+      props.responseContentProp && response.data[props.responseContentProp];
+
+    if (savedContent) {
+      origContent.value = savedContent;
       emit("submit:save", response.data);
     }
   } catch (error) {
@@ -313,16 +308,9 @@ const handleCancel = () => {
   afterHide();
 };
 
-watch(
-  () => guessedLanguage.value,
-  (lang) => {
-    if (lang && !isLangManuallyChoosen.value) {
-      selectedLanguage.value = lang.name;
-    }
-  },
-);
-
 const afterHide = () => {
+  removeKeyEventListeners();
+  closeOnEscape.value = true;
   invalidMessages.value.text = null;
   invalidMessages.value.filename = null;
   filePathName.value = null;
@@ -335,4 +323,13 @@ const afterHide = () => {
   progress.value = null;
   emit("after-hide");
 };
+
+watch(
+  () => guessedLanguage.value,
+  (lang) => {
+    if (lang && !isLangManuallyChoosen.value) {
+      selectedLanguage.value = lang.name;
+    }
+  },
+);
 </script>
