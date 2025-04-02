@@ -126,6 +126,11 @@ class BatteryService(metaclass=SingletonMeta):
             ConnectionEvent.LAST_CONNECTION.value, self._cancel_broadcast_task
         )
         await self._cancel_broadcast_task()
+        try:
+            self._logger.info("Closing ADC battery adapter")
+            self.battery_adapter.close()
+        except Exception as e:
+            self._logger.error("Failed to close ADC battery adapter: %s", e)
 
     async def broadcast_state(self) -> Tuple[Optional[float], Optional[float]]:
         """

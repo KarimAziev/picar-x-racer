@@ -6,7 +6,7 @@ from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from app.schemas.config import ConfigSchema
 from robot_hat import MotorConfig, MotorFabric, MotorService, ServoService
 
-logger = Logger(name=__name__)
+logger = Logger(name=__name__, app_name="px_robot")
 
 if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
@@ -268,3 +268,37 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 errno=e.errno,
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
+
+    def cleanup(self):
+        """
+        Clean up hardware resources by stopping all motors and gracefully closing all
+        associated I2C connections for both motors and servos.
+        """
+
+        self.stop()
+
+        for service in [
+            self.motor_controller.left_motor,
+            self.motor_controller.right_motor,
+        ]:
+            try:
+                logger.info("Closing speed pin for %s motor", service.name)
+                service.speed_pin.close()
+            except Exception as err:
+                logger.error(
+                    "Error closing speed pin for %s motor: %s", service.name, err
+                )
+            try:
+                logger.info("Closing direction pin for %s motor", service.name)
+                service.direction_pin.close()
+            except Exception as err:
+                logger.error(
+                    "Error closing direction pin for %s motor: %s", service.name, err
+                )
+
+        for service in [self.cam_pan_servo, self.cam_tilt_servo, self.steering_servo]:
+            try:
+                logger.info("Closing servo %s", service.name)
+                service.servo.close()
+            except Exception as err:
+                logger.error("Error closing servo %s: %s", service.name, err)
