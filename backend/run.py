@@ -13,7 +13,6 @@ def main():
     except RuntimeError:
         pass
     from dotenv import load_dotenv
-    from robot_hat import reset_mcu_sync
 
     from app.util.setup_env import setup_env
     from run_car_control_app import start_control_app
@@ -39,8 +38,6 @@ def main():
             px_app_mode,
             px_frontend_port,
         ) = setup_env()
-
-        reset_mcu_sync()
 
         main_app_process = mp.Process(
             target=start_main_app,
