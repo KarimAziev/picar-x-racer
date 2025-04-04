@@ -211,8 +211,8 @@ class CarService(metaclass=SingletonMeta):
         try:
             await asyncio.to_thread(reset_mcu)
             await self.connection_manager.info("MCU has been reset")
-        except Exception:
-            await self.connection_manager.error("Failed to reset MCU")
+        except Exception as e:
+            await self.connection_manager.error(f"Failed to reset MCU: {e}")
 
     async def handle_stop(self, _: Any = None):
         await asyncio.to_thread(self.px.stop)
