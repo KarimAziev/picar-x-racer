@@ -25,3 +25,4 @@ opencv-python
 PyGObject==3.50.0
 PyGObject-stubs
 rapidfuzz
+httpx
