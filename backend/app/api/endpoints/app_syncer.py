@@ -6,18 +6,12 @@ import asyncio
 import json
 from typing import TYPE_CHECKING
 
-from app.api.deps import (
-    get_battery_service,
-    get_camera_service,
-    get_detection_service,
-    get_music_service,
-)
+from app.api.deps import get_camera_service, get_detection_service, get_music_service
 from app.core.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
-    from app.services.sensors.battery_service import BatteryService
     from app.services.camera.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.detection.detection_service import DetectionService
@@ -36,7 +30,6 @@ async def app_synchronizer(
     detection_service: "DetectionService" = Depends(get_detection_service),
     camera_service: "CameraService" = Depends(get_camera_service),
     music_service: "MusicService" = Depends(get_music_service),
-    battery_manager: "BatteryService" = Depends(get_battery_service),
 ):
     """
     Websocket endpoint for synchronizing app state between several clients.
@@ -45,8 +38,6 @@ async def app_synchronizer(
 
     try:
         await connection_manager.connect(websocket)
-        if len(connection_manager.active_connections) > 1:
-            await battery_manager.broadcast_state()
         await music_service.broadcast_state()
         data = {
             "active_connections": len(connection_manager.active_connections),

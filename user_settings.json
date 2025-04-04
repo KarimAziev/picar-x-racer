@@ -90,6 +90,7 @@
     "sayText": ["k"],
     "slowdown": ["Space"],
     "takePhoto": ["t"],
+    "resetMCU": ["Y"]
     "toggleAvoidObstaclesMode": ["O"],
     "toggleCarModelView": ["M"],
     "toggleSpeedometerView": ["N"],

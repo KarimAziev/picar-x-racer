@@ -25,7 +25,6 @@ from app.services.media.music_file_service import MusicFileService
 from app.services.media.music_service import MusicService
 from app.services.media.tts_service import TTSService
 from app.services.media.video_recorder_service import VideoRecorderService
-from app.services.sensors.battery_service import BatteryService
 from fastapi import Depends, Path
 from robot_hat.battery import Battery
 
@@ -235,34 +234,19 @@ def get_tts_service() -> TTSService:
     return TTSService()
 
 
-def get_battery_service(
-    connection_manager: Annotated[ConnectionService, Depends(get_connection_service)],
-    settings_service: Annotated[SettingsService, Depends(get_settings_service)],
-    battery_adapter: Annotated[Battery, Depends(get_battery_adapter)],
-) -> BatteryService:
-    return BatteryService(
-        connection_manager=connection_manager,
-        settings_service=settings_service,
-        battery_adapter=battery_adapter,
-    )
-
-
 class LifespanAppDeps(TypedDict):
     connection_manager: ConnectionService
-    battery_manager: BatteryService
     detection_manager: DetectionService
     music_file_service: MusicFileService
 
 
 async def get_lifespan_dependencies(
     connection_manager: Annotated[ConnectionService, Depends(get_connection_service)],
-    battery_manager: Annotated[BatteryService, Depends(get_battery_service)],
     detection_manager: Annotated[DetectionService, Depends(get_detection_service)],
     music_file_service: Annotated[MusicFileService, Depends(get_music_file_service)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_manager": connection_manager,
-        "battery_manager": battery_manager,
         "detection_manager": detection_manager,
         "music_file_service": music_file_service,
     }

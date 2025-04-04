@@ -12,9 +12,9 @@ from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-Logger._app_logger_name = "robot"
+Logger._app_logger_name = "px_robot"
 
-logger = Logger(name=__name__, app_name="robot")
+logger = Logger(name=__name__, app_name="px_robot")
 
 router = APIRouter()
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.control.calibration_service import CalibrationService
     from app.services.control.car_service import CarService
+    from app.services.sensors.battery_service import BatteryService
 
 
 @router.websocket("/px/ws")
@@ -34,12 +35,15 @@ async def websocket_endpoint(
     connection_manager: "ConnectionService" = Depends(
         robot_deps.get_connection_manager
     ),
+    battery_manager: "BatteryService" = Depends(robot_deps.get_battery_service),
 ):
     """
     WebSocket endpoint for controlling the robot.
     """
     try:
         await connection_manager.connect(websocket)
+        if len(connection_manager.active_connections) > 1:
+            await battery_manager.broadcast_state()
         await connection_manager.broadcast_json(
             {
                 "type": "updateCalibration",

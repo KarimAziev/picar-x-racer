@@ -116,7 +116,12 @@ export const useControllerStore = defineStore("controller", {
 
         switch (type) {
           case "battery": {
-            batteryStore.voltage = payload;
+            batteryStore.$patch({
+              voltage: payload.voltage,
+              percentage: payload.percentage,
+              error: undefined,
+              loading: false,
+            });
             break;
           }
 
@@ -517,6 +522,11 @@ export const useControllerStore = defineStore("controller", {
     },
     updateRightMotorCaliDir(value: number) {
       this.sendMessage({ action: "updateRightMotorCaliDir", payload: value });
+    },
+    resetMCU() {
+      const messager = useMessagerStore();
+      messager.info("Resetting MCU");
+      this.sendMessage({ action: "resetMCU" });
     },
     // UI commands
     getBatteryVoltage() {

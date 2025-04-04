@@ -2,9 +2,10 @@
 The application provides robot-controlling functionality, including:
 
 - WebSockets for controlling and calibration of the robot
-- ultrasonic distance measurement
+- Ultrasonic distance measurement
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Optional
 
@@ -12,11 +13,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.control import api_router, tags_metadata
-from app.config.config import settings as app_settings
 from app.core.logger import Logger
 
 if TYPE_CHECKING:
-    from app.adapters.picarx_adapter import PicarxAdapter
+    from app.managers.file_management.json_data_manager import JsonDataManager
+    from app.services.connection_service import ConnectionService
+    from app.services.control.car_service import CarService
+    from app.services.sensors.battery_service import BatteryService
+    from app.services.sensors.distance_service import DistanceService
 
 Logger.setup_from_env()
 
@@ -26,59 +30,80 @@ logger = Logger(name=__name__, app_name="px_robot")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import os
-
-    from app.api import robot_deps
-    from app.util.file_util import load_json_file
-
-    px_adapter: Optional["PicarxAdapter"] = None
-
-    config_manager = robot_deps.get_config_manager()
-
-    async_manager = robot_deps.get_async_task_manager()
+    connection_service: Optional["ConnectionService"] = None
+    battery_service: Optional["BatteryService"] = None
+    robot_service: Optional["CarService"] = None
+    distance_service: Optional["DistanceService"] = None
+    settings_service: Optional["JsonDataManager"] = None
 
     try:
-        px_adapter = robot_deps.get_picarx_adapter(config_manager=config_manager)
-    except Exception as e:
-        logger.error("Failed to initialize Picarx: %s", e)
+        from app.api import robot_deps
+        from app.util.solve_lifespan import solve_lifespan
 
-    connection_manager = robot_deps.get_connection_manager()
-    event_emitter = robot_deps.get_async_event_emitter()
-    distance_service = robot_deps.get_distance_service(
-        emitter=event_emitter, task_manager=async_manager
-    )
+        lifespan_deps = solve_lifespan(robot_deps.get_lifespan_dependencies)
+        async with lifespan_deps(app) as deps:
+            connection_service = deps.get("connection_service")
+            battery_service = deps.get("battery_service")
+            robot_service = deps.get("robot_service")
+            settings_service = deps.get("settings_service")
+            distance_service = deps.get("distance_service")
 
-    async def broadcast_distance(distance: float):
-        await connection_manager.broadcast_json(
-            {"type": "distance", "payload": distance}
+        async def broadcast_distance(distance: float):
+            await connection_service.broadcast_json(
+                {"type": "distance", "payload": distance}
+            )
+
+        battery_service.setup_connection_manager()
+        distance_service.subscribe(broadcast_distance)
+
+        settings = settings_service.load_data()
+        robot_settings = settings.get("robot", {})
+
+        distance_interval = robot_settings.get("auto_measure_distance_delay_ms", 1000)
+        distance_secs = distance_interval / 1000
+
+        distance_service.interval = distance_secs
+
+        auto_measure_distance_mode = robot_settings.get(
+            "auto_measure_distance_mode", False
         )
 
-    distance_service.subscribe(broadcast_distance)
-    settings = (
-        load_json_file(app_settings.PX_SETTINGS_FILE)
-        if os.path.exists(app_settings.PX_SETTINGS_FILE)
-        else load_json_file(app_settings.DEFAULT_USER_SETTINGS)
-    )
-    robot_settings = settings.get("robot", {})
-    distance_interval = robot_settings.get("auto_measure_distance_delay_ms", 1000)
-    distance_secs = distance_interval / 1000
-    distance_service.interval = distance_secs
-    auto_measure_distance_mode = robot_settings.get("auto_measure_distance_mode", False)
-    if auto_measure_distance_mode:
-        await distance_service.start_all()
+        if auto_measure_distance_mode:
+            await distance_service.start_all()
 
-    port = app.state.port if hasattr(app.state, "port") else 8001
-    logger.info(f"Starting {app.title} app on the port {port}")
-    yield
-    if px_adapter:
+        port = app.state.port if hasattr(app.state, "port") else 8001
+        logger.info(f"Starting {app.title} app on the port {port}")
+
+        yield
+    except asyncio.CancelledError:
+        logger.warning(
+            "Lifespan was cancelled mid-shutdown (first-level). Proceeding to final cleanup."
+        )
+
+    if battery_service:
         try:
-            px_adapter.cleanup()
+            await battery_service.cleanup_connection_manager()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up battery_service.")
+            raise
+
+    if robot_service:
+        try:
+            await robot_service.cleanup()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up robot_service.")
+            raise
         except Exception as e:
-            logger.error("Failed to cleanup Picarx: %s", e)
-    try:
-        await distance_service.cleanup()
-    except Exception as e:
-        logger.error("Failed to cleanup distance service: %s", distance_service)
+            logger.error("Failed to cleanup robot service: %s", e)
+
+    if distance_service:
+        try:
+            await distance_service.cleanup()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up robot_service.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup distance service: %s", distance_service)
 
     logger.info(f"Stopped {app.title}")
 

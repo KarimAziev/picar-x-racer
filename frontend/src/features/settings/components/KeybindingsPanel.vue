@@ -13,6 +13,7 @@
           size="small"
           label="Save"
           type="submit"
+          @click="handleSubmit"
           :disabled="isDisabled"
           class="w-fit"
         />
@@ -33,7 +34,6 @@
           v-model="fieldPair[0].value"
           optionLabel="label"
           optionValue="value"
-          autoFilterFocus
           :options="fieldPair[0].options"
           :disabled="fieldPair[0].props?.disabled"
           class="w-full max-w-full"

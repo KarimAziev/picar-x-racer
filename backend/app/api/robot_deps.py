@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Annotated, AsyncGenerator, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.config.config import settings as app_config
@@ -6,11 +7,14 @@ from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
 from app.managers.async_task_manager import AsyncTaskManager
 from app.managers.file_management.json_data_manager import JsonDataManager
+from app.schemas.battery import BatterySettings
 from app.services.connection_service import ConnectionService
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
+from app.services.sensors.battery_service import BatteryService
 from app.services.sensors.distance_service import DistanceService
 from fastapi import Depends
+from robot_hat.battery import Battery
 
 logger = Logger(__name__)
 
@@ -57,6 +61,38 @@ def get_distance_service(
     )
 
 
+@lru_cache()
+def get_battery_adapter() -> Battery:
+    return Battery()
+
+
+@lru_cache()
+def get_battery_service(
+    connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
+    settings_service: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
+    battery_adapter: Annotated[Battery, Depends(get_battery_adapter)],
+) -> BatteryService:
+    app_settings = settings_service.load_data()
+    battery_settings = BatterySettings(
+        **app_settings.get(
+            "battery",
+            {
+                "full_voltage": 8.4,
+                "warn_voltage": 7.15,
+                "danger_voltage": 6.5,
+                "min_voltage": 6.0,
+                "auto_measure_seconds": 60,
+                "cache_seconds": 2,
+            },
+        )
+    )
+    return BatteryService(
+        connection_manager=connection_manager,
+        settings=battery_settings,
+        battery_adapter=battery_adapter,
+    )
+
+
 def get_picarx_adapter(
     config_manager: JsonDataManager = Depends(get_config_manager),
 ) -> PicarxAdapter:
@@ -86,3 +122,28 @@ def get_robot_manager(
         app_settings_manager=app_settings_manager,
         config_manager=config_manager,
     )
+
+
+class LifespanAppDeps(TypedDict):
+    connection_service: ConnectionService
+    battery_service: BatteryService
+    robot_service: CarService
+    settings_service: JsonDataManager
+    distance_service: DistanceService
+
+
+async def get_lifespan_dependencies(
+    connection_service: Annotated[ConnectionService, Depends(get_connection_manager)],
+    battery_service: Annotated[BatteryService, Depends(get_battery_service)],
+    robot_service: Annotated[CarService, Depends(get_robot_manager)],
+    settings_service: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
+    distance_service: Annotated[DistanceService, Depends(get_distance_service)],
+) -> AsyncGenerator[LifespanAppDeps, None]:
+    deps: LifespanAppDeps = {
+        "connection_service": connection_service,
+        "battery_service": battery_service,
+        "robot_service": robot_service,
+        "distance_service": distance_service,
+        "settings_service": settings_service,
+    }
+    yield deps

@@ -213,6 +213,7 @@ export const useStore = defineStore("settings", {
       this.saving = true;
       try {
         await axios.post("/api/settings", data);
+        messager.info("Settings saved");
       } catch (error) {
         messager.handleError(error, "Error saving settings");
       } finally {

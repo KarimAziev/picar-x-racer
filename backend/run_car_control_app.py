@@ -34,10 +34,14 @@ def main():
         px_frontend_port,
     ) = setup_env()
 
-    reset_mcu_sync()
-    start_control_app(port=px_control_app_port, log_level=px_log_level)
-
     Logger.setup_from_env()
+    logger = Logger(__name__)
+
+    try:
+        reset_mcu_sync()
+    except Exception as e:
+        logger.error("Failed to reset MCU: ", e)
+
     start_control_app(port=px_main_app_port, log_level=px_log_level)
 
 

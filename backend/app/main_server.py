@@ -1,5 +1,5 @@
 """
-The application provides robot-agnostic functionality, including:
+The application provides robot-agnostic functionality:
 - Video streaming
 - Managing settings and files
 - Music/sound playback
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.detection.detection_service import DetectionService
     from app.services.media.music_file_service import MusicFileService
-    from app.services.sensors.battery_service import BatteryService
 
 
 Logger.setup_from_env()
@@ -42,12 +41,12 @@ async def lifespan(app: FastAPI):
     app.state.cancelled = False
     signal_file_path: Optional[str] = None
     connection_manager: Optional["ConnectionService"] = None
-    battery_manager: Optional["BatteryService"] = None
     detection_manager: Optional["DetectionService"] = None
     music_file_service: Optional["MusicFileService"] = None
 
     try:
         from app.api import deps
+        from app.util.solve_lifespan import solve_lifespan
 
         port = os.getenv("PX_MAIN_APP_PORT")
         mode = os.getenv("PX_APP_MODE")
@@ -55,7 +54,6 @@ async def lifespan(app: FastAPI):
         lifespan_deps = solve_lifespan(deps.get_lifespan_dependencies)
         async with lifespan_deps(app) as deps:
             connection_manager = deps.get("connection_manager")
-            battery_manager = deps.get("battery_manager")
             detection_manager = deps.get("detection_manager")
             music_file_service = deps.get("music_file_service")
 
@@ -67,7 +65,6 @@ async def lifespan(app: FastAPI):
 
         signal_file_path = "/tmp/backend_ready.signal" if mode == "dev" else None
 
-        battery_manager.setup_connection_manager()
         sorted_tracks = music_file_service.list_sorted_tracks()
 
         music_file_service.music_service.update_tracks(sorted_tracks)
@@ -91,13 +88,6 @@ async def lifespan(app: FastAPI):
 
         logger.info(f"Stopping 🚗 {app.title} application")
         try:
-            if battery_manager:
-                await battery_manager.cleanup_connection_manager()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up battery_manager.")
-            raise
-
-        try:
             if music_file_service:
                 await music_file_service.music_service.cleanup()
         except asyncio.CancelledError:
@@ -118,7 +108,6 @@ async def lifespan(app: FastAPI):
 
 
 from app.api.endpoints import api_router, serve_router, tags_metadata
-from app.util.solve_lifespan import solve_lifespan
 
 app = FastAPI(
     lifespan=lifespan,

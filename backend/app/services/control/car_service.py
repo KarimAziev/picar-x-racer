@@ -7,12 +7,13 @@ from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
 from fastapi import WebSocket
+from robot_hat import reset_mcu
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
     from app.managers.file_management.json_data_manager import JsonDataManager
-    from app.services.control.calibration_service import CalibrationService
     from app.services.connection_service import ConnectionService
+    from app.services.control.calibration_service import CalibrationService
     from app.services.sensors.distance_service import DistanceService
 
 
@@ -155,6 +156,7 @@ class CarService(metaclass=SingletonMeta):
             "stopAutoMeasureDistance": self.stop_auto_measure_distance,
             "setMaxSpeed": self.handle_max_speed,
             "servoTest": self.servos_test,
+            "resetMCU": self.reset_mcu,
         }
 
         if action in calibration_actions_map:
@@ -204,6 +206,13 @@ class CarService(metaclass=SingletonMeta):
             error_msg = f"Unknown action: {action}"
             self.logger.warning(error_msg)
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
+
+    async def reset_mcu(self, _: Any = None):
+        try:
+            await asyncio.to_thread(reset_mcu)
+            await self.connection_manager.info("MCU has been reset")
+        except Exception:
+            await self.connection_manager.error("Failed to reset MCU")
 
     async def handle_stop(self, _: Any = None):
         await asyncio.to_thread(self.px.stop)
@@ -325,3 +334,9 @@ class CarService(metaclass=SingletonMeta):
                 await self.move(-1, POWER)
             await self.broadcast()
             await asyncio.sleep(0.5)
+
+    async def cleanup(self):
+        try:
+            await asyncio.to_thread(self.px.cleanup)
+        except Exception as e:
+            self.logger.error("Failed to cleanup Picarx: %s", e)

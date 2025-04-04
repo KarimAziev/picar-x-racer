@@ -1,11 +1,20 @@
 <template>
   <div
-    :class="class"
-    class="flex items-center text-inherit"
-    v-tooltip.left="`Battery ${percentage}%`"
+    class="flex items-center text-inherit relative"
+    v-tooltip.left="tooltipText"
   >
-    <span class="bold min-w-11">{{ value }}V</span>
-    <div class="flex items-center w-[12px] h-[15px]">
+    <i
+      class="pi pi-sync animate-spin absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+      v-if="loading"
+    />
+    <span
+      class="bold min-w-11 transition-opacity"
+      :class="{ ['opacity-0']: loading }"
+    >
+      {{ value }}V
+    </span>
+
+    <div class="flex items-center w-[12px] h-[15px] relative">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 12 18"
@@ -15,7 +24,7 @@
           x="1"
           y="0.5"
           width="10"
-          height="14"
+          :height="baseHeight"
           rx="2"
           ry="2"
           stroke="currentColor"
@@ -32,7 +41,8 @@
         />
         <rect
           x="2"
-          :y="14 - chargeHeight"
+          :y="yHeight"
+          :class="[loading && 'opacity-0']"
           width="8"
           :height="chargeHeight"
           fill="currentColor"
@@ -46,10 +56,17 @@
 import { computed } from "vue";
 
 const props = defineProps<{
-  class?: string;
   value: number;
   percentage: number;
+  loading?: boolean;
 }>();
 
-const chargeHeight = computed(() => Math.round((props.percentage / 100) * 13)); // Max height = 13
+const baseHeight = 14;
+
+const chargeHeight = computed(() =>
+  Math.round((props.percentage / 100) * (baseHeight - 1)),
+);
+const yHeight = computed(() => baseHeight - chargeHeight.value);
+
+const tooltipText = computed(() => `Battery ${props.percentage}%`);
 </script>

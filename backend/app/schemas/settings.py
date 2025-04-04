@@ -35,6 +35,7 @@ class Keybindings(BaseModel):
     right: Optional[List[str]] = None
     sayText: Optional[List[str]] = None
     stop: Optional[List[str]] = None
+    resetMCU: Optional[List[str]] = None
     takePhoto: Optional[List[str]] = None
     toggleAvoidObstaclesMode: Optional[List[str]] = None
     toggleCarModelView: Optional[List[str]] = None

@@ -21,6 +21,7 @@ export const defaultKeybindinds: Partial<
   openShortcutsSettings: ["?"],
   playMusic: ["m"],
   resetCameraRotate: ["0"],
+  resetMCU: ["Y"],
   right: ["d"],
   sayText: ["k"],
   slowdown: ["Space"],
@@ -82,6 +83,7 @@ export const commandLabels: Record<string, string> = {
   playPrevMusicTrack: "Previous music track",
   nextText: "Next text to speech",
   prevText: "Previous text to speech",
+  resetMCU: "Reset MCU",
   toggleVideoRecord: "Toggle Video Recording",
 };
 
