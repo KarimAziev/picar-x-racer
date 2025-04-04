@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
         try:
             reset_mcu_sync()
         except Exception as e:
-            logger.error("Failed to reset MCU: ", e)
+            logger.error("Failed to reset MCU: %s", e)
 
         lifespan_deps = solve_lifespan(robot_deps.get_lifespan_dependencies)
         async with lifespan_deps(app) as deps:
