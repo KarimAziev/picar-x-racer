@@ -21,7 +21,6 @@ def main():
         mp.set_start_method("spawn")
     except RuntimeError:
         pass
-    from robot_hat import reset_mcu_sync
 
     from app.core.logger import Logger
     from app.util.setup_env import setup_env
@@ -35,12 +34,6 @@ def main():
     ) = setup_env()
 
     Logger.setup_from_env()
-    logger = Logger(__name__)
-
-    try:
-        reset_mcu_sync()
-    except Exception as e:
-        logger.error("Failed to reset MCU: ", e)
 
     start_control_app(port=px_main_app_port, log_level=px_log_level)
 

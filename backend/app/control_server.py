@@ -37,8 +37,15 @@ async def lifespan(app: FastAPI):
     settings_service: Optional["JsonDataManager"] = None
 
     try:
+        from robot_hat import reset_mcu_sync
+
         from app.api import robot_deps
         from app.util.solve_lifespan import solve_lifespan
+
+        try:
+            reset_mcu_sync()
+        except Exception as e:
+            logger.error("Failed to reset MCU: ", e)
 
         lifespan_deps = solve_lifespan(robot_deps.get_lifespan_dependencies)
         async with lifespan_deps(app) as deps:
