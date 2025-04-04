@@ -9,6 +9,12 @@ from fastapi.responses import FileResponse
 
 router = APIRouter()
 
+no_cache_headers = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
 
 @router.get(
     "/",
@@ -75,7 +81,7 @@ def root(request: Request):
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
 
-    return file_path
+    return FileResponse(file_path, headers=no_cache_headers)
 
 
 @router.get(
@@ -109,4 +115,4 @@ def catch_all(request: Request, path: str):
         if not os.path.isfile(file_path):
             raise HTTPException(status_code=404, detail="File not found.")
 
-    return FileResponse(file_path)
+    return FileResponse(file_path, headers=no_cache_headers)
