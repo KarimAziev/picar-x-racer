@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
         from app.util.solve_lifespan import solve_lifespan
 
         try:
-            reset_mcu_sync()
+            await asyncio.to_thread(reset_mcu_sync)
         except Exception as e:
             logger.error("Failed to reset MCU: %s", e)
 
