@@ -196,8 +196,10 @@ export const useStore = defineStore("robot", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
+        const baseURL =
+          import.meta.env.VITE_CONTROL_APP_URL || "http://127.0.0.1:8001";
         const response = await axios.get<FieldsConfig>(
-          "/px/api/settings/robot-fields",
+          `${baseURL}/px/api/settings/robot-fields`,
         );
         this.config = response.data;
       } catch (error) {
@@ -209,8 +211,12 @@ export const useStore = defineStore("robot", {
     async fetchData() {
       const messager = useMessagerStore();
       try {
+        const baseURL =
+          import.meta.env.VITE_CONTROL_APP_URL || "http://127.0.0.1:8001";
         this.loading = true;
-        const response = await axios.get<Data>("/px/api/settings/config");
+        const response = await axios.get<Data>(
+          `${baseURL}/px/api/settings/config`,
+        );
         this.data = response.data;
       } catch (error) {
         messager.handleError(error, `Error fetching robot config`);

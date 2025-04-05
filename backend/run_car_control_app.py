@@ -35,7 +35,7 @@ def main():
 
     Logger.setup_from_env()
 
-    start_control_app(port=px_main_app_port, log_level=px_log_level)
+    start_control_app(port=px_control_app_port, log_level=px_log_level)
 
 
 if __name__ == "__main__":
