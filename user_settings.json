@@ -113,6 +113,7 @@
     "playPrevMusicTrack": ["1"],
     "nextText": ["4"],
     "prevText": ["3"],
-    "toggleVideoRecord": ["v"]
+    "toggleVideoRecord": ["v"],
+    "toggleLEDblinking": ["L"]
   }
 }

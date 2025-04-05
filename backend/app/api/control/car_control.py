@@ -7,14 +7,12 @@ import json
 from typing import TYPE_CHECKING
 
 from app.api import robot_deps
-from app.core.logger import Logger
+from app.core.px_logger import Logger
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-Logger._app_logger_name = "px_robot"
-
-logger = Logger(name=__name__, app_name="px_robot")
+logger = Logger(name=__name__)
 
 router = APIRouter()
 
@@ -28,7 +26,7 @@ if TYPE_CHECKING:
 @router.websocket("/px/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    car_manager: "CarService" = Depends(robot_deps.get_robot_manager),
+    car_manager: "CarService" = Depends(robot_deps.get_robot_service),
     calibration_service: "CalibrationService" = Depends(
         robot_deps.get_calibration_service
     ),

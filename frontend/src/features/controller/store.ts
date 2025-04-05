@@ -39,6 +39,7 @@ export interface Modes {
    * Whether calibration mode is enabled.
    */
   calibrationMode: boolean;
+  ledBlinking: boolean;
 }
 
 export interface Gauges {
@@ -82,6 +83,7 @@ const defaultGauges: Gauges = {
 const modes: Modes = {
   avoidObstacles: false,
   calibrationMode: false,
+  ledBlinking: false,
 };
 
 const defaultState: StoreState = {
@@ -527,6 +529,12 @@ export const useControllerStore = defineStore("controller", {
       const messager = useMessagerStore();
       messager.info("Resetting MCU");
       this.sendMessage({ action: "resetMCU" });
+    },
+    toggleLEDblinking() {
+      const action = this.ledBlinking ? "stopLED" : "startLED";
+      this.sendMessage({
+        action: action,
+      });
     },
     // UI commands
     getBatteryVoltage() {

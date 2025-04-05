@@ -43,6 +43,7 @@ class Keybindings(BaseModel):
     toggleTextInfo: Optional[List[str]] = None
     toggleVirtualMode: Optional[List[str]] = None
     toggleAutoMeasureDistanceMode: Optional[List[str]] = None
+    toggleLEDblinking: Optional[List[str]] = None
     toggleAutoDownloadPhoto: Optional[List[str]] = None
     toggleCalibration: Optional[List[str]] = None
     increaseFPS: Optional[List[str]] = None

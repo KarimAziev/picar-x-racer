@@ -2,7 +2,7 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Optional, Tuple
 
-from app.core.logger import Logger
+from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.battery import BatterySettings
 from app.schemas.connection import ConnectionEvent

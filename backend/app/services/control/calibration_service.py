@@ -1,7 +1,7 @@
 import asyncio
 from typing import TYPE_CHECKING, Any, Dict
 
-from app.core.logger import Logger
+from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.config import ConfigSchema
 from robot_hat import constrain

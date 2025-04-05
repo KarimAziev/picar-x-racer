@@ -49,6 +49,7 @@ export const defaultKeybindinds: Partial<
   nextText: ["4"],
   prevText: ["3"],
   toggleVideoRecord: ["v"],
+  toggleLEDblinking: ["L"],
 };
 
 export const commandLabels: Record<string, string> = {
@@ -85,6 +86,7 @@ export const commandLabels: Record<string, string> = {
   prevText: "Previous text to speech",
   resetMCU: "Reset MCU",
   toggleVideoRecord: "Toggle Video Recording",
+  toggleLEDblinking: "Toggle LED blinking",
 };
 
 export const calibrationModeRemap: Partial<

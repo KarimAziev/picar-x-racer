@@ -19,6 +19,9 @@ from app.services.detection.detection_service import DetectionService
 from app.services.domain.settings_service import SettingsService
 from app.services.file_management.file_filter_service import FileFilterService
 from app.services.file_management.file_manager_service import FileManagerService
+from app.services.integration.robot_communication_service import (
+    RobotCommunicationService,
+)
 from app.services.media.audio_service import AudioService
 from app.services.media.audio_stream_service import AudioStreamService
 from app.services.media.music_file_service import MusicFileService
@@ -68,6 +71,11 @@ def get_video_device_adapter(
         gstreamer_service=gstreamer_service,
         picam_service=picam_service,
     )
+
+
+def get_robot_communication_service() -> RobotCommunicationService:
+    control_port = os.getenv("PX_CONTROL_APP_PORT", "8001")
+    return RobotCommunicationService(base_url=f"http://127.0.0.1:{control_port}")
 
 
 @lru_cache()

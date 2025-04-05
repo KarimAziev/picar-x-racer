@@ -1,9 +1,9 @@
 import asyncio
 import inspect
 import json
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Union
 
-from app.core.logger import Logger
+from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
 from fastapi import WebSocket
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.control.calibration_service import CalibrationService
     from app.services.sensors.distance_service import DistanceService
+    from app.services.sensors.led_service import LEDService
 
 
 class CarService(metaclass=SingletonMeta):
@@ -26,12 +27,14 @@ class CarService(metaclass=SingletonMeta):
         distance_service: "DistanceService",
         app_settings_manager: "JsonDataManager",
         config_manager: "JsonDataManager",
+        led_service: "LEDService",
     ):
         self.logger = Logger(name=__name__)
         self.px = px
         self.connection_manager = connection_manager
         self.calibration = calibration_service
         self.config_manager = config_manager
+        self.led_service = led_service
 
         self.app_settings_manager = app_settings_manager
 
@@ -48,6 +51,7 @@ class CarService(metaclass=SingletonMeta):
         )
 
         self.auto_measure_distance_mode = False
+        self.led_blinking = False
         self.avoid_obstacles_mode = False
         self.max_speed = app_settings.robot.max_speed
         self.distance_service = distance_service
@@ -97,6 +101,7 @@ class CarService(metaclass=SingletonMeta):
             "avoidObstacles": self.avoid_obstacles_mode,
             "distance": self.distance_service.distance,
             "autoMeasureDistanceMode": self.auto_measure_distance_mode,
+            "ledBlinking": self.led_blinking,
         }
 
     @property
@@ -157,6 +162,10 @@ class CarService(metaclass=SingletonMeta):
             "setMaxSpeed": self.handle_max_speed,
             "servoTest": self.servos_test,
             "resetMCU": self.reset_mcu,
+            "setLedPin": self.handle_set_led_pin,
+            "setLedInterval": self.handle_set_led_interval,
+            "startLED": self.start_led_blinking,
+            "stopLED": self.stop_led_blinking,
         }
 
         if action in calibration_actions_map:
@@ -207,31 +216,63 @@ class CarService(metaclass=SingletonMeta):
             self.logger.warning(error_msg)
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
-    async def reset_mcu(self, _: Any = None):
+    async def handle_set_led_pin(self, payload: Union[int, str]) -> None:
+        """
+        Updates the LED pin using LEDService.
+
+        Payload should be an integer or a string representing the pin identifier.
+        """
+        try:
+            await self.led_service.update_pin(payload)
+            await self.connection_manager.info(f"LED pin updated to {payload}")
+        except Exception as e:
+            await self.connection_manager.error(f"Failed to update LED pin: {e}")
+
+    async def handle_set_led_interval(self, payload: float) -> None:
+        """
+        Updates the LED blink interval using LEDService.
+
+        Payload should be a float representing the new interval in seconds.
+        """
+        try:
+            await self.led_service.update_interval(payload)
+            await self.connection_manager.info(f"LED interval updated to {payload}")
+        except Exception as e:
+            await self.connection_manager.error(f"Failed to update LED interval: {e}")
+
+    async def start_led_blinking(self, _: Any = None) -> None:
+        await self.led_service.start_all()
+        self.led_blinking = True
+
+    async def stop_led_blinking(self, _: Any = None) -> None:
+        await self.led_service.stop_all()
+        self.led_blinking = False
+
+    async def reset_mcu(self, _: Any = None) -> None:
         try:
             await asyncio.to_thread(reset_mcu)
             await self.connection_manager.info("MCU has been reset")
         except Exception as e:
             await self.connection_manager.error(f"Failed to reset MCU: {e}")
 
-    async def handle_stop(self, _: Any = None):
+    async def handle_stop(self, _: Any = None) -> None:
         await asyncio.to_thread(self.px.stop)
 
-    async def handle_set_servo_dir_angle(self, payload: int):
+    async def handle_set_servo_dir_angle(self, payload: int) -> None:
         angle = payload or 0
         if self.px.state["steering_servo_angle"] != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
 
-    async def handle_set_cam_tilt_angle(self, payload: int):
+    async def handle_set_cam_tilt_angle(self, payload: int) -> None:
         if self.px.state["cam_tilt_angle"] != payload:
             await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
-    async def handle_set_cam_pan_angle(self, payload: int):
+    async def handle_set_cam_pan_angle(self, payload: int) -> None:
         angle = payload
         if self.px.state["cam_pan_angle"] != angle:
             await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
 
-    async def handle_avoid_obstacles(self, _=None):
+    async def handle_avoid_obstacles(self, _=None) -> None:
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
         if self.avoid_obstacles_mode:
             await self.handle_stop()
@@ -266,12 +307,12 @@ class CarService(metaclass=SingletonMeta):
                 await self.broadcast()
                 await asyncio.sleep(0.5)
 
-    async def handle_max_speed(self, payload: int):
+    async def handle_max_speed(self, payload: int) -> None:
         self.max_speed = payload
         if self.px.state["speed"] > self.max_speed:
             await self.move(self.px.state["direction"], self.max_speed)
 
-    async def handle_move(self, payload: Dict[str, Any]):
+    async def handle_move(self, payload: Dict[str, Any]) -> None:
         """
         Handles move actions to control the car's direction and speed.
 
@@ -283,7 +324,7 @@ class CarService(metaclass=SingletonMeta):
         if self.px.state["direction"] != direction or speed != self.px.state["speed"]:
             await self.move(direction, speed)
 
-    async def move(self, direction: int, speed: int):
+    async def move(self, direction: int, speed: int) -> None:
         """
         Moves the car in the specified direction at the given speed.
 
@@ -335,7 +376,7 @@ class CarService(metaclass=SingletonMeta):
             await self.broadcast()
             await asyncio.sleep(0.5)
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         try:
             await asyncio.to_thread(self.px.cleanup)
         except Exception as e:

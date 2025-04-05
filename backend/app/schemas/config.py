@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from robot_hat import MotorDirection, ServoCalibrationMode
@@ -117,6 +117,36 @@ class MotorConfig(BaseModel):
         return self
 
 
+class LedConfig(BaseModel):
+    """
+    A model to represent the LED configuration.
+    """
+
+    name: Annotated[
+        Optional[str],
+        Field(
+            ...,
+            description="Human-readable name",
+            examples=["LED"],
+        ),
+    ] = None
+
+    pin: Union[str, int] = Field(
+        default=26,
+        description="The GPIO pin number for the LED.",
+        examples=[26, "D14"],
+    )
+
+    interval: float = Field(
+        default=0.1,
+        ge=0,
+        description="The interval of LED blinking.",
+        examples=[
+            0.1,
+        ],
+    )
+
+
 class ConfigSchema(BaseModel):
     """
     Configuration model for specifying motors and servos in a robotic system.
@@ -127,6 +157,7 @@ class ConfigSchema(BaseModel):
     cam_tilt_servo: ServoConfig
     left_motor: MotorConfig
     right_motor: MotorConfig
+    led: LedConfig = LedConfig()
 
     @model_validator(mode="after")
     def validate_overall_config(self):

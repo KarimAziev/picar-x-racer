@@ -6,10 +6,8 @@ directly with the underlying OS.
 """
 
 import asyncio
-import os
 from typing import TYPE_CHECKING
 
-import httpx
 from app.api import deps
 from app.core.logger import Logger
 from app.schemas.common import Message
@@ -19,28 +17,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.detection.detection_service import DetectionService
+    from app.services.integration.robot_communication_service import (
+        RobotCommunicationService,
+    )
     from app.services.media.music_service import MusicService
 
 
 logger = Logger(__name__)
 
 router = APIRouter()
-
-
-async def shutdown_robot_services():
-    control_port = os.getenv("PX_CONTROL_APP_PORT", "8001")
-    robot_shutdown_url = f"http://127.0.0.1:{control_port}/px/api/system/shutdown"
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(robot_shutdown_url)
-            if response.status_code != 200:
-                logger.error(
-                    "Robot shutdown call failed. Status: %s, Response: %s",
-                    response.status_code,
-                    response.text,
-                )
-    except Exception as e:
-        logger.error("Error calling robot shutdown endpoint: %s", e)
 
 
 @router.get(
@@ -69,8 +54,11 @@ async def shutdown_robot_services():
 )
 async def shutdown(
     request: Request,
-    music_manager: "MusicService" = Depends(deps.get_music_service),
-    detection_manager: "DetectionService" = Depends(deps.get_detection_service),
+    music_service: "MusicService" = Depends(deps.get_music_service),
+    detection_service: "DetectionService" = Depends(deps.get_detection_service),
+    robot_communication_service: "RobotCommunicationService" = Depends(
+        deps.get_robot_communication_service
+    ),
 ):
     """
     API endpoint to trigger an immediate system shutdown.
@@ -90,16 +78,16 @@ async def shutdown(
     try:
         logger.info("Starting the shutdown process...")
         await connection_manager.warning("Powering off the system")
-        await detection_manager.cancel_detection_watcher()
-        await detection_manager.stop_detection_process()
-        await music_manager.cleanup()
-        await shutdown_robot_services()
+        await detection_service.cancel_detection_watcher()
+        await detection_service.stop_detection_process()
+        await music_service.cleanup()
+        await robot_communication_service.shutdown_robot_services()
         await asyncio.to_thread(power_off)
         return {"message": "System shutdown initiated successfully."}
     except Exception:
         logger.error("Failed to shutdown system", exc_info=True)
         await connection_manager.error("Failed to shutdown system")
-        music_manager.start_broadcast_task()
+        music_service.start_broadcast_task()
         raise HTTPException(
             status_code=500,
             detail="Failed to shutdown the system due to an internal error.",
@@ -130,8 +118,11 @@ async def shutdown(
 )
 async def restart_system(
     request: Request,
-    music_manager: "MusicService" = Depends(deps.get_music_service),
-    detection_manager: "DetectionService" = Depends(deps.get_detection_service),
+    music_service: "MusicService" = Depends(deps.get_music_service),
+    detection_service: "DetectionService" = Depends(deps.get_detection_service),
+    robot_communication_service: "RobotCommunicationService" = Depends(
+        deps.get_robot_communication_service
+    ),
 ):
     """
     API endpoint to trigger an immediate system restart.
@@ -150,16 +141,16 @@ async def restart_system(
 
     try:
         await connection_manager.warning("Restarting the system")
-        await music_manager.cleanup()
-        await detection_manager.cancel_detection_watcher()
-        await detection_manager.stop_detection_process()
-        await shutdown_robot_services()
+        await music_service.cleanup()
+        await detection_service.cancel_detection_watcher()
+        await detection_service.stop_detection_process()
+        await robot_communication_service.shutdown_robot_services()
         await asyncio.to_thread(restart)
         return {"message": "System restart initiated successfully."}
     except Exception:
         logger.error("Failed to restart system", exc_info=True)
         await connection_manager.error("Failed to restart system")
-        music_manager.start_broadcast_task()
+        music_service.start_broadcast_task()
         raise HTTPException(
             status_code=500,
             detail="Failed to restart the system.",

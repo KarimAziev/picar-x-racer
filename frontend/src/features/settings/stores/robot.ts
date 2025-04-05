@@ -117,7 +117,14 @@ export type MotorsCalibrationData = {
   [P in keyof MotorsData]: Pick<MotorConfig, "calibration_direction">;
 };
 
-export interface Data extends ServoData, MotorsData {}
+export interface LEDConfig {
+  interval: number | null;
+  pin: number | string | null;
+  name: string | null;
+}
+export interface Data extends ServoData, MotorsData {
+  led: LEDConfig;
+}
 
 const defaultServo = {
   servo_pin: null,
@@ -138,6 +145,11 @@ const motorDefaults = {
   period: null,
   prescaler: null,
 };
+const ledDefaults = {
+  name: null,
+  pin: null,
+  interval: null,
+};
 const defaultState: State = {
   loading: false,
   config: {},
@@ -147,6 +159,7 @@ const defaultState: State = {
     steering_servo: defaultServo,
     left_motor: motorDefaults,
     right_motor: motorDefaults,
+    led: ledDefaults,
   },
 };
 
@@ -184,7 +197,7 @@ export const useStore = defineStore("robot", {
       try {
         this.loading = true;
         const response = await axios.get<FieldsConfig>(
-          "/api/settings/robot-fields",
+          "/px/api/settings/robot-fields",
         );
         this.config = response.data;
       } catch (error) {
@@ -197,7 +210,7 @@ export const useStore = defineStore("robot", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const response = await axios.get<Data>("/api/settings/config");
+        const response = await axios.get<Data>("/px/api/settings/config");
         this.data = response.data;
       } catch (error) {
         messager.handleError(error, `Error fetching robot config`);

@@ -3,7 +3,7 @@ import multiprocessing as mp
 import threading
 from typing import TYPE_CHECKING, Optional
 
-from app.core.logger import Logger
+from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.managers.distance_manager import distance_process
 from app.schemas.distance import UltrasonicConfig
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from app.core.async_emitter import AsyncEventEmitter, Listener
     from app.managers.async_task_manager import AsyncTaskManager
 
-logger = Logger(__name__, app_name="px_robot")
+logger = Logger(__name__)
 
 
 class DistanceService(metaclass=SingletonMeta):

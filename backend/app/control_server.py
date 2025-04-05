@@ -3,6 +3,8 @@ The application provides robot-controlling functionality, including:
 
 - WebSockets for controlling and calibration of the robot
 - Ultrasonic distance measurement
+- Battery monitoring
+
 """
 
 import asyncio
@@ -13,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.control import api_router, tags_metadata
-from app.core.logger import Logger
+from app.core.px_logger import Logger
 
 if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
@@ -21,11 +23,12 @@ if TYPE_CHECKING:
     from app.services.control.car_service import CarService
     from app.services.sensors.battery_service import BatteryService
     from app.services.sensors.distance_service import DistanceService
+    from app.services.sensors.led_service import LEDService
 
 Logger.setup_from_env()
 
 
-logger = Logger(name=__name__, app_name="px_robot")
+logger = Logger(name=__name__)
 
 
 @asynccontextmanager
@@ -35,6 +38,7 @@ async def lifespan(app: FastAPI):
     robot_service: Optional["CarService"] = None
     distance_service: Optional["DistanceService"] = None
     settings_service: Optional["JsonDataManager"] = None
+    led_service: Optional["LEDService"] = None
 
     try:
         from robot_hat import reset_mcu_sync
@@ -54,6 +58,7 @@ async def lifespan(app: FastAPI):
             robot_service = deps.get("robot_service")
             settings_service = deps.get("settings_service")
             distance_service = deps.get("distance_service")
+            led_service = deps.get("led_service")
 
         async def broadcast_distance(distance: float):
             await connection_service.broadcast_json(
@@ -107,10 +112,19 @@ async def lifespan(app: FastAPI):
         try:
             await distance_service.cleanup()
         except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up robot_service.")
+            logger.warning("Cancelled while cleaning up distance service.")
             raise
         except Exception as e:
-            logger.error("Failed to cleanup distance service: %s", distance_service)
+            logger.error("Failed to cleanup distance service: %s", e)
+
+    if led_service:
+        try:
+            await led_service.cleanup()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up LED service.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup LED service: %s", e)
 
     logger.info(f"Stopped {app.title}")
 

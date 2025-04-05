@@ -1,10 +1,11 @@
 """
-Endpoints related to battery status and monitoring.
+Endpoints related to the battery monitoring.
 """
 
 from typing import TYPE_CHECKING, Annotated
 
 from app.api import robot_deps
+from app.core.px_logger import Logger
 from app.schemas.battery import BatteryStatusResponse
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -12,12 +13,15 @@ if TYPE_CHECKING:
     from app.services.sensors.battery_service import BatteryService
 
 router = APIRouter()
+logger = Logger(name=__name__)
 
 
 @router.get(
     "/px/api/battery-status",
     response_model=BatteryStatusResponse,
-    summary="Retrieve the current battery status in volts.",
+    summary="Retrieve the current battery status in volts and percentage.",
+    response_description="An object containing measured voltage in volts, "
+    "e.g., '7.1,' and the remaining battery charge as a percentage.",
 )
 async def get_battery_voltage(
     battery_manager: Annotated[
@@ -42,6 +46,9 @@ async def get_battery_voltage(
     and 100% indicates it is at the full voltage.
     """
     (voltage, percentage) = await battery_manager.broadcast_state()
+    logger.debug(
+        "Retrieved battery status - Voltage: %sV, Percentage: %s%", voltage, percentage
+    )
     if voltage is not None:
         return {"voltage": voltage, "percentage": percentage}
     else:

@@ -8,7 +8,7 @@ class BatteryStatusResponse(BaseModel):
 
     voltage: float = Field(
         ...,
-        description="The current voltage of the battery in volts, e.g. '7.8'",
+        description="The current voltage of the battery in volts.",
         examples=[7.1, 6.42],
     )
 
