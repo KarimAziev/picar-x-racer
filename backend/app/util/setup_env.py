@@ -114,6 +114,8 @@ def setup_env() -> AppEnvironment:
     os.environ["PX_CONTROL_APP_PORT"] = control_app_port
     os.environ["PX_MAIN_APP_PORT"] = main_app_port
     os.environ["PX_APP_MODE"] = mode
+    os.environ["VITE_MAIN_APP_PORT"] = main_app_port
+    os.environ["VITE_WS_APP_PORT"] = control_app_port
 
     return AppEnvironment(
         main_app_port, control_app_port, log_level, mode, frontend_port

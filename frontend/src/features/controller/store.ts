@@ -215,7 +215,7 @@ export const useControllerStore = defineStore("controller", {
 
       this.model = useWebSocket({
         url: "px/ws",
-        port: 8001,
+        port: +(import.meta.env.VITE_WS_APP_PORT || "8001"),
         onMessage: handleMessage,
         logPrefix: "px",
       });

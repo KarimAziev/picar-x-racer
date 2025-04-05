@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import { useMessagerStore } from "@/features/messager";
 import type { Nullable } from "@/util/ts-helpers";
+import { makeUrl } from "@/util/url";
 
 export interface Field {
   type: string | string[];
@@ -194,13 +195,11 @@ export const useStore = defineStore("robot", {
   actions: {
     async fetchFieldsConfig() {
       const messager = useMessagerStore();
+      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
+      const url = makeUrl("px/api/settings/robot-fields", port);
       try {
         this.loading = true;
-        const baseURL =
-          import.meta.env.VITE_CONTROL_APP_URL || "http://127.0.0.1:8001";
-        const response = await axios.get<FieldsConfig>(
-          `${baseURL}/px/api/settings/robot-fields`,
-        );
+        const response = await axios.get<FieldsConfig>(url);
         this.config = response.data;
       } catch (error) {
         messager.handleError(error);
@@ -210,13 +209,11 @@ export const useStore = defineStore("robot", {
     },
     async fetchData() {
       const messager = useMessagerStore();
+      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
+      const url = makeUrl("px/api/settings/config", port);
       try {
-        const baseURL =
-          import.meta.env.VITE_CONTROL_APP_URL || "http://127.0.0.1:8001";
         this.loading = true;
-        const response = await axios.get<Data>(
-          `${baseURL}/px/api/settings/config`,
-        );
+        const response = await axios.get<Data>(url);
         this.data = response.data;
       } catch (error) {
         messager.handleError(error, `Error fetching robot config`);
