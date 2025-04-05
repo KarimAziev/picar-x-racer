@@ -874,7 +874,7 @@ async def move_files_in_aliased_dir(
     response_model=SaveFileRequest,
     responses=write_file_responses,
 )
-async def write_file_in_aliased_dir(
+def write_file_in_aliased_dir(
     payload: SaveFileRequest,
     manager: manager,
 ):
@@ -907,7 +907,7 @@ async def write_file_in_aliased_dir(
     response_model=SaveFileRequest,
     responses=write_file_responses,
 )
-async def write_file(
+def write_file(
     payload: SaveFileRequest,
 ):
     """
