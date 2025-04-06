@@ -36,7 +36,7 @@ async def update_settings(
     battery_manager: Annotated[
         "BatteryService", Depends(robot_deps.get_battery_service)
     ],
-    robot_service: Annotated["CarService", Depends(robot_deps.get_battery_service)],
+    robot_service: Annotated["CarService", Depends(robot_deps.get_robot_service)],
 ):
     """
     Reload settings for dependent services.

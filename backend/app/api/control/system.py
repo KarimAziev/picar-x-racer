@@ -36,7 +36,7 @@ async def shutdown(
     battery_service: Annotated[
         "BatteryService", Depends(robot_deps.get_battery_service)
     ],
-    robot_service: Annotated["CarService", Depends(robot_deps.get_battery_service)],
+    robot_service: Annotated["CarService", Depends(robot_deps.get_robot_service)],
     distance_service: Annotated[
         "DistanceService", Depends(robot_deps.get_distance_service)
     ],
