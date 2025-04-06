@@ -1,5 +1,6 @@
 <template>
   <ColorOptions
+    :title="title"
     color-picker-id="detection-bbox-color"
     v-model:color="store.bboxesColor"
     :options="colorOptions"
@@ -11,7 +12,7 @@
       :disabled="isResetDisabled"
       @click="
         () => {
-          store.bboxesColor = defaultState.bboxesColor;
+          store.bboxesColor = undefined;
         }
       "
     />
@@ -26,7 +27,12 @@ import ColorOptions from "@/features/settings/components/theming/ColorOptions.vu
 import { defaultState } from "@/features/settings/stores/theme";
 
 const store = useThemeStore();
+
+defineProps<{ class?: string; title?: string }>();
+
 const isResetDisabled = computed(
-  () => store.bboxesColor === defaultState.bboxesColor,
+  () =>
+    store.bboxesColor === defaultState.bboxesColor ||
+    store.bboxesColor === store.primaryColor,
 );
 </script>

@@ -1,21 +1,24 @@
 import { formatKeyEventItem } from "@/util/keyboard-util";
 
-export const useKeyboardHandlers = (keyHandlers: {
-  [key: string]: Function;
-}) => {
-  const handleKeyUp = (event: KeyboardEvent) => {
-    const key = formatKeyEventItem(event);
+export const useKeyboardHandlers = (
+  keyHandlers: {
+    [key: string]: Function;
+  },
+  target?: HTMLElement,
+) => {
+  const handleKeyUp = (event: Event) => {
+    const key = formatKeyEventItem(event as KeyboardEvent);
     if (keyHandlers[key]) {
       keyHandlers[key]();
     }
   };
 
   const addKeyEventListeners = () => {
-    window.addEventListener("keyup", handleKeyUp);
+    (target || window).addEventListener("keyup", handleKeyUp);
   };
 
   const removeKeyEventListeners = () => {
-    window.removeEventListener("keyup", handleKeyUp);
+    (target || window).removeEventListener("keyup", handleKeyUp);
   };
 
   return {

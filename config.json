@@ -42,5 +42,10 @@
     "calibration_speed_offset": 0.0,
     "period": 4095,
     "prescaler": 10
+  },
+  "led": {
+    "pin": 26,
+    "name": "LED",
+    "interval": 0.1
   }
 }

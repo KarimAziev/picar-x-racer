@@ -105,6 +105,7 @@ export const saveableTabs = {
   [SettingsTab.MODELS]: true,
   [SettingsTab.ROBOT]: false,
   [SettingsTab.VIDEOS]: false,
+  [SettingsTab.FILES]: false,
 };
 
 export const imgSizeOptions = generateMultiplesOf32(2000).map((value) => ({
@@ -120,3 +121,10 @@ export const videoQualityOptions = numberSequence(10, 100, 10).map((value) => ({
   value: value,
   label: `${value}`,
 }));
+
+export const videoEncodeFormatOptions = [
+  { value: ".jpg", label: "JPG" },
+  { value: ".jpeg", label: "JPEG" },
+  { value: ".webp", label: "WEBP" },
+  { value: ".png", label: "PNG" },
+];

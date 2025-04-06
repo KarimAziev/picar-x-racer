@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.tts_service import TTSService
+    from app.services.media.tts_service import TTSService
 
 router = APIRouter()
 logger = Logger(__name__)

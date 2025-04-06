@@ -1,6 +1,5 @@
 import app.api.endpoints.app_syncer as syncer
 import app.api.endpoints.audio as audio
-import app.api.endpoints.battery as battery
 import app.api.endpoints.camera as camera
 import app.api.endpoints.default as serve
 import app.api.endpoints.detection as detection
@@ -23,7 +22,6 @@ routers, tags_metadata = build_routers_and_metadata(
         file_management,
         settings,
         audio,
-        battery,
         tts,
         music,
         system,

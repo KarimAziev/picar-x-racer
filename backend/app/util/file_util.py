@@ -1,12 +1,17 @@
 import json
 import os
+import re
 import shutil
 import tempfile
 import zipfile
 from io import BytesIO
 from os import path
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, TypeVar, Union
+
+from app.util.mime_type_helper import guess_mime_type
+
+T = TypeVar("T")
 
 
 def copy_file_if_not_exists(source: str, target: str):
@@ -186,74 +191,6 @@ def is_parent_directory(parent_dir: str, file_path: str):
         return False
 
 
-def get_directory_structure(
-    initial_directory: str,
-    extension: Optional[Union[str, Tuple[str, ...]]] = None,
-    directory_suffix: Optional[Union[str, Tuple[str, ...]]] = None,
-    exclude_empty_dirs=True,
-    absolute=True,
-    file_processor: Optional[Callable[[str], Any]] = None,
-) -> list[Dict[str, Any]]:
-    def walk_directory(current_path: str):
-        children = []
-        entries = sorted(
-            os.listdir(current_path),
-            key=lambda entry: (
-                not os.path.isdir(os.path.join(current_path, entry)),
-                entry,
-            ),
-        )
-
-        for entry in entries:
-            entry_path = os.path.join(current_path, entry)
-            key_path = (
-                entry_path
-                if absolute
-                else file_to_relative(entry_path, initial_directory)
-            )
-            is_directory = os.path.isdir(entry_path)
-            if (
-                is_directory
-                and directory_suffix
-                and entry_path.endswith(directory_suffix)
-            ):
-                children.append(
-                    {
-                        "key": key_path,
-                        "label": entry,
-                        "selectable": True,
-                        "data": {"name": entry, "type": "Folder"},
-                    }
-                )
-            elif is_directory:
-                subchildren = walk_directory(entry_path)
-                if not exclude_empty_dirs or len(subchildren) > 0:
-                    children.append(
-                        {
-                            "key": key_path,
-                            "label": entry,
-                            "selectable": False,
-                            "children": subchildren,
-                            "data": {"name": entry, "type": "Folder"},
-                        }
-                    )
-            elif extension is None or entry_path.endswith(extension):
-                if file_processor is not None:
-                    file_processor(entry_path)
-                children.append(
-                    {
-                        "key": key_path,
-                        "label": entry,
-                        "selectable": True,
-                        "data": {"name": entry, "type": "File"},
-                    }
-                )
-
-        return children
-
-    return walk_directory(initial_directory)
-
-
 def zip_files_generator(
     filenames: List[str], directory_fn: Callable[[str], str]
 ) -> Tuple[BytesIO, int]:
@@ -261,16 +198,29 @@ def zip_files_generator(
 
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
         for filename in filenames:
-            file_path = os.path.join(directory_fn(filename), filename)
+            root = directory_fn(filename)
+            file_path = resolve_absolute_path(filename, root)
 
-            if not os.path.isfile(file_path):
+            if os.path.isdir(file_path):
+                for dirpath, _, files in os.walk(file_path):
+                    rel_dir = os.path.relpath(dirpath, root)
+                    if rel_dir != ".":
+                        zip_dir_name = rel_dir.replace(os.path.sep, "/") + "/"
+                        zipf.writestr(zip_dir_name, "")
+                    for f in files:
+                        full_path = os.path.join(dirpath, f)
+                        rel_file = os.path.join(os.path.relpath(dirpath, root), f)
+                        archive_name = rel_file.replace(os.path.sep, "/")
+                        with open(full_path, "rb") as fileobj:
+                            zipf.writestr(archive_name, fileobj.read())
+
+            elif os.path.isfile(file_path):
+                with open(file_path, "rb") as f:
+                    zipf.writestr(file_to_relative(file_path, root), f.read())
+            else:
                 continue
 
-            with open(file_path, "rb") as f:
-                zipf.writestr(filename, f.read())
-
     buffer.seek(0)
-
     return buffer, len(buffer.getvalue())
 
 
@@ -297,3 +247,97 @@ def generate_zip_tempfile(
 
     temp_file.close()
     return temp_file.name, os.path.getsize(temp_file.name)
+
+
+def file_details(filename: str, directory: Optional[str] = None):
+    content_type = guess_mime_type(filename)
+    file_stat = Path(filename).stat()
+    file_mod_time = file_stat.st_mtime
+    file_size = file_stat.st_size
+    return {
+        "content_type": content_type,
+        "path": filename,
+        "name": (
+            file_to_relative(filename, directory) if directory is not None else filename
+        ),
+        "file_size": file_size,
+        "modified": file_mod_time,
+    }
+
+
+def expand_home_dir(directory: str):
+    if directory.startswith("~"):
+        directory = os.path.expanduser(directory)
+    return directory
+
+
+def directory_files_recursively(
+    directory: str,
+    regexp: Optional[str] = None,
+    include_directories: Optional[bool] = False,
+    predicate: Optional[Callable[[str], bool]] = None,
+    file_processor: Callable[[str, str], T] = file_details,
+) -> List[T]:
+
+    if directory.startswith("~"):
+        directory = os.path.expanduser(directory)
+
+    if not os.path.exists(directory):
+        return []
+
+    pattern = re.compile(regexp) if regexp is not None else None
+
+    result: List[T] = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+
+            if pattern and not pattern.search(file_path):
+                continue
+
+            if (not include_directories and os.path.isfile(file_path)) or (
+                include_directories
+                and (predicate(file_path) if predicate is not None else True)
+            ):
+                details = file_processor(file_path, directory)
+                if details is not None:
+                    result.append(details)
+    return result
+
+
+def abbreviate_path(path: str) -> str:
+    home = os.path.expanduser("~")
+    if home == os.path.sep:
+        return path
+    if path.startswith(home):
+        if path == home:
+            return "~"
+        return "~" + path[len(home) :]
+    return path
+
+
+def exclude_nested_files(filenames: List[str]) -> List[Path]:
+    paths = [Path(p).resolve() for p in filenames]
+
+    directories = {p for p in paths if p.is_dir()}
+
+    result = []
+    for p in paths:
+        if p.is_file() and any(parent in directories for parent in p.parents):
+            continue
+        result.append(p)
+    return result
+
+
+def file_in_directory(file: str, dir: str) -> bool:
+    parents = Path(file).parents
+
+    return dir in [item.as_posix() for item in parents]
+
+
+resolve_absolute_path(
+    file_to_relative(
+        "/home/km/Music/picar-x-racer/robsso.mp3", "/home/km/Music/picar-x-racer"
+    ),
+    "/home/km/Music/picar-x-racer",
+)

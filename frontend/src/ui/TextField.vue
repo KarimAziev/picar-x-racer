@@ -1,14 +1,16 @@
 <template>
   <Field
+    :message="message"
+    :label="label"
     :fieldClassName="fieldClassName"
     :labelClassName="labelClassName"
-    :label="label"
-    :message="message"
+    :tooltipHelp="tooltipHelp"
     :layout="layout"
   >
     <InputText
       v-tooltip="tooltip"
       :inputId="field"
+      :id="field"
       :pt="{ pcInput: { id: field } }"
       :class="props.inputClassName"
       v-model="currentValue"
@@ -29,22 +31,18 @@ import InputText, {
   InputTextProps,
 } from "primevue/inputtext";
 import Field from "@/ui/Field.vue";
-import type { FieldLayout } from "@/ui/Field.vue";
+import type { Props as FieldProps } from "@/ui/Field.vue";
 
-export type Props = {
+export interface Props extends FieldProps {
   modelValue?: any;
   invalid?: boolean;
-  message?: string | null;
   label?: string;
   field?: string;
-  fieldClassName?: string;
-  labelClassName?: string;
   inputClassName?: string;
   readonly?: boolean;
   disabled?: boolean;
-  layout?: FieldLayout;
   tooltip?: string;
-};
+}
 const props = defineProps<Props>();
 const otherAttrs: InputTextProps = useAttrs();
 

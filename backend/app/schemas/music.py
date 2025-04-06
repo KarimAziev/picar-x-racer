@@ -2,42 +2,8 @@ from enum import Enum
 from typing import List, Optional, Union
 
 from app.schemas.audio import VolumeData
+from app.schemas.file_filter import FileDetail
 from pydantic import BaseModel, Field
-
-
-class MusicDetail(BaseModel):
-    """
-    A model to represent the details of a music track.
-
-    Attributes:
-    - `track` (str): The name of the track.
-    - `duration` (float): The duration of the track in seconds.
-    """
-
-    track: str = Field(
-        ...,
-        min_length=1,
-        description="The name of the track.",
-        examples=["my-song.mp3"],
-    )
-    duration: float = Field(
-        ...,
-        gt=0,
-        description="The duration of the track in seconds. Must be greater than 0.",
-        examples=[149.722],
-    )
-
-
-class MusicDetailItem(MusicDetail):
-    """
-    A model to represent the details of a music track including its removability.
-    """
-
-    removable: bool = Field(
-        ...,
-        description="Indicates whether the music track can be removed.",
-        examples=[True, False],
-    )
 
 
 class MusicResponse(VolumeData):
@@ -45,7 +11,7 @@ class MusicResponse(VolumeData):
     A model to represent the response containing available music tracks and volume levels.
     """
 
-    files: List[MusicDetailItem] = Field(
+    files: List[FileDetail] = Field(
         ..., description="A list of available music tracks with detailed information."
     )
 

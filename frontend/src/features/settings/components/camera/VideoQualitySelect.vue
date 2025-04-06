@@ -1,9 +1,10 @@
 <template>
   <SelectField
+    :class="class"
     label="Video Quality"
     field="video_feed_quality"
     v-model="streamStore.data.quality"
-    tooltip="Quality compression level for frames (%s)"
+    tooltipHelp="Quality compression level for frames"
     optionLabel="label"
     optionValue="value"
     :options="videoQualityOptions"
@@ -21,8 +22,10 @@ import { useAsyncDebounce } from "@/composables/useDebounce";
 const settingsStore = useSettingsStore();
 const streamStore = useStreamStore();
 
+defineProps<{ class?: string }>();
+
 const updateStreamParams = useAsyncDebounce(async () => {
   settingsStore.data.stream = streamStore.data;
   await streamStore.updateData(streamStore.data);
-}, 2000);
+}, 500);
 </script>

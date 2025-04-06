@@ -17,30 +17,7 @@
         </button>
       </Field>
 
-      <TreeSelect
-        class="w-[108px] md:w-[126px] xl:w-[148px]"
-        inputId="model"
-        v-model="fields.model"
-        :options="nodes"
-        placeholder="Model"
-        tooltip="Object detection model '%s'"
-        filter
-        :disabled="detectionStore.loading"
-        @before-show="handleSelectBeforeShow"
-        @before-hide="handleSelectBeforeHide"
-        @hide="focusToKeyboardHandler"
-        @update:model-value="updateDebounced"
-      >
-        <template #dropdownicon>
-          <i class="pi pi-angle-down pr-2 pt-1 md:pt-1.5" />
-        </template>
-        <template #header>
-          <div class="p-2">Available Models</div>
-        </template>
-        <template #footer>
-          <ModelUpload />
-        </template>
-      </TreeSelect>
+      <ModelSelect />
     </div>
     <SelectField
       fieldClassName="w-20"
@@ -106,7 +83,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { useSettingsStore } from "@/features/settings/stores";
 import { useDetectionStore } from "@/features/detection";
 import NumberField from "@/ui/NumberField.vue";
@@ -117,26 +93,26 @@ import {
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
 
-import ModelUpload from "@/features/detection/components/ModelUpload.vue";
 import { roundToOneDecimalPlace } from "@/util/number";
 import Field from "@/ui/Field.vue";
 import { focusToKeyboardHandler } from "@/features/controller/util";
+import ModelSelect from "@/features/detection/components/ModelSelect.vue";
 
-defineProps<{ class?: string; label?: string }>();
+defineProps<{ class?: string }>();
 
 const doNothing = () => {};
+
 const detectionStore = useDetectionStore();
 
-const store = useSettingsStore();
+const settingsStore = useSettingsStore();
+
 const { fields, updateDebounced } = useDetectionFields();
 
 const handleSelectBeforeShow = () => {
-  store.inhibitKeyHandling = true;
+  settingsStore.inhibitKeyHandling = true;
 };
 
 const handleSelectBeforeHide = () => {
-  store.inhibitKeyHandling = false;
+  settingsStore.inhibitKeyHandling = false;
 };
-
-const nodes = computed(() => detectionStore.detectors);
 </script>

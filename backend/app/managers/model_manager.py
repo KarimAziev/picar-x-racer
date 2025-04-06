@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from types import TracebackType
 from typing import TYPE_CHECKING, Optional, Tuple, Type, Union
@@ -8,6 +10,7 @@ from app.util.file_util import resolve_absolute_path
 from app.util.google_coral import is_google_coral_connected
 
 logger = Logger(__name__)
+
 
 if TYPE_CHECKING:
     from app.adapters.hailo_adapter import YOLOHailoAdapter

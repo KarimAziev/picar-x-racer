@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[35vh] max-w-[680px]">
+  <div class="min-h-[35vh] max-w-[92vw]">
     <Tabs v-model:value="popupStore.tab" class="font-sans" lazy scrollable>
       <TabList ref="tabList">
         <Tab :value="SettingsTab.GENERAL">General</Tab>
@@ -10,6 +10,7 @@
         <Tab :value="SettingsTab.VIDEOS">Videos</Tab>
         <Tab :value="SettingsTab.MUSIC">Music</Tab>
         <Tab :value="SettingsTab.TTS">TTS</Tab>
+        <Tab :value="SettingsTab.FILES">Files</Tab>
       </TabList>
       <TabPanels>
         <TabPanel :value="SettingsTab.GENERAL">
@@ -34,16 +35,19 @@
         <TabPanel :value="SettingsTab.TTS">
           <TTSPanel />
         </TabPanel>
+        <TabPanel :value="SettingsTab.FILES">
+          <FileExplorer />
+        </TabPanel>
       </TabPanels>
     </Tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, useTemplateRef, onMounted } from "vue";
+import { defineAsyncComponent, useTemplateRef, onMounted, inject } from "vue";
 import { SettingsTab } from "@/features/settings/enums";
 import { usePopupStore } from "@/features/settings/stores";
-import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
+import type { Ref } from "vue";
 import Tabs from "primevue/tabs";
 import TabList from "primevue/tablist";
 import Tab from "primevue/tab";
@@ -111,8 +115,17 @@ const RobotPanel = defineAsyncComponent({
   delay: 0,
 });
 
+const FileExplorer = defineAsyncComponent({
+  loader: () => import("@/features/files/components/FileExplorer.vue"),
+  loadingComponent: Skeleton,
+  errorComponent: ErrorComponent,
+  delay: 0,
+});
+
 const popupStore = usePopupStore();
-const isMobile = useDeviceWatcher();
+
+const isMobile = inject<Ref<boolean, boolean>>("isMobile");
+
 onMounted(() => {
   setTimeout(() => {
     if (isFunction((tabListRef.value as any)?.updateInkBar)) {

@@ -1,9 +1,57 @@
+# Monkey patch for matplotlib.ft2font module:
+# When using ultralytics, matplotlib is imported and its _check_versions
+# function attempts to load the ft2font C-extension. On some systems during
+# test discovery, this results in a segmentation fault
+import sys
+import types
+
+
+class DummyFT2Font:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def some_method(self, *args, **kwargs):
+        pass
+
+
+class DummyFT2Image:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def some_image_method(self, *args, **kwargs):
+        pass
+
+
+class DummyKerning:
+    DEFAULT = 0
+
+
+DummyLoadFlags = 0
+
+# Additional stubs for Python 3.9+
+KERNING_DEFAULT = 0
+LOAD_NO_HINTING = 0
+LOAD_TARGET_LIGHT = 0
+
+dummy_ft2font = types.ModuleType("matplotlib.ft2font")
+dummy_ft2font.FT2Font = DummyFT2Font  # type: ignore
+dummy_ft2font.FT2Image = DummyFT2Image  # type: ignore
+dummy_ft2font.Kerning = DummyKerning  # type: ignore
+dummy_ft2font.LoadFlags = DummyLoadFlags  # type: ignore
+dummy_ft2font.KERNING_DEFAULT = KERNING_DEFAULT  # type: ignore
+dummy_ft2font.LOAD_NO_HINTING = LOAD_NO_HINTING  # type: ignore
+dummy_ft2font.LOAD_TARGET_LIGHT = LOAD_TARGET_LIGHT  # type: ignore
+
+sys.modules["matplotlib.ft2font"] = dummy_ft2font
+
+
 import os
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, cast
 from unittest.mock import MagicMock, patch
 
-from app.managers.model_manager import ModelManager, settings
+from app.config.config import settings
+from app.managers.model_manager import ModelManager
 
 if TYPE_CHECKING:
     from ultralytics import YOLO
@@ -11,6 +59,7 @@ if TYPE_CHECKING:
 
 class DummyYOLO:
     def __init__(self, *args, **kwargs):
+
         self.args = args
         self.kwargs: Dict[str, Any] = kwargs
 
@@ -87,14 +136,12 @@ class TestModelManager(unittest.TestCase):
         """
         manager = ModelManager()
 
-        # Simulate that the edge TPU file does not exist.
         def fake_exists(path):
             if path == settings.YOLO_MODEL_EDGE_TPU_PATH:
                 return False
             return True
 
         mock_exists.side_effect = fake_exists
-        # Simulate Coral not connected (or it doesn’t matter in this scenario).
         mock_coral.return_value = False
 
         model, error = manager.__enter__()

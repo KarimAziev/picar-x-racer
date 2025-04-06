@@ -1,6 +1,6 @@
 <template>
   <ul>
-    <li v-for="node in nodes" :key="node.key">
+    <li v-for="node in nodes" :key="node[keyProp]">
       <div
         @keydown.stop.prevent.enter="handleClick(node)"
         @keydown.stop.prevent.space="handleClick(node)"
@@ -10,11 +10,11 @@
         class="node"
         :class="{ selectable: !node.children, selected: isSelected(node) }"
       >
-        <i v-if="expandedNodes.has(node.key)" class="pi pi-angle-down" />
+        <i v-if="expandedNodes.has(node[keyProp])" class="pi pi-angle-down" />
 
         <i v-else class="pi pi-angle-right" />
-        <span v-tooltip="node.label">
-          {{ node.label }}
+        <span v-tooltip="node[labelProp || keyProp]">
+          {{ node[labelProp || keyProp] }}
         </span>
       </div>
 
@@ -28,13 +28,15 @@
         class="node selectable"
         :class="{ selected: isSelected(node) }"
       >
-        <span v-tooltip="node.label">
-          {{ node.label }}
+        <span v-tooltip="node[labelProp || keyProp]">
+          {{ node[labelProp || keyProp] }}
         </span>
       </div>
 
       <Tree
-        v-if="node.children && expandedNodes.has(node.key)"
+        :keyProp="keyProp"
+        :labelProp="labelProp"
+        v-if="node.children && expandedNodes.has(node[keyProp])"
         :nodes="node.children"
         :modelValue="modelValue"
         @update:modelValue="emit('update:modelValue', $event)"
@@ -45,33 +47,31 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
+import { findAncestors } from "@/util/obj";
+import type { TreeNode } from "@/types/tree";
 
-export interface TreeNode {
-  key: string;
-  label?: string;
-  children?: TreeNode[];
-  tabIdx?: number;
-  [key: string]: any;
-}
-
-const props = defineProps<{
+export interface Props {
   nodes: TreeNode[];
   modelValue: TreeNode | null;
-}>();
+  keyProp: keyof TreeNode;
+  labelProp?: keyof TreeNode;
+}
 
+const props = defineProps<Props>();
 const emit = defineEmits(["update:modelValue"]);
 
 const expandedNodes = ref<Set<string>>(new Set());
 
-const isSelected = (node: TreeNode): boolean => {
-  return props.modelValue?.key === node.key;
-};
+const isSelected = (node: TreeNode): boolean =>
+  props.modelValue
+    ? props.modelValue[props.keyProp] === node[props.keyProp]
+    : false;
 
 const toggleExpand = (node: TreeNode) => {
-  if (expandedNodes.value.has(node.key)) {
-    expandedNodes.value.delete(node.key);
+  if (expandedNodes.value.has(node[props.keyProp])) {
+    expandedNodes.value.delete(node[props.keyProp]);
   } else {
-    expandedNodes.value.add(node.key);
+    expandedNodes.value.add(node[props.keyProp]);
   }
 };
 
@@ -84,27 +84,13 @@ const handleClick = (node: TreeNode) => {
   }
 };
 
-const findAncestors = (
-  nodes: TreeNode[],
-  targetKey: string,
-  currentPath: string[] = [],
-): string[] => {
-  for (const node of nodes) {
-    const path = [...currentPath, node.key];
-    if (node.key === targetKey) {
-      return path.slice(0, -1);
-    }
-    if (node.children) {
-      const result = findAncestors(node.children, targetKey, path);
-      if (result.length) return result;
-    }
-  }
-  return [];
-};
-
 const expandSelectedNodeParents = () => {
   if (props.modelValue) {
-    const ancestors = findAncestors(props.nodes, props.modelValue.key);
+    const ancestors = findAncestors(
+      props.keyProp,
+      props.nodes,
+      props.modelValue[props.keyProp],
+    );
     ancestors.forEach((key) => expandedNodes.value.add(key));
   }
 };
@@ -115,9 +101,7 @@ watch(
   { immediate: true },
 );
 
-onMounted(() => {
-  expandSelectedNodeParents();
-});
+onMounted(expandSelectedNodeParents);
 </script>
 
 <style scoped lang="scss">

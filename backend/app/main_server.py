@@ -1,5 +1,5 @@
 """
-The application provides robot-agnostic functionality, including:
+The application provides robot-agnostic functionality:
 - Video streaming
 - Managing settings and files
 - Music/sound playback
@@ -24,10 +24,9 @@ from app.util.ansi import print_initial_message
 from app.util.get_ip_address import get_ip_address
 
 if TYPE_CHECKING:
-    from app.services.battery_service import BatteryService
     from app.services.connection_service import ConnectionService
-    from app.services.detection_service import DetectionService
-    from app.services.music_service import MusicService
+    from app.services.detection.detection_service import DetectionService
+    from app.services.media.music_file_service import MusicFileService
 
 
 Logger.setup_from_env()
@@ -40,46 +39,36 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     app.state.cancelled = False
-    connection_manager: Optional["ConnectionService"] = None
-    battery_manager: Optional["BatteryService"] = None
-    detection_manager: Optional["DetectionService"] = None
-    music_manager: Optional["MusicService"] = None
     signal_file_path: Optional[str] = None
+    connection_manager: Optional["ConnectionService"] = None
+    detection_manager: Optional["DetectionService"] = None
+    music_file_service: Optional["MusicFileService"] = None
 
     try:
         from app.api import deps
+        from app.util.solve_lifespan import solve_lifespan
 
         port = os.getenv("PX_MAIN_APP_PORT")
         mode = os.getenv("PX_APP_MODE")
 
-        file_manager = deps.get_file_manager(
-            audio_service=deps.get_audio_service(),
-            video_service=deps.get_video_service(),
-        )
-
-        connection_manager = deps.get_connection_service()
-        app_manager = connection_manager
-        battery_manager = deps.get_battery_service(
-            connection_manager=connection_manager,
-            file_manager=file_manager,
-        )
-        detection_manager = deps.get_detection_service(
-            file_manager=file_manager, connection_manager=connection_manager
-        )
-        music_manager = deps.get_music_service(
-            file_manager=file_manager, connection_manager=connection_manager
-        )
+        lifespan_deps = solve_lifespan(deps.get_lifespan_dependencies)
+        async with lifespan_deps(app) as deps:
+            connection_manager = deps.get("connection_manager")
+            detection_manager = deps.get("detection_manager")
+            music_file_service = deps.get("music_file_service")
 
         app.state.template_folder = settings.TEMPLATE_DIR
-        app.state.app_manager = app_manager
+        app.state.app_manager = connection_manager
 
         ip_address = get_ip_address()
         browser_url = f"http://{ip_address}:{port}"
 
         signal_file_path = "/tmp/backend_ready.signal" if mode == "dev" else None
 
-        battery_manager.setup_connection_manager()
-        music_manager.start_broadcast_task()
+        sorted_tracks = music_file_service.list_sorted_tracks()
+
+        music_file_service.music_service.update_tracks(sorted_tracks)
+        music_file_service.music_service.start_broadcast_task()
 
         if signal_file_path:
             try:
@@ -99,17 +88,10 @@ async def lifespan(app: FastAPI):
 
         logger.info(f"Stopping 🚗 {app.title} application")
         try:
-            if battery_manager:
-                await battery_manager.cleanup_connection_manager()
+            if music_file_service:
+                await music_file_service.music_service.cleanup()
         except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up battery_manager.")
-            raise
-
-        try:
-            if music_manager:
-                await music_manager.cleanup()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up music_manager.")
+            logger.warning("Cancelled while cleaning up music_file_service.")
             raise
 
         try:

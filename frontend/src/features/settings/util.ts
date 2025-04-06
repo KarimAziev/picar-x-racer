@@ -1,5 +1,4 @@
 import { ControllerActionName } from "@/features/controller/store";
-import { RemoveFileResponse } from "@/features/settings/interface";
 import { startCase } from "@/util/str";
 
 export const objectKeysToOptions = (
@@ -26,28 +25,7 @@ export const groupKeys = (
     {} as Record<string, ControllerActionName>,
   );
 
-export const getBatchFilesErrorMessage = (data: RemoveFileResponse[]) => {
-  const { success, failed } = data.reduce(
-    (acc, obj) => {
-      const prop = obj.success ? "success" : "failed";
-      acc[prop].push(obj);
-      return acc;
-    },
-    {
-      success: [] as RemoveFileResponse[],
-      failed: [] as RemoveFileResponse[],
-    },
-  );
-  if (failed.length > 0) {
-    const prefix =
-      success.length > 0
-        ? failed.length > 0
-          ? "Failed to remove some files: "
-          : "Failed to remove the file: "
-        : "Failed to remove: ";
-    return {
-      error: failed.map(({ filename }) => filename).join(", "),
-      title: prefix,
-    };
-  }
+export const isSelectableModel = (path: string, is_dir?: boolean) => {
+  const regex = is_dir ? /_ncnn_model$/ : /\.(?:pt|tflite|onnx|hef)$/;
+  return regex.test(path);
 };

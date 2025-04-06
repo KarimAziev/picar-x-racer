@@ -8,17 +8,16 @@
     collapsed
     :legend="startCase(groupName)"
   >
-    <div class="flex">
-      <div class="flex-1">
+    <div class="flex gap-2">
+      <div class="flex-1 min-w-0">
         <template
           v-if="group"
           v-for="(field, fieldName) in group"
           :key="fieldName"
         >
-          <span v-if="!calibrationFieldNames[fieldName]">
+          <template v-if="!calibrationFieldNames[fieldName]">
             <SelectField
               :filter="false"
-              fieldClassName="w-[80%]"
               :autoFilterFocus="false"
               simpleOptions
               v-if="field.options"
@@ -29,7 +28,7 @@
               :options="field.options"
             />
             <TextField
-              inputClassName="w-[80%]"
+              fluid
               v-else-if="field.type === 'str'"
               :field="fieldName"
               :label="field?.label"
@@ -37,7 +36,6 @@
               v-model="store.data[groupName][fieldName]"
             />
             <RadioField
-              inputClassName="w-[80%]"
               v-if="Array.isArray(field.type)"
               :options="
                 field.type.map((v) => ({
@@ -45,24 +43,21 @@
                   label: labels[v as string],
                 }))
               "
-              inputClass="w-[80%] max-w-[80%]"
               :field="fieldName"
               :label="field?.label"
               :tooltip="field.description"
               v-model="store.data[groupName][fieldName]"
             />
-          </span>
+          </template>
         </template>
       </div>
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <div v-if="group" v-for="(field, fieldName) in group" :key="fieldName">
           <NumberInputField
             v-if="
               !calibrationFieldNames[fieldName] &&
               ['int', 'float'].includes(field.type)
             "
-            inputClass="w-[80%] max-w-[80%]"
-            fieldClassName="w-[80%] max-w-[80%]"
             :field="fieldName"
             :step="field.type === 'float' ? 0.1 : 1"
             :label="field?.label"

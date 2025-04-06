@@ -13,6 +13,7 @@
           size="small"
           label="Save"
           type="submit"
+          @click="handleSubmit"
           :disabled="isDisabled"
           class="w-fit"
         />
@@ -26,14 +27,13 @@
       >
         <SelectField
           :field="`command-${index}`"
-          fieldClassName="w-3/5 !my-0"
+          fieldClassName="w-3/5"
           inputClassName="w-full max-w-full"
           filter
           :tooltip="fieldPair[0].label"
           v-model="fieldPair[0].value"
           optionLabel="label"
           optionValue="value"
-          autoFilterFocus
           :options="fieldPair[0].options"
           :disabled="fieldPair[0].props?.disabled"
           class="w-full max-w-full"

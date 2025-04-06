@@ -2,7 +2,7 @@
   <ToggleSwitchField
     field="render_fps"
     layout="row-reverse"
-    tooltip="Whether to draw FPS on the top-right corner"
+    tooltipHelp="Whether to draw FPS on the top-right corner"
     label="Render FPS"
     fieldClassName="flex-row-reverse gap-2.5 items-center justify-end"
     v-model="streamStore.data.render_fps"

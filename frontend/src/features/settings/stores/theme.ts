@@ -10,7 +10,10 @@ import { isDarkMode } from "@/util/theme";
 import { surfaces } from "@/presets/surfaces";
 import { ensurePrefix } from "@/util/str";
 import { MethodsWithOneStringParam, PropertiesOfType } from "@/util/ts-helpers";
-import { OverlayLinesParams, KeypointsParams } from "@/types/overlay";
+import {
+  OverlayLinesParams,
+  KeypointsParams,
+} from "@/features/detection/interface";
 import { cloneDeep } from "@/util/obj";
 
 export const defaultLightState = {
@@ -23,17 +26,20 @@ export const defaultDarkState = {
   surfaceColor: "robo",
 };
 
-export const defaultState = {
+export const defaultState: State = {
   ...defaultDarkState,
-  keypointsColor: defaultPrimaryColor,
-  skeletonColor: defaultPrimaryColor,
-  bboxesColor: defaultPrimaryColor,
+  keypointsColor: undefined,
+  skeletonSize: 60,
+  skeletonColor: undefined,
+  bboxesColor: undefined,
   dark: isDarkMode(),
   lines: {
-    head: { size: 25 },
-    torso: { size: 60 },
-    arms: { size: 60 },
-    legs: { size: 60 },
+    head: { size: 25, renderFiber: false },
+    torso: { size: 60, renderFiber: false },
+    upper_arm: { size: 40, renderFiber: true },
+    lower_arm: { size: 60, renderFiber: false },
+    thigh: { size: 60, renderFiber: false },
+    lower_leg: { size: 60, renderFiber: false },
   },
   keypoints: {
     ear: { size: 1 },
@@ -69,6 +75,7 @@ export interface State {
   skeletonColor?: string;
   keypointsColor?: string;
   bboxesColor?: string;
+  skeletonSize: number;
   lines: OverlayLinesParams;
   keypoints: KeypointsParams;
   keypointsSize: number;
@@ -88,6 +95,7 @@ export const useStore = defineStore("theme", {
       const newPalette = palette(ensurePrefix("#", newColor));
       this.primaryColor = newColor;
       updatePrimaryPalette(newPalette);
+
       window.dispatchEvent(
         new CustomEvent("update-primary-palette", {
           bubbles: true,
@@ -108,45 +116,18 @@ export const useStore = defineStore("theme", {
       if (!this.lines) {
         this.lines = cloneDeep(defaultState.lines);
       }
-      this.updateBodyColor(this.skeletonColor);
-      this.updateHeadlineColor(this.skeletonColor);
-      this.updateArmsColor(this.skeletonColor);
-      this.updateLegsColor(this.skeletonColor);
+      Object.keys(defaultState.lines).forEach((key) => {
+        this.lines[key as keyof OverlayLinesParams].color = this.skeletonColor;
+      });
     },
     updateSkeletonSize(newSize: number) {
       if (!this.lines) {
         this.lines = cloneDeep(defaultState.lines);
       }
-      this.updateBodySize(newSize);
-      this.updateHeadlineSize(newSize);
-      this.updateArmsSize(newSize);
-      this.updateLegsSize(newSize);
+      Object.keys(defaultState.lines).forEach((key) => {
+        this.lines[key as keyof OverlayLinesParams].size = newSize;
+      });
     },
-    updateBodyColor(newColor: string) {
-      this.lines.torso.color = newColor;
-    },
-    updateHeadlineColor(newColor: string) {
-      this.lines.head.color = newColor;
-    },
-    updateArmsColor(newColor: string) {
-      this.lines.arms.color = newColor;
-    },
-    updateLegsColor(newColor: string) {
-      this.lines.legs.color = newColor;
-    },
-    updateBodySize(newSize: number) {
-      this.lines.torso.size = newSize;
-    },
-    updateHeadlineSize(newSize: number) {
-      this.lines.head.size = newSize;
-    },
-    updateArmsSize(newSize: number) {
-      this.lines.arms.size = newSize;
-    },
-    updateLegsSize(newSize: number) {
-      this.lines.legs.size = newSize;
-    },
-
     updateKeypointsColor(newColor: string) {
       this.keypointsColor = newColor;
       Object.keys(this.keypoints).forEach((group) => {
@@ -179,7 +160,7 @@ export const useStore = defineStore("theme", {
       }
 
       if (this.bboxesColor && this.bboxesColor !== defaultState.bboxesColor) {
-        this.updateBBoxesColor(this.bboxesColor);
+        this.bboxesColor = this.bboxesColor;
       }
 
       if (
@@ -196,9 +177,6 @@ export const useStore = defineStore("theme", {
         this.keypoints = cloneDeep(defaultState.keypoints);
       }
 
-      if (!this.bboxesColor) {
-        this.updateBBoxesColor(this.primaryColor);
-      }
       if (!this.isSurfaceColorDefault) {
         this.updateSurfaceColor(this.surfaceColor);
       }

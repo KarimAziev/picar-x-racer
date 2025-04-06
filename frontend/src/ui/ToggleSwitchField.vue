@@ -1,9 +1,10 @@
 <template>
   <Field
+    :message="message"
+    :label="label"
     :fieldClassName="fieldClassName"
     :labelClassName="labelClassName"
-    :label="label"
-    :message="message"
+    :tooltipHelp="tooltipHelp"
     :layout="layout"
   >
     <ToggleSwitch
@@ -29,24 +30,21 @@ import type {
   ToggleSwitchEmitsOptions,
 } from "primevue/toggleswitch";
 import Field from "@/ui/Field.vue";
-import type { FieldLayout } from "@/ui/Field.vue";
+import type { Props as FieldProps } from "@/ui/Field.vue";
 
-export type Props = {
+export interface Props extends FieldProps {
   modelValue?: any;
   invalid?: boolean;
-  message?: string;
-  label?: string;
   field?: string;
-  fieldClassName?: string;
-  labelClassName?: string;
   inputClass?: string;
   readonly?: boolean;
   disabled?: boolean;
-  layout?: FieldLayout;
+  tooltipHelp?: string;
   tooltip?: string;
   class?: string;
-};
+}
 const props = defineProps<Props>();
+
 const otherAttrs: ToggleSwitchProps = useAttrs();
 
 const currentValue = ref(props.modelValue);

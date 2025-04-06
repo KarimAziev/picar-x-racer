@@ -24,12 +24,12 @@
   </div>
 </template>
 <script setup lang="ts">
-import { defineAsyncComponent } from "vue";
+import { defineAsyncComponent, inject } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
-import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 import Messages from "@/features/messager/components/MessageListContainer.vue";
+import type { Ref } from "vue";
 
-const isMobile = useDeviceWatcher();
+const isMobile = inject<Ref<boolean, boolean>>("isMobile");
 
 const TextToSpeechInput = defineAsyncComponent({
   loader: () => import("@/ui/tts/TextToSpeechInput.vue"),

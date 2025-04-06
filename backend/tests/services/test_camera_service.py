@@ -1,5 +1,4 @@
 import logging
-import struct
 import time
 import unittest
 from typing import Any, Optional, cast
@@ -8,14 +7,13 @@ from unittest.mock import AsyncMock, patch
 import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.core.video_capture_abc import VideoCaptureABC
-from app.exceptions.camera import CameraShutdownInProgressError
 from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
-from app.services.camera_service import CameraService
+from app.services.camera.camera_service import CameraService
 from app.services.connection_service import ConnectionService
-from app.services.detection_service import DetectionService
-from app.services.file_service import FileService
-from app.services.video_recorder_service import VideoRecorderService
+from app.services.detection.detection_service import DetectionService
+from app.services.domain.settings_service import SettingsService
+from app.services.media.video_recorder_service import VideoRecorderService
 
 
 class DummyDetectionService:
@@ -139,19 +137,19 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
         SingletonMeta._instances.pop(CameraService, None)
 
         self.detection_service = cast(DetectionService, DummyDetectionService())
-        self.file_service = cast(FileService, DummyFileService())
+        self.settings_service = cast(SettingsService, DummyFileService())
         self.connection_service = cast(ConnectionService, DummyConnectionService())
         self.video_device_adapter = cast(VideoDeviceAdapter, DummyVideoDeviceAdapter())
 
         self.video_recorder = cast(VideoRecorderService, DummyVideoRecorder())
 
-        patcher = patch("app.services.camera_service.Logger", dummy_logger_patch)
+        patcher = patch("app.services.camera.camera_service.Logger", dummy_logger_patch)
         self.addCleanup(patcher.stop)
         patcher.start()
 
         self.camera_service = CameraService(
             detection_service=self.detection_service,
-            file_manager=self.file_service,
+            settings_service=self.settings_service,
             connection_manager=self.connection_service,
             video_device_adapter=self.video_device_adapter,
             video_recorder=self.video_recorder,
@@ -193,23 +191,6 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
             ret = await self.camera_service.update_stream_settings(new_stream_settings)
             self.assertTrue(ret.video_record)
             mock_restart.assert_called_once()
-
-    async def test_generate_frame_returns_correct_bytes(self):
-        """Test generate_frame returns a bytes object when therea are no errors and not shutting down."""
-        self.camera_service.shutting_down = False
-        frame_bytes = self.camera_service.generate_frame()
-        self.assertIsInstance(frame_bytes, bytes)
-        frame_bytes = cast(bytes, frame_bytes)
-        # Unpack first 16 bytes as two doubles.
-        timestamp, fps = struct.unpack("dd", frame_bytes[:16])
-        self.assertIsInstance(timestamp, float)
-        self.assertEqual(fps, 25.0)
-        self.assertGreater(len(frame_bytes), 16)  # more than header bytes
-
-    async def test_generate_frame_raises_shutdown_error(self):
-        self.camera_service.shutting_down = True
-        with self.assertRaises(CameraShutdownInProgressError):
-            self.camera_service.generate_frame()
 
     async def test_notify_camera_error_broadcasts_message(self):
         test_error = "Test camera error."
@@ -253,18 +234,18 @@ class TestCameraServiceSync(unittest.TestCase):
         SingletonMeta._instances.pop(CameraService, None)
 
         self.detection_service = cast(DetectionService, DummyDetectionService())
-        self.file_service = cast(FileService, DummyFileService())
+        self.settings_service = cast(SettingsService, DummyFileService())
         self.connection_service = cast(ConnectionService, DummyConnectionService())
         self.video_device_adapter = cast(VideoDeviceAdapter, DummyVideoDeviceAdapter())
         self.video_recorder = cast(VideoRecorderService, DummyVideoRecorder())
 
-        patcher = patch("app.services.camera_service.Logger", dummy_logger_patch)
+        patcher = patch("app.services.camera.camera_service.Logger", dummy_logger_patch)
         patcher.start()
         self.addCleanup(patcher.stop)
 
         self.camera_service = CameraService(
             detection_service=self.detection_service,
-            file_manager=self.file_service,
+            settings_service=self.settings_service,
             connection_manager=self.connection_service,
             video_device_adapter=self.video_device_adapter,
             video_recorder=self.video_recorder,

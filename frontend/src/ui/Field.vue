@@ -1,10 +1,11 @@
 <template>
   <div class="flex relative" :class="classObject">
-    <span class="flex flex-col font-bold" v-if="label" :class="labelClassName"
-      >{{ label }}
+    <span class="font-bold" v-if="label" :class="labelClassName">
+      {{ label }}
+      <TooltipHelp v-if="tooltipHelp" :tooltip="tooltipHelp" />
     </span>
     <slot></slot>
-    <span v-if="message" class="bg-transparent text-red-500 text-sm">
+    <span class="bg-transparent text-red-500 text-sm">
       {{ message }}
     </span>
   </div>
@@ -12,17 +13,17 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import TooltipHelp from "@/ui/TooltipHelp.vue";
 
 export type FieldLayout = "col" | "row-reverse" | "row" | "col-reverse";
 
 export type Props = {
-  loading?: boolean;
   message?: string | null;
   label?: string;
   fieldClassName?: string;
   labelClassName?: string;
   layout?: FieldLayout;
-  noMargin?: boolean;
+  tooltipHelp?: string;
 };
 
 const props = defineProps<Props>();

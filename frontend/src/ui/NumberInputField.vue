@@ -1,9 +1,10 @@
 <template>
   <Field
+    :message="message"
+    :label="label"
     :fieldClassName="fieldClassName"
     :labelClassName="labelClassName"
-    :label="label"
-    :message="message"
+    :tooltipHelp="tooltipHelp"
     :layout="layout"
   >
     <InputNumber
@@ -11,7 +12,7 @@
       v-tooltip="tooltip"
       :inputId="field"
       :pt="{ pcInput: { id: field } }"
-      :class="props.inputClassName"
+      :class="inputClassName"
       v-model="currentValue"
       :invalid="invalid"
       :disabled="readonly || disabled"
@@ -32,23 +33,18 @@ import InputNumber, {
   InputNumberInputEvent,
 } from "primevue/inputnumber";
 import Field from "@/ui/Field.vue";
-import type { FieldLayout } from "@/ui/Field.vue";
+import type { Props as FieldProps } from "@/ui/Field.vue";
 import { isString } from "@/util/guards";
 
-export type Props = {
+export interface Props extends FieldProps {
   modelValue?: any;
   invalid?: boolean;
-  message?: string | null;
-  label?: string;
   field?: string;
-  fieldClassName?: string;
-  labelClassName?: string;
   inputClassName?: string;
   readonly?: boolean;
   disabled?: boolean;
-  layout?: FieldLayout;
   tooltip?: string;
-};
+}
 const props = defineProps<Props>();
 const otherAttrs: InputNumberProps = useAttrs();
 

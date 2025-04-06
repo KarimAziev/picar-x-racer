@@ -11,7 +11,7 @@ from app.util.device import release_video_capture_safe
 logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
-    from app.services.v4l2_service import V4L2Service
+    from app.services.camera.v4l2_service import V4L2Service
     from cv2.typing import MatLike
 
 

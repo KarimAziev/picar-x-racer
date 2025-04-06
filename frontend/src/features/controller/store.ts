@@ -9,7 +9,6 @@ import type {
 } from "@/util/ts-helpers";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import {
-  useImageStore,
   useSettingsStore,
   usePopupStore,
   useBatteryStore,
@@ -21,6 +20,7 @@ import {
 import { useDetectionStore } from "@/features/detection";
 import { useMessagerStore } from "@/features/messager";
 import { useMusicStore } from "@/features/music";
+import { useImageStore } from "@/features/files/stores";
 import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
@@ -39,6 +39,7 @@ export interface Modes {
    * Whether calibration mode is enabled.
    */
   calibrationMode: boolean;
+  ledBlinking: boolean;
 }
 
 export interface Gauges {
@@ -82,6 +83,7 @@ const defaultGauges: Gauges = {
 const modes: Modes = {
   avoidObstacles: false,
   calibrationMode: false,
+  ledBlinking: false,
 };
 
 const defaultState: StoreState = {
@@ -116,7 +118,12 @@ export const useControllerStore = defineStore("controller", {
 
         switch (type) {
           case "battery": {
-            batteryStore.voltage = payload;
+            batteryStore.$patch({
+              voltage: payload.voltage,
+              percentage: payload.percentage,
+              error: undefined,
+              loading: false,
+            });
             break;
           }
 
@@ -208,7 +215,7 @@ export const useControllerStore = defineStore("controller", {
 
       this.model = useWebSocket({
         url: "px/ws",
-        port: 8001,
+        port: +(import.meta.env.VITE_WS_APP_PORT || "8001"),
         onMessage: handleMessage,
         logPrefix: "px",
       });
@@ -517,6 +524,17 @@ export const useControllerStore = defineStore("controller", {
     },
     updateRightMotorCaliDir(value: number) {
       this.sendMessage({ action: "updateRightMotorCaliDir", payload: value });
+    },
+    resetMCU() {
+      const messager = useMessagerStore();
+      messager.info("Resetting MCU");
+      this.sendMessage({ action: "resetMCU" });
+    },
+    toggleLEDblinking() {
+      const action = this.ledBlinking ? "stopLED" : "startLED";
+      this.sendMessage({
+        action: action,
+      });
     },
     // UI commands
     getBatteryVoltage() {

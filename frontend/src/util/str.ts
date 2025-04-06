@@ -21,6 +21,8 @@
 export const startCase = (str: string) =>
   str
     .trim()
+    .replace(/^[_-]+/g, " ")
+    .trim()
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[-_]/g, " ")
     .split(" ")

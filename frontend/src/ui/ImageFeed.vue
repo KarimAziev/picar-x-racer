@@ -31,15 +31,13 @@
 
 <script setup lang="ts">
 import { ref, onBeforeUnmount, watch, onMounted, computed } from "vue";
+import { useCssVar } from "@vueuse/core";
 import ScanLines from "@/ui/ScanLines.vue";
 import { useCameraRotate } from "@/composables/useCameraRotate";
 import { useCameraStore, useThemeStore } from "@/features/settings/stores";
-import { drawOverlay } from "@/util/overlay";
-import {
-  useDetectionStore,
-  useWebsocketStream,
-  overlayStyleHandlers,
-} from "@/features/detection";
+import { useDetectionStore, useWebsocketStream } from "@/features/detection";
+import { drawOverlay } from "@/features/detection/overlays/overlay";
+import { overlayStyleHandlers } from "@/features/detection/config";
 
 const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
@@ -62,6 +60,9 @@ const {
 const isOverlayEnabled = computed(
   () => detectionStore.data.active && isVideoStreamActive.value,
 );
+
+const font = useCssVar("--canvas-font");
+const colorText = useCssVar("--color-text");
 
 const {
   addListeners: addCameraRotateListeners,
@@ -87,11 +88,10 @@ watch(
           overlayCanvas.value,
           imgRef.value,
           newResults,
-          undefined,
-          themeStore.bboxesColor,
+          font.value,
+          themeStore.bboxesColor || colorText.value,
           themeStore.lines,
           themeStore.keypoints,
-          themeStore.skeletonFiber,
         );
       } else {
         handler(overlayCanvas.value, imgRef.value, []);

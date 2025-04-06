@@ -19,7 +19,7 @@ const extractFrameWithMetadata = (data: ArrayBuffer) => {
   const arrayBufferView = new Uint8Array(data, 16);
   const blob = new Blob([arrayBufferView], { type: "image/jpeg" });
 
-  return { timestamp, fps, blob };
+  return { timestamp, serverFps: fps, blob };
 };
 
 export const useWebsocketStream = (params: WebsocketStreamParams) => {
@@ -29,29 +29,51 @@ export const useWebsocketStream = (params: WebsocketStreamParams) => {
   const imgLoading = ref(true);
   const currentImageBlobUrl = ref<string>();
 
+  let lastPerf: number = 0;
+  let lastFPS: number = 0;
+
+  const updateClientFPS = () => {
+    const perf = performance.now();
+
+    if (perf - lastPerf >= 1000) {
+      const fps = lastFPS;
+      lastPerf = perf;
+      lastFPS = 0;
+      fpsStore.updateFPS(fps);
+    } else {
+      lastFPS += 1;
+    }
+  };
+
   const handleImageOnLoad = () => {
-    imgLoading.value = false;
-    imgInitted.value = true;
+    if (imgLoading.value) {
+      imgLoading.value = false;
+    }
+    if (!imgInitted.value) {
+      imgInitted.value = true;
+    }
   };
 
   const handleOnMessage = (data: MessageEvent["data"]) => {
+    updateClientFPS();
     if (params.onMessage) {
       params.onMessage(data);
     }
+
     const urlCreator = window.URL || window.webkitURL;
     if (currentImageBlobUrl.value) {
       urlCreator.revokeObjectURL(currentImageBlobUrl.value);
       currentImageBlobUrl.value = undefined;
     }
 
-    const { timestamp, blob, fps } = extractFrameWithMetadata(data);
-
+    const { timestamp, serverFps, blob } = extractFrameWithMetadata(data);
     const imageUrl = urlCreator.createObjectURL(blob);
 
     detectionStore.setCurrentFrameTimestamp(timestamp);
-    fpsStore.updateFPS(fps);
+    fpsStore.updateServerFPS(serverFps);
 
     if (params.imgRef.value) {
+      params.imgRef.value.onload = handleImageOnLoad;
       params.imgRef.value.src = imageUrl;
       currentImageBlobUrl.value = imageUrl;
       if (imgInitted.value && imgLoading.value) {
@@ -64,14 +86,15 @@ export const useWebsocketStream = (params: WebsocketStreamParams) => {
     if (params.onClose) {
       params.onClose();
     }
+    const urlCreator = window.URL || window.webkitURL;
     if (currentImageBlobUrl.value) {
-      const urlCreator = window.URL || window.webkitURL;
       urlCreator.revokeObjectURL(currentImageBlobUrl.value);
-
       currentImageBlobUrl.value = undefined;
     }
     imgLoading.value = true;
     fpsStore.updateFPS(null);
+    lastPerf = 0;
+    lastFPS = 0;
   };
 
   const {

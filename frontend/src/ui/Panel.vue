@@ -5,7 +5,7 @@
         class="flex-auto text-left leading-none font-semibold cursor-pointer"
         @click="handleToggle"
       >
-        {{ header }}
+        {{ legend || header }}
       </div>
     </template>
     <slot></slot>
@@ -16,7 +16,12 @@
 import Panel, { PanelProps } from "primevue/panel";
 import { ref, computed } from "vue";
 
-const props = defineProps<PanelProps>();
+interface Props extends PanelProps {
+  toggleable?: boolean;
+  legend?: string;
+}
+
+const props = defineProps<Props>();
 
 const header = computed(() => props.header);
 

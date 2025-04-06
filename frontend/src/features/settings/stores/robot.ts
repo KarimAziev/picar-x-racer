@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import { useMessagerStore } from "@/features/messager";
 import type { Nullable } from "@/util/ts-helpers";
+import { makeUrl } from "@/util/url";
 
 export interface Field {
   type: string | string[];
@@ -117,7 +118,14 @@ export type MotorsCalibrationData = {
   [P in keyof MotorsData]: Pick<MotorConfig, "calibration_direction">;
 };
 
-export interface Data extends ServoData, MotorsData {}
+export interface LEDConfig {
+  interval: number | null;
+  pin: number | string | null;
+  name: string | null;
+}
+export interface Data extends ServoData, MotorsData {
+  led: LEDConfig;
+}
 
 const defaultServo = {
   servo_pin: null,
@@ -138,6 +146,11 @@ const motorDefaults = {
   period: null,
   prescaler: null,
 };
+const ledDefaults = {
+  name: null,
+  pin: null,
+  interval: null,
+};
 const defaultState: State = {
   loading: false,
   config: {},
@@ -147,6 +160,7 @@ const defaultState: State = {
     steering_servo: defaultServo,
     left_motor: motorDefaults,
     right_motor: motorDefaults,
+    led: ledDefaults,
   },
 };
 
@@ -181,11 +195,11 @@ export const useStore = defineStore("robot", {
   actions: {
     async fetchFieldsConfig() {
       const messager = useMessagerStore();
+      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
+      const url = makeUrl("px/api/settings/robot-fields", port);
       try {
         this.loading = true;
-        const response = await axios.get<FieldsConfig>(
-          "/api/settings/robot-fields",
-        );
+        const response = await axios.get<FieldsConfig>(url);
         this.config = response.data;
       } catch (error) {
         messager.handleError(error);
@@ -195,9 +209,11 @@ export const useStore = defineStore("robot", {
     },
     async fetchData() {
       const messager = useMessagerStore();
+      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
+      const url = makeUrl("px/api/settings/config", port);
       try {
         this.loading = true;
-        const response = await axios.get<Data>("/api/settings/config");
+        const response = await axios.get<Data>(url);
         this.data = response.data;
       } catch (error) {
         messager.handleError(error, `Error fetching robot config`);

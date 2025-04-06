@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from app.managers.json_data_manager import JsonDataManager
+from app.managers.file_management.json_data_manager import JsonDataManager
 
 
 class TestJsonDataManager(unittest.TestCase):

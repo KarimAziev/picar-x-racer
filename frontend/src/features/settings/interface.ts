@@ -189,3 +189,88 @@ export interface TextItem {
   language: string;
   default?: boolean;
 }
+
+export enum FilterMatchMode {
+  IN = "in",
+  EQUALS = "equals",
+  CONTAINS = "contains",
+  DATE_BEFORE = "dateBefore",
+  DATE_AFTER = "dateAfter",
+  GREATER_THAN = "greaterThan",
+  DATE_IS = "dateIs",
+  LESS_THAN = "lessThan",
+  BETWEEN = "between",
+}
+
+export interface FilterField {
+  value?: string;
+  match_mode: FilterMatchMode;
+}
+
+export interface FilterBoolField {
+  value: boolean;
+  match_mode: FilterMatchMode;
+}
+
+export interface FilterFieldStringArray {
+  value?: string[];
+  match_mode: FilterMatchMode;
+}
+
+export interface FilterFieldDatetime {
+  operator?: string;
+  constraints: FilterField[];
+  value?: string;
+}
+
+export enum SortDirection {
+  ASC = "asc",
+  DESC = "desc",
+}
+
+export interface SearchModel {
+  value: string;
+  field: string;
+}
+
+export interface OrderingModel {
+  field?: string;
+  direction?: SortDirection;
+}
+
+export interface FileFilterModel {
+  modified?: FilterFieldDatetime;
+  type?: FilterFieldStringArray;
+  content_type?: FilterFieldStringArray;
+  file_suffixes?: FilterFieldStringArray;
+}
+
+export interface FileDetail {
+  name: string;
+  path: string;
+  size: number;
+  is_dir: boolean;
+  modified: number;
+  type?: string;
+  content_type?: string;
+  duration?: number;
+}
+
+export interface GroupedFile extends FileDetail {
+  children?: GroupedFile[];
+}
+
+export interface FilterInfo {
+  type?: string[];
+}
+
+export interface FileResponseModel {
+  data: GroupedFile[];
+  filter_info: FilterInfo;
+}
+
+export interface FileFilterRequest {
+  filters?: FileFilterModel;
+  search?: SearchModel;
+  ordering: OrderingModel;
+}

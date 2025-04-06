@@ -1,10 +1,10 @@
 <template>
   <Field
+    :message="message"
+    :label="label"
     :fieldClassName="fieldClassName"
     :labelClassName="labelClassName"
-    :label="label"
-    :message="message"
-    :loading="loading"
+    :tooltipHelp="tooltipHelp"
     :layout="layout"
   >
     <Select
@@ -40,11 +40,8 @@ import Field from "@/ui/Field.vue";
 export interface Props extends FieldProps {
   modelValue?: any;
   invalid?: boolean;
-  message?: string;
-  label?: string;
   field?: string | number;
   fieldClassName?: string;
-  labelClassName?: string;
   inputClassName?: string;
   simpleOptions?: boolean;
   options: SelectProps["options"];
@@ -54,8 +51,10 @@ export interface Props extends FieldProps {
   disabled?: boolean;
   loading?: boolean;
   tooltip?: string;
+  tooltipHelp?: string;
 }
 const props = defineProps<Props>();
+
 const otherAttrs = useAttrs();
 
 const currentValue = ref(props.modelValue);

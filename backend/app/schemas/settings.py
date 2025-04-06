@@ -5,7 +5,7 @@ from app.schemas.camera import CameraSettings
 from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
 from app.schemas.tts import TTSSettings
-from app.services.detection_service import DetectionSettings
+from app.services.detection.detection_service import DetectionSettings
 from app.util.pydantic_helpers import partial_model
 from pydantic import BaseModel, Field
 
@@ -35,6 +35,7 @@ class Keybindings(BaseModel):
     right: Optional[List[str]] = None
     sayText: Optional[List[str]] = None
     stop: Optional[List[str]] = None
+    resetMCU: Optional[List[str]] = None
     takePhoto: Optional[List[str]] = None
     toggleAvoidObstaclesMode: Optional[List[str]] = None
     toggleCarModelView: Optional[List[str]] = None
@@ -42,6 +43,7 @@ class Keybindings(BaseModel):
     toggleTextInfo: Optional[List[str]] = None
     toggleVirtualMode: Optional[List[str]] = None
     toggleAutoMeasureDistanceMode: Optional[List[str]] = None
+    toggleLEDblinking: Optional[List[str]] = None
     toggleAutoDownloadPhoto: Optional[List[str]] = None
     toggleCalibration: Optional[List[str]] = None
     increaseFPS: Optional[List[str]] = None

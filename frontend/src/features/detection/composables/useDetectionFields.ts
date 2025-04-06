@@ -1,16 +1,16 @@
-import { onMounted, watch, reactive } from "vue";
-import type { DetectionSettings } from "@/features/detection/store";
+import { watch, reactive } from "vue";
+import type { DetectionSettings } from "@/features/detection";
 import { useStore as useDetectionStore } from "@/features/detection/store";
 import { useAsyncDebounce } from "@/composables/useDebounce";
 import { roundNumber } from "@/util/number";
 import { isNumber } from "@/util/guards";
 import { evolve, isObjectEquals } from "@/util/obj";
 
-const normalizeValue = (val: string | null): Record<string, boolean> => {
+export const normalizeValue = (val: string | null): Record<string, boolean> => {
   return val ? { [val]: true } : {};
 };
 
-const denormalizeValue = (val: ReturnType<typeof normalizeValue>) =>
+export const denormalizeValue = (val: ReturnType<typeof normalizeValue>) =>
   Object.keys(val).find((key) => val[key]) || null;
 
 export type NormalizedData = {
@@ -62,10 +62,6 @@ export const useDetectionFields = (params?: FieldsParams): DetectionFields => {
     updateData,
     params?.debounce || 1000,
   );
-
-  onMounted(() => {
-    detectionStore.fetchModels();
-  });
 
   watch(
     () => detectionStore.data,

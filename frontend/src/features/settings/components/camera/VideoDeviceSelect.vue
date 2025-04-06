@@ -6,11 +6,17 @@
           v-tooltip="label"
           class="truncated-label truncate block font-bold"
           v-if="label"
-          >{{ label }}
+        >
+          {{ label }}
         </span>
+
         <TreeSelect
+          :itemSize="40"
+          key-prop="key"
+          label-prop="label"
+          placeholder="Camera"
           @update:model-value="updateDevice"
-          :nodes="devices"
+          :nodes="devices as TreeNode[]"
           v-model:model-value="selectedDevice as unknown as TreeNode"
         />
       </Field>
@@ -37,10 +43,10 @@
   >
     <div class="flex flex-1 min-w-0 gap-x-2">
       <NumberInputField
+        fluid
         :useGrouping="false"
         v-if="selectedDevice && (selectedDevice as any).max_width"
         fieldClassName="w-20"
-        inputClass="!w-20"
         label="Width"
         field="step-width"
         v-model="stepwiseData.width"
@@ -68,7 +74,7 @@
         />
       </NumberInputField>
       <NumberInputField
-        inputClass="!w-20"
+        fluid
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="Height"
         allowEmpty
@@ -108,10 +114,10 @@
     </div>
     <div class="flex-1 min-w-0 flex">
       <NumberInputField
+        fluid
         v-if="selectedDevice && (selectedDevice as any).max_width"
         label="FPS"
         allowEmpty
-        inputClass="!w-20"
         fieldClassName="w-20 self-end"
         field="step-fps"
         v-model="stepwiseData.fps"
@@ -154,15 +160,16 @@
       v-if="selectedDevice && (selectedDevice as any).max_width"
       :disabled="disabled || loading"
       @click="updateStepwiseDevice"
-      >Submit</Button
     >
+      Submit
+    </Button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
 import type { InputNumberInputEvent } from "primevue/inputnumber";
-import type { TreeNode } from "@/ui/Tree.vue";
+import type { TreeNode } from "@/types/tree";
 import { useCameraStore } from "@/features/settings/stores";
 import Field from "@/ui/Field.vue";
 
@@ -228,7 +235,10 @@ const stepwisePresetValue = ref<PresetOptionValue | undefined>(
 const label = computed(() => {
   const val = selectedDevice.value?.device;
   const name = selectedDevice.value?.name;
-  const camLabel = [name, val].filter((v) => !!v).join(": ");
+  const camLabel = [name, val]
+    .filter((v) => !!v)
+    .sort((a, b) => (a?.length || 0) - (b?.length || 0))
+    .join(": ");
 
   return camLabel.length > 0 ? camLabel : "Camera Device: ";
 });

@@ -1,6 +1,6 @@
 <template>
   <button
-    class="cursor-pointer rounded-md bg-transparent transition-opacity duration-300 ease-in-out hover:opacity-70 hover:bg-button-text-primary-hover-background focus:opacity-70 focus:outline-none focus:ring-2 focus:ring-current"
+    class="cursor-pointer rounded-md bg-transparent transition-opacity duration-300 ease-in-out hover:opacity-70 hover:bg-button-text-primary-hover-background focus:opacity-70 focus:outline-none focus:ring-current"
     :class="class"
     v-bind="otherAttrs"
   >

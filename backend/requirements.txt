@@ -1,5 +1,5 @@
 numpy==1.26.4
-robot-hat
+robot-hat>=1.7.5
 google_speech_pyplay
 pandas
 colorlog
@@ -22,5 +22,7 @@ dbus-python
 ncnn
 v4l2-python3
 opencv-python
-PyGObject
+PyGObject==3.50.0
 PyGObject-stubs
+rapidfuzz
+httpx

@@ -4,7 +4,7 @@ Endpoints for handling object detection.
 
 import asyncio
 import queue
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from app.api import deps
 from app.core.logger import Logger
@@ -14,7 +14,7 @@ from app.exceptions.detection import (
     DetectionProcessError,
     DetectionProcessLoading,
 )
-from app.schemas.detection import DetectionSettings, FileNode
+from app.schemas.detection import DetectionSettings
 from app.util.doc_util import build_response_description
 from fastapi import (
     APIRouter,
@@ -28,8 +28,7 @@ from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.detection_service import DetectionService
-    from app.services.file_service import FileService
+    from app.services.detection.detection_service import DetectionService
 
 logger = Logger(__name__)
 
@@ -205,23 +204,3 @@ async def object_detection(
         logger.info("WebSocket client disconnected gracefully.")
     finally:
         detection_notifier.remove(websocket)
-
-
-@router.get(
-    "/detection/models",
-    summary="Retrieve Available Detection Models",
-    response_description=build_response_description(
-        FileNode,
-        "Returns a hierarchical tree structure representing the available object detection models, "
-        "organized as a series of nodes. Each node in the tree can represent directory, file or "
-        "a virtual node that represents a detection model, which may not physically exist on the "
-        "filesystem but is loadable (e.g., pre-trained models such as `yolov8n.pt`).",
-    ),
-    response_model=List[FileNode],
-)
-def get_detectors(file_manager: "FileService" = Depends(deps.get_file_manager)):
-    """
-    Retrieve a recursive tree structure representing the organized set of
-    detection models and their associated metadata.
-    """
-    return file_manager.get_available_models()

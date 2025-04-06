@@ -1,6 +1,9 @@
 <template>
-  <span v-if="fpsStore.fps" class="bold" :class="class">
+  <span v-if="fps !== null" class="bold" :class="class">
     {{ fps }}&nbsp;FPS
+  </span>
+  <span v-if="serverFPS !== null" class="bold" :class="class">
+    {{ serverFPS }}&nbsp;FPS&nbsp;(Server)
   </span>
 </template>
 
@@ -13,4 +16,5 @@ defineProps<{ class?: string }>();
 const fpsStore = useFPSStore();
 
 const fps = computed(() => fpsStore.fps);
+const serverFPS = computed(() => fpsStore.serverFPS);
 </script>

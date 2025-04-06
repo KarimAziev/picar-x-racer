@@ -3,20 +3,20 @@ Endpoints to retrieve and update various application settings.
 """
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING
 
 from app.api import deps
 from app.core.logger import Logger
-from app.schemas.config import CalibrationConfig, ConfigSchema
 from app.schemas.settings import Settings, SettingsUpdateRequest
 from app.util.doc_util import build_response_description
-from app.util.pydantic_helpers import schema_to_dynamic_json
 from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
-    from app.services.battery_service import BatteryService
     from app.services.connection_service import ConnectionService
-    from app.services.file_service import FileService
+    from app.services.domain.settings_service import SettingsService
+    from app.services.integration.robot_communication_service import (
+        RobotCommunicationService,
+    )
 
 logger = Logger(__name__)
 
@@ -31,7 +31,7 @@ router = APIRouter()
         Settings, "Successful response with current settings."
     ),
 )
-def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
+def get_settings(file_service: "SettingsService" = Depends(deps.get_settings_service)):
     """
     Retrieve the current application settings.
     """
@@ -41,7 +41,7 @@ def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
 @router.post(
     "/settings",
     response_model=Settings,
-    summary="Update current application settings",
+    summary="Update current application settings. Also refresh the settings in the robot app.",
     response_description=build_response_description(
         Settings, "Successful response with an all application-wide settings."
     ),
@@ -49,58 +49,23 @@ def get_settings(file_service: "FileService" = Depends(deps.get_file_manager)):
 async def update_settings(
     request: Request,
     new_settings: SettingsUpdateRequest,
-    file_service: "FileService" = Depends(deps.get_file_manager),
-    battery_manager: "BatteryService" = Depends(deps.get_battery_service),
+    file_service: "SettingsService" = Depends(deps.get_settings_service),
+    robot_communication_service: "RobotCommunicationService" = Depends(
+        deps.get_robot_communication_service
+    ),
 ):
     """
-    Update the application settings.
+    Update the application settings. Also refresh the settings in the robot app.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
-
-    if new_settings.battery:
-        battery_manager.update_battery_settings(new_settings.battery)
 
     data = new_settings.model_dump(exclude_unset=True)
 
     logger.info("Updating settings with %s", data)
 
-    await asyncio.to_thread(file_service.save_settings, data)
-
+    new_data = await asyncio.to_thread(file_service.save_settings, data)
     await connection_manager.broadcast_json({"type": "settings", "payload": data})
 
-    return new_settings
+    await robot_communication_service.refresh_robot_settings(new_data)
 
-
-@router.get(
-    "/settings/config",
-    response_model=ConfigSchema,
-    summary="Retrieve current config",
-    response_description=build_response_description(
-        ConfigSchema, "Successful response with the robot configuration."
-    ),
-)
-def get_config_settings(
-    file_service: "FileService" = Depends(deps.get_file_manager),
-):
-    """
-    Retrieve the robot config.
-    """
-    return file_service.get_robot_config()
-
-
-@router.get("/settings/robot-fields", response_model=Dict[str, Any])
-def get_fields_config():
-    """
-    Retrieve the a JSON-like schema representation of robot config settings.
-    """
-    return schema_to_dynamic_json(ConfigSchema)
-
-
-@router.get("/settings/calibration", response_model=CalibrationConfig)
-def get_calibration_settings(
-    file_service: "FileService" = Depends(deps.get_file_manager),
-):
-    """
-    Retrieve the calibration settings.
-    """
-    return file_service.get_calibration_config()
+    return new_data

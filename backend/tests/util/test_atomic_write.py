@@ -39,7 +39,7 @@ class TestAtomicWrite(unittest.TestCase):
         self.assertFalse(target_file.exists())
         self.assertFalse(temp_file.exists())
 
-        with atomic_write(target_file, mode="wb") as f:
+        with atomic_write(target_file, mode="wb", encoding=None) as f:
             f.write(content)
 
         self.assertTrue(target_file.exists())

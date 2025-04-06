@@ -4,19 +4,27 @@ import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import { formatObjectDiff, groupWith, isObjectShallowEquals } from "@/util/obj";
 import { startCase } from "@/util/str";
 import {
-  useImageStore,
   useSettingsStore,
   useBatteryStore,
   useDistanceStore,
   useCameraStore,
   useStreamStore,
-  useVideoStore,
+  usePopupStore,
 } from "@/features/settings/stores";
 import { useMessagerStore } from "@/features/messager";
 import type { MessageItemParams } from "@/features/messager";
+import { isPlainObject } from "@/util/guards";
+import {
+  useImageStore,
+  useVideoStore,
+  useDetectionDataStore,
+  useDataStore,
+  useMusicFileStore,
+  useFileExplorer,
+} from "@/features/files/stores";
+import { SettingsTab } from "@/features/settings/enums";
 import { useDetectionStore } from "@/features/detection";
 import { useMusicStore } from "@/features/music";
-import { isPlainObject } from "@/util/guards";
 
 export interface StoreState {
   model: ShallowRef<WebSocketModel> | null;
@@ -42,15 +50,20 @@ export const useStore = defineStore("syncer", {
         return;
       }
       const messager = useMessagerStore();
+      const popupStore = usePopupStore();
+      const musicFileStore = useMusicFileStore();
       const settingsStore = useSettingsStore();
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
       const detectionStore = useDetectionStore();
       const musicStore = useMusicStore();
+      const detectionDataStore = useDetectionDataStore();
+      const dataTableStore = useDataStore();
       const imageStore = useImageStore();
       const batteryStore = useBatteryStore();
       const distanceStore = useDistanceStore();
       const videoStore = useVideoStore();
+      const fileExplorer = useFileExplorer();
 
       const handleMessage = (data: WSMessageData) => {
         if (!data) {
@@ -95,30 +108,61 @@ export const useStore = defineStore("syncer", {
             break;
           }
           case "uploaded":
+          case "moved":
+          case "created":
+          case "renamed":
           case "removed": {
-            const mediaTypeRefreshers: { [key: string]: () => Promise<any> } = {
-              music: musicStore.fetchData,
-              data: detectionStore.fetchModels,
+            const dataRefresher = () => {
+              if (popupStore.isOpen && popupStore.tab === SettingsTab.MODELS) {
+                dataTableStore.fetchData();
+              }
+              return detectionDataStore.fetchData();
+            };
+            const fileExplorerRefresher = () => {
+              if (popupStore.isOpen && popupStore.tab === SettingsTab.FILES) {
+                fileExplorer.fetchData();
+              }
+            };
+            const mediaTypeRefreshers: { [key: string]: () => any } = {
+              music: async () => {
+                if (popupStore.isOpen) {
+                  await musicFileStore.fetchData();
+                  await musicStore.fetchData();
+                }
+              },
+              data: dataRefresher,
               image: imageStore.fetchData,
               video: videoStore.fetchData,
+              files: fileExplorerRefresher,
             };
-            const items: { type: string; file: string }[] = payload;
-            const groupped = groupWith("type", (item) => item.file, items);
+            const items: { type: string; file: string; msg?: string }[] =
+              payload;
+
+            const groupped = groupWith(
+              "type",
+              (item) => item.msg || item.file,
+              items,
+            );
 
             Object.entries(groupped).forEach(([mediaType, msgs]) => {
               const len = msgs.length;
-              const prefix = `${startCase(type)} ${len} ${mediaType} file${len === 1 ? "" : "s"}`;
+              const prefix = `${startCase(type)} ${len} file${len === 1 ? "" : "s"}`;
               const msg =
                 `${prefix} ${msgs.length < 2 ? msgs.join(", ") : ""}`.trim();
               messager.info(msg);
 
-              mediaTypeRefreshers[mediaType]();
+              if (mediaTypeRefreshers[mediaType]) {
+                mediaTypeRefreshers[mediaType]();
+              }
             });
             break;
           }
           case "stream": {
             diffMsg = formatObjectDiff(streamStore.data, payload);
-            streamStore.data = payload;
+            if (diffMsg) {
+              streamStore.data = payload;
+            }
+
             break;
           }
           case "battery": {

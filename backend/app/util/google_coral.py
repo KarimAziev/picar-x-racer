@@ -1,6 +1,5 @@
-import usb.core
-import usb.util
 from app.core.logger import Logger
+from usb.core import find
 
 logger = Logger(__name__)
 
@@ -20,7 +19,7 @@ def is_usb_device_connected(vendor_id: int, product_id: int) -> bool:
         bool: True if a device matching the vendor ID and product ID is found; False otherwise.
     """
     try:
-        device = usb.core.find(idVendor=vendor_id, idProduct=product_id)
+        device = find(idVendor=vendor_id, idProduct=product_id)
         return device is not None
 
     except Exception as e:

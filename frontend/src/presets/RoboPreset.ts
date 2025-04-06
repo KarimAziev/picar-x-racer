@@ -84,7 +84,8 @@ export const preset = {
       borderRadius: "{border.radius.md}",
     },
     mask: {
-      transitionDuration: "0.15s",
+      background: "rgba(0,0,0,0.4)",
+      color: "{surface.200}",
     },
     navigation: {
       list: {
@@ -281,9 +282,6 @@ export const preset = {
           color: "rgba(255,255,255,.87)",
           focusColor: "rgba(255,255,255,.87)",
         },
-        mask: {
-          background: "transparent",
-        },
         formField: {
           background: "{surface.950}",
           disabledBackground: "{surface.700}",
@@ -394,6 +392,12 @@ export const preset = {
       dropdownWidth: "1.25rem",
       paddingY: "0.5rem 0.5rem",
       paddingX: "0.5rem 0.75rem",
+    },
+    fieldset: {
+      legend: {},
+    },
+    progressbar: {
+      height: "0.3rem",
     },
   },
 };

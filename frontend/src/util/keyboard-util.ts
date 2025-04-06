@@ -1,4 +1,4 @@
-import { KeyboardMapper } from "../util/keyboard-mapper";
+import { KeyboardMapper } from "@/util/keyboard-mapper";
 
 export interface KeyEventItem {
   key: string;
@@ -133,6 +133,7 @@ export function formatKeyEventItem(
   separator = "-",
 ): string {
   const realKey = translateKeyboardEventToKey(curr);
+
   if (!realKey) {
     return "";
   }
@@ -193,12 +194,18 @@ export function validateKeyString(keystr: string): boolean {
 }
 
 export const translateKeyboardEventToKey = (
-  event: Pick<KeyEventItem, "code" | "key">,
+  event: Pick<KeyEventItem, "code" | "key" | "shiftKey">,
 ) => {
   const { key, code } = event;
   if (key && KeyboardMapper.nonModifiersConfig[key]) {
     return key;
   }
   const props = code && KeyboardMapper.nonModifiersConfig[code];
-  return props ? props.key : key;
+  const propsKey = props && props.key;
+
+  if (event.shiftKey && propsKey && propsKey.length === 1) {
+    return propsKey.toUpperCase();
+  }
+
+  return propsKey || key;
 };
