@@ -79,13 +79,13 @@ class PicarxAdapter(metaclass=SingletonMeta):
         left_motor = MotorFabric.create_motor(
             config=left_motor_config,
             pwm_pin=PWM(left_motor_config.pwm_pin, bus=self.smbus),
-            dir_pin=Pin(left_motor_config.dir_pin, bus=self.smbus),
+            dir_pin=Pin(left_motor_config.dir_pin),
         )
 
         right_motor = MotorFabric.create_motor(
             config=right_motor_config,
             pwm_pin=PWM(right_motor_config.pwm_pin, bus=self.smbus),
-            dir_pin=Pin(right_motor_config.dir_pin, bus=self.smbus),
+            dir_pin=Pin(right_motor_config.dir_pin),
         )
 
         self.motor_controller = MotorService(
