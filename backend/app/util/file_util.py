@@ -278,7 +278,6 @@ def directory_files_recursively(
     predicate: Optional[Callable[[str], bool]] = None,
     file_processor: Callable[[str, str], T] = file_details,
 ) -> List[T]:
-
     if directory.startswith("~"):
         directory = os.path.expanduser(directory)
 
@@ -333,11 +332,3 @@ def file_in_directory(file: str, dir: str) -> bool:
     parents = Path(file).parents
 
     return dir in [item.as_posix() for item in parents]
-
-
-resolve_absolute_path(
-    file_to_relative(
-        "/home/km/Music/picar-x-racer/robsso.mp3", "/home/km/Music/picar-x-racer"
-    ),
-    "/home/km/Music/picar-x-racer",
-)
