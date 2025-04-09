@@ -2,7 +2,7 @@
 Endpoints related to distance measurements with ultrasonic.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
@@ -23,7 +23,9 @@ router = APIRouter()
     summary="Retrieve the last measured distance",
 )
 async def get_ultrasonic_distance(
-    distance_service: "DistanceService" = Depends(robot_deps.get_distance_service),
+    distance_service: Annotated[
+        "DistanceService", Depends(robot_deps.get_distance_service)
+    ],
 ):
     """
     Retrieve the last measured level of the distance.

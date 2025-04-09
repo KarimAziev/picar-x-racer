@@ -53,8 +53,8 @@ def get_app_settings_manager() -> JsonDataManager:
 
 
 def get_distance_service(
-    emitter: AsyncEventEmitter = Depends(get_async_event_emitter),
-    task_manager: AsyncTaskManager = Depends(get_async_task_manager),
+    emitter: Annotated[AsyncEventEmitter, Depends(get_async_event_emitter)],
+    task_manager: Annotated[AsyncTaskManager, Depends(get_async_task_manager)],
 ) -> DistanceService:
     return DistanceService(
         emitter=emitter,
@@ -64,9 +64,9 @@ def get_distance_service(
 
 @lru_cache()
 def get_led_service(
-    emitter: AsyncEventEmitter = Depends(get_async_event_emitter),
-    task_manager: AsyncTaskManager = Depends(get_async_task_manager),
-    config_manager: JsonDataManager = Depends(get_config_manager),
+    emitter: Annotated[AsyncEventEmitter, Depends(get_async_event_emitter)],
+    task_manager: Annotated[AsyncTaskManager, Depends(get_async_task_manager)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
 ) -> LEDService:
     return LEDService(
         config_manager=config_manager, emitter=emitter, task_manager=task_manager
@@ -106,26 +106,28 @@ def get_battery_service(
 
 
 def get_picarx_adapter(
-    config_manager: JsonDataManager = Depends(get_config_manager),
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
 ) -> PicarxAdapter:
     return PicarxAdapter(config_manager=config_manager)
 
 
 def get_calibration_service(
-    px: PicarxAdapter = Depends(get_picarx_adapter),
-    config_manager: JsonDataManager = Depends(get_config_manager),
+    px: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
 ) -> CalibrationService:
     return CalibrationService(px, config_manager=config_manager)
 
 
 def get_robot_service(
-    connection_manager: ConnectionService = Depends(get_connection_manager),
-    picarx_adapter: PicarxAdapter = Depends(get_picarx_adapter),
-    calibration_service: CalibrationService = Depends(get_calibration_service),
-    distance_service: DistanceService = Depends(get_distance_service),
-    app_settings_manager: JsonDataManager = Depends(get_app_settings_manager),
-    config_manager: JsonDataManager = Depends(get_config_manager),
-    led_service: LEDService = Depends(get_led_service),
+    connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
+    picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
+    calibration_service: Annotated[
+        CalibrationService, Depends(get_calibration_service)
+    ],
+    distance_service: Annotated[DistanceService, Depends(get_distance_service)],
+    app_settings_manager: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    led_service: Annotated[LEDService, Depends(get_led_service)],
 ) -> CarService:
     return CarService(
         connection_manager=connection_manager,

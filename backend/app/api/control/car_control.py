@@ -4,7 +4,7 @@ WebSocket endpoint for controlling and interacting with the robot.
 
 import asyncio
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
@@ -26,14 +26,16 @@ if TYPE_CHECKING:
 @router.websocket("/px/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    car_manager: "CarService" = Depends(robot_deps.get_robot_service),
-    calibration_service: "CalibrationService" = Depends(
-        robot_deps.get_calibration_service
-    ),
-    connection_manager: "ConnectionService" = Depends(
-        robot_deps.get_connection_manager
-    ),
-    battery_manager: "BatteryService" = Depends(robot_deps.get_battery_service),
+    car_manager: Annotated["CarService", Depends(robot_deps.get_robot_service)],
+    calibration_service: Annotated[
+        "CalibrationService", Depends(robot_deps.get_calibration_service)
+    ],
+    connection_manager: Annotated[
+        "ConnectionService", Depends(robot_deps.get_connection_manager)
+    ],
+    battery_manager: Annotated[
+        "BatteryService", Depends(robot_deps.get_battery_service)
+    ],
 ):
     """
     WebSocket endpoint for controlling the robot.

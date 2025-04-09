@@ -6,7 +6,7 @@ directly with the underlying OS.
 """
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
 from app.core.logger import Logger
@@ -54,11 +54,13 @@ router = APIRouter()
 )
 async def shutdown(
     request: Request,
-    music_service: "MusicService" = Depends(deps.get_music_service),
-    detection_service: "DetectionService" = Depends(deps.get_detection_service),
-    robot_communication_service: "RobotCommunicationService" = Depends(
-        deps.get_robot_communication_service
-    ),
+    music_service: Annotated["MusicService", Depends(deps.get_music_service)],
+    detection_service: Annotated[
+        "DetectionService", Depends(deps.get_detection_service)
+    ],
+    robot_communication_service: Annotated[
+        "RobotCommunicationService", Depends(deps.get_robot_communication_service)
+    ],
 ):
     """
     API endpoint to trigger an immediate system shutdown.
@@ -118,11 +120,13 @@ async def shutdown(
 )
 async def restart_system(
     request: Request,
-    music_service: "MusicService" = Depends(deps.get_music_service),
-    detection_service: "DetectionService" = Depends(deps.get_detection_service),
-    robot_communication_service: "RobotCommunicationService" = Depends(
-        deps.get_robot_communication_service
-    ),
+    music_service: Annotated["MusicService", Depends(deps.get_music_service)],
+    detection_service: Annotated[
+        "DetectionService", Depends(deps.get_detection_service)
+    ],
+    robot_communication_service: Annotated[
+        "RobotCommunicationService", Depends(deps.get_robot_communication_service)
+    ],
 ):
     """
     API endpoint to trigger an immediate system restart.

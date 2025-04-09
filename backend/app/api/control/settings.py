@@ -73,7 +73,9 @@ def get_fields_config():
     ),
 )
 def get_config_settings(
-    config_manager: "JsonDataManager" = Depends(robot_deps.get_config_manager),
+    config_manager: Annotated[
+        "JsonDataManager", Depends(robot_deps.get_config_manager)
+    ],
 ):
     """
     Retrieve the robot config.
@@ -89,7 +91,9 @@ def get_config_settings(
     summary="Retrieve saved (or default) calibration settings.",
 )
 def get_calibration_settings(
-    config_manager: "JsonDataManager" = Depends(robot_deps.get_config_manager),
+    config_manager: Annotated[
+        "JsonDataManager", Depends(robot_deps.get_config_manager)
+    ],
 ):
     """
     Retrieve saved calibration settings.

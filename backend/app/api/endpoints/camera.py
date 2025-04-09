@@ -3,7 +3,7 @@ Endpoints for camera operations, including configuring the device and capturing 
 """
 
 from time import localtime, strftime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
 from app.core.logger import Logger
@@ -39,8 +39,10 @@ logger = Logger(__name__)
 async def update_camera_settings(
     request: Request,
     payload: CameraSettings,
-    camera_manager: "CameraService" = Depends(deps.get_camera_service),
-    gstreamer_manager: "GStreamerService" = Depends(deps.get_gstreamer_service),
+    camera_manager: Annotated["CameraService", Depends(deps.get_camera_service)],
+    gstreamer_manager: Annotated[
+        "GStreamerService", Depends(deps.get_gstreamer_service)
+    ],
 ):
     """
     Update the camera settings with new configurations and broadcast the updates.
@@ -92,7 +94,7 @@ async def update_camera_settings(
     ),
 )
 def get_camera_settings(
-    camera_manager: "CameraService" = Depends(deps.get_camera_service),
+    camera_manager: Annotated["CameraService", Depends(deps.get_camera_service)],
 ):
     """
     Retrieve the current camera settings.
@@ -109,7 +111,9 @@ def get_camera_settings(
     ),
 )
 def get_camera_devices(
-    video_device_adapter: "VideoDeviceAdapter" = Depends(deps.get_video_device_adapter),
+    video_device_adapter: Annotated[
+        "VideoDeviceAdapter", Depends(deps.get_video_device_adapter)
+    ],
 ):
     """
     Retrieve a list of available camera devices.
@@ -136,8 +140,8 @@ def get_camera_devices(
     },
 )
 async def take_photo(
-    camera_manager: "CameraService" = Depends(deps.get_camera_service),
-    file_manager: "FileManagerService" = Depends(deps.get_photo_file_manager),
+    camera_manager: Annotated["CameraService", Depends(deps.get_camera_service)],
+    file_manager: Annotated["FileManagerService", Depends(deps.get_photo_file_manager)],
 ):
     """
     Capture a photo using the camera and save it to the specified file location.

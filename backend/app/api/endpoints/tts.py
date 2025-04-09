@@ -3,9 +3,9 @@ Endpoints related to text to speech functionalities.
 """
 
 import asyncio
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Annotated, List
 
-from app.api.deps import get_tts_service
+from app.api import deps
 from app.core.logger import Logger
 from app.exceptions.tts import TextToSpeechException
 from app.schemas.common import Message
@@ -43,7 +43,7 @@ logger = Logger(__name__)
 async def text_to_speech(
     request: Request,
     payload: TextToSpeechData,
-    tts_manager: "TTSService" = Depends(get_tts_service),
+    tts_manager: Annotated["TTSService", Depends(deps.get_tts_service)],
 ):
     """
     Endpoint to convert text to speech.
@@ -75,7 +75,7 @@ async def text_to_speech(
     response_model=List[LanguageOption],
 )
 def supported_langs(
-    tts_manager: "TTSService" = Depends(get_tts_service),
+    tts_manager: Annotated["TTSService", Depends(deps.get_tts_service)],
 ):
     """
     List supported languages.

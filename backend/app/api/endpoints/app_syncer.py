@@ -4,9 +4,9 @@ Websocket endpoint for synchronizing app state between several clients.
 
 import asyncio
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
-from app.api.deps import get_camera_service, get_detection_service, get_music_service
+from app.api import deps
 from app.core.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -27,9 +27,11 @@ router = APIRouter()
 @router.websocket("/ws/sync")
 async def app_synchronizer(
     websocket: WebSocket,
-    detection_service: "DetectionService" = Depends(get_detection_service),
-    camera_service: "CameraService" = Depends(get_camera_service),
-    music_service: "MusicService" = Depends(get_music_service),
+    detection_service: Annotated[
+        "DetectionService", Depends(deps.get_detection_service)
+    ],
+    camera_service: Annotated["CameraService", Depends(deps.get_camera_service)],
+    music_service: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Websocket endpoint for synchronizing app state between several clients.
