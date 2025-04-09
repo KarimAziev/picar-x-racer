@@ -6,7 +6,7 @@ from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.battery import BatterySettings
 from app.schemas.connection import ConnectionEvent
-from robot_hat.battery import Battery
+from robot_hat.services.battery.battery_abc import BatteryABC
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -16,7 +16,7 @@ class BatteryService(metaclass=SingletonMeta):
     def __init__(
         self,
         connection_manager: "ConnectionService",
-        battery_adapter: Battery,
+        battery_adapter: Optional[BatteryABC],
         settings: BatterySettings,
     ):
         """
@@ -71,6 +71,9 @@ class BatteryService(metaclass=SingletonMeta):
             return self._last_measure_voltage
 
         value: Optional[float] = None
+        if self.battery_adapter is None:
+            await self.connection_manager.error("Error reading voltage")
+            return
         async with self._lock:
             try:
                 value = await asyncio.to_thread(
@@ -112,11 +115,12 @@ class BatteryService(metaclass=SingletonMeta):
             ConnectionEvent.LAST_CONNECTION.value, self._cancel_broadcast_task
         )
         await self._cancel_broadcast_task()
-        try:
-            self._logger.info("Closing ADC battery adapter")
-            self.battery_adapter.close()
-        except Exception as e:
-            self._logger.error("Failed to close ADC battery adapter: %s", e)
+        if self.battery_adapter:
+            try:
+                self._logger.info("Closing ADC battery adapter")
+                self.battery_adapter.close()
+            except Exception as e:
+                self._logger.error("Failed to close ADC battery adapter: %s", e)
 
     async def broadcast_state(self) -> Tuple[Optional[float], Optional[float]]:
         """

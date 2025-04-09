@@ -62,7 +62,7 @@ class ServoConfig(BaseModel):
         return self
 
 
-class MotorConfig(BaseModel):
+class MotorBaseConfig(BaseModel):
     name: str = Field(
         ...,
         description="Human-readable name for the motor",
@@ -78,21 +78,7 @@ class MotorConfig(BaseModel):
         description="Maximum allowable speed for the motor.",
         examples=[100, 90],
     )
-    period: int = Field(
-        4095,
-        description="PWM period for speed control",
-        examples=[4095],
-    )
-    prescaler: int = Field(
-        10,
-        description="PWM prescaler for speed control",
-        examples=[10],
-    )
-    dir_pin: Union[str, int] = Field(
-        ...,
-        description="Direction PIN identifier, either as a GPIO pin number or a named string.",
-        examples=["D4", "D5", 23, 24],
-    )
+
     pwm_pin: Union[str, int] = Field(
         ...,
         description="PWM channel number or name.",
@@ -115,6 +101,31 @@ class MotorConfig(BaseModel):
                 f"`calibration_direction` for motor '{self.name}' must be either 1 or -1."
             )
         return self
+
+
+class MotorPhaseConfig(MotorBaseConfig):
+    """
+    Configuration for a motor using phase control.
+
+    This configuration extends MotorBaseConfig by adding PWM period, prescaler, and a
+    dedicated direction pin for managing the motor’s phase-driven operation.
+    """
+
+    period: int = Field(
+        4095,
+        description="PWM period for speed control",
+        examples=[4095],
+    )
+    prescaler: int = Field(
+        10,
+        description="PWM prescaler for speed control",
+        examples=[10],
+    )
+    dir_pin: Union[str, int] = Field(
+        ...,
+        description="Direction PIN identifier, either as a GPIO pin number or a named string.",
+        examples=["D4", "D5", 23, 24],
+    )
 
 
 class LedConfig(BaseModel):
@@ -155,8 +166,8 @@ class ConfigSchema(BaseModel):
     steering_servo: ServoConfig
     cam_pan_servo: ServoConfig
     cam_tilt_servo: ServoConfig
-    left_motor: MotorConfig
-    right_motor: MotorConfig
+    left_motor: MotorPhaseConfig
+    right_motor: MotorPhaseConfig
     led: LedConfig = LedConfig()
 
     @model_validator(mode="after")

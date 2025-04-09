@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Annotated, AsyncGenerator, TypedDict
+from typing import Annotated, AsyncGenerator, List, Optional, Type, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.config.config import settings as app_config
@@ -15,7 +15,9 @@ from app.services.sensors.battery_service import BatteryService
 from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
 from fastapi import Depends
-from robot_hat.battery import Battery
+from robot_hat.services.battery.battery_abc import BatteryABC
+from robot_hat.services.battery.sunfounder_battery import Battery as SunfounderBattery
+from robot_hat.services.battery.ups_s3_battery import Battery as UPS_S3
 
 logger = Logger(__name__)
 
@@ -74,15 +76,22 @@ def get_led_service(
 
 
 @lru_cache()
-def get_battery_adapter() -> Battery:
-    return Battery()
+def get_battery_adapter() -> Optional[BatteryABC]:
+    adapters: List[Type[BatteryABC]] = [SunfounderBattery, UPS_S3]
+
+    for battery_adapter in adapters:
+        try:
+            adapter = battery_adapter()
+            return adapter
+        except Exception as e:
+            logger.error("Failed to init battery adapter: ", e)
 
 
 @lru_cache()
 def get_battery_service(
     connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
     settings_service: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
-    battery_adapter: Annotated[Battery, Depends(get_battery_adapter)],
+    battery_adapter: Annotated[BatteryABC, Depends(get_battery_adapter)],
 ) -> BatteryService:
     app_settings = settings_service.load_data()
     battery_settings = BatterySettings(

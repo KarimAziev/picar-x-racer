@@ -1,19 +1,13 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from app.schemas.config import ConfigSchema
-from robot_hat import (
-    PWM,
-    MotorConfig,
-    MotorFabric,
-    MotorService,
-    Pin,
-    ServoService,
-    SMBus,
-    SunfounderServo,
-)
+from robot_hat import MotorService, ServoService, SMBus
+from robot_hat.drivers.pwm.pca9685 import PCA9685
+from robot_hat.motor.dc_motor import DCMotor
+from robot_hat.servos.servo import Servo
 
 logger = Logger(name=__name__, app_name="px_robot")
 
@@ -30,9 +24,15 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         self.config = ConfigSchema(**config_manager.load_data())
         self.smbus = SMBus(1)
+        pca_driver = PCA9685(0x40, bus=self.smbus)
 
         self.cam_pan_servo = ServoService(
-            servo=SunfounderServo(self.config.cam_pan_servo.servo_pin, bus=self.smbus),
+            servo=Servo(
+                driver=pca_driver,
+                channel=self.config.cam_pan_servo.servo_pin,
+                min_angle=self.config.cam_pan_servo.min_angle,
+                max_angle=self.config.cam_pan_servo.max_angle,
+            ),
             calibration_offset=self.config.cam_pan_servo.calibration_offset,
             min_angle=self.config.cam_pan_servo.min_angle,
             max_angle=self.config.cam_pan_servo.max_angle,
@@ -40,7 +40,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
             name=self.config.cam_pan_servo.name,
         )
         self.cam_tilt_servo = ServoService(
-            servo=SunfounderServo(self.config.cam_tilt_servo.servo_pin, bus=self.smbus),
+            servo=Servo(
+                driver=pca_driver,
+                channel=self.config.cam_tilt_servo.servo_pin,
+                min_angle=self.config.cam_tilt_servo.min_angle,
+                max_angle=self.config.cam_tilt_servo.max_angle,
+            ),
             calibration_offset=self.config.cam_tilt_servo.calibration_offset,
             min_angle=self.config.cam_tilt_servo.min_angle,
             max_angle=self.config.cam_tilt_servo.max_angle,
@@ -48,7 +53,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
             name=self.config.cam_tilt_servo.name,
         )
         self.steering_servo = ServoService(
-            servo=SunfounderServo(self.config.steering_servo.servo_pin, bus=self.smbus),
+            servo=Servo(
+                driver=pca_driver,
+                channel=self.config.steering_servo.servo_pin,
+                min_angle=self.config.steering_servo.min_angle,
+                max_angle=self.config.steering_servo.max_angle,
+            ),
             calibration_offset=self.config.steering_servo.calibration_offset,
             min_angle=self.config.steering_servo.min_angle,
             max_angle=self.config.steering_servo.max_angle,
@@ -56,36 +66,22 @@ class PicarxAdapter(metaclass=SingletonMeta):
             name=self.config.steering_servo.name,
         )
 
-        left_motor_config = MotorConfig(
-            dir_pin=self.config.left_motor.dir_pin,
-            pwm_pin=self.config.left_motor.pwm_pin,
+        left_motor = DCMotor(
+            forward_pin=6,
+            backward_pin=13,
+            pwm_pin=12,
+            name=self.config.left_motor.name,
             calibration_direction=self.config.left_motor.calibration_direction,
             max_speed=self.config.left_motor.max_speed,
-            name=self.config.left_motor.name,
-            period=self.config.left_motor.period,
-            prescaler=self.config.left_motor.prescaler,
         )
 
-        right_motor_config = MotorConfig(
-            dir_pin=self.config.right_motor.dir_pin,
-            pwm_pin=self.config.right_motor.pwm_pin,
+        right_motor = DCMotor(
+            forward_pin=20,
+            backward_pin=21,
+            pwm_pin=26,
             calibration_direction=self.config.right_motor.calibration_direction,
             max_speed=self.config.right_motor.max_speed,
             name=self.config.right_motor.name,
-            period=self.config.right_motor.period,
-            prescaler=self.config.right_motor.prescaler,
-        )
-
-        left_motor = MotorFabric.create_motor(
-            config=left_motor_config,
-            pwm_pin=PWM(left_motor_config.pwm_pin, bus=self.smbus),
-            dir_pin=Pin(left_motor_config.dir_pin),
-        )
-
-        right_motor = MotorFabric.create_motor(
-            config=right_motor_config,
-            pwm_pin=PWM(right_motor_config.pwm_pin, bus=self.smbus),
-            dir_pin=Pin(right_motor_config.dir_pin),
         )
 
         self.motor_controller = MotorService(
@@ -93,14 +89,11 @@ class PicarxAdapter(metaclass=SingletonMeta):
         )
 
     @property
-    def motor_addresses(self) -> list[int]:
+    def motor_addresses(self) -> List[int]:
         """
         Get the I2C addresses for the left and right motors' speed pins.
         """
-        return [
-            self.motor_controller.left_motor.speed_pin.address,
-            self.motor_controller.right_motor.speed_pin.address,
-        ]
+        return []
 
     @property
     def state(self) -> Dict[str, Any]:
@@ -259,10 +252,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         except OSError as e:
             raise RobotI2CBusError(
                 operation=f"move backward ({speed})",
-                addresses=[
-                    self.motor_controller.left_motor.speed_pin.address,
-                    self.motor_controller.right_motor.speed_pin.address,
-                ],
+                addresses=[],
                 errno=e.errno,
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
