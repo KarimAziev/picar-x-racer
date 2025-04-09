@@ -37,6 +37,23 @@ class ServoConfig(BaseModel):
             ],
         ),
     ]
+    min_pulse: Annotated[
+        int,
+        Field(
+            ...,
+            description="Minimum allowable pulse width for the servo (in microseconds)",
+            examples=[500],
+        ),
+    ] = 500
+
+    max_pulse: Annotated[
+        int,
+        Field(
+            ...,
+            description="Maximum allowable pulse width for the servo",
+            examples=[2500],
+        ),
+    ] = 2500
 
     servo_pin: Union[str, int] = Field(
         ...,

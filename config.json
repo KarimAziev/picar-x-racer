@@ -5,7 +5,9 @@
     "max_angle": 90,
     "calibration_offset": 0.0,
     "calibration_mode": "negative",
-    "name": "Camera Pan"
+    "name": "Camera Pan",
+    "min_pulse": 700,
+    "max_pulse": 2300
   },
   "cam_tilt_servo": {
     "servo_pin": "P1",
@@ -13,7 +15,9 @@
     "max_angle": 65,
     "calibration_offset": 0.0,
     "calibration_mode": "negative",
-    "name": "Camera Tilt"
+    "name": "Camera Tilt",
+    "min_pulse": 750,
+    "max_pulse": 2250
   },
   "steering_servo": {
     "servo_pin": "P2",
@@ -21,7 +25,9 @@
     "max_angle": 30,
     "calibration_offset": 0.0,
     "calibration_mode": "sum",
-    "name": "Steering Direction"
+    "name": "Steering Direction",
+    "min_pulse": 750,
+    "max_pulse": 2250
   },
   "left_motor": {
     "dir_pin": "D4",
