@@ -29,14 +29,8 @@ from app.services.media.music_service import MusicService
 from app.services.media.tts_service import TTSService
 from app.services.media.video_recorder_service import VideoRecorderService
 from fastapi import Depends, Path
-from robot_hat.battery import Battery
 
 logger = Logger(__name__)
-
-
-@lru_cache()
-def get_battery_adapter() -> Battery:
-    return Battery()
 
 
 @lru_cache()
