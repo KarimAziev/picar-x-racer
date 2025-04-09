@@ -15,6 +15,13 @@ from app.services.sensors.battery_service import BatteryService
 from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
 from fastapi import Depends
+from robot_hat.drivers.adc.INA219 import (
+    ADCResolution,
+    BusVoltageRange,
+    Gain,
+    INA219Config,
+    Mode,
+)
 from robot_hat.services.battery.battery_abc import BatteryABC
 from robot_hat.services.battery.sunfounder_battery import Battery as SunfounderBattery
 from robot_hat.services.battery.ups_s3_battery import Battery as UPS_S3
@@ -77,7 +84,24 @@ def get_led_service(
 
 @lru_cache()
 def get_battery_adapter() -> Optional[BatteryABC]:
-    adapters: List[Type[BatteryABC]] = [SunfounderBattery, UPS_S3]
+
+    try:
+        default_config = INA219Config(
+            bus_voltage_range=BusVoltageRange.RANGE_32V,
+            gain=Gain.DIV_8_320MV,
+            bus_adc_resolution=ADCResolution.ADCRES_12BIT_32S,
+            shunt_adc_resolution=ADCResolution.ADCRES_12BIT_32S,
+            mode=Mode.SHUNT_AND_BUS_CONTINUOUS,
+            current_lsb=0.1,  # 0.1 mA per bit
+            calibration_value=4096,
+            power_lsb=0.002,  # 20 × current_lsb in W per bit
+        )
+        adapter = UPS_S3(address=0x41, config=default_config)
+        return adapter
+    except Exception as e:
+        logger.error("Failed to init UPS 3 battery adapter: ", e)
+
+    adapters: List[Type[BatteryABC]] = [SunfounderBattery]
 
     for battery_adapter in adapters:
         try:

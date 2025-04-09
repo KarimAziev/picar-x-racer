@@ -25,6 +25,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.config = ConfigSchema(**config_manager.load_data())
         self.smbus = SMBus(1)
         pca_driver = PCA9685(0x40, bus=self.smbus)
+        pca_driver.set_pwm_freq(50)
 
         self.cam_pan_servo = ServoService(
             servo=Servo(
