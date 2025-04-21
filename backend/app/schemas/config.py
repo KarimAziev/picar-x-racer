@@ -233,9 +233,6 @@ class INA219Config(BaseModel):
         ),
     ] = 0.002
 
-    class Config:
-        use_enum_values = True
-
 
 class ServoConfig(BaseModel):
     name: Annotated[
