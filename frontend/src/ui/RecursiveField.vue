@@ -10,6 +10,7 @@
         :key="propName"
       >
         <RecursiveField
+          :key="[selectedOption, ...path].join('-')"
           :schema="propSchema"
           :model="model"
           :path="[...path, propName]"
@@ -27,6 +28,7 @@
     >
       <div v-for="(propSchema, propName) in arraySchemaOptions" :key="propName">
         <RecursiveField
+          :key="[selectedOption, ...path].join('-')"
           :schema="propSchema"
           :model="model"
           :path="[...path, propName]"
@@ -46,7 +48,6 @@
     />
   </div>
 
-  <!-- Render if a valid type is present -->
   <div v-else-if="resolvedSchema?.type && components[resolvedSchema?.type]">
     <component
       :is="components[resolvedSchema?.type]"
@@ -56,7 +57,6 @@
     />
   </div>
 
-  <!-- Only if there’s an anyOf with multiple options, display selection -->
   <Fieldset
     :legend="startCase(resolvedSchema?.title || keyName)"
     toggleable
@@ -71,6 +71,7 @@
       :tooltipHelp="resolvedSchema?.description"
     />
     <RecursiveField
+      :key="selectedOption"
       :schema="selectedSchema"
       :model="model"
       :path="path"
@@ -87,6 +88,7 @@
     />
     <div v-if="selectedOption !== null && selectedSchema">
       <RecursiveField
+        :key="[selectedOption, ...path].join('-')"
         :schema="selectedSchema"
         :model="model"
         :path="path"
@@ -316,10 +318,16 @@ watch(
   (newVal) => {
     if (newVal === undefined || newVal === null) {
       if (resolvedSchema.value?.type === "object") {
-        setNestedValue(props.model, props.path, {});
+        setNestedValue(props.model, props.path, { _optionSelected: newVal });
       }
     }
   },
   { immediate: true },
 );
+
+watch(selectedOption, (newOpt, oldOpt) => {
+  if (newOpt !== oldOpt) {
+    setNestedValue(props.model, props.path, { _optionSelected: newOpt });
+  }
+});
 </script>

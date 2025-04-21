@@ -177,6 +177,7 @@ class CalibrationService(metaclass=SingletonMeta):
                     motor_config.calibration_direction = motor.direction
 
     def save_config(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        self.logger.info("Saving config: %s", data)
         self.config = HardwareConfig(**data)
         self._sync_config()
 
