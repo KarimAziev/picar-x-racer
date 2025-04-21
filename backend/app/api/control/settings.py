@@ -11,15 +11,15 @@ from typing import TYPE_CHECKING, Annotated, Any, Dict
 from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.managers.file_management.json_data_manager import JsonDataManager
-from app.schemas.config import CalibrationConfig, ConfigSchema
+from app.schemas.calibration import CalibrationConfig
+from app.schemas.config import HardwareConfig
 from app.schemas.settings import Settings
 from app.util.doc_util import build_response_description
-from app.util.pydantic_helpers import schema_to_dynamic_json
 from fastapi import APIRouter, Depends
 
 if TYPE_CHECKING:
     from app.services.control.car_service import CarService
-    from app.services.sensors.battery_service import BatteryService
+
 
 router = APIRouter()
 
@@ -33,9 +33,6 @@ logger = Logger(name=__name__)
 )
 async def update_settings(
     new_settings: Settings,
-    battery_manager: Annotated[
-        "BatteryService", Depends(robot_deps.get_battery_service)
-    ],
     robot_service: Annotated["CarService", Depends(robot_deps.get_robot_service)],
 ):
     """
@@ -44,10 +41,6 @@ async def update_settings(
     robot_service.app_settings = new_settings
 
     logger.debug("Updating robot app settings")
-
-    if new_settings.battery:
-        logger.debug("Updating battery settings")
-        battery_manager.update_battery_settings(new_settings.battery)
 
     return new_settings
 
@@ -61,15 +54,15 @@ def get_fields_config():
     """
     Retrieve the a JSON-like schema representation of robot config settings.
     """
-    return schema_to_dynamic_json(ConfigSchema)
+    return HardwareConfig.model_json_schema()
 
 
 @router.get(
     "/px/api/settings/config",
-    response_model=ConfigSchema,
+    response_model=HardwareConfig,
     summary="Retrieve current robot configuration",
     response_description=build_response_description(
-        ConfigSchema, "Successful response with the robot configuration."
+        HardwareConfig, "Successful response with the robot configuration."
     ),
 )
 def get_config_settings(

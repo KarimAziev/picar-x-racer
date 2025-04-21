@@ -3,6 +3,8 @@ import axios from "axios";
 import { useMessagerStore } from "@/features/messager";
 import type { Nullable } from "@/util/ts-helpers";
 import { makeUrl } from "@/util/url";
+import { JSONSchema } from "@/features/controller/interface";
+import { Battery } from "@/features/settings/interface";
 
 export interface Field {
   type: string | string[];
@@ -74,7 +76,7 @@ export interface FieldsConfig {
 export interface State {
   data: Data;
   loading: boolean;
-  config: Partial<FieldsConfig>;
+  config: JSONSchema | null;
 }
 
 type ServoCalibrationMode = "sum" | "negative";
@@ -125,6 +127,7 @@ export interface LEDConfig {
 }
 export interface Data extends ServoData, MotorsData {
   led: LEDConfig;
+  battery: Battery;
 }
 
 const defaultServo = {
@@ -153,7 +156,7 @@ const ledDefaults = {
 };
 const defaultState: State = {
   loading: false,
-  config: {},
+  config: null,
   data: {
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,
@@ -161,6 +164,14 @@ const defaultState: State = {
     left_motor: motorDefaults,
     right_motor: motorDefaults,
     led: ledDefaults,
+    battery: {
+      full_voltage: 8.4,
+      warn_voltage: 7.15,
+      danger_voltage: 6.5,
+      min_voltage: 6.0,
+      auto_measure_seconds: 60,
+      cache_seconds: 2,
+    },
   },
 };
 
@@ -170,8 +181,8 @@ export const useStore = defineStore("robot", {
   getters: {
     maxSpeed({ data }) {
       return Math.min(
-        data.left_motor.max_speed || 100,
-        data.right_motor.max_speed || 100,
+        data?.left_motor?.max_speed || 100,
+        data?.right_motor?.max_speed || 100,
       );
     },
     calibration({
@@ -184,11 +195,11 @@ export const useStore = defineStore("robot", {
       },
     }) {
       return {
-        steering_servo_offset: steering_servo.calibration_offset,
-        cam_pan_servo_offset: cam_pan_servo.calibration_offset,
-        cam_tilt_servo_offset: cam_tilt_servo.calibration_offset,
-        left_motor_direction: left_motor.calibration_direction,
-        right_motor_direction: right_motor.calibration_direction,
+        steering_servo_offset: steering_servo?.calibration_offset,
+        cam_pan_servo_offset: cam_pan_servo?.calibration_offset,
+        cam_tilt_servo_offset: cam_tilt_servo?.calibration_offset,
+        left_motor_direction: left_motor?.calibration_direction,
+        right_motor_direction: right_motor?.calibration_direction,
       };
     },
   },
@@ -199,7 +210,8 @@ export const useStore = defineStore("robot", {
       const url = makeUrl("px/api/settings/robot-fields", port);
       try {
         this.loading = true;
-        const response = await axios.get<FieldsConfig>(url);
+        const response = await axios.get<JSONSchema>(url);
+
         this.config = response.data;
       } catch (error) {
         messager.handleError(error);
@@ -214,6 +226,7 @@ export const useStore = defineStore("robot", {
       try {
         this.loading = true;
         const response = await axios.get<Data>(url);
+
         this.data = response.data;
       } catch (error) {
         messager.handleError(error, `Error fetching robot config`);

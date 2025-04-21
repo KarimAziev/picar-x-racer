@@ -1,6 +1,7 @@
 import axios from "axios";
 import { defineStore } from "pinia";
 import { retrieveError } from "@/util/error";
+import { makeUrl } from "@/util/url";
 
 export interface BatteryResponse {
   voltage: number;
@@ -25,9 +26,9 @@ export const useStore = defineStore("battery", {
     async fetchBatteryStatus() {
       try {
         this.loading = true;
-        const response = await axios.get<BatteryResponse>(
-          "/px/api/battery-status",
-        );
+        const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
+        const url = makeUrl("/px/api/battery-status", port);
+        const response = await axios.get<BatteryResponse>(url);
         const { voltage, percentage } = response.data;
         this.voltage = voltage;
         this.percentage = percentage;

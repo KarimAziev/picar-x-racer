@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 
 from app.core.px_logger import Logger
 from app.managers.led_manager import led_process
-from app.schemas.config import ConfigSchema
+from app.schemas.config import HardwareConfig
 
 if TYPE_CHECKING:
     from app.core.async_emitter import AsyncEventEmitter
@@ -48,7 +48,7 @@ class LEDService:
         config_manager: "JsonDataManager",
     ):
         self.config_manager = config_manager
-        self.robot_config = ConfigSchema(**config_manager.load_data())
+        self.robot_config = HardwareConfig(**config_manager.load_data())
         self.led_config = self.robot_config.led
         self.stop_event = mp.Event()
         self.emitter = emitter
@@ -71,7 +71,7 @@ class LEDService:
             new_config: The dictionary with new robot config.
         """
         logger.info("Updating robot led_config", new_config)
-        self.robot_config = ConfigSchema(**new_config)
+        self.robot_config = HardwareConfig(**new_config)
         self.led_config = self.robot_config.led
         if self.running:
             await self.stop_all()
@@ -102,17 +102,18 @@ class LEDService:
 
         Creates a new multiprocessing.Process to run led_process with the current configuration.
         """
-        with self.lock:
-            logger.info("Starting LED process")
-            self._process = mp.Process(
-                target=led_process,
-                args=(
-                    self.led_config.pin,
-                    self.stop_event,
-                    self.led_config.interval,
-                ),
-            )
-            self._process.start()
+        if self.led_config:
+            with self.lock:
+                logger.info("Starting LED process")
+                self._process = mp.Process(
+                    target=led_process,
+                    args=(
+                        self.led_config.pin,
+                        self.stop_event,
+                        self.led_config.interval,
+                    ),
+                )
+                self._process.start()
 
     def _cancel_process(self):
         """
@@ -158,7 +159,8 @@ class LEDService:
             new_pin: The new pin (int or str) to use for the LED.
         """
         logger.info("Updating LED pin to %s", new_pin)
-        self.led_config.pin = new_pin
+        if self.led_config:
+            self.led_config.pin = new_pin
         if self.running:
             await self.stop_all()
             await self.start_all()
@@ -174,7 +176,8 @@ class LEDService:
             new_interval: The new interval (in seconds) for blinking.
         """
         logger.info("Updating LED interval to %s", new_interval)
-        self.led_config.interval = new_interval
+        if self.led_config:
+            self.led_config.interval = new_interval
         if self.running:
             await self.stop_all()
             await self.start_all()

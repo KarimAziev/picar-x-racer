@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from app.schemas.battery import BatterySettings
 from app.schemas.camera import CameraSettings
 from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
@@ -201,10 +200,6 @@ class Settings(BaseModel):
     """
     A model representing application-wide settings.
     """
-
-    battery: BatterySettings = Field(
-        ..., description="Configuration for battery settings."
-    )
 
     general: General = Field(
         ...,

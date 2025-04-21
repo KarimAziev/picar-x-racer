@@ -15,7 +15,6 @@
       :optionValue="optionValue"
       v-tooltip="tooltipText"
       filter
-      autoFilterFocus
       :class="props.inputClassName"
       v-model="currentValue"
       :invalid="invalid"

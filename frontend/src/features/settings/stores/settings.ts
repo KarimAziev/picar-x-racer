@@ -65,14 +65,6 @@ export const defaultState: State = {
       default_tts_language: "en",
       texts: [],
     },
-    battery: {
-      full_voltage: 8.4,
-      warn_voltage: 7.15,
-      danger_voltage: 6.5,
-      min_voltage: 6.0,
-      auto_measure_seconds: 60,
-      cache_seconds: 2,
-    },
 
     robot: {
       max_speed: 80,
@@ -104,7 +96,7 @@ export const useStore = defineStore("settings", {
     generalSettings({ data }) {
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
-      const settingsData = pick(["general", "battery"], data);
+      const settingsData = pick(["general"], data);
       return {
         ...settingsData,
         camera: cameraStore.data,

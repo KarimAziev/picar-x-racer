@@ -19,11 +19,11 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from "vue";
-import { useSettingsStore, useBatteryStore } from "@/features/settings/stores";
+import { useBatteryStore, useRobotStore } from "@/features/settings/stores";
 import ToggleableView from "@/ui/ToggleableView.vue";
 
 const batteryStore = useBatteryStore();
-const settingsStore = useSettingsStore();
+const robotStore = useRobotStore();
 
 const BatteryIndicator = defineAsyncComponent({
   loader: () => import("@/ui/BatteryIndicator.vue"),
@@ -59,11 +59,11 @@ const className = computed((previous) => {
     return "color-error";
   }
 
-  if (voltage >= settingsStore.data.battery.warn_voltage) {
+  if (voltage >= robotStore.data.battery.warn_voltage) {
     return "color-success";
   } else if (
-    voltage < settingsStore.data.battery.warn_voltage &&
-    voltage > settingsStore.data.battery.danger_voltage
+    voltage < robotStore.data.battery.warn_voltage &&
+    voltage > robotStore.data.battery.danger_voltage
   ) {
     return "color-warning";
   } else {

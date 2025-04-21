@@ -5,14 +5,15 @@
         v-for="(obj, groupName) in motorHandlers"
         class="flex justify-between items-center select-none"
         :key="groupName"
+        v-if="robotStore.data"
       >
-        <span class="flex-1 font-bold"
-          >{{ startCase(groupName) }}: &nbsp;
-          {{ robotStore.data[groupName].calibration_direction }}</span
-        >
-        <Button size="small" @click="obj.calibration_direction" outlined
-          >Reverse</Button
-        >
+        <span class="flex-1 font-bold">
+          {{ startCase(groupName) }}: &nbsp;
+          {{ robotStore.data[groupName]?.calibration_direction }}
+        </span>
+        <Button size="small" @click="obj.calibration_direction" outlined>
+          Reverse
+        </Button>
       </div>
     </div>
   </Fieldset>

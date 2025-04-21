@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Annotated, AsyncGenerator, List, Optional, Type, TypedDict
+from typing import Annotated, AsyncGenerator, Optional, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.config.config import settings as app_config
@@ -7,7 +7,7 @@ from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
 from app.managers.async_task_manager import AsyncTaskManager
 from app.managers.file_management.json_data_manager import JsonDataManager
-from app.schemas.battery import BatterySettings
+from app.schemas.config import HardwareConfig, UPS_S3Config
 from app.services.connection_service import ConnectionService
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
@@ -15,13 +15,7 @@ from app.services.sensors.battery_service import BatteryService
 from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
 from fastapi import Depends
-from robot_hat.drivers.adc.INA219 import (
-    ADCResolution,
-    BusVoltageRange,
-    Gain,
-    INA219Config,
-    Mode,
-)
+from robot_hat.drivers.adc.INA219 import INA219Config
 from robot_hat.services.battery.battery_abc import BatteryABC
 from robot_hat.services.battery.sunfounder_battery import Battery as SunfounderBattery
 from robot_hat.services.battery.ups_s3_battery import Battery as UPS_S3
@@ -83,57 +77,47 @@ def get_led_service(
 
 
 @lru_cache()
-def get_battery_adapter() -> Optional[BatteryABC]:
+def get_battery_adapter(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+) -> Optional[BatteryABC]:
 
     try:
-        default_config = INA219Config(
-            bus_voltage_range=BusVoltageRange.RANGE_32V,
-            gain=Gain.DIV_8_320MV,
-            bus_adc_resolution=ADCResolution.ADCRES_12BIT_32S,
-            shunt_adc_resolution=ADCResolution.ADCRES_12BIT_32S,
-            mode=Mode.SHUNT_AND_BUS_CONTINUOUS,
-            current_lsb=0.1,  # 0.1 mA per bit
-            calibration_value=4096,
-            power_lsb=0.002,  # 20 × current_lsb in W per bit
-        )
-        adapter = UPS_S3(address=0x41, config=default_config)
-        return adapter
+        config = HardwareConfig(**config_manager.load_data())
+        if config.battery is None:
+            return None
+
+        driver = config.battery.driver
+        if isinstance(driver, UPS_S3Config):
+            return UPS_S3(
+                address=0x41,
+                config=INA219Config(
+                    bus_voltage_range=driver.config.bus_voltage_range,
+                    gain=driver.config.gain,
+                    bus_adc_resolution=driver.config.bus_adc_resolution,
+                    shunt_adc_resolution=driver.config.shunt_adc_resolution,
+                    mode=driver.config.mode,
+                    current_lsb=driver.config.current_lsb,  # 0.1 mA per bit
+                    calibration_value=driver.config.calibration_value,
+                    power_lsb=driver.config.power_lsb,
+                ),
+                bus_num=driver.bus,
+            )
+        else:
+            return SunfounderBattery()
     except Exception as e:
         logger.error("Failed to init UPS 3 battery adapter: ", e)
-
-    adapters: List[Type[BatteryABC]] = [SunfounderBattery]
-
-    for battery_adapter in adapters:
-        try:
-            adapter = battery_adapter()
-            return adapter
-        except Exception as e:
-            logger.error("Failed to init battery adapter: ", e)
 
 
 @lru_cache()
 def get_battery_service(
     connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
-    settings_service: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
     battery_adapter: Annotated[BatteryABC, Depends(get_battery_adapter)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
 ) -> BatteryService:
-    app_settings = settings_service.load_data()
-    battery_settings = BatterySettings(
-        **app_settings.get(
-            "battery",
-            {
-                "full_voltage": 8.4,
-                "warn_voltage": 7.15,
-                "danger_voltage": 6.5,
-                "min_voltage": 6.0,
-                "auto_measure_seconds": 60,
-                "cache_seconds": 2,
-            },
-        )
-    )
+    config = HardwareConfig(**config_manager.load_data())
     return BatteryService(
         connection_manager=connection_manager,
-        settings=battery_settings,
+        settings=config.battery,
         battery_adapter=battery_adapter,
     )
 

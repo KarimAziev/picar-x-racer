@@ -19,7 +19,6 @@ export interface Settings {
   general: General;
   robot: Robot;
   tts: TTS;
-  battery: Battery;
   music: Music;
   camera: CameraSettings;
   stream: StreamSettings;

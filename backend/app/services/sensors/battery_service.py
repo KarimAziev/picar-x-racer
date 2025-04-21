@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.schemas.battery import BatterySettings
+from app.schemas.config import BatteryConfig
 from app.schemas.connection import ConnectionEvent
 from robot_hat.services.battery.battery_abc import BatteryABC
 
@@ -17,7 +17,7 @@ class BatteryService(metaclass=SingletonMeta):
         self,
         connection_manager: "ConnectionService",
         battery_adapter: Optional[BatteryABC],
-        settings: BatterySettings,
+        settings: BatteryConfig,
     ):
         """
         Initializes the BatteryService with required file and connection services.
@@ -33,7 +33,7 @@ class BatteryService(metaclass=SingletonMeta):
         self._last_measure_time: Optional[float] = None
         self._lock = asyncio.Lock()
 
-    def update_battery_settings(self, settings: BatterySettings):
+    def update_battery_settings(self, settings: BatteryConfig):
         "Updates the battery's settings."
         self.settings = settings
 
@@ -49,7 +49,7 @@ class BatteryService(metaclass=SingletonMeta):
         Cache behavior:
         To optimize performance and reduce frequent hardware queries, the method employs a caching mechanism.
 
-        If a voltage measurement is requested within the time interval specified by the `BatterySettings.cache_seconds`
+        If a voltage measurement is requested within the time interval specified by the `BatteryConfig.cache_seconds`
         after the last reading, a cached value is returned instead of performing a new ADC measurement.
 
         Returns:

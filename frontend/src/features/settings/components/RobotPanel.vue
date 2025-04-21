@@ -1,12 +1,9 @@
 <template>
-  <Fieldset legend="General" toggleable>
+  <Fieldset legend="General" toggleable collapsed>
     <Fieldset legend="Control" toggleable>
       <RobotSettings />
     </Fieldset>
 
-    <Fieldset legend="Battery" toggleable collapsed>
-      <BatterySettings />
-    </Fieldset>
     <Button
       size="small"
       outlined
@@ -15,7 +12,6 @@
       @click="
         settingsStore.saveData({
           robot: settingsStore.data.robot,
-          battery: settingsStore.data.battery,
         })
       "
       class="w-fit mt-2"
@@ -26,9 +22,7 @@
       Calibration will reset any unsaved changes in the Hardware Config section.
     </Message>
   </CalibrationPanel>
-  <Fieldset legend="Hardware Config" toggleable collapsed>
-    <RobotConfig />
-  </Fieldset>
+  <RobotConfig />
 </template>
 
 <script setup lang="ts">
@@ -40,13 +34,6 @@ import CalibrationPanel from "@/features/settings/components/calibration/Calibra
 import { useSettingsStore } from "@/features/settings/stores";
 
 const settingsStore = useSettingsStore();
-
-const BatterySettings = defineAsyncComponent({
-  loader: () =>
-    import("@/features/settings/components/robot/BatterySettings.vue"),
-  loadingComponent: Skeleton,
-  delay: 0,
-});
 
 const RobotConfig = defineAsyncComponent({
   loader: () => import("@/features/settings/components/robot/RobotConfig.vue"),

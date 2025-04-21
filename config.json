@@ -1,6 +1,6 @@
 {
   "cam_pan_servo": {
-    "servo_pin": "P0",
+    "channel": "P0",
     "min_angle": -90,
     "max_angle": 90,
     "calibration_offset": 0.0,
@@ -10,7 +10,7 @@
     "max_pulse": 2300
   },
   "cam_tilt_servo": {
-    "servo_pin": "P1",
+    "channel": "P1",
     "min_angle": -35,
     "max_angle": 65,
     "calibration_offset": 0.0,
@@ -20,7 +20,7 @@
     "max_pulse": 2250
   },
   "steering_servo": {
-    "servo_pin": "P2",
+    "channel": "P2",
     "min_angle": -30,
     "max_angle": 30,
     "calibration_offset": 0.0,
@@ -53,5 +53,24 @@
     "pin": 26,
     "name": "LED",
     "interval": 0.1
+  },
+  "battery": {
+    "full_voltage": 8.4,
+    "warn_voltage": 7.15,
+    "danger_voltage": 6.5,
+    "min_voltage": 6.0,
+    "auto_measure_seconds": 60,
+    "cache_seconds": 2,
+    "driver": {
+      "driver_type": "Sunfounder",
+      "channel": "A4",
+      "address": 64,
+      "bus": 1
+    }
+  },
+  "ultrasonic": {
+    "trig_pin": "D2",
+    "echo_pin": "D3",
+    "timeout": 0.017
   }
 }
