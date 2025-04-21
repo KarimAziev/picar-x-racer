@@ -245,5 +245,7 @@ class CalibrationService(metaclass=SingletonMeta):
         self.config_manager.update(config)
         self.config = HardwareConfig(**config)
         self.px.config = self.config
+        self.px.cleanup()
+        self.px.init_hardware()
 
         return config

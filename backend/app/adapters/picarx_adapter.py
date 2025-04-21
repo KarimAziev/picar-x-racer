@@ -36,8 +36,10 @@ class PicarxAdapter(metaclass=SingletonMeta):
         config_manager: "JsonDataManager",
     ):
         self.config_manager = config_manager
+        self.init_hardware()
 
-        self.config = HardwareConfig(**config_manager.load_data())
+    def init_hardware(self):
+        self.config = HardwareConfig(**self.config_manager.load_data())
 
         self.smbus = SMBus(1)
 
@@ -359,8 +361,11 @@ class PicarxAdapter(metaclass=SingletonMeta):
         associated I2C connections for both motors and servos.
         """
 
-        self.stop()
-        try:
-            self.smbus.close()
-        except Exception as err:
-            logger.error("Error closing smbus: %s", err)
+        if self.motor_controller:
+            self.stop()
+
+        if self.smbus:
+            try:
+                self.smbus.close()
+            except Exception as err:
+                logger.error("Error closing smbus: %s", err)
