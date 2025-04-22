@@ -1,3 +1,5 @@
+from typing import Union
+
 from pydantic import BaseModel, Field
 
 
@@ -29,16 +31,18 @@ class UltrasonicConfig(BaseModel):
     A model to represent the Ultrasonic configuration.
     """
 
-    trig_pin: str = Field(
+    trig_pin: Union[str, int] = Field(
         default="D2",
+        json_schema_extra={"type": "string_or_number"},
         description="The name of the pin connected to the TRIG pin of the ultrasonic sensor.",
         examples=[
             "D2",
         ],
     )
 
-    echo_pin: str = Field(
+    echo_pin: Union[str, int] = Field(
         default="D3",
+        json_schema_extra={"type": "string_or_number"},
         description="The name of the pin connected to the ECHO pin of the ultrasonic sensor.",
         examples=[
             "D3",
