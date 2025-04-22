@@ -1,18 +1,19 @@
 import asyncio
 import multiprocessing as mp
 import threading
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict
 
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.managers.distance_manager import distance_process
-from app.schemas.distance import UltrasonicConfig
+from app.schemas.config import HardwareConfig
 
 if TYPE_CHECKING:
     from multiprocessing.sharedctypes import Synchronized
 
     from app.core.async_emitter import AsyncEventEmitter, Listener
     from app.managers.async_task_manager import AsyncTaskManager
+    from app.managers.file_management.json_data_manager import JsonDataManager
 
 logger = Logger(__name__)
 
@@ -22,12 +23,13 @@ class DistanceService(metaclass=SingletonMeta):
         self,
         emitter: "AsyncEventEmitter",
         task_manager: "AsyncTaskManager",
-        config: Optional[UltrasonicConfig] = None,
+        config_manager: "JsonDataManager",
         interval=0.017,
     ):
+        self.config_manager = config_manager
+        self.robot_config = HardwareConfig(**config_manager.load_data())
         self._distance: Synchronized[float] = mp.Value("f", 0)
         self._process = None
-        self.config = config or UltrasonicConfig()
         self.stop_event = mp.Event()
         self.interval = interval
         self.lock = threading.Lock()
@@ -35,6 +37,24 @@ class DistanceService(metaclass=SingletonMeta):
         self.emitter = emitter
         self.task_manager = task_manager
         self.loading = False
+        self.config_manager.on(self.config_manager.UPDATE_EVENT, self.update_config)
+        self.config_manager.on(self.config_manager.LOAD_EVENT, self.update_config)
+
+    async def update_config(self, new_config: Dict[str, Any]) -> None:
+        """
+        Updates the robot configuration.
+
+        If the LED process is running, it will be stopped and restarted with the new
+        configuration.
+
+        Args:
+            new_config: The dictionary with new robot config.
+        """
+        logger.info("Updating robot distance config", new_config)
+        self.robot_config = HardwareConfig(**new_config)
+        if self.running:
+            await self.stop_all()
+            await self.start_all()
 
     def subscribe(self, listener: "Listener"):
         self.emitter.on("distance", listener)
@@ -96,19 +116,20 @@ class DistanceService(metaclass=SingletonMeta):
             return self._process and self._process.is_alive()
 
     def _start_process(self):
-        with self.lock:
-            self._process = mp.Process(
-                target=distance_process,
-                args=(
-                    self.config.trig_pin,
-                    self.config.echo_pin,
-                    self.stop_event,
-                    self._distance,
-                    self.interval,
-                    self.config.timeout,
-                ),
-            )
-            self._process.start()
+        if self.robot_config.ultrasonic:
+            with self.lock:
+                self._process = mp.Process(
+                    target=distance_process,
+                    args=(
+                        self.robot_config.ultrasonic.trig_pin,
+                        self.robot_config.ultrasonic.echo_pin,
+                        self.stop_event,
+                        self._distance,
+                        self.interval,
+                        self.robot_config.ultrasonic.timeout,
+                    ),
+                )
+                self._process.start()
 
     def _cancel_process(self):
         with self.lock:
