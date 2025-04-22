@@ -40,6 +40,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
     def init_hardware(self):
         self.config = HardwareConfig(**self.config_manager.load_data())
+        logger.info("init_hardware config", self.config)
 
         self.smbus = SMBus(1)
 
@@ -79,6 +80,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self, motor_config: Union[HBridgeMotorConfig, DCMotorConfig]
     ) -> MotorABC:
         if isinstance(motor_config, DCMotorConfig):
+            logger.info("Initializing DC motor %s", motor_config)
             return DCMotor(
                 forward_pin=motor_config.forward_pin,
                 backward_pin=motor_config.backward_pin,
@@ -89,7 +91,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 pwm=motor_config.pwm,
             )
         else:
+            logger.info("Initializng HBridge motor %s", motor_config)
+
             driver_cls = self.pwm_drivers[motor_config.driver.name]
+
+            if not self.smbus:
+                raise ValueError("No SMBus")
 
             driver = driver_cls(
                 bus=self.smbus,
@@ -109,6 +116,8 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self, servo_config: Union[GPIOAngularServoConfig, AngularServoConfig]
     ) -> ServoService:
         if isinstance(servo_config, AngularServoConfig):
+            if not self.smbus:
+                raise ValueError("No SMBus")
             driver_cls = self.pwm_drivers[servo_config.driver.name]
 
             driver = driver_cls(
@@ -369,3 +378,4 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 self.smbus.close()
             except Exception as err:
                 logger.error("Error closing smbus: %s", err)
+            self.smbus = None
