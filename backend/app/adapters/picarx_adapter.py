@@ -40,7 +40,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
     def init_hardware(self):
         self.config = HardwareConfig(**self.config_manager.load_data())
-        logger.info("init_hardware config", self.config)
+        logger.debug("init_hardware config=%s", self.config)
 
         self.smbus = SMBus(1)
 
