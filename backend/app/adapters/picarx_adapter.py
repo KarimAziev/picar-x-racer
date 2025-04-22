@@ -40,9 +40,8 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
     def init_hardware(self):
         self.config = HardwareConfig(**self.config_manager.load_data())
-        logger.debug("init_hardware config=%s", self.config)
-
         self.smbus = SMBus(1)
+        logger.debug("init_hardware config=%s", self.config)
 
         self.cam_pan_servo = (
             self._make_servo(self.config.cam_pan_servo)
@@ -372,6 +371,28 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         if self.motor_controller:
             self.stop()
+            self.motor_controller.close()
+        else:
+            for motor in [self.left_motor, self.right_motor]:
+                if motor:
+                    try:
+                        motor.close()
+                    except Exception as e:
+                        logger.error("Error closing motor %s", e)
+
+        self.right_motor = None
+        self.left_motor = None
+
+        for servo_service in [
+            self.steering_servo,
+            self.cam_tilt_servo,
+            self.cam_pan_servo,
+        ]:
+            if servo_service:
+                try:
+                    servo_service.close()
+                except Exception as e:
+                    logger.error("Error closing servo %s", e)
 
         if self.smbus:
             try:
