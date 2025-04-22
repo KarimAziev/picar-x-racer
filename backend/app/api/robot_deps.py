@@ -58,10 +58,10 @@ def get_app_settings_manager() -> JsonDataManager:
 def get_distance_service(
     emitter: Annotated[AsyncEventEmitter, Depends(get_async_event_emitter)],
     task_manager: Annotated[AsyncTaskManager, Depends(get_async_task_manager)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
 ) -> DistanceService:
     return DistanceService(
-        emitter=emitter,
-        task_manager=task_manager,
+        emitter=emitter, task_manager=task_manager, config_manager=config_manager
     )
 
 
