@@ -1,6 +1,6 @@
 <template>
-  <Fieldset legend="General" toggleable collapsed>
-    <Fieldset legend="Control" toggleable>
+  <Fieldset legend="General" toggleable collapsed :id="popupStore.tab">
+    <Fieldset legend="Control" toggleable :id="`${popupStore.tab}-0`">
       <RobotSettings />
     </Fieldset>
 
@@ -17,23 +17,24 @@
       class="w-fit mt-2"
     />
   </Fieldset>
-  <CalibrationPanel>
+  <CalibrationPanel :id="`${popupStore.tab}-1`">
     <Message severity="warning" variant="simple" closable>
       Calibration will reset any unsaved changes in the Hardware Config section.
     </Message>
   </CalibrationPanel>
-  <RobotConfig />
+  <RobotConfig :idPrefix="`${popupStore.tab}-2`" />
 </template>
 
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
-import Fieldset from "primevue/fieldset";
 import Skeleton from "@/features/settings/components/general/Skeleton.vue";
 import ErrorComponent from "@/ui/ErrorComponent.vue";
 import CalibrationPanel from "@/features/settings/components/calibration/CalibrationPanel.vue";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
+import Fieldset from "@/ui/Fieldset.vue";
 
 const settingsStore = useSettingsStore();
+const popupStore = usePopupStore();
 
 const RobotConfig = defineAsyncComponent({
   loader: () => import("@/features/settings/components/robot/RobotConfig.vue"),

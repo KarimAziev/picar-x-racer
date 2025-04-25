@@ -87,6 +87,8 @@ export interface ServoConfig {
   max_angle: number;
   calibration_offset: Nullable<number>;
   calibration_mode?: Nullable<ServoCalibrationMode>;
+  dec_step: number;
+  inc_step: number;
   name: Nullable<string>;
 }
 
@@ -134,6 +136,8 @@ const defaultServo = {
   servo_pin: null,
   min_angle: -30,
   max_angle: 30,
+  dec_step: -5,
+  inc_step: 5,
   calibration_offset: null,
   calibration_mode: null,
   name: null,

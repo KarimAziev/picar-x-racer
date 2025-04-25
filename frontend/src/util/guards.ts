@@ -55,7 +55,8 @@ export const isInput = (v: unknown): v is HTMLInputElement =>
 export const isButton = (v: unknown): v is HTMLButtonElement =>
   v instanceof HTMLButtonElement;
 
-export const isNil = (v: unknown): v is null | undefined => v == null;
+export const isNil = (v: unknown): v is null | undefined =>
+  isNull(v) || isUndefined(v);
 
 export const isImage = (v: unknown): v is HTMLImageElement =>
   v instanceof HTMLImageElement;

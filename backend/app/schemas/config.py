@@ -1,8 +1,9 @@
 import re
-from typing import Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
 from app.core.logger import Logger
 from app.schemas.distance import UltrasonicConfig
+from numpy import left_shift
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 from robot_hat import MotorDirection, ServoCalibrationMode
 from robot_hat.drivers.adc.INA219 import ADCResolution, BusVoltageRange, Gain, Mode
@@ -267,6 +268,24 @@ class ServoConfig(BaseModel):
             examples=[30, 45],
         ),
     ]
+    dec_step: Annotated[
+        int,
+        Field(
+            ...,
+            description="The step value by which the servo's angle decreases. Must be a negative integer.",
+            examples=[-5, -10],
+            lt=0,
+        ),
+    ] = -5
+    inc_step: Annotated[
+        int,
+        Field(
+            ...,
+            description="The step value by which the servo's angle increases. Must be a positive integer.",
+            gt=0,
+            examples=[5, 2],
+        ),
+    ] = 5
     min_pulse: Annotated[
         int,
         Field(
@@ -305,7 +324,6 @@ class ServoConfig(BaseModel):
         - min_angle should be less than max_angle
         - calibration_offset should be within a reasonable range (-360 to 360)
         """
-        logger.info("self.min_angle=%s", self.min_angle)
 
         if self.min_angle >= self.max_angle:
             raise ValueError(

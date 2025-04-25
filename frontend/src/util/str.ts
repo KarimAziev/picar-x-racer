@@ -40,3 +40,10 @@ export function ensurePrefix(prefix: string, str?: string) {
         ? `${prefix}${str}`
         : str;
 }
+
+export const trimSuffix = (str: string, suffix: string) => {
+  if (str.endsWith(suffix)) {
+    return str.slice(0, -suffix.length);
+  }
+  return str;
+};

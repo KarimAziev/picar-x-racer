@@ -279,6 +279,16 @@ export const useControllerStore = defineStore("controller", {
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
     },
 
+    setDirServoAngle(servoAngle: number) {
+      const robotStore = useRobotStore();
+      const nextAngle = constrain(
+        robotStore.data.steering_servo.min_angle,
+        robotStore.data.steering_servo.max_angle,
+        servoAngle,
+      );
+      this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
+    },
+
     setCamPanAngle(servoAngle: number): void {
       const robotStore = useRobotStore();
       const nextAngle = Math.trunc(
@@ -313,15 +323,6 @@ export const useControllerStore = defineStore("controller", {
       this.move(speed, -1);
     },
 
-    setDirServoAngle(servoAngle: number) {
-      const robotStore = useRobotStore();
-      const nextAngle = constrain(
-        robotStore.data.steering_servo.min_angle,
-        robotStore.data.steering_servo.max_angle,
-        servoAngle,
-      );
-      this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
-    },
     // commands
     accelerate() {
       this.forward(Math.min(this.speed + ACCELERATION, this.maxSpeed));
@@ -372,15 +373,22 @@ export const useControllerStore = defineStore("controller", {
     },
 
     increaseCamTilt() {
-      this.setCamTiltAngle(this.camTilt + 5);
+      const robotStore = useRobotStore();
+      this.setCamTiltAngle(
+        this.camTilt + robotStore.data.cam_tilt_servo.inc_step,
+      );
     },
 
     decreaseCamTilt() {
-      this.setCamTiltAngle(this.camTilt - 5);
+      const robotStore = useRobotStore();
+      this.setCamTiltAngle(
+        this.camTilt + robotStore.data.cam_tilt_servo.dec_step,
+      );
     },
 
     increaseCamPan() {
-      this.setCamPanAngle(this.camPan + 5);
+      const robotStore = useRobotStore();
+      this.setCamPanAngle(this.camPan + robotStore.data.cam_pan_servo.inc_step);
     },
 
     resetCamPan() {
@@ -388,7 +396,8 @@ export const useControllerStore = defineStore("controller", {
     },
 
     decreaseCamPan() {
-      this.setCamPanAngle(this.camPan - 5);
+      const robotStore = useRobotStore();
+      this.setCamPanAngle(this.camPan + robotStore.data.cam_pan_servo.dec_step);
     },
 
     resetCameraRotate() {
@@ -452,11 +461,17 @@ export const useControllerStore = defineStore("controller", {
     },
     left() {
       const robotStore = useRobotStore();
-      this.setDirServoAngle(robotStore.data.steering_servo.min_angle);
+      this.setDirServoAngle(
+        robotStore.data.steering_servo.dec_step ||
+          robotStore.data.steering_servo.min_angle,
+      );
     },
     right() {
       const robotStore = useRobotStore();
-      this.setDirServoAngle(robotStore.data.steering_servo.max_angle);
+      this.setDirServoAngle(
+        robotStore.data.steering_servo.inc_step ||
+          robotStore.data.steering_servo.max_angle,
+      );
     },
 
     toggleCalibration() {

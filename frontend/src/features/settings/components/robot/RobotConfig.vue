@@ -6,6 +6,7 @@
     :model="store.data"
     :path="[]"
     :defs="store.config['$defs']"
+    :idPrefix="idPrefix"
   />
 
   <div class="flex gap-2 justify-self-start mt-2">
@@ -43,6 +44,8 @@ import { useConfirm } from "primevue/useconfirm";
 import { useRobotStore } from "@/features/settings/stores";
 import { useControllerStore } from "@/features/controller/store";
 import RecursiveField from "@/ui/RecursiveField.vue";
+
+defineProps<{ idPrefix: string }>();
 
 const controllerStore = useControllerStore();
 const store = useRobotStore();
