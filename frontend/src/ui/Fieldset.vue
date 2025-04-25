@@ -1,16 +1,16 @@
 <template>
-  <Fieldset
+  <FieldsetPrimevue
     :toggleable="toggleable"
     :legend="legend || header"
     :collapsed="isCollapsed"
     @update:collapsed="handleUpdateCollapsed"
   >
     <slot></slot>
-  </Fieldset>
+  </FieldsetPrimevue>
 </template>
 
 <script setup lang="ts">
-import Fieldset from "primevue/fieldset";
+import FieldsetPrimevue from "primevue/fieldset";
 import { useLocalStorage } from "@vueuse/core";
 
 export interface Props {
