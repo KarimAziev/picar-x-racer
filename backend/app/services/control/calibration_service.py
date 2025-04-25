@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
 
 class CalibrationService(metaclass=SingletonMeta):
-    MAX_SERVO_ANGLE_OFFSET = 20
-    MIN_SERVO_ANGLE_OFFSET = -20
+    MAX_SERVO_ANGLE_OFFSET = 90
+    MIN_SERVO_ANGLE_OFFSET = -90
 
     def __init__(
         self,
