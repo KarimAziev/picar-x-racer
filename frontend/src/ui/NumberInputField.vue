@@ -60,7 +60,9 @@ watch(
 const emit = defineEmits(["update:modelValue", "blur"]);
 
 const handleInput = (event: InputNumberInputEvent) => {
-  currentValue.value = isString(event.value) ? +event.value : event.value;
+  const value = event.value;
+  currentValue.value =
+    isString(value) && !Number.isNaN(+value) ? +value : value;
   emit("update:modelValue", currentValue.value);
 };
 
