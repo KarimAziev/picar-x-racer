@@ -27,6 +27,11 @@ class SpeedEstimator(metaclass=SingletonMeta):
         Returns:
             Estimated speed in km/h, or None if not enough data.
         """
+        if current_distance == -1:
+            logger.warning(
+                "Failed distance reading (value=-1). Skipping speed estimation."
+            )
+            return None
         estimated_speed: Optional[float] = None
 
         if self.previous_distance is not None and interval > 0:
@@ -41,7 +46,9 @@ class SpeedEstimator(metaclass=SingletonMeta):
             else None
         )
         logger.debug(
-            "speed=%skm/h",
+            "speed=%skm/h, %s -> %s",
             truncated_speed,
+            math.trunc(self.previous_distance, *10) / 10,
+            math.trunc(current_distance, *10) / 10,
         )
         return truncated_speed
