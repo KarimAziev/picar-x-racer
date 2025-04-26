@@ -1,6 +1,6 @@
 import os
 from time import sleep
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from app.core.px_logger import Logger
 from robot_hat import Pin
@@ -20,10 +20,10 @@ logger = Logger(__name__)
 
 
 def distance_process(
-    trig_pin: str,
-    echo_pin: str,
+    trig_pin: Union[int, str],
+    echo_pin: Union[int, str],
     stop_event: "Event",
-    value: "Synchronized",
+    value: "Synchronized[float]",
     interval: float = 0.01,
     timeout=0.017,
 ):

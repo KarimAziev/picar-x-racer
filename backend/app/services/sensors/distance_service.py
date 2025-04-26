@@ -44,7 +44,7 @@ class DistanceService(metaclass=SingletonMeta):
         """
         Updates the robot configuration.
 
-        If the LED process is running, it will be stopped and restarted with the new
+        If the distance process is running, it will be stopped and restarted with the new
         configuration.
 
         Args:
