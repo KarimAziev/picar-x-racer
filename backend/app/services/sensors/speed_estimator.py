@@ -19,7 +19,6 @@ class SpeedEstimator(metaclass=SingletonMeta):
         current_distance: float,
         interval: float,
         relative_speed: int,
-        direction: int,
     ) -> Optional[float]:
         """
         Process a distance measurement and estimate speed in km/h using an externally provided
@@ -30,7 +29,6 @@ class SpeedEstimator(metaclass=SingletonMeta):
                               A value of -1 indicates a failed reading.
             interval: The time interval between successive measurements (in seconds).
             relative_speed: Commanded relative speed (0-100% of capabilities)
-            direction: Movement direction: 1 for forward, -1 for backward, 0 for stop.
 
         Returns:
             Estimated speed in km/h, or None if not enough data or if the reading failed.
