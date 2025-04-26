@@ -39,16 +39,16 @@ class SpeedEstimator(metaclass=SingletonMeta):
 
             estimated_speed = speed_cm_s * 0.036
 
-        self.previous_distance = current_distance
         truncated_speed = (
             math.trunc(estimated_speed * 10) / 10
             if estimated_speed is not None
             else None
         )
         logger.debug(
-            "speed=%skm/h, %s -> %s",
+            "speed=%skm/h, %.2f -> %.2f",
             truncated_speed,
-            math.trunc(self.previous_distance, *10) / 10,
-            math.trunc(current_distance, *10) / 10,
+            self.previous_distance,
+            current_distance,
         )
+        self.previous_distance = current_distance
         return truncated_speed
