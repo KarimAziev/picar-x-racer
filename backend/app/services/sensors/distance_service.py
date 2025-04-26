@@ -26,6 +26,7 @@ class DistanceService(metaclass=SingletonMeta):
         config_manager: "JsonDataManager",
         interval=0.017,
     ):
+
         self.config_manager = config_manager
         self.robot_config = HardwareConfig(**config_manager.load_data())
         self._distance: Synchronized[float] = mp.Value("f", 0)

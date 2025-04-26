@@ -14,6 +14,7 @@ from app.services.control.car_service import CarService
 from app.services.sensors.battery_service import BatteryService
 from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
+from app.services.sensors.speed_estimator import SpeedEstimator
 from fastapi import Depends
 from robot_hat.drivers.adc.INA219 import INA219Config
 from robot_hat.services.battery.battery_abc import BatteryABC
@@ -53,6 +54,10 @@ def get_app_settings_manager() -> JsonDataManager:
         target_file=app_config.PX_SETTINGS_FILE,
         template_file=app_config.DEFAULT_USER_SETTINGS,
     )
+
+
+def get_speed_estimator() -> SpeedEstimator:
+    return SpeedEstimator()
 
 
 def get_distance_service(
@@ -145,6 +150,7 @@ def get_robot_service(
     app_settings_manager: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     led_service: Annotated[LEDService, Depends(get_led_service)],
+    speed_estimator: Annotated[SpeedEstimator, Depends(get_speed_estimator)],
 ) -> CarService:
     return CarService(
         connection_manager=connection_manager,
@@ -154,6 +160,7 @@ def get_robot_service(
         app_settings_manager=app_settings_manager,
         config_manager=config_manager,
         led_service=led_service,
+        speed_estimator=speed_estimator,
     )
 
 
@@ -173,6 +180,7 @@ async def get_lifespan_dependencies(
     settings_service: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
     distance_service: Annotated[DistanceService, Depends(get_distance_service)],
     led_service: Annotated[LEDService, Depends(get_led_service)],
+    speed_estimator: Annotated[SpeedEstimator, Depends(get_speed_estimator)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -181,5 +189,6 @@ async def get_lifespan_dependencies(
         "distance_service": distance_service,
         "settings_service": settings_service,
         "led_service": led_service,
+        "speed_estimator": speed_estimator,
     }
     yield deps

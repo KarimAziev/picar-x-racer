@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.services.control.calibration_service import CalibrationService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
+    from app.services.sensors.speed_estimator import SpeedEstimator
 
 
 class CarService(metaclass=SingletonMeta):
@@ -28,6 +29,7 @@ class CarService(metaclass=SingletonMeta):
         app_settings_manager: "JsonDataManager",
         config_manager: "JsonDataManager",
         led_service: "LEDService",
+        speed_estimator: "SpeedEstimator",
     ):
         self.logger = Logger(name=__name__)
         self.px = px
@@ -35,6 +37,7 @@ class CarService(metaclass=SingletonMeta):
         self.calibration = calibration_service
         self.config_manager = config_manager
         self.led_service = led_service
+        self.speed_estimator = speed_estimator
 
         self.app_settings_manager = app_settings_manager
 
@@ -351,6 +354,11 @@ class CarService(metaclass=SingletonMeta):
     async def stop_auto_measure_distance(self, _: Any = None):
         await self.distance_service.stop_all()
         self.auto_measure_distance_mode = False
+        self.speed_estimator.previous_distance = None
+        self.speed_estimator.previous_time = None
+        await self.connection_manager.broadcast_json(
+            {"type": "distance", "payload": {"distance": None, "speed": None}}
+        )
 
     async def avoid_obstacles_subscriber(self, distance: float) -> None:
         POWER = 50

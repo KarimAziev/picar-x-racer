@@ -145,7 +145,8 @@ export const useControllerStore = defineStore("controller", {
             if (error) {
               messager.error(error, "distance error");
             } else {
-              distanceStore.distance = payload;
+              distanceStore.distance = payload.distance;
+              distanceStore.speed = payload.speed;
             }
 
             break;

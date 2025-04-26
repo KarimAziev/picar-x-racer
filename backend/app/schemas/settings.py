@@ -188,7 +188,7 @@ class RobotSettings(BaseModel):
     )
     auto_measure_distance_delay_ms: Optional[int] = Field(
         None,
-        ge=500,
+        ge=0,
         description="The time interval, in milliseconds, between successive automatic distance measurements. "
         "This is applicable only when `auto_measure_distance_mode` is enabled. "
         "The value must be at least 500 ms.",

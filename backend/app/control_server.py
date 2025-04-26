@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from app.services.sensors.battery_service import BatteryService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
+    from app.services.sensors.speed_estimator import SpeedEstimator
 
 Logger.setup_from_env()
 
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
     distance_service: Optional["DistanceService"] = None
     settings_service: Optional["JsonDataManager"] = None
     led_service: Optional["LEDService"] = None
+    speed_estimator: Optional["SpeedEstimator"] = None
 
     try:
         from robot_hat import reset_mcu_sync
@@ -59,10 +61,16 @@ async def lifespan(app: FastAPI):
             settings_service = deps.get("settings_service")
             distance_service = deps.get("distance_service")
             led_service = deps.get("led_service")
+            speed_estimator = deps.get("speed_estimator")
 
         async def broadcast_distance(distance: float):
+            speed = (
+                speed_estimator.process_distance(distance, distance_service.interval)
+                if speed_estimator
+                else None
+            )
             await connection_service.broadcast_json(
-                {"type": "distance", "payload": distance}
+                {"type": "distance", "payload": {"distance": distance, "speed": speed}}
             )
 
         battery_service.setup_connection_manager()

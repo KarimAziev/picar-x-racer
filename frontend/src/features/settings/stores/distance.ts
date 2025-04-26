@@ -8,6 +8,7 @@ export interface State {
   loading?: boolean;
   error?: string;
   distance: number;
+  speed?: 0;
 }
 
 const defaultState: State = {
@@ -23,6 +24,7 @@ export const useStore = defineStore("distance", {
         this.loading = true;
         const response = await axios.get(makeUrl("/px/api/get-distance", 8001));
         const distance = response.data.distance;
+
         this.distance = isNumber(distance) ? distance : 0;
         this.error = undefined;
       } catch (error) {

@@ -10,15 +10,15 @@
     showButtons
     @update:model-value="handleUpdateMaxSpeed"
   />
-  <NumberField
+  <NumberInputField
     label="Distance Measure Delay (ms)"
     v-model="store.data.robot.auto_measure_distance_delay_ms"
     tooltip="
       The time interval between successive auto distance measurements in milliseconds. This is applicable only when `auto_measure_distance_mode` is enabled.
     "
     inputId="auto_measure_distance_delay_ms"
-    :min="50"
-    :step="50"
+    :min="1"
+    :step="1"
     showButtons
   />
   <ToggleSwitchField
@@ -37,6 +37,7 @@ import { useSettingsStore } from "@/features/settings/stores";
 import NumberField from "@/ui/NumberField.vue";
 import { useControllerStore } from "@/features/controller/store";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
+import NumberInputField from "@/ui/NumberInputField.vue";
 
 const store = useSettingsStore();
 const controllerStore = useControllerStore();
