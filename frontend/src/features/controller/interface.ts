@@ -31,9 +31,15 @@ export interface JSONSchemaBase {
   $ref?: string;
   required?: string[];
   minimum?: number;
+  maximum?: number;
+  exclusiveMaximum?: number;
+  exclusiveMinimum?: number;
+  pattern?: string;
+  uniqueItems?: string;
+  tooltipHelp?: string;
+  props?: Record<string, any>;
   ge?: number;
   le?: number;
-  exclusiveMinimum?: number;
   discriminator?: any;
   const?: string;
 }

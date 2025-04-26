@@ -4,6 +4,7 @@
       :legend="startCase(resolvedSchema.title || keyName)"
       toggleable
       :collapsed="collapsed"
+      :id="idPrefix"
     >
       <div
         v-for="(propSchema, propName) in resolvedSchema.properties"
@@ -25,6 +26,7 @@
     <Fieldset
       :legend="startCase(resolvedSchema.title || keyName)"
       toggleable
+      :id="idPrefix"
       :collapsed="collapsed"
     >
       <div v-for="(item, index) in localValue" :key="index" class="mb-4">
@@ -70,7 +72,7 @@
 
   <SelectField
     v-else-if="enumOptions"
-    :label="resolvedSchema.title || keyName"
+    :label="startCase(resolvedSchema?.title || keyName)"
     :options="enumOptions"
     v-model="localValue"
     :tooltipHelp="tooltipHelp"
@@ -86,6 +88,7 @@
   />
 
   <Fieldset
+    :id="idPrefix"
     :legend="startCase(resolvedSchema?.title || keyName)"
     :collapsed="collapsed"
     toggleable
@@ -137,7 +140,8 @@ import TextField from "@/ui/TextField.vue";
 import NumberInputField from "@/ui/NumberInputField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import SelectField from "@/ui/SelectField.vue";
-import Fieldset from "primevue/fieldset";
+import type { InputNumberProps } from "primevue/inputnumber";
+import { renameKeys } from "rename-obj-map";
 import { startCase, trimSuffix } from "@/util/str";
 import type {
   JSONSchema,
@@ -155,6 +159,8 @@ import {
 } from "@/util/guards";
 import StringOrNumberField from "@/ui/StringOrNumberField.vue";
 import RecursiveField from "./RecursiveField.vue";
+import { pick } from "@/util/obj";
+import Fieldset from "@/ui/Fieldset.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -174,15 +180,21 @@ const props = withDefaults(
 );
 
 const components: Partial<Record<FieldType, [Component, object]>> = {
-  integer: [NumberInputField, {}],
-  string: [TextField, {}],
-  string_or_number: [StringOrNumberField, {}],
+  integer: [NumberInputField, { step: 1 }],
+  string: [TextField, { fieldClassName: "w-full" }],
+  string_or_number: [
+    StringOrNumberField,
+    { min: 1, inputClassName: "!w-full" },
+  ],
   number: [
     NumberInputField,
-    { step: 0.1, minFractionDigits: 1, maxFractionDigits: 1 },
+    {
+      step: 0.1,
+      minFractionDigits: 1,
+    } as InputNumberProps,
   ],
   boolean: [ToggleSwitchField, {}],
-  hex: [HexField, {}],
+  hex: [HexField, { min: 1, inputClassName: "!w-full" }],
 };
 
 const comp = computed(() => {
@@ -196,14 +208,31 @@ const comp = computed(() => {
   return pair[0];
 });
 const compProps = computed(() => {
-  if (!resolvedSchema.value?.type) {
+  const resSchema = resolvedSchema.value;
+  if (!resSchema?.type) {
     return;
   }
-  const pair = components[resolvedSchema.value?.type];
+  const pair = components[resSchema.type];
+
   if (!pair) {
     return;
   }
-  return pair[1];
+
+  const props = pair[1];
+  const extraProps = renameKeys(
+    { maximum: "max", minimum: "min", const: "readonly" },
+    pick(
+      ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "const"],
+      resSchema,
+    ),
+  );
+
+  return {
+    ...props,
+    ...extraProps,
+    readonly: !!extraProps.readonly,
+    ...resSchema.props,
+  };
 });
 
 function fillDefaults(target: any, schema: JSONSchema): void {
@@ -274,7 +303,8 @@ const tooltipHelp = computed(() => {
   }
   const examples = resolvedSchema.value.examples?.map((it) => `${it}`);
   const examplesStr = examples && examples.length > 0 && examples.join(", ");
-  const description = resolvedSchema.value.description;
+  const description =
+    resolvedSchema.value.description || resolvedSchema.value.tooltipHelp;
   if (description) {
     return [trimSuffix(description, ".").trim(), examplesStr]
       .filter(Boolean)

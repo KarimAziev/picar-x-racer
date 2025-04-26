@@ -1,9 +1,8 @@
 import re
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 from app.core.logger import Logger
 from app.schemas.distance import UltrasonicConfig
-from numpy import left_shift
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 from robot_hat import MotorDirection, ServoCalibrationMode
 from robot_hat.drivers.adc.INA219 import ADCResolution, BusVoltageRange, Gain, Mode
@@ -108,7 +107,7 @@ class PWMDriverConfig(AddressModel):
         ),
     ] = 1
     frame_width: Annotated[
-        Optional[int],
+        int,
         Field(
             ...,
             title="The Frame Width",
@@ -236,6 +235,7 @@ class INA219Config(BaseModel):
 
 
 class ServoConfig(BaseModel):
+    enabled: EnabledField = True
     name: Annotated[
         str,
         Field(
@@ -259,7 +259,7 @@ class ServoConfig(BaseModel):
             description="Minimum allowable angle for the servo",
             examples=[-30, -45],
         ),
-    ]
+    ] = -30
     max_angle: Annotated[
         int,
         Field(
@@ -267,7 +267,7 @@ class ServoConfig(BaseModel):
             description="Maximum allowable angle for the servo",
             examples=[30, 45],
         ),
-    ]
+    ] = 30
     dec_step: Annotated[
         int,
         Field(
@@ -314,6 +314,10 @@ class ServoConfig(BaseModel):
                 ServoCalibrationMode.SUM.value,
                 ServoCalibrationMode.NEGATIVE.value,
             ],
+            json_schema_extra={
+                "tooltipHelp": "Specifies how calibration offsets are applied.",
+                "title": "Calibration mode",
+            },
         ),
     ] = ServoCalibrationMode.NEGATIVE
 
@@ -337,7 +341,6 @@ class ServoConfig(BaseModel):
 
 
 class AngularServoConfig(ServoConfig):
-    enabled: EnabledField = True
     channel: Annotated[
         Union[str, int],
         Field(
@@ -359,7 +362,6 @@ class AngularServoConfig(ServoConfig):
 
 
 class GPIOAngularServoConfig(ServoConfig):
-    enabled: EnabledField = True
     pin: Annotated[
         Union[str, int],
         Field(
@@ -391,6 +393,7 @@ class MotorBaseConfig(BaseModel):
             title="Max speed",
             description="Maximum allowable speed for the motor.",
             examples=[100, 90],
+            ge=0,
         ),
     ]
 
@@ -475,6 +478,7 @@ class DCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Forward PIN",
+            json_schema_extra={"type": "string_or_number"},
             description="The GPIO pin that the forward input of the motor driver chip "
             "is connected to.",
         ),
@@ -507,13 +511,13 @@ class LedConfig(BaseModel):
     """
 
     name: Annotated[
-        Optional[str],
+        str,
         Field(
             ...,
             description="Human-readable name",
             examples=["LED"],
         ),
-    ] = None
+    ] = "LED"
 
     pin: Annotated[
         Union[str, int],
@@ -531,7 +535,14 @@ class LedConfig(BaseModel):
             default=0.1,
             ge=0,
             description="The interval of LED blinking.",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={
+                "props": {
+                    "step": 0.1,
+                    "minFractionDigits": 0,
+                    "maxFractionDigits": 6,
+                    "placeholder": "Interval (in seconds)",
+                },
+            },
             examples=[
                 0.1,
             ],
@@ -605,9 +616,6 @@ class SunfounderBatteryConfig(AddressModel):
 
 
 class BatteryConfig(BaseModel):
-    driver: Annotated[
-        Union[SunfounderBatteryConfig, UPS_S3Config], Field(discriminator="driver_type")
-    ] = SunfounderBatteryConfig()
 
     full_voltage: Annotated[
         float, Field(..., description="The maximum voltage.", examples=[8.4])
@@ -633,6 +641,10 @@ class BatteryConfig(BaseModel):
     cache_seconds: Annotated[
         float, Field(..., ge=0, description="Cache duration in seconds.", examples=[2])
     ]
+
+    driver: Annotated[
+        Union[SunfounderBatteryConfig, UPS_S3Config], Field(discriminator="driver_type")
+    ] = SunfounderBatteryConfig()
 
     @model_validator(mode="after")
     def validate_voltage_levels(cls, model):

@@ -1,12 +1,14 @@
 <template>
   <div v-if="loading"><ProgressSpinner /></div>
+
   <RecursiveField
     v-else-if="store.config"
-    :schema="store.config"
+    v-for="(propSchema, propName) in store.config.properties"
+    :schema="propSchema"
     :model="store.data"
-    :path="[]"
+    :path="[propName]"
     :defs="store.config['$defs']"
-    :idPrefix="idPrefix"
+    :idPrefix="`${idPrefix}-${propName}`"
   />
 
   <div class="flex gap-2 justify-self-start mt-2">

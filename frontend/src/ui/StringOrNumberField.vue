@@ -13,15 +13,15 @@
       class="flex items-center gap-2"
     >
       <RadioButton
-        v-model="selectedCategory"
-        name="hextype"
+        v-model="valueType"
+        name="valueType"
         :value="opt.value"
-        @update:model-value="handleUpdateCategory"
+        @update:model-value="handleUpdateValueType"
       />
       <span>{{ opt.label }}</span>
     </div>
     <InputText
-      v-if="selectedCategory === 'string'"
+      v-if="valueType === 'string'"
       v-tooltip="tooltip"
       :inputId="field"
       :pt="{ pcInput: { id: field } }"
@@ -33,7 +33,7 @@
       @update:model-value="onUpdate"
     />
     <InputNumber
-      v-else-if="selectedCategory === 'integer'"
+      v-else-if="valueType === 'integer'"
       showButtons
       v-tooltip="tooltip"
       :inputId="field"
@@ -79,29 +79,46 @@ const options: Option[] = [
   { value: "string", label: "String" },
 ];
 
-const selectedCategory = ref(isNumber(props.modelValue) ? "integer" : "string");
+const valueType = ref(isNumber(props.modelValue) ? "integer" : "string");
 const otherAttrs = useAttrs();
+const oldValue = ref();
 
 const currentValue = ref(props.modelValue);
 
-const handleUpdateCategory = (value: string) => {
-  selectedCategory.value = value;
+const stringToNumber = (value: string) => {
+  const re = /(\d+)$/;
+  const match = value.match(re);
+  return match ? +match[1] : null;
+};
+
+const handleUpdateValueType = (value: string) => {
+  valueType.value = value;
+  if (
+    (isString(oldValue.value) && value === "string") ||
+    (isNumber(oldValue.value) && value === "integer")
+  ) {
+    currentValue.value = oldValue.value;
+    return;
+  }
+
+  oldValue.value = currentValue.value;
+
   if (value === "integer" && isString(currentValue.value)) {
-    currentValue.value = null;
+    currentValue.value = stringToNumber(currentValue.value);
   } else if (value === "string" && isNumber(currentValue.value)) {
-    currentValue.value = null;
-  } else if (
-    value === "string" &&
-    !currentValue.value &&
-    isString(props.modelValue)
-  ) {
-    currentValue.value = props.modelValue;
-  } else if (
-    value === "string" &&
-    !currentValue.value &&
-    isNumber(props.modelValue)
-  ) {
-    currentValue.value = props.modelValue;
+    currentValue.value = `${currentValue.value}`;
+  } else if (value === "string" && !currentValue.value) {
+    currentValue.value = isNumber(props.modelValue)
+      ? `${props.modelValue}`
+      : isString(props.modelValue)
+        ? props.modelValue
+        : null;
+  } else if (value === "integer" && !currentValue.value) {
+    currentValue.value = isNumber(props.modelValue)
+      ? props.modelValue
+      : isString(props.modelValue)
+        ? stringToNumber(props.modelValue)
+        : null;
   }
 };
 
@@ -110,9 +127,9 @@ watch(
   (newVal) => {
     currentValue.value = newVal;
     if (isString(newVal)) {
-      selectedCategory.value = "string";
-    } else if (isNumber(selectedCategory.value)) {
-      selectedCategory.value = "integer";
+      valueType.value = "string";
+    } else if (isNumber(newVal)) {
+      valueType.value = "integer";
     }
   },
 );

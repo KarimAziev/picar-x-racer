@@ -34,7 +34,7 @@ class UltrasonicConfig(BaseModel):
     trig_pin: Union[str, int] = Field(
         default="D2",
         json_schema_extra={"type": "string_or_number"},
-        description="The name of the pin connected to the TRIG pin of the ultrasonic sensor.",
+        description="The name or the number of the pin connected to the TRIG pin of the ultrasonic sensor.",
         examples=[
             "D2",
         ],
@@ -43,7 +43,7 @@ class UltrasonicConfig(BaseModel):
     echo_pin: Union[str, int] = Field(
         default="D3",
         json_schema_extra={"type": "string_or_number"},
-        description="The name of the pin connected to the ECHO pin of the ultrasonic sensor.",
+        description="The name or the number of the pin connected to the ECHO pin of the ultrasonic sensor.",
         examples=[
             "D3",
         ],
@@ -51,6 +51,15 @@ class UltrasonicConfig(BaseModel):
     timeout: float = Field(
         default=0.017,
         description="The maximum duration to wait for a pulse to return.",
+        gt=0,
+        json_schema_extra={
+            "props": {
+                "step": 0.001,
+                "minFractionDigits": 0,
+                "maxFractionDigits": 6,
+                "placeholder": "Timeout (in seconds)",
+            },
+        },
         examples=[
             0.1,
         ],

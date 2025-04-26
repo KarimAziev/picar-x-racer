@@ -16,7 +16,7 @@
       v-model="currentValue"
       :invalid="invalid"
       :disabled="readonly || disabled"
-      v-bind="otherAttrs"
+      v-bind="{ ...otherAttrs, ...extraProps }"
       @input="handleInput"
       @update:model-value="onUpdate"
       @blur="onBlur"
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, useAttrs } from "vue";
+import { ref, watch, useAttrs, computed } from "vue";
 import InputNumber, {
   InputNumberEmitsOptions,
   InputNumberProps,
@@ -34,7 +34,7 @@ import InputNumber, {
 } from "primevue/inputnumber";
 import Field from "@/ui/Field.vue";
 import type { Props as FieldProps } from "@/ui/Field.vue";
-import { isString } from "@/util/guards";
+import { isString, isNumber } from "@/util/guards";
 
 export interface Props extends FieldProps {
   modelValue?: any;
@@ -44,6 +44,8 @@ export interface Props extends FieldProps {
   readonly?: boolean;
   disabled?: boolean;
   tooltip?: string;
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
 }
 const props = defineProps<Props>();
 const otherAttrs: InputNumberProps = useAttrs();
@@ -56,6 +58,25 @@ watch(
     currentValue.value = newVal;
   },
 );
+
+const extraProps = computed(() => {
+  if (!isNumber(props.exclusiveMinimum) || !isNumber(props.exclusiveMaximum)) {
+    return;
+  }
+  const excMin = props.exclusiveMinimum;
+  const excMax = props.exclusiveMaximum;
+  const increment = isNumber(otherAttrs.step)
+    ? otherAttrs.step
+    : isNumber(otherAttrs.maxFractionDigits)
+      ? Math.pow(10, -otherAttrs.maxFractionDigits)
+      : isNumber(otherAttrs.minFractionDigits)
+        ? Math.pow(10, -otherAttrs.minFractionDigits)
+        : 0;
+  return {
+    min: excMin + increment,
+    max: excMax - increment,
+  };
+});
 
 const emit = defineEmits(["update:modelValue", "blur"]);
 

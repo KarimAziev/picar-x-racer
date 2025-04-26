@@ -13,15 +13,15 @@
       class="flex items-center gap-2"
     >
       <RadioButton
-        v-model="selectedCategory"
-        name="hextype"
+        v-model="valueType"
+        name="hex-type"
         :value="opt.value"
-        @update:model-value="handleUpdateCategory"
+        @update:model-value="handleUpdateValueType"
       />
       <span>{{ opt.label }}</span>
     </div>
     <InputText
-      v-if="selectedCategory === 'string'"
+      v-if="valueType === 'string'"
       v-tooltip="tooltip"
       :inputId="field"
       :pt="{ pcInput: { id: field } }"
@@ -33,7 +33,7 @@
       @update:model-value="onUpdate"
     />
     <InputNumber
-      v-else-if="selectedCategory === 'integer'"
+      v-else-if="valueType === 'integer'"
       showButtons
       v-tooltip="tooltip"
       :inputId="field"
@@ -55,6 +55,7 @@ import RadioButton from "primevue/radiobutton";
 import Field from "@/ui/Field.vue";
 import type { Props as FieldProps } from "@/ui/Field.vue";
 import { isNumber, isString } from "@/util/guards";
+import { isHexString, hexToDecimal, decimalToHexString } from "@/util/hex";
 
 export type Option = {
   value: string;
@@ -79,29 +80,39 @@ const options: Option[] = [
   { value: "string", label: "Hex string" },
 ];
 
-const selectedCategory = ref(isNumber(props.modelValue) ? "integer" : "string");
+const valueType = ref(isNumber(props.modelValue) ? "integer" : "string");
 const otherAttrs = useAttrs();
 
 const currentValue = ref(props.modelValue);
 
-const handleUpdateCategory = (value: string) => {
-  selectedCategory.value = value;
+const stringToNumber = (value: string) => {
+  const re = /(\d+)$/;
+  const match = value.match(re);
+  return match ? +match[1] : null;
+};
+
+const handleUpdateValueType = (value: string) => {
+  valueType.value = value;
   if (value === "integer" && isString(currentValue.value)) {
-    currentValue.value = null;
+    currentValue.value = isHexString(currentValue.value)
+      ? hexToDecimal(currentValue.value)
+      : stringToNumber(currentValue.value);
   } else if (value === "string" && isNumber(currentValue.value)) {
-    currentValue.value = null;
-  } else if (
-    value === "string" &&
-    !currentValue.value &&
-    isString(props.modelValue)
-  ) {
-    currentValue.value = props.modelValue;
-  } else if (
-    value === "string" &&
-    !currentValue.value &&
-    isNumber(props.modelValue)
-  ) {
-    currentValue.value = props.modelValue;
+    currentValue.value = decimalToHexString(currentValue.value);
+  } else if (value === "string" && !currentValue.value) {
+    currentValue.value = isNumber(props.modelValue)
+      ? decimalToHexString(props.modelValue)
+      : isString(props.modelValue)
+        ? props.modelValue
+        : null;
+  } else if (value === "integer" && !currentValue.value) {
+    currentValue.value = isNumber(props.modelValue)
+      ? props.modelValue
+      : isHexString(props.modelValue)
+        ? hexToDecimal(props.modelValue)
+        : isString(props.modelValue)
+          ? stringToNumber(props.modelValue)
+          : null;
   }
 };
 
@@ -110,9 +121,9 @@ watch(
   (newVal) => {
     currentValue.value = newVal;
     if (isString(newVal)) {
-      selectedCategory.value = "string";
-    } else if (isNumber(selectedCategory.value)) {
-      selectedCategory.value = "integer";
+      valueType.value = "string";
+    } else if (isNumber(newVal)) {
+      valueType.value = "integer";
     }
   },
 );
