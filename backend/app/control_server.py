@@ -9,7 +9,7 @@ The application provides robot-controlling functionality, including:
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,8 +64,15 @@ async def lifespan(app: FastAPI):
             speed_estimator = deps.get("speed_estimator")
 
         async def broadcast_distance(distance: float):
+            rel_speed = (
+                cast(int, robot_service.current_state["speed"]) if robot_service else 0
+            )
             speed = (
-                speed_estimator.process_distance(distance, distance_service.interval)
+                speed_estimator.process_distance(
+                    distance,
+                    distance_service.interval,
+                    relative_speed=rel_speed,
+                )
                 if speed_estimator
                 else None
             )
