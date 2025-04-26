@@ -8,11 +8,31 @@ logger = Logger(__name__)
 
 
 class SpeedEstimator(metaclass=SingletonMeta):
-    def __init__(
-        self,
-    ) -> None:
-        self.previous_time: Optional[float] = None
-        self.previous_distance: Optional[float] = None
+    def __init__(self) -> None:
+        self.previous_filtered_distance: Optional[float] = None
+
+        self.x: Optional[float] = None
+        self.P: Optional[float] = None
+
+        self.Q = 0.1
+        self.R = 1.0
+
+    def kalman_update(self, measurement: float) -> float:
+        """
+        Perform a simple 1D Kalman filter update with the new measurement.
+        Returns the filtered value.
+        """
+        if self.x is None:
+            self.x = measurement
+            self.P = 1.0
+        else:
+            P_pred = self.P + self.Q
+
+            K = P_pred / (P_pred + self.R)
+            self.x = self.x + K * (measurement - self.x)
+            self.P = (1 - K) * P_pred
+
+        return self.x
 
     def process_distance(
         self,
@@ -21,17 +41,19 @@ class SpeedEstimator(metaclass=SingletonMeta):
         relative_speed: int,
     ) -> Optional[float]:
         """
-        Process a distance measurement and estimate speed in km/h using an externally provided
-        interval, relative speed (0-100%), and direction (1, -1, or 0).
+        Process a distance measurement and estimate speed in km/h by
+        using a simple Kalman filter to smooth the raw sensor reading.
+        The calculation is based on the difference between consecutive
+        filtered distance values.
 
         Args:
-            current_distance: Current distance reading from the ultrasonic sensor (in centimeters).
+            current_distance: Current distance reading from the sensor (in centimeters).
                               A value of -1 indicates a failed reading.
             interval: The time interval between successive measurements (in seconds).
-            relative_speed: Commanded relative speed (0-100% of capabilities)
+            relative_speed: Commanded relative speed (0-100% of capabilities).
 
         Returns:
-            Estimated speed in km/h, or None if not enough data or if the reading failed.
+            Estimated speed in km/h (truncated to one decimal) or None if the reading failed.
         """
         if current_distance == -1:
             logger.warning(
@@ -39,10 +61,13 @@ class SpeedEstimator(metaclass=SingletonMeta):
             )
             return None
 
-        estimated_speed: Optional[float] = None
+        filtered_distance = self.kalman_update(current_distance)
 
-        if self.previous_distance is not None and interval > 0:
-            speed_cm_s = abs(current_distance - self.previous_distance) / interval
+        estimated_speed: Optional[float] = None
+        if self.previous_filtered_distance is not None and interval > 0:
+            speed_cm_s = (
+                abs(filtered_distance - self.previous_filtered_distance) / interval
+            )
             estimated_speed = speed_cm_s * 0.036
 
             max_speed_kmph = 100.0
@@ -55,18 +80,23 @@ class SpeedEstimator(metaclass=SingletonMeta):
                     expected_speed,
                 )
 
+        self.previous_filtered_distance = filtered_distance
+
         truncated_speed = (
-            math.trunc(estimated_speed * 10) / 10
+            (math.trunc(estimated_speed * 10) / 10)
             if estimated_speed is not None
             else None
         )
 
         logger.debug(
-            "speed=%skm/h, %.2f -> %.2f",
+            "speed=%skm/h, previous filtered=%.2f -> current filtered=%.2f",
             truncated_speed,
-            self.previous_distance,
-            current_distance,
+            (
+                self.previous_filtered_distance
+                if self.previous_filtered_distance is not None
+                else 0
+            ),
+            filtered_distance,
         )
 
-        self.previous_distance = current_distance
         return truncated_speed
