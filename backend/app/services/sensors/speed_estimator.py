@@ -2,12 +2,11 @@ import math
 from typing import Optional
 
 from app.core.px_logger import Logger
-from app.core.singleton_meta import SingletonMeta
 
 logger = Logger(__name__)
 
 
-class SpeedEstimator(metaclass=SingletonMeta):
+class SpeedEstimator:
     def __init__(self) -> None:
         self.previous_filtered_distance: Optional[float] = None
 
@@ -34,6 +33,14 @@ class SpeedEstimator(metaclass=SingletonMeta):
             self.P = (1 - K) * P_pred
 
         return self.x
+
+    def reset(self):
+        """
+        Reset the internal state of the Kalman filter by clearing previous measurements and estimates.
+        """
+        self.previous_filtered_distance = None
+        self.x = None
+        self.P = None
 
     def process_distance(
         self,

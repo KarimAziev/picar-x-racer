@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Type, Union
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
@@ -10,12 +10,14 @@ from app.schemas.config import (
     HardwareConfig,
     HBridgeMotorConfig,
 )
+from app.types.car import PicarState
 from robot_hat import MotorService, Pin, ServoService, SMBus
 from robot_hat.drivers.pwm.pca9685 import PCA9685
 from robot_hat.drivers.pwm.sunfounder_pwm import SunfounderPWM
 from robot_hat.motor.dc_motor import DCMotor
 from robot_hat.motor.motor import HBridgeMotor
 from robot_hat.motor.motor_abc import MotorABC
+from robot_hat.services.motor_service import MotorServiceDirection
 from robot_hat.servos.gpio_angular_servo import GPIOAngularServo
 from robot_hat.servos.servo import Servo
 
@@ -160,7 +162,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         return []
 
     @property
-    def state(self) -> Dict[str, Any]:
+    def state(self) -> PicarState:
         """
         Returns key metrics of the current state as a dictionary.
 
@@ -272,7 +274,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
-    def move(self, speed: int, direction: int) -> None:
+    def move(self, speed: int, direction: MotorServiceDirection) -> None:
         """
         Move the robot forward or backward.
 

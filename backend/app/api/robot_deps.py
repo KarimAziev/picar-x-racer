@@ -56,6 +56,7 @@ def get_app_settings_manager() -> JsonDataManager:
     )
 
 
+@lru_cache()
 def get_speed_estimator() -> SpeedEstimator:
     return SpeedEstimator()
 
@@ -171,6 +172,7 @@ class LifespanAppDeps(TypedDict):
     settings_service: JsonDataManager
     distance_service: DistanceService
     led_service: LEDService
+    speed_estimator: SpeedEstimator
 
 
 async def get_lifespan_dependencies(

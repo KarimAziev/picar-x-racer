@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
+from app.types.car import CarServiceState
 from fastapi import WebSocket
 from robot_hat import reset_mcu
 
@@ -77,7 +78,7 @@ class CarService(metaclass=SingletonMeta):
         )
 
     @property
-    def current_state(self):
+    def current_state(self) -> CarServiceState:
         """
         Returns key metrics of the current state as a dictionary.
 
@@ -92,14 +93,12 @@ class CarService(metaclass=SingletonMeta):
         - "distance": The measured distance in centimeters.
         - "autoMeasureDistanceMode": Whether the auto measure distance mode is on.
         """
-
-        px_state = self.px.state
         return {
-            "speed": px_state["speed"],
-            "direction": px_state["direction"],
-            "servoAngle": px_state["steering_servo_angle"],
-            "camPan": px_state["cam_pan_angle"],
-            "camTilt": px_state["cam_tilt_angle"],
+            "speed": self.px.state["speed"],
+            "direction": self.px.state["direction"],
+            "servoAngle": self.px.state["steering_servo_angle"],
+            "camPan": self.px.state["cam_pan_angle"],
+            "camTilt": self.px.state["cam_tilt_angle"],
             "maxSpeed": self.max_speed,
             "avoidObstacles": self.avoid_obstacles_mode,
             "distance": self.distance_service.distance,
@@ -347,6 +346,7 @@ class CarService(metaclass=SingletonMeta):
         self.distance_interval = (
             self.app_settings.robot.auto_measure_distance_delay_ms or 1000
         )
+
         distance_secs = self.distance_interval / 1000
         self.distance_service.interval = distance_secs
         await self.distance_service.start_all()
@@ -354,8 +354,7 @@ class CarService(metaclass=SingletonMeta):
     async def stop_auto_measure_distance(self, _: Any = None):
         await self.distance_service.stop_all()
         self.auto_measure_distance_mode = False
-        self.speed_estimator.previous_distance = None
-        self.speed_estimator.previous_time = None
+        self.speed_estimator.reset()
         await self.connection_manager.broadcast_json(
             {"type": "distance", "payload": {"distance": None, "speed": None}}
         )
