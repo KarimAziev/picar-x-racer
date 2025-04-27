@@ -8,6 +8,21 @@ logger = Logger(__name__)
 
 class SpeedEstimator:
     def __init__(self) -> None:
+        """
+        Initialize the SpeedEstimator with default Kalman filter parameters and state.
+
+        Internal variables:
+            x: The current state estimate (filtered distance value).
+                Initialized as None. When the first measurement arrives, it is set to that value.
+            P: The error covariance of the estimate.
+                It represents the uncertainty of the state estimate. It is initialized as None and
+                then set to an initial value (1.0) with the first measurement.
+            Q: The process noise covariance.
+                It quantifies the uncertainty in the process (i.e., the inherent randomness in the
+                motion or state transition). A smaller Q indicates a higher trust in the model.
+            R: The measurement noise covariance.
+                It represents the expected noise in the sensor measurements.
+        """
         self.previous_filtered_distance: Optional[float] = None
 
         self.x: Optional[float] = None
@@ -18,8 +33,15 @@ class SpeedEstimator:
 
     def kalman_update(self, measurement: float) -> float:
         """
-        Perform a simple 1D Kalman filter update with the new measurement.
-        Returns the filtered value.
+        Apply the Kalman filter measurement update step.
+
+        For the first measurement, initialize the state estimate (x) to the measurement
+        and set the error covariance (P).
+
+        For subsequent measurements, calculate the predicted error covariance (P_pred)
+        by adding the process noise (Q) to the current covariance (P), compute the
+        Kalman gain (K) as P_pred divided by (P_pred + R), and then update the state
+        estimate (x) and covariance (P) using the measurement.
         """
         if self.x is None:
             self.x = measurement
