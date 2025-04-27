@@ -5,8 +5,9 @@ to yield a list of DeviceType objects.
 
 import shutil
 from functools import lru_cache
-from typing import List, Optional
+from typing import Any, List, Optional
 
+from app.config.config import settings
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
@@ -134,12 +135,33 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
             import gi  # type: ignore
 
             gi.require_version("Gst", "1.0")
-            from gi.repository import Gst  # type: ignore
+            from gi.repository import GLib, Gst  # type: ignore
 
             Gst.init(None)
         except Exception:
             logger.warning("Failed to import 'gi'")
             return []
+
+        def log_filter_handler(
+            domain: str,
+            level: GLib.LogLevelFlags,
+            message: str,
+            user_data: Optional[Any],
+        ) -> None:
+            if "gst_value_set_int_range_step" in message:
+                return
+            GLib.log_default_handler(domain, level, message, user_data)
+
+        handler_id: Optional[int] = (
+            GLib.log_set_handler(
+                "GStreamer",
+                GLib.LogLevelFlags.LEVEL_CRITICAL | GLib.LogLevelFlags.FLAG_FATAL,
+                log_filter_handler,
+                None,
+            )
+            if settings.PX_LOG_LEVEL != "DEBUG"
+            else None
+        )
 
         monitor: Gst.DeviceMonitor = Gst.DeviceMonitor.new()
 
@@ -278,6 +300,8 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
                             pass
 
         monitor.stop()
+        if handler_id:
+            GLib.log_remove_handler("GStreamer", handler_id)
         logger.debug("gstreamer devices %s", results)
         return results
 
