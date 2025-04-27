@@ -26,6 +26,7 @@ class SpeedEstimator(metaclass=SingletonMeta):
             self.x = measurement
             self.P = 1.0
         else:
+            assert self.P is not None, "self.P should not be None here."
             P_pred = self.P + self.Q
 
             K = P_pred / (P_pred + self.R)
