@@ -42,9 +42,7 @@ class CarService(metaclass=SingletonMeta):
 
         self.app_settings_manager = app_settings_manager
 
-        app_settings = Settings(**app_settings_manager.load_data())
-
-        self.app_settings = app_settings
+        self.app_settings = Settings(**app_settings_manager.load_data())
 
         self.app_settings_manager.on(
             self.app_settings_manager.UPDATE_EVENT, self.refresh_config
@@ -57,7 +55,7 @@ class CarService(metaclass=SingletonMeta):
         self.auto_measure_distance_mode = False
         self.led_blinking = False
         self.avoid_obstacles_mode = False
-        self.max_speed = app_settings.robot.max_speed
+        self.max_speed = self.app_settings.robot.max_speed
         self.distance_service = distance_service
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
