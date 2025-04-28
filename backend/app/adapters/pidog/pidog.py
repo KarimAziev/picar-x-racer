@@ -10,13 +10,13 @@ import numpy as np
 from app.config.paths import DEFAULT_SOUNDS_DIR, PX_CALIBRATION_FILE
 from app.util.singleton_meta import SingletonMeta
 from robot_hat import Battery, Music, Robot
+from robot_hat.imu.sh3001 import Sh3001
 
 from .dual_touch import DualTouch
 from .rgb_strip import RGBStrip
-from .sh3001 import Sh3001
 from .sound_direction import SoundDirection
 
-''' servos order
+""" servos order
                      4,
                    5, '6'
                      |
@@ -37,18 +37,18 @@ from .sound_direction import SoundDirection
         yaw, roll, pitch
 
     tail pin: [9]
-'''
+"""
 
 logger = logging.getLogger(__name__)
 
 
 def compare_version(original_version, object_version):
-    or_v = tuple(int(val) for val in original_version.split('.'))
-    ob_v = tuple(int(val) for val in object_version.split('.'))
+    or_v = tuple(int(val) for val in original_version.split("."))
+    ob_v = tuple(int(val) for val in object_version.split("."))
     return or_v >= ob_v
 
 
-if compare_version(np.__version__, '2.0.0'):
+if compare_version(np.__version__, "2.0.0"):
 
     def numpy_mat(data):
         return np.asmatrix(data)
@@ -144,7 +144,7 @@ class Pidog(metaclass=SingletonMeta):
         self.target_rpy = [0, 0, 0]
 
         if leg_init_angles == None:
-            leg_init_angles = self.actions_dict['lie'][0][0]
+            leg_init_angles = self.actions_dict["lie"][0][0]
         if head_init_angles == None:
             head_init_angles = [0, 0, self.HEAD_PITCH_OFFSET]
         else:
@@ -159,20 +159,20 @@ class Pidog(metaclass=SingletonMeta):
             logger.info(f"PX_CALIBRATION_FILE: {PX_CALIBRATION_FILE}")
             self.legs = Robot(
                 pin_list=leg_pins,
-                name='legs',
+                name="legs",
                 init_angles=leg_init_angles,
                 init_order=[0, 2, 4, 6, 1, 3, 5, 7],
                 db=PX_CALIBRATION_FILE,
             )
             self.head = Robot(
                 pin_list=head_pins,
-                name='head',
+                name="head",
                 init_angles=head_init_angles,
                 db=PX_CALIBRATION_FILE,
             )
             self.tail = Robot(
                 pin_list=tail_pin,
-                name='tail',
+                name="tail",
                 init_angles=tail_init_angle,
                 db=PX_CALIBRATION_FILE,
             )
@@ -209,7 +209,7 @@ class Pidog(metaclass=SingletonMeta):
 
         try:
             logger.info("imu_sh3001 init ... ")
-            self.imu = Sh3001(db=PX_CALIBRATION_FILE)
+            self.imu = Sh3001()
             self.imu_acc_offset = [0.0, 0.0, 0.0]
             self.imu_gyro_offset = [0.0, 0.0, 0.0]
             self.accData: List[Union[float, int]] = [0.0, 0.0, 0.0]  # ax,ay,az
@@ -225,7 +225,7 @@ class Pidog(metaclass=SingletonMeta):
             logger.info("rgb_strip init ... ")
             self.rgb_thread_run = True
             self.rgb_strip = RGBStrip(addr=0x74, nums=11)
-            self.rgb_strip.set_mode('breath', 'black')
+            self.rgb_strip.set_mode("breath", "black")
             self.rgb_fail_count = 0
             # add rgb thread
             self.thread_list.append("rgb")
@@ -235,8 +235,8 @@ class Pidog(metaclass=SingletonMeta):
 
         try:
             logger.info("dual_touch init ... ")
-            self.dual_touch = DualTouch('D2', 'D3')
-            self.touch = 'N'
+            self.dual_touch = DualTouch("D2", "D3")
+            self.touch = "N"
             logger.info("dual_touch done")
         except Exception as e:
             logger.error("dual_touch fail %s", e)
@@ -275,19 +275,19 @@ class Pidog(metaclass=SingletonMeta):
         import sys
 
         def handler(signal, frame):
-            logger.info('Please wait %s %s', signal, frame)
+            logger.info("Please wait %s %s", signal, frame)
 
         signal.signal(signal.SIGINT, handler)
 
         def _handle_timeout(signum, frame):
-            logger.info('Please wait %s %s', signum, frame)
-            raise TimeoutError('function timeout')
+            logger.info("Please wait %s %s", signum, frame)
+            raise TimeoutError("function timeout")
 
         timeout_sec = 5
         signal.signal(signal.SIGALRM, _handle_timeout)
         signal.alarm(timeout_sec)
 
-        logger.info('\rStopping and returning to the initial position ... ')
+        logger.info("\rStopping and returning to the initial position ... ")
 
         try:
             if self.exit_flag == True:
@@ -301,18 +301,18 @@ class Pidog(metaclass=SingletonMeta):
             self.head_thread.join()
             self.tail_thread.join()
 
-            if 'rgb' in self.thread_list:
+            if "rgb" in self.thread_list:
                 self.rgb_thread_run = False
                 self.rgb_strip_thread.join()
                 self.rgb_strip.close()
-            if 'imu' in self.thread_list:
+            if "imu" in self.thread_list:
                 self.imu_thread.join()
             if self.sensory_process != None:
                 self.sensory_process.terminate()
 
-            logger.info('Quit')
+            logger.info("Quit")
         except Exception as e:
-            logger.error(f'Close logger.error: {e}')
+            logger.error(f"Close logger.error: {e}")
         finally:
             signal.signal(signal.SIGINT, signal.SIG_DFL)
             signal.alarm(0)
@@ -350,33 +350,33 @@ class Pidog(metaclass=SingletonMeta):
     def action_threads_start(self):
         # Immutable objects int, float, string, tuple, etc., need to be declared with global
         # Variable object lists, dicts, instances of custom classes, etc., do not need to be declared with global
-        if 'legs' in self.thread_list:
+        if "legs" in self.thread_list:
             self.legs_thread = threading.Thread(
-                name='legs_thread', target=self._legs_action_thread
+                name="legs_thread", target=self._legs_action_thread
             )
             self.legs_thread.daemon = True
             self.legs_thread.start()
-        if 'head' in self.thread_list:
+        if "head" in self.thread_list:
             self.head_thread = threading.Thread(
-                name='head_thread', target=self._head_action_thread
+                name="head_thread", target=self._head_action_thread
             )
             self.head_thread.daemon = True
             self.head_thread.start()
-        if 'tail' in self.thread_list:
+        if "tail" in self.thread_list:
             self.tail_thread = threading.Thread(
-                name='tail_thread', target=self._tail_action_thread
+                name="tail_thread", target=self._tail_action_thread
             )
             self.tail_thread.daemon = True
             self.tail_thread.start()
-        if 'rgb' in self.thread_list:
+        if "rgb" in self.thread_list:
             self.rgb_strip_thread = threading.Thread(
-                name='rgb_strip_thread', target=self._rgb_strip_thread
+                name="rgb_strip_thread", target=self._rgb_strip_thread
             )
             self.rgb_strip_thread.daemon = True
             self.rgb_strip_thread.start()
-        if 'imu' in self.thread_list:
+        if "imu" in self.thread_list:
             self.imu_thread = threading.Thread(
-                name='imu_thread', target=self._imu_thread
+                name="imu_thread", target=self._imu_thread
             )
             self.imu_thread.daemon = True
             self.imu_thread.start()
@@ -394,7 +394,7 @@ class Pidog(metaclass=SingletonMeta):
             except IndexError:
                 sleep(0.001)
             except Exception as e:
-                logger.error(f'\r_legs_action_thread Exception:{e}')
+                logger.error(f"\r_legs_action_thread Exception:{e}")
                 break
 
     # head
@@ -420,7 +420,7 @@ class Pidog(metaclass=SingletonMeta):
             except IndexError:
                 sleep(0.001)
             except Exception as e:
-                logger.error(f'\r_head_action_thread Exception:{e}')
+                logger.error(f"\r_head_action_thread Exception:{e}")
                 break
 
     # tail
@@ -435,7 +435,7 @@ class Pidog(metaclass=SingletonMeta):
             except IndexError:
                 sleep(0.001)
             except Exception as e:
-                logger.error(f'\r_tail_action_thread Exception:{e}')
+                logger.error(f"\r_tail_action_thread Exception:{e}")
                 break
 
     # rgb strip
@@ -448,7 +448,7 @@ class Pidog(metaclass=SingletonMeta):
                 self.rgb_fail_count += 1
                 sleep(0.001)
                 if self.rgb_fail_count > 10:
-                    logger.error(f'\r_rgb_strip_thread Exception:{e}')
+                    logger.error(f"\r_rgb_strip_thread Exception:{e}")
                     break
 
     # IMU
@@ -463,7 +463,7 @@ class Pidog(metaclass=SingletonMeta):
         _gz = 0
         time = 10
         for _ in range(time):
-            data = self.imu._sh3001_getimudata()
+            data = self.imu.read_sensor_data()
             if data == False:
                 break
 
@@ -487,14 +487,14 @@ class Pidog(metaclass=SingletonMeta):
         while not self.exit_flag:
             try:
 
-                data = self.imu._sh3001_getimudata()
+                data = self.imu.read_sensor_data()
                 if data:
                     self.accData, self.gyroData = data
                 else:
                     if data == False:
                         self.imu_fail_count += 1
                         if self.imu_fail_count > 10:
-                            logger.error('\r_imu_thread imu data logger.error')
+                            logger.error("\r_imu_thread imu data logger.error")
                             break
                     logger.error("IMU data invalid")
                     continue
@@ -520,7 +520,7 @@ class Pidog(metaclass=SingletonMeta):
                 self.imu_fail_count += 1
                 sleep(0.001)
                 if self.imu_fail_count > 10:
-                    logger.error(f'\r_imu_thread Exception:{e}')
+                    logger.error(f"\r_imu_thread Exception:{e}")
                     self.exit_flag = True
                     break
 
@@ -595,13 +595,13 @@ class Pidog(metaclass=SingletonMeta):
     def stop_and_lie(self, speed=85):
         try:
             self.body_stop()
-            self.legs_move(self.actions_dict['lie'][0], speed=speed)
+            self.legs_move(self.actions_dict["lie"][0], speed=speed)
             self.head_move_raw([[0, 0, 0]], speed=speed)
             self.tail_move([[0, 0, 0]], speed=speed)
             self.wait_all_done()
             sleep(0.1)
         except Exception as e:
-            logger.error(f'\rstop_and_lie logger.error:{e}')
+            logger.error(f"\rstop_and_lie logger.error:{e}")
 
     def speak(self, name: str, volume=100):
         """
@@ -633,12 +633,12 @@ class Pidog(metaclass=SingletonMeta):
         """
         if os.path.isfile(name):
             self.music.sound_play(name, volume)
-        elif os.path.isfile(self.SOUND_DIR + name + '.mp3'):
-            self.music.sound_play(self.SOUND_DIR + name + '.mp3', volume)
-        elif os.path.isfile(self.SOUND_DIR + name + '.wav'):
-            self.music.sound_play(self.SOUND_DIR + name + '.wav', volume)
+        elif os.path.isfile(self.SOUND_DIR + name + ".mp3"):
+            self.music.sound_play(self.SOUND_DIR + name + ".mp3", volume)
+        elif os.path.isfile(self.SOUND_DIR + name + ".wav"):
+            self.music.sound_play(self.SOUND_DIR + name + ".wav", volume)
         else:
-            logger.warning(f'No sound found for {name}')
+            logger.warning(f"No sound found for {name}")
             return False
 
     # calibration
@@ -876,15 +876,15 @@ class Pidog(metaclass=SingletonMeta):
     def do_action(self, action_name: str, step_count=1, speed=50, pitch_comp=0):
         try:
             actions, part = self.actions_dict[action_name]
-            if part == 'legs':
+            if part == "legs":
                 for _ in range(step_count):
                     self.legs_move(actions, immediately=False, speed=speed)
-            elif part == 'head':
+            elif part == "head":
                 for _ in range(step_count):
                     self.head_move(
                         actions, pitch_comp=pitch_comp, immediately=False, speed=speed
                     )
-            elif part == 'tail':
+            elif part == "tail":
                 for _ in range(step_count):
                     self.tail_move(actions, immediately=False, speed=speed)
         except KeyError:
