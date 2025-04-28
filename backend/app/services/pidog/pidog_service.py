@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, cast
 
 from app.config.paths import DEFAULT_USER_SETTINGS, PX_SETTINGS_FILE
 from app.util.file_util import load_json_file
@@ -129,13 +129,28 @@ class PidogService(metaclass=SingletonMeta):
             if self.direction == 0:
                 self.direction = 1
             if angle < 0:
-                self.pidog.do_action('turn_left_backward' if self.direction == -1 else 'turn_left', speed=self.speed)
-                await asyncio.to_thread(self.pidog.do_action, 'turn_left_backward' if self.direction == -1 else 'turn_left', speed=self.speed)
+                self.pidog.do_action(
+                    "turn_left_backward" if self.direction == -1 else "turn_left",
+                    speed=self.speed,
+                )
+                await asyncio.to_thread(
+                    self.pidog.do_action,
+                    "turn_left_backward" if self.direction == -1 else "turn_left",
+                    speed=self.speed,
+                )
             elif angle > 0:
-                await asyncio.to_thread(self.pidog.do_action, 'turn_right_backward' if self.direction == -1 else 'turn_right', speed=self.speed)
+                await asyncio.to_thread(
+                    self.pidog.do_action,
+                    "turn_right_backward" if self.direction == -1 else "turn_right",
+                    speed=self.speed,
+                )
                 self.servo_dir_angle = angle
             elif self.speed > 0:
-                await asyncio.to_thread(self.pidog.do_action, 'backward' if self.direction == -1 else 'forward', speed=self.speed)
+                await asyncio.to_thread(
+                    self.pidog.do_action,
+                    "backward" if self.direction == -1 else "forward",
+                    speed=self.speed,
+                )
                 self.servo_dir_angle = angle
             else:
                 await asyncio.to_thread(self.pidog.body_stop)
@@ -155,7 +170,6 @@ class PidogService(metaclass=SingletonMeta):
         await asyncio.to_thread(self.pidog.body_stop)
         self.speed = 0
         self.direction = 0
-
 
     async def handle_set_cam_tilt_angle(self, payload, _):
         """
@@ -255,7 +269,9 @@ class PidogService(metaclass=SingletonMeta):
         try:
             distance = await asyncio.to_thread(self.pidog.read_distance)
             if distance < 0 and distance in errors:
-                raise ValueError(errors.get(distance, "Unexpected distance error"))
+                raise ValueError(
+                    errors.get(cast(int, distance), "Unexpected distance error")
+                )
             return distance
         except Exception as e:
             self.logger.error(f"Failed to get distance: {e}")
