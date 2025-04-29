@@ -213,7 +213,7 @@ class Pidog(metaclass=SingletonMeta):
         try:
             logger.info("rgb_strip init ... ")
             self.rgb_thread_run: bool = True
-            self.rgb_strip: RGBStrip = RGBStrip(addr=0x74, nums=11)
+            self.rgb_strip: RGBStrip = RGBStrip(address=0x74, num_lights=11)
             self.rgb_strip.set_mode("breath", "black")
             self.rgb_fail_count: int = 0
             self.thread_list.append("rgb")

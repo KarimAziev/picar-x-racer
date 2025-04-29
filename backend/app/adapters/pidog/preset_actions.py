@@ -316,7 +316,7 @@ def howling(dog: "Pidog", volume=100) -> None:
     dog.head_move([[0, 0, -30]], speed=95)
     dog.wait_all_done()
 
-    dog.rgb_strip.set_mode("speak", color="cyan", bps=0.6)
+    dog.rgb_strip.set_mode("speak", color="cyan", beats_per_second=0.6)
     dog.do_action("half_sit", speed=80)
     dog.head_move([[0, 0, -60]], speed=80)
     dog.wait_all_done()
