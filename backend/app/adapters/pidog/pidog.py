@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import numpy as np
 from app.config.paths import DEFAULT_SOUNDS_DIR, PX_CALIBRATION_FILE
 from app.util.singleton_meta import SingletonMeta
+from numpy.typing import ArrayLike
 from robot_hat import Battery, Music, Robot
 from robot_hat.imu.sh3001 import Sh3001
 
@@ -51,12 +52,12 @@ def compare_version(original_version: str, object_version: str) -> bool:
 
 if compare_version(np.__version__, "2.0.0"):
 
-    def numpy_mat(data: Any) -> np.matrix:
+    def numpy_mat(data: ArrayLike) -> np.matrix:
         return np.asmatrix(data)
 
 else:
 
-    def numpy_mat(data: Any) -> np.matrix:
+    def numpy_mat(data: ArrayLike) -> np.matrix:
         if isinstance(data, np.ndarray):
             return np.matrix(data)
         return np.matrix(data)
