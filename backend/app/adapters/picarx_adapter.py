@@ -1,6 +1,7 @@
+import os
 from typing import TYPE_CHECKING, Dict, List, Type, Union
 
-from app.core.logger import Logger
+from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
 from app.schemas.config import (
@@ -21,7 +22,7 @@ from robot_hat.services.motor_service import MotorServiceDirection
 from robot_hat.servos.gpio_angular_servo import GPIOAngularServo
 from robot_hat.servos.servo import Servo
 
-logger = Logger(name=__name__, app_name="px_robot")
+logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
@@ -81,7 +82,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self, motor_config: Union[HBridgeMotorConfig, DCMotorConfig]
     ) -> MotorABC:
         if isinstance(motor_config, DCMotorConfig):
-            logger.info("Initializing DC motor %s", motor_config)
+            logger.debug("Initializing DC motor %s", motor_config)
             return DCMotor(
                 forward_pin=motor_config.forward_pin,
                 backward_pin=motor_config.backward_pin,
@@ -89,10 +90,14 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 calibration_direction=motor_config.calibration_direction,
                 max_speed=motor_config.max_speed,
                 name=motor_config.name,
-                pwm=motor_config.pwm,
+                pwm=(
+                    False  # preventing gpiozero.pins.mock raise PinPWMUnsupported
+                    if os.getenv("GPIOZERO_PIN_FACTORY") == "mock"
+                    else motor_config.pwm
+                ),
             )
         else:
-            logger.info("Initializng HBridge motor %s", motor_config)
+            logger.debug("Initializng HBridge motor %s", motor_config)
 
             driver_cls = self.pwm_drivers[motor_config.driver.name]
 
@@ -342,7 +347,8 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
     def stop(self) -> None:
         """
-        Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a short delay between attempts.
+        Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a
+        short delay between attempts.
 
         Raises:
            RobotI2CTimeout: If the operation fails due to a timeout.
