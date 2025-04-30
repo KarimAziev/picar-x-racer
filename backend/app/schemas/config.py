@@ -376,6 +376,7 @@ class GPIOAngularServoConfig(ServoConfig):
 
 class MotorBaseConfig(BaseModel):
     enabled: EnabledField = True
+    calibration_direction: MotorDirectionField
     name: Annotated[
         str,
         Field(
@@ -385,7 +386,6 @@ class MotorBaseConfig(BaseModel):
             examples=["left", "right"],
         ),
     ]
-    calibration_direction: MotorDirectionField
     max_speed: Annotated[
         int,
         Field(
@@ -464,15 +464,6 @@ class DCMotorConfig(MotorBaseConfig):
 
     """
 
-    pwm: Annotated[
-        bool,
-        Field(
-            ...,
-            title="PWM",
-            description="Whether to construct PWM Output Device instances for "
-            "the motor controller pins, allowing both direction and speed control.",
-        ),
-    ] = True
     forward_pin: Annotated[
         Union[int, str],
         Field(
@@ -503,6 +494,15 @@ class DCMotorConfig(MotorBaseConfig):
             "Required for **some** motor controller boards.",
         ),
     ] = None
+    pwm: Annotated[
+        bool,
+        Field(
+            ...,
+            title="PWM",
+            description="Whether to construct PWM Output Device instances for "
+            "the motor controller pins, allowing both direction and speed control.",
+        ),
+    ] = True
 
 
 class LedConfig(BaseModel):
@@ -518,16 +518,6 @@ class LedConfig(BaseModel):
             examples=["LED"],
         ),
     ] = "LED"
-
-    pin: Annotated[
-        Union[str, int],
-        Field(
-            default=26,
-            json_schema_extra={"type": "string_or_number"},
-            description="The GPIO pin number for the LED.",
-            examples=[26, "D14"],
-        ),
-    ]
 
     interval: Annotated[
         float,
@@ -546,6 +536,16 @@ class LedConfig(BaseModel):
             examples=[
                 0.1,
             ],
+        ),
+    ]
+
+    pin: Annotated[
+        Union[str, int],
+        Field(
+            default=26,
+            json_schema_extra={"type": "string_or_number"},
+            description="The GPIO pin number for the LED.",
+            examples=[26, "D14"],
         ),
     ]
 

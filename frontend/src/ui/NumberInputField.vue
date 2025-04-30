@@ -15,6 +15,7 @@
       :class="inputClassName"
       v-model="currentValue"
       :invalid="invalid"
+      :step="step"
       :disabled="readonly || disabled"
       v-bind="{ ...otherAttrs, ...extraProps }"
       @input="handleInput"
@@ -44,6 +45,7 @@ export interface Props extends FieldProps {
   readonly?: boolean;
   disabled?: boolean;
   tooltip?: string;
+  step?: number;
   exclusiveMinimum?: number;
   exclusiveMaximum?: number;
 }

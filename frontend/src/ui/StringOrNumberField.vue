@@ -7,59 +7,27 @@
     :tooltipHelp="tooltipHelp"
     :layout="layout"
   >
-    <div
-      v-for="opt in options"
-      :key="opt.label"
+    <RadioComponentSwitcher
       class="flex items-center gap-2"
-    >
-      <RadioButton
-        v-model="valueType"
-        name="valueType"
-        :value="opt.value"
-        @update:model-value="handleUpdateValueType"
-      />
-      <span>{{ opt.label }}</span>
-    </div>
-    <InputText
-      v-if="valueType === 'string'"
-      v-tooltip="tooltip"
-      :inputId="field"
-      :pt="{ pcInput: { id: field } }"
-      :class="props.inputClassName"
-      v-model="currentValue"
-      :invalid="invalid"
-      :disabled="readonly || disabled"
-      v-bind="otherAttrs"
-      @update:model-value="onUpdate"
-    />
-    <InputNumber
-      v-else-if="valueType === 'integer'"
-      showButtons
-      v-tooltip="tooltip"
-      :inputId="field"
-      :pt="{ pcInput: { id: field } }"
-      :class="props.inputClassName"
-      v-model="currentValue"
-      :invalid="invalid"
-      :disabled="readonly || disabled"
-      v-bind="otherAttrs"
-      @update:model-value="onUpdate"
+      :options="options"
+      v-bind="{ ...otherAttrs, ...props }"
     />
   </Field>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, useAttrs } from "vue";
+import { useAttrs, computed } from "vue";
 import InputText from "primevue/inputtext";
-import RadioButton from "primevue/radiobutton";
 import Field from "@/ui/Field.vue";
 import type { Props as FieldProps } from "@/ui/Field.vue";
 import { isNumber, isString } from "@/util/guards";
+import { InputNumber } from "primevue";
 
-export type Option = {
-  value: string;
-  label: string;
-};
+import { defineComponentOptions, GetComponentProps } from "@/util/vue-helpers";
+import RadioComponentSwitcher from "@/ui/RadioComponentSwitcher.vue";
+import { isHexString, hexToDecimal, decimalToHexString } from "@/util/hex";
+import { parseTrailingNumber } from "@/util/number";
+import { extractLetterPrefix } from "@/util/str";
 
 export interface Props extends FieldProps {
   modelValue?: any;
@@ -70,73 +38,77 @@ export interface Props extends FieldProps {
   readonly?: boolean;
   disabled?: boolean;
   tooltip?: string;
+  hex?: boolean;
+  integerProps?: GetComponentProps<typeof InputNumber>;
+  stringProps?: GetComponentProps<typeof InputText>;
 }
 
 const props = defineProps<Props>();
+const options = computed(() =>
+  defineComponentOptions(
+    {
+      integer: InputNumber,
+      string: InputText,
+    },
+    {
+      integer: {
+        pt: { pcInput: { id: props.field } },
+        label: "Integer",
+        pred: isNumber,
+        comp: InputNumber,
+        convertValueOnSwitch: props.hex,
+        convertToValue: (val?: string) =>
+          !isString(val)
+            ? val
+            : isHexString(val)
+              ? hexToDecimal(val)
+              : parseTrailingNumber(val),
+        props: {
+          inputId: props.field,
+          class: props.inputClassName,
+          invalid: props.invalid,
+          disabled: props.disabled || props.readonly,
+          showButtons: true,
+          pt: {
+            pcInput: { id: props.field },
+          },
+          ...props.integerProps,
+        },
+      },
+      string: {
+        pt: { pcInput: { id: props.field } },
+        label: props.hex ? "Hex" : "String",
+        pred: isString,
+        comp: InputText,
+        convertValueOnSwitch: props.hex,
+        convertToValue: (val?: number, prevValue?: string) => {
+          if (!isNumber(val)) {
+            return val;
+          }
+          if (props.hex) {
+            return decimalToHexString(val);
+          }
+          if (isString(prevValue)) {
+            const prefix = extractLetterPrefix(prevValue);
+            console.log("prefix", prefix, "prevValue", prevValue);
+            return `${prefix || ""}${val}`;
+          }
 
-const options: Option[] = [
-  { value: "integer", label: "Integer" },
-  { value: "string", label: "String" },
-];
-
-const valueType = ref(isNumber(props.modelValue) ? "integer" : "string");
-const otherAttrs = useAttrs();
-const oldValue = ref();
-
-const currentValue = ref(props.modelValue);
-
-const stringToNumber = (value: string) => {
-  const re = /(\d+)$/;
-  const match = value.match(re);
-  return match ? +match[1] : null;
-};
-
-const handleUpdateValueType = (value: string) => {
-  valueType.value = value;
-  if (
-    (isString(oldValue.value) && value === "string") ||
-    (isNumber(oldValue.value) && value === "integer")
-  ) {
-    currentValue.value = oldValue.value;
-    return;
-  }
-
-  oldValue.value = currentValue.value;
-
-  if (value === "integer" && isString(currentValue.value)) {
-    currentValue.value = stringToNumber(currentValue.value);
-  } else if (value === "string" && isNumber(currentValue.value)) {
-    currentValue.value = `${currentValue.value}`;
-  } else if (value === "string" && !currentValue.value) {
-    currentValue.value = isNumber(props.modelValue)
-      ? `${props.modelValue}`
-      : isString(props.modelValue)
-        ? props.modelValue
-        : null;
-  } else if (value === "integer" && !currentValue.value) {
-    currentValue.value = isNumber(props.modelValue)
-      ? props.modelValue
-      : isString(props.modelValue)
-        ? stringToNumber(props.modelValue)
-        : null;
-  }
-};
-
-watch(
-  () => props.modelValue,
-  (newVal) => {
-    currentValue.value = newVal;
-    if (isString(newVal)) {
-      valueType.value = "string";
-    } else if (isNumber(newVal)) {
-      valueType.value = "integer";
-    }
-  },
+          return `${val}`;
+        },
+        props: {
+          inputId: props.field,
+          class: props.inputClassName,
+          invalid: props.invalid,
+          disabled: props.disabled || props.readonly,
+          pt: {
+            pcInput: { id: props.field },
+          },
+          ...props.stringProps,
+        },
+      },
+    },
+  ),
 );
-
-const emit = defineEmits(["update:modelValue", "value-change"]);
-
-const onUpdate = (newValue?: string | number) => {
-  emit("update:modelValue", newValue);
-};
+const otherAttrs = useAttrs();
 </script>

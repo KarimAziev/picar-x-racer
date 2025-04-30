@@ -7,17 +7,24 @@
       :id="idPrefix"
     >
       <div
-        v-for="(propSchema, propName) in resolvedSchema.properties"
-        :key="propName"
+        :class="{
+          'grid grid-cols-2 gap-2 justify-around': level < 2,
+        }"
       >
-        <RecursiveField
-          :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
-          :key="[selectedOption, ...path].join('-')"
-          :schema="propSchema"
-          :model="model"
-          :path="[...path, propName]"
-          :defs="defs"
-        />
+        <div
+          v-for="(propSchema, propName) in resolvedSchema.properties"
+          :key="propName"
+        >
+          <RecursiveField
+            :level="level + 1"
+            :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
+            :key="[selectedOption, ...path].join('-')"
+            :schema="propSchema"
+            :model="model"
+            :path="[...path, propName]"
+            :defs="defs"
+          />
+        </div>
       </div>
     </Fieldset>
   </div>
@@ -44,6 +51,7 @@
           />
         </div>
         <RecursiveField
+          :level="level + 1"
           :collapsed="false"
           :idPrefix="`${idPrefix}-${[item._optionSelected, ...path, index].join('-')}`"
           :key="[item._optionSelected, ...path, index].join('-')"
@@ -79,10 +87,11 @@
   />
 
   <component
-    v-else-if="comp"
-    :is="comp"
-    v-bind="compProps"
+    v-else-if="dynamicComp"
+    :is="dynamicComp.comp"
+    v-bind="dynamicComp.props"
     v-model="localValue"
+    :field="'${path}-${keyName}'"
     :label="resolvedSchema.title || keyName"
     :tooltipHelp="tooltipHelp"
   />
@@ -102,6 +111,7 @@
       :tooltipHelp="tooltipHelp"
     />
     <RecursiveField
+      :level="level + 1"
       :collapsed="anyOfOptions?.length === 0"
       :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
       :key="selectedOption"
@@ -121,6 +131,7 @@
     />
     <div v-if="selectedSchema && !isNull(selectedOption)">
       <RecursiveField
+        :level="level + 1"
         :collapsed="anyOfOptions?.length === 0"
         :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
         :key="[selectedOption, ...path].join('-')"
@@ -135,20 +146,14 @@
 
 <script setup lang="ts">
 import { computed, watch } from "vue";
-import type { Component } from "vue";
+
 import TextField from "@/ui/TextField.vue";
 import NumberInputField from "@/ui/NumberInputField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import SelectField from "@/ui/SelectField.vue";
-import type { InputNumberProps } from "primevue/inputnumber";
 import { renameKeys } from "rename-obj-map";
 import { startCase, trimSuffix } from "@/util/str";
-import type {
-  JSONSchema,
-  FieldType,
-  TypeOption,
-} from "@/features/controller/interface";
-import HexField from "@/ui/HexField.vue";
+import type { JSONSchema, TypeOption } from "@/features/controller/interface";
 import {
   isString,
   isPlainObject,
@@ -161,6 +166,7 @@ import StringOrNumberField from "@/ui/StringOrNumberField.vue";
 import RecursiveField from "./RecursiveField.vue";
 import { pick } from "@/util/obj";
 import Fieldset from "@/ui/Fieldset.vue";
+import { defineComponents } from "@/util/vue-helpers";
 
 const props = withDefaults(
   defineProps<{
@@ -173,52 +179,55 @@ const props = withDefaults(
     removable?: boolean;
     tooltipHelp?: string;
     collapsed?: boolean;
+    level: number;
   }>(),
   {
+    level: 0,
     collapsed: true,
   },
 );
 
-const components: Partial<Record<FieldType, [Component, object]>> = {
-  integer: [NumberInputField, { step: 1 }],
-  string: [TextField, { fieldClassName: "w-full" }],
-  string_or_number: [
-    StringOrNumberField,
-    { min: 1, inputClassName: "!w-full" },
-  ],
-  number: [
-    NumberInputField,
-    {
+const comps = defineComponents(
+  {
+    integer: NumberInputField,
+    string: TextField,
+    string_or_number: StringOrNumberField,
+    number: NumberInputField,
+    boolean: ToggleSwitchField,
+    hex: StringOrNumberField,
+  },
+  {
+    integer: {
+      step: 1,
+    },
+    string: {
+      fieldClassName: "w-full",
+    },
+    number: {
       step: 0.1,
       minFractionDigits: 1,
-    } as InputNumberProps,
-  ],
-  boolean: [ToggleSwitchField, {}],
-  hex: [HexField, { min: 1, inputClassName: "!w-full" }],
-};
+    },
+    string_or_number: {
+      inputClassName: "!w-full",
+      integerProps: { min: 1 },
+      stringProps: { min: 1 },
+    },
+    boolean: {},
+    hex: {
+      integerProps: { min: 1 },
+      stringProps: { min: 1 },
+      inputClassName: "!w-full",
+      hex: true,
+    },
+  },
+);
 
-const comp = computed(() => {
-  if (!resolvedSchema.value?.type) {
-    return;
-  }
-  const pair = components[resolvedSchema.value?.type];
-  if (!pair) {
-    return;
-  }
-  return pair[0];
-});
-const compProps = computed(() => {
+const dynamicComp = computed(() => {
   const resSchema = resolvedSchema.value;
-  if (!resSchema?.type) {
+  const compSpec = comps[resSchema?.type as keyof typeof comps];
+  if (!resSchema?.type || !compSpec) {
     return;
   }
-  const pair = components[resSchema.type];
-
-  if (!pair) {
-    return;
-  }
-
-  const props = pair[1];
   const extraProps = renameKeys(
     { maximum: "max", minimum: "min", const: "readonly" },
     pick(
@@ -227,11 +236,15 @@ const compProps = computed(() => {
     ),
   );
 
+  const comp = compSpec.comp;
+
   return {
-    ...props,
-    ...extraProps,
-    readonly: !!extraProps.readonly,
-    ...resSchema.props,
+    comp,
+    props: {
+      ...compSpec.props,
+      ...extraProps,
+      readonly: !!extraProps.readonly,
+    },
   };
 });
 

@@ -47,3 +47,9 @@ export const trimSuffix = (str: string, suffix: string) => {
   }
   return str;
 };
+
+export const extractLetterPrefix = (value: string) => {
+  const re = /^([a-z]+)/i;
+  const match = value.match(re);
+  return match ? match[1] : null;
+};
