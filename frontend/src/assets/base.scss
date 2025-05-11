@@ -175,18 +175,14 @@ input {
     max-width: 190px;
   }
 
-  @media (min-width: 992px) {
+  @media (min-width: 1024px) {
     max-width: 210px;
   }
-  @media (min-width: 1200px) {
+  @media (min-width: 1280px) {
     max-width: 220px;
   }
 
-  @media (min-width: 1440px) {
-    max-width: 230px;
-  }
-
-  @media (min-width: 1600px) {
+  @media (min-width: 1536px) {
     max-width: 240px;
   }
 }
@@ -204,7 +200,7 @@ input {
   align-items: center;
   height: 30px;
 
-  @media (min-width: 1200px) {
+  @media (min-width: 1280px) {
     height: 40px;
   }
 }

@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Annotated, AsyncGenerator, Optional, TypedDict
+from typing import Annotated, AsyncGenerator, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.config.config import settings as app_config
@@ -7,7 +7,6 @@ from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
 from app.managers.async_task_manager import AsyncTaskManager
 from app.managers.file_management.json_data_manager import JsonDataManager
-from app.schemas.config import HardwareConfig, UPS_S3Config
 from app.services.connection_service import ConnectionService
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
@@ -16,10 +15,6 @@ from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
 from app.services.sensors.speed_estimator import SpeedEstimator
 from fastapi import Depends
-from robot_hat.drivers.adc.INA219 import INA219Config
-from robot_hat.services.battery.battery_abc import BatteryABC
-from robot_hat.services.battery.sunfounder_battery import Battery as SunfounderBattery
-from robot_hat.services.battery.ups_s3_battery import Battery as UPS_S3
 
 logger = Logger(__name__)
 
@@ -83,48 +78,12 @@ def get_led_service(
 
 
 @lru_cache()
-def get_battery_adapter(
-    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
-) -> Optional[BatteryABC]:
-
-    try:
-        config = HardwareConfig(**config_manager.load_data())
-        if config.battery is None:
-            return None
-
-        driver = config.battery.driver
-        if isinstance(driver, UPS_S3Config):
-            return UPS_S3(
-                address=0x41,
-                config=INA219Config(
-                    bus_voltage_range=driver.config.bus_voltage_range,
-                    gain=driver.config.gain,
-                    bus_adc_resolution=driver.config.bus_adc_resolution,
-                    shunt_adc_resolution=driver.config.shunt_adc_resolution,
-                    mode=driver.config.mode,
-                    current_lsb=driver.config.current_lsb,  # 0.1 mA per bit
-                    calibration_value=driver.config.calibration_value,
-                    power_lsb=driver.config.power_lsb,
-                ),
-                bus_num=driver.bus,
-            )
-        else:
-            return SunfounderBattery()
-    except Exception as e:
-        logger.error("Failed to init UPS 3 battery adapter: ", e)
-
-
-@lru_cache()
 def get_battery_service(
     connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
-    battery_adapter: Annotated[BatteryABC, Depends(get_battery_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
 ) -> BatteryService:
-    config = HardwareConfig(**config_manager.load_data())
     return BatteryService(
-        connection_manager=connection_manager,
-        settings=config.battery,
-        battery_adapter=battery_adapter,
+        connection_manager=connection_manager, config_manager=config_manager
     )
 
 

@@ -17,6 +17,8 @@
       :invalid="invalid"
       :step="step"
       :disabled="readonly || disabled"
+      :minFractionDigits="minFractionDigits"
+      :maxFractionDigits="maxFractionDigits"
       v-bind="{ ...otherAttrs, ...extraProps }"
       @input="handleInput"
       @update:model-value="onUpdate"
@@ -42,6 +44,8 @@ export interface Props extends FieldProps {
   invalid?: boolean;
   field?: string;
   inputClassName?: string;
+  minFractionDigits?: number;
+  maxFractionDigits?: number;
   readonly?: boolean;
   disabled?: boolean;
   tooltip?: string;
@@ -49,7 +53,12 @@ export interface Props extends FieldProps {
   exclusiveMinimum?: number;
   exclusiveMaximum?: number;
 }
-const props = defineProps<Props>();
+
+const props = withDefaults(defineProps<Props>(), {
+  minFractionDigits: 0,
+  maxFractionDigits: 3,
+  step: 1,
+});
 const otherAttrs: InputNumberProps = useAttrs();
 
 const currentValue = ref(props.modelValue);
@@ -67,10 +76,10 @@ const extraProps = computed(() => {
   }
   const excMin = props.exclusiveMinimum;
   const excMax = props.exclusiveMaximum;
-  const increment = isNumber(otherAttrs.step)
-    ? otherAttrs.step
-    : isNumber(otherAttrs.maxFractionDigits)
-      ? Math.pow(10, -otherAttrs.maxFractionDigits)
+  const increment = isNumber(props.step)
+    ? props.step
+    : isNumber(props.maxFractionDigits)
+      ? Math.pow(10, -props.maxFractionDigits)
       : isNumber(otherAttrs.minFractionDigits)
         ? Math.pow(10, -otherAttrs.minFractionDigits)
         : 0;

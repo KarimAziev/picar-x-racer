@@ -39,6 +39,9 @@ export interface Modes {
    * Whether calibration mode is enabled.
    */
   calibrationMode: boolean;
+  /**
+   * Whether led is blinking
+   */
   ledBlinking: boolean;
 }
 
@@ -175,11 +178,11 @@ export const useControllerStore = defineStore("controller", {
             break;
 
           case "updateCalibration":
-            robotStore.data = payload;
+            robotStore.$patch({ data: payload });
             break;
 
           case "saveCalibration":
-            robotStore.data = payload;
+            robotStore.$patch({ data: payload });
             this.calibrationMode = false;
             messager.info(`Calibration saved`);
             break;

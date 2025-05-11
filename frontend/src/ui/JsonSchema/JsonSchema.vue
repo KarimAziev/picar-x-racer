@@ -1,33 +1,69 @@
 <template>
-  <div v-if="isObjectSchema && resolvedSchema">
+  <template v-if="isObjectSchema && resolvedSchema">
     <Fieldset
+      v-if="level < 2"
       :legend="startCase(resolvedSchema.title || keyName)"
       toggleable
       :collapsed="collapsed"
       :id="idPrefix"
     >
+      <ExpandableText
+        v-if="resolvedSchema.description"
+        :class="{
+          'truncated-label': level >= 2,
+          'max-w-[280px] min-[400px]:max-w-[380px] md:max-w-[420px] lg:max-w-[440px] xl:max-w-[540px] 2xl:max-w-[490px]':
+            level < 2,
+        }"
+        :text="resolvedSchema.description"
+        lineClampClass="line-clamp-1"
+      ></ExpandableText>
+      <Divider v-if="resolvedSchema.description" />
+
       <div
         :class="{
           'grid grid-cols-2 gap-2 justify-around': level < 2,
         }"
       >
-        <div
+        <JsonSchema
           v-for="(propSchema, propName) in resolvedSchema.properties"
-          :key="propName"
-        >
-          <RecursiveField
-            :level="level + 1"
-            :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
-            :key="[selectedOption, ...path].join('-')"
-            :schema="propSchema"
-            :model="model"
-            :path="[...path, propName]"
-            :defs="defs"
-          />
-        </div>
+          :level="level + 1"
+          :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
+          :key="[selectedOption, ...path, propName].join('-')"
+          :schema="propSchema"
+          :model="model"
+          :path="[...path, propName]"
+          :defs="defs"
+        />
       </div>
     </Fieldset>
-  </div>
+    <div v-else>
+      <h4 class="font-bold">
+        {{ startCase(resolvedSchema.title || keyName) }}
+      </h4>
+      <ExpandableText
+        v-if="resolvedSchema.description"
+        :class="{
+          'truncated-label': level >= 2,
+          'max-w-[280px] min-[400px]:max-w-[380px] md:max-w-[420px] lg:max-w-[440px] xl:max-w-[540px] 2xl:max-w-[490px]':
+            level < 2,
+        }"
+        :text="resolvedSchema.description"
+        lineClampClass="line-clamp-1"
+      ></ExpandableText>
+      <Divider v-if="resolvedSchema.description && level < 2" />
+
+      <JsonSchema
+        v-for="(propSchema, propName) in resolvedSchema.properties"
+        :level="level + 1"
+        :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
+        :key="[selectedOption, ...path, propName].join('-')"
+        :schema="propSchema"
+        :model="model"
+        :path="[...path, propName]"
+        :defs="defs"
+      />
+    </div>
+  </template>
 
   <div v-else-if="isArraySchema && resolvedSchema">
     <Fieldset
@@ -50,7 +86,7 @@
             class="p-button-rounded p-button-danger p-button-text"
           />
         </div>
-        <RecursiveField
+        <JsonSchema
           :level="level + 1"
           :collapsed="false"
           :idPrefix="`${idPrefix}-${[item._optionSelected, ...path, index].join('-')}`"
@@ -85,13 +121,12 @@
     v-model="localValue"
     :tooltipHelp="tooltipHelp"
   />
-
   <component
     v-else-if="dynamicComp"
     :is="dynamicComp.comp"
     v-bind="dynamicComp.props"
     v-model="localValue"
-    :field="'${path}-${keyName}'"
+    :field="`${path}-${keyName}`"
     :label="resolvedSchema.title || keyName"
     :tooltipHelp="tooltipHelp"
   />
@@ -110,7 +145,7 @@
       v-model="selectedOption"
       :tooltipHelp="tooltipHelp"
     />
-    <RecursiveField
+    <JsonSchema
       :level="level + 1"
       :collapsed="anyOfOptions?.length === 0"
       :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
@@ -130,7 +165,7 @@
       :tooltipHelp="tooltipHelp"
     />
     <div v-if="selectedSchema && !isNull(selectedOption)">
-      <RecursiveField
+      <JsonSchema
         :level="level + 1"
         :collapsed="anyOfOptions?.length === 0"
         :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
@@ -146,14 +181,13 @@
 
 <script setup lang="ts">
 import { computed, watch } from "vue";
-
 import TextField from "@/ui/TextField.vue";
 import NumberInputField from "@/ui/NumberInputField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import SelectField from "@/ui/SelectField.vue";
 import { renameKeys } from "rename-obj-map";
 import { startCase, trimSuffix } from "@/util/str";
-import type { JSONSchema, TypeOption } from "@/features/controller/interface";
+import type { JSONSchema, TypeOption } from "@/ui/JsonSchema/interface";
 import {
   isString,
   isPlainObject,
@@ -163,10 +197,12 @@ import {
   isEmptyArray,
 } from "@/util/guards";
 import StringOrNumberField from "@/ui/StringOrNumberField.vue";
-import RecursiveField from "./RecursiveField.vue";
+import JsonSchema from "./JsonSchema.vue";
 import { pick } from "@/util/obj";
 import Fieldset from "@/ui/Fieldset.vue";
 import { defineComponents } from "@/util/vue-helpers";
+import MotorDirection from "@/features/settings/components/calibration/MotorDirection.vue";
+import ExpandableText from "@/ui/ExpandableText.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -176,7 +212,6 @@ const props = withDefaults(
     keyName?: string;
     defs?: Record<string, JSONSchema>;
     idPrefix: string;
-    removable?: boolean;
     tooltipHelp?: string;
     collapsed?: boolean;
     level: number;
@@ -195,6 +230,8 @@ const comps = defineComponents(
     number: NumberInputField,
     boolean: ToggleSwitchField,
     hex: StringOrNumberField,
+    motor_direction: MotorDirection,
+    select: SelectField,
   },
   {
     integer: {
@@ -219,17 +256,23 @@ const comps = defineComponents(
       inputClassName: "!w-full",
       hex: true,
     },
+
+    motor_direction: {},
+    select: {},
   },
 );
 
 const dynamicComp = computed(() => {
   const resSchema = resolvedSchema.value;
   const compSpec = comps[resSchema?.type as keyof typeof comps];
+
   if (!resSchema?.type || !compSpec) {
     return;
   }
+
+  const renameMap = { maximum: "max", minimum: "min", const: "readonly" };
   const extraProps = renameKeys(
-    { maximum: "max", minimum: "min", const: "readonly" },
+    renameMap,
     pick(
       ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "const"],
       resSchema,
@@ -244,6 +287,7 @@ const dynamicComp = computed(() => {
       ...compSpec.props,
       ...extraProps,
       readonly: !!extraProps.readonly,
+      ...resSchema?.props,
     },
   };
 });
@@ -356,13 +400,14 @@ const isAnyOf = computed(
     ),
 );
 
-const enumOptions = computed(
-  () =>
-    Array.isArray(resolvedSchema.value?.enum) &&
-    resolvedSchema.value?.enum.map((value) => ({
-      value,
-      label: isString(value) ? startCase(value) : `${value}`,
-    })),
+const enumOptions = computed(() =>
+  Array.isArray(resolvedSchema.value?.props?.options)
+    ? resolvedSchema.value?.props?.options
+    : Array.isArray(resolvedSchema.value?.enum) &&
+      resolvedSchema.value?.enum.map((value) => ({
+        value,
+        label: isString(value) ? startCase(value) : `${value}`,
+      })),
 );
 
 const effectiveAnyOf = computed(() => {
@@ -443,6 +488,7 @@ const anyOfOptions = computed(() => {
 
   return options;
 });
+
 const selectedSchema = computed(() => {
   const options = effectiveAnyOf.value;
   if (!options || isEmptyArray(options)) {
@@ -470,9 +516,10 @@ const handleAddListItem = () => {
     localValue.value = [];
   }
 
-  let option = 0;
+  const option = 0;
 
   let newItem: any;
+
   if (resolvedSchema.value?.items && resolvedSchema.value.items.anyOf) {
     newItem = { _optionSelected: option };
     const selectedSchema =
@@ -499,17 +546,12 @@ const handleAddListItem = () => {
 watch(
   localValue,
   (newVal) => {
-    if (isNil(newVal)) {
-      if (resolvedSchema.value?.type === "object") {
-        setNestedValue(props.model, props.path, { _optionSelected: newVal });
-      }
+    if (isNil(newVal) && resolvedSchema.value?.type === "object") {
+      return setNestedValue(props.model, props.path, {
+        _optionSelected: newVal,
+      });
     }
-  },
-  { immediate: true },
-);
-watch(
-  localValue,
-  (newVal) => {
+
     if (Array.isArray(newVal)) {
       newVal.forEach((item) => {
         if (item && isPlainObject(item) && isUndefined(item._optionSelected)) {

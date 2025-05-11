@@ -53,3 +53,39 @@ export const extractLetterPrefix = (value: string) => {
   const match = value.match(re);
   return match ? match[1] : null;
 };
+
+export function splitStringByWhitespace(
+  input: string,
+  maxLength: number,
+): string[] {
+  if (maxLength <= 0) {
+    throw new Error("maxLength must be a positive integer.");
+  }
+
+  const words = input.split(/\s+/);
+  const result: string[] = [];
+  let currentPiece = "";
+
+  for (const word of words) {
+    if (word.length > maxLength) {
+      throw new Error(
+        `The word "${word}" exceeds the maximum allowed length of ${maxLength}.`,
+      );
+    }
+
+    const appended = currentPiece ? currentPiece + " " + word : word;
+
+    if (appended.length > maxLength) {
+      result.push(currentPiece);
+      currentPiece = word;
+    } else {
+      currentPiece = appended;
+    }
+  }
+
+  if (currentPiece) {
+    result.push(currentPiece);
+  }
+
+  return result;
+}

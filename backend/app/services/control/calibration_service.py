@@ -5,10 +5,10 @@ from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.config import (
     AngularServoConfig,
-    DCMotorConfig,
     GPIOAngularServoConfig,
+    GPIODCMotorConfig,
     HardwareConfig,
-    HBridgeMotorConfig,
+    I2CDCMotorConfig,
 )
 from robot_hat import constrain
 from robot_hat.motor.config import MotorDirection
@@ -170,8 +170,8 @@ class CalibrationService(metaclass=SingletonMeta):
             ]:
                 motor: Optional["MotorABC"] = getattr(self.px, motor_name)
                 self.config.left_motor
-                motor_config: Union[DCMotorConfig, HBridgeMotorConfig, None] = getattr(
-                    self.config, motor_name
+                motor_config: Union[GPIODCMotorConfig, I2CDCMotorConfig, None] = (
+                    getattr(self.config, motor_name)
                 )
                 if motor and motor_config:
                     motor_config.calibration_direction = motor.direction
@@ -180,32 +180,6 @@ class CalibrationService(metaclass=SingletonMeta):
         self.logger.info("Saving config: %s", data)
         self.config = HardwareConfig(**data)
         self._sync_config()
-
-        for servo_name in [
-            "steering_servo",
-            "cam_tilt_servo",
-            "cam_pan_servo",
-        ]:
-            servo: "ServoService" = getattr(self.px, servo_name)
-            servo_config: Union[GPIOAngularServoConfig, AngularServoConfig, None] = (
-                getattr(self.config, servo_name)
-            )
-
-            if servo and servo_config:
-                servo_config.calibration_offset = servo.calibration_offset
-
-        if self.px.motor_controller:
-            for motor_name in [
-                "left_motor",
-                "right_motor",
-            ]:
-                motor: Optional["MotorABC"] = getattr(self.px, motor_name)
-                self.config.left_motor
-                motor_config: Union[DCMotorConfig, HBridgeMotorConfig, None] = getattr(
-                    self.config, motor_name
-                )
-                if motor and motor_config:
-                    motor_config.calibration_direction = motor.direction
 
         return self.save_calibration()
 

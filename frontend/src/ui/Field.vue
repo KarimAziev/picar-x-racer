@@ -5,7 +5,7 @@
       <TooltipHelp v-if="tooltipHelp" :tooltip="tooltipHelp" />
     </span>
     <slot></slot>
-    <span class="bg-transparent text-red-500 text-sm">
+    <span class="bg-transparent text-red-500 text-sm" v-if="message">
       {{ message }}
     </span>
   </div>

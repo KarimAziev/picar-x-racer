@@ -3,7 +3,14 @@ from typing import Literal, Optional, Union
 
 from app.core.logger import Logger
 from app.schemas.distance import UltrasonicConfig
-from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    WithJsonSchema,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 from robot_hat import MotorDirection, ServoCalibrationMode
 from robot_hat.drivers.adc.INA219 import ADCResolution, BusVoltageRange, Gain, Mode
 from robot_hat.drivers.adc.sunfounder_adc import (
@@ -31,6 +38,7 @@ MotorDirectionField = Annotated[
         ge=-1,
         le=1,
         description="Initial motor direction calibration (+1/-1)",
+        json_schema_extra={"type": "motor_direction"},
         examples=[1, -1],
     ),
 ]
@@ -44,6 +52,53 @@ AddressField = Annotated[
         examples=[0x40, "0x40", 64],
         json_schema_extra={"type": "hex"},
     ),
+]
+
+ina219_adc_resolutions_options = [
+    {
+        "value": ADCResolution.ADCRES_9BIT_1S,
+        "label": "9-bit, 1 sample, 84µs",
+    },
+    {
+        "value": ADCResolution.ADCRES_10BIT_1S,
+        "label": "10-bit, 1 sample, 148µs",
+    },
+    {
+        "value": ADCResolution.ADCRES_11BIT_1S,
+        "label": "11-bit, 1 sample, 276µs",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_1S,
+        "label": "12-bit, 1 sample, 532µs",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_2S,
+        "label": "12-bit, 2 samples, 1.06ms",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_4S,
+        "label": "12-bit, 4 samples, 2.13ms",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_8S,
+        "label": "12-bit, 8 samples, 4.26ms",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_16S,
+        "label": "12-bit, 16 samples, 8.51ms",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_32S,
+        "label": "12-bit, 32 samples, 17.02ms",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_64S,
+        "label": "12-bit, 64 samples, 34.05ms",
+    },
+    {
+        "value": ADCResolution.ADCRES_12BIT_128S,
+        "label": "12-bit, 128 samples, 68.10ms",
+    },
 ]
 
 
@@ -84,7 +139,7 @@ class AddressModel(BaseModel):
 
 class PWMDriverConfig(AddressModel):
     """
-    Configuration for the driver class that enables control of the chip on the I2C bus.
+    The configuration parameters to control a PWM driver chip via the I2C bus.
     """
 
     name: Annotated[
@@ -101,7 +156,7 @@ class PWMDriverConfig(AddressModel):
         Field(
             ...,
             title="The I2C bus",
-            description="I2C bus number",
+            description="The I2C bus number used to communicate with the PWM driver chip. ",
             examples=[1, 4],
             ge=0,
         ),
@@ -110,8 +165,11 @@ class PWMDriverConfig(AddressModel):
         int,
         Field(
             ...,
-            title="The Frame Width",
-            description="The length of time in microseconds (µs) between servo control pulses.",
+            title="Frame Width in µs",
+            description="Determines the full cycle duration between servo control pulses in microseconds. "
+            "This value represents the period in which all servo channels are refreshed. "
+            "A typical servo expects a pulse every 20000 µs (20 ms), and altering this value can affect "
+            "the overall responsiveness and timing sensitivity of the servo's control signal.",
             examples=[20000],
             ge=1,
         ),
@@ -120,10 +178,13 @@ class PWMDriverConfig(AddressModel):
         int,
         Field(
             ...,
-            title="The PWM frequency",
-            description="The initial PWM frequency in Hz",
+            title="PWM frequency (Hz)",
+            description="The PWM frequency in Hertz which controls the granularity of the pulse width modulation. "
+            "Higher frequencies allow for more precise adjustments of the pulse width (duty cycle), "
+            "resulting in smoother and more accurate servo movements. Conversely, lower frequencies might lead "
+            "to coarser control.",
             examples=[50],
-            ge=0,
+            gt=0,
         ),
     ] = 50
 
@@ -132,62 +193,228 @@ class PWMDriverConfig(AddressModel):
 
 class INA219Config(BaseModel):
     """
-    Configuration for INA219 - a digital current sensor.
+    The configuration parameters for the INA219 digital current sensor.
 
-    Calibration-related values (current_lsb, calibration_value, power_lsb)
-    are tied to the shunt resistor and maximum current measurement range.
+    This configuration includes settings that determine the sensor's voltage range, gain (which governs
+    the sensitivity of the shunt voltage measurement), and ADC resolution for both the bus and shunt voltage
+    channels.
+
     """
 
     bus_voltage_range: Annotated[
         BusVoltageRange,
         Field(
-            ...,
-            title="Bus Voltage Range",
-            description="Voltage range for the sensor.",
-            examples=[BusVoltageRange.RANGE_32V, BusVoltageRange.RANGE_16V],
+            {
+                "title": "Bus Voltage Range",
+                "type": "select",
+                "description": "Defines the maximum voltage range measurable by the sensor. "
+                "Options must match your circuit design to avoid over-range measurements (e.g., 16V or 32V).",
+                "json_schema_extra": {
+                    "type": "select",
+                    "props": {
+                        "options": [
+                            {"value": BusVoltageRange.RANGE_16V, "label": "16V"},
+                            {"value": BusVoltageRange.RANGE_32V, "label": "32V"},
+                        ],
+                    },
+                },
+                "examples": [BusVoltageRange.RANGE_32V, BusVoltageRange.RANGE_16V],
+            }
         ),
     ] = BusVoltageRange.RANGE_32V
 
     gain: Annotated[
         Gain,
-        Field(
-            ...,
-            title="Gain Setting",
-            description=(
-                "Gain setting for the shunt voltage measurement. "
-                "Options: DIV_1_40MV, DIV_2_80MV, DIV_4_160MV, or DIV_8_320MV (default)."
-            ),
-            examples=[Gain.DIV_8_320MV],
+        WithJsonSchema(
+            {
+                "title": "Gain Setting",
+                "description": (
+                    "Gain setting for the shunt voltage measurement, "
+                    "affecting the sensor's sensitivity to small voltage drops."
+                ),
+                "type": "select",
+                "props": {
+                    "options": [
+                        {"value": Gain.DIV_1_40MV, "label": "1x gain, 40mV range"},
+                        {"value": Gain.DIV_2_80MV, "label": "2x gain, 80mV range"},
+                        {
+                            "value": Gain.DIV_4_160MV,
+                            "label": "4x gain, 160mV range",
+                        },
+                        {
+                            "value": Gain.DIV_8_320MV,
+                            "label": "8x gain, 320mV range",
+                        },
+                    ]
+                },
+                "examples": [Gain.DIV_8_320MV],
+            }
         ),
     ] = Gain.DIV_8_320MV
 
     bus_adc_resolution: Annotated[
         ADCResolution,
-        Field(
-            ...,
-            title="Bus ADC Resolution",
-            description="ADC resolution/averaging setting for bus voltage measurement.",
-            examples=[ADCResolution.ADCRES_12BIT_32S],
+        WithJsonSchema(
+            {
+                "title": "Bus ADC Resolution",
+                "type": "select",
+                "props": {
+                    "options": [
+                        {
+                            "value": ADCResolution.ADCRES_9BIT_1S,
+                            "label": "9-bit, 1 sample, 84µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_10BIT_1S,
+                            "label": "10-bit, 1 sample, 148µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_11BIT_1S,
+                            "label": "11-bit, 1 sample, 276µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_1S,
+                            "label": "12-bit, 1 sample, 532µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_2S,
+                            "label": "12-bit, 2 samples, 1.06ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_4S,
+                            "label": "12-bit, 4 samples, 2.13ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_8S,
+                            "label": "12-bit, 8 samples, 4.26ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_16S,
+                            "label": "12-bit, 16 samples, 8.51ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_32S,
+                            "label": "12-bit, 32 samples, 17.02ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_64S,
+                            "label": "12-bit, 64 samples, 34.05ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_128S,
+                            "label": "12-bit, 128 samples, 68.10ms",
+                        },
+                    ],
+                },
+                "description": "The ADC resolution and averaging for bus voltage measurements. "
+                "A higher resolution improves voltage accuracy but may affect sampling speed.",
+                "examples": [ADCResolution.ADCRES_12BIT_32S],
+            },
         ),
     ] = ADCResolution.ADCRES_12BIT_32S
 
     shunt_adc_resolution: Annotated[
         ADCResolution,
-        Field(
-            ...,
-            title="Shunt ADC Resolution",
-            description="ADC resolution/averaging setting for shunt voltage measurement.",
-            examples=[ADCResolution.ADCRES_12BIT_32S],
+        WithJsonSchema(
+            {
+                "title": "Shunt ADC Resolution",
+                "description": "The ADC resolution and averaging for shunt voltage measurements. "
+                "Higher resolution settings result in more precise current conversion.",
+                "examples": [ADCResolution.ADCRES_12BIT_32S],
+                "type": "select",
+                "props": {
+                    "options": [
+                        {
+                            "value": ADCResolution.ADCRES_9BIT_1S,
+                            "label": "9-bit, 1 sample, 84µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_10BIT_1S,
+                            "label": "10-bit, 1 sample, 148µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_11BIT_1S,
+                            "label": "11-bit, 1 sample, 276µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_1S,
+                            "label": "12-bit, 1 sample, 532µs",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_2S,
+                            "label": "12-bit, 2 samples, 1.06ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_4S,
+                            "label": "12-bit, 4 samples, 2.13ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_8S,
+                            "label": "12-bit, 8 samples, 4.26ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_16S,
+                            "label": "12-bit, 16 samples, 8.51ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_32S,
+                            "label": "12-bit, 32 samples, 17.02ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_64S,
+                            "label": "12-bit, 64 samples, 34.05ms",
+                        },
+                        {
+                            "value": ADCResolution.ADCRES_12BIT_128S,
+                            "label": "12-bit, 128 samples, 68.10ms",
+                        },
+                    ]
+                },
+            }
         ),
     ] = ADCResolution.ADCRES_12BIT_32S
 
     mode: Annotated[
         Mode,
-        Field(
-            default=Mode.SHUNT_AND_BUS_CONTINUOUS,
-            title="Operating Mode",
-            description="Operating mode setting for the sensor. Options include continuous and triggered modes.",
-            examples=[Mode.SHUNT_AND_BUS_CONTINUOUS],
+        WithJsonSchema(
+            {
+                "title": "Operating Mode",
+                "description": "Operating mode for the sensor (e.g., continuous measurement for "
+                "both bus and shunt voltages) to balance between immediate responsiveness and "
+                "power efficiency.",
+                "examples": [Mode.SHUNT_AND_BUS_CONTINUOUS],
+                "type": "select",
+                "props": {
+                    "options": [
+                        {"value": Mode.POWERDOWN, "label": "POWERDOWN"},
+                        {
+                            "value": Mode.SHUNT_VOLT_TRIGGERED,
+                            "label": "SHUNT_VOLT_TRIGGERED",
+                        },
+                        {
+                            "value": Mode.BUS_VOLT_TRIGGERED,
+                            "label": "BUS_VOLT_TRIGGERED",
+                        },
+                        {
+                            "value": Mode.SHUNT_AND_BUS_TRIGGERED,
+                            "label": "SHUNT_AND_BUS_TRIGGERED",
+                        },
+                        {"value": Mode.ADC_OFF, "label": "ADC_OFF"},
+                        {
+                            "value": Mode.SHUNT_VOLT_CONTINUOUS,
+                            "label": "SHUNT_VOLT_CONTINUOUS",
+                        },
+                        {
+                            "value": Mode.BUS_VOLT_CONTINUOUS,
+                            "label": "BUS_VOLT_CONTINUOUS",
+                        },
+                        {
+                            "value": Mode.SHUNT_AND_BUS_CONTINUOUS,
+                            "label": "SHUNT_AND_BUS_CONTINUOUS",
+                        },
+                    ]
+                },
+            }
         ),
     ] = Mode.SHUNT_AND_BUS_CONTINUOUS
 
@@ -196,10 +423,10 @@ class INA219Config(BaseModel):
         Field(
             ...,
             title="Current LSB (mA/bit)",
-            description=(
-                "Calibration parameter representing the current LSB "
-                "in milliamps per bit (e.g., 0.1 mA per bit). Must be positive."
-            ),
+            description="The conversion factor that translates the raw ADC reading "
+            "of the shunt voltage into a current measurement (in mA). "
+            "A smaller value increases measurement resolution, "
+            "which is crucial for detecting low currents accurately.",
             examples=[0.1],
             gt=0,
         ),
@@ -210,10 +437,8 @@ class INA219Config(BaseModel):
         Field(
             ...,
             title="Calibration Value",
-            description=(
-                "Calibration register value (a magic number based on the shunt resistor). "
-                "This should be a positive integer."
-            ),
+            description="The calibration register value computed based on "
+            "the shunt resistor characteristics and the expected maximum current. ",
             examples=[4096],
             gt=0,
         ),
@@ -224,12 +449,18 @@ class INA219Config(BaseModel):
         Field(
             ...,
             title="Power LSB (W/bit)",
-            description=(
-                "Calibration parameter representing the power LSB "
-                "in watts per bit (e.g., 0.002 W per bit). Must be positive."
-            ),
+            description="The conversion factor from the raw power register output into watts. "
+            "Derived from the current_lsb, it ensures that the calculated power "
+            "from the measured current and bus voltage is consistent with physical measurements.",
             examples=[0.002],
             gt=0,
+            json_schema_extra={
+                "props": {
+                    "step": 0.001,
+                    "minFractionDigits": 0,
+                    "maxFractionDigits": 6,
+                },
+            },
         ),
     ] = 0.002
 
@@ -341,6 +572,8 @@ class ServoConfig(BaseModel):
 
 
 class AngularServoConfig(ServoConfig):
+    """Configuration for servos driven via external PWM driver or HAT via I²C."""
+
     channel: Annotated[
         Union[str, int],
         Field(
@@ -362,14 +595,18 @@ class AngularServoConfig(ServoConfig):
 
 
 class GPIOAngularServoConfig(ServoConfig):
+    """
+    Configuration for servos driven directly via Raspberry Pi GPIO (without I²C and external PWM driver).
+    """
+
     pin: Annotated[
         Union[str, int],
         Field(
             ...,
             json_schema_extra={"type": "string_or_number"},
             title="GPIO PIN",
-            description="The GPIO PIN that the servo is connected to",
-            examples=["GPIO2", "GPIO3", 0, 1, 2],
+            description="Broadcom (BCM) pin number for the GPIO pins, as opposed to physical (BOARD) numbering.",
+            examples=["GPIO17", "GPIO27", 1, 2],
         ),
     ]
 
@@ -393,7 +630,7 @@ class MotorBaseConfig(BaseModel):
             title="Max speed",
             description="Maximum allowable speed for the motor.",
             examples=[100, 90],
-            ge=0,
+            gt=0,
         ),
     ]
 
@@ -401,13 +638,8 @@ class MotorBaseConfig(BaseModel):
     def validate_motor_config(self):
         """
         Ensure logical consistency in motor configuration:
-        - max_speed should be a positive integer.
         - calibration_direction should be either 1 or -1.
         """
-        if self.max_speed <= 0:
-            raise ValueError(
-                f"`max_speed` must be greater than 0 for motor '{self.name}'."
-            )
         if self.calibration_direction not in [1, -1]:
             raise ValueError(
                 f"`calibration_direction` for motor '{self.name}' must be either 1 or -1."
@@ -415,10 +647,9 @@ class MotorBaseConfig(BaseModel):
         return self
 
 
-class HBridgeMotorConfig(MotorBaseConfig):
+class I2CDCMotorConfig(MotorBaseConfig):
     """
-    HBridgeMotor is used when you want to control the motor using an external or
-    abstracted PWM driver (often over I²C).
+    The configuration for the motor, which is controlled via a PWM driver over I²C.
     """
 
     driver: Annotated[
@@ -453,15 +684,13 @@ class HBridgeMotorConfig(MotorBaseConfig):
     ]
 
 
-class DCMotorConfig(MotorBaseConfig):
+class GPIODCMotorConfig(MotorBaseConfig):
     """
-    The DCMotor class is intended for cases where a motor is controlled directly via
-    GPIO pins.
+    The configuration for the motor, which is controlled without I²C.
 
-    It is suitable when the motor driver board (e.g., a Waveshare/MC33886-based module)
-    does not require or use an external PWM driver and is controlled entirely through
-    direct GPIO calls.
-
+    It is suitable when the motor driver board, for example, a Waveshare/MC33886-based
+    module, does not require or use an external PWM driver and is controlled entirely
+    through direct GPIO calls.
     """
 
     forward_pin: Annotated[
@@ -507,7 +736,7 @@ class DCMotorConfig(MotorBaseConfig):
 
 class LedConfig(BaseModel):
     """
-    A model to represent the LED configuration.
+    The configuration for the single LED.
     """
 
     name: Annotated[
@@ -545,12 +774,17 @@ class LedConfig(BaseModel):
             default=26,
             json_schema_extra={"type": "string_or_number"},
             description="The GPIO pin number for the LED.",
-            examples=[26, "D14"],
+            examples=[26],
         ),
     ]
 
 
-class UPS_S3Config(AddressModel):
+class INA219BatteryDriverConfig(AddressModel):
+    """
+    The settings for configuring an INA219-based current and voltage sensor driver (e.g.
+    the UPS Module 3S from Waveshare).
+    """
+
     driver_type: Annotated[
         Literal["INA219"],
         Field(..., title="Driver type", frozen=True),
@@ -560,7 +794,7 @@ class UPS_S3Config(AddressModel):
         Field(
             ...,
             title="INA219 config",
-            description="Configuration for INA219",
+            description="The configuration parameters for the INA219 digital current sensor.",
         ),
     ] = INA219Config()
     address: AddressField = 0x41
@@ -570,7 +804,7 @@ class UPS_S3Config(AddressModel):
         Field(
             ...,
             title="The I2C bus",
-            description="I2C bus number",
+            description="The I2C bus number used to communicate with the driver chip. ",
             examples=[1, 4],
             ge=0,
         ),
@@ -578,6 +812,10 @@ class UPS_S3Config(AddressModel):
 
 
 class SunfounderBatteryConfig(AddressModel):
+    """
+    The settings for configuring battery and power monitoring for Sunfounder's Robot HAT.
+    """
+
     driver_type: Annotated[
         Literal["Sunfounder"],
         Field(..., title="Driver type", frozen=True),
@@ -616,6 +854,11 @@ class SunfounderBatteryConfig(AddressModel):
 
 
 class BatteryConfig(BaseModel):
+    """
+    The settings for configuring battery and power monitoring.
+    """
+
+    enabled: EnabledField = True
 
     full_voltage: Annotated[
         float, Field(..., description="The maximum voltage.", examples=[8.4])
@@ -643,7 +886,8 @@ class BatteryConfig(BaseModel):
     ]
 
     driver: Annotated[
-        Union[SunfounderBatteryConfig, UPS_S3Config], Field(discriminator="driver_type")
+        Union[SunfounderBatteryConfig, INA219BatteryDriverConfig],
+        Field(discriminator="driver_type"),
     ] = SunfounderBatteryConfig()
 
     @model_validator(mode="after")
@@ -662,7 +906,7 @@ class BatteryConfig(BaseModel):
 
 class HardwareConfig(BaseModel):
     """
-    Configuration model for specifying motors and servos in a robotic system.
+    The configuration for the robot components and sensors.
     """
 
     steering_servo: Annotated[
@@ -689,8 +933,9 @@ class HardwareConfig(BaseModel):
             description="Configuration for the camera tilt servo.",
         ),
     ] = None
+
     left_motor: Annotated[
-        Union[DCMotorConfig, HBridgeMotorConfig, None],
+        Union[GPIODCMotorConfig, I2CDCMotorConfig, None],
         Field(
             ...,
             title="Left Motor",
@@ -698,7 +943,7 @@ class HardwareConfig(BaseModel):
         ),
     ] = None
     right_motor: Annotated[
-        Union[DCMotorConfig, HBridgeMotorConfig, None],
+        Union[GPIODCMotorConfig, I2CDCMotorConfig, None],
         Field(
             ...,
             title="Right Motor",
@@ -719,8 +964,8 @@ class HardwareConfig(BaseModel):
         Union[UltrasonicConfig, None],
         Field(
             ...,
-            title="Ultrasonic",
-            description="Configuration for the ultrasonic.",
+            title="Distance sensor",
+            description="Configuration for the distance sensor.",
         ),
     ] = None
 

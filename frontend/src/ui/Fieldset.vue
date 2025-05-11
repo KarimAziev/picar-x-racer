@@ -5,6 +5,9 @@
     :collapsed="isCollapsed"
     @update:collapsed="handleUpdateCollapsed"
   >
+    <template #legend="scope" v-if="$slots.legend">
+      <slot name="legend" :toggleCallback="scope.toggleCallback" />
+    </template>
     <slot></slot>
   </FieldsetPrimevue>
 </template>

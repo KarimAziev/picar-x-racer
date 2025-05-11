@@ -1,25 +1,27 @@
 <template>
   <div v-if="loading"><ProgressSpinner /></div>
-
-  <RecursiveField
+  <JsonSchema
     v-else-if="store.config"
     v-for="(propSchema, propName) in store.config.properties"
+    :level="0"
     :schema="propSchema"
     :model="store.data"
     :path="[propName]"
     :defs="store.config['$defs']"
     :idPrefix="`${idPrefix}-${propName}`"
   />
-
-  <div class="flex gap-2 justify-self-start mt-2">
-    <Button
-      @click="handleConfirm($event)"
-      size="small"
-      severity="danger"
-      label="Save"
-      class="w-fit"
-    />
-  </div>
+  <Teleport to="#settings-footer">
+    <span class="flex gap-2 justify-self-start">
+      <Button
+        :disabled="loading"
+        size="small"
+        label="Save"
+        type="submit"
+        @click="handleConfirm($event)"
+        class="w-fit"
+      />
+    </span>
+  </Teleport>
   <ConfirmPopup group="hardware">
     <template #message="slotProps">
       <div
@@ -45,7 +47,7 @@ import ProgressSpinner from "primevue/progressspinner";
 import { useConfirm } from "primevue/useconfirm";
 import { useRobotStore } from "@/features/settings/stores";
 import { useControllerStore } from "@/features/controller/store";
-import RecursiveField from "@/ui/RecursiveField.vue";
+import JsonSchema from "@/ui/JsonSchema/JsonSchema.vue";
 
 defineProps<{ idPrefix: string }>();
 
@@ -79,7 +81,6 @@ const loading = ref(true);
 onMounted(async () => {
   loading.value = true;
   await store.fetchFieldsConfig();
-  await store.fetchData();
   loading.value = false;
 });
 </script>

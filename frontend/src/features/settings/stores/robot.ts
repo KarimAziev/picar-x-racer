@@ -3,8 +3,8 @@ import axios from "axios";
 import { useMessagerStore } from "@/features/messager";
 import type { Nullable } from "@/util/ts-helpers";
 import { makeUrl } from "@/util/url";
-import { JSONSchema } from "@/features/controller/interface";
 import { Battery } from "@/features/settings/interface";
+import type { JSONSchema } from "@/ui/JsonSchema/interface";
 
 export interface Field {
   type: string | string[];

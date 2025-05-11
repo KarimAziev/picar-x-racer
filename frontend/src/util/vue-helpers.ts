@@ -37,10 +37,13 @@ export function defineComponents<
   Comps extends Record<string, Component>,
   P extends keyof Comps,
   PropsOptions extends {
-    [K in P as K]: GetComponentProps<Comps[K]>;
+    [K in P as K]: Partial<GetComponentProps<Comps[K]>>;
   },
   Result extends {
-    [K in P as K]: { props: GetComponentProps<Comps[K]>; comp: Comps[K] };
+    [K in P as K]: {
+      props: Partial<GetComponentProps<Comps[K]>>;
+      comp: Comps[K];
+    };
   },
 >(comps: Comps, options: PropsOptions): Result {
   return Object.keys(options).reduce((acc, key) => {
