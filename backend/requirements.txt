@@ -1,5 +1,5 @@
 numpy==1.26.4
-robot-hat>=1.7.5
+git+https://github.com/KarimAziev/robot-hat.git@dev#egg=robot_hat
 google_speech_pyplay
 pandas
 colorlog
