@@ -178,11 +178,11 @@ export const useControllerStore = defineStore("controller", {
             break;
 
           case "updateCalibration":
-            robotStore.$patch({ data: payload });
+            robotStore.data = payload;
             break;
 
           case "saveCalibration":
-            robotStore.$patch({ data: payload });
+            robotStore.data = payload;
             this.calibrationMode = false;
             messager.info(`Calibration saved`);
             break;
