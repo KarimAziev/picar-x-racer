@@ -1,132 +1,229 @@
+from __future__ import annotations
+
 import math
-from typing import Optional
+from typing import List, Optional
 
 from app.core.px_logger import Logger
-
-logger = Logger(__name__)
+from app.util.speed import max_speed_loaded_kmh
 
 
 class SpeedEstimator:
-    def __init__(self) -> None:
-        """
-        Initialize the SpeedEstimator with default Kalman filter parameters and state.
+    """
+    Kalman-based ground-speed estimator.
 
-        Internal variables:
-            x: The current state estimate (filtered distance value).
-                Initialized as None. When the first measurement arrives, it is set to that value.
-            P: The error covariance of the estimate.
-                It represents the uncertainty of the state estimate. It is initialized as None and
-                then set to an initial value (1.0) with the first measurement.
-            Q: The process noise covariance.
-                It quantifies the uncertainty in the process (i.e., the inherent randomness in the
-                motion or state transition). A smaller Q indicates a higher trust in the model.
-            R: The measurement noise covariance.
-                It represents the expected noise in the sensor measurements.
-        """
-        self.previous_filtered_distance: Optional[float] = None
+    State vector:
+        x = [distance_cm,
+             velocity_cm_s]
 
-        self.x: Optional[float] = None
-        self.P: Optional[float] = None
+    Motion model (constant velocity):
+        distance_k = distance_{k-1} + velocity_{k-1} * dt + w_d
+        velocity_k = velocity_{k-1}                    + w_v
 
-        self.Q = 0.1
-        self.R = 1.0
+    Only the distance is directly measured by the ultrasonic
+    sensor, hence H = [1  0].
 
-    def kalman_update(self, measurement: float) -> float:
-        """
-        Apply the Kalman filter measurement update step.
+    All matrix math is done manually (2×2) to avoid external deps.
+    """
 
-        For the first measurement, initialize the state estimate (x) to the measurement
-        and set the error covariance (P).
+    def __init__(
+        self,
+        *,
+        # parameters for theoretical max-speed check, see `max_speed_loaded_kmh`
+        mass_kg: float = 0.9,
+        wheel_diameter_mm: float = 65,
+        stall_torque_kgcm: float = 0.8,
+        wheel_rpm_nominal: float = 170,
+        supply_voltage: float = 6.0,
+        ref_voltage: float = 3.6,
+        n_motors: int = 2,
+        c_rr: float = 0.02,
+        # Kalman noise defaults
+        sigma_position_cm: float = 2.0,  # sensor  σ  (≈ 20 mm)
+        sigma_speed_cm_s: float = 10.0,  # process σ for speed
+        idle_threshold_cm_s: float = 5.0,
+    ) -> None:
+        self.log = Logger(__name__)
 
-        For subsequent measurements, calculate the predicted error covariance (P_pred)
-        by adding the process noise (Q) to the current covariance (P), compute the
-        Kalman gain (K) as P_pred divided by (P_pred + R), and then update the state
-        estimate (x) and covariance (P) using the measurement.
-        """
-        if self.x is None:
-            self.x = measurement
-            self.P = 1.0
-        else:
-            assert self.P is not None, "self.P should not be None here."
-            P_pred = self.P + self.Q
+        # -------- maximum physically achievable speed (for sanity gate)
+        max_kmh = max_speed_loaded_kmh(
+            mass_kg=mass_kg,
+            wheel_diameter_mm=wheel_diameter_mm,
+            stall_torque_kgcm=stall_torque_kgcm,
+            rpm_no_load_ref=wheel_rpm_nominal,
+            voltage=supply_voltage,
+            ref_voltage=ref_voltage,
+            n_motors=n_motors,
+            c_rr=c_rr,
+        )
+        #  +20 %
+        self._max_speed_cm_s_physical = max_kmh * 1000 / 3.6 * 1.2
+        self._idle_threshold_cm_s = idle_threshold_cm_s
+        self.log.info("Max speed physical is %s", self._max_speed_cm_s_physical)
 
-            K = P_pred / (P_pred + self.R)
-            self.x = self.x + K * (measurement - self.x)
-            self.P = (1 - K) * P_pred
+        # -------- Kalman matrices (will be scaled per-step)
+        self._Q_base = [
+            [sigma_position_cm**2, 0.0],
+            [0.0, sigma_speed_cm_s**2],
+        ]
+        self._R_base = sigma_position_cm**2
 
-        return self.x
+        # -------- dynamic state (None until first measurement)
+        self._x: Optional[List[float]] = None  # [pos, vel]
+        self._P: Optional[List[List[float]]] = None  # 2×2 covariance
+        self._dt_prev: Optional[float] = None
 
-    def reset(self):
-        """
-        Reset the internal state of the Kalman filter by clearing previous measurements and estimates.
-        """
-        self.previous_filtered_distance = None
-        self.x = None
-        self.P = None
+    @staticmethod
+    def _mat_add(a, b):
+        return [
+            [a[0][0] + b[0][0], a[0][1] + b[0][1]],
+            [a[1][0] + b[1][0], a[1][1] + b[1][1]],
+        ]
+
+    @staticmethod
+    def _mat_mul(a, b):
+        return [
+            [
+                a[0][0] * b[0][0] + a[0][1] * b[1][0],
+                a[0][0] * b[0][1] + a[0][1] * b[1][1],
+            ],
+            [
+                a[1][0] * b[0][0] + a[1][1] * b[1][0],
+                a[1][0] * b[0][1] + a[1][1] * b[1][1],
+            ],
+        ]
+
+    @staticmethod
+    def _mat_vec_mul(a, v):
+        return [
+            a[0][0] * v[0] + a[0][1] * v[1],
+            a[1][0] * v[0] + a[1][1] * v[1],
+        ]
+
+    @staticmethod
+    def _transpose(a):
+        return [[a[0][0], a[1][0]], [a[0][1], a[1][1]]]
+
+    def reset(self) -> None:
+        """Clear Kalman state - call when the sensor stops/resets."""
+        self._x = None
+        self._P = None
+        self._dt_prev = None
 
     def process_distance(
         self,
         current_distance: float,
         interval: float,
+        *,
         relative_speed: int,
     ) -> Optional[float]:
         """
-        Process a distance measurement and estimate speed in km/h by
-        using a simple Kalman filter to smooth the raw sensor reading.
-        The calculation is based on the difference between consecutive
-        filtered distance values.
+        Update estimator with a new ultrasonic reading.
 
-        Args:
-            current_distance: Current distance reading from the sensor (in centimeters).
-                              A value of -1 indicates a failed reading.
-            interval: The time interval between successive measurements (in seconds).
-            relative_speed: Commanded relative speed (0-100% of capabilities).
+        Parameters
+        ----------
+        current_distance : float
+            Raw HC-SR04 measurement in **cm** (-1/-2 means invalid).
+        interval : float
+            Elapsed time since previous measurement, in **seconds**.
+        relative_speed : int
+            User-commanded throttle 0-100 %. Used only for plausibility checks.
 
-        Returns:
-            Estimated speed in km/h (truncated to one decimal) or None if the reading failed.
+        Returns
+        -------
+        Optional[float]
+            Estimated speed in **km/h**, truncated to one decimal
+            (None if not enough data or reading invalid).
         """
-        if current_distance == -1:
-            logger.warning(
-                "Failed distance reading (value=-1). Skipping speed estimation."
-            )
+        # ------------- discard unusable values
+        if current_distance in (-1, -2) or not 0.0 < current_distance < 600.0:
+            self.log.debug("Invalid distance: %.2f cm - skipped.", current_distance)
+            return None
+        if interval <= 0:
+            self.log.warning("Non-positive dt %.4fs - skipped.", interval)
             return None
 
-        filtered_distance = self.kalman_update(current_distance)
+        if self._x is None:
+            self._x = [current_distance, 0.0]
+            self._P = [
+                [self._R_base, 0.0],
+                [0.0, 500.0],  # very uncertain velocity
+            ]
+            self._dt_prev = interval
+            return None  # need at least 2 points
 
-        estimated_speed: Optional[float] = None
-        if self.previous_filtered_distance is not None and interval > 0:
-            speed_cm_s = (
-                abs(filtered_distance - self.previous_filtered_distance) / interval
+        assert self._P is not None
+        dt = interval
+
+        # predict
+        F = [[1.0, dt], [0.0, 1.0]]
+
+        x_pred = self._mat_vec_mul(F, self._x)
+
+        # scale process noise with dt
+        Q = [
+            [self._Q_base[0][0] * dt * dt, 0.0],
+            [0.0, self._Q_base[1][1] * dt],
+        ]
+        P_pred = self._mat_add(
+            self._mat_mul(self._mat_mul(F, self._P), self._transpose(F)),
+            Q,
+        )
+
+        z = current_distance
+        H = [1.0, 0.0]
+
+        y = z - (H[0] * x_pred[0] + H[1] * x_pred[1])  # innovation
+
+        R = self._measurement_variance_cm2(relative_speed)
+        S = P_pred[0][0] + R  # scalar
+        K0 = P_pred[0][0] / S  # Kalman gain (position row)
+        K1 = P_pred[1][0] / S  # Kalman gain (velocity row)
+
+        self._x = [
+            x_pred[0] + K0 * y,
+            x_pred[1] + K1 * y,
+        ]
+
+        # covariance update (I - K H) P
+        KH00 = K0 * H[0]
+        KH10 = K1 * H[0]
+        self._P = [
+            [(1 - KH00) * P_pred[0][0], (1 - KH00) * P_pred[0][1]],
+            [-KH10 * P_pred[0][0] + P_pred[1][0], -KH10 * P_pred[0][1] + P_pred[1][1]],
+        ]
+
+        speed_cm_s = abs(self._x[1])
+
+        commanded_cm_s = (relative_speed / 100.0) * self._max_speed_cm_s_physical
+
+        # ---------------------------------------------------------------- 0) Idle-gate
+        if commanded_cm_s == 0.0 and speed_cm_s < self._idle_threshold_cm_s:
+            speed_cm_s = 0.0
+
+        if speed_cm_s > self._max_speed_cm_s_physical:
+            self.log.debug(
+                "Speed %.1f cm/s above physical limit %.1f cm/s → clamped.",
+                speed_cm_s,
+                self._max_speed_cm_s_physical,
             )
-            estimated_speed = speed_cm_s * 0.036
+            speed_cm_s = self._max_speed_cm_s_physical
 
-            max_speed_kmph = 100.0
-            expected_speed = (relative_speed / 100.0) * max_speed_kmph
-
-            if abs(estimated_speed - expected_speed) > (0.3 * expected_speed):
-                logger.debug(
-                    "Measured speed (%skm/h) deviates significantly from commanded speed (%skm/h).",
-                    estimated_speed,
-                    expected_speed,
+        if commanded_cm_s > self._idle_threshold_cm_s:
+            if abs(speed_cm_s - commanded_cm_s) > 0.4 * commanded_cm_s:
+                self.log.debug(
+                    "Speed %.1f cm/s deviates from command %.1f cm/s → blended.",
+                    speed_cm_s,
+                    commanded_cm_s,
                 )
+                speed_cm_s = 0.5 * speed_cm_s + 0.5 * commanded_cm_s
 
-        self.previous_filtered_distance = filtered_distance
+        speed_kmh = speed_cm_s * 0.036
+        return math.trunc(speed_kmh * 10) / 10.0
 
-        truncated_speed = (
-            (math.trunc(estimated_speed * 10) / 10)
-            if estimated_speed is not None
-            else None
-        )
-
-        logger.debug(
-            "speed=%skm/h, previous filtered=%.2f -> current filtered=%.2f",
-            truncated_speed,
-            (
-                self.previous_filtered_distance
-                if self.previous_filtered_distance is not None
-                else 0
-            ),
-            filtered_distance,
-        )
-
-        return truncated_speed
+    def _measurement_variance_cm2(self, relative_speed: int) -> float:
+        """
+        Inflate measurement noise with motor RPM (simple heuristic):
+        +3 % variance per 1 % throttle.
+        """
+        factor = 1.0 + 0.03 * max(0, min(relative_speed, 100))
+        return self._R_base * factor * factor

@@ -81,8 +81,8 @@ class CarService(metaclass=SingletonMeta):
         Returns key metrics of the current state as a dictionary.
 
         The returned dictionary contains:
-        - "speed": Current speed.
-        - "maxSpeed": The maximum allowed speed.
+        - "speed": Current speed from 0 to 100%.
+        - "maxSpeed": The maximum allowed speed from 0 to 100%.
         - "direction": Current travel direction.
         - "servoAngle": Current servo direction angle.
         - "camPan": Current camera pan angle.
