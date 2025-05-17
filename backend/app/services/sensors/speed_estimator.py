@@ -56,9 +56,13 @@ class SpeedEstimator:
             c_rr=c_rr,
         )
         #  +20 %
-        self._max_speed_cm_s_physical = max_kmh * 1000 / 3.6 * 1.2
+        self._max_speed_cm_s_physical = max_kmh / 3.6 * 100 * 1.2
         self._idle_threshold_cm_s = idle_threshold_cm_s
-        self.log.info("Max speed physical is %s", self._max_speed_cm_s_physical)
+        self.log.info(
+            "Max speed physical %.1fkm/h, with +20 percents %.1fcm/s",
+            max_kmh,
+            self._max_speed_cm_s_physical,
+        )
 
         # -------- Kalman matrices (will be scaled per-step)
         self._Q_base = [
