@@ -218,7 +218,15 @@ class SpeedEstimator:
                 speed_cm_s = 0.5 * speed_cm_s + 0.5 * commanded_cm_s
 
         speed_kmh = speed_cm_s * 0.036
-        return math.trunc(speed_kmh * 10) / 10.0
+        final_result = math.trunc(speed_kmh * 10) / 10.0
+        self.log.debug(
+            "Final estimated speed=%skm/h, relative_speed=%s, interval=%s",
+            final_result,
+            relative_speed,
+            interval,
+        )
+
+        return final_result
 
     def _measurement_variance_cm2(self, relative_speed: int) -> float:
         """
