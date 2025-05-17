@@ -65,7 +65,6 @@ class MusicService(metaclass=SingletonMeta):
         self.stop_event = asyncio.Event()
         self.play_task: Optional[asyncio.Task] = None
         self.pygame = pygame
-        self.pygame_mixer_ensure()
 
     def get_current_position(self) -> Union[int, float]:
         """
