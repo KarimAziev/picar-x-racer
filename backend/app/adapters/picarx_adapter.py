@@ -1,5 +1,4 @@
-import os
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
@@ -10,15 +9,14 @@ from app.schemas.config import (
     GPIODCMotorConfig,
     HardwareConfig,
     I2CDCMotorConfig,
+    PhaseMotorConfig,
 )
 from app.types.car import PicarState
-from gpiozero import GPIOPinInUse, PinInvalidPin, PinPWMUnsupported
-from robot_hat import MotorService, Pin, ServoService, SMBus
-from robot_hat.drivers.pwm.pca9685 import PCA9685
-from robot_hat.drivers.pwm.sunfounder_pwm import SunfounderPWM
-from robot_hat.motor.dc_motor import DCMotor
-from robot_hat.motor.motor import HBridgeMotor
-from robot_hat.motor.motor_abc import MotorABC
+from robot_hat import MotorService, ServoService
+from robot_hat.factories.motor_factory import MotorFactory
+from robot_hat.factories.pwm_factory import PWMFactory
+from robot_hat.i2c.smbus_manager import SMBusManager
+from robot_hat.interfaces.motor_abc import MotorABC
 from robot_hat.services.motor_service import MotorServiceDirection
 from robot_hat.servos.gpio_angular_servo import GPIOAngularServo
 from robot_hat.servos.servo import Servo
@@ -30,21 +28,14 @@ if TYPE_CHECKING:
 
 
 class PicarxAdapter(metaclass=SingletonMeta):
-    pwm_drivers: Dict[str, Union[Type[PCA9685], Type[SunfounderPWM]]] = {
-        "PCA9685": PCA9685,
-        "Sunfounder": SunfounderPWM,
-    }
 
-    def __init__(
-        self,
-        config_manager: "JsonDataManager",
-    ):
+    def __init__(self, config_manager: "JsonDataManager", smbus_manager: SMBusManager):
         self.config_manager = config_manager
+        self.smbus_manager = smbus_manager
         self.init_hardware()
 
     def init_hardware(self):
         self.config = HardwareConfig(**self.config_manager.load_data())
-        self.smbus = SMBus(1)
         logger.debug("init_hardware config=%s", self.config)
 
         self.cam_pan_servo = (
@@ -80,83 +71,19 @@ class PicarxAdapter(metaclass=SingletonMeta):
         )
 
     def _make_motor(
-        self, motor_config: Union[I2CDCMotorConfig, GPIODCMotorConfig]
+        self, motor_config: Union[I2CDCMotorConfig, GPIODCMotorConfig, PhaseMotorConfig]
     ) -> Optional[MotorABC]:
-
-        handlers = {
-            GPIODCMotorConfig: self._make_gpio_motor,
-            I2CDCMotorConfig: self._make_i2c_motor,
-        }
-
-        for config_type, handler in handlers.items():
-            if isinstance(motor_config, config_type):
-                try:
-                    return handler(motor_config)
-                except (GPIOPinInUse, PinPWMUnsupported, PinInvalidPin) as err:
-                    logger.error(
-                        "Failed to initialize motor '%s': %s", motor_config.name, err
-                    )
-                    return None
-                except Exception as err:
-                    logger.error(
-                        "Failed to initialize motor '%s'",
-                        motor_config.name,
-                        err,
-                        exc_info=True,
-                    )
-                    return None
-
-        logger.warning("Passed unsupported motor config %s", motor_config)
-        return None
-
-    def _make_gpio_motor(self, cfg: GPIODCMotorConfig) -> MotorABC:
-        logger.debug("Initializing GPIO DC motor %s", cfg)
-        pwm_value = (
-            False  # disable pwm for the gpiozero.mock implementation
-            if os.getenv("GPIOZERO_PIN_FACTORY") == "mock"
-            else cfg.pwm
-        )
-        return DCMotor(
-            forward_pin=cfg.forward_pin,
-            backward_pin=cfg.backward_pin,
-            pwm_pin=cfg.enable_pin,
-            calibration_direction=cfg.calibration_direction,
-            max_speed=cfg.max_speed,
-            name=cfg.name,
-            pwm=pwm_value,
-        )
-
-    def _make_i2c_motor(self, cfg: I2CDCMotorConfig) -> MotorABC:
-        logger.debug("Initializing HBridge motor %s", cfg)
-        if not self.smbus:
-            raise ValueError("No SMBus")
-        driver_cls = self.pwm_drivers[cfg.driver.name]
-        driver = driver_cls(
-            bus=self.smbus,
-            address=cfg.driver.addr_int,
-            frame_width=cfg.driver.frame_width or 20000,
-        )
-        return HBridgeMotor(
-            channel=cfg.channel,
-            driver=driver,
-            frequency=cfg.driver.freq,
-            dir_pin=Pin(cfg.dir_pin),
-            calibration_direction=cfg.calibration_direction,
-            max_speed=cfg.max_speed,
-        )
+        data_class = motor_config.to_dataclass()
+        return MotorFactory.create_motor(data_class)
 
     def _make_servo(
         self, servo_config: Union[GPIOAngularServoConfig, AngularServoConfig]
     ) -> ServoService:
         if isinstance(servo_config, AngularServoConfig):
-            if not self.smbus:
-                raise ValueError("No SMBus")
-            driver_cls = self.pwm_drivers[servo_config.driver.name]
 
-            driver = driver_cls(
-                bus=self.smbus,
-                address=servo_config.driver.addr_int,
-                frame_width=servo_config.driver.frame_width or 20000,
+            driver = PWMFactory.create_pwm_driver(
+                bus=self.smbus_manager.get_bus(servo_config.driver.bus),
+                config=servo_config.driver.to_dataclass(),
             )
 
             servo = Servo(
@@ -429,9 +356,8 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 except Exception as e:
                     logger.error("Error closing servo %s", e)
 
-        if self.smbus:
+        if self.smbus_manager:
             try:
-                self.smbus.close()
+                self.smbus_manager.close_all()
             except Exception as err:
                 logger.error("Error closing smbus: %s", err)
-            self.smbus = None

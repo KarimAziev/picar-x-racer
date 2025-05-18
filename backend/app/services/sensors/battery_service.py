@@ -12,12 +12,13 @@ from app.schemas.config import (
 )
 from app.schemas.connection import ConnectionEvent
 from robot_hat.drivers.adc.INA219 import INA219Config
-from robot_hat.services.battery.battery_abc import BatteryABC
+from robot_hat.interfaces.battery_abc import BatteryABC
 from robot_hat.services.battery.sunfounder_battery import Battery as SunfounderBattery
 from robot_hat.services.battery.ups_s3_battery import Battery as UPS_S3
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
+    from robot_hat.i2c.smbus_manager import SMBusManager
 
 _log = Logger(__name__)
 
@@ -27,6 +28,7 @@ class BatteryService(metaclass=SingletonMeta):
         self,
         connection_manager: "ConnectionService",
         config_manager: "JsonDataManager",
+        smbus_manager: "SMBusManager",
     ):
         """
         Initializes the BatteryService with required file and connection services.
@@ -35,6 +37,7 @@ class BatteryService(metaclass=SingletonMeta):
         self.config_manager = config_manager
         self.connection_manager = connection_manager
         self.config = HardwareConfig(**config_manager.load_data())
+        self._smbus_manager = smbus_manager
         self._stop_event = asyncio.Event()
         self._task: Optional[asyncio.Task] = None
         self._last_measure_voltage: Optional[float] = None
@@ -44,7 +47,9 @@ class BatteryService(metaclass=SingletonMeta):
         self.config_manager.on(self.config_manager.LOAD_EVENT, self.update_config)
         self.battery_adapter: Optional[BatteryABC] = None
         try:
-            self.battery_adapter = self.make_battery_adapter(self.config)
+            self.battery_adapter = self.make_battery_adapter(
+                self.config, bus_manager=self._smbus_manager
+            )
         except Exception as e:
             _log.error("Failed to init battery adapter: %s ", e)
 
@@ -81,7 +86,9 @@ class BatteryService(metaclass=SingletonMeta):
 
         if self.config.battery.enabled:
             try:
-                self.battery_adapter = self.make_battery_adapter(self.config)
+                self.battery_adapter = self.make_battery_adapter(
+                    self.config, bus_manager=self._smbus_manager
+                )
                 if self.battery_adapter:
                     self._start_broadcast_task()
             except Exception as e:
@@ -93,11 +100,13 @@ class BatteryService(metaclass=SingletonMeta):
     @staticmethod
     def make_battery_adapter(
         config: HardwareConfig,
+        bus_manager: "SMBusManager",
     ) -> Union[UPS_S3, SunfounderBattery, None]:
         if config.battery is None:
             return None
 
         driver = config.battery.driver
+        bus = bus_manager.get_bus(driver.bus)
         if isinstance(driver, INA219BatteryDriverConfig):
             return UPS_S3(
                 address=driver.addr_int,
@@ -111,11 +120,11 @@ class BatteryService(metaclass=SingletonMeta):
                     calibration_value=driver.config.calibration_value,
                     power_lsb=driver.config.power_lsb,
                 ),
-                bus_num=driver.bus,
+                bus=bus,
             )
         elif isinstance(driver, SunfounderBatteryConfig):
             return SunfounderBattery(
-                channel=driver.channel, address=driver.addr_int, bus=driver.bus
+                channel=driver.channel, address=driver.addr_int, bus=bus
             )
 
     async def read_voltage(self) -> Optional[float]:

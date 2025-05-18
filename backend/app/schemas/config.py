@@ -12,6 +12,16 @@ from pydantic import (
     model_validator,
 )
 from robot_hat import MotorDirection, ServoCalibrationMode
+from robot_hat.data_types.config.motor import (
+    GPIODCMotorConfig as GPIODCMotorConfigDataclass,
+)
+from robot_hat.data_types.config.motor import (
+    I2CDCMotorConfig as I2CDCMotorConfigDataclass,
+)
+from robot_hat.data_types.config.motor import (
+    PhaseMotorConfig as PhaseMotorConfigDataclass,
+)
+from robot_hat.data_types.config.pwm import PWMDriverConfig as PWMDriverConfigDataclass
 from robot_hat.drivers.adc.INA219 import ADCResolution, BusVoltageRange, Gain, Mode
 from robot_hat.drivers.adc.sunfounder_adc import (
     ADC_ALLOWED_CHANNELS,
@@ -189,6 +199,15 @@ class PWMDriverConfig(AddressModel):
     ] = 50
 
     address: AddressField = "0x40"
+
+    def to_dataclass(self) -> PWMDriverConfigDataclass:
+        return PWMDriverConfigDataclass(
+            address=self.addr_int,
+            name=self.name,
+            bus=self.bus,
+            frame_width=self.frame_width,
+            freq=self.freq,
+        )
 
 
 class INA219Config(BaseModel):
@@ -683,6 +702,16 @@ class I2CDCMotorConfig(MotorBaseConfig):
         ),
     ]
 
+    def to_dataclass(self) -> I2CDCMotorConfigDataclass:
+        return I2CDCMotorConfigDataclass(
+            calibration_direction=self.calibration_direction,
+            name=self.name,
+            max_speed=self.max_speed,
+            driver=self.driver.to_dataclass(),
+            channel=self.channel,
+            dir_pin=self.dir_pin,
+        )
+
 
 class GPIODCMotorConfig(MotorBaseConfig):
     """
@@ -732,6 +761,63 @@ class GPIODCMotorConfig(MotorBaseConfig):
             "the motor controller pins, allowing both direction and speed control.",
         ),
     ] = True
+
+    def to_dataclass(self) -> GPIODCMotorConfigDataclass:
+        return GPIODCMotorConfigDataclass(
+            calibration_direction=self.calibration_direction,
+            name=self.name,
+            max_speed=self.max_speed,
+            forward_pin=self.forward_pin,
+            backward_pin=self.backward_pin,
+            enable_pin=self.enable_pin,
+            pwm=self.pwm,
+        )
+
+
+class PhaseMotorConfig(MotorBaseConfig):
+    """
+    The configuration for the a phase/enable motor driver board.
+    """
+
+    phase_pin: Annotated[
+        Union[int, str],
+        Field(
+            ...,
+            title="Enable PIN",
+            json_schema_extra={"type": "string_or_number"},
+            description="GPIO pin for the phase/direction. ",
+        ),
+    ]
+    pwm: Annotated[
+        bool,
+        Field(
+            ...,
+            title="PWM",
+            description="Whether to construct PWM Output Device instances for "
+            "the motor controller pins, allowing both direction and speed control.",
+        ),
+    ] = True
+
+    enable_pin: Annotated[
+        Union[int, str],
+        Field(
+            ...,
+            title="Enable PIN",
+            json_schema_extra={"type": "string_or_number"},
+            description="The GPIO pin that enables the motor. "
+            "Required for **some** motor controller boards.",
+        ),
+    ]
+
+    def to_dataclass(self) -> PhaseMotorConfigDataclass:
+        return PhaseMotorConfigDataclass(
+            calibration_direction=self.calibration_direction,
+            name=self.name,
+            max_speed=self.max_speed,
+            phase_pin=self.phase_pin,
+            pwm=self.pwm,
+            enable_pin=self.enable_pin,
+        )
 
 
 class LedConfig(BaseModel):
@@ -935,7 +1021,7 @@ class HardwareConfig(BaseModel):
     ] = None
 
     left_motor: Annotated[
-        Union[GPIODCMotorConfig, I2CDCMotorConfig, None],
+        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig, None],
         Field(
             ...,
             title="Left Motor",
@@ -943,7 +1029,7 @@ class HardwareConfig(BaseModel):
         ),
     ] = None
     right_motor: Annotated[
-        Union[GPIODCMotorConfig, I2CDCMotorConfig, None],
+        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig, None],
         Field(
             ...,
             title="Right Motor",

@@ -15,6 +15,7 @@ from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
 from app.services.sensors.speed_estimator import SpeedEstimator
 from fastapi import Depends
+from robot_hat.i2c.smbus_manager import SMBusManager
 
 logger = Logger(__name__)
 
@@ -78,19 +79,28 @@ def get_led_service(
 
 
 @lru_cache()
+def get_smbus_manager() -> SMBusManager:
+    return SMBusManager()
+
+
+@lru_cache()
 def get_battery_service(
     connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
 ) -> BatteryService:
     return BatteryService(
-        connection_manager=connection_manager, config_manager=config_manager
+        connection_manager=connection_manager,
+        config_manager=config_manager,
+        smbus_manager=smbus_manager,
     )
 
 
 def get_picarx_adapter(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
 ) -> PicarxAdapter:
-    return PicarxAdapter(config_manager=config_manager)
+    return PicarxAdapter(config_manager=config_manager, smbus_manager=smbus_manager)
 
 
 def get_calibration_service(

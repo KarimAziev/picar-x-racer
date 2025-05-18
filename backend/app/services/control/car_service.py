@@ -8,7 +8,7 @@ from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
 from fastapi import WebSocket
-from robot_hat import reset_mcu
+from robot_hat.sunfounder.utils import reset_mcu_sync
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
@@ -250,7 +250,7 @@ class CarService(metaclass=SingletonMeta):
 
     async def reset_mcu(self, _: Any = None) -> None:
         try:
-            await asyncio.to_thread(reset_mcu)
+            await asyncio.to_thread(reset_mcu_sync)
             await self.connection_manager.info("MCU has been reset")
         except Exception as e:
             await self.connection_manager.error(f"Failed to reset MCU: {e}")

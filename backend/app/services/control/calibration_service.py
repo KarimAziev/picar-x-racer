@@ -11,8 +11,8 @@ from app.schemas.config import (
     I2CDCMotorConfig,
 )
 from robot_hat import constrain
-from robot_hat.motor.config import MotorDirection
-from robot_hat.motor.motor_abc import MotorABC
+from robot_hat.data_types.config.motor import MotorDirection
+from robot_hat.interfaces.motor_abc import MotorABC
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
