@@ -345,7 +345,6 @@ class PicarxAdapter(metaclass=SingletonMeta):
         if self.motor_controller:
             self.stop()
             self.motor_controller.close()
-            self._motor_addresses = []
         else:
             for motor in [self.left_motor, self.right_motor]:
                 if motor:
@@ -353,6 +352,8 @@ class PicarxAdapter(metaclass=SingletonMeta):
                         motor.close()
                     except Exception as e:
                         logger.error("Error closing motor %s", e)
+
+        self._motor_addresses = []
 
         self.right_motor = None
         self.left_motor = None
