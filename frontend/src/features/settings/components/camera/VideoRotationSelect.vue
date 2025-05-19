@@ -1,7 +1,7 @@
 <template>
   <div>
-    <div>Video rotation</div>
-    <div class="flex gap-2">
+    <div class="font-bold">Video rotation</div>
+    <div class="flex flex-wrap gap-2">
       <div
         v-for="option in rotationOptions"
         :key="option.label"

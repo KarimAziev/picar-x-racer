@@ -3,11 +3,11 @@
     <div class="flex-1 min-w-0 flex flex-col gap-2">
       <VideoFormatSelect />
       <VideoQualitySelect />
+      <VideoRotationSelect />
     </div>
     <div class="flex-1 min-w-0 flex flex-col gap-2">
       <VideoEnhancerSelect />
       <AutoStopCameraToggle />
-      <VideoRotationSelect />
     </div>
   </div>
 </template>
