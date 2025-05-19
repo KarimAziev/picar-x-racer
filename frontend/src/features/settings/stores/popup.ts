@@ -20,6 +20,6 @@ const defaultState: State = {
 export const useStore = defineStore("popup-dialog", {
   state: () => ({
     ...defaultState,
-    tab: useLocalStorage("settings/tab", defaultState.tab),
+    tab: useLocalStorage<SettingsTab>("settings/tab", defaultState.tab),
   }),
 });
