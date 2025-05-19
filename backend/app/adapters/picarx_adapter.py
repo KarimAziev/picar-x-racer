@@ -33,6 +33,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.config_manager = config_manager
         self.smbus_manager = smbus_manager
         self.init_hardware()
+        self._motor_addresses: List[int] = []
 
     def init_hardware(self):
         self.config = HardwareConfig(**self.config_manager.load_data())
@@ -40,29 +41,38 @@ class PicarxAdapter(metaclass=SingletonMeta):
 
         self.cam_pan_servo = (
             self._make_servo(self.config.cam_pan_servo)
-            if self.config.cam_pan_servo
+            if self.config.cam_pan_servo and self.config.cam_pan_servo.enabled
             else None
         )
         self.cam_tilt_servo = (
             self._make_servo(self.config.cam_tilt_servo)
-            if self.config.cam_tilt_servo
+            if self.config.cam_tilt_servo and self.config.cam_tilt_servo.enabled
             else None
         )
         self.steering_servo = (
             self._make_servo(self.config.steering_servo)
-            if self.config.steering_servo
+            if self.config.steering_servo and self.config.steering_servo.enabled
             else None
         )
 
         self.left_motor = (
-            self._make_motor(self.config.left_motor) if self.config.left_motor else None
+            self._make_motor(self.config.left_motor)
+            if self.config.left_motor
+            else None and self.config.left_motor.enabled
         )
 
         self.right_motor = (
             self._make_motor(self.config.right_motor)
-            if self.config.right_motor
+            if self.config.right_motor and self.config.right_motor.enabled
             else None
         )
+
+        for motor, config in [
+            (self.left_motor, self.config.left_motor),
+            (self.right_motor, self.config.right_motor),
+        ]:
+            if motor and isinstance(config, I2CDCMotorConfig):
+                self._motor_addresses.append(config.driver.addr_int)
 
         self.motor_controller = (
             MotorService(left_motor=self.left_motor, right_motor=self.right_motor)
@@ -74,6 +84,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self, motor_config: Union[I2CDCMotorConfig, GPIODCMotorConfig, PhaseMotorConfig]
     ) -> Optional[MotorABC]:
         data_class = motor_config.to_dataclass()
+
         return MotorFactory.create_motor(data_class)
 
     def _make_servo(
@@ -118,7 +129,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         """
         Get the I2C addresses for the left and right motors' speed pins.
         """
-        return []
+        return self._motor_addresses
 
     @property
     def state(self) -> PicarState:
@@ -334,6 +345,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         if self.motor_controller:
             self.stop()
             self.motor_controller.close()
+            self._motor_addresses = []
         else:
             for motor in [self.left_motor, self.right_motor]:
                 if motor:
@@ -355,9 +367,3 @@ class PicarxAdapter(metaclass=SingletonMeta):
                     servo_service.close()
                 except Exception as e:
                     logger.error("Error closing servo %s", e)
-
-        if self.smbus_manager:
-            try:
-                self.smbus_manager.close_all()
-            except Exception as err:
-                logger.error("Error closing smbus: %s", err)
