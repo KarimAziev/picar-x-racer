@@ -173,8 +173,9 @@ class BatteryService(metaclass=SingletonMeta):
                 value = await asyncio.to_thread(
                     self.battery_adapter.get_battery_voltage
                 )
-            except Exception:
-                await self.connection_manager.error("Error reading voltage")
+            except Exception as e:
+                _log.error("Error reading voltage: %s", e)
+                await self.connection_manager.error(f"Error reading voltage: {e}")
 
         self._last_measure_time = time.time()
         self._last_measure_voltage = value
