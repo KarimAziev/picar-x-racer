@@ -45,15 +45,8 @@ const imgClass = computed(() => {
   return rotationClasses[rotation.value];
 });
 
-const flipWidthHeight = computed(
-  () => streamStore.data.rotation === 90 || streamStore.data.rotation === 270,
-);
-const defaultWidth = computed(() =>
-  flipWidthHeight.value ? cameraStore.data.height : cameraStore.data.width,
-);
-const defaultHeight = computed(() =>
-  flipWidthHeight.value ? cameraStore.data.width : cameraStore.data.height,
-);
+const defaultWidth = computed(() => cameraStore.data.width);
+const defaultHeight = computed(() => cameraStore.data.height);
 
 const isResizable = computed(() => !popupStore.isOpen);
 </script>
