@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from "vue";
+import { computed, defineAsyncComponent, onMounted } from "vue";
 import { useBatteryStore, useRobotStore } from "@/features/settings/stores";
 import ToggleableView from "@/ui/ToggleableView.vue";
 
@@ -70,4 +70,6 @@ const className = computed((previous) => {
     return "color-error";
   }
 });
+
+onMounted(batteryStore.fetchBatteryStatus);
 </script>
