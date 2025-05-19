@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { useLocalStorage } from "@vueuse/core";
 import { SettingsTab } from "@/features/settings/enums";
 
 export interface State {
@@ -17,5 +18,8 @@ const defaultState: State = {
 };
 
 export const useStore = defineStore("popup-dialog", {
-  state: () => ({ ...defaultState }),
+  state: () => ({
+    ...defaultState,
+    tab: useLocalStorage("settings/tab", defaultState.tab),
+  }),
 });
