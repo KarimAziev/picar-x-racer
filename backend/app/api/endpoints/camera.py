@@ -5,6 +5,8 @@ Endpoints for camera operations, including configuring the device and capturing 
 from time import localtime, strftime
 from typing import TYPE_CHECKING, Annotated
 
+import cv2
+import numpy as np
 from app.api import deps
 from app.core.logger import Logger
 from app.exceptions.camera import (
@@ -13,6 +15,7 @@ from app.exceptions.camera import (
     CameraShutdownInProgressError,
 )
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
+from app.schemas.stream import ImageRotation
 from app.util.doc_util import build_response_description
 from app.util.photo import capture_photo
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -148,11 +151,20 @@ async def take_photo(
     """
     _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
     name = f"photo_{_time}.jpg"
+    rotation = camera_manager.stream_settings.rotation
+
     frame = (
         camera_manager.stream_img
         if camera_manager.stream_img is not None
         else camera_manager.img
     )
+
+    if rotation == ImageRotation.rotate_90:
+        frame = cv2.rotate(np.ascontiguousarray(frame), cv2.ROTATE_90_CLOCKWISE)
+    elif rotation == ImageRotation.rotate_180:
+        frame = cv2.rotate(np.ascontiguousarray(frame), cv2.ROTATE_180)
+    elif rotation == ImageRotation.rotate_270:
+        frame = cv2.rotate(np.ascontiguousarray(frame), cv2.ROTATE_90_COUNTERCLOCKWISE)
 
     if frame is None:
         raise HTTPException(status_code=503, detail="Camera is not ready")

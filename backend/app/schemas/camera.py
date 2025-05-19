@@ -1,3 +1,4 @@
+from enum import IntEnum
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator

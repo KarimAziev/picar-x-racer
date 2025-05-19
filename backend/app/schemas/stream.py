@@ -1,8 +1,19 @@
+from enum import IntEnum
 from typing import List, Optional
 
 from app.config.video_enhancers import frame_enhancers
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
+
+
+class ImageRotation(IntEnum):
+    """Enumeration of allowed image rotations."""
+
+    rotate_0 = 0
+    rotate_90 = 90
+    rotate_180 = 180
+    rotate_270 = 270
+    rotate_360 = 360
 
 
 class StreamSettings(BaseModel):
@@ -48,6 +59,15 @@ class StreamSettings(BaseModel):
             description="If set to True, the camera will be auto-stopped when the last websocket client disconnects.",
         ),
     ] = True
+
+    rotation: Annotated[
+        ImageRotation,
+        Field(
+            ...,
+            description="Degree of image to rotate",
+            examples=[ImageRotation.rotate_90, ImageRotation.rotate_180],
+        ),
+    ] = ImageRotation.rotate_0
 
 
 class EnhancersResponse(BaseModel):

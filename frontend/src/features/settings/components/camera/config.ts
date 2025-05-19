@@ -1,3 +1,5 @@
+import { ValueLabelOption } from "@/types/common";
+
 export type PresetOptionValue = {
   width: number;
   height: number;
@@ -51,3 +53,17 @@ export const presetOptions: PresetOption[] = Object.entries(sizes).map(
     };
   },
 );
+
+export const rotationClasses: Record<number, string> = {
+  90: "rotate-90",
+  180: "rotate-180",
+  270: "rotate-270",
+};
+
+export const rotationOptions: ValueLabelOption<number>[] = [
+  { value: 0, label: "None" },
+  ...Object.keys(rotationClasses).map((key) => ({
+    label: `${key} °`,
+    value: +key,
+  })),
+];

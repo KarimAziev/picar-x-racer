@@ -30,6 +30,7 @@ export interface StreamSettings {
    */
   render_fps: boolean;
   auto_stop_camera_on_disconnect?: boolean;
+  rotation?: number | null;
 }
 
 export interface State {
@@ -46,6 +47,7 @@ export const defaultState: State = {
     quality: 100,
     render_fps: false,
     auto_stop_camera_on_disconnect: true,
+    rotation: null,
   },
   enhancers: [],
   is_record_initiator: false,

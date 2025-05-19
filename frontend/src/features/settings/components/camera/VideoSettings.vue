@@ -7,6 +7,7 @@
     <div class="flex-1 min-w-0 flex flex-col gap-2">
       <VideoEnhancerSelect />
       <AutoStopCameraToggle />
+      <VideoRotationSelect />
     </div>
   </div>
 </template>
@@ -16,4 +17,5 @@ import VideoEnhancerSelect from "@/features/settings/components/camera/VideoEnha
 import VideoQualitySelect from "@/features/settings/components/camera/VideoQualitySelect.vue";
 import VideoFormatSelect from "@/features/settings/components/camera/VideoFormatSelect.vue";
 import AutoStopCameraToggle from "@/features/settings/components/camera/AutoStopCameraToggle.vue";
+import VideoRotationSelect from "@/features/settings/components/camera/VideoRotationSelect.vue";
 </script>

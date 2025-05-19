@@ -57,7 +57,8 @@
     "enhance_mode": null,
     "video_record": false,
     "render_fps": true,
-    "auto_stop_camera_on_disconnect": true
+    "auto_stop_camera_on_disconnect": true,
+    "rotation": 0
   },
   "detection": {
     "model": null,
