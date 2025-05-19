@@ -32,8 +32,8 @@ class PicarxAdapter(metaclass=SingletonMeta):
     def __init__(self, config_manager: "JsonDataManager", smbus_manager: SMBusManager):
         self.config_manager = config_manager
         self.smbus_manager = smbus_manager
-        self.init_hardware()
         self._motor_addresses: List[int] = []
+        self.init_hardware()
 
     def init_hardware(self):
         self.config = HardwareConfig(**self.config_manager.load_data())
