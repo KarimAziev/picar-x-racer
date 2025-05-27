@@ -76,7 +76,6 @@ def perform_detection(
             source=resized_frame,
             verbose=verbose,
             conf=confidence_threshold,
-            task="detect",
             imgsz=resized_width,
         )[0]
     except ValueError as e:
