@@ -135,11 +135,7 @@ class YOLOHailoAdapter:
         scores = predictions["scores"][0]  # shape: (max_detections, 1)
         keypoints = predictions["keypoints"][0]  # shape: (max_detections, 17, 2)
         detections: List[Dict[str, Any]] = []
-        num_detections = (
-            int(predictions["num_detections"])
-            if "num_detections" in predictions
-            else bboxes.shape[0]
-        )
+        num_detections = bboxes.shape[0]
         for i in range(num_detections):
             detection = {
                 "bbox": [int(x) for x in bboxes[i].tolist()],

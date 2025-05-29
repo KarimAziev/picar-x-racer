@@ -156,7 +156,7 @@ def _yolov8_decoding(
         raw_boxes, raw_kpts, strides, np.arange(3)
     ):
         # create grid
-        shape = [int(x / stride) for x in image_dims]
+        shape = box_distribute.shape[1:3]
         grid_x = np.arange(shape[1]) + 0.5
         grid_y = np.arange(shape[0]) + 0.5
         grid_x, grid_y = np.meshgrid(grid_x, grid_y)
@@ -295,14 +295,14 @@ def non_max_suppression(
         kpts = out[:, 6:]
         kpts = np.reshape(kpts, (-1, n_kpts, 3))
 
-        out = {
+        out_result: DetectionResult = {
             "bboxes": boxes,
             "keypoints": kpts,
             "scores": scores,
             "num_detections": int(scores.shape[0]),
         }
 
-        output.append(out)
+        output.append(out_result)
     return output
 
 
