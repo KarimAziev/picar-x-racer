@@ -221,7 +221,7 @@ async def update_position(
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
         logger.error(
-            "Unexpected error occured while seeking the playback position",
+            "Unexpected error occurred while seeking the playback position",
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail="Failed to update the position.")

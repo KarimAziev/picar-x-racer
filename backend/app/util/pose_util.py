@@ -295,14 +295,14 @@ def non_max_suppression(
         kpts = out[:, 6:]
         kpts = np.reshape(kpts, (-1, n_kpts, 3))
 
-        out = {
+        out_result: DetectionResult = {
             "bboxes": boxes,
             "keypoints": kpts,
             "scores": scores,
             "num_detections": int(scores.shape[0]),
         }
 
-        output.append(out)
+        output.append(out_result)
     return output
 
 
