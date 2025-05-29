@@ -1,12 +1,13 @@
 import math
 from functools import lru_cache
-from typing import Dict, List, Tuple
+from typing import Dict, List, Union
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType
 from app.services.camera.v4l2_service import VideoDeviceABC
 from app.types.picamera_types import GlobalCameraInfo
+from picamera2.request import Optional
 
 logger = Logger(name=__name__)
 
@@ -23,6 +24,8 @@ PIXEL_FORMATS_TO_PICAMERA2_MAP: Dict[str, str] = {
 PICAMERA2_TO_PIXEL_FORMATS_MAP: Dict[str, str] = {
     v: k for k, v in PIXEL_FORMATS_TO_PICAMERA2_MAP.items()
 }
+
+PICAMERA_TO_PIXEL_FORMATS_KEYS = PIXEL_FORMATS_TO_PICAMERA2_MAP.keys()
 
 
 class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
@@ -44,30 +47,44 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
             detected = []
 
             for i, device in enumerate(devices):
-                picam2 = None
+                picam2: Optional[Picamera2] = None
                 try:
                     picam2 = Picamera2(i)
                     sensor_modes = picam2.sensor_modes
 
-                    sizes: List[Tuple[float, float]] = [
+                    sizes = [
                         mode.get("size")
                         for mode in sensor_modes
                         if isinstance(mode.get("size"), tuple)
-                        and len(mode.get("size")) == 2
+                        and len(mode.get("size", [])) == 2
                     ]
-                    all_fps: List[float] = [
-                        mode.get("fps") for mode in sensor_modes if mode.get("fps")
-                    ]
+                    min_fps: Union[float, int, None] = None
+                    max_fps: Union[float, int, None] = None
+
+                    for mode in sensor_modes:
+                        fps = mode.get("fps")
+                        if isinstance(fps, float) or isinstance(fps, int):
+                            min_fps = (
+                                fps
+                                if min_fps is None
+                                else fps if fps < min_fps else min_fps
+                            )
+                            max_fps = (
+                                fps
+                                if max_fps is None
+                                else fps if fps > max_fps else max_fps
+                            )
+
                     widths: List[float] = [size[0] for size in sizes if size]
                     heights: List[float] = [size[1] for size in sizes if size]
 
-                    if heights and widths and all_fps:
+                    if heights and widths and min_fps and max_fps:
                         min_width = min(320, int(min(widths)))
                         max_width = int(max(widths))
                         min_height = min(240, int(min(heights)))
                         max_height = int(max(heights))
-                        min_fps = math.ceil(min(all_fps))
-                        max_fps = round(max(all_fps))
+                        min_fps = math.ceil(min_fps)
+                        max_fps = round(max_fps)
                         device_path: str = device.get("Id")
                         api = "picamera2"
                         device_full = f"{api}:{device_path}"
@@ -90,7 +107,7 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                                 max_fps=max_fps,
                                 path=device_path,
                             )
-                            for pixel_fmt in PIXEL_FORMATS_TO_PICAMERA2_MAP.keys()
+                            for pixel_fmt in PICAMERA_TO_PIXEL_FORMATS_KEYS
                         ]
 
                         detected.append(
@@ -112,15 +129,18 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                             )
                         )
                         detected.extend(formats)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error("Picamera error for device %d: %s", i, e)
                 finally:
                     if picam2 is not None:
-                        picam2.close()
+                        try:
+                            picam2.close()
+                        except Exception as e:
+                            logger.error("Failed to close picamera2 instance: %s", e)
 
             return detected
-        except Exception:
-            logger.warning("Picamera2 is not installed")
+        except Exception as e:
+            logger.error("Failed to retrieve Picamera devices: %s")
             return []
 
 
