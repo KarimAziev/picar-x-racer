@@ -1,13 +1,12 @@
 import math
 from functools import lru_cache
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType
 from app.services.camera.v4l2_service import VideoDeviceABC
 from app.types.picamera_types import GlobalCameraInfo
-from picamera2.request import Optional
 
 logger = Logger(name=__name__)
 
