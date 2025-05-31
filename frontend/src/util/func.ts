@@ -1,5 +1,4 @@
 import { isPlainObject } from "@/util/guards";
-import { Defined } from "@/util/ts-helpers";
 
 /**
  * A utility function to validate objects against a set of predicate functions.
@@ -19,8 +18,11 @@ import { Defined } from "@/util/ts-helpers";
  */
 export function where<
   Obj,
-  Spec extends { [P in keyof Obj as P]?: (val: Obj[P]) => boolean },
->(spec: Spec): <Obj>(obj: Obj) => obj is Defined<Obj>;
+  R extends Obj,
+  Spec = {
+    [P in keyof Obj as P]?: (val: Obj[P]) => boolean;
+  },
+>(spec: Spec): <Obj, R extends Obj>(obj: Obj) => obj is R;
 /**
  * A utility function to validate objects against a set of predicate functions.
  * Can either produce a curried predicate or immediately validate an object.
@@ -36,8 +38,11 @@ export function where<
  */
 export function where<
   Obj,
-  Spec extends { [P in keyof Obj as P]?: (val: Obj[P]) => boolean },
->(spec: Spec, obj: Obj): obj is Defined<Obj>;
+  R extends Obj,
+  Spec = {
+    [P in keyof Obj as P]?: (val: Obj[P]) => boolean;
+  },
+>(spec: Spec, obj: Obj): obj is R;
 /**
  * Implementation of the `where` function that supports both overload variants:
  * - Returns a curried function if only `spec` is provided.
@@ -48,23 +53,23 @@ export function where<
  * @param obj - The object to validate (if provided).
  * @returns A boolean indicating validity, or a type guard function.
  */
-export function where<
-  Obj,
-  Spec extends { [P in keyof Obj as P]?: (val: Obj[P]) => boolean },
->(spec: Spec, obj?: Obj) {
+export function where<Obj>(
+  spec: { [P in keyof Obj as P]?: (val: Obj[P]) => boolean },
+  obj?: Obj,
+) {
   return arguments.length === 1
     ? <Obj>(obj: Obj) =>
         !isPlainObject(obj)
           ? false
           : Object.keys(spec).every((k) => {
-              const fn = spec[k as keyof Spec];
-              return !fn || fn(obj[k as keyof Obj]);
+              const fn = spec[k as keyof typeof spec];
+              return !fn || fn(obj[k]);
             })
     : !isPlainObject(obj)
       ? false
       : Object.keys(spec).every((k) => {
-          const fn = spec[k as keyof Spec];
-          return !fn || fn(obj[k as keyof Obj]);
+          const fn = spec[k as keyof typeof spec];
+          return !fn || fn(obj[k]);
         });
 }
 
