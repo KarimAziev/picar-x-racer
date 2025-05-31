@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
 import { cycleValue } from "@/util/cycleValue";
+import { appApi } from "@/api";
 
 export interface StreamSettings {
   /**
@@ -62,7 +63,7 @@ export const useStore = defineStore("stream", {
       try {
         this.loading = true;
 
-        await axios.post<StreamSettings>(
+        await appApi.post<StreamSettings>(
           "/api/video-feed/settings",
           payload || this.data,
         );
@@ -82,7 +83,7 @@ export const useStore = defineStore("stream", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } = await axios.get<StreamSettings>(
+        const data = await appApi.get<StreamSettings>(
           "/api/video-feed/settings",
         );
         this.data = data;
@@ -96,9 +97,10 @@ export const useStore = defineStore("stream", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const response = await axios.get("/api/video-feed/enhancers");
-        const data = response.data;
-        this.enhancers = data.enhancers;
+        const response = await appApi.get<{ enhancers: string[] }>(
+          "/api/video-feed/enhancers",
+        );
+        this.enhancers = response.enhancers;
       } catch (error) {
         messager.handleError(error, "Error fetching video enhancers");
       } finally {

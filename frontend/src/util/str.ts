@@ -48,6 +48,13 @@ export const trimSuffix = (str: string, suffix: string) => {
   return str;
 };
 
+export const trimPrefix = (str: string, prefix: string) => {
+  if (str.startsWith(prefix)) {
+    return str.slice(1);
+  }
+  return str;
+};
+
 export const extractLetterPrefix = (value: string) => {
   const re = /^([a-z]+)/i;
   const match = value.match(re);

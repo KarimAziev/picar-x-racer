@@ -5,6 +5,7 @@ import type { FileUploadUploaderEvent } from "primevue/fileupload";
 import { ref, unref } from "vue";
 import type { ComputedRef } from "vue";
 import { Nullable } from "@/util/ts-helpers";
+import { appApi } from "@/api";
 
 export interface UploadStore {
   loading?: boolean;
@@ -43,7 +44,7 @@ export const useFileUploader = (params: Params) => {
         cancel: () => source.cancel(),
       };
       const progressFn = messager.makeProgress(`Uploading ${filepath}`);
-      const response = await axios.post(params.url, formData, {
+      const response = await appApi.post(params.url, formData, {
         onUploadProgress: (progressEvent) => {
           if (isNumber(progressEvent.total)) {
             const progress = Math.round(

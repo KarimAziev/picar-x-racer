@@ -1,77 +1,9 @@
 import { defineStore } from "pinia";
-import axios from "axios";
 import { useMessagerStore } from "@/features/messager";
 import type { Nullable } from "@/util/ts-helpers";
-import { makeUrl } from "@/util/url";
 import { Battery } from "@/features/settings/interface";
 import type { JSONSchema } from "@/ui/JsonSchema/interface";
-
-export interface Field {
-  type: string | string[];
-  label: string;
-  description: string;
-  options?: (string | number)[];
-}
-export interface CalibrationMode {
-  type: string;
-  label: string;
-  description: string;
-  examples: string[];
-  options?: string[];
-}
-export interface Servo {
-  servo_pin: Pin;
-  min_angle: CalibrationOffset;
-  max_angle: CalibrationOffset;
-  calibration_offset: CalibrationOffset;
-  calibration_mode: CalibrationMode;
-  name: CalibrationMode;
-}
-
-export interface CalibrationOffset {
-  type: CalibrationOffsetType;
-  label: string;
-  description: string;
-  examples: number[];
-  options?: number[];
-}
-
-export enum CalibrationOffsetType {
-  Float = "float",
-  Int = "int",
-  Literal = "literal",
-}
-
-export interface Pin {
-  type: TypeElement[];
-  label: string;
-  description: string;
-  examples: Array<number | string>;
-}
-
-export enum TypeElement {
-  Int = "int",
-  Str = "str",
-}
-
-export interface TMotor {
-  dir_pin: Pin;
-  pwm_pin: Pin;
-  max_speed: CalibrationOffset;
-  name: CalibrationMode;
-  calibration_direction: CalibrationOffset;
-  calibration_speed_offset: CalibrationOffset;
-  period: CalibrationOffset;
-  prescaler: CalibrationOffset;
-}
-
-export interface FieldsConfig {
-  cam_pan_servo: Servo;
-  cam_tilt_servo: Servo;
-  steering_servo: Servo;
-  left_motor: TMotor;
-  right_motor: TMotor;
-}
+import { robotApi } from "@/api";
 
 export interface State {
   data: Data;
@@ -210,13 +142,14 @@ export const useStore = defineStore("robot", {
   actions: {
     async fetchFieldsConfig() {
       const messager = useMessagerStore();
-      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
-      const url = makeUrl("px/api/settings/robot-fields", port);
+
       try {
         this.loading = true;
-        const response = await axios.get<JSONSchema>(url);
+        const response = await robotApi.get<JSONSchema>(
+          "px/api/settings/robot-fields",
+        );
 
-        this.config = response.data;
+        this.config = response;
       } catch (error) {
         messager.handleError(error);
       } finally {
@@ -225,13 +158,12 @@ export const useStore = defineStore("robot", {
     },
     async fetchData() {
       const messager = useMessagerStore();
-      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
-      const url = makeUrl("px/api/settings/config", port);
+
       try {
         this.loading = true;
-        const response = await axios.get<Data>(url);
+        const response = await robotApi.get<Data>("px/api/settings/config");
 
-        this.data = response.data;
+        this.data = response;
       } catch (error) {
         messager.handleError(error, `Error fetching robot config`);
       } finally {

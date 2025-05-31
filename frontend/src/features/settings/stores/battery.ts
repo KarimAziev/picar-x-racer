@@ -1,7 +1,6 @@
-import axios from "axios";
 import { defineStore } from "pinia";
 import { retrieveError } from "@/util/error";
-import { makeUrl } from "@/util/url";
+import { robotApi } from "@/api";
 
 export interface BatteryResponse {
   voltage: number;
@@ -26,10 +25,10 @@ export const useStore = defineStore("battery", {
     async fetchBatteryStatus() {
       try {
         this.loading = true;
-        const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
-        const url = makeUrl("/px/api/battery-status", port);
-        const response = await axios.get<BatteryResponse>(url);
-        const { voltage, percentage } = response.data;
+        const response = await robotApi.get<BatteryResponse>(
+          "/px/api/battery-status",
+        );
+        const { voltage, percentage } = response;
         this.voltage = voltage;
         this.percentage = percentage;
         this.error = undefined;

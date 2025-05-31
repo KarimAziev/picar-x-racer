@@ -1,4 +1,3 @@
-import axios from "axios";
 import { defineStore } from "pinia";
 import { cycleValue } from "@/util/cycleValue";
 import { isObjectEquals, pick, setObjProp, getObjProp } from "@/util/obj";
@@ -22,6 +21,7 @@ import {
 } from "@/features/detection";
 import { useStore as useMusicStore, MusicMode } from "@/features/music";
 import type { Settings, ToggleableKey } from "@/features/settings/interface";
+import { appApi } from "@/api";
 
 export interface State {
   loading?: boolean;
@@ -125,10 +125,10 @@ export const useStore = defineStore("settings", {
       try {
         this.loading = true;
         const [response] = await Promise.all([
-          axios.get<Settings>("/api/settings"),
+          appApi.get<Settings>("/api/settings"),
           streamStore.fetchEnhancers(),
         ]);
-        this.data = response.data;
+        this.data = response;
         this.error = undefined;
       } catch (error) {
         this.error = retrieveError(error).text;
@@ -204,7 +204,7 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       this.saving = true;
       try {
-        await axios.post("/api/settings", data);
+        await appApi.post("/api/settings", data);
         messager.info("Settings saved");
       } catch (error) {
         messager.handleError(error, "Error saving settings");
@@ -232,7 +232,7 @@ export const useStore = defineStore("settings", {
     async speakText(text: string, language?: string) {
       const messager = useMessagerStore();
       try {
-        await axios.post(`/api/tts/speak`, {
+        await appApi.post(`/api/tts/speak`, {
           text: text,
           lang: language,
         });
@@ -280,7 +280,7 @@ export const useStore = defineStore("settings", {
     async shutdown() {
       const messager = useMessagerStore();
       try {
-        await axios.get("/api/system/shutdown");
+        await appApi.get("/api/system/shutdown");
       } catch (error) {
         messager.handleError(error);
       }
@@ -288,7 +288,7 @@ export const useStore = defineStore("settings", {
     async restart() {
       const messager = useMessagerStore();
       try {
-        await axios.get("/api/system/restart");
+        await appApi.get("/api/system/restart");
       } catch (error) {
         messager.handleError(error);
       }

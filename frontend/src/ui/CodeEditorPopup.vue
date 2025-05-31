@@ -101,9 +101,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from "vue";
+import { ref, computed, watch, nextTick, defineAsyncComponent } from "vue";
 import { isAxiosError } from "axios";
-import axios from "axios";
 import type { DialogProps } from "primevue/dialog";
 import { usePopupStore } from "@/features/settings/stores";
 import { retrieveError } from "@/util/error";
@@ -112,15 +111,16 @@ import EmptyMessage from "@/features/files/components/EmptyMessage.vue";
 import { isNumber, isEmptyString, isString } from "@/util/guards";
 import type { Nullable } from "@/util/ts-helpers";
 import SelectField from "@/ui/SelectField.vue";
-
+import Skeleton from "@/ui/Skeleton.vue";
+import ErrorComponent from "@/ui/ErrorComponent.vue";
 import {
   findLang,
   getLanguageOptions,
   mapLanguagesHash,
 } from "@/util/codemirror";
-import CodeMirror from "@/ui/CodeMirror.vue";
 import { omit } from "@/util/obj";
 import { useKeyboardHandlers } from "@/composables/useKeyboardHandlers";
+import { appApi } from "@/api";
 
 const popupStore = usePopupStore();
 
@@ -130,6 +130,13 @@ const saving = ref(false);
 const emptyMessage = ref<Nullable<string>>(null);
 
 type NormalizePayload = (content: string, filename: string) => any;
+
+const CodeMirror = defineAsyncComponent({
+  loader: () => import("@/ui/CodeMirror.vue"),
+  loadingComponent: Skeleton,
+  errorComponent: ErrorComponent,
+  delay: 0,
+});
 
 export interface Props
   extends Omit<
@@ -255,7 +262,7 @@ const openPopup = async () => {
     loading.value = true;
     emptyMessage.value = null;
     progress.value = 0;
-    const response = await axios.get<string>(props.url, {
+    const response = await appApi.get<string>(props.url, {
       responseType: "text",
       onDownloadProgress: (progressEvent) => {
         if (isNumber(progressEvent.total)) {
@@ -266,8 +273,9 @@ const openPopup = async () => {
         }
       },
     });
-    origContent.value = response.data;
-    content.value = response.data;
+
+    origContent.value = response;
+    content.value = response;
   } catch (error) {
     if (isAxiosError(error) && isString(error.response?.data)) {
       try {
@@ -295,9 +303,9 @@ const handleSave = async () => {
     saving.value = true;
     const payload = props.normalizePayload(content.value, filename);
 
-    const response = await axios.put(props.saveUrl, payload);
+    const response = await appApi.put(props.saveUrl, payload);
     const savedContent =
-      props.responseContentProp && response.data[props.responseContentProp];
+      props.responseContentProp && response[props.responseContentProp];
 
     if (savedContent) {
       origContent.value = savedContent;

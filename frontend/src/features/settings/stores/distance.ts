@@ -1,8 +1,7 @@
-import axios from "axios";
 import { defineStore } from "pinia";
 import { retrieveError } from "@/util/error";
 import { isNumber } from "@/util/guards";
-import { makeUrl } from "@/util/url";
+import { robotApi } from "@/api";
 
 export interface State {
   loading?: boolean;
@@ -22,8 +21,10 @@ export const useStore = defineStore("distance", {
     async fetchDistance() {
       try {
         this.loading = true;
-        const response = await axios.get(makeUrl("/px/api/get-distance", 8001));
-        const distance = response.data.distance;
+        const response = await robotApi.get<{ distance: number }>(
+          "/px/api/get-distance",
+        );
+        const distance = response.distance;
 
         this.distance = isNumber(distance) ? distance : 0;
         this.error = undefined;

@@ -123,7 +123,6 @@
 
 <script setup lang="ts">
 import { computed, ref, provide } from "vue";
-import axios from "axios";
 import type {
   GroupedFile,
   FileResponseModel,
@@ -152,6 +151,7 @@ import NodeExpand from "@/features/files/components/Cells/NodeExpand.vue";
 import FileType from "@/features/files/components/Cells/FileType.vue";
 import ModifiedTime from "@/features/files/components/Cells/ModifiedTime.vue";
 import { mapConcat } from "@/features/files/util";
+import { appApi } from "@/api";
 
 const props = withDefaults(
   defineProps<{
@@ -254,7 +254,7 @@ async function fetchData() {
   const messager = useMessagerStore();
   try {
     loading.value = true;
-    const response = await axios.post<FileResponseModel>(
+    const response = await appApi.post<FileResponseModel>(
       mapConcat(["/api/files/list", props.scope], "/"),
       {
         root_dir: "~/",
@@ -270,9 +270,9 @@ async function fetchData() {
       },
     );
 
-    rows.value = response.data.data;
-    currentDir.value = response.data.dir;
-    rootDir.value = response.data.root_dir;
+    rows.value = response.data;
+    currentDir.value = response.dir;
+    rootDir.value = response.root_dir;
   } catch (error) {
     messager.handleError(error, "Error fetching data");
     emptyMessage.value = "Failed to fetch data";
