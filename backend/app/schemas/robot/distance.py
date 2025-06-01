@@ -64,3 +64,10 @@ class UltrasonicConfig(BaseModel):
             0.1,
         ],
     )
+
+
+if __name__ == "__main__":
+    from pprint import pp
+
+    print("\n\033[1m\033[32m Ultrasonic Config \033[0m\033[36mJSON schema:\033[0m")
+    pp(UltrasonicConfig.model_json_schema())

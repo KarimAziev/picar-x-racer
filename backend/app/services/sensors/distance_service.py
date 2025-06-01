@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.managers.distance_manager import distance_process
-from app.schemas.config import HardwareConfig
+from app.schemas.robot.config import HardwareConfig
 
 if TYPE_CHECKING:
     from multiprocessing.sharedctypes import Synchronized

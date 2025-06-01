@@ -1,5 +1,5 @@
 from app.core.logger import Logger
-from app.schemas.config import MotorDirectionField
+from app.schemas.robot.motors import MotorDirectionField
 from pydantic import BaseModel, Field, field_validator
 from typing_extensions import Annotated
 

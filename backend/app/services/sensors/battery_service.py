@@ -5,12 +5,9 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.managers.file_management.json_data_manager import JsonDataManager
-from app.schemas.config import (
-    HardwareConfig,
-    INA219BatteryDriverConfig,
-    SunfounderBatteryConfig,
-)
 from app.schemas.connection import ConnectionEvent
+from app.schemas.robot.battery import INA219BatteryDriverConfig, SunfounderBatteryConfig
+from app.schemas.robot.config import HardwareConfig
 from robot_hat.drivers.adc.INA219 import INA219Config
 from robot_hat.interfaces.battery_abc import BatteryABC
 from robot_hat.services.battery.sunfounder_battery import Battery as SunfounderBattery

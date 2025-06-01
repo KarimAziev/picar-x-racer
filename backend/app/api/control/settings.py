@@ -7,8 +7,8 @@ from typing import Annotated, Any, Dict
 from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.managers.file_management.json_data_manager import JsonDataManager
-from app.schemas.calibration import CalibrationConfig
-from app.schemas.config import HardwareConfig
+from app.schemas.robot.calibration import CalibrationConfig
+from app.schemas.robot.config import HardwareConfig
 from app.util.doc_util import build_response_description
 from fastapi import APIRouter, Depends
 

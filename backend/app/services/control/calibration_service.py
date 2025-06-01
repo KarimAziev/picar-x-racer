@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.schemas.config import (
-    AngularServoConfig,
-    GPIOAngularServoConfig,
+from app.schemas.robot.config import HardwareConfig
+from app.schemas.robot.motors import (
     GPIODCMotorConfig,
-    HardwareConfig,
     I2CDCMotorConfig,
+    PhaseMotorConfig,
 )
+from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from robot_hat import constrain
 from robot_hat.data_types.config.motor import MotorDirection
 from robot_hat.interfaces.motor_abc import MotorABC
@@ -170,9 +170,9 @@ class CalibrationService(metaclass=SingletonMeta):
             ]:
                 motor: Optional["MotorABC"] = getattr(self.px, motor_name)
                 self.config.left_motor
-                motor_config: Union[GPIODCMotorConfig, I2CDCMotorConfig, None] = (
-                    getattr(self.config, motor_name)
-                )
+                motor_config: Union[
+                    PhaseMotorConfig, GPIODCMotorConfig, I2CDCMotorConfig, None
+                ] = getattr(self.config, motor_name)
                 if motor and motor_config:
                     motor_config.calibration_direction = motor.direction
 

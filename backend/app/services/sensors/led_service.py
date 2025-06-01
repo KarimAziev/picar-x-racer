@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 
 from app.core.px_logger import Logger
 from app.managers.led_manager import led_process
-from app.schemas.config import HardwareConfig
+from app.schemas.robot.config import HardwareConfig
 
 if TYPE_CHECKING:
     from app.core.async_emitter import AsyncEventEmitter

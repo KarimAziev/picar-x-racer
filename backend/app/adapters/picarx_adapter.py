@@ -3,14 +3,13 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
-from app.schemas.config import (
-    AngularServoConfig,
-    GPIOAngularServoConfig,
+from app.schemas.robot.config import HardwareConfig
+from app.schemas.robot.motors import (
     GPIODCMotorConfig,
-    HardwareConfig,
     I2CDCMotorConfig,
     PhaseMotorConfig,
 )
+from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.types.car import PicarState
 from robot_hat import MotorService, ServoService
 from robot_hat.factories.motor_factory import MotorFactory
