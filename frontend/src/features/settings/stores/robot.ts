@@ -146,7 +146,7 @@ export const useStore = defineStore("robot", {
       try {
         this.loading = true;
         const response = await robotApi.get<JSONSchema>(
-          "px/api/settings/robot-fields",
+          "px/api/settings/json-schema",
         );
 
         this.config = response;

@@ -1,58 +1,40 @@
 """
-Endpoints to synchronize configuration settings from the main application to the robot
-application.
-Typically, when settings changes occur in the main app, this endpoint is invoked by an
-integration service (e.g., via HTTP) to update the internal configuration of
-robot-dependent services.
+Endpoints with robot-specific settings and calibration.
 """
 
-from typing import TYPE_CHECKING, Annotated, Any, Dict
+from typing import Annotated, Any, Dict
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.calibration import CalibrationConfig
 from app.schemas.config import HardwareConfig
-from app.schemas.settings import Settings
 from app.util.doc_util import build_response_description
 from fastapi import APIRouter, Depends
 
-if TYPE_CHECKING:
-    from app.services.control.car_service import CarService
-
-
 router = APIRouter()
 
-logger = Logger(name=__name__)
-
-
-@router.post(
-    "/px/api/settings/update",
-    response_model=Settings,
-    summary="Reload settings for dependent services.",
-)
-async def update_settings(
-    new_settings: Settings,
-    robot_service: Annotated["CarService", Depends(robot_deps.get_robot_service)],
-):
-    """
-    Reload settings for dependent services.
-    """
-    robot_service.app_settings = new_settings
-
-    logger.debug("Updating robot app settings")
-
-    return new_settings
+_log = Logger(name=__name__)
 
 
 @router.get(
-    "/px/api/settings/robot-fields",
+    "/px/api/settings/json-schema",
     response_model=Dict[str, Any],
-    summary="Retrieve current robot configuration",
+    summary="Retrieve JSON schema of hardware configuration fields. ",
+    responses={
+        200: {
+            "description": "A JSON schema with extra properties for UI.",
+            "content": {
+                "application/json": {"example": HardwareConfig.model_json_schema()}
+            },
+        },
+    },
 )
-def get_fields_config():
+def get_json_schema():
     """
     Retrieve the a JSON-like schema representation of robot config settings.
+
+    Used for dynamic rendering of corresponding settings on the UI.
     """
     return HardwareConfig.model_json_schema()
 
@@ -60,7 +42,7 @@ def get_fields_config():
 @router.get(
     "/px/api/settings/config",
     response_model=HardwareConfig,
-    summary="Retrieve current robot configuration",
+    summary="Retrieve the saved or default robot configuration",
     response_description=build_response_description(
         HardwareConfig, "Successful response with the robot configuration."
     ),
@@ -71,9 +53,9 @@ def get_config_settings(
     ],
 ):
     """
-    Retrieve the robot config.
+    Retrieve currently saved or default robot configuration.
     """
-    logger.debug("Retrieving robot config settings")
+    _log.debug("Retrieving robot config settings")
     data = config_manager.load_data()
     return data
 
@@ -91,7 +73,7 @@ def get_calibration_settings(
     """
     Retrieve saved calibration settings.
     """
-    logger.debug("Retrieving robot calibration settings")
+    _log.debug("Retrieving robot calibration settings")
     config = config_manager.load_data()
     return {
         "steering_servo_offset": config.get("steering_servo", {}).get(
