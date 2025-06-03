@@ -71,7 +71,7 @@ class CarService(metaclass=SingletonMeta):
         await self.connection_manager.broadcast_json(
             {
                 "type": "updateCalibration",
-                "payload": self.calibration.get_current_config(),
+                "payload": self.calibration.current_calibration_settings(),
             }
         )
 
@@ -138,7 +138,7 @@ class CarService(metaclass=SingletonMeta):
             "reverseLeftMotor": self.calibration.reverse_left_motor,
             "resetCalibration": self.calibration.reset_calibration,
             "saveCalibration": self.calibration.save_calibration,
-            "getCalibrationData": self.calibration.get_current_config,
+            "getCalibrationData": self.calibration.current_calibration_settings,
         }
 
         calibration_actions_with_payload = {
@@ -147,7 +147,6 @@ class CarService(metaclass=SingletonMeta):
             "updateCamTiltCali": self.calibration.update_cam_tilt_angle,
             "updateLeftMotorCaliDir": self.calibration.update_left_motor_direction,
             "updateRightMotorCaliDir": self.calibration.update_right_motor_direction,
-            "saveConfig": self.calibration.save_config,
         }
 
         actions_map = {
@@ -173,9 +172,10 @@ class CarService(metaclass=SingletonMeta):
             if inspect.iscoroutinefunction(handler):
                 calibrationData = await handler()
             else:
-                calibrationData = handler()
+                calibrationData = await asyncio.to_thread(handler)
 
             if calibrationData:
+
                 await self.connection_manager.broadcast_json(
                     {
                         "type": (
@@ -194,10 +194,6 @@ class CarService(metaclass=SingletonMeta):
                     await func(payload)
                 else:
                     func(payload)
-                if action == "saveConfig":
-                    await self.connection_manager.info(
-                        "The hardware configuration has been saved. Please reboot the machine for the changes to take effect."
-                    )
             except ValueError as e:
                 await self.connection_manager.error(str(e))
 

@@ -96,7 +96,8 @@ export const useStore = defineStore("detection-settings", {
             this.timestamp = data.timestamp;
           }
         },
-        onOpen: () => {
+
+        onOpen: async () => {
           messager.remove((m) => [msg.retry, msg.error].includes(m.text));
         },
         onClose: () => {

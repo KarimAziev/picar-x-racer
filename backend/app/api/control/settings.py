@@ -2,13 +2,16 @@
 Endpoints with robot-specific settings and calibration.
 """
 
+import asyncio
 from typing import Annotated, Any, Dict
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.robot.calibration import CalibrationConfig
-from app.schemas.robot.config import HardwareConfig
+from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
+from app.services.connection_service import ConnectionService
+from app.services.control.settings_service import SettingsService
 from app.util.doc_util import build_response_description
 from fastapi import APIRouter, Depends
 
@@ -58,6 +61,68 @@ def get_config_settings(
     _log.debug("Retrieving robot config settings")
     data = config_manager.load_data()
     return data
+
+
+@router.put(
+    "/px/api/settings/config",
+    response_model=HardwareConfig,
+    summary="Update robot settings.",
+    response_description=build_response_description(
+        HardwareConfig, "Successful response with the robot configuration."
+    ),
+)
+async def update_settings(
+    settings: HardwareConfig,
+    settings_service: Annotated[
+        "SettingsService", Depends(robot_deps.get_robot_settings_service)
+    ],
+    connection_manager: Annotated[
+        "ConnectionService", Depends(robot_deps.get_connection_manager)
+    ],
+):
+    """
+    Update robot settings.
+    """
+    _log.info("Saving robot hardware settings")
+    data = await asyncio.to_thread(settings_service.save_settings, settings)
+    await connection_manager.broadcast_json(
+        {"payload": data.model_dump(mode="json"), "type": "robot_settings"}
+    )
+    return data
+
+
+@router.patch(
+    "/px/api/settings/config",
+    response_model=PartialHardwareConfig,
+    summary="Merge partial robot settings.",
+    response_description=build_response_description(
+        PartialHardwareConfig,
+        "Successful response with the partial robot configuration.",
+    ),
+)
+async def merge_partial_settings(
+    settings: PartialHardwareConfig,
+    settings_service: Annotated[
+        "SettingsService", Depends(robot_deps.get_robot_settings_service)
+    ],
+    connection_manager: Annotated[
+        "ConnectionService", Depends(robot_deps.get_connection_manager)
+    ],
+):
+    """
+    Merge partial robot settings with saved configuration.
+    """
+    _log.info("Saving partial robot hardware settings")
+    partial_settings = await asyncio.to_thread(
+        settings_service.merge_settings, settings
+    )
+    await connection_manager.broadcast_json(
+        {
+            "payload": partial_settings.model_dump(mode="json", exclude_unset=True),
+            "type": "robot_partial_settings",
+        }
+    )
+    return partial_settings
 
 
 @router.get(

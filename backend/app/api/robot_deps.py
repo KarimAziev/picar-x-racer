@@ -1,4 +1,5 @@
 from functools import lru_cache
+import asyncio
 from typing import Annotated, AsyncGenerator, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
@@ -10,6 +11,7 @@ from app.managers.file_management.json_data_manager import JsonDataManager
 from app.services.connection_service import ConnectionService
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
+from app.services.control.settings_service import SettingsService
 from app.services.sensors.battery_service import BatteryService
 from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
@@ -34,6 +36,10 @@ def get_async_event_emitter() -> AsyncEventEmitter:
 @lru_cache()
 def get_async_task_manager() -> AsyncTaskManager:
     return AsyncTaskManager()
+
+
+async def get_app_loop() -> asyncio.AbstractEventLoop:
+    return asyncio.get_running_loop()
 
 
 @lru_cache()
@@ -83,16 +89,17 @@ def get_smbus_manager() -> SMBusManager:
     return SMBusManager()
 
 
-@lru_cache()
-def get_battery_service(
+async def get_battery_service(
     connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+    app_loop: Annotated[asyncio.AbstractEventLoop, Depends(get_app_loop)],
 ) -> BatteryService:
     return BatteryService(
         connection_manager=connection_manager,
         config_manager=config_manager,
         smbus_manager=smbus_manager,
+        app_loop=app_loop,
     )
 
 
@@ -103,11 +110,18 @@ def get_picarx_adapter(
     return PicarxAdapter(config_manager=config_manager, smbus_manager=smbus_manager)
 
 
+def get_robot_settings_service(
+    picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+) -> SettingsService:
+    return SettingsService(picarx=picarx_adapter, config_manager=config_manager)
+
+
 def get_calibration_service(
     px: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
-    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    settings_service: Annotated[SettingsService, Depends(get_robot_settings_service)],
 ) -> CalibrationService:
-    return CalibrationService(px, config_manager=config_manager)
+    return CalibrationService(picarx=px, settings_service=settings_service)
 
 
 def get_robot_service(
@@ -142,6 +156,7 @@ class LifespanAppDeps(TypedDict):
     distance_service: DistanceService
     led_service: LEDService
     speed_estimator: SpeedEstimator
+    app_loop: asyncio.AbstractEventLoop
 
 
 async def get_lifespan_dependencies(
@@ -152,6 +167,7 @@ async def get_lifespan_dependencies(
     distance_service: Annotated[DistanceService, Depends(get_distance_service)],
     led_service: Annotated[LEDService, Depends(get_led_service)],
     speed_estimator: Annotated[SpeedEstimator, Depends(get_speed_estimator)],
+    app_loop: Annotated[asyncio.AbstractEventLoop, Depends(get_app_loop)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -161,5 +177,6 @@ async def get_lifespan_dependencies(
         "settings_service": settings_service,
         "led_service": led_service,
         "speed_estimator": speed_estimator,
+        "app_loop": app_loop,
     }
     yield deps

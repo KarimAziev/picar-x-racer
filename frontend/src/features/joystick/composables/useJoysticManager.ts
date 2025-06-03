@@ -12,11 +12,11 @@ export interface Callbacks {
   onEnd?: (outputData: nipplejs.JoystickOutputData) => void;
 }
 
-const BACKWARD_MIN = 210;
-const BACKWARD_MAX = 330;
+export const BACKWARD_MIN = 210;
+export const BACKWARD_MAX = 330;
 
-const MIN_JOYSTICK_ANGLE = 0;
-const HALF_CIRCLE_MAX = 180;
+export const MIN_JOYSTICK_ANGLE = 0;
+export const HALF_CIRCLE_MAX = 180;
 
 export const useJoystickControl = (
   controllerStore: ReturnType<typeof useControllerStore>,

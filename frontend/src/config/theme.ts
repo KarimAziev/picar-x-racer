@@ -12,7 +12,7 @@ export const pt = {
   },
   inputnumber: {
     decrementIcon: {
-      class: "p-1 relative bottom-[4px]",
+      class: "p-1 relative bottom-[6px]",
     },
     incrementIcon: {
       class: "p-1",

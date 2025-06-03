@@ -23,20 +23,17 @@ class INA219Config(BaseModel):
 
     bus_voltage_range: Annotated[
         BusVoltageRange,
-        Field(
+        WithJsonSchema(
             {
                 "title": "Bus Voltage Range",
-                "type": "select",
                 "description": "Defines the maximum voltage range measurable by the sensor. "
                 "Options must match your circuit design to avoid over-range measurements (e.g., 16V or 32V).",
-                "json_schema_extra": {
-                    "type": "select",
-                    "props": {
-                        "options": [
-                            {"value": BusVoltageRange.RANGE_16V, "label": "16V"},
-                            {"value": BusVoltageRange.RANGE_32V, "label": "32V"},
-                        ],
-                    },
+                "type": "select",
+                "props": {
+                    "options": [
+                        {"value": BusVoltageRange.RANGE_16V, "label": "16V"},
+                        {"value": BusVoltageRange.RANGE_32V, "label": "32V"},
+                    ],
                 },
                 "examples": [BusVoltageRange.RANGE_32V, BusVoltageRange.RANGE_16V],
             }
@@ -368,16 +365,16 @@ class BatteryConfig(BaseModel):
 
     full_voltage: Annotated[
         float, Field(..., description="The maximum voltage.", examples=[8.4])
-    ]
+    ] = 8.4
     warn_voltage: Annotated[
         float, Field(..., description="The warning voltage threshold.", examples=[7.15])
-    ]
+    ] = 7.15
     danger_voltage: Annotated[
         float, Field(..., description="The danger voltage threshold.", examples=[6.5])
-    ]
+    ] = 6.5
     min_voltage: Annotated[
         float, Field(..., description="The minimum voltage.", examples=[6.0])
-    ]
+    ] = 6.0
     auto_measure_seconds: Annotated[
         int,
         Field(
@@ -386,10 +383,10 @@ class BatteryConfig(BaseModel):
             description="Time interval in seconds for automatic measurement.",
             examples=[60],
         ),
-    ]
+    ] = 60
     cache_seconds: Annotated[
         float, Field(..., ge=0, description="Cache duration in seconds.", examples=[2])
-    ]
+    ] = 2
 
     driver: Annotated[
         Union[SunfounderBatteryConfig, INA219BatteryDriverConfig],

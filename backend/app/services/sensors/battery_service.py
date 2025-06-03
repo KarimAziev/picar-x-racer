@@ -26,6 +26,7 @@ class BatteryService(metaclass=SingletonMeta):
         connection_manager: "ConnectionService",
         config_manager: "JsonDataManager",
         smbus_manager: "SMBusManager",
+        app_loop: asyncio.AbstractEventLoop,
     ):
         """
         Initializes the BatteryService with required file and connection services.
@@ -40,6 +41,7 @@ class BatteryService(metaclass=SingletonMeta):
         self._last_measure_voltage: Optional[float] = None
         self._last_measure_time: Optional[float] = None
         self._lock = asyncio.Lock()
+        self._app_loop = app_loop
         self.config_manager.on(self.config_manager.UPDATE_EVENT, self.update_config)
         self.config_manager.on(self.config_manager.LOAD_EVENT, self.update_config)
         self.battery_adapter: Optional[BatteryABC] = None
@@ -50,7 +52,7 @@ class BatteryService(metaclass=SingletonMeta):
         except Exception as e:
             _log.error("Failed to init battery adapter: %s ", e)
 
-    async def update_config(self, new_config: Dict[str, Any]) -> None:
+    def update_config(self, new_config: Dict[str, Any]) -> None:
         """
         Updates the robot configuration.
 
@@ -60,39 +62,78 @@ class BatteryService(metaclass=SingletonMeta):
         Args:
             new_config: The dictionary with new robot config.
         """
-        _log.info("Updating battery config", new_config)
-        old_config_dict = self.config.battery.model_dump()
-        common_settings_changed = False
-        driver_changed = False
-
-        for key, value in old_config_dict.items():
-            if key == "driver":
-                driver_changed = new_config.get(key) != value
-            else:
-                common_settings_changed = (
-                    common_settings_changed or value != new_config.get(key)
-                )
-
+        old_config_dict = (
+            self.config.battery.model_dump() if self.config.battery else None
+        )
         self.config = HardwareConfig(**new_config)
 
-        if driver_changed or common_settings_changed:
-            await self._cancel_broadcast_task()
+        next_battery_config = (
+            self.config.battery.model_dump() if self.config.battery else None
+        )
+        _log.info(
+            "Updating battery config",
+        )
 
-        if driver_changed or not self.config.battery.enabled:
+        should_close_adapter = False
+        should_cancel_task = False
+        disabled = not self.config.battery or not self.config.battery.enabled
+
+        if old_config_dict and next_battery_config:
+            for key, value in old_config_dict.items():
+                if key == "driver":
+                    should_close_adapter = next_battery_config.get(key) != value
+                else:
+                    should_cancel_task = (
+                        should_cancel_task or value != next_battery_config.get(key)
+                    )
+
+        _log.info(
+            "should_close_adapter=%s, should_cancel_task=%s, disabled=%s",
+            should_close_adapter,
+            should_cancel_task,
+            disabled,
+        )
+        if should_close_adapter or should_cancel_task or disabled:
+            if self._app_loop and self._app_loop.is_running():
+                fut = asyncio.run_coroutine_threadsafe(
+                    self._cancel_broadcast_task(), self._app_loop
+                )
+                try:
+                    fut.result(timeout=5)
+                except Exception as e:
+                    _log.error("Error while canceling broadcast task: %s", e)
+            else:
+                _log.error("App loop is not running-cannot cancel broadcast task.")
+
+        if should_close_adapter or disabled:
             self.close_battery_adapter()
 
-        if self.config.battery.enabled:
+        if not disabled:
             try:
-                self.battery_adapter = self.make_battery_adapter(
-                    self.config, bus_manager=self._smbus_manager
-                )
-                if self.battery_adapter:
-                    self._start_broadcast_task()
+                if should_close_adapter or not self.battery_adapter:
+                    self.battery_adapter = self.make_battery_adapter(
+                        self.config, bus_manager=self._smbus_manager
+                    )
+                if should_cancel_task or not self._task:
+                    if self._app_loop and self._app_loop.is_running():
+                        self._app_loop.call_soon_threadsafe(self._start_broadcast_task)
+                    else:
+                        _log.error(
+                            "App loop is not running-cannot start broadcast task."
+                        )
             except Exception as e:
-                _log.error("Failed to init battery adapter: %s ", e)
-                await self.connection_manager.error(
-                    f"Failed to init battery adapter {e}"
-                )
+                _log.error("Failed to init battery adapter: %s", e)
+                if self._app_loop and self._app_loop.is_running():
+                    asyncio.run_coroutine_threadsafe(
+                        self.connection_manager.error(
+                            f"Failed to init battery adapter {e}"
+                        ),
+                        self._app_loop,
+                    )
+                else:
+                    _log.error(
+                        "App loop not running-cannot report error via connection_manager."
+                    )
 
     @staticmethod
     def make_battery_adapter(
@@ -113,7 +154,7 @@ class BatteryService(metaclass=SingletonMeta):
                     bus_adc_resolution=driver.config.bus_adc_resolution,
                     shunt_adc_resolution=driver.config.shunt_adc_resolution,
                     mode=driver.config.mode,
-                    current_lsb=driver.config.current_lsb,  # 0.1 mA per bit
+                    current_lsb=driver.config.current_lsb,
                     calibration_value=driver.config.calibration_value,
                     power_lsb=driver.config.power_lsb,
                 ),
@@ -247,6 +288,9 @@ class BatteryService(metaclass=SingletonMeta):
         A value of 0% indicates the voltage is at or below the minimum,
         and 100% indicates it is at the full voltage.
         """
+        assert (
+            self.config.battery
+        ), "Battery config shouldn't be none for calculating percentage"
         adjusted_voltage = max(0, voltage - self.config.battery.min_voltage)
         total_adjusted_voltage = (
             self.config.battery.full_voltage - self.config.battery.min_voltage
@@ -258,8 +302,13 @@ class BatteryService(metaclass=SingletonMeta):
         """
         Starts a background task to periodically broadcast the battery state.
         """
-        if self._task is None and self.config.battery.enabled and self.battery_adapter:
-            _log.info("Starting broadcast loop")
+        if (
+            self._task is None
+            and self.config.battery
+            and self.config.battery.enabled
+            and self.battery_adapter
+        ):
+            _log.info("Starting broadcast loop for battery")
             self._task = asyncio.create_task(self._broadcast_loop())
 
     async def _cancel_broadcast_task(self) -> None:
@@ -290,6 +339,7 @@ class BatteryService(metaclass=SingletonMeta):
         """
         while (
             not self._stop_event.is_set()
+            and self.config.battery
             and self.config.battery.enabled
             and self.battery_adapter
         ):

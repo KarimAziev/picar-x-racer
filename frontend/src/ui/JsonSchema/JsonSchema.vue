@@ -2,7 +2,7 @@
   <template v-if="isObjectSchema && resolvedSchema">
     <Fieldset
       v-if="level < 2"
-      :legend="startCase(resolvedSchema.title || keyName)"
+      :legend="startCase(resolvedSchema.title)"
       toggleable
       :collapsed="collapsed"
       :id="idPrefix"
@@ -25,6 +25,7 @@
         }"
       >
         <JsonSchema
+          :origModel="origModel"
           v-for="(propSchema, propName) in resolvedSchema.properties"
           :level="level + 1"
           :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
@@ -35,10 +36,19 @@
           :defs="defs"
         />
       </div>
+      <div v-if="level === 0" class="mt-2">
+        <Button
+          outlined
+          :disabled="disabled"
+          @click="handleSave"
+          label="Save"
+          size="small"
+        />
+      </div>
     </Fieldset>
     <div v-else>
       <h4 class="font-bold">
-        {{ startCase(resolvedSchema.title || keyName) }}
+        {{ startCase(resolvedSchema.title) }}
       </h4>
       <ExpandableText
         v-if="resolvedSchema.description"
@@ -53,10 +63,11 @@
       <Divider v-if="resolvedSchema.description && level < 2" />
 
       <JsonSchema
+        :origModel="origModel"
         v-for="(propSchema, propName) in resolvedSchema.properties"
         :level="level + 1"
-        :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
         :key="[selectedOption, ...path, propName].join('-')"
+        :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
         :schema="propSchema"
         :model="model"
         :path="[...path, propName]"
@@ -67,17 +78,17 @@
 
   <div v-else-if="isArraySchema && resolvedSchema">
     <Fieldset
-      :legend="startCase(resolvedSchema.title || keyName)"
+      :legend="startCase(resolvedSchema.title)"
       toggleable
       :id="idPrefix"
       :collapsed="collapsed"
     >
-      <div v-for="(item, index) in localValue" :key="index" class="mb-4">
+      <div v-for="(_, index) in localValue" :key="index" class="mb-4">
         <div class="grid grid-cols-[80%_20%] gap-2">
           <SelectField
-            :label="resolvedSchema.title || keyName"
+            :label="resolvedSchema.title"
             :options="anyOfOptions"
-            v-model="item._optionSelected"
+            v-model="selections[index as number]"
             :tooltipHelp="tooltipHelp"
           />
           <Button
@@ -87,13 +98,17 @@
           />
         </div>
         <JsonSchema
+          :origModel="origModel"
           :level="level + 1"
           :collapsed="false"
-          :idPrefix="`${idPrefix}-${[item._optionSelected, ...path, index].join('-')}`"
-          :key="[item._optionSelected, ...path, index].join('-')"
+          :idPrefix="`${idPrefix}-${[selections[index as number], ...path, index].join('-')}`"
+          :key="[selections[index as number], ...path, index].join('-')"
           :schema="
             (resolvedSchema.items?.anyOf
-              ? resolveRef(resolvedSchema.items?.anyOf[item._optionSelected])
+              ? resolveRef(
+                  resolvedSchema.items?.anyOf[selections[index as number]],
+                  defs,
+                )
               : resolvedSchema.items) || null
           "
           :model="model"
@@ -113,53 +128,71 @@
       </div>
     </Fieldset>
   </div>
-
+  <template v-else-if="compWithProps">
+    <component
+      v-if="!compWithProps.props.hidden"
+      :is="compWithProps.comp"
+      v-bind="compWithProps.props"
+      v-model="localValue"
+      :field="`${stringifyArrSafe(path)}`"
+      :label="resolvedSchema?.title"
+      :path="path"
+      :tooltipHelp="tooltipHelp"
+    />
+  </template>
   <SelectField
+    :field="`${stringifyArrSafe(path)}`"
     v-else-if="enumOptions"
-    :label="startCase(resolvedSchema?.title || keyName)"
+    :label="resolvedSchema?.title ? startCase(resolvedSchema?.title) : null"
     :options="enumOptions"
     v-model="localValue"
-    :tooltipHelp="tooltipHelp"
-  />
-  <component
-    v-else-if="dynamicComp"
-    :is="dynamicComp.comp"
-    v-bind="dynamicComp.props"
-    v-model="localValue"
-    :field="`${path}-${keyName}`"
-    :label="resolvedSchema.title || keyName"
     :tooltipHelp="tooltipHelp"
   />
 
   <Fieldset
     :id="idPrefix"
-    :legend="startCase(resolvedSchema?.title || keyName)"
+    :legend="
+      resolvedSchema?.title ? startCase(resolvedSchema?.title) : undefined
+    "
     :collapsed="collapsed"
     toggleable
     v-else-if="isAnyOf && selectedSchema && !isNull(selectedOption)"
   >
     <SelectField
+      :field="`select-${stringifyArrSafe(path)}`"
       v-if="anyOfOptions?.length > 1"
-      :label="resolvedSchema.title || keyName"
+      :label="resolvedSchema?.title"
       :options="anyOfOptions"
       v-model="selectedOption"
       :tooltipHelp="tooltipHelp"
+      @update:model-value="handleNewOption"
     />
     <JsonSchema
       :level="level + 1"
+      :origModel="origModel"
       :collapsed="anyOfOptions?.length === 0"
       :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
-      :key="selectedOption"
+      :key="`schema-${stringifyArrSafe([...path, selectedOption])}`"
       :schema="selectedSchema"
       :model="model"
       :path="path"
       :defs="defs"
     />
+    <div v-if="level === 0" class="mt-2">
+      <Button
+        outlined
+        :disabled="disabled"
+        @click="handleSave"
+        label="Save"
+        size="small"
+      />
+    </div>
   </Fieldset>
   <div v-else-if="isAnyOf">
     <SelectField
       v-if="anyOfOptions?.length > 1"
-      :label="resolvedSchema.title || keyName"
+      :field="`${stringifyArrSafe([...path, selectedOption])}`"
+      :label="`Any of ${resolvedSchema?.title}`"
       :options="anyOfOptions"
       v-model="selectedOption"
       :tooltipHelp="tooltipHelp"
@@ -167,9 +200,10 @@
     <div v-if="selectedSchema && !isNull(selectedOption)">
       <JsonSchema
         :level="level + 1"
+        :origModel="origModel"
         :collapsed="anyOfOptions?.length === 0"
         :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
-        :key="[selectedOption, ...path].join('-')"
+        :key="`${stringifyArrSafe([...path, selectedOption])}`"
         :schema="selectedSchema"
         :model="model"
         :path="path"
@@ -180,196 +214,79 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
-import TextField from "@/ui/TextField.vue";
-import NumberInputField from "@/ui/NumberInputField.vue";
-import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
-import SelectField from "@/ui/SelectField.vue";
-import { renameKeys } from "rename-obj-map";
-import { startCase, trimSuffix } from "@/util/str";
-import type { JSONSchema, TypeOption } from "@/ui/JsonSchema/interface";
-import {
-  isString,
-  isPlainObject,
-  isNull,
-  isNil,
-  isUndefined,
-  isEmptyArray,
-} from "@/util/guards";
-import StringOrNumberField from "@/ui/StringOrNumberField.vue";
-import JsonSchema from "./JsonSchema.vue";
-import { pick } from "@/util/obj";
+import { computed, watch, ref } from "vue";
+import type { JSONSchema } from "@/ui/JsonSchema/interface";
+import { isPlainObject, isNull } from "@/util/guards";
+import { cloneDeep, isObjectEquals } from "@/util/obj";
+import { startCase, stringifyArrSafe } from "@/util/str";
 import Fieldset from "@/ui/Fieldset.vue";
-import { defineComponents } from "@/util/vue-helpers";
-import MotorDirection from "@/features/settings/components/calibration/MotorDirection.vue";
+import SelectField from "@/ui/SelectField.vue";
 import ExpandableText from "@/ui/ExpandableText.vue";
+import {
+  setNestedValue,
+  getNestedValue,
+  mapAnyOfOptions,
+  detectCandidateIndex,
+  fillDefaults,
+  resolveRef,
+  mapEffectiveAnyOf,
+  isObjectSchemaPred,
+  isArraySchemaPred,
+  isAnyOfPred,
+  getTooltipHelp,
+  getSelectedSchema,
+  mapEnumOptions,
+  getComponentWithProps,
+} from "@/ui/JsonSchema/util";
+import JsonSchema from "./JsonSchema.vue";
 
 const props = withDefaults(
   defineProps<{
     schema: JSONSchema | null;
     model: Record<string | number, any> | null;
+    origModel: Record<string | number, any> | null;
     path: (string | number)[];
-    keyName?: string;
     defs?: Record<string, JSONSchema>;
     idPrefix: string;
     tooltipHelp?: string;
     collapsed?: boolean;
     level: number;
+    dataComparator?: <
+      V extends Record<string, any>,
+      B extends Record<string, any>,
+    >(
+      origData: V,
+      newData: B,
+    ) => boolean;
   }>(),
   {
     level: 0,
     collapsed: true,
+    dataComparator: <
+      V extends Record<string, any>,
+      B extends Record<string, any>,
+    >(
+      origData: V,
+      newData: B,
+    ) => isObjectEquals(origData, newData),
   },
 );
 
-const comps = defineComponents(
-  {
-    integer: NumberInputField,
-    string: TextField,
-    string_or_number: StringOrNumberField,
-    number: NumberInputField,
-    boolean: ToggleSwitchField,
-    hex: StringOrNumberField,
-    motor_direction: MotorDirection,
-    select: SelectField,
-  },
-  {
-    integer: {
-      step: 1,
-    },
-    string: {
-      fieldClassName: "w-full",
-    },
-    number: {
-      step: 0.1,
-      minFractionDigits: 1,
-    },
-    string_or_number: {
-      inputClassName: "!w-full",
-      integerProps: { min: 1 },
-      stringProps: { min: 1 },
-    },
-    boolean: {},
-    hex: {
-      integerProps: { min: 1 },
-      stringProps: { min: 1 },
-      inputClassName: "!w-full",
-      hex: true,
-    },
-
-    motor_direction: {},
-    select: {},
-  },
-);
-
-const dynamicComp = computed(() => {
-  const resSchema = resolvedSchema.value;
-  const compSpec = comps[resSchema?.type as keyof typeof comps];
-
-  if (!resSchema?.type || !compSpec) {
-    return;
-  }
-
-  const renameMap = { maximum: "max", minimum: "min", const: "readonly" };
-  const extraProps = renameKeys(
-    renameMap,
-    pick(
-      ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "const"],
-      resSchema,
-    ),
-  );
-
-  const comp = compSpec.comp;
-
-  return {
-    comp,
-    props: {
-      ...compSpec.props,
-      ...extraProps,
-      readonly: !!extraProps.readonly,
-      ...resSchema?.props,
-    },
-  };
-});
-
-function fillDefaults(target: any, schema: JSONSchema): void {
-  if (!schema || !target) return;
-  if (schema.type === "object" && schema.properties) {
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      if (
-        isUndefined(target[key]) &&
-        !isUndefined((propSchema as any).default)
-      ) {
-        target[key] = (propSchema as any).default;
-      }
-      if (
-        propSchema &&
-        typeof target[key] === "object" &&
-        propSchema.type === "object"
-      ) {
-        fillDefaults(target[key], propSchema);
-      }
-    }
-  }
-}
-
-function resolveRef(schema: JSONSchema | TypeOption) {
-  if (schema?.$ref && props.defs) {
-    const refMatch = schema.$ref.match(/^#\/\$defs\/(.+)$/);
-    if (refMatch) {
-      const defKey = refMatch[1];
-      return props.defs[defKey] || schema;
-    }
-  }
-}
-const getNestedValue = <Obj extends Record<string | number, any> | null>(
-  obj: Obj,
-  keys: (string | number)[],
-) => keys.reduce((acc, key) => (acc ? acc[key] : undefined), obj);
-
-const setNestedValue = <Obj extends Record<string, any> | null>(
-  obj: Obj,
-  keys: (string | number)[],
-  value: any,
-): void => {
-  if (!obj) {
-    return;
-  }
-  keys.reduce((acc, key, index) => {
-    if (index === keys.length - 1) {
-      acc[key] = value;
-    } else {
-      if (isNil(acc[key])) {
-        acc[key] = {};
-      }
-      return acc[key];
-    }
-  }, obj);
-};
+const emit = defineEmits(["handleSave"]);
 
 const resolvedSchema = computed(() =>
-  props.schema ? resolveRef(props.schema) || props.schema : props.schema,
+  props.schema
+    ? resolveRef(props.schema, props.defs) || props.schema
+    : props.schema,
 );
 
-const tooltipHelp = computed(() => {
-  if (props.tooltipHelp) {
-    return props.tooltipHelp;
-  }
-  if (!resolvedSchema.value) {
-    return;
-  }
-  const examples = resolvedSchema.value.examples?.map((it) => `${it}`);
-  const examplesStr = examples && examples.length > 0 && examples.join(", ");
-  const description =
-    resolvedSchema.value.description || resolvedSchema.value.tooltipHelp;
-  if (description) {
-    return [trimSuffix(description, ".").trim(), examplesStr]
-      .filter(Boolean)
-      .join(", e.g. ");
-  }
+const compWithProps = computed(() =>
+  getComponentWithProps(resolvedSchema.value),
+);
 
-  return examplesStr ? `Examples: ${examplesStr}` : undefined;
-});
+const tooltipHelp = computed(
+  () => props.tooltipHelp || getTooltipHelp(resolvedSchema.value),
+);
 
 const localValue = computed({
   get() {
@@ -380,129 +297,55 @@ const localValue = computed({
   },
 });
 
-const isObjectSchema = computed(
-  () =>
-    resolvedSchema.value?.type === "object" &&
-    !!resolvedSchema.value.properties,
+const isObjectSchema = computed(() => isObjectSchemaPred(resolvedSchema.value));
+const isArraySchema = computed(() => isArraySchemaPred(resolvedSchema.value));
+const isAnyOf = computed(() => isAnyOfPred(resolvedSchema.value));
+const enumOptions = computed(() => mapEnumOptions(resolvedSchema.value));
+const effectiveAnyOf = computed(() =>
+  mapEffectiveAnyOf(resolvedSchema.value, props.defs),
+);
+const anyOfOptions = computed(() => mapAnyOfOptions(effectiveAnyOf.value));
+const detectedCandidateIndex = computed(() =>
+  detectCandidateIndex(localValue.value, effectiveAnyOf.value),
 );
 
-const isArraySchema = computed(
-  () => resolvedSchema.value?.type === "array" && resolvedSchema.value.items,
-);
+const selections = ref<number[]>([]);
+const oldData = ref<Record<string, any>>({});
 
-const isAnyOf = computed(
-  () =>
-    !!(
-      resolvedSchema.value?.anyOf && Array.isArray(resolvedSchema.value?.anyOf)
-    ) ||
-    !!(
-      resolvedSchema.value?.oneOf && Array.isArray(resolvedSchema.value?.oneOf)
-    ),
-);
-
-const enumOptions = computed(() =>
-  Array.isArray(resolvedSchema.value?.props?.options)
-    ? resolvedSchema.value?.props?.options
-    : Array.isArray(resolvedSchema.value?.enum) &&
-      resolvedSchema.value?.enum.map((value) => ({
-        value,
-        label: isString(value) ? startCase(value) : `${value}`,
-      })),
-);
-
-const effectiveAnyOf = computed(() => {
-  const schemas =
-    resolvedSchema.value?.items?.anyOf ||
-    resolvedSchema.value?.items?.oneOf ||
-    resolvedSchema.value?.anyOf ||
-    resolvedSchema.value?.oneOf;
-
-  return (schemas || []).map((opt) => resolveRef(opt) || opt);
-});
-
-const detectedCandidateIndex = computed(() => {
-  if (!localValue.value || isEmptyArray(effectiveAnyOf.value)) {
-    return 0;
-  }
-  const data = localValue.value;
-  let bestIndex = 0;
-  let bestScore = -1;
-
-  effectiveAnyOf.value.forEach((schema, index) => {
-    let score = 0;
-    if (schema.properties) {
-      Object.keys(schema.properties).forEach((prop) => {
-        if (data.hasOwnProperty(prop)) {
-          score++;
-        }
-      });
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = index;
-    }
-  });
-  return bestIndex;
-});
+const optionSelectedRef = ref(detectedCandidateIndex.value);
+const prevSelectedOpt = ref(detectedCandidateIndex.value);
 
 const selectedOption = computed({
   get() {
-    if (
-      !isNull(localValue.value) &&
-      isPlainObject(localValue.value) &&
-      !isUndefined(localValue.value._optionSelected)
-    ) {
-      return localValue.value._optionSelected;
-    }
-
-    return detectedCandidateIndex.value;
+    return optionSelectedRef.value;
   },
   set(val) {
-    if (isNull(val)) {
-      localValue.value = null;
-    } else {
-      if (isNull(localValue.value) || !isPlainObject(localValue.value)) {
-        localValue.value = {};
-      }
-      localValue.value._optionSelected = val;
-    }
+    optionSelectedRef.value = val;
   },
 });
 
-const anyOfOptions = computed(() => {
-  if (!effectiveAnyOf.value.length) return [];
+const selectedSchema = computed(() =>
+  getSelectedSchema(effectiveAnyOf.value, selectedOption.value, props.defs),
+);
 
-  const options = effectiveAnyOf.value.map((sch, i) => {
-    let label = "";
-    if (sch.title) {
-      label = sch.title;
-    } else if (sch.$ref) {
-      label = sch.$ref.split("/").pop() || `Option ${i + 1}`;
-    } else if (sch.type) {
-      label = sch.type;
-    } else {
-      label = `Option ${i + 1}`;
-    }
-    return { value: i, label: startCase(label) };
-  });
-
-  return options;
+const disabled = computed(() => {
+  if (props.level !== 0) {
+    return true;
+  }
+  const storedData = getNestedValue(props.origModel, props.path);
+  const diff =
+    isPlainObject(storedData) && isPlainObject(localValue.value)
+      ? props.dataComparator(storedData, localValue.value)
+      : false;
+  return !diff;
 });
 
-const selectedSchema = computed(() => {
-  const options = effectiveAnyOf.value;
-  if (!options || isEmptyArray(options)) {
-    return null;
+const handleSave = () => {
+  if (props.model) {
+    const key = props.path[0];
+    emit("handleSave", { [key]: props.model[key] });
   }
-  if (options.length === 1) {
-    return options[0];
-  }
-
-  const index = selectedOption.value ?? 0;
-  return resolveRef(options[index]) || options[index];
-});
-
-const keyName = computed(() => props.keyName || "");
+};
 
 const handleRemoveArrayItem = (indexToRemove: number) => {
   const parentArray = getNestedValue(props.model, props.path);
@@ -516,18 +359,20 @@ const handleAddListItem = () => {
     localValue.value = [];
   }
 
-  const option = 0;
-
   let newItem: any;
 
   if (resolvedSchema.value?.items && resolvedSchema.value.items.anyOf) {
-    newItem = { _optionSelected: option };
-    const selectedSchema =
-      (resolvedSchema.value.items.anyOf[option] &&
-        resolveRef(resolvedSchema.value.items.anyOf[option])) ||
-      ({} as JSONSchema);
-    if (selectedSchema.type === "object") {
-      fillDefaults(newItem, selectedSchema);
+    newItem = {};
+
+    const selectedBranch =
+      resolvedSchema.value.items.anyOf[optionSelectedRef.value] &&
+      resolveRef(
+        resolvedSchema.value.items.anyOf[optionSelectedRef.value],
+        props.defs,
+      );
+
+    if (selectedBranch && selectedBranch.type === "object") {
+      fillDefaults(newItem, selectedBranch);
     }
   } else if (
     resolvedSchema.value?.items &&
@@ -543,33 +388,46 @@ const handleAddListItem = () => {
   localValue.value.push(newItem);
 };
 
-watch(
-  localValue,
-  (newVal) => {
-    if (isNil(newVal) && resolvedSchema.value?.type === "object") {
-      return setNestedValue(props.model, props.path, {
-        _optionSelected: newVal,
-      });
-    }
+const handleNewOption = () => {
+  const oldOpt = prevSelectedOpt.value;
+  const newOpt = selectedOption.value;
+  const prevData = oldData.value[newOpt];
 
-    if (Array.isArray(newVal)) {
-      newVal.forEach((item) => {
-        if (item && isPlainObject(item) && isUndefined(item._optionSelected)) {
-          item._optionSelected = detectedCandidateIndex.value || 0;
-        }
-      });
-    }
-  },
-  { immediate: true, deep: true },
-);
+  oldData.value[oldOpt] = cloneDeep(getNestedValue(props.model, props.path));
 
-watch(selectedOption, (newOpt, oldOpt) => {
-  if (newOpt !== oldOpt) {
-    setNestedValue(props.model, props.path, { _optionSelected: newOpt });
-    const branchModel = getNestedValue(props.model, props.path);
+  const branchModel = getNestedValue(props.model, props.path);
+
+  if (prevData) {
+    localValue.value = prevData;
+  } else {
     if (selectedSchema.value && isPlainObject(branchModel)) {
       fillDefaults(branchModel, selectedSchema.value);
     }
   }
+
+  prevSelectedOpt.value = newOpt;
+};
+
+watch(
+  localValue,
+  (newItems) => {
+    if (Array.isArray(newItems)) {
+      selections.value = newItems.map((_) => detectedCandidateIndex.value || 0);
+    }
+  },
+  { immediate: true },
+);
+
+watch(detectedCandidateIndex, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    optionSelectedRef.value = newVal;
+  }
+});
+
+defineExpose({
+  localValue,
+  selectedOption,
+  oldData,
+  handleNewOption,
 });
 </script>

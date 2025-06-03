@@ -498,3 +498,27 @@ export const findAncestors = <
   }
   return [];
 };
+
+export function deepMerge(
+  localObj: Record<string, any>,
+  incomingObj: Record<string, any>,
+) {
+  for (const key in incomingObj) {
+    if (
+      incomingObj[key] &&
+      typeof incomingObj[key] === "object" &&
+      !Array.isArray(incomingObj[key])
+    ) {
+      // Ensure local object exists to merge into. If not, create one.
+      if (!localObj[key] || typeof localObj[key] !== "object") {
+        localObj[key] = {};
+      }
+      // Recursively merge
+      deepMerge(localObj[key], incomingObj[key]);
+    } else {
+      // For primitive values, assign incoming value.
+      localObj[key] = incomingObj[key];
+    }
+  }
+  return localObj;
+}

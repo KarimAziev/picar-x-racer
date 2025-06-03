@@ -9,6 +9,7 @@ from app.schemas.robot.motors import (
     PhaseMotorConfig,
 )
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
+from app.util.pydantic_helpers import partial_model
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
@@ -61,13 +62,13 @@ class HardwareConfig(BaseModel):
     ] = None
 
     battery: Annotated[
-        BatteryConfig,
+        Optional[BatteryConfig],
         Field(
             ...,
             title="Battery",
             description="Configuration for the battery.",
         ),
-    ]
+    ] = None
 
     ultrasonic: Annotated[
         Union[UltrasonicConfig, None],
@@ -86,6 +87,11 @@ class HardwareConfig(BaseModel):
             description="Configuration for the LED.",
         ),
     ] = None
+
+
+@partial_model
+class PartialHardwareConfig(HardwareConfig):
+    pass
 
 
 if __name__ == "__main__":

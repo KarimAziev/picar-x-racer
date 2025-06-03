@@ -119,6 +119,7 @@ export const useStore = defineStore("settings", {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
       const streamStore = useStreamStore();
+
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
       }

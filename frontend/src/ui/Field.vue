@@ -19,7 +19,7 @@ export type FieldLayout = "col" | "row-reverse" | "row" | "col-reverse";
 
 export type Props = {
   message?: string | null;
-  label?: string;
+  label?: string | null;
   fieldClassName?: string;
   labelClassName?: string;
   layout?: FieldLayout;

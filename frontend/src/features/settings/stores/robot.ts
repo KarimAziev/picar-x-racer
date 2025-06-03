@@ -4,11 +4,13 @@ import type { Nullable } from "@/util/ts-helpers";
 import { Battery } from "@/features/settings/interface";
 import type { JSONSchema } from "@/ui/JsonSchema/interface";
 import { robotApi } from "@/api";
+import { omit, pick } from "@/util/obj";
 
 export interface State {
   data: Data;
   loading: boolean;
   config: JSONSchema | null;
+  partialData?: Partial<Data>;
 }
 
 type ServoCalibrationMode = "sum" | "negative";
@@ -49,6 +51,10 @@ export interface MotorsData {
   left_motor: MotorConfig;
   right_motor: MotorConfig;
 }
+
+export interface CalibrationData
+  extends ServoCalibrationData,
+    MotorsCalibrationData {}
 
 export type MotorsCalibrationData = {
   [P in keyof MotorsData]: Pick<MotorConfig, "calibration_direction">;
@@ -169,6 +175,48 @@ export const useStore = defineStore("robot", {
       } finally {
         this.loading = false;
       }
+    },
+    async saveData(data: Data) {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        const response = await robotApi.put<Data>(
+          "/px/api/settings/config",
+          data,
+        );
+
+        this.data = response;
+      } catch (error) {
+        messager.handleError(error, `Error fetching robot config`);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async updatePartialData(data: Partial<Data>) {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await robotApi.patch<Partial<Data>>("px/api/settings/config", data);
+      } catch (error) {
+        messager.handleError(error, `Error fetching robot config`);
+      } finally {
+        this.loading = false;
+      }
+    },
+    mergeCalibrationData(payload: Partial<CalibrationData>) {
+      const servos = omit(["left_motor", "right_motor"], payload);
+      const motors = pick(["left_motor", "right_motor"], payload);
+      Object.entries(servos).forEach(([key, cal]) => {
+        this.data[key as keyof ServoCalibrationData].calibration_offset =
+          cal.calibration_offset;
+      });
+
+      Object.entries(motors).forEach(([key, cal]) => {
+        this.data[key as keyof MotorsCalibrationData].calibration_direction =
+          cal.calibration_direction;
+      });
     },
   },
 });

@@ -1,5 +1,5 @@
 
-from typing import  Union
+from typing import  Union, Optional
 from app.core.logger import Logger
 from app.schemas.robot.common import EnabledField
 from app.schemas.robot.pwm import PWMDriverConfig
@@ -26,8 +26,21 @@ class ServoConfig(BaseModel):
             0.0,
             description="A calibration offset for fine-tuning servo angles.",
             examples=[0.0, 0.4, -4.2],
+            json_schema_extra={"type": "calibration_offset"},
         ),
-    ]
+    ] = 0
+    saved_calibration_offset: Annotated[
+        Optional[float],
+        Field(
+            0.0,
+            description="A saved calibration offset for fine-tuning servo angles.",
+            examples=[0.0, 0.4, -4.2],
+            json_schema_extra={
+                "type": "number",
+                "props": {"disabled": True},
+            },
+        ),
+    ] = None
     min_angle: Annotated[
         int,
         Field(
@@ -99,11 +112,8 @@ class ServoConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_servo_config(self):
-        """
-        Ensure logical consistency in servo configuration:
-        - min_angle should be less than max_angle
-        - calibration_offset should be within a reasonable range (-360 to 360)
-        """
+        if self.saved_calibration_offset is None:
+            self.saved_calibration_offset = self.calibration_offset
 
         if self.min_angle >= self.max_angle:
             raise ValueError(

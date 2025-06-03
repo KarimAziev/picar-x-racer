@@ -1,3 +1,5 @@
+import { isNil, isNumber } from "./guards";
+
 /**
  * Converts a string to start case (capitalizes the first letter of each word).
  *
@@ -96,3 +98,11 @@ export function splitStringByWhitespace(
 
   return result;
 }
+
+export const stringifyArrSafe = (
+  items: (string | null | undefined | number)[],
+  separator = ".",
+) =>
+  items
+    .flatMap((v) => (isNil(v) ? [] : isNumber(v) ? [`${v}`] : [v]))
+    .join(separator);

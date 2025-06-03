@@ -18,7 +18,6 @@ router = APIRouter()
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-    from app.services.control.calibration_service import CalibrationService
     from app.services.control.car_service import CarService
     from app.services.sensors.battery_service import BatteryService
 
@@ -27,9 +26,6 @@ if TYPE_CHECKING:
 async def websocket_endpoint(
     websocket: WebSocket,
     car_manager: Annotated["CarService", Depends(robot_deps.get_robot_service)],
-    calibration_service: Annotated[
-        "CalibrationService", Depends(robot_deps.get_calibration_service)
-    ],
     connection_manager: Annotated[
         "ConnectionService", Depends(robot_deps.get_connection_manager)
     ],
@@ -44,12 +40,7 @@ async def websocket_endpoint(
         await connection_manager.connect(websocket)
         if len(connection_manager.active_connections) > 1:
             await battery_manager.broadcast_state()
-        await connection_manager.broadcast_json(
-            {
-                "type": "updateCalibration",
-                "payload": calibration_service.get_current_config(),
-            }
-        )
+
         await car_manager.broadcast()
 
         while websocket.application_state == WebSocketState.CONNECTED:

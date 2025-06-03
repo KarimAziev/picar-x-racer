@@ -45,7 +45,9 @@ async def get_battery_voltage(
     A value of 0% indicates the voltage is at or below the minimum,
     and 100% indicates it is at the full voltage.
     """
+    logger.info("get battery voltage")
     (voltage, percentage) = await battery_manager.broadcast_state()
+    logger.info("get battery voltage=%s, %s", voltage, percentage)
     logger.debug(
         "Retrieved battery status - Voltage: %sV, Percentage: %s%", voltage, percentage
     )

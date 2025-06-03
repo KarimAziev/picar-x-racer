@@ -1,3 +1,5 @@
+import { ValueLabelOption } from "@/types/common";
+
 export type FieldType =
   | "integer"
   | "string"
@@ -18,6 +20,11 @@ export type TypeOption = {
 
 export type Options = TypeOption[];
 
+export interface Props extends Record<string, any> {
+  options?: ValueLabelOption<number | string>[];
+  hidden?: boolean;
+}
+
 export interface JSONSchemaBase {
   title: string;
   type?: FieldType;
@@ -37,7 +44,7 @@ export interface JSONSchemaBase {
   pattern?: string;
   uniqueItems?: string;
   tooltipHelp?: string;
-  props?: Record<string, any>;
+  props?: Props;
   ge?: number;
   le?: number;
   discriminator?: any;

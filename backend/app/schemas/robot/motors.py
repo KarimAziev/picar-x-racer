@@ -22,7 +22,7 @@ logger = Logger(__name__)
 MotorDirectionField = Annotated[
     MotorDirection,
     Field(
-        1,
+        default=1,
         ge=-1,
         le=1,
         description="Initial motor direction calibration (+1/-1)",
@@ -35,6 +35,20 @@ MotorDirectionField = Annotated[
 class MotorBaseConfig(BaseModel):
     enabled: EnabledField = True
     calibration_direction: MotorDirectionField
+    saved_calibration_direction: Annotated[
+        Optional[MotorDirection],
+        Field(
+            default=1,
+            ge=-1,
+            le=1,
+            description="Saved motor direction calibration (+1/-1)",
+            json_schema_extra={
+                "type": "integer",
+                "props": {"disabled": True, "hidden": True},
+            },
+            examples=[1, -1],
+        ),
+    ] = None
     name: Annotated[
         str,
         Field(
@@ -61,6 +75,9 @@ class MotorBaseConfig(BaseModel):
         Ensure logical consistency in motor configuration:
         - calibration_direction should be either 1 or -1.
         """
+        if self.saved_calibration_direction is None:
+            self.saved_calibration_direction = self.calibration_direction
+
         if self.calibration_direction not in [1, -1]:
             raise ValueError(
                 f"`calibration_direction` for motor '{self.name}' must be either 1 or -1."

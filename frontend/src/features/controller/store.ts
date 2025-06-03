@@ -25,7 +25,6 @@ import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
 import { useAppSyncStore } from "@/features/syncer";
-import type { Data as RobotData } from "@/features/settings/stores/robot";
 
 export const ACCELERATION = 10;
 export const MIN_SPEED = ACCELERATION;
@@ -177,8 +176,20 @@ export const useControllerStore = defineStore("controller", {
             });
             break;
 
-          case "updateCalibration":
+          case "robot_partial_settings":
+            robotStore.partialData = payload;
+            Object.entries(payload).forEach(([key, value]) => {
+              robotStore.data[key as keyof typeof robotStore.data] =
+                value as any;
+            });
+
+            break;
+          case "robot_settings":
             robotStore.data = payload;
+            break;
+
+          case "updateCalibration":
+            robotStore.mergeCalibrationData(payload);
             break;
 
           case "saveCalibration":
@@ -222,6 +233,9 @@ export const useControllerStore = defineStore("controller", {
         port: +(import.meta.env.VITE_WS_APP_PORT || "8001"),
         onMessage: handleMessage,
         logPrefix: "px",
+        onOpen: async () => {
+          await robotStore.fetchData();
+        },
       });
       this.model.initWS();
     },
@@ -520,9 +534,6 @@ export const useControllerStore = defineStore("controller", {
     saveCalibration() {
       this.sendMessage({ action: "saveCalibration" });
     },
-    saveRobotConfig(payload: RobotData) {
-      this.sendMessage({ action: "saveConfig", payload });
-    },
     servoTest() {
       this.sendMessage({ action: "servoTest" });
     },
@@ -567,7 +578,7 @@ export const useControllerStore = defineStore("controller", {
     },
     openGeneralSettings() {
       const popupStore = usePopupStore();
-      popupStore.tab = SettingsTab.GENERAL;
+      popupStore.tab = popupStore.tab || SettingsTab.GENERAL;
       popupStore.isOpen = true;
     },
     toggleTextInfo() {
