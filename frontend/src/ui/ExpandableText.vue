@@ -14,6 +14,7 @@
       :class="{ '-rotate-90': !expanded }"
     />
     {{ text }}
+    <slot></slot>
   </div>
 </template>
 

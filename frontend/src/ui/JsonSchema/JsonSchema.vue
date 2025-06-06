@@ -1,7 +1,7 @@
 <template>
   <template v-if="isObjectSchema && resolvedSchema">
     <Fieldset
-      v-if="level < 2"
+      v-if="level <= 2 && !inhibitFieldset"
       :legend="startCase(resolvedSchema.title)"
       toggleable
       :collapsed="collapsed"
@@ -35,6 +35,7 @@
           :path="[...path, propName]"
           :defs="defs"
         />
+        <slot></slot>
       </div>
       <div v-if="level === 0" class="mt-2">
         <Button
@@ -62,17 +63,24 @@
       ></ExpandableText>
       <Divider v-if="resolvedSchema.description && level < 2" />
 
-      <JsonSchema
-        :origModel="origModel"
-        v-for="(propSchema, propName) in resolvedSchema.properties"
-        :level="level + 1"
-        :key="[selectedOption, ...path, propName].join('-')"
-        :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
-        :schema="propSchema"
-        :model="model"
-        :path="[...path, propName]"
-        :defs="defs"
-      />
+      <div
+        :class="{
+          'grid grid-cols-2 gap-2 justify-around': level < 2,
+        }"
+      >
+        <JsonSchema
+          :origModel="origModel"
+          v-for="(propSchema, propName) in resolvedSchema.properties"
+          :level="level + 1"
+          :key="[selectedOption, ...path, propName].join('-')"
+          :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
+          :schema="propSchema"
+          :model="model"
+          :path="[...path, propName]"
+          :defs="defs"
+        />
+        <slot></slot>
+      </div>
     </div>
   </template>
 
@@ -83,40 +91,68 @@
       :id="idPrefix"
       :collapsed="collapsed"
     >
+      <ExpandableText
+        v-if="resolvedSchema.description"
+        :class="{
+          'truncated-label': level >= 2,
+          'max-w-[280px] min-[400px]:max-w-[380px] md:max-w-[420px] lg:max-w-[440px] xl:max-w-[540px] 2xl:max-w-[490px]':
+            level < 2,
+        }"
+        :text="resolvedSchema.description"
+        lineClampClass="line-clamp-1"
+      ></ExpandableText>
+      <Divider v-if="resolvedSchema.description && level < 2" />
       <div v-for="(_, index) in localValue" :key="index" class="mb-4">
-        <div class="grid grid-cols-[80%_20%] gap-2">
+        <div
+          class="grid grid-cols-[80%_20%] gap-2"
+          v-if="anyOfOptions && !!anyOfOptions.length"
+        >
           <SelectField
             :label="resolvedSchema.title"
             :options="anyOfOptions"
             v-model="selections[index as number]"
             :tooltipHelp="tooltipHelp"
           />
-          <Button
-            @click="handleRemoveArrayItem(index as number)"
-            icon="pi pi-times"
-            class="p-button-rounded p-button-danger p-button-text"
-          />
         </div>
-        <JsonSchema
-          :origModel="origModel"
-          :level="level + 1"
-          :collapsed="false"
-          :idPrefix="`${idPrefix}-${[selections[index as number], ...path, index].join('-')}`"
-          :key="[selections[index as number], ...path, index].join('-')"
-          :schema="
-            (resolvedSchema.items?.anyOf
-              ? resolveRef(
-                  resolvedSchema.items?.anyOf[selections[index as number]],
-                  defs,
-                )
-              : resolvedSchema.items) || null
-          "
-          :model="model"
-          :path="[...path, index]"
-          :defs="defs"
-        />
+        <Panel
+          :pt="{
+            header: () => ({
+              class: ['pb-0! relative'],
+            }),
+          }"
+        >
+          <template #header>
+            <div class="flex w-full justify-end absolute top-1 left-0">
+              <Button
+                @click="handleRemoveArrayItem(index as number)"
+                icon="pi pi-times"
+                class="p-button-rounded p-button-danger p-button-text"
+              />
+            </div>
+          </template>
+          <JsonSchema
+            inhibitFieldset
+            :origModel="origModel"
+            :level="level + 1"
+            :collapsed="false"
+            :idPrefix="`${idPrefix}-${[selections[index as number], ...path, index].join('-')}`"
+            :key="[selections[index as number], ...path, index].join('-')"
+            :schema="
+              (resolvedSchema.items?.anyOf
+                ? resolveRef(
+                    resolvedSchema.items?.anyOf[selections[index as number]],
+                    defs,
+                  )
+                : resolvedSchema.items) || null
+            "
+            :model="model"
+            :path="[...path, index]"
+            :defs="defs"
+          ></JsonSchema>
+        </Panel>
+        <slot></slot>
       </div>
-      <div class="py-2">
+      <div class="flex gap-4 py-2 items-center">
         <Button
           size="small"
           icon="pi pi-plus"
@@ -124,6 +160,14 @@
           @click="handleAddListItem"
           class="w-fit"
           severity="secondary"
+        />
+        <Button
+          v-if="level === 0"
+          outlined
+          :disabled="disabled"
+          @click="handleSave"
+          label="Save"
+          size="small"
         />
       </div>
     </Fieldset>
@@ -139,16 +183,18 @@
       :path="path"
       :tooltipHelp="tooltipHelp"
     />
+    <slot></slot>
   </template>
-  <SelectField
-    :field="`${stringifyArrSafe(path)}`"
-    v-else-if="enumOptions"
-    :label="resolvedSchema?.title ? startCase(resolvedSchema?.title) : null"
-    :options="enumOptions"
-    v-model="localValue"
-    :tooltipHelp="tooltipHelp"
-  />
-
+  <template v-else-if="enumOptions">
+    <SelectField
+      :field="`${stringifyArrSafe(path)}`"
+      :label="resolvedSchema?.title ? startCase(resolvedSchema?.title) : null"
+      :options="enumOptions"
+      v-model="localValue"
+      :tooltipHelp="tooltipHelp"
+    />
+    <slot></slot>
+  </template>
   <Fieldset
     :id="idPrefix"
     :legend="
@@ -156,10 +202,13 @@
     "
     :collapsed="collapsed"
     toggleable
-    v-else-if="isAnyOf && selectedSchema && !isNull(selectedOption)"
+    v-else-if="
+      isAnyOf && selectedSchema && !isNull(selectedOption) && !inhibitFieldset
+    "
   >
     <SelectField
       :field="`select-${stringifyArrSafe(path)}`"
+      class="mb-2"
       v-if="anyOfOptions?.length > 1"
       :label="resolvedSchema?.title"
       :options="anyOfOptions"
@@ -167,7 +216,9 @@
       :tooltipHelp="tooltipHelp"
       @update:model-value="handleNewOption"
     />
+
     <JsonSchema
+      :inhibitFieldset="anyOfOptions?.length > 1"
       :level="level + 1"
       :origModel="origModel"
       :collapsed="anyOfOptions?.length === 0"
@@ -178,6 +229,8 @@
       :path="path"
       :defs="defs"
     />
+    <slot></slot>
+
     <div v-if="level === 0" class="mt-2">
       <Button
         outlined
@@ -197,7 +250,7 @@
       v-model="selectedOption"
       :tooltipHelp="tooltipHelp"
     />
-    <div v-if="selectedSchema && !isNull(selectedOption)">
+    <template v-if="selectedSchema && !isNull(selectedOption)">
       <JsonSchema
         :level="level + 1"
         :origModel="origModel"
@@ -208,6 +261,16 @@
         :model="model"
         :path="path"
         :defs="defs"
+      />
+    </template>
+    <slot></slot>
+    <div v-if="level === 0" class="mt-2">
+      <Button
+        outlined
+        :disabled="disabled"
+        @click="handleSave"
+        label="Save"
+        size="small"
       />
     </div>
   </div>
@@ -237,6 +300,7 @@ import {
   getSelectedSchema,
   mapEnumOptions,
   getComponentWithProps,
+  resolveNewListItem,
 } from "@/ui/JsonSchema/util";
 import JsonSchema from "./JsonSchema.vue";
 
@@ -251,6 +315,7 @@ const props = withDefaults(
     tooltipHelp?: string;
     collapsed?: boolean;
     level: number;
+    inhibitFieldset?: boolean;
     dataComparator?: <
       V extends Record<string, any>,
       B extends Record<string, any>,
@@ -272,7 +337,10 @@ const props = withDefaults(
   },
 );
 
-const emit = defineEmits(["handleSave"]);
+const emit = defineEmits<{
+  (e: "handleSave", data: Record<string, any>): void;
+  (e: "remove", data: Record<string, any>): void;
+}>();
 
 const resolvedSchema = computed(() =>
   props.schema
@@ -333,10 +401,23 @@ const disabled = computed(() => {
     return true;
   }
   const storedData = getNestedValue(props.origModel, props.path);
+  if (Array.isArray(localValue.value)) {
+    if (
+      !Array.isArray(storedData) ||
+      storedData.length !== localValue.value!.length
+    ) {
+      return false;
+    }
+    return !storedData.some((a, i) =>
+      isPlainObject(a) && isPlainObject(localValue.value![i])
+        ? props.dataComparator(a, localValue.value![i])
+        : isPlainObject(a) || isPlainObject(localValue.value![i]),
+    );
+  }
   const diff =
     isPlainObject(storedData) && isPlainObject(localValue.value)
       ? props.dataComparator(storedData, localValue.value)
-      : false;
+      : isPlainObject(storedData) || isPlainObject(localValue.value);
   return !diff;
 });
 
@@ -358,33 +439,12 @@ const handleAddListItem = () => {
   if (!Array.isArray(localValue.value)) {
     localValue.value = [];
   }
+  const newItem = resolveNewListItem(
+    resolvedSchema.value,
+    optionSelectedRef.value,
+    props.defs,
+  );
 
-  let newItem: any;
-
-  if (resolvedSchema.value?.items && resolvedSchema.value.items.anyOf) {
-    newItem = {};
-
-    const selectedBranch =
-      resolvedSchema.value.items.anyOf[optionSelectedRef.value] &&
-      resolveRef(
-        resolvedSchema.value.items.anyOf[optionSelectedRef.value],
-        props.defs,
-      );
-
-    if (selectedBranch && selectedBranch.type === "object") {
-      fillDefaults(newItem, selectedBranch);
-    }
-  } else if (
-    resolvedSchema.value?.items &&
-    resolvedSchema.value.items.type === "object"
-  ) {
-    newItem = {};
-    fillDefaults(newItem, resolvedSchema.value.items);
-  } else if (resolvedSchema.value?.items && resolvedSchema.value.items.enum) {
-    newItem = resolvedSchema.value.items.enum[0];
-  } else {
-    newItem = null;
-  }
   localValue.value.push(newItem);
 };
 

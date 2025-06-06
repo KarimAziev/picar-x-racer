@@ -28,7 +28,7 @@ class DistanceData(BaseModel):
 
 class UltrasonicConfig(BaseModel):
     """
-    A model to represent the Ultrasonic configuration.
+    Ultrasonic distance sensor configuration.
     """
 
     trig_pin: Union[str, int] = Field(

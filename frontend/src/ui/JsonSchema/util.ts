@@ -1,7 +1,13 @@
 import { renameKeys } from "rename-obj-map";
 import type { JSONSchema, TypeOption } from "@/ui/JsonSchema/interface";
 import { pick } from "@/util/obj";
-import { isNil, isEmptyArray, isUndefined, isString } from "@/util/guards";
+import {
+  isNil,
+  isEmptyArray,
+  isUndefined,
+  isString,
+  isPlainObject,
+} from "@/util/guards";
 import { startCase, trimSuffix } from "@/util/str";
 import { componentsWithDefaults, renameMap } from "@/ui/JsonSchema/config";
 
@@ -136,6 +142,35 @@ export const fillDefaults = (
   }
 };
 
+export const makeDefaults = (
+  schema: JSONSchema,
+  extraObj?: Record<string, any>,
+) => {
+  if (!schema || !schema.properties) return;
+  return Object.entries(schema.properties).reduce(
+    (acc, [key, propSchema]) => {
+      const obj = extraObj ? extraObj[key] : undefined;
+      const defaultVal = propSchema.default;
+
+      const value = !isUndefined(propSchema?.const)
+        ? propSchema.const
+        : obj &&
+            !Array.isArray(obj) &&
+            !isPlainObject(obj) &&
+            typeof obj === typeof propSchema.default
+          ? obj
+          : !isUndefined(defaultVal)
+            ? defaultVal
+            : propSchema?.type === "object"
+              ? makeDefaults(propSchema, obj)
+              : undefined;
+      acc[key] = value;
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
+};
+
 export const resolveRef = (
   schema: JSONSchema | TypeOption,
   defs: Record<string, JSONSchema> | undefined,
@@ -210,4 +245,33 @@ export const getComponentWithProps = (resolvedSchema: JSONSchema | null) => {
       ...resolvedSchema?.props,
     },
   };
+};
+
+export const resolveNewListItem = (
+  resolvedSchema: JSONSchema | null,
+  selectedOptionIdx: number,
+  defs: Record<string, JSONSchema> | undefined,
+) => {
+  if (resolvedSchema?.items && resolvedSchema.items.anyOf) {
+    const selectedBranch =
+      resolvedSchema.items.anyOf[selectedOptionIdx] &&
+      resolveRef(resolvedSchema.items.anyOf[selectedOptionIdx], defs);
+
+    if (selectedBranch?.type === "object") {
+      return makeDefaults(selectedBranch);
+    }
+  } else if (resolvedSchema?.items && resolvedSchema.items.type === "object") {
+    return makeDefaults(resolvedSchema.items);
+  } else if (resolvedSchema?.items && resolvedSchema.items.enum) {
+    return resolvedSchema.items.enum[0];
+  } else if (resolvedSchema?.items?.$ref) {
+    const schema = resolveRef(resolvedSchema?.items, defs);
+    if (schema) {
+      return makeDefaults(schema);
+    } else {
+      return {};
+    }
+  } else {
+    return null;
+  }
 };

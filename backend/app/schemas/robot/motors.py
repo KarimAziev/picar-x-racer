@@ -90,15 +90,6 @@ class I2CDCMotorConfig(MotorBaseConfig):
     The configuration for the motor, which is controlled via a PWM driver over I²C.
     """
 
-    driver: Annotated[
-        PWMDriverConfig,
-        Field(
-            ...,
-            title="PWM driver",
-            description="The PWM driver chip configuration.",
-        ),
-    ] = PWMDriverConfig()
-
     channel: Annotated[
         Union[str, int],
         Field(
@@ -120,6 +111,15 @@ class I2CDCMotorConfig(MotorBaseConfig):
             examples=["D4", "D5", 23, 24],
         ),
     ]
+
+    driver: Annotated[
+        PWMDriverConfig,
+        Field(
+            ...,
+            title="PWM driver",
+            description="The PWM driver chip configuration.",
+        ),
+    ] = PWMDriverConfig()
 
     def to_dataclass(self) -> I2CDCMotorConfigDataclass:
         return I2CDCMotorConfigDataclass(
