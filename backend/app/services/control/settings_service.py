@@ -84,7 +84,7 @@ class SettingsService:
         exclude_defaults: bool = False,
         exclude_none: bool = False,
         round_trip: bool = False,
-        warnings: bool | Literal['none', 'warn', 'error'] = True,
+        warnings: bool | Literal["none", "warn", "error"] = True,
         serialize_as_any: bool = False,
     ):
         excluded_servo_data = {

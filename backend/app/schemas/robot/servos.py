@@ -1,5 +1,5 @@
+from typing import Optional, Union
 
-from typing import  Union, Optional
 from app.core.logger import Logger
 from app.schemas.robot.common import EnabledField
 from app.schemas.robot.pwm import PWMDriverConfig
