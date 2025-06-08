@@ -6,6 +6,7 @@
     :labelClassName="labelClassName"
     :tooltipHelp="tooltipHelp"
     :layout="layout"
+    :messageClass="messageClass"
   >
     <DatePicker
       v-bind="props"

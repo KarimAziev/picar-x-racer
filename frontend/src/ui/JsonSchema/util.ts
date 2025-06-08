@@ -7,9 +7,16 @@ import {
   isUndefined,
   isString,
   isPlainObject,
+  isEmpty,
+  isNumber,
+  isEmptyString,
 } from "@/util/guards";
 import { startCase, trimSuffix } from "@/util/str";
-import { componentsWithDefaults, renameMap } from "@/ui/JsonSchema/config";
+import {
+  componentsWithDefaults,
+  renameMap,
+  simpleTypes,
+} from "@/ui/JsonSchema/config";
 
 export const setNestedValue = <Obj extends Record<string, any> | null>(
   obj: Obj,
@@ -101,6 +108,13 @@ export const detectCandidateIndex = (
           score++;
         }
       });
+    }
+    if (schema.type === "integer" && Number.isInteger(data)) {
+      score++;
+    } else if (schema.type === "number" && isNumber(data)) {
+      score++;
+    } else if (schema.type === "string" && isString(data)) {
+      score++;
     }
     if (score > bestScore) {
       bestScore = score;
@@ -217,14 +231,18 @@ export const getTooltipHelp = (resolvedSchema: JSONSchema | null) => {
 };
 
 export const getComponentWithProps = (resolvedSchema: JSONSchema | null) => {
-  const compSpec =
-    componentsWithDefaults[
-      resolvedSchema?.type as keyof typeof componentsWithDefaults
-    ];
-
-  if (!resolvedSchema?.type || !compSpec) {
+  if (!resolvedSchema?.type) {
     return;
   }
+
+  const enumOptions = mapEnumOptions(resolvedSchema);
+
+  const compSpec =
+    componentsWithDefaults[
+      simpleTypes[resolvedSchema.type] && enumOptions
+        ? "select"
+        : (resolvedSchema?.type as keyof typeof componentsWithDefaults)
+    ];
 
   const extraProps = renameKeys(
     renameMap,
@@ -234,6 +252,14 @@ export const getComponentWithProps = (resolvedSchema: JSONSchema | null) => {
     ),
   );
 
+  const overridenProps =
+    simpleTypes[resolvedSchema.type] &&
+    enumOptions &&
+    !extraProps.options &&
+    !resolvedSchema?.props?.options
+      ? { options: enumOptions }
+      : {};
+
   const comp = compSpec.comp;
 
   return {
@@ -242,6 +268,7 @@ export const getComponentWithProps = (resolvedSchema: JSONSchema | null) => {
       ...compSpec.props,
       ...extraProps,
       readonly: !!extraProps.readonly,
+      ...overridenProps,
       ...resolvedSchema?.props,
     },
   };
@@ -252,7 +279,7 @@ export const resolveNewListItem = (
   selectedOptionIdx: number,
   defs: Record<string, JSONSchema> | undefined,
 ) => {
-  if (resolvedSchema?.items && resolvedSchema.items.anyOf) {
+  if (isPlainObject(resolvedSchema?.items) && resolvedSchema.items.anyOf) {
     const selectedBranch =
       resolvedSchema.items.anyOf[selectedOptionIdx] &&
       resolveRef(resolvedSchema.items.anyOf[selectedOptionIdx], defs);
@@ -274,4 +301,322 @@ export const resolveNewListItem = (
   } else {
     return null;
   }
+};
+
+export const evaluateCondition = (
+  model: any,
+  condition: { field: string; operator: string; value: any },
+): boolean => {
+  let expected = condition.value;
+
+  if (typeof expected === "string" && expected.startsWith("$")) {
+    const refField = expected.substring(1);
+    expected = model ? model[refField] : undefined;
+  }
+  const actual = model ? model[condition.field] : undefined;
+
+  switch (condition.operator) {
+    case "gt":
+      return actual > expected;
+    case "ge":
+      return actual >= expected;
+    case "lt":
+      return actual < expected;
+    case "le":
+      return actual <= expected;
+    case "eq":
+      return actual === expected;
+    case "not_eq":
+      return actual !== expected;
+    case "in":
+      return Array.isArray(expected) ? expected.includes(actual) : false;
+    case "not_in":
+      return Array.isArray(expected) ? !expected.includes(actual) : false;
+    default:
+      console.warn(`Unsupported operator ${condition.operator}`);
+      return true;
+  }
+};
+
+export const resolveRefRecursive = (
+  schema: JSONSchema | TypeOption,
+  defs: Record<string, JSONSchema> | undefined,
+) => {
+  if (!schema || !isPlainObject(schema)) {
+    return schema;
+  }
+
+  if (schema.$ref && defs) {
+    const refMatch = schema.$ref.match(/^#\/\$defs\/(.+)$/);
+    if (refMatch) {
+      const defKey = refMatch[1];
+      const resolved = defs[defKey];
+      if (resolved) {
+        schema = { ...resolved, ...schema };
+        delete (schema as any).$ref;
+      }
+    }
+  }
+
+  const nestedObjectsKeys = [
+    "properties",
+    "patternProperties",
+    "dependentSchemas",
+  ];
+  const objectTypes = [
+    "not",
+    "if",
+    "then",
+    "else",
+    "contains",
+    "propertyNames",
+    "additionalProperties",
+  ] as const;
+
+  const arrTypes = [
+    "anyOf",
+    "oneOf",
+    "allOf",
+    "else",
+    "contains",
+    "propertyNames",
+    "additionalProperties",
+  ];
+
+  const mixedTypes = ["items"];
+
+  nestedObjectsKeys.forEach((jkey) => {
+    const props = (schema as JSONSchema)[
+      jkey as keyof typeof schema
+    ] as JSONSchema;
+    if (props && isPlainObject(props)) {
+      Object.keys(props).forEach((key) => {
+        props[key as keyof typeof props] = resolveRefRecursive(
+          props[key as keyof typeof props],
+          defs,
+        );
+      });
+    }
+  });
+
+  arrTypes.forEach((arrKey) => {
+    const val = (schema as JSONSchema)[arrKey as keyof typeof schema];
+    if (Array.isArray(val)) {
+      const mapped = val.map(
+        (subSchema) => resolveRefRecursive(subSchema, defs) as JSONSchema,
+      );
+      (schema as any)[arrKey] = mapped;
+    }
+  });
+
+  mixedTypes.forEach((arrKey) => {
+    const val = (schema as JSONSchema)[arrKey as keyof typeof schema] as
+      | JSONSchema
+      | JSONSchema[];
+    if (!val) {
+      return;
+    }
+
+    if (Array.isArray(val)) {
+      const mapped = val.map(
+        (subSchema) => resolveRefRecursive(subSchema, defs) as JSONSchema,
+      );
+      (schema as any)[arrKey] = mapped;
+    } else {
+      (schema as any)[arrKey] = resolveRefRecursive(val, defs);
+    }
+  });
+
+  objectTypes.forEach((key) => {
+    const castedKey = key as
+      | "not"
+      | "if"
+      | "then"
+      | "else"
+      | "contains"
+      | "propertyNames"
+      | "additionalProperties";
+
+    if (
+      (schema as JSONSchema)[castedKey] &&
+      isPlainObject((schema as JSONSchema)[castedKey])
+    ) {
+      (schema as JSONSchema)[castedKey] = resolveRefRecursive(
+        (schema as JSONSchema)[castedKey] as JSONSchema,
+        defs,
+      );
+    }
+  });
+
+  return schema;
+};
+
+export const validateSimpleType = (
+  rawSchema: JSONSchema | null,
+  effectiveSchema: JSONSchema,
+  model: any,
+) => {
+  let errorMsg: string = "";
+
+  if (effectiveSchema.type) {
+    let validType = true;
+    switch (effectiveSchema.type) {
+      case "string":
+        validType = isString(model) && !isEmptyString(model.trim());
+        break;
+      case "number":
+      case "integer":
+        validType = typeof model === "number";
+        if (effectiveSchema.type === "integer" && !Number.isInteger(model)) {
+          validType = false;
+        }
+        break;
+      case "boolean":
+        validType = typeof model === "boolean";
+        break;
+      case "null":
+        validType = model === null;
+        break;
+
+      case "string_or_number":
+        validType = isString(model)
+          ? !isEmptyString(model.trim())
+          : isNumber(model);
+        break;
+      case "hex":
+        if (typeof model === "number") {
+          validType = true;
+        } else if (isString(model)) {
+          validType = /^0x[0-9a-fA-F]+$/.test(model);
+        } else {
+          validType = false;
+        }
+        break;
+      default:
+        validType = true;
+    }
+
+    if (!validType) {
+      errorMsg = `Invalid type: expected ${(rawSchema?.type || effectiveSchema.type).replace("_", " ")}`;
+      return errorMsg;
+    }
+  }
+
+  if (isNumber(model)) {
+    if (
+      effectiveSchema.minimum !== undefined &&
+      model < effectiveSchema.minimum
+    ) {
+      errorMsg += ` Must be >= ${effectiveSchema.minimum}.`;
+    }
+    if (
+      effectiveSchema.maximum !== undefined &&
+      model > effectiveSchema.maximum
+    ) {
+      errorMsg += ` Must be <= ${effectiveSchema.maximum}.`;
+    }
+    if (
+      effectiveSchema.exclusiveMinimum !== undefined &&
+      model <= effectiveSchema.exclusiveMinimum
+    ) {
+      errorMsg += ` Must be > ${effectiveSchema.exclusiveMinimum}.`;
+    }
+    if (
+      effectiveSchema.exclusiveMaximum !== undefined &&
+      model >= effectiveSchema.exclusiveMaximum
+    ) {
+      errorMsg += ` Must be < ${effectiveSchema.exclusiveMaximum}.`;
+    }
+  }
+
+  if (typeof model === "string" && effectiveSchema.pattern) {
+    const reg = new RegExp(effectiveSchema.pattern);
+    if (!reg.test(model)) {
+      errorMsg += ` Must match pattern "${effectiveSchema.pattern}".`;
+    }
+  }
+
+  if (Array.isArray(effectiveSchema.enum) && effectiveSchema.enum.length > 0) {
+    if (!effectiveSchema.enum.includes(model)) {
+      errorMsg += ` Value must be one of: ${effectiveSchema.enum.join(", ")}.`;
+    }
+  }
+
+  return errorMsg.trim().length > 0 ? errorMsg : null;
+};
+
+export const validateAll = (rawSchema: JSONSchema | null, model: any): any => {
+  if (!rawSchema) return null;
+
+  let effectiveSchema: JSONSchema = rawSchema;
+  if (rawSchema.anyOf || rawSchema.oneOf) {
+    const options = rawSchema.anyOf || rawSchema.oneOf;
+
+    if (options) {
+      const candidateIndex = detectCandidateIndex(model, options);
+      effectiveSchema = options[candidateIndex];
+    }
+  }
+
+  let errors: Record<string, any> = {};
+
+  if (Array.isArray(rawSchema.cross_field_validation)) {
+    rawSchema.cross_field_validation.forEach((rule) => {
+      const allConditionsPass = rule.conditions.every((cond) =>
+        evaluateCondition(model, cond),
+      );
+      if (allConditionsPass) {
+        errors[rule.then.field] = rule.then.rule.message;
+      }
+    });
+  }
+
+  if (
+    (effectiveSchema.type === "object" || effectiveSchema.properties) &&
+    effectiveSchema.properties
+  ) {
+    if (Array.isArray(effectiveSchema.required)) {
+      effectiveSchema.required.forEach((requiredKey) => {
+        if (model === undefined || model === null || !(requiredKey in model)) {
+          errors[requiredKey] = "This field is required.";
+        }
+      });
+    }
+
+    Object.entries(effectiveSchema.properties).forEach(([key, propSchema]) => {
+      const childValue = model ? model[key] : undefined;
+      const childErrors = validateAll(propSchema, childValue);
+      if (
+        childErrors &&
+        (isString(childErrors) || Object.keys(childErrors).length > 0)
+      ) {
+        errors[key] = childErrors;
+      }
+    });
+  } else if (
+    (effectiveSchema.type === "array" || effectiveSchema.items) &&
+    effectiveSchema.items
+  ) {
+    if (!Array.isArray(model)) {
+      return "Expected an array.";
+    } else {
+      const arrErrors = model.map((item: any) =>
+        validateAll(effectiveSchema.items!, item),
+      );
+
+      if (
+        arrErrors.some(
+          (itemErr) =>
+            itemErr &&
+            (typeof itemErr === "string" || Object.keys(itemErr).length > 0),
+        )
+      ) {
+        return arrErrors;
+      }
+    }
+  } else if (isEmpty(errors)) {
+    return validateSimpleType(rawSchema, effectiveSchema, model);
+  }
+
+  return isEmpty(errors) ? null : errors;
 };

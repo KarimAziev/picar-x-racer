@@ -1,6 +1,6 @@
 from typing import Literal, Union
 
-from app.schemas.robot.common import AddressField, AddressModel, EnabledField
+from app.schemas.robot.common import AddressField, AddressModel, EnabledField, IC2Bus
 from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
 from robot_hat.drivers.adc.INA219 import ADCResolution, BusVoltageRange, Gain, Mode
 from robot_hat.drivers.adc.sunfounder_adc import (
@@ -302,16 +302,7 @@ class INA219BatteryDriverConfig(AddressModel):
     ] = INA219Config()
     address: AddressField = 0x41
 
-    bus: Annotated[
-        int,
-        Field(
-            ...,
-            title="The I2C bus",
-            description="The I2C bus number used to communicate with the driver chip. ",
-            examples=[1, 4],
-            ge=0,
-        ),
-    ] = 1
+    bus: IC2Bus = 1
 
 
 class SunfounderBatteryConfig(AddressModel):
@@ -335,16 +326,7 @@ class SunfounderBatteryConfig(AddressModel):
 
     address: AddressField = "0x14"
 
-    bus: Annotated[
-        int,
-        Field(
-            ...,
-            title="The I2C bus",
-            description="I2C bus number",
-            examples=[1, 4],
-            ge=0,
-        ),
-    ] = 1
+    bus: IC2Bus = 1
 
     @field_validator("channel", mode="before")
     def parse_channel(cls, value):

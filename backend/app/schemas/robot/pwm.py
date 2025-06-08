@@ -1,6 +1,6 @@
 from typing import Literal
 
-from app.schemas.robot.common import AddressField, AddressModel
+from app.schemas.robot.common import AddressField, AddressModel, IC2Bus
 from pydantic import Field
 from robot_hat.data_types.config.pwm import PWMDriverConfig as PWMDriverConfigDataclass
 from typing_extensions import Annotated
@@ -17,19 +17,19 @@ class PWMDriverConfig(AddressModel):
             ...,
             description="Model of the PWM driver chip",
             examples=["Sunfounder", "PCA9685"],
+            json_schema_extra={
+                "type": "select",
+                "props": {
+                    "options": [
+                        {"value": "PCA9685", "label": "PCA9685"},
+                        {"value": "Sunfounder", "label": "Sunfounder"},
+                    ]
+                },
+            },
         ),
     ] = "PCA9685"
 
-    bus: Annotated[
-        int,
-        Field(
-            ...,
-            title="The I2C bus",
-            description="The I2C bus number used to communicate with the PWM driver chip. ",
-            examples=[1, 4],
-            ge=0,
-        ),
-    ] = 1
+    bus: IC2Bus = 1
     frame_width: Annotated[
         int,
         Field(

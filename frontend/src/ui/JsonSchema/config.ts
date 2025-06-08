@@ -6,6 +6,13 @@ import SelectField from "@/ui/SelectField.vue";
 import StringOrNumberField from "@/ui/StringOrNumberField.vue";
 import TextField from "@/ui/TextField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
+import { FieldType } from "@/ui/JsonSchema/interface";
+
+export const simpleTypes: Partial<Record<FieldType, boolean>> = {
+  string: true,
+  boolean: true,
+  number: true,
+};
 
 export const componentsWithDefaults = defineComponents(
   {
@@ -50,4 +57,10 @@ export const componentsWithDefaults = defineComponents(
   },
 );
 
-export const renameMap = { maximum: "max", minimum: "min", const: "readonly" };
+export const renameMap = {
+  /**
+   * maximum: "max",
+   * minimum: "min",
+   */
+  const: "readonly",
+};

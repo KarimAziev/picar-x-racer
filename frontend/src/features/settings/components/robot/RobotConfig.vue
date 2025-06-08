@@ -5,6 +5,7 @@
     v-for="(propSchema, propName) in store.config.properties"
     :level="0"
     :schema="propSchema"
+    :invalidData="invalidData"
     :model="currValue"
     :origModel="store.data"
     :path="[propName]"
@@ -36,6 +37,8 @@ import JsonSchema from "@/ui/JsonSchema/JsonSchema.vue";
 import { cloneDeep } from "@/util/obj";
 import { isDataChangedPred } from "@/features/settings/components/robot/util";
 import type { Data } from "@/features/settings/stores/robot";
+import { validateAll, resolveRefRecursive } from "@/ui/JsonSchema/util";
+import { isPlainObject } from "@/util/guards";
 
 defineProps<{ idPrefix: string }>();
 
@@ -48,7 +51,22 @@ const handleSave = async () => {
 
 const loading = ref(true);
 
+const invalidData = computed<any>(() => {
+  if (!store.config || !store.config["$defs"]) {
+    return null;
+  }
+  const resolved = resolveRefRecursive(
+    cloneDeep(store.config),
+    cloneDeep(store.config["$defs"]),
+  );
+
+  return validateAll(resolved as any, currValue.value);
+});
+
 const disabled = computed(() => {
+  if (isPlainObject(invalidData.value)) {
+    return true;
+  }
   const diff =
     store.data && currValue.value
       ? isDataChangedPred(store.data, currValue.value)

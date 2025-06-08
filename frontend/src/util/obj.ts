@@ -157,6 +157,7 @@ export function cloneDeep<T>(value: T): T {
         clonedObj[key] = cloneDeep((value as Record<string, any>)[key]);
       }
     }
+    ``;
     return clonedObj as T;
   }
 
@@ -499,26 +500,14 @@ export const findAncestors = <
   return [];
 };
 
-export function deepMerge(
-  localObj: Record<string, any>,
-  incomingObj: Record<string, any>,
-) {
-  for (const key in incomingObj) {
-    if (
-      incomingObj[key] &&
-      typeof incomingObj[key] === "object" &&
-      !Array.isArray(incomingObj[key])
-    ) {
-      // Ensure local object exists to merge into. If not, create one.
-      if (!localObj[key] || typeof localObj[key] !== "object") {
-        localObj[key] = {};
-      }
-      // Recursively merge
-      deepMerge(localObj[key], incomingObj[key]);
-    } else {
-      // For primitive values, assign incoming value.
-      localObj[key] = incomingObj[key];
-    }
+export const isObjectContainsStringDeep = (obj: any) => {
+  if (isPlainObject(obj)) {
+    return Object.values(obj).some(isObjectContainsStringDeep);
+  } else if (Array.isArray(obj)) {
+    return obj.some(isObjectContainsStringDeep);
+  } else if (isString(obj)) {
+    return true;
+  } else {
+    return false;
   }
-  return localObj;
-}
+};

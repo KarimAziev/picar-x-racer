@@ -6,6 +6,7 @@
     :labelClassName="labelClassName"
     :tooltipHelp="tooltipHelp"
     :layout="layout"
+    :messageClass="messageClass"
   >
     <Select
       :pt="{ input: { id: field, name: field } }"

@@ -62,15 +62,46 @@ export type RecoursiveRequired<T> = {
     : T[K];
 };
 
+/**
+ * @example
+ * ```ts
+ * export type Result = FlattenObjectKeys<{
+ *   propA: "3";
+ *   propB: {
+ *     nestedProp: {
+ *       arr: [{ a: 1 }, { b: 3 }];
+ *     };
+ *   };
+ * }>;
+ *
+ * // -> "propA" | "propB.nestedProp.arr"
+ * ```
+ */
 export type FlattenObjectKeys<
   T extends Record<string, any>,
   Key = keyof T,
 > = Key extends string
-  ? Required<T>[Key] extends Record<string, any>
-    ? `${Key}.${FlattenObjectKeys<Required<T>[Key]>}`
-    : `${Key}`
+  ? Required<T>[Key] extends any[]
+    ? `${Key}`
+    : Required<T>[Key] extends Record<string, any>
+      ? `${Key}.${FlattenObjectKeys<Required<T>[Key]>}`
+      : `${Key}`
   : never;
 
+/**
+ * @example
+ * ```ts
+ * export type Result = NonFlattenObjectKeys<{
+ *   propA: "3";
+ *   propB: {
+ *     nestedProp: {
+ *       arr: [{ a: 1 }, { b: 3 }];
+ *     };
+ *   };
+ * }>;
+ * // -> "propA"
+ * ```
+ */
 export type NonFlattenObjectKeys<
   T extends Record<string, any>,
   Key = keyof T,
@@ -79,6 +110,29 @@ export type NonFlattenObjectKeys<
     ? never
     : `${Key}`
   : never;
+
+/**
+ * @example
+ * ```ts
+ * FlattenObject<{
+ *   propA: "3";
+ *   propB: {
+ *     nestedProp: {
+ *       arr: [{ a: 1 }, { b: 3 }];
+ *     };
+ *   };
+ * }>;
+ *
+ * // -> {
+ *     propA: "3";
+ *     "propB.nestedProp.arr": [{
+ *         a: 1;
+ *     }, {
+ *         b: 3;
+ *     }];
+ * }
+ * ```
+ */
 
 export type FlattenObject<T extends Record<string, any>> = {
   [K in FlattenObjectKeys<T>]: K extends `${infer Key}.${infer Rest}`
@@ -91,6 +145,55 @@ export type FlattenObject<T extends Record<string, any>> = {
       ? T[K]
       : never;
 };
+
+/**
+ * @example
+ * ```ts
+ * export type Result = FlattenAllObjectKeys<{
+ *   propA: "3";
+ *   propB: {
+ *     nestedProp: {
+ *       arr: [{ a: 1 }, { b: 3 }];
+ *     };
+ *   };
+ * }>;
+ *
+ * // "propA" | "propB" | "propB.nestedProp" | "propB.nestedProp.arr"
+ * ```
+ */
+export type FlattenAllObjectKeys<T> = {
+  [K in keyof Required<T> & string]: Required<T>[K] extends any[]
+    ? K
+    : Required<T>[K] extends Record<string, any>
+      ? K | `${K}.${FlattenAllObjectKeys<Required<T>[K]>}`
+      : K;
+}[keyof Required<T> & string];
+
+export type Prepend<K extends string | number, P> = P extends any[]
+  ? [K, ...P]
+  : never;
+
+/**
+ * @example
+ * ```ts
+ * FlattenAllObjectKeysPaths<{
+ *   propA: "3";
+ *   propB: {
+ *     nestedProp: {
+ *       arr: [{ a: 1 }, { b: 3 }];
+ *     };
+ *   };
+ * }>; // -> ["propA"] | ["propB"] | ["propB", "nestedProp"] | ["propB", "nestedProp", "arr"]
+ * ```
+ */
+
+export type FlattenAllObjectKeysPaths<T> = {
+  [K in keyof Required<T> & string]: Required<T>[K] extends any[]
+    ? [K]
+    : Required<T>[K] extends Record<string, any>
+      ? [K] | Prepend<K, FlattenAllObjectKeysPaths<Required<T>[K]>>
+      : [K];
+}[keyof Required<T> & string];
 
 export type FlattenBooleanObjectKeys<
   T extends Record<string, any>,
@@ -136,3 +239,111 @@ export type MapObjectsDeepTo<Obj, Value> = {
 export type PropertiesOfType<T, U> = {
   [K in keyof T as T[K] extends U ? K : never]: T[K];
 };
+
+type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+type Decrement<D extends number> = Prev[D];
+
+/**
+ * @example
+ * ```ts
+ * // with object
+ * FlattenPaths<{
+ *   propA: "3";
+ *   propB: {
+ *     nested_arr: [{ a: 1 }, { b: 3 }];
+ *   };
+ * }>;
+ * // ->
+ *   ["propA"] |
+ *   ["propB"] |
+ *   ["propB", "nested_arr"] |
+ *   ["propB", "nested_arr", number] |
+ *   ["propB", "nested_arr", number, "a"] |
+ *   ["propB", "nested_arr", number, "b"];
+ *
+ * // with array
+ * FlattenPaths<[{ a: 1 }, { b: 3 }]> // -> [number] | [number, "a"] | [number, "b"]
+ *
+ * FlattenPaths<[{ a: 1, nested: { c: 2} }, { b: 3 }]>
+ * // -> [number] | [number, "a"] | [number, "nested"] | [number, "nested", "c"] | [number, "b"]
+ * ```
+ */
+
+export type FlattenPaths<T, D extends number = 10> = D extends 0
+  ? []
+  : T extends any[]
+    ? FlattenArrayPaths<T, D>
+    : T extends object
+      ? FlattenObjectPaths<T, D>
+      : [];
+
+/**
+ * @example
+ * ```ts
+ * FlattenObjectPaths<{
+ *   propA: "3";
+ *   propB: {
+ *     nested_arr: [{ a: 1 }, { b: 3 }];
+ *   };
+ * }>;
+ * ->
+ *   ["propA"] |
+ *   ["propB"] |
+ *   ["propB", "nested_arr"] |
+ *   ["propB", "nested_arr", number] |
+ *   ["propB", "nested_arr", number, "a"] |
+ *   ["propB", "nested_arr", number, "b"];
+ * ```
+ */
+export type FlattenObjectPaths<T, D extends number> = {
+  [K in keyof Required<T> & string]: Required<T>[K] extends any[]
+    ? [K] | Prepend<K, FlattenArrayPaths<Required<T>[K], Decrement<D>>>
+    : Required<T>[K] extends object
+      ? [K] | Prepend<K, FlattenPaths<Required<T>[K], Decrement<D>>>
+      : [K];
+}[keyof Required<T> & string];
+
+/**
+ * @example
+ * ```ts
+ * // with array
+ * FlattenArrayPaths<[{ a: 1 }, { b: 3 }]> // -> [number] | [number, "a"] | [number, "b"]
+ *
+ * FlattenArrayPaths<[{ a: 1, nested: { c: 2} }, { b: 3 }]>
+ * // -> [number] | [number, "a"] | [number, "nested"] | [number, "nested", "c"] | [number, "b"]
+ * ```
+ */
+export type FlattenArrayPaths<T extends any[], D extends number> =
+  | [number]
+  | Prepend<number, FlattenPaths<T[number], Decrement<D>>>;
+
+/**
+ * @example
+ * ```ts
+ * GetTypeByPath<{ a: 3; b: { c: "val" } }, ["b", "c"]>; // -> "val"
+ * ```
+ */
+export type GetTypeByPath<
+  T,
+  Path extends Array<any>,
+  D extends number = 10,
+> = D extends 0
+  ? never
+  : Path extends [infer Head, ...infer Rest]
+    ? Head extends keyof T // object key case
+      ? GetTypeByPath<
+          T[Head],
+          Extract<Rest, Array<string | number>>,
+          Decrement<D>
+        >
+      : Head extends number // array index case
+        ? T extends Array<infer U>
+          ? GetTypeByPath<
+              U,
+              Extract<Rest, Array<string | number>>,
+              Decrement<D>
+            >
+          : never
+        : never
+    : T;

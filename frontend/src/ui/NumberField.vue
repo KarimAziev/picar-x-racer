@@ -6,6 +6,7 @@
     :labelClassName="labelClassName"
     :tooltipHelp="tooltipHelp"
     :layout="layout"
+    :messageClass="messageClass"
   >
     <span
       class="wrapper p-inputnumber p-component p-inputwrapper p-inputwrapper-filled p-inputnumber-stacked"

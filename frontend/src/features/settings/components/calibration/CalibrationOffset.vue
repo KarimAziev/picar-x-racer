@@ -1,5 +1,6 @@
 <template>
   <NumberInputField
+    :messageClass="messageClass"
     :message="message"
     :label="label"
     :fieldClassName="fieldClassName"

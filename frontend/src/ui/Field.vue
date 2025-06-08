@@ -5,7 +5,7 @@
       <TooltipHelp v-if="tooltipHelp" :tooltip="tooltipHelp" />
     </span>
     <slot></slot>
-    <span class="bg-transparent text-red-500 text-sm" v-if="message">
+    <span :class="messageClass" class="bg-transparent text-red-500 text-sm">
       {{ message }}
     </span>
   </div>
@@ -24,6 +24,7 @@ export type Props = {
   labelClassName?: string;
   layout?: FieldLayout;
   tooltipHelp?: string;
+  messageClass?: string;
 };
 
 const props = defineProps<Props>();

@@ -9,6 +9,9 @@ from app.schemas.robot.motors import (
     PhaseMotorConfig,
 )
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
+from app.schemas.robot.servos import (
+    cross_field_validators as servo_cross_field_validators,
+)
 from app.util.pydantic_helpers import partial_model
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
@@ -25,6 +28,9 @@ class HardwareConfig(BaseModel):
             ...,
             title="Steering Servo",
             description="Configuration for the steering servo.",
+            json_schema_extra={
+                "cross_field_validation": servo_cross_field_validators,
+            },
         ),
     ] = None
     cam_pan_servo: Annotated[
@@ -33,6 +39,9 @@ class HardwareConfig(BaseModel):
             ...,
             title="Camera Pan Servo",
             description="Configuration for the camera pan servo.",
+            json_schema_extra={
+                "cross_field_validation": servo_cross_field_validators,
+            },
         ),
     ] = None
     cam_tilt_servo: Annotated[

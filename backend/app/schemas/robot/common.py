@@ -16,14 +16,50 @@ EnabledField = Annotated[
     ),
 ]
 
+AddressInt = Annotated[
+    int,
+    Field(
+        ...,
+        title="I2C address",
+        description="I2C address of the device",
+        examples=[0x40, 64],
+        le=127,
+        ge=0,
+        json_schema_extra={"type": "hex"},
+    ),
+]
+
+AddressHexStr = Annotated[
+    str,
+    Field(
+        ...,
+        title="I2C address",
+        description="I2C address of the device",
+        examples=["0x40"],
+        json_schema_extra={"type": "hex"},
+    ),
+]
+
 AddressField = Annotated[
-    Union[int, str],
+    Union[AddressInt, AddressHexStr],
     Field(
         ...,
         title="I2C address",
         description="I2C address of the device",
         examples=[0x40, "0x40", 64],
         json_schema_extra={"type": "hex"},
+    ),
+]
+
+IC2Bus = Annotated[
+    int,
+    Field(
+        ...,
+        title="The I2C bus",
+        description="The I2C bus number used to communicate with the driver chip. ",
+        examples=[1, 4],
+        ge=0,
+        le=127,
     ),
 ]
 
@@ -45,6 +81,8 @@ class AddressModel(BaseModel):
 
         if int_val < 0:
             raise ValueError("Address must be a positive number.")
+        elif int_val > 127:
+            raise ValueError("Address must less then 0x7f (127).")
 
         return value
 

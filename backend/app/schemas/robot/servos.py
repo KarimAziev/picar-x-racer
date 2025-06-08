@@ -3,11 +3,43 @@ from typing import  Union, Optional
 from app.core.logger import Logger
 from app.schemas.robot.common import EnabledField
 from app.schemas.robot.pwm import PWMDriverConfig
+from app.util.validator import ValidationRuleBuilder, Validator
 from pydantic import BaseModel, Field, model_validator
 from robot_hat import ServoCalibrationMode
 from typing_extensions import Annotated
 
 logger = Logger(__name__)
+
+validator = (
+    Validator()
+    .addRule(
+        ValidationRuleBuilder()
+        .addIf("min_pulse", "ge", "$max_pulse")
+        .addThen("min_pulse", "Cannot be greater than max_pulse!")
+        .build()
+    )
+    .addRule(
+        ValidationRuleBuilder()
+        .addIf("max_pulse", "le", "$min_pulse")
+        .addThen("max_pulse", "Cannot be less than min_pulse!")
+        .build()
+    )
+    .addRule(
+        ValidationRuleBuilder()
+        .addIf("min_angle", "gt", "$max_angle")
+        .addThen("min_angle", "Cannot be greater than max_angle!")
+        .build()
+    )
+    .addRule(
+        ValidationRuleBuilder()
+        .addIf("max_angle", "lt", "$min_angle")
+        .addThen("max_angle", "Cannot be less than min_angle!")
+        .build()
+    )
+    .build()
+)
+
+cross_field_validators = validator.dict()
 
 
 class ServoConfig(BaseModel):
@@ -47,6 +79,8 @@ class ServoConfig(BaseModel):
             ...,
             description="Minimum allowable angle for the servo",
             examples=[-30, -45],
+            le=360,
+            ge=-360,
         ),
     ] = -30
     max_angle: Annotated[
@@ -55,6 +89,8 @@ class ServoConfig(BaseModel):
             ...,
             description="Maximum allowable angle for the servo",
             examples=[30, 45],
+            le=360,
+            ge=-360,
         ),
     ] = 30
     dec_step: Annotated[
@@ -81,6 +117,10 @@ class ServoConfig(BaseModel):
             ...,
             description="The pulse width in microseconds (µs) corresponding to the servo's minimum position",
             examples=[500],
+            json_schema_extra={
+                "cross_field_validation": {"lessThan": "max_pulse"},
+            },
+            ge=20,
         ),
     ] = 500
 
@@ -90,6 +130,7 @@ class ServoConfig(BaseModel):
             ...,
             description="The maximum pulse width in microseconds (µs) corresponding to the servo's maximum position.",
             examples=[2500],
+            le=3000,
         ),
     ] = 2500
 
@@ -115,14 +156,13 @@ class ServoConfig(BaseModel):
         if self.saved_calibration_offset is None:
             self.saved_calibration_offset = self.calibration_offset
 
-        if self.min_angle >= self.max_angle:
-            raise ValueError(
-                f"`min_angle` must be less than `max_angle` for {self.name}."
-            )
+        validator.validate(self)
+
         if not -360 <= self.calibration_offset <= 360:
             raise ValueError(
                 f"Calibration offset {self.calibration_offset} for {self.name} must be in the range [-360, 360]."
             )
+
         return self
 
 

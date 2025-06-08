@@ -1,6 +1,7 @@
 from typing import Union
 
 from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 
 class DistanceData(BaseModel):
@@ -31,23 +32,27 @@ class UltrasonicConfig(BaseModel):
     Ultrasonic distance sensor configuration.
     """
 
-    trig_pin: Union[str, int] = Field(
-        default="D2",
-        json_schema_extra={"type": "string_or_number"},
-        description="The name or the number of the pin connected to the TRIG pin of the ultrasonic sensor.",
-        examples=[
-            "D2",
-        ],
-    )
+    trig_pin: Annotated[
+        Union[str, int],
+        Field(
+            ...,
+            json_schema_extra={"type": "string_or_number"},
+            title="Trig pin",
+            description="The name or the number of the pin connected to the TRIG pin of the ultrasonic sensor.",
+            examples=["D2"],
+        ),
+    ] = "D2"
+    echo_pin: Annotated[
+        Union[str, int],
+        Field(
+            ...,
+            json_schema_extra={"type": "string_or_number"},
+            title="Echo pin",
+            description="The name or the number of the pin connected to the ECHO pin of the ultrasonic sensor.",
+            examples=["D3"],
+        ),
+    ] = "D3"
 
-    echo_pin: Union[str, int] = Field(
-        default="D3",
-        json_schema_extra={"type": "string_or_number"},
-        description="The name or the number of the pin connected to the ECHO pin of the ultrasonic sensor.",
-        examples=[
-            "D3",
-        ],
-    )
     timeout: float = Field(
         default=0.017,
         description="The maximum duration to wait for a pulse to return.",

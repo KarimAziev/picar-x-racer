@@ -6,6 +6,7 @@
     :labelClassName="labelClassName"
     :tooltipHelp="tooltipHelp"
     :layout="layout"
+    :messageClass="messageClass"
   >
     <CycleButton
       v-bind="buttonProps"

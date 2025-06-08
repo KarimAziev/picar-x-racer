@@ -17,7 +17,6 @@
         :key="[selectedOption, ...path, propName].join('-')"
         :schema="propSchema"
         :model="model"
-        :invalidData="invalidData"
         :path="[...path, propName]"
         :defs="defs"
       />
@@ -69,7 +68,6 @@
               : resolvedSchema.items) || null
           "
           :model="model"
-          :invalidData="invalidData"
           :path="[...path, index]"
           :defs="defs"
         ></JsonSchema>
@@ -102,13 +100,10 @@
       :is="compWithProps.comp"
       v-bind="compWithProps.props"
       v-model="localValue"
-      messageClass="min-h-[17px] absolute bottom-0 left-1.5"
       :field="`${stringifyArrSafe(path)}`"
       :label="resolvedSchema?.title"
       :path="path"
       :tooltipHelp="tooltipHelp"
-      :invalid="!!invalidMessage"
-      :message="isString(invalidMessage) ? invalidMessage : null"
     />
     <slot></slot>
   </template>
@@ -154,7 +149,6 @@
       :key="`schema-${stringifyArrSafe([...path, selectedOption])}`"
       :schema="selectedSchema"
       :model="model"
-      :invalidData="invalidData"
       :path="path"
       :defs="defs"
     />
@@ -174,7 +168,7 @@
 <script setup lang="ts">
 import { computed, watch, ref } from "vue";
 import type { JSONSchema } from "@/ui/JsonSchema/interface";
-import { isPlainObject, isString } from "@/util/guards";
+import { isPlainObject } from "@/util/guards";
 import { cloneDeep, isObjectEquals } from "@/util/obj";
 import { startCase, stringifyArrSafe } from "@/util/str";
 import SelectField from "@/ui/SelectField.vue";
@@ -207,7 +201,6 @@ const props = withDefaults(
     schema: JSONSchema | null;
     model: Record<string | number, any> | null;
     origModel: Record<string | number, any> | null;
-    invalidData?: Record<string | number, any> | null;
     path: (string | number)[];
     defs?: Record<string, JSONSchema>;
     idPrefix: string;
@@ -264,10 +257,6 @@ const localValue = computed({
   },
 });
 
-const invalidMessage = computed(() =>
-  props.invalidData ? getNestedValue(props.invalidData, props.path) : false,
-);
-
 const isObjectSchema = computed(() => isObjectSchemaPred(resolvedSchema.value));
 const isArraySchema = computed(() => isArraySchemaPred(resolvedSchema.value));
 const isAnyOf = computed(() => isAnyOfPred(resolvedSchema.value));
@@ -305,13 +294,6 @@ const disabled = computed(() => {
   if (!isRootLevel.value) {
     return true;
   }
-
-  const invalid = invalidMessage.value;
-
-  if (invalid) {
-    return true;
-  }
-
   const storedData = getNestedValue(props.origModel, props.path);
   if (Array.isArray(localValue.value)) {
     if (
@@ -364,14 +346,17 @@ const handleNewOption = () => {
   const oldOpt = prevSelectedOpt.value;
   const newOpt = selectedOption.value;
   const prevData = oldData.value[newOpt];
-  const branchModel = getNestedValue(props.model, props.path);
 
-  oldData.value[oldOpt] = cloneDeep(branchModel);
+  oldData.value[oldOpt] = cloneDeep(getNestedValue(props.model, props.path));
+
+  const branchModel = getNestedValue(props.model, props.path);
 
   if (prevData) {
     localValue.value = prevData;
-  } else if (selectedSchema.value && isPlainObject(branchModel)) {
-    fillDefaults(branchModel, selectedSchema.value);
+  } else {
+    if (selectedSchema.value && isPlainObject(branchModel)) {
+      fillDefaults(branchModel, selectedSchema.value);
+    }
   }
 
   prevSelectedOpt.value = newOpt;

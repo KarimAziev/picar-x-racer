@@ -25,13 +25,52 @@ export interface Props extends Record<string, any> {
   hidden?: boolean;
 }
 
+export type Operator =
+  | "gt"
+  | "lt"
+  | "ge"
+  | "le"
+  | "eq"
+  | "not_eq"
+  | "in"
+  | "not_in";
+
+// simple DSL condition for validation
+export interface Condition {
+  field: string;
+  operator: Operator;
+  value: any;
+}
+
+export interface ValidationRuleResult {
+  message: string;
+}
+
+export interface CrossFieldRule {
+  conditions: Condition[];
+  then: {
+    field: string;
+    rule: ValidationRuleResult;
+  };
+}
+
 export interface JSONSchemaBase {
-  title: string;
+  title?: string;
   type?: FieldType;
   description?: string;
   enum?: (number | string)[];
   anyOf?: JSONSchema[];
   oneOf?: JSONSchema[];
+  allOf?: JSONSchema[];
+  not?: JSONSchema;
+  if?: JSONSchema;
+  then?: JSONSchema;
+  else?: JSONSchema;
+  dependentSchemas?: JSONSchema;
+  patternProperties?: JSONSchema;
+  additionalProperties?: JSONSchema;
+  propertyNames?: JSONSchema;
+  contains?: JSONSchema;
   default?: any;
   examples?: (string | number)[];
   items?: JSONSchema;
@@ -49,6 +88,7 @@ export interface JSONSchemaBase {
   le?: number;
   discriminator?: any;
   const?: string;
+  cross_field_validation?: CrossFieldRule[];
 }
 
 export interface JSONSchema extends JSONSchemaBase {

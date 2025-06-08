@@ -6,6 +6,7 @@
     :message="message"
     :tooltipHelp="tooltipHelp"
     :layout="layout"
+    :messageClass="messageClass"
   >
     <RadioComponentSwitcher
       class="flex items-center gap-2"
