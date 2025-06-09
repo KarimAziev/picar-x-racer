@@ -1,13 +1,14 @@
 import asyncio
 import inspect
 import json
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Union
 
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
 from fastapi import WebSocket
+from robot_hat.services.motor_service import MotorServiceDirection
 from robot_hat.sunfounder.utils import reset_mcu_sync
 
 if TYPE_CHECKING:
@@ -84,7 +85,7 @@ class CarService(metaclass=SingletonMeta):
         - "speed": Current speed from 0 to 100%.
         - "maxSpeed": The maximum allowed speed from 0 to 100%.
         - "direction": Current travel direction.
-        - "servoAngle": Current servo direction angle.
+        - "servoAngle": Current steering servo direction angle.
         - "camPan": Current camera pan angle.
         - "camTilt": Current camera tilt angle.
         - "avoidObstacles": Whether avoid obstacles mode is on.
@@ -151,10 +152,11 @@ class CarService(metaclass=SingletonMeta):
 
         actions_map = {
             "move": self.handle_move,
+            "update": self.handle_update,
             "setServoDirAngle": self.handle_set_servo_dir_angle,
-            "stop": self.handle_stop,
             "setCamTiltAngle": self.handle_set_cam_tilt_angle,
             "setCamPanAngle": self.handle_set_cam_pan_angle,
+            "stop": self.handle_stop,
             "avoidObstacles": self.handle_avoid_obstacles,
             "startAutoMeasureDistance": self.start_auto_measure_distance,
             "stopAutoMeasureDistance": self.stop_auto_measure_distance,
@@ -254,16 +256,16 @@ class CarService(metaclass=SingletonMeta):
     async def handle_stop(self, _: Any = None) -> None:
         await asyncio.to_thread(self.px.stop)
 
-    async def handle_set_servo_dir_angle(self, payload: int) -> None:
+    async def handle_set_servo_dir_angle(self, payload: float) -> None:
         angle = payload or 0
         if self.px.state["steering_servo_angle"] != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
 
-    async def handle_set_cam_tilt_angle(self, payload: int) -> None:
+    async def handle_set_cam_tilt_angle(self, payload: float) -> None:
         if self.px.state["cam_tilt_angle"] != payload:
             await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
-    async def handle_set_cam_pan_angle(self, payload: int) -> None:
+    async def handle_set_cam_pan_angle(self, payload: float) -> None:
         angle = payload
         if self.px.state["cam_pan_angle"] != angle:
             await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
@@ -308,6 +310,29 @@ class CarService(metaclass=SingletonMeta):
         if self.px.state["speed"] > self.max_speed:
             await self.move(self.px.state["direction"], self.max_speed)
 
+    async def handle_update(self, payload: Dict[str, Any]) -> None:
+        current_state = self.current_state
+        move_payload_changed = False
+        handlers: Dict[str, Callable[[Any], Awaitable[None]]] = {
+            "servoAngle": self.handle_set_servo_dir_angle,
+            "camTilt": self.handle_set_cam_tilt_angle,
+            "camPan": self.handle_set_cam_pan_angle,
+        }
+
+        for key, value in payload.items():
+            if value is not None and current_state.get(key) != value:
+                handler = handlers.get(key)
+                if handler:
+                    await handler(value)
+                    await asyncio.sleep(0.005)
+                if key == "speed" or key == "direction" and not move_payload_changed:
+                    move_payload_changed = True
+
+        if move_payload_changed:
+            await self.handle_move(
+                {"speed": payload.get("speed"), "direction": payload.get("direction")}
+            )
+
     async def handle_move(self, payload: Dict[str, Any]) -> None:
         """
         Handles move actions to control the car's direction and speed.
@@ -320,7 +345,7 @@ class CarService(metaclass=SingletonMeta):
         if self.px.state["direction"] != direction or speed != self.px.state["speed"]:
             await self.move(direction, speed)
 
-    async def move(self, direction: int, speed: int) -> None:
+    async def move(self, direction: MotorServiceDirection, speed: int) -> None:
         """
         Moves the car in the specified direction at the given speed.
 

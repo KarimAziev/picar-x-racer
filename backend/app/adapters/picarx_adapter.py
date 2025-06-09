@@ -163,7 +163,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
         Set the servo angle for the vehicle's steering direction.
 
         Args:
-           value (float): Desired angle
+           value: Desired angle
 
         Raises:
            RobotI2CTimeout: If the operation fails due to a timeout.
@@ -186,12 +186,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
-    def set_cam_pan_angle(self, value: int) -> None:
+    def set_cam_pan_angle(self, value: float) -> None:
         """
         Set the camera pan angle.
 
         Args:
-           value (int): Desired angle
+           value: Desired angle
 
         Raises:
            RobotI2CTimeout: If the operation fails due to a timeout.
@@ -214,12 +214,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
-    def set_cam_tilt_angle(self, value: int) -> None:
+    def set_cam_tilt_angle(self, value: float) -> None:
         """
         Set the camera tilt angle.
 
         Args:
-           value (int): Desired angle
+           value: Desired angle
 
         Raises:
            RobotI2CTimeout: If the operation fails due to a timeout.

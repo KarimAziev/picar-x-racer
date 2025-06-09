@@ -319,6 +319,10 @@ export const useControllerStore = defineStore("controller", {
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
     },
 
+    updateCombined(payload: Partial<Gauges>): void {
+      this.sendMessage({ action: "update", payload });
+    },
+
     move(speed: number, direction: number) {
       const robotStore = useRobotStore();
       speed = constrain(0, this.maxSpeed, robotStore.maxSpeed);

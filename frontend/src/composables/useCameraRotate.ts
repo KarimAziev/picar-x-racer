@@ -1,13 +1,18 @@
 import { ref, Ref } from "vue";
-import { useControllerStore } from "@/features/controller/store";
+import { useControllerStore, Gauges } from "@/features/controller/store";
 import { showDirectionalIndicator } from "@/util/dom";
+import { debounce } from "@/util/debounce";
+import { constrain } from "@/util/constrain";
+import { useRobotStore } from "@/features/settings/stores";
 
 export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
   const controllerStore = useControllerStore();
-
+  const robotStore = useRobotStore();
   const isDragging = ref(false);
   const lastX = ref(0);
   const lastY = ref(0);
+  const panAngle = ref<number | null>(null);
+  const tiltAngle = ref<number | null>(null);
 
   const startDragging = (e: MouseEvent | TouchEvent) => {
     isDragging.value = true;
@@ -18,7 +23,13 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
 
   const stopDragging = () => {
     isDragging.value = false;
+    panAngle.value = null;
+    tiltAngle.value = null;
   };
+
+  const updateDeboucned = debounce((payload: Partial<Gauges>) => {
+    controllerStore.updateCombined(payload);
+  }, 50);
 
   const onDrag = (e: MouseEvent | TouchEvent) => {
     if (!isDragging.value) return;
@@ -28,18 +39,32 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
     const deltaY = clientY - lastY.value;
     lastX.value = clientX;
     lastY.value = clientY;
-
-    adjustCamera(deltaX, deltaY);
-
     showDirectionalIndicator(deltaX, deltaY);
+    adjustCamera(deltaX, deltaY);
   };
 
   const adjustCamera = (deltaX: number, deltaY: number) => {
-    const newPan = controllerStore.camPan + deltaX * 0.5;
-    const newTilt = controllerStore.camTilt - deltaY * 0.5;
+    if (panAngle.value === null) {
+      panAngle.value = controllerStore.camPan;
+    }
+    if (tiltAngle.value === null) {
+      tiltAngle.value = controllerStore.camTilt;
+    }
+    const newPan = constrain(
+      robotStore.data.cam_pan_servo.min_angle,
+      robotStore.data.cam_pan_servo.max_angle,
+      panAngle.value + deltaX * 0.5,
+    );
+    const newTilt = constrain(
+      robotStore.data.cam_tilt_servo.min_angle,
+      robotStore.data.cam_tilt_servo.max_angle,
+      tiltAngle.value - deltaY * 0.5,
+    );
 
-    controllerStore.setCamPanAngle(newPan);
-    controllerStore.setCamTiltAngle(newTilt);
+    updateDeboucned({ camPan: newPan, camTilt: newTilt });
+
+    panAngle.value = newPan;
+    tiltAngle.value = newTilt;
   };
 
   const onMouseUp = (e: MouseEvent) => {
@@ -54,7 +79,7 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
     }
   };
 
-  const resetCameraIfCentered = (e: MouseEvent | Touch) => {
+  const resetCameraIfCentered = debounce((e: MouseEvent | Touch) => {
     const imageFeedElement = imgRef.value;
     if (!imageFeedElement) return;
 
@@ -73,7 +98,7 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
     if (isCenteredX && isCenteredY) {
       controllerStore.resetCameraRotate();
     }
-  };
+  }, 50);
 
   const handleOrientationChange = () => {
     lastX.value = 0;
