@@ -47,9 +47,8 @@ async def get_battery_voltage(
     """
     logger.info("get battery voltage")
     (voltage, percentage) = await battery_manager.broadcast_state()
-    logger.info("get battery voltage=%s, %s", voltage, percentage)
     logger.debug(
-        "Retrieved battery status - Voltage: %sV, Percentage: %s%", voltage, percentage
+        "Retrieved battery status - Voltage: %sV, Percentage: %s", voltage, percentage
     )
     if voltage is not None:
         return {"voltage": voltage, "percentage": percentage}
