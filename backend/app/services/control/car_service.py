@@ -343,7 +343,10 @@ class CarService(metaclass=SingletonMeta):
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
         if self.px.state["direction"] != direction or speed != self.px.state["speed"]:
-            await self.move(direction, speed)
+            if speed == 0 or direction == 0:
+                await self.handle_stop()
+            else:
+                await self.move(direction, speed)
 
     async def move(self, direction: MotorServiceDirection, speed: int) -> None:
         """

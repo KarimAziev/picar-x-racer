@@ -7,6 +7,7 @@ import { ref } from "vue";
 import { useControllerStore } from "@/features/controller/store";
 import { useJoystickControl } from "@/features/joystick/composables/useJoysticManager";
 import { useRobotStore } from "@/features/settings/stores";
+import { debounce } from "@/util/debounce";
 
 const controllerStore = useControllerStore();
 const robotStore = useRobotStore();
@@ -14,6 +15,10 @@ const timeout = ref<NodeJS.Timeout>();
 
 const sideOffset = "60px";
 const bottomOffset = "60px";
+
+const handleStopAll = debounce(() => {
+  controllerStore.updateCombined({ speed: 0, direction: 0, servoAngle: 0 });
+}, 50);
 
 const { joystickZone: joystickZoneY, params } = useJoystickControl(
   controllerStore,
@@ -23,8 +28,7 @@ const { joystickZone: joystickZoneY, params } = useJoystickControl(
   },
   {
     onEnd: () => {
-      controllerStore.stop();
-      controllerStore.resetDirServoAngle();
+      handleStopAll();
     },
   },
 );
