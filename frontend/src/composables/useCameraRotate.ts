@@ -1,5 +1,8 @@
-import { ref, Ref } from "vue";
-import { useControllerStore, Gauges } from "@/features/controller/store";
+import { ref } from "vue";
+import type { Ref } from "vue";
+import type { ServoConfig } from "@/features/settings/stores/robot";
+import type { UpdateCombinedPayload } from "@/features/controller/store";
+import { useControllerStore } from "@/features/controller/store";
 import { showDirectionalIndicator } from "@/util/dom";
 import { debounce } from "@/util/debounce";
 import { constrain } from "@/util/constrain";
@@ -27,7 +30,7 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
     tiltAngle.value = null;
   };
 
-  const updateDeboucned = debounce((payload: Partial<Gauges>) => {
+  const updateDeboucned = debounce((payload: UpdateCombinedPayload) => {
     controllerStore.updateCombined(payload);
   }, 50);
 
@@ -43,23 +46,44 @@ export const useCameraRotate = (imgRef: Ref<HTMLImageElement | undefined>) => {
     adjustCamera(deltaX, deltaY);
   };
 
+  const snapAngle = (
+    rawAngle: number,
+    currentAngle: number,
+    servo: ServoConfig,
+  ) => {
+    const { min_angle, max_angle, inc_step, dec_step } = servo;
+    const step = rawAngle >= currentAngle ? inc_step : Math.abs(dec_step);
+    const numSteps = Math.round((rawAngle - min_angle) / step);
+    const snapped = min_angle + numSteps * step;
+    return constrain(min_angle, max_angle, snapped);
+  };
+
   const adjustCamera = (deltaX: number, deltaY: number) => {
+    if (!robotStore.data.cam_pan_servo && !robotStore.data.cam_tilt_servo) {
+      return;
+    }
+
     if (panAngle.value === null) {
       panAngle.value = controllerStore.camPan;
     }
     if (tiltAngle.value === null) {
       tiltAngle.value = controllerStore.camTilt;
     }
-    const newPan = constrain(
-      robotStore.data.cam_pan_servo.min_angle,
-      robotStore.data.cam_pan_servo.max_angle,
-      panAngle.value + deltaX * 0.5,
-    );
-    const newTilt = constrain(
-      robotStore.data.cam_tilt_servo.min_angle,
-      robotStore.data.cam_tilt_servo.max_angle,
-      tiltAngle.value - deltaY * 0.5,
-    );
+
+    const panServo = robotStore.data.cam_pan_servo;
+    const tiltServo = robotStore.data.cam_tilt_servo;
+
+    const rawPan = panServo ? panAngle.value + deltaX * 0.5 : panAngle.value;
+    const rawTilt = tiltServo
+      ? tiltAngle.value - deltaY * 0.5
+      : tiltAngle.value;
+
+    const newPan = panServo
+      ? snapAngle(rawPan, panAngle.value, panServo)
+      : null;
+    const newTilt = tiltServo
+      ? snapAngle(rawTilt, tiltAngle.value, tiltServo)
+      : null;
 
     updateDeboucned({ camPan: newPan, camTilt: newTilt });
 

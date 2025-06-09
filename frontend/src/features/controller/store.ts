@@ -69,6 +69,10 @@ export interface Gauges {
   camTilt: number;
 }
 
+export type UpdateCombinedPayload = Partial<{
+  [K in keyof Gauges]: Gauges[K] | null;
+}>;
+
 export interface StoreState extends Gauges, Modes {
   model: ShallowRef<WebSocketModel> | null;
 }
@@ -319,7 +323,7 @@ export const useControllerStore = defineStore("controller", {
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
     },
 
-    updateCombined(payload: Partial<Gauges>): void {
+    updateCombined(payload: UpdateCombinedPayload): void {
       this.sendMessage({ action: "update", payload });
     },
 
