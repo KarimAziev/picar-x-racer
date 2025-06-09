@@ -268,10 +268,6 @@ export const useControllerStore = defineStore("controller", {
           this.toggleAutoMeasureDistanceMode,
         ],
         [this.avoidObstacles, false, this.toggleAvoidObstaclesMode],
-        [this.speed, 0, this.stop],
-        [this.servoAngle, 0, this.resetDirServoAngle],
-        [this.camPan, 0, this.resetCamPan],
-        [this.camTilt, 0, this.resetCamTilt],
       ] as const;
 
       actionValueLists.forEach(([value, requiredValue, action]) => {
@@ -279,6 +275,7 @@ export const useControllerStore = defineStore("controller", {
           action();
         }
       });
+      this.updateCombined({ servoAngle: 0, camPan: 0, camTilt: 0, speed: 0 });
     },
 
     // command workers
@@ -427,8 +424,7 @@ export const useControllerStore = defineStore("controller", {
     },
 
     resetCameraRotate() {
-      this.resetCamPan();
-      this.resetCamTilt();
+      this.updateCombined({ camTilt: 0, camPan: 0 });
     },
 
     resetDirServoAngle(): void {
