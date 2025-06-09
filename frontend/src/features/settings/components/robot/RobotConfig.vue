@@ -1,5 +1,5 @@
 <template>
-  <div v-if="loading && !store.config"><ProgressSpinner /></div>
+  <Loader v-if="!store.config && loading" />
   <JsonSchema
     v-else-if="store.config"
     v-for="(propSchema, propName) in store.config.properties"
@@ -30,7 +30,6 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from "vue";
-import ProgressSpinner from "primevue/progressspinner";
 
 import { useRobotStore } from "@/features/settings/stores";
 import JsonSchema from "@/ui/JsonSchema/JsonSchema.vue";
@@ -39,6 +38,7 @@ import { isDataChangedPred } from "@/features/settings/components/robot/util";
 import type { Data } from "@/features/settings/stores/robot";
 import { validateAll, resolveRefRecursive } from "@/ui/JsonSchema/util";
 import { isPlainObject } from "@/util/guards";
+import Loader from "@/features/settings/components/robot/Loader.vue";
 
 defineProps<{ idPrefix: string }>();
 
@@ -49,18 +49,24 @@ const handleSave = async () => {
   await store.saveData(currValue.value);
 };
 
-const loading = ref(true);
+const loading = ref(!store.config);
 
-const invalidData = computed<any>(() => {
+const resolvedSchemas = computed(() => {
   if (!store.config || !store.config["$defs"]) {
     return null;
   }
-  const resolved = resolveRefRecursive(
+  return resolveRefRecursive(
     cloneDeep(store.config),
     cloneDeep(store.config["$defs"]),
   );
+});
 
-  return validateAll(resolved as any, currValue.value);
+const invalidData = computed(() => {
+  if (!resolvedSchemas.value) {
+    return null;
+  }
+
+  return validateAll(resolvedSchemas.value, currValue.value);
 });
 
 const disabled = computed(() => {
@@ -93,8 +99,10 @@ watch(
 );
 
 onMounted(async () => {
-  loading.value = true;
-  await store.fetchFieldsConfig();
-  loading.value = false;
+  if (!store.config) {
+    loading.value = true;
+    await store.fetchFieldsConfig();
+    loading.value = false;
+  }
 });
 </script>

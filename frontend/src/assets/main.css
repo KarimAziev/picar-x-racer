@@ -28,6 +28,11 @@
   --color-form-field-placeholder: var(--p-form-field-placeholder-color);
   --color-form-field-color: var(--p-form-field-color);
   --color-form-field-disabled-color: var(--p-form-field-disabled-color);
+  --color-skeleton: var(--p-skeleton-background);
+  --color-skeleton-animation: var(--p-skeleton-animation-background);
+  --color-fieldset-toggle-icon: var(--p-fieldset-toggle-icon-color);
+  --color-fieldset-content: var(--p-content-background);
+  --color-fieldset-border: var(--p-content-border-color);
 
   --radius-form-field: var(--p-form-field-border-radius);
 }
