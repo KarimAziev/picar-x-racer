@@ -324,7 +324,7 @@ class CarService(metaclass=SingletonMeta):
                 handler = handlers.get(key)
                 if handler:
                     await handler(value)
-                    await asyncio.sleep(0.005)
+                    await asyncio.sleep(0.5)
                 if key == "speed" or key == "direction" and not move_payload_changed:
                     move_payload_changed = True
 
