@@ -14,50 +14,69 @@ def async_debounce(
     wait: float,
 ) -> Callable[[Callable[P, Awaitable[Any]]], Callable[P, Awaitable[None]]]:
     """
-    An async decorator that will debounce calls to the decorated async function
-    for `wait` seconds.
+    A decorator that debounces an async function.
 
-    Args:
-    --------------
-    `wait`: Time to wait in seconds before executing the wrapped async function.
+    The function execution is delayed until no new calls occur for 'wait' seconds.
 
-    Returns:
-    --------------
-    The decorator that wraps the async function.
+    All callers awaiting a debounced call will receive the result of the final execution.
 
-    Note:
-    --------------
-    Because the underlying call is scheduled on a separate async task, the decorated
-    function returns a coroutine that immediately completes (returning None),
-    while the real work runs later in the event loop.
+    Usage:
+
+      @debounce(0.5)
+      async def my_func(arg):
+          ...
+
+      # Multiple calls within 0.5 seconds will only result in one execution.
+      result = await my_func(10)
+
     """
 
-    def decorator(func: Callable[P, Awaitable[Any]]) -> Callable[P, Awaitable[None]]:
-        task: asyncio.Task[Any] | None = None
-        last_args: tuple[Any, ...] | None = None
-        last_kwargs: dict[str, Any] | None = None
-
-        async def scheduled_call() -> None:
-            await asyncio.sleep(wait)
-            if last_args is not None and last_kwargs is not None:
-                await func(*last_args, **last_kwargs)
+    def decorator(func):
+        lock = asyncio.Lock()
+        timer_handle = None
+        pending_future = None
+        last_args = None
+        last_kwargs = None
 
         @wraps(func)
-        async def wrapped(*args: P.args, **kwargs: P.kwargs) -> None:
-            nonlocal task, last_args, last_kwargs
-            last_args = args
-            last_kwargs = kwargs
+        async def debounced(*args, **kwargs):
+            nonlocal timer_handle, pending_future, last_args, last_kwargs
 
-            if task is not None and not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+            loop = asyncio.get_running_loop()
 
-            task = asyncio.create_task(scheduled_call())
+            async with lock:
+                last_args = args
+                last_kwargs = kwargs
 
-        return wrapped
+                if timer_handle is not None:
+                    timer_handle.cancel()
+
+                if pending_future is None or pending_future.done():
+                    pending_future = loop.create_future()
+
+                timer_handle = loop.call_later(
+                    wait, lambda: asyncio.create_task(execute())
+                )
+
+                return await pending_future
+
+        async def execute():
+            nonlocal timer_handle, pending_future, last_args, last_kwargs
+            try:
+                result = await func(*(last_args or ()), **(last_kwargs or {}))
+            except Exception as exc:
+                async with lock:
+                    if pending_future is not None and not pending_future.done():
+                        pending_future.set_exception(exc)
+                    timer_handle = None
+                return
+
+            async with lock:
+                if pending_future is not None and not pending_future.done():
+                    pending_future.set_result(result)
+                timer_handle = None
+
+        return debounced
 
     return decorator
 

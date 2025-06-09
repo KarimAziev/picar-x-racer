@@ -7,6 +7,7 @@ from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
+from app.util.debounce import async_debounce
 from fastapi import WebSocket
 from robot_hat.services.motor_service import MotorServiceDirection
 from robot_hat.sunfounder.utils import reset_mcu_sync
@@ -19,6 +20,8 @@ if TYPE_CHECKING:
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
     from app.services.sensors.speed_estimator import SpeedEstimator
+
+DEBOUNCE_DELAY = 0.1
 
 
 class CarService(metaclass=SingletonMeta):
@@ -256,15 +259,18 @@ class CarService(metaclass=SingletonMeta):
     async def handle_stop(self, _: Any = None) -> None:
         await asyncio.to_thread(self.px.stop)
 
+    @async_debounce(DEBOUNCE_DELAY)
     async def handle_set_servo_dir_angle(self, payload: float) -> None:
         angle = payload or 0
         if self.px.state["steering_servo_angle"] != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
 
+    @async_debounce(DEBOUNCE_DELAY)
     async def handle_set_cam_tilt_angle(self, payload: float) -> None:
         if self.px.state["cam_tilt_angle"] != payload:
             await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
+    @async_debounce(DEBOUNCE_DELAY)
     async def handle_set_cam_pan_angle(self, payload: float) -> None:
         angle = payload
         if self.px.state["cam_pan_angle"] != angle:
@@ -310,6 +316,7 @@ class CarService(metaclass=SingletonMeta):
         if self.px.state["speed"] > self.max_speed:
             await self.move(self.px.state["direction"], self.max_speed)
 
+    @async_debounce(DEBOUNCE_DELAY)
     async def handle_update(self, payload: Dict[str, Any]) -> None:
         current_state = self.current_state
         move_payload_changed = False
@@ -324,7 +331,7 @@ class CarService(metaclass=SingletonMeta):
                 handler = handlers.get(key)
                 if handler:
                     await handler(value)
-                    await asyncio.sleep(0.05)
+                    await asyncio.sleep(DEBOUNCE_DELAY)
                 if key == "speed" or key == "direction" and not move_payload_changed:
                     move_payload_changed = True
 
