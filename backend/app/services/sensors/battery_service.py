@@ -201,7 +201,11 @@ class BatteryService(metaclass=SingletonMeta):
 
         value: Optional[float] = None
         if self.battery_adapter is None:
-            if self.config.battery and self.config.battery.driver:
+            if (
+                self.config.battery
+                and self.config.battery.driver
+                and self.config.battery.enabled
+            ):
                 await self.connection_manager.error(
                     "Error reading voltage: no battery adapter"
                 )
