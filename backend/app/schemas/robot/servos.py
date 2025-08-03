@@ -44,6 +44,14 @@ cross_field_validators = validator.dict()
 
 class ServoConfig(BaseModel):
     enabled: EnabledField = True
+    reverse: Annotated[
+        bool,
+        Field(
+            ...,
+            title="Reversed",
+            description="Indicates whether the input angle should be logically reversed before being sent to the servo",
+        ),
+    ] = False
     name: Annotated[
         str,
         Field(

@@ -116,6 +116,7 @@ class PicarxAdapter(metaclass=SingletonMeta):
             )
         return ServoService(
             servo=servo,
+            reverse=servo_config.reverse or False,
             calibration_offset=servo_config.calibration_offset,
             min_angle=servo_config.min_angle,
             max_angle=servo_config.max_angle,
