@@ -56,7 +56,11 @@ async def websocket_endpoint(
                 logger.error(str(e))
                 await connection_manager.error(str(e))
             except Exception as e:
-                logger.error("Unexpected error during action processing", exc_info=True)
+                logger.error(
+                    "Unexpected error during action '%s' processing",
+                    action,
+                    exc_info=True,
+                )
                 await connection_manager.error("Unexpected robot error occurred")
 
     except WebSocketDisconnect:
