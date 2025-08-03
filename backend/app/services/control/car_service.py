@@ -208,7 +208,6 @@ class CarService(metaclass=SingletonMeta):
                 func(payload)
 
             await self.broadcast()
-            await asyncio.sleep(0.02)
 
         else:
             error_msg = f"Unknown action: {action}"
