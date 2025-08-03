@@ -78,13 +78,13 @@ class SettingsService:
     def _model_json_dump(
         self,
         data: HardwareConfig,
-        context: Any | None = None,
+        context: Union[Any, None] = None,
         by_alias: bool = False,
         exclude_unset: bool = False,
         exclude_defaults: bool = False,
         exclude_none: bool = False,
         round_trip: bool = False,
-        warnings: bool | Literal["none", "warn", "error"] = True,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = True,
         serialize_as_any: bool = False,
     ):
         excluded_servo_data = {
