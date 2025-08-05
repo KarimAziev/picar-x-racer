@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Union
 
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.schemas.robot.config import HardwareConfig
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
 from fastapi import WebSocket
@@ -44,6 +45,7 @@ class CarService(metaclass=SingletonMeta):
         self.app_settings_manager = app_settings_manager
 
         self.app_settings = Settings(**app_settings_manager.load_data())
+        self.config = HardwareConfig(**app_settings_manager.load_data())
 
         self.app_settings_manager.on(
             self.app_settings_manager.UPDATE_EVENT, self.refresh_config
@@ -51,6 +53,13 @@ class CarService(metaclass=SingletonMeta):
 
         self.app_settings_manager.on(
             self.app_settings_manager.LOAD_EVENT, self.refresh_config
+        )
+
+        self.config_manager.on(
+            self.config_manager.UPDATE_EVENT, self.refresh_hardware_config
+        )
+        self.config_manager.on(
+            self.config_manager.LOAD_EVENT, self.refresh_hardware_config
         )
 
         self.auto_measure_distance_mode = False
@@ -61,6 +70,9 @@ class CarService(metaclass=SingletonMeta):
         self.px.set_cam_tilt_angle(0)
         self.px.set_cam_pan_angle(0)
         self.px.set_dir_servo_angle(0)
+
+    def refresh_hardware_config(self, data: Dict[str, Any]):
+        self.config = HardwareConfig(**data)
 
     def refresh_config(self, data: Dict[str, Any]):
         self.app_settings = Settings(**data)
@@ -258,17 +270,29 @@ class CarService(metaclass=SingletonMeta):
 
     async def handle_set_servo_dir_angle(self, payload: float) -> None:
         angle = payload or 0
-        if self.px.state["steering_servo_angle"] != angle:
+        current_angle = self.px.state["steering_servo_angle"]
+        if (
+            current_angle != angle
+            if self.config.steering_servo and self.config.steering_servo.reverse
+            else angle
+        ):
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
 
     async def handle_set_cam_tilt_angle(self, payload: float) -> None:
-        if self.px.state["cam_tilt_angle"] != payload:
+        if (
+            self.px.state["cam_tilt_angle"] != -payload
+            if self.config.cam_tilt_servo and self.config.cam_tilt_servo.reverse
+            else payload
+        ):
             await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
     async def handle_set_cam_pan_angle(self, payload: float) -> None:
-        angle = payload
-        if self.px.state["cam_pan_angle"] != angle:
-            await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
+        if (
+            self.px.state["cam_pan_angle"] != -payload
+            if self.config.cam_tilt_servo and self.config.cam_tilt_servo.reverse
+            else payload
+        ):
+            await asyncio.to_thread(self.px.set_cam_pan_angle, payload)
 
     async def handle_avoid_obstacles(self, _=None) -> None:
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
