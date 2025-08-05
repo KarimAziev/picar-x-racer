@@ -269,30 +269,13 @@ class CarService(metaclass=SingletonMeta):
         await asyncio.to_thread(self.px.stop)
 
     async def handle_set_servo_dir_angle(self, payload: float) -> None:
-        angle = payload or 0
-        current_angle = self.px.state["steering_servo_angle"]
-        if (
-            current_angle != angle
-            if self.config.steering_servo and self.config.steering_servo.reverse
-            else angle
-        ):
-            await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
+        await asyncio.to_thread(self.px.set_dir_servo_angle, payload)
 
     async def handle_set_cam_tilt_angle(self, payload: float) -> None:
-        if (
-            self.px.state["cam_tilt_angle"] != -payload
-            if self.config.cam_tilt_servo and self.config.cam_tilt_servo.reverse
-            else payload
-        ):
-            await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
+        await asyncio.to_thread(self.px.set_cam_tilt_angle, payload)
 
     async def handle_set_cam_pan_angle(self, payload: float) -> None:
-        if (
-            self.px.state["cam_pan_angle"] != -payload
-            if self.config.cam_tilt_servo and self.config.cam_tilt_servo.reverse
-            else payload
-        ):
-            await asyncio.to_thread(self.px.set_cam_pan_angle, payload)
+        await asyncio.to_thread(self.px.set_cam_pan_angle, payload)
 
     async def handle_avoid_obstacles(self, _=None) -> None:
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
