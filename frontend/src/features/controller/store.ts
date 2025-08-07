@@ -29,6 +29,19 @@ import { useAppSyncStore } from "@/features/syncer";
 export const ACCELERATION = 10;
 export const MIN_SPEED = ACCELERATION;
 
+export interface UpdatePayloadResponse {
+  speed: number;
+  direction: number;
+  servoAngle: number;
+  camPan: number;
+  camTilt: number;
+  maxSpeed: number;
+  distance: number;
+  avoidObstacles: boolean;
+  autoMeasureDistanceMode: boolean;
+  ledBlinking: boolean;
+}
+
 export interface Modes {
   /**
    * Whether avoid obstacles mode is enabled.
@@ -123,6 +136,31 @@ export const useControllerStore = defineStore("controller", {
         const { type, payload, error } = data;
 
         switch (type) {
+          case "update": {
+            const typedPayload: UpdatePayloadResponse = payload;
+            const shouldSteeringReverse =
+              robotStore.data?.steering_servo?.reverse;
+            const shouldTiltReverse = robotStore.data?.cam_tilt_servo?.reverse;
+            const shouldPanReverse = robotStore.data?.cam_pan_servo.reverse;
+            this.speed = typedPayload.speed;
+            this.direction = typedPayload.direction;
+            this.servoAngle = shouldSteeringReverse
+              ? -typedPayload.servoAngle
+              : typedPayload.servoAngle;
+            this.camTilt = shouldTiltReverse
+              ? -typedPayload.camTilt
+              : typedPayload.camTilt;
+            this.camPan = shouldPanReverse
+              ? -typedPayload.camPan
+              : typedPayload.camPan;
+            this.maxSpeed = typedPayload.maxSpeed;
+            this.avoidObstacles = typedPayload.avoidObstacles;
+            this.ledBlinking = typedPayload.ledBlinking;
+            settingsStore.data.robot.auto_measure_distance_mode =
+              typedPayload.autoMeasureDistanceMode;
+
+            break;
+          }
           case "battery": {
             batteryStore.$patch({
               voltage: payload.voltage,
@@ -161,16 +199,21 @@ export const useControllerStore = defineStore("controller", {
             this.speed = 0;
             break;
 
-          case "setServoDirAngle":
-            this.servoAngle = payload;
+          case "setServoDirAngle": {
+            const shouldReverse = robotStore.data?.steering_servo?.reverse;
+            this.servoAngle = shouldReverse ? -payload : payload;
             break;
+          }
 
-          case "setCamPanAngle":
-            this.camPan = payload;
+          case "setCamPanAngle": {
+            const shouldReverse = robotStore.data?.cam_pan_servo?.reverse;
+            this.camPan = shouldReverse ? -payload : payload;
             break;
+          }
 
           case "setCamTiltAngle":
-            this.camTilt = payload;
+            const shouldReverse = robotStore.data?.cam_tilt_servo?.reverse;
+            this.camTilt = shouldReverse ? -payload : payload;
             break;
 
           case "avoidObstacles":
@@ -288,11 +331,12 @@ export const useControllerStore = defineStore("controller", {
     },
     setCamTiltAngle(angle: number): void {
       const robotStore = useRobotStore();
+      const shouldReverse = robotStore.data?.cam_tilt_servo?.reverse;
       const nextAngle = Math.trunc(
         constrain(
           robotStore.data.cam_tilt_servo.min_angle,
           robotStore.data.cam_tilt_servo.max_angle,
-          angle,
+          shouldReverse ? -angle : angle,
         ),
       );
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
@@ -300,21 +344,23 @@ export const useControllerStore = defineStore("controller", {
 
     setDirServoAngle(servoAngle: number) {
       const robotStore = useRobotStore();
+      const shouldReverse = robotStore.data?.steering_servo?.reverse;
       const nextAngle = constrain(
         robotStore.data.steering_servo.min_angle,
         robotStore.data.steering_servo.max_angle,
-        servoAngle,
+        shouldReverse ? -servoAngle : servoAngle,
       );
       this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
     },
 
     setCamPanAngle(servoAngle: number): void {
       const robotStore = useRobotStore();
+      const shouldReverse = robotStore.data?.cam_pan_servo?.reverse;
       const nextAngle = Math.trunc(
         constrain(
           robotStore.data.cam_pan_servo.min_angle,
           robotStore.data.cam_pan_servo.max_angle,
-          servoAngle,
+          shouldReverse ? -servoAngle : servoAngle,
         ),
       );
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });

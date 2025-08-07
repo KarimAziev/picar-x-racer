@@ -24,6 +24,8 @@ export interface ServoConfig {
   dec_step: number;
   inc_step: number;
   name: Nullable<string>;
+  reverse: boolean;
+  enabled: boolean;
 }
 
 export interface MotorConfig {
@@ -78,7 +80,9 @@ const defaultServo = {
   inc_step: 5,
   calibration_offset: null,
   calibration_mode: null,
+  reverse: false,
   name: null,
+  enabled: true,
 };
 
 const motorDefaults = {
