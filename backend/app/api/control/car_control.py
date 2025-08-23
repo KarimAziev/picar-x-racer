@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING, Annotated
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
-from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
+from app.exceptions.robot import (
+    MotorNotFoundError,
+    RobotI2CBusError,
+    RobotI2CTimeout,
+    ServoNotFoundError,
+)
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
@@ -53,8 +58,17 @@ async def websocket_endpoint(
             try:
                 await car_manager.process_action(action, payload, websocket)
             except (RobotI2CTimeout, RobotI2CBusError) as e:
-                logger.error(str(e))
-                await connection_manager.error(str(e))
+                err_msg = str(e)
+                logger.error(err_msg)
+                await connection_manager.error(err_msg)
+            except (ServoNotFoundError, MotorNotFoundError) as e:
+                err_msg = str(e)
+                logger.error(err_msg)
+                await connection_manager.error(err_msg)
+            except (TimeoutError, OSError) as e:
+                err_msg = str(e)
+                logger.error(err_msg)
+                await connection_manager.error(err_msg)
             except Exception as e:
                 logger.error(
                     "Unexpected error during action '%s' processing",

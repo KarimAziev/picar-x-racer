@@ -49,3 +49,19 @@ class RobotI2CBusError(RobotI2CError):
         super().__init__(operation, addresses, message)
         self.errno = errno
         self.strerror = strerror
+
+
+class ServoNotFoundError(ValueError):
+    """
+    Exception raised when the servo is not available.
+    """
+
+    pass
+
+
+class MotorNotFoundError(ValueError):
+    """
+    Exception raised when the servo is not available.
+    """
+
+    pass
