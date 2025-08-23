@@ -38,6 +38,12 @@ class PicarxAdapter(metaclass=SingletonMeta):
         self.config_manager = config_manager
         self.smbus_manager = smbus_manager
         self._motor_addresses: List[int] = []
+        self.cam_pan_servo: Optional[ServoService] = None
+        self.cam_tilt_servo: Optional[ServoService] = None
+        self.steering_servo: Optional[ServoService] = None
+        self.left_motor: Optional[MotorABC] = None
+        self.right_motor: Optional[MotorABC] = None
+        self.motor_controller: Optional[MotorService] = None
         self.init_hardware()
 
     def init_hardware(self) -> None:
