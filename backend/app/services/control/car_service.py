@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Union
 
 from app.core.px_logger import Logger
 from app.core.singleton_meta import SingletonMeta
+from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout, ServoNotFoundError
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
 from fastapi import WebSocket
@@ -58,9 +59,23 @@ class CarService(metaclass=SingletonMeta):
         self.avoid_obstacles_mode = False
         self.max_speed = self.app_settings.robot.max_speed
         self.distance_service = distance_service
-        self.px.set_cam_tilt_angle(0)
-        self.px.set_cam_pan_angle(0)
-        self.px.set_dir_servo_angle(0)
+        for name, fn in [
+            ("tilt", self.px.set_cam_tilt_angle),
+            ("pan", self.px.set_cam_pan_angle),
+            ("steering", self.px.set_dir_servo_angle),
+        ]:
+            try:
+                fn(0)
+            except ServoNotFoundError:
+                pass
+            except (RobotI2CTimeout, RobotI2CBusError) as e:
+                self.logger.error("Failed to set angle for %s: %s", name, e)
+            except Exception:
+                self.logger.error(
+                    "Unexpected error while zeroing angle for servo %s",
+                    name,
+                    exc_info=True,
+                )
 
     def refresh_config(self, data: Dict[str, Any]):
         self.app_settings = Settings(**data)
