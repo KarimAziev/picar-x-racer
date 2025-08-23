@@ -48,7 +48,7 @@ export const defaultState: State = {
       show_player: true,
       show_object_detection_settings: true,
       text_to_speech_input: true,
-      show_battery_indicator: true,
+      show_battery_indicator: false,
       show_connections_indicator: true,
       show_auto_measure_distance_button: true,
       show_audio_stream_button: true,

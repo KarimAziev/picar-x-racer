@@ -38,6 +38,7 @@ export interface Battery {
   min_voltage: number;
   auto_measure_seconds: number;
   cache_seconds: number;
+  enabled: boolean;
 }
 
 export interface General {

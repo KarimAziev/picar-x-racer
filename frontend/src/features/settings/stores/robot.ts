@@ -11,6 +11,7 @@ export interface State {
   loading: boolean;
   config: JSONSchema | null;
   partialData?: Partial<Data>;
+  loaded?: boolean;
 }
 
 type ServoCalibrationMode = "sum" | "negative";
@@ -102,6 +103,7 @@ const ledDefaults = {
 };
 const defaultState: State = {
   loading: false,
+  loaded: false,
   config: null,
   data: {
     cam_pan_servo: defaultServo,
@@ -117,6 +119,7 @@ const defaultState: State = {
       min_voltage: 6.0,
       auto_measure_seconds: 60,
       cache_seconds: 2,
+      enabled: false,
     },
   },
 };
@@ -178,6 +181,7 @@ export const useStore = defineStore("robot", {
         messager.handleError(error, `Error fetching robot config`);
       } finally {
         this.loading = false;
+        this.loaded = true;
       }
     },
     async saveData(data: Data) {
