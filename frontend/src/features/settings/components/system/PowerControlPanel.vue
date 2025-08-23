@@ -45,6 +45,13 @@ const ShutdownPopover = defineAsyncComponent({
 const className = computed((previous) => {
   const voltage = batteryStore.voltage;
 
+  if (
+    !robotStore.data.battery.enabled ||
+    !settingsStore.data.general.show_battery_indicator
+  ) {
+    return undefined;
+  }
+
   if (batteryStore.loading || voltage === null || voltage === undefined) {
     return previous;
   }
