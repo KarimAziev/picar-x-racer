@@ -19,28 +19,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, computed } from "vue";
+import { ref, onMounted, onUnmounted, nextTick, watch, computed } from "vue";
 import ButtonIcon from "@/ui/ButtonIcon.vue";
 
-interface Props {
-  text: string;
-  lineClampClass: string;
-}
-
-const props = defineProps<Props>();
-
+const props = defineProps<{ text: string; lineClampClass: string }>();
 const expanded = ref(false);
-
 const textEl = ref<HTMLElement | null>(null);
-
 const needsToggle = ref(false);
 
 const isEnabled = computed(() => needsToggle.value || expanded.value);
 
 const checkOverflow = () => {
-  if (textEl.value) {
-    needsToggle.value = textEl.value.scrollHeight > textEl.value.clientHeight;
-  }
+  if (!textEl.value) return;
+  needsToggle.value = textEl.value.scrollHeight > textEl.value.clientHeight;
 };
 
 const toggle = () => {
@@ -50,8 +41,53 @@ const toggle = () => {
   }
 };
 
+let ro: ResizeObserver | null = null;
+let mo: MutationObserver | null = null;
+const onResizeObserved = () => {
+  nextTick(checkOverflow);
+};
+
 onMounted(() => {
   nextTick(checkOverflow);
+
+  if (typeof ResizeObserver !== "undefined") {
+    ro = new ResizeObserver(onResizeObserved);
+    if (textEl.value) ro.observe(textEl.value);
+  } else {
+    window.addEventListener("resize", onResizeObserved);
+  }
+
+  if (typeof MutationObserver !== "undefined" && textEl.value) {
+    mo = new MutationObserver(onResizeObserved);
+    mo.observe(textEl.value, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+
+  if (textEl.value) {
+    textEl.value.addEventListener("transitionend", onResizeObserved);
+  }
+
+  if ((document as any).fonts && (document as any).fonts.ready) {
+    (document as any).fonts.ready.then(() => nextTick(checkOverflow));
+  }
+});
+
+onUnmounted(() => {
+  if (ro) {
+    ro.disconnect();
+    ro = null;
+  }
+  if (mo) {
+    mo.disconnect();
+    mo = null;
+  }
+  window.removeEventListener("resize", onResizeObserved);
+  if (textEl.value) {
+    textEl.value.removeEventListener("transitionend", onResizeObserved);
+  }
 });
 
 watch(
