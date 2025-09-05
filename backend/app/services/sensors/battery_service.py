@@ -140,7 +140,7 @@ class BatteryService(metaclass=SingletonMeta):
         config: HardwareConfig,
         bus_manager: "SMBusManager",
     ) -> Union[UPS_S3, SunfounderBattery, None]:
-        if config.battery is None:
+        if config.battery is None or not config.battery.enabled:
             return None
 
         driver = config.battery.driver

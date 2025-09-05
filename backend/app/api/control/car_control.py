@@ -43,8 +43,16 @@ async def websocket_endpoint(
     """
     try:
         await connection_manager.connect(websocket)
-        if len(connection_manager.active_connections) > 1:
-            await battery_manager.broadcast_state()
+        if (
+            len(connection_manager.active_connections) > 1
+            and battery_manager.config.battery
+            and battery_manager.config.battery.enabled
+            and battery_manager.battery_adapter
+        ):
+            try:
+                await battery_manager.broadcast_state()
+            except Exception as err:
+                logger.error("Battery adapter error: ", str(err))
 
         await car_manager.broadcast()
 
