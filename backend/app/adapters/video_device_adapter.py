@@ -35,7 +35,7 @@ class VideoDeviceAdapter(metaclass=SingletonMeta):
         self.picam_service = picam_service
         self.devices: List[DeviceType] = []
 
-    def try_device_props(
+    def _try_device_props(
         self, device: str, camera_settings: CameraSettings
     ) -> Optional[Tuple[VideoCaptureABC, CameraSettings]]:
         api, device_path = GStreamerParser.parse_device_path(device)
@@ -142,7 +142,7 @@ class VideoDeviceAdapter(metaclass=SingletonMeta):
             if video_device is None:
                 raise CameraNotFoundError("Video device is not available")
             else:
-                result = self.try_device_props(video_device, camera_settings)
+                result = self._try_device_props(video_device, camera_settings)
                 if result is None:
                     raise CameraDeviceError("Video capture failed")
                 else:
@@ -151,7 +151,7 @@ class VideoDeviceAdapter(metaclass=SingletonMeta):
             result = None
             if len(devices) > 0:
                 device_name = devices[0].device
-                result = self.try_device_props(device_name, camera_settings)
+                result = self._try_device_props(device_name, camera_settings)
 
             if result is None:
                 raise CameraNotFoundError("Couldn't find video device")

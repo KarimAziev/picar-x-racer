@@ -124,8 +124,12 @@ def get_camera_devices(
     This endpoint identifies primary and secondary camera devices based on categorized
     rules and available video devices in the system.
     """
-    devices = video_device_adapter.list_devices()
-    return {"devices": devices}
+    try:
+        devices = video_device_adapter.list_devices()
+        return {"devices": devices}
+    except Exception:
+        logger.error("Unexpected error while listing camera devices", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list camera devices")
 
 
 @router.get(

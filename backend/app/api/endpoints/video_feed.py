@@ -7,10 +7,22 @@ from typing import TYPE_CHECKING, Annotated
 from app.api import deps
 from app.config.video_enhancers import frame_enhancers
 from app.core.logger import Logger
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraShutdownInProgressError,
+)
 from app.schemas.stream import EnhancersResponse, StreamSettings
 from app.services.connection_service import ConnectionService
 from app.util.doc_util import build_response_description
-from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 
 if TYPE_CHECKING:
     from app.services.camera.camera_service import CameraService
@@ -40,12 +52,26 @@ async def update_video_feed_settings(
     connected clients.
     """
     logger.info("Video feed update payload %s", payload)
+
     connection_manager: "ConnectionService" = request.app.state.app_manager
-    result: StreamSettings = await camera_manager.update_stream_settings(payload)
-    await connection_manager.broadcast_json(
-        {"type": "stream", "payload": result.model_dump()}
-    )
-    return result
+    try:
+        result: StreamSettings = await camera_manager.update_stream_settings(payload)
+        await connection_manager.broadcast_json(
+            {"type": "stream", "payload": result.model_dump()}
+        )
+        return result
+    except (CameraDeviceError, CameraNotFoundError) as err:
+        err_msg = str(err)
+        logger.error(err_msg)
+        await connection_manager.error(err_msg)
+        raise HTTPException(status_code=400, detail=str(err))
+    except CameraShutdownInProgressError as err:
+        raise HTTPException(status_code=503, detail=str(err))
+    except Exception as err:
+        logger.error(
+            "Unexpected error while updating video feed settings", exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to update stream settings")
 
 
 @router.get(
