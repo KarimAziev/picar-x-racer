@@ -275,6 +275,7 @@ export const useStore = defineStore("syncer", {
         onMessage: handleMessage,
         onOpen: async () => {
           await settingsStore.fetchSettingsInitial();
+          await musicStore.getVolume();
         },
         onClose: () => {
           musicStore.isStreaming = false;
