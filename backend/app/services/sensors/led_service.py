@@ -193,7 +193,7 @@ class LEDService:
             await led_service.cleanup()
         """
         await self.stop_all()
-        for prop in ["stop_event", "_process"]:
-            if hasattr(self, prop):
-                logger.info(f"Removing {prop}")
-                delattr(self, prop)
+        async with self.async_lock:
+            with self.lock:
+                self.__dict__.pop("stop_event", None)
+                self.__dict__.pop("_process", None)
