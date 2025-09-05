@@ -194,6 +194,7 @@ class StreamService(metaclass=SingletonMeta):
         except (
             WebSocketDisconnect,
             CameraShutdownInProgressError,
+            KeyboardInterrupt,
         ):
             self.logger.info("Video Stream disconnected")
         except asyncio.CancelledError:
