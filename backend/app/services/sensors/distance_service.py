@@ -163,10 +163,8 @@ class DistanceService(metaclass=SingletonMeta):
         """
         await self.task_manager.cancel_task()
         await asyncio.to_thread(self._cancel_process)
-        for prop in [
-            "stop_event",
-            "_distance",
-        ]:
-            if hasattr(self, prop):
-                logger.info(f"Removing {prop}")
-                delattr(self, prop)
+        async with self.async_lock:
+            with self.lock:
+                self.__dict__.pop("stop_event", None)
+                self.__dict__.pop("_process", None)
+                self.__dict__.pop("_distance", None)
