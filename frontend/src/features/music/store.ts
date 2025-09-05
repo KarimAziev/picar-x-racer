@@ -219,8 +219,11 @@ export const useStore = defineStore("music", {
     async setVolume(volume: number) {
       const messager = useMessagerStore();
       try {
-        const response = await appApi.post("/api/audio/volume", { volume });
-        this.volume = response.data.volume;
+        const response = await appApi.post<{ volume: number }>(
+          "/api/audio/volume",
+          { volume },
+        );
+        this.volume = response.volume;
       } catch (error) {
         messager.handleError(error);
       }
