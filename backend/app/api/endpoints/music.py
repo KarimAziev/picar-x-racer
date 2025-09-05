@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Annotated, List
 from app.api import deps
 from app.core.logger import Logger
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
-from app.exceptions.music import MusicPlayerError
+from app.exceptions.music import MusicInitError, MusicPlayerError
 from app.schemas.common import Message
 from app.schemas.music import (
     MusicModePayload,
@@ -62,6 +62,9 @@ async def toggle_play_music(
         await asyncio.to_thread(music_player.toggle_playing)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        logger.error(f"Failed to init the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         logger.error(f"Failed to toggle music playing: {err}")
         raise HTTPException(status_code=400, detail=str(err))
@@ -115,6 +118,9 @@ async def play_track(
         await asyncio.to_thread(music_player.play_track, payload.track)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        logger.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         logger.error(f"Failed to play the track %s: %s", payload.track, err)
         raise HTTPException(status_code=400, detail=str(err))
@@ -167,6 +173,9 @@ async def stop_playing(
         await asyncio.to_thread(music_player.stop_playing)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        logger.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         logger.error(f"Failed to stop the playing: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
@@ -216,6 +225,9 @@ async def update_position(
         await asyncio.to_thread(music_player.update_position, next_pos)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        logger.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         logger.error("Failed to update the playback position: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
@@ -260,6 +272,9 @@ async def update_mode(
         await asyncio.to_thread(music_player.update_mode, payload.mode)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        logger.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         logger.error("Failed to update the playback mode: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
@@ -306,6 +321,9 @@ async def next_track(
         await asyncio.to_thread(music_player.next_track)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        logger.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         logger.error("Failed to switch the track: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
@@ -352,6 +370,9 @@ async def prev_track(
         await asyncio.to_thread(music_player.prev_track)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        logger.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         logger.error("Failed to switch the track: %s", err)
         raise HTTPException(status_code=400, detail=str(err))

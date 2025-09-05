@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from app.core.logger import Logger
 from app.core.singleton_meta import SingletonMeta
-from app.exceptions.music import MusicPlayerError
+from app.exceptions.music import MusicInitError, MusicPlayerError
 from app.schemas.music import MusicPlayerMode
 from app.services.media.music_file_service import FileDetail
 
@@ -224,8 +224,13 @@ class MusicService(metaclass=SingletonMeta):
         This method reinitializes the mixer in case it is not already initialized,
         to avoid errors during playback operations.
         """
-        if not pygame.mixer.get_init():
-            pygame.mixer.init()
+
+        try:
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+        except pygame.error as err:
+            self.logger.error("Failed to initialize pygame mixer: %s", err)
+            raise MusicInitError(str(err))
 
     def toggle_playing(self) -> None:
         """
