@@ -42,7 +42,6 @@ def fake_fd_open(device_path: str, flags: int):
 
 class TestV4L2Service(unittest.TestCase):
     def setUp(self):
-        V4L2Service._instances = {}
         self.service = V4L2Service()
         self.service._cached_list_video_devices.cache_clear()
 
