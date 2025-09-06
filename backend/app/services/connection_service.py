@@ -1,8 +1,8 @@
 from typing import Any, Optional
 
-from app.schemas.connection import ConnectionEvent
 from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
+from app.schemas.connection import ConnectionEvent
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
@@ -50,7 +50,7 @@ class ConnectionService(AsyncEventEmitter):
         """
         super().__init__(*args, **kwargs)
         self.had_connections = False
-        self.logger = Logger(name=__name__, app_name=app_name)
+        self._log = Logger(name=__name__, app_name=app_name)
         self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
@@ -88,7 +88,7 @@ class ConnectionService(AsyncEventEmitter):
                 self.had_connections = True
                 await self.emit(ConnectionEvent.FIRST_CONNECTION_EVER.value)
             await self.emit(ConnectionEvent.FIRST_ACTIVE_CONNECTION.value)
-        self.logger.info("Connected %s clients", clients_count)
+        self._log.info("Connected %s clients", clients_count)
 
     async def disconnect(self, websocket: WebSocket, should_close=True):
         """
@@ -120,17 +120,15 @@ class ConnectionService(AsyncEventEmitter):
             try:
                 await websocket.close()
             except RuntimeError as ex:
-                self.logger.error(
-                    f"Failed to close weboscket due to RuntimeError: {ex}"
-                )
+                self._log.error(f"Failed to close weboscket due to RuntimeError: {ex}")
 
         clients_count = len(self.active_connections)
-        self.logger.info(f"Removing connection, total clients: {clients_count}")
+        self._log.info(f"Removing connection, total clients: {clients_count}")
 
         if clients_count == 0:
             await self.emit(ConnectionEvent.LAST_CONNECTION.value)
 
-        self.logger.info("Connected %s clients", clients_count)
+        self._log.info("Connected %s clients", clients_count)
 
     def remove(self, websocket: WebSocket):
         """
@@ -165,7 +163,7 @@ class ConnectionService(AsyncEventEmitter):
             except WebSocketDisconnect:
                 disconnected_clients.append(connection)
             except RuntimeError as e:
-                self.logger.error("Broadcast runtime error %s", e)
+                self._log.error("Broadcast runtime error %s", e)
                 disconnected_clients.append(connection)
 
         for connection in disconnected_clients:

@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from app.services.sensors.led_service import LEDService
     from app.services.sensors.speed_estimator import SpeedEstimator
 
+_log = Logger(name=__name__)
+
 
 class CarService:
     def __init__(
@@ -33,7 +35,6 @@ class CarService:
         led_service: "LEDService",
         speed_estimator: "SpeedEstimator",
     ):
-        self.logger = Logger(name=__name__)
         self.px = px
         self.connection_manager = connection_manager
         self.calibration = calibration_service
@@ -68,9 +69,9 @@ class CarService:
             except ServoNotFoundError:
                 pass
             except (RobotI2CTimeout, RobotI2CBusError) as e:
-                self.logger.error("Failed to set angle for %s: %s", name, e)
+                _log.error("Failed to set angle for %s: %s", name, e)
             except Exception:
-                self.logger.error(
+                _log.error(
                     "Unexpected error while zeroing angle for servo %s",
                     name,
                     exc_info=True,
@@ -225,7 +226,7 @@ class CarService:
 
         else:
             error_msg = f"Unknown action: {action}"
-            self.logger.warning(error_msg)
+            _log.warning(error_msg)
             await websocket.send_text(json.dumps({"error": error_msg, "type": action}))
 
     async def handle_set_led_pin(self, payload: Union[int, str]) -> None:
@@ -398,7 +399,7 @@ class CarService:
         POWER = 50
         SafeDistance = 40
         DangerDistance = 20
-        self.logger.info("distance %s speed=%s", distance, self.px.state["speed"])
+        _log.info("distance %s speed=%s", distance, self.px.state["speed"])
         if distance >= SafeDistance:
             await self.handle_set_servo_dir_angle(0)
             if self.px.state["speed"] != POWER or self.px.state["direction"] != 1:
@@ -422,4 +423,4 @@ class CarService:
         try:
             await asyncio.to_thread(self.px.cleanup)
         except Exception as e:
-            self.logger.error("Failed to cleanup Picarx: %s", e)
+            _log.error("Failed to cleanup Picarx: %s", e)

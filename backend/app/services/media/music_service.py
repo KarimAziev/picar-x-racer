@@ -22,6 +22,9 @@ finally:
     sys.stdout = original_stdout
 
 
+_log = Logger(__name__)
+
+
 class MusicService:
     """
     A service to manage music playback and playlists.
@@ -45,7 +48,6 @@ class MusicService:
         Initializes the MusicService with required file and connection services.
         """
 
-        self.logger = Logger(__name__)
         self.default_music_dir = default_music_dir
         self.music_dir = music_dir
         self.connection_manager = connection_manager
@@ -98,7 +100,7 @@ class MusicService:
         elif path.exists(path.join(self.default_music_dir, filename)):
             return self.default_music_dir
         else:
-            self.logger.error("The file '%s' was not found", user_file)
+            _log.error("The file '%s' was not found", user_file)
             raise FileNotFoundError("File not found")
 
     def get_track_duration(self, track: str) -> float:
@@ -140,18 +142,18 @@ class MusicService:
         """
 
         if self.play_task:
-            self.logger.info("Cancelling music player task")
+            _log.info("Cancelling music player task")
             try:
                 self.stop_event.set()
                 self.play_task.cancel()
                 await self.play_task
             except asyncio.CancelledError:
-                self.logger.info("Music player task was cancelled")
+                _log.info("Music player task was cancelled")
                 self.play_task = None
             finally:
                 self.stop_event.clear()
         else:
-            self.logger.info("Skipping cancelling music player task")
+            _log.info("Skipping cancelling music player task")
 
     @property
     def current_state(self):
@@ -193,7 +195,7 @@ class MusicService:
         """
         new_tracks = [item.path for item in files_details]
         details = {item.path: item for item in files_details}
-        self.logger.debug("new_tracks=%s", new_tracks)
+        _log.debug("new_tracks=%s", new_tracks)
 
         track = self.track
         if track is not None and not track in new_tracks:
@@ -228,7 +230,7 @@ class MusicService:
             if not pygame.mixer.get_init():
                 pygame.mixer.init()
         except pygame.error as err:
-            self.logger.error("Failed to initialize pygame mixer: %s", err)
+            _log.error("Failed to initialize pygame mixer: %s", err)
             raise MusicInitError(str(err))
 
     def toggle_playing(self) -> None:
@@ -430,9 +432,9 @@ class MusicService:
         """
         if self.is_playing:
             try:
-                self.logger.info("Stopping playing music")
+                _log.info("Stopping playing music")
                 self.pygame.mixer.music.stop()
             except Exception:
-                self.logger.error("Failed to stop music", exc_info=True)
+                _log.error("Failed to stop music", exc_info=True)
 
         await self.cancel_broadcast_task()

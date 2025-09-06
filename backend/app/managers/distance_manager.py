@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 def distance_process(
@@ -37,7 +37,7 @@ def distance_process(
             try:
                 val = float(ultrasonic.read())
                 value.value = val
-                logger.debug(
+                _log.debug(
                     "val %s, synchronized value=%s, interval %s",
                     val,
                     value.value,
@@ -46,7 +46,7 @@ def distance_process(
 
                 sleep(interval)
             except ValueError as e:
-                logger.error("Aborting distance process: %s", str(e))
+                _log.error("Aborting distance process: %s", str(e))
                 break
     except (
         ConnectionError,
@@ -55,14 +55,14 @@ def distance_process(
         EOFError,
         ConnectionResetError,
     ) as e:
-        logger.warning(
+        _log.warning(
             "Connection-related error occurred in distance process."
             "Exception handled: %s",
             type(e).__name__,
         )
     except KeyboardInterrupt:
-        logger.warning("Distance process received KeyboardInterrupt, exiting.")
+        _log.warning("Distance process received KeyboardInterrupt, exiting.")
     except Exception:
-        logger.error("Unhandled exception in distance process", exc_info=True)
+        _log.error("Unhandled exception in distance process", exc_info=True)
     finally:
-        logger.info("Distance process is terminating.")
+        _log.info("Distance process is terminating.")

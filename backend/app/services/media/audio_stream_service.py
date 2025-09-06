@@ -7,6 +7,8 @@ import sounddevice as sd
 from app.core.logger import Logger
 from fastapi import WebSocket, WebSocketDisconnect
 
+_log = Logger(name=__name__)
+
 
 class AudioStreamService:
     """
@@ -14,7 +16,6 @@ class AudioStreamService:
     """
 
     def __init__(self):
-        self.logger = Logger(name=__name__)
         self.sample_rate = 44100
         self.channels = 1
         self.block_size = 1024
@@ -40,19 +41,19 @@ class AudioStreamService:
                 ),
             )
             self.audio_stream.start()
-            self.logger.info("Audio capture started.")
+            _log.info("Audio capture started.")
 
             while self.running:
                 sd.sleep(100)
         except Exception as e:
-            self.logger.log_exception("Error in audio capture worker", e)
+            _log.log_exception("Error in audio capture worker", e)
 
         finally:
             if self.audio_stream:
                 self.audio_stream.stop()
                 self.audio_stream.close()
             self.audio_stream = None
-            self.logger.info("Audio capture stopped.")
+            _log.info("Audio capture stopped.")
 
     def _enqueue_audio_chunk(self, chunk) -> None:
         """
@@ -61,19 +62,19 @@ class AudioStreamService:
         try:
             self.audio_queue.put_nowait(chunk.copy())
         except Full:
-            self.logger.warning("Audio queue is full; dropping oldest chunk.")
+            _log.warning("Audio queue is full; dropping oldest chunk.")
             try:
                 self.audio_queue.get_nowait()
                 self.audio_queue.put_nowait(chunk.copy())
             except Empty:
-                self.logger.error("Unexpected: Audio queue was empty during cleanup.")
+                _log.error("Unexpected: Audio queue was empty during cleanup.")
 
     def start_audio_capture(self) -> None:
         """
         Start audio capture in a background thread.
         """
         if self.running:
-            self.logger.info("Audio capture is already running.")
+            _log.info("Audio capture is already running.")
             return
         self.running = True
         self.audio_thread = threading.Thread(target=self._capture_worker, daemon=True)
@@ -84,7 +85,7 @@ class AudioStreamService:
         Stop the audio capture process and clean up resources.
         """
         if not self.running:
-            self.logger.info("Audio capture is not running.")
+            _log.info("Audio capture is not running.")
             return
         self.running = False
         if self.audio_thread and self.audio_thread.is_alive():
@@ -102,7 +103,7 @@ class AudioStreamService:
                 chunk = await asyncio.to_thread(self.audio_queue.get, timeout=1)
                 yield chunk.tobytes()
             except Empty:
-                self.logger.warning("Audio queue is empty; waiting for audio.")
+                _log.warning("Audio queue is empty; waiting for audio.")
                 continue
 
     async def audio_stream_to_ws(self, websocket: WebSocket) -> None:
@@ -111,7 +112,7 @@ class AudioStreamService:
 
         This method is called for each new WebSocket connection.
         """
-        self.logger.info(f"WebSocket connection established: {websocket.client}")
+        _log.info(f"WebSocket connection established: {websocket.client}")
         self.active_clients += 1
 
         try:
@@ -119,19 +120,19 @@ class AudioStreamService:
             async for audio_chunk in self.generate_audio_chunks():
                 await websocket.send_bytes(audio_chunk)
         except WebSocketDisconnect:
-            self.logger.info(f"WebSocket Disconnected {websocket.client}")
+            _log.info(f"WebSocket Disconnected {websocket.client}")
         except asyncio.CancelledError:
-            self.logger.info("Gracefully shutting down WebSocket stream connection")
+            _log.info("Gracefully shutting down WebSocket stream connection")
         except Exception:
-            self.logger.log_exception("An error occurred in video stream")
+            _log.log_exception("An error occurred in video stream")
         finally:
             self.active_clients -= 1
             if self.active_clients == 0:
-                self.logger.info(
+                _log.info(
                     f"WebSocket connection closed: {websocket.client}, Active clients: {self.active_clients}"
                 )
                 await asyncio.to_thread(self.stop_audio_capture)
             else:
-                self.logger.info(
+                _log.info(
                     f"WebSocket connection closed: {websocket.client}, Active clients: {self.active_clients}"
                 )
