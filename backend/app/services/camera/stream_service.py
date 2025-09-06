@@ -27,7 +27,6 @@ class StreamService:
     """
 
     def __init__(self, camera_service: "CameraService"):
-        _log.info("STREAMSERVICE INIT")
         self.camera_service = camera_service
         self.active_clients = 0
         self.loading = False

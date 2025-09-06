@@ -38,7 +38,7 @@ class VideoDeviceAdapter:
         self, device: str, camera_settings: CameraSettings
     ) -> Optional[Tuple[VideoCaptureABC, CameraSettings]]:
         api, device_path = GStreamerParser.parse_device_path(device)
-        logger.info("device='%s', device_path='%s'", device, device_path)
+        logger.info("Trying device: '%s', with device path: '%s'", device, device_path)
         if api is None:
             api = (
                 "v4l2"
@@ -123,7 +123,7 @@ class VideoDeviceAdapter:
         self, camera_settings: CameraSettings
     ) -> Tuple[VideoCaptureABC, CameraSettings]:
         devices = self.list_devices()
-        logger.info("setup_video_capture device=%s", camera_settings.device)
+        logger.info("Setting up video device: %s", camera_settings.device)
         if camera_settings.device is not None:
             device_path = GStreamerParser.strip_api_prefix(camera_settings.device)
             video_device: Optional[str] = None
@@ -132,15 +132,15 @@ class VideoDeviceAdapter:
                     video_device = camera_settings.device
                     break
 
-            logger.info(
-                "video_device found=%s, camera_settings.device='%s'",
-                video_device,
-                camera_settings.device,
-            )
-
             if video_device is None:
+                logger.error("Video device %s is not available", camera_settings.device)
                 raise CameraNotFoundError("Video device is not available")
             else:
+                logger.info(
+                    "Found video device: %s, trying its settings",
+                    video_device,
+                )
+
                 result = self._try_device_props(video_device, camera_settings)
                 if result is None:
                     raise CameraDeviceError("Video capture failed")

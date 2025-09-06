@@ -129,7 +129,6 @@ class GStreamerService(VideoDeviceABC):
         A list of DeviceType objects (`DiscreteDevice` or `DeviceStepwise`) describing
         video devices detected by GStreamer with their capabilities.
         """
-        logger.info("CACHED METHOD")
         try:
             import gi  # type: ignore
 
