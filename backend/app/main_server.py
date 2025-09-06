@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     music_file_service: Optional["MusicFileService"] = None
 
     def cancel_server(*_) -> None:
-        _log.info(f"Received signal to stop 🚗 {app.title} application")
+        _log.info(f"🛑 Received signal to stop {app.title}")
         app.state.cancelled = True
 
     try:
@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
     finally:
         app.state.cancelled = True
 
-        _log.info(f"Stopping 🚗 {app.title} application")
+        _log.info(f"Stopping {app.title}")
         try:
             if music_file_service:
                 await music_file_service.music_service.cleanup()
@@ -110,7 +110,7 @@ async def lifespan(app: FastAPI):
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
 
-        _log.info(f"Application 🚗 {app.title} stopped")
+        _log.info(f"{app.title} stopped")
 
 
 from app.api.endpoints import api_router, serve_router, tags_metadata
