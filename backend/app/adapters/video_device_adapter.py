@@ -10,12 +10,12 @@ from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings, DeviceType
 from app.util.os_checks import is_raspberry_pi
 
-logger = Logger(name=__name__)
-
 if TYPE_CHECKING:
     from app.services.camera.gstreamer_service import GStreamerService
     from app.services.camera.picamera2_service import PicameraService
     from app.services.camera.v4l2_service import V4L2Service
+
+_log = Logger(name=__name__)
 
 
 class VideoDeviceAdapter:
@@ -38,7 +38,7 @@ class VideoDeviceAdapter:
         self, device: str, camera_settings: CameraSettings
     ) -> Optional[Tuple[VideoCaptureABC, CameraSettings]]:
         api, device_path = GStreamerParser.parse_device_path(device)
-        logger.info("Trying device: '%s', with device path: '%s'", device, device_path)
+        _log.info("Trying device: '%s', with device path: '%s'", device, device_path)
         if api is None:
             api = (
                 "v4l2"
@@ -123,7 +123,7 @@ class VideoDeviceAdapter:
         self, camera_settings: CameraSettings
     ) -> Tuple[VideoCaptureABC, CameraSettings]:
         devices = self.list_devices()
-        logger.info("Setting up video device: %s", camera_settings.device)
+        _log.info("Setting up video device: %s", camera_settings.device)
         if camera_settings.device is not None:
             device_path = GStreamerParser.strip_api_prefix(camera_settings.device)
             video_device: Optional[str] = None
@@ -133,10 +133,10 @@ class VideoDeviceAdapter:
                     break
 
             if video_device is None:
-                logger.error("Video device %s is not available", camera_settings.device)
+                _log.error("Video device %s is not available", camera_settings.device)
                 raise CameraNotFoundError("Video device is not available")
             else:
-                logger.info(
+                _log.info(
                     "Found video device: %s, trying its settings",
                     video_device,
                 )
