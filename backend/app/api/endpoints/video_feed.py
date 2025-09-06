@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from app.services.camera.camera_service import CameraService
     from app.services.camera.stream_service import StreamService
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 router = APIRouter()
@@ -51,7 +51,7 @@ async def update_video_feed_settings(
     Update the video feed settings and broadcasts the updated settings to all
     connected clients.
     """
-    logger.info("Video feed update payload %s", payload)
+    _log.info("Video feed update payload %s", payload)
 
     connection_manager: "ConnectionService" = request.app.state.app_manager
     try:
@@ -62,15 +62,13 @@ async def update_video_feed_settings(
         return result
     except (CameraDeviceError, CameraNotFoundError) as err:
         err_msg = str(err)
-        logger.error(err_msg)
+        _log.error(err_msg)
         await connection_manager.error(err_msg)
         raise HTTPException(status_code=400, detail=str(err))
     except CameraShutdownInProgressError as err:
         raise HTTPException(status_code=503, detail=str(err))
     except Exception as err:
-        logger.error(
-            "Unexpected error while updating video feed settings", exc_info=True
-        )
+        _log.error("Unexpected error while updating video feed settings", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to update stream settings")
 
 
@@ -113,9 +111,9 @@ async def ws(
     except WebSocketDisconnect:
         pass
     except RuntimeError as e:
-        logger.error("Runtime error in video stream: %s", e)
+        _log.error("Runtime error in video stream: %s", e)
     except Exception:
-        logger.error("Unexpected error in video stream: ", exc_info=True)
+        _log.error("Unexpected error in video stream: ", exc_info=True)
 
 
 @router.get(

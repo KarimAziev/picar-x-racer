@@ -9,7 +9,7 @@ from app.core.logger import Logger
 from app.util.file_util import resolve_absolute_path
 from app.util.google_coral import is_google_coral_connected
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 if TYPE_CHECKING:
@@ -37,12 +37,12 @@ class ModelManager:
     ) -> Tuple[Union["YOLO", "YOLOHailoAdapter", None], Optional[str]]:
         try:
             if self.model_path and self.model_path.endswith(".hef"):
-                logger.info(f"Loading Hailo model {self.model_path}")
+                _log.info(f"Loading Hailo model {self.model_path}")
                 try:
                     from app.adapters.hailo_adapter import YOLOHailoAdapter
                 except ImportError as e:
                     msg = f"Failed to import Hailo adapter: {e}"
-                    logger.error(msg)
+                    _log.error(msg)
                     self.error_msg = msg
                     return None, self.error_msg
 
@@ -60,13 +60,13 @@ class ModelManager:
                         for idx, name in enumerate(lines):
                             labels[idx] = name
                 self.model = YOLOHailoAdapter(self.model_path, labels=labels)
-                logger.info("Hailo model loaded successfully")
+                _log.info("Hailo model loaded successfully")
             else:
                 from ultralytics import YOLO
 
                 if YOLO is None:
                     msg = "ultralytics YOLO not available."
-                    logger.error(msg)
+                    _log.error(msg)
                     self.error_msg = msg
                 else:
                     if self.model_path is None:
@@ -77,21 +77,21 @@ class ModelManager:
                             self.model_path = settings.YOLO_MODEL_EDGE_TPU_PATH
                         else:
                             self.model_path = settings.YOLO_MODEL_PATH
-                    logger.info(f"Loading YOLO model {self.model_path}")
+                    _log.info(f"Loading YOLO model {self.model_path}")
                     try:
                         self.model = YOLO(model=self.model_path, task="detect")
-                        logger.info("YOLO model loaded successfully")
+                        _log.info("YOLO model loaded successfully")
                     except FileNotFoundError:
                         msg = f"Model's file {self.model_path} is not found"
-                        logger.error(msg)
+                        _log.error(msg)
                         self.error_msg = msg
                     except Exception:
                         msg = f"Unexpected error while loading {self.model_path}"
-                        logger.error(msg, exc_info=True)
+                        _log.error(msg, exc_info=True)
                         self.error_msg = msg
             return self.model, self.error_msg
         except KeyboardInterrupt:
-            logger.warning("Detection model context received KeyboardInterrupt.")
+            _log.warning("Detection model context received KeyboardInterrupt.")
             return self.model, "Detection model context received KeyboardInterrupt."
 
     def __exit__(
@@ -112,15 +112,15 @@ class ModelManager:
             traceback (Traceback): The traceback object providing details on where the exception happened.
                                   Can be None if no exception occurred.
         """
-        logger.info("Cleaning up model resources.")
+        _log.info("Cleaning up model resources.")
         if exc_type is not None:
-            logger.error("An exception occurred during model execution")
-            logger.error(f"Exception type: {exc_type.__name__}")
+            _log.error("An exception occurred during model execution")
+            _log.error(f"Exception type: {exc_type.__name__}")
             if exc_value:
-                logger.error(f"Exception value: {exc_value}")
+                _log.error(f"Exception value: {exc_value}")
 
             import traceback as tb
 
             if traceback:
-                logger.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
+                _log.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
         del self.model

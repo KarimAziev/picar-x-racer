@@ -15,7 +15,7 @@ from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
 from app.util.video_checksum import get_dev_video_checksum
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 class GStreamerService(VideoDeviceABC):
@@ -40,7 +40,7 @@ class GStreamerService(VideoDeviceABC):
             if shutil.which("gst-launch-1.0") is not None:
                 gstreamer_on_system = True
         except Exception as e:
-            logger.error("Error while checking system for GStreamer: %s", e)
+            _log.error("Error while checking system for GStreamer: %s", e)
 
         return gstreamer_on_system
 
@@ -137,7 +137,7 @@ class GStreamerService(VideoDeviceABC):
 
             Gst.init(None)
         except Exception:
-            logger.warning("Failed to import 'gi'")
+            _log.warning("Failed to import 'gi'")
             return []
 
         def log_filter_handler(
@@ -203,7 +203,7 @@ class GStreamerService(VideoDeviceABC):
                 ok_w, width = structure.get_int("width")
                 ok_h, height = structure.get_int("height")
                 ok_f, num, den = structure.get_fraction("framerate")
-                logger.debug(
+                _log.debug(
                     "display_name=%s, object_path=%s, pixel_format='%s', media_type='%s' num='%s', den='%s', ok_f='%s'",
                     display_name,
                     object_path,
@@ -241,9 +241,7 @@ class GStreamerService(VideoDeviceABC):
                                 )
                                 results.append(device_obj)
                             except Exception as e:
-                                logger.error(
-                                    "Error processing framerate fraction: %s", e
-                                )
+                                _log.error("Error processing framerate fraction: %s", e)
                     else:
                         struct_str = structure.to_string()
                         fractions_fps = GStreamerParser.parse_framerate(struct_str)
@@ -300,7 +298,7 @@ class GStreamerService(VideoDeviceABC):
         monitor.stop()
         if handler_id:
             GLib.log_remove_handler("GStreamer", handler_id)
-        logger.debug("gstreamer devices %s", results)
+        _log.debug("gstreamer devices %s", results)
         return results
 
 

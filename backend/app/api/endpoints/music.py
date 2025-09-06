@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from app.services.media.music_service import MusicService
 
 router = APIRouter()
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 @router.post(
@@ -63,13 +63,13 @@ async def toggle_play_music(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        logger.error(f"Failed to init the module mixer: {err}")
+        _log.error(f"Failed to init the module mixer: {err}")
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error(f"Failed to toggle music playing: {err}")
+        _log.error(f"Failed to toggle music playing: {err}")
         raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:
-        logger.error(
+        _log.error(
             "Unexpected error occurred while toggling music playing.", exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to toggle music playing.")
@@ -119,18 +119,18 @@ async def play_track(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        logger.error(f"Failed to initialize the module mixer: {err}")
+        _log.error(f"Failed to initialize the module mixer: {err}")
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error(f"Failed to play the track %s: %s", payload.track, err)
+        _log.error(f"Failed to play the track %s: %s", payload.track, err)
         raise HTTPException(status_code=400, detail=str(err))
     except FileNotFoundError:
-        logger.error("The music file for '%s' is not found", payload.track)
+        _log.error("The music file for '%s' is not found", payload.track)
         raise HTTPException(
             status_code=404, detail=f"The track '{payload.track}' is not found."
         )
     except Exception as err:
-        logger.error(
+        _log.error(
             "Unexpected error while playing the track '%s'.",
             payload.track,
             exc_info=True,
@@ -174,13 +174,13 @@ async def stop_playing(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        logger.error(f"Failed to initialize the module mixer: {err}")
+        _log.error(f"Failed to initialize the module mixer: {err}")
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error(f"Failed to stop the playing: %s", err)
+        _log.error(f"Failed to stop the playing: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:
-        logger.error("Unexpected error while stopping the track.", exc_info=True)
+        _log.error("Unexpected error while stopping the track.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to stop playing.")
 
 
@@ -220,19 +220,19 @@ async def update_position(
     Broadcasts the state to connected clients.
     """
     next_pos = float(payload.position)
-    logger.info(f"Updating music position to %s", next_pos)
+    _log.info(f"Updating music position to %s", next_pos)
     try:
         await asyncio.to_thread(music_player.update_position, next_pos)
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        logger.error(f"Failed to initialize the module mixer: {err}")
+        _log.error(f"Failed to initialize the module mixer: {err}")
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to update the playback position: %s", err)
+        _log.error("Failed to update the playback position: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error(
+        _log.error(
             "Unexpected error occurred while seeking the playback position",
             exc_info=True,
         )
@@ -273,13 +273,13 @@ async def update_mode(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        logger.error(f"Failed to initialize the module mixer: {err}")
+        _log.error(f"Failed to initialize the module mixer: {err}")
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to update the playback mode: %s", err)
+        _log.error("Failed to update the playback mode: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error("Unexpected error while updating the mode.", exc_info=True)
+        _log.error("Unexpected error while updating the mode.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to update the mode.")
 
 
@@ -322,13 +322,13 @@ async def next_track(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        logger.error(f"Failed to initialize the module mixer: {err}")
+        _log.error(f"Failed to initialize the module mixer: {err}")
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to switch the track: %s", err)
+        _log.error("Failed to switch the track: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error("Unexpected error while switching the track.", exc_info=True)
+        _log.error("Unexpected error while switching the track.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to switch the track.")
 
 
@@ -371,13 +371,13 @@ async def prev_track(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        logger.error(f"Failed to initialize the module mixer: {err}")
+        _log.error(f"Failed to initialize the module mixer: {err}")
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to switch the track: %s", err)
+        _log.error("Failed to switch the track: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error("Unexpected error while switching the track.", exc_info=True)
+        _log.error("Unexpected error while switching the track.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to switch the track.")
 
 
@@ -424,7 +424,7 @@ async def save_music_order(
     -------------
     A message confirming the successful update of the music order.
     """
-    logger.info("Music order update %s", order)
+    _log.info("Music order update %s", order)
     connection_manager: "ConnectionService" = request.app.state.app_manager
     try:
         sorted_tracks = await asyncio.to_thread(
@@ -436,7 +436,7 @@ async def save_music_order(
         )
         return {"message": "Music order saved successfully!"}
     except Exception:
-        logger.error("Unexpected error while saving the music order", exc_info=True)
+        _log.error("Unexpected error while saving the music order", exc_info=True)
         raise HTTPException(status_code=400, detail="Failed to update music order.")
 
 
@@ -471,9 +471,9 @@ async def get_music_tracks(
     try:
         music_volume = await asyncio.to_thread(audio_manager.get_volume)
     except (AmixerNotInstalled, AudioVolumeError) as e:
-        logger.error("Couldn't retrieve a volume: %s", e)
+        _log.error("Couldn't retrieve a volume: %s", e)
     except Exception:
-        logger.error("Unexpected error while getting the volume level", exc_info=True)
+        _log.error("Unexpected error while getting the volume level", exc_info=True)
     try:
         files = file_manager.list_sorted_tracks()
         return {
@@ -481,5 +481,5 @@ async def get_music_tracks(
             "volume": music_volume,
         }
     except Exception:
-        logger.error("Unexpected error while retrieving music files.", exc_info=True)
+        _log.error("Unexpected error while retrieving music files.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve music files.")

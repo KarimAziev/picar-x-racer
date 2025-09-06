@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from app.services.file_management.file_manager_service import FileManagerService
 
 router = APIRouter()
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 @router.post(
@@ -54,13 +54,13 @@ async def update_camera_settings(
     handling retries when the specified device fails, and broadcasts the updated settings
     or errors to connected clients.
     """
-    logger.info("Camera update payload %s", payload)
+    _log.info("Camera update payload %s", payload)
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
     if payload.use_gstreamer and not gstreamer_manager.gstreamer_available():
         reason = "'gst-launch-1.0' is not found in PATH"
         msg = f"GStreamer will not be used, because {reason}."
-        logger.warning(msg)
+        _log.warning(msg)
         raise HTTPException(status_code=400, detail=msg)
 
     try:
@@ -128,7 +128,7 @@ def get_camera_devices(
         devices = video_device_adapter.list_devices()
         return {"devices": devices}
     except Exception:
-        logger.error("Unexpected error while listing camera devices", exc_info=True)
+        _log.error("Unexpected error while listing camera devices", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to list camera devices")
 
 

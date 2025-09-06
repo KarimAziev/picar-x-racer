@@ -150,7 +150,7 @@ class TestModelManager(unittest.TestCase):
         self.assertIsNone(error)
         manager.__exit__(None, None, None)
 
-    @patch("app.managers.model_manager.logger.error")
+    @patch("app.managers.model_manager._log.error")
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
     @patch("ultralytics.YOLO")
     def test_file_not_found_error(self, mock_yolo, _: MagicMock):
@@ -175,7 +175,7 @@ class TestModelManager(unittest.TestCase):
         Test that if YOLO initialization raises an unexpected Exception,
         the error message is correctly set.
         """
-        with patch("app.managers.model_manager.logger.error") as mock_logger_error:
+        with patch("app.managers.model_manager._log.error") as mock_logger_error:
             mock_yolo.side_effect = Exception("unexpected")
             custom_path = "unexpected_error_model.pt"
             manager = ModelManager(model_path=custom_path)

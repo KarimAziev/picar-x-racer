@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 Logger.setup_from_env()
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 @asynccontextmanager
@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     music_file_service: Optional["MusicFileService"] = None
 
     def cancel_server(*_) -> None:
-        logger.info(f"Received signal to stop 🚗 {app.title} application")
+        _log.info(f"Received signal to stop 🚗 {app.title} application")
         app.state.cancelled = True
 
     try:
@@ -81,36 +81,36 @@ async def lifespan(app: FastAPI):
                 with open(signal_file_path, "w") as f:
                     f.write("Backend is ready")
             except Exception as e:
-                logger.error(f"Failed to create signal file: {e}")
+                _log.error(f"Failed to create signal file: {e}")
 
         print_initial_message(browser_url)
         yield
     except asyncio.CancelledError:
-        logger.warning(
+        _log.warning(
             "Lifespan was cancelled mid-shutdown (first-level). Proceeding to final cleanup."
         )
     finally:
         app.state.cancelled = True
 
-        logger.info(f"Stopping 🚗 {app.title} application")
+        _log.info(f"Stopping 🚗 {app.title} application")
         try:
             if music_file_service:
                 await music_file_service.music_service.cleanup()
         except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up music_file_service.")
+            _log.warning("Cancelled while cleaning up music_file_service.")
             raise
 
         try:
             if detection_manager:
                 await detection_manager.cleanup()
         except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up detection_manager.")
+            _log.warning("Cancelled while cleaning up detection_manager.")
             raise
 
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
 
-        logger.info(f"Application 🚗 {app.title} stopped")
+        _log.info(f"Application 🚗 {app.title} stopped")
 
 
 from app.api.endpoints import api_router, serve_router, tags_metadata
