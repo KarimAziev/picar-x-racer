@@ -150,13 +150,13 @@ def detection_process_func(
             EOFError,
             ConnectionResetError,
         ) as e:
-            logger.warning(
+            _log.warning(
                 "Connection-related error occurred in detection process: %s",
                 type(e).__name__,
             )
         except KeyboardInterrupt:
-            logger.warning("Detection process received keyboard interrupt, exiting.")
+            _log.warning("Detection process received keyboard interrupt, exiting.")
             stop_event.set()
 
         finally:
-            logger.info("Detection process is finished.")
+            _log.info("Detection process is finished.")
