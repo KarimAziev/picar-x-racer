@@ -11,6 +11,7 @@ process to guarantee that control operations are never blocked.
 """
 
 import os
+import signal
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Optional
 
@@ -44,7 +45,12 @@ async def lifespan(app: FastAPI):
     detection_manager: Optional["DetectionService"] = None
     music_file_service: Optional["MusicFileService"] = None
 
+    def cancel_server(*_) -> None:
+        logger.info(f"Received signal to stop 🚗 {app.title} application")
+        app.state.cancelled = True
+
     try:
+        signal.signal(signal.SIGINT, cancel_server)
         from app.api import deps
         from app.util.solve_lifespan import solve_lifespan
 
