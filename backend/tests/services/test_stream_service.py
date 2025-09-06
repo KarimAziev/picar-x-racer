@@ -90,7 +90,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
             camera_service=cast(CameraService, self.dummy_cam)
         )
         self.stream_service.active_clients = 0
-        self.stream_service.generate_frame = MagicMock(return_value=b"dummy_frame")
+        self.stream_service._generate_frame = MagicMock(return_value=b"dummy_frame")
 
     async def test_disconnect_when_cancelled(self):
         """
@@ -98,7 +98,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         websocket.app.state.cancelled is True.
         """
         ws = cast(WebSocket, FakeWebSocket(cancelled=True))
-        await self.stream_service.disconnect(ws)
+        await self.stream_service._disconnect(ws)
         self.assertEqual(ws.application_state, WebSocketState.DISCONNECTED)
 
     async def test_disconnect_when_not_cancelled(self):
@@ -107,7 +107,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         """
         ws = cast(WebSocket, FakeWebSocket(cancelled=False))
 
-        await self.stream_service.disconnect(ws)
+        await self.stream_service._disconnect(ws)
         self.assertEqual(ws.application_state, WebSocketState.DISCONNECTED)
 
     async def test_generate_video_stream_for_websocket_success(self):
@@ -117,12 +117,10 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         """
         ws = FakeWebSocket(cancelled=False)
         self.dummy_cam.stream_img = np.empty((0, 0), dtype=np.uint8)
-        self.stream_service.generate_frame = MagicMock(return_value=b"frame1")
-        self.stream_service.generate_frame.return_value = b"frame1"
+        self.stream_service._generate_frame = MagicMock(return_value=b"frame1")
+        self.stream_service._generate_frame.return_value = b"frame1"
 
-        await self.stream_service.generate_video_stream_for_websocket(
-            cast(WebSocket, ws)
-        )
+        await self.stream_service._ws_video_loop(cast(WebSocket, ws))
 
         self.assertGreaterEqual(len(ws.sent_bytes), 1)
         self.assertEqual(ws.sent_bytes[0], b"frame1")
@@ -146,8 +144,8 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
                 return b"new_frame"
             return b"unknown_frame"
 
-        self.stream_service.generate_frame = cast(
-            MagicMock, self.stream_service.generate_frame
+        self.stream_service._generate_frame = cast(
+            MagicMock, self.stream_service._generate_frame
         ).side_effect = fake_generate_frame
 
         async def update_frames():
@@ -159,9 +157,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
             ws.app.state.cancelled = True
 
         await asyncio.gather(
-            self.stream_service.generate_video_stream_for_websocket(
-                cast(WebSocket, ws)
-            ),
+            self.stream_service._ws_video_loop(cast(WebSocket, ws)),
             update_frames(),
         )
 
@@ -177,9 +173,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
             logging.debug("websocket=%s", websocket)
             return
 
-        self.stream_service.generate_video_stream_for_websocket = (
-            fake_generate_video_stream
-        )
+        self.stream_service._ws_video_loop = fake_generate_video_stream
 
         self.dummy_cam.camera_run = False
         self.dummy_cam.camera_device_error = None
@@ -201,9 +195,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
             logging.debug("websocket=%s", websocket)
             return
 
-        self.stream_service.generate_video_stream_for_websocket = (
-            fake_generate_video_stream
-        )
+        self.stream_service._ws_video_loop = fake_generate_video_stream
 
         self.dummy_cam.camera_run = False
         self.dummy_cam.camera_device_error = None
@@ -225,9 +217,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
             logging.debug("websocket=%s", websocket)
             return
 
-        self.stream_service.generate_video_stream_for_websocket = (
-            fake_generate_video_stream
-        )
+        self.stream_service._ws_video_loop = fake_generate_video_stream
 
         self.dummy_cam.camera_run = False
         self.dummy_cam.camera_device_error = None
@@ -253,7 +243,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         self.dummy_cam.camera_device_error = None
         self.dummy_cam.start_camera = fake_start_camera
 
-        self.stream_service.generate_video_stream_for_websocket = AsyncMock()
+        self.stream_service._ws_video_loop = AsyncMock()
 
         with patch("asyncio.to_thread", new=fake_to_thread):
             await self.stream_service.video_stream(cast(WebSocket, ws))
@@ -276,7 +266,7 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         self.dummy_cam.start_camera = fake_start_camera
         self.dummy_cam.stream_settings.video_record = True
 
-        self.stream_service.generate_video_stream_for_websocket = AsyncMock()
+        self.stream_service._ws_video_loop = AsyncMock()
 
         with patch("asyncio.to_thread", new=fake_to_thread):
             await self.stream_service.video_stream(cast(WebSocket, ws))

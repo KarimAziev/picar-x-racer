@@ -55,7 +55,7 @@ class TestGenerateFrame(unittest.TestCase):
         ) as mocked_encode:
 
             self.dummy_cam.camera_device_error = None
-            result = self.stream_service.generate_frame(dummy_frame)
+            result = self.stream_service._generate_frame(dummy_frame)
             expected_timestamp = struct.pack(
                 "d", self.dummy_cam.current_frame_timestamp
             )
@@ -77,7 +77,7 @@ class TestGenerateFrame(unittest.TestCase):
         self.dummy_cam.shutting_down = False
         self.dummy_cam.camera_device_error = "Test camera error"
         with self.assertRaises(CameraDeviceError):
-            self.stream_service.generate_frame(dummy_frame)
+            self.stream_service._generate_frame(dummy_frame)
 
 
 if __name__ == "__main__":
