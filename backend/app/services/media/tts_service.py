@@ -1,10 +1,11 @@
-from app.exceptions.tts import TextToSpeechException
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
+from app.exceptions.tts import TextToSpeechException
 from google_speech_pyplay import LANGUAGES_OPTIONS, Speech
 
+_log = Logger(__name__)
 
-class TTSService(metaclass=SingletonMeta):
+
+class TTSService:
     """
     The TTSService class provides methods for text-to-speech functionality,
     using Google Translate TTS (Text To Speech) API.
@@ -14,7 +15,6 @@ class TTSService(metaclass=SingletonMeta):
         """
         Initializes the TTSService instance.
         """
-        self.logger = Logger(__name__)
         self.is_playing = False
 
     @staticmethod
@@ -29,7 +29,7 @@ class TTSService(metaclass=SingletonMeta):
             words (str): The text to convert to speech.
             lang (str): The language of the text. Default is "en".
         """
-        self.logger.info(f"text-to-speech: {words} lang {lang}")
+        _log.info(f"text-to-speech: {words} lang {lang}")
         if self.is_playing:
             raise TextToSpeechException("Already speaking")
         try:
@@ -37,7 +37,7 @@ class TTSService(metaclass=SingletonMeta):
             self.is_playing = True
             speech.play()
         except Exception:
-            self.logger.error("Unexpected text to speech error", exc_info=True)
+            _log.error("Unexpected text to speech error", exc_info=True)
             raise
         finally:
             self.is_playing = False

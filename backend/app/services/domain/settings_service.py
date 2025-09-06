@@ -3,14 +3,13 @@ from typing import Any, Dict, Optional
 
 from app.config.config import settings as app_config
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.util.file_util import load_json_file
 
 logger = Logger(name=__name__)
 
 
-class SettingsService(metaclass=SingletonMeta):
+class SettingsService:
     """
     Service for managing file operations related to user settings.
     """

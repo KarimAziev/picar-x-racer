@@ -5,11 +5,10 @@ from typing import AsyncGenerator, Optional
 
 import sounddevice as sd
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from fastapi import WebSocket, WebSocketDisconnect
 
 
-class AudioStreamService(metaclass=SingletonMeta):
+class AudioStreamService:
     """
     Service to capture audio in real time using the microphone.
     """

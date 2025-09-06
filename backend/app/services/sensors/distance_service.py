@@ -4,7 +4,6 @@ import threading
 from typing import TYPE_CHECKING, Any, Dict
 
 from app.core.px_logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.managers.distance_manager import distance_process
 from app.schemas.robot.config import HardwareConfig
 
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 
-class DistanceService(metaclass=SingletonMeta):
+class DistanceService:
     def __init__(
         self,
         emitter: "AsyncEventEmitter",

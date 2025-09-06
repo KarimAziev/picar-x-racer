@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from app.core.px_logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.exceptions.robot import (
     MotorNotFoundError,
     RobotI2CBusError,
@@ -31,7 +30,7 @@ if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
 
 
-class PicarxAdapter(metaclass=SingletonMeta):
+class PicarxAdapter:
     def __init__(
         self, config_manager: "JsonDataManager", smbus_manager: SMBusManager
     ) -> None:

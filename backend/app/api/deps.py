@@ -43,18 +43,22 @@ def get_detection_notifier() -> ConnectionService:
     return ConnectionService()
 
 
+@lru_cache(maxsize=1)
 def get_v4l2_service() -> V4L2Service:
     return V4L2Service()
 
 
+@lru_cache(maxsize=1)
 def get_gstreamer_service() -> GStreamerService:
     return GStreamerService()
 
 
+@lru_cache(maxsize=1)
 def get_picamera_service() -> PicameraService:
     return PicameraService()
 
 
+@lru_cache(maxsize=1)
 def get_video_device_adapter(
     v4l2_service: Annotated[V4L2Service, Depends(get_v4l2_service)],
     gstreamer_service: Annotated[GStreamerService, Depends(get_gstreamer_service)],
@@ -82,15 +86,19 @@ def get_audio_stream_service() -> AudioStreamService:
     return AudioStreamService()
 
 
-def get_custom_file_manager() -> FileManager:
-    return FileManager()
-
-
+@lru_cache()
 def get_file_filter_service() -> FileFilterService:
     return FileFilterService()
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
+def get_custom_file_manager(
+    filter_service: Annotated[FileFilterService, Depends(get_file_filter_service)],
+) -> FileManager:
+    return FileManager(filter_service=filter_service)
+
+
+@lru_cache(maxsize=1)
 def get_photo_file_manager(
     file_manager: Annotated[FileManager, Depends(get_custom_file_manager)],
     filter_service: Annotated[FileFilterService, Depends(get_file_filter_service)],
@@ -103,7 +111,7 @@ def get_photo_file_manager(
     )
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_video_file_manager(
     file_manager: Annotated[FileManager, Depends(get_custom_file_manager)],
     filter_service: Annotated[FileFilterService, Depends(get_file_filter_service)],
@@ -116,7 +124,7 @@ def get_video_file_manager(
     )
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_data_file_manager(
     file_manager: Annotated[FileManager, Depends(get_custom_file_manager)],
     filter_service: Annotated[FileFilterService, Depends(get_file_filter_service)],
@@ -129,10 +137,12 @@ def get_data_file_manager(
     )
 
 
+@lru_cache()
 def get_settings_service() -> SettingsService:
     return SettingsService()
 
 
+@lru_cache(maxsize=1)
 def get_music_service(
     settings_service: Annotated[SettingsService, Depends(get_settings_service)],
     connection_manager: Annotated[ConnectionService, Depends(get_connection_service)],
@@ -146,7 +156,7 @@ def get_music_service(
     )
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_music_file_service(
     file_manager: Annotated[FileManager, Depends(get_custom_file_manager)],
     filter_service: Annotated[FileFilterService, Depends(get_file_filter_service)],
@@ -188,12 +198,14 @@ def get_directory_handler_by_alias(
     return handlers[alias_dir]
 
 
+@lru_cache()
 def get_video_recorder_service(
     file_manager: Annotated[FileManagerService, Depends(get_video_file_manager)],
 ) -> VideoRecorderService:
     return VideoRecorderService(file_manager=file_manager)
 
 
+@lru_cache(maxsize=1)
 def get_detection_service(
     settings_service: Annotated[SettingsService, Depends(get_settings_service)],
     connection_manager: Annotated[ConnectionService, Depends(get_connection_service)],
@@ -206,6 +218,7 @@ def get_detection_service(
     )
 
 
+@lru_cache(maxsize=1)
 def get_camera_service(
     detection_service: Annotated[DetectionService, Depends(get_detection_service)],
     settings_service: Annotated[SettingsService, Depends(get_settings_service)],
@@ -226,12 +239,14 @@ def get_camera_service(
     )
 
 
+@lru_cache(maxsize=1)
 def get_stream_service(
     camera_manager: Annotated[CameraService, Depends(get_camera_service)],
 ) -> StreamService:
     return StreamService(camera_service=camera_manager)
 
 
+@lru_cache()
 def get_tts_service() -> TTSService:
     return TTSService()
 
@@ -247,6 +262,7 @@ async def get_lifespan_dependencies(
     detection_manager: Annotated[DetectionService, Depends(get_detection_service)],
     music_file_service: Annotated[MusicFileService, Depends(get_music_file_service)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
+    logger.info("get_lifespan_dependencies")
     deps: LifespanAppDeps = {
         "connection_manager": connection_manager,
         "detection_manager": detection_manager,

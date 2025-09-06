@@ -4,7 +4,6 @@ import json
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Union
 
 from app.core.px_logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout, ServoNotFoundError
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
     from app.services.sensors.speed_estimator import SpeedEstimator
 
 
-class CarService(metaclass=SingletonMeta):
+class CarService:
     def __init__(
         self,
         px: "PicarxAdapter",

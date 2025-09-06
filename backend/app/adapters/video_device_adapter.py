@@ -5,7 +5,6 @@ from app.adapters.picamera_capture_adapter import PicameraCaptureAdapter
 from app.adapters.v4l2_capture_adapter import V4l2CaptureAdapter
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings, DeviceType
@@ -19,9 +18,9 @@ if TYPE_CHECKING:
     from app.services.camera.v4l2_service import V4L2Service
 
 
-class VideoDeviceAdapter(metaclass=SingletonMeta):
+class VideoDeviceAdapter:
     """
-    A singleton class responsible for managing video capturing devices.
+    A class responsible for managing video capturing devices.
     """
 
     def __init__(

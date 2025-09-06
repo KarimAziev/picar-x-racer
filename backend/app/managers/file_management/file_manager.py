@@ -53,8 +53,8 @@ class FileManager:
         ]
     ]
 
-    def __init__(self) -> None:
-        self.filter_service = FileFilterService()
+    def __init__(self, filter_service: FileFilterService) -> None:
+        self.filter_service = filter_service
 
     def rename_file(self, filename: str, new_name: str) -> None:
         if not filename:
@@ -480,6 +480,6 @@ class FileManager:
 
 
 if __name__ == "__main__":
-    manager = FileManager()
+    manager = FileManager(filter_service=FileFilterService())
 
     print(manager.get_files_flat(root_dir="~/Music"))

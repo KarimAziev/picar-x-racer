@@ -1,5 +1,5 @@
-from functools import lru_cache
 import asyncio
+from functools import lru_cache
 from typing import Annotated, AsyncGenerator, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
@@ -63,6 +63,7 @@ def get_speed_estimator() -> SpeedEstimator:
     return SpeedEstimator()
 
 
+@lru_cache(maxsize=1)
 def get_distance_service(
     emitter: Annotated[AsyncEventEmitter, Depends(get_async_event_emitter)],
     task_manager: Annotated[AsyncTaskManager, Depends(get_async_task_manager)],
@@ -103,6 +104,7 @@ async def get_battery_service(
     )
 
 
+@lru_cache(maxsize=1)
 def get_picarx_adapter(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
@@ -110,6 +112,7 @@ def get_picarx_adapter(
     return PicarxAdapter(config_manager=config_manager, smbus_manager=smbus_manager)
 
 
+@lru_cache(maxsize=1)
 def get_robot_settings_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
@@ -117,6 +120,7 @@ def get_robot_settings_service(
     return SettingsService(picarx=picarx_adapter, config_manager=config_manager)
 
 
+@lru_cache(maxsize=1)
 def get_calibration_service(
     px: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     settings_service: Annotated[SettingsService, Depends(get_robot_settings_service)],
@@ -124,6 +128,7 @@ def get_calibration_service(
     return CalibrationService(picarx=px, settings_service=settings_service)
 
 
+@lru_cache(maxsize=1)
 def get_robot_service(
     connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],

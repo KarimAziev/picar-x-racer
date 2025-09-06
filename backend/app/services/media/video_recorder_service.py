@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Optional
 import cv2
 import numpy as np
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 
 if TYPE_CHECKING:
     from app.services.file_management.file_manager_service import FileManagerService
@@ -13,9 +12,9 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 
-class VideoRecorderService(metaclass=SingletonMeta):
+class VideoRecorderService:
     """
-    A singleton class responsible for handling video recording functionality.
+    A class responsible for handling video recording functionality.
 
     The class allows for starting, writing frames to, and safely stopping
     video recordings.

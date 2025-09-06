@@ -3,7 +3,6 @@ from functools import lru_cache
 from typing import Dict, List, Optional, Union
 
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType
 from app.services.camera.v4l2_service import VideoDeviceABC
 from app.types.picamera_types import GlobalCameraInfo
@@ -27,7 +26,7 @@ PICAMERA2_TO_PIXEL_FORMATS_MAP: Dict[str, str] = {
 PICAMERA_TO_PIXEL_FORMATS_KEYS = PIXEL_FORMATS_TO_PICAMERA2_MAP.keys()
 
 
-class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
+class PicameraService(VideoDeviceABC):
     def list_video_devices(self) -> List[DeviceType]:
         return self._list_video_devices()
 

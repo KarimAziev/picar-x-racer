@@ -6,7 +6,6 @@ from os import path
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.exceptions.music import MusicInitError, MusicPlayerError
 from app.schemas.music import MusicPlayerMode
 from app.services.media.music_file_service import FileDetail
@@ -23,9 +22,9 @@ finally:
     sys.stdout = original_stdout
 
 
-class MusicService(metaclass=SingletonMeta):
+class MusicService:
     """
-    A singleton service to manage music playback and playlists.
+    A service to manage music playback and playlists.
 
     The `MusicService` handles functionalities such as:
         - Loading and updating playlists.

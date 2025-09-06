@@ -10,7 +10,6 @@ from typing import Any, List, Optional
 from app.config.config import settings
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.core.video_device_abc import VideoDeviceABC
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
@@ -19,7 +18,7 @@ from app.util.video_checksum import get_dev_video_checksum
 logger = Logger(__name__)
 
 
-class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
+class GStreamerService(VideoDeviceABC):
     @staticmethod
     @lru_cache()
     def gstreamer_available() -> bool:

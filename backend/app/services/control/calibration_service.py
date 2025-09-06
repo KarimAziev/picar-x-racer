@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from app.core.px_logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from robot_hat import constrain
 from robot_hat.data_types.config.motor import MotorDirection
 from robot_hat.interfaces.motor_abc import MotorABC
@@ -14,7 +13,7 @@ if TYPE_CHECKING:
 _log = Logger(__name__, app_name="px_robot")
 
 
-class CalibrationService(metaclass=SingletonMeta):
+class CalibrationService:
     MAX_SERVO_ANGLE_OFFSET = 180
     MIN_SERVO_ANGLE_OFFSET = -180
 

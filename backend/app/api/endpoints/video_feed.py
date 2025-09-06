@@ -112,6 +112,8 @@ async def ws(
         await stream_service.video_stream(websocket)
     except WebSocketDisconnect:
         pass
+    except RuntimeError as e:
+        logger.error("Runtime error in video stream: %s", e)
     except Exception:
         logger.error("Unexpected error in video stream: ", exc_info=True)
 

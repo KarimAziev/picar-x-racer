@@ -83,9 +83,6 @@ async def fake_to_thread(func, *args, **kwargs):
 
 class TestStreamService(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        from app.core.singleton_meta import SingletonMeta
-
-        SingletonMeta._instances.pop(StreamService, None)
 
         self.dummy_cam = DummyCameraService()
         self.dummy_cam.stream_img = np.empty((0, 0), dtype=np.uint8)

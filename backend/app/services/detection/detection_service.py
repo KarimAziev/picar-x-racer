@@ -6,7 +6,6 @@ import time
 from typing import TYPE_CHECKING, Optional, Union
 
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.exceptions.detection import (
     DetectionModelLoadError,
     DetectionProcessClosing,
@@ -34,7 +33,7 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 
-class DetectionService(metaclass=SingletonMeta):
+class DetectionService:
     """
     A service class for managing object detection processes. This service handles
     starting, stopping, and updating settings for object detection using multiprocessing
