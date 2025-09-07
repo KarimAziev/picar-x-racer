@@ -3,7 +3,15 @@ from time import sleep
 from typing import TYPE_CHECKING, Union
 
 from app.core.px_logger import Logger
+from gpiozero.exc import PinError, PinFixedPull
 from robot_hat import Pin
+from robot_hat.exceptions import (
+    InvalidPin,
+    InvalidPinInterruptTrigger,
+    InvalidPinMode,
+    InvalidPinName,
+    InvalidPinPull,
+)
 
 if os.getenv("ROBOT_HAT_MOCK_SMBUS"):
     from robot_hat import UltrasonicMock as Ultrasonic
@@ -58,6 +66,20 @@ def distance_process(
             "Connection-related error occurred in distance process."
             "Exception handled: %s",
             type(e).__name__,
+        )
+    except (
+        InvalidPinName,
+        InvalidPinInterruptTrigger,
+        InvalidPin,
+        InvalidPinMode,
+        InvalidPinPull,
+        PinFixedPull,
+        PinError,
+    ) as e:
+        _log.error(
+            "Pin related error occurred in distance process '%s': %s",
+            type(e).__name__,
+            e,
         )
     except KeyboardInterrupt:
         _log.warning("Distance process received KeyboardInterrupt, exiting.")
