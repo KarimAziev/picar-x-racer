@@ -3,7 +3,6 @@ import time
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 from app.core.px_logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.connection import ConnectionEvent
 from app.schemas.robot.battery import INA219BatteryDriverConfig, SunfounderBatteryConfig
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
 _log = Logger(__name__)
 
 
-class BatteryService(metaclass=SingletonMeta):
+class BatteryService:
     def __init__(
         self,
         connection_manager: "ConnectionService",

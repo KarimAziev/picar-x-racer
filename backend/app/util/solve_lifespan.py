@@ -37,13 +37,11 @@ def solve_lifespan(
             # Define a lifespan dependency:
             async def get_lifespan_dependencies(
                 connection_manager: ConnectionService = Depends(get_connection_service),
-                battery_manager: BatteryService = Depends(get_battery_service),
                 detection_manager: DetectionService = Depends(get_detection_service),
                 music_manager: MusicService = Depends(get_music_service),
             ) -> AsyncGenerator[LifespanAppDeps, None]:
                 deps: LifespanAppDeps = {
                     "connection_manager": connection_manager,
-                    "battery_manager": battery_manager,
                     "detection_manager": detection_manager,
                     "music_manager": music_manager,
                 }

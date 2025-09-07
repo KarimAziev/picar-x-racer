@@ -1,4 +1,3 @@
-import asyncio
 from functools import lru_cache
 from typing import Annotated, AsyncGenerator, TypedDict
 
@@ -12,7 +11,6 @@ from app.services.connection_service import ConnectionService
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
 from app.services.control.settings_service import SettingsService
-from app.services.sensors.battery_service import BatteryService
 from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
 from app.services.sensors.speed_estimator import SpeedEstimator
@@ -38,10 +36,6 @@ def get_async_event_emitter() -> AsyncEventEmitter:
 @lru_cache()
 def get_async_task_manager() -> AsyncTaskManager:
     return AsyncTaskManager()
-
-
-async def get_app_loop() -> asyncio.AbstractEventLoop:
-    return asyncio.get_running_loop()
 
 
 @lru_cache()
@@ -90,20 +84,6 @@ def get_led_service(
 @lru_cache()
 def get_smbus_manager() -> SMBusManager:
     return SMBusManager()
-
-
-async def get_battery_service(
-    connection_manager: Annotated[ConnectionService, Depends(get_connection_manager)],
-    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
-    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
-    app_loop: Annotated[asyncio.AbstractEventLoop, Depends(get_app_loop)],
-) -> BatteryService:
-    return BatteryService(
-        connection_manager=connection_manager,
-        config_manager=config_manager,
-        smbus_manager=smbus_manager,
-        app_loop=app_loop,
-    )
 
 
 @lru_cache(maxsize=1)
@@ -157,33 +137,33 @@ def get_robot_service(
 
 class LifespanAppDeps(TypedDict):
     connection_service: ConnectionService
-    battery_service: BatteryService
     robot_service: CarService
     settings_service: JsonDataManager
     distance_service: DistanceService
     led_service: LEDService
     speed_estimator: SpeedEstimator
-    app_loop: asyncio.AbstractEventLoop
+    config_manager: JsonDataManager
+    smbus_manager: SMBusManager
 
 
 async def get_lifespan_dependencies(
     connection_service: Annotated[ConnectionService, Depends(get_connection_manager)],
-    battery_service: Annotated[BatteryService, Depends(get_battery_service)],
     robot_service: Annotated[CarService, Depends(get_robot_service)],
     settings_service: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
     distance_service: Annotated[DistanceService, Depends(get_distance_service)],
     led_service: Annotated[LEDService, Depends(get_led_service)],
     speed_estimator: Annotated[SpeedEstimator, Depends(get_speed_estimator)],
-    app_loop: Annotated[asyncio.AbstractEventLoop, Depends(get_app_loop)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
-        "battery_service": battery_service,
         "robot_service": robot_service,
         "distance_service": distance_service,
         "settings_service": settings_service,
         "led_service": led_service,
         "speed_estimator": speed_estimator,
-        "app_loop": app_loop,
+        "config_manager": config_manager,
+        "smbus_manager": smbus_manager,
     }
     yield deps

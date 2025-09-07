@@ -34,13 +34,11 @@ async def websocket_endpoint(
     connection_manager: Annotated[
         "ConnectionService", Depends(robot_deps.get_connection_manager)
     ],
-    battery_manager: Annotated[
-        "BatteryService", Depends(robot_deps.get_battery_service)
-    ],
 ):
     """
     WebSocket endpoint for controlling the robot.
     """
+    battery_manager: "BatteryService" = websocket.app.state.battery_service
     try:
         await connection_manager.connect(websocket)
         if (

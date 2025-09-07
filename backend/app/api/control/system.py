@@ -12,7 +12,7 @@ from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.schemas.system import ShutdownResponse
 from app.services.sensors.led_service import LEDService
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
     from app.services.control.car_service import CarService
@@ -33,9 +33,7 @@ _log = Logger(name=__name__)
     "and 'errors' will include a list of error messages describing the encountered problems",
 )
 async def shutdown(
-    battery_service: Annotated[
-        "BatteryService", Depends(robot_deps.get_battery_service)
-    ],
+    request: Request,
     robot_service: Annotated["CarService", Depends(robot_deps.get_robot_service)],
     distance_service: Annotated[
         "DistanceService", Depends(robot_deps.get_distance_service)
@@ -46,7 +44,9 @@ async def shutdown(
     Initiates a graceful shutdown of the robot application's core services.
     """
     errors = []
+    battery_service: "BatteryService" = request.app.state.battery_service
     try:
+
         _log.debug("Gracefully stopping battery service")
         await battery_service.cleanup_connection_manager()
     except Exception as e:
