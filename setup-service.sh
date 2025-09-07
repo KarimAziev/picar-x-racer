@@ -147,6 +147,9 @@ Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_ID/bus
 Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
 Environment=PX_LOG_DIR=$LOG_DIR
+Environment=HAILO_MONITOR=0
+Environment=HAILO_TRACE=0
+Environment=HAILORT_LOGGER_PATH=NONE
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always
 StandardOutput=journal
