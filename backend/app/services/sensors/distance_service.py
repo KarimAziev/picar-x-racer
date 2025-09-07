@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from app.managers.async_task_manager import AsyncTaskManager
     from app.managers.file_management.json_data_manager import JsonDataManager
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 class DistanceService:
@@ -50,7 +50,7 @@ class DistanceService:
         Args:
             new_config: The dictionary with new robot config.
         """
-        logger.info("Updating robot distance config", new_config)
+        _log.info("Updating robot distance config", new_config)
         self.robot_config = HardwareConfig(**new_config)
         if self.running:
             await self.stop_all()
@@ -87,7 +87,7 @@ class DistanceService:
             ConnectionError,
             ConnectionRefusedError,
         ) as e:
-            logger.warning(str(e))
+            _log.warning(str(e))
         finally:
             self.loading = False
 
@@ -134,23 +134,23 @@ class DistanceService:
     def _cancel_process(self):
         with self.lock:
             if self._process is None:
-                logger.info("Distance _process is None, skipping stop")
+                _log.info("No distance process to stop")
             else:
                 self.stop_event.set()
 
-                logger.info("Distance _process setted stop_event")
+                _log.info("Distance process setted stop_event")
                 self._process.join(10)
-                logger.info("Distance _process has been joined")
+                _log.info("Distance process has been joined")
                 if self._process.is_alive():
-                    logger.warning(
-                        "Force terminating distance _process since it's still alive."
+                    _log.warning(
+                        "Force terminating distance process since it's still alive."
                     )
                     self._process.terminate()
                     self._process.join(5)
                     self._process.close()
-            logger.info("Clearing stop event")
+            _log.info("Clearing stop event")
             self.stop_event.clear()
-            logger.info("Stop event cleared")
+            _log.info("Stop event cleared")
 
     async def cleanup(self) -> None:
         """
