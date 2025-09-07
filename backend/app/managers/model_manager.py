@@ -40,7 +40,7 @@ class ModelManager:
                 _log.info(f"Loading Hailo model {self.model_path}")
                 try:
                     from app.adapters.hailo_adapter import YOLOHailoAdapter
-                except ImportError as e:
+                except (ImportError, ModuleNotFoundError, FileNotFoundError) as e:
                     msg = f"Failed to import Hailo adapter: {e}"
                     _log.error(msg)
                     self.error_msg = msg
@@ -59,7 +59,11 @@ class ModelManager:
                         lines = f.read().splitlines()
                         for idx, name in enumerate(lines):
                             labels[idx] = name
-                self.model = YOLOHailoAdapter(self.model_path, labels=labels)
+                try:
+                    self.model = YOLOHailoAdapter(self.model_path, labels=labels)
+                except (ImportError, ModuleNotFoundError, FileNotFoundError) as err:
+                    self.error_msg = str(err)
+                    return self.model, self.error_msg
                 _log.info("Hailo model loaded successfully")
             else:
                 from ultralytics import YOLO

@@ -324,18 +324,18 @@ class BatteryService(metaclass=SingletonMeta):
         """
 
         if self._task:
-            _log.info("Cancelling battery _task")
+            _log.info("Cancelling battery task")
             try:
                 self._stop_event.set()
                 self._task.cancel()
                 await self._task
             except asyncio.CancelledError:
-                _log.info("Battery _task was cancelled")
+                _log.info("Battery task was cancelled")
             finally:
                 self._task = None
                 self._stop_event.clear()
         else:
-            _log.info("Skipping cancelling battery _task")
+            _log.info("Skipping cancelling battery task")
 
     async def _broadcast_loop(self) -> None:
         """

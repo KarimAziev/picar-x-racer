@@ -332,10 +332,16 @@ class CameraService:
                 self.camera_settings
             )
             _log.info(
-                "Camera props %s, video record is %s",
+                "Starting camera with props %s",
                 props,
-                self.stream_settings.video_record,
             )
+            if self.stream_settings.video_record:
+                _log.info(
+                    "Starting camera recording"
+                    if self.camera_settings.width and self.camera_settings.height
+                    else f"Skipping camera recording due to missed width {self.camera_settings.width} or height ({self.camera_settings.height})"
+                )
+
             self.cap = cap
             self.camera_settings = props
             if (

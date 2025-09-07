@@ -38,8 +38,7 @@ def distance_process(
                 val = float(ultrasonic.read())
                 value.value = val
                 _log.debug(
-                    "val %s, synchronized value=%s, interval %s",
-                    val,
+                    "Distance process read value=%s with interval %s",
                     value.value,
                     interval,
                 )

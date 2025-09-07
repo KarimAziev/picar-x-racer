@@ -35,12 +35,12 @@ logger = Logger(__name__)
 
 @lru_cache()
 def get_connection_service() -> ConnectionService:
-    return ConnectionService()
+    return ConnectionService(log_prefix="App Synchronizer: ")
 
 
 @lru_cache()
 def get_detection_notifier() -> ConnectionService:
-    return ConnectionService()
+    return ConnectionService(log_prefix="Detection Notifier: ")
 
 
 @lru_cache(maxsize=1)
@@ -262,7 +262,6 @@ async def get_lifespan_dependencies(
     detection_manager: Annotated[DetectionService, Depends(get_detection_service)],
     music_file_service: Annotated[MusicFileService, Depends(get_music_file_service)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
-    logger.info("get_lifespan_dependencies")
     deps: LifespanAppDeps = {
         "connection_manager": connection_manager,
         "detection_manager": detection_manager,

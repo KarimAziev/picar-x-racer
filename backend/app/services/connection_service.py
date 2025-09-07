@@ -41,16 +41,24 @@ class ConnectionService(AsyncEventEmitter):
         ```
     """
 
-    def __init__(self, app_name: Optional[str] = None, *args, **kwargs):
+    def __init__(
+        self,
+        app_name: Optional[str] = None,
+        log_prefix: Optional[str] = None,
+        *args,
+        **kwargs,
+    ):
         """
         Initializes the ConnectionService instance.
 
         Args:
-            app_name (Optional[str]): The name of the application for scoping the logger, if needed. Defaults to None.
+            app_name: The name of the application for scoping the logger, if needed.
+            log_prefix: A string to prepend to log messages for easier identification.
         """
         super().__init__(*args, **kwargs)
         self.had_connections = False
         self._log = Logger(name=__name__, app_name=app_name)
+        self._log_prefix = "" if log_prefix is None else log_prefix
         self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
@@ -64,7 +72,7 @@ class ConnectionService(AsyncEventEmitter):
               previous connections were closed.
 
         Args:
-            websocket (WebSocket): The WebSocket connection object representing the client's connection.
+            websocket: The WebSocket connection object representing the client's connection.
 
         Side Effects:
             - Adds the WebSocket to the list of active connections.
@@ -88,7 +96,7 @@ class ConnectionService(AsyncEventEmitter):
                 self.had_connections = True
                 await self.emit(ConnectionEvent.FIRST_CONNECTION_EVER.value)
             await self.emit(ConnectionEvent.FIRST_ACTIVE_CONNECTION.value)
-        self._log.info("Connected %s clients", clients_count)
+        self._log.info("%sConnected %d clients", self._log_prefix, clients_count)
 
     async def disconnect(self, websocket: WebSocket, should_close=True):
         """
@@ -100,7 +108,7 @@ class ConnectionService(AsyncEventEmitter):
               leaving no clients connected.
 
         Args:
-            websocket (WebSocket): The WebSocket connection object representing the client's disconnection.
+            websocket: The WebSocket connection object representing the client's disconnection.
 
         Side Effects:
             - Removes the WebSocket from the active connections list.
@@ -120,22 +128,28 @@ class ConnectionService(AsyncEventEmitter):
             try:
                 await websocket.close()
             except RuntimeError as ex:
-                self._log.error(f"Failed to close weboscket due to RuntimeError: {ex}")
+                self._log.error(
+                    "%sFailed to close websocket due to runtime error: %s",
+                    self._log_prefix,
+                    ex,
+                )
 
         clients_count = len(self.active_connections)
-        self._log.info(f"Removing connection, total clients: {clients_count}")
+        self._log.info(
+            "%sRemoving connection, total clients: %d", self._log_prefix, clients_count
+        )
 
         if clients_count == 0:
             await self.emit(ConnectionEvent.LAST_CONNECTION.value)
 
-        self._log.info("Connected %s clients", clients_count)
+        self._log.info("%sConnected %d clients", self._log_prefix, clients_count)
 
     def remove(self, websocket: WebSocket):
         """
         Removes a WebSocket connection from the list of active connections.
 
         Args:
-            websocket (WebSocket): The WebSocket connection object to be removed.
+            websocket: The WebSocket connection object to be removed.
 
         Side Effects:
             If the WebSocket is in the list of active connections, it will be removed.
@@ -149,8 +163,8 @@ class ConnectionService(AsyncEventEmitter):
         Automatically handles disconnected clients during the broadcast.
 
         Args:
-            data (Any): The JSON-serializable data to send to all clients.
-            mode (str): The mode of transmission (default is "text"). Defaults to "text".
+            data: The JSON-serializable data to send to all clients.
+            mode: The mode of transmission (default is "text"). Defaults to "text".
 
         Side Effects:
             Sends JSON data to all currently connected clients.
@@ -163,7 +177,7 @@ class ConnectionService(AsyncEventEmitter):
             except WebSocketDisconnect:
                 disconnected_clients.append(connection)
             except RuntimeError as e:
-                self._log.error("Broadcast runtime error %s", e)
+                self._log.error("%sBroadcast runtime error %s", self._log_prefix, e)
                 disconnected_clients.append(connection)
 
         for connection in disconnected_clients:
@@ -175,7 +189,7 @@ class ConnectionService(AsyncEventEmitter):
         Automatically handles disconnected clients during the broadcast.
 
         Args:
-            data (Any): The binary data to send to all clients.
+            data: The binary data to send to all clients.
 
         Side Effects:
             Sends binary data to all currently connected clients.
@@ -197,7 +211,7 @@ class ConnectionService(AsyncEventEmitter):
         Automatically handles disconnected clients during the broadcast.
 
         Args:
-            data (str): The plain-text message to send to all clients.
+            data: The plain-text message to send to all clients.
 
         Side Effects:
             Sends text messages to all currently connected clients.

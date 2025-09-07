@@ -31,16 +31,15 @@ class YOLOHailoAdapter:
         """
         try:
             from picamera2.devices.hailo.hailo import Hailo
-        except ImportError as e:
-            raise ImportError(
-                "Hailo module could not be imported. Ensure hailo dependencies are installed."
-            ) from e
+        except (ImportError, ModuleNotFoundError) as e:
+            logger.error("Hailo module could not be imported: %s", str(e))
+            raise
 
         self.hailo = Hailo(hef_path, batch_size=batch_size, output_type=output_type)
         self.input_shape: Tuple[int, ...] = self.hailo.get_input_shape()
         self.names: Dict[int, str] = labels if labels is not None else {}
         self.is_pose: bool = self._detect_pose_model()
-        logger.info("'%s' is_pose model='%s'", hef_path, self.is_pose)
+        logger.info("'%s' is pose model='%s'", hef_path, self.is_pose)
 
     def _detect_pose_model(self) -> bool:
         """
@@ -49,7 +48,7 @@ class YOLOHailoAdapter:
         info: Tuple[List[LayerInfo], List[LayerInfo]] = self.hailo.describe()
         input_layers, output_layers = info
         logger.info(
-            "input_layers='%s', output_layers='%s'", input_layers, output_layers
+            "Input layers='%s', output layers='%s'", input_layers, output_layers
         )
         for _, shape, _ in output_layers:
             if shape[-1] == 51:

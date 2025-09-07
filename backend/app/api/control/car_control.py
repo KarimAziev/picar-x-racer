@@ -86,13 +86,15 @@ async def websocket_endpoint(
                 await connection_manager.error("Unexpected robot error occurred")
 
     except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected gracefully.")
+        logger.info(
+            "Robot Connection Manager: WebSocket client disconnected gracefully."
+        )
     except asyncio.CancelledError:
-        logger.warning("WebSocket cancelled by application.")
+        logger.warning("Robot Connection Manager: WebSocket cancelled by application.")
         await connection_manager.disconnect(websocket)
     except KeyboardInterrupt:
-        logger.warning("WebSocket connection interrupted.")
+        logger.warning("Robot Connection Manager: WebSocket connection interrupted.")
         await connection_manager.disconnect(websocket)
     finally:
-        logger.info("Cleaning up WebSocket connection.")
+        logger.info("Robot Connection Manager: Cleaning up WebSocket connection.")
         connection_manager.remove(websocket)

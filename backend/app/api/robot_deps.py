@@ -25,7 +25,9 @@ logger = Logger(__name__)
 @lru_cache()
 def get_connection_manager() -> ConnectionService:
     """Return connection manager used for broadcasting."""
-    return ConnectionService(app_name="px_robot")
+    return ConnectionService(
+        app_name="px_robot", log_prefix="Robot Connection Manager: "
+    )
 
 
 @lru_cache()

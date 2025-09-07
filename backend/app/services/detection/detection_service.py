@@ -460,9 +460,9 @@ class DetectionService:
                     logger.info(f"Cleaning non empty queue {name}")
                     queue_item.get_nowait()
 
-                logger.info("Closing %s", name)
+                logger.info("Closing %s", name.replace("_", " "))
                 queue_item.close()
-                logger.info("Joining %s", name)
+                logger.info("Joining %s", name.replace("_", " "))
                 queue_item.join_thread()
             except (
                 ConnectionError,
@@ -585,5 +585,5 @@ class DetectionService:
             "detection_process",
         ]:
             if hasattr(self, prop):
-                logger.info(f"Removing {prop}")
+                logger.info(f"Removing {prop.replace('_', ' ')}")
                 delattr(self, prop)

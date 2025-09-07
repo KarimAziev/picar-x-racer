@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from app.services.sensors.distance_service import DistanceService
 
 router = APIRouter()
-logger = Logger(name=__name__)
+_log = Logger(name=__name__)
 
 
 @router.get(
@@ -47,32 +47,32 @@ async def shutdown(
     """
     errors = []
     try:
-        logger.debug("Gracefully stopping battery service")
+        _log.debug("Gracefully stopping battery service")
         await battery_service.cleanup_connection_manager()
     except Exception as e:
         errors.append(str(e))
-        logger.error("Failed to cleanup battery service: %s", e)
+        _log.error("Failed to cleanup battery service: %s", e)
 
     try:
-        logger.debug("Gracefully stopping robot service")
+        _log.debug("Gracefully stopping robot service")
         await robot_service.cleanup()
     except Exception as e:
         errors.append(str(e))
-        logger.error("Failed to cleanup robot service: %s", e)
+        _log.error("Failed to cleanup robot service: %s", e)
 
     try:
-        logger.debug("Gracefully stopping distance service")
+        _log.debug("Gracefully stopping distance service")
         await distance_service.cleanup()
     except Exception as e:
-        logger.debug("Gracefully stopping distance service")
+        _log.debug("Gracefully stopping distance service")
         errors.append(str(e))
-        logger.error("Failed to cleanup distance service: %s", e)
+        _log.error("Failed to cleanup distance service: %s", e)
 
     try:
         await led_service.cleanup()
     except Exception as e:
         errors.append(str(e))
-        logger.error("Failed to cleanup LED service: %s", e)
+        _log.error("Failed to cleanup LED service: %s", e)
 
     if errors:
         return {"errors": errors, "success": False}

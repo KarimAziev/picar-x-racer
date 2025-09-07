@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from app.services.media.music_service import MusicService
 
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 router = APIRouter()
@@ -95,13 +95,15 @@ async def app_synchronizer(
                     await asyncio.to_thread(handler, payload)
 
     except WebSocketDisconnect:
-        logger.info("Synchronization WebSocket Disconnected")
+        _log.info("App Synchronizer: Synchronization WebSocket Disconnected")
         await connection_manager.disconnect(websocket, should_close=False)
     except asyncio.CancelledError:
-        logger.info("Gracefully shutting down Synchronization WebSocket connection")
+        _log.info(
+            "App Synchronizer: Gracefully shutting down Synchronization WebSocket connection"
+        )
         await connection_manager.disconnect(websocket)
     except KeyboardInterrupt:
-        logger.info("Synchronization WebSocket interrupted")
+        _log.info("App Synchronizer: Synchronization WebSocket interrupted")
         await connection_manager.disconnect(websocket)
     finally:
         await connection_manager.broadcast_json(

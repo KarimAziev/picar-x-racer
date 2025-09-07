@@ -32,10 +32,10 @@ class DistanceService:
         self._process = None
         self.stop_event = mp.Event()
         self.interval = interval
-        self.lock = threading.Lock()
-        self.async_lock = asyncio.Lock()
-        self.emitter = emitter
-        self.task_manager = task_manager
+        self._lock = threading.Lock()
+        self._async_lock = asyncio.Lock()
+        self._emitter = emitter
+        self._task_manager = task_manager
         self.loading = False
         self.config_manager.on(self.config_manager.UPDATE_EVENT, self.update_config)
         self.config_manager.on(self.config_manager.LOAD_EVENT, self.update_config)
@@ -57,10 +57,10 @@ class DistanceService:
             await self.start_all()
 
     def subscribe(self, listener: "Listener"):
-        self.emitter.on("distance", listener)
+        self._emitter.on("distance", listener)
 
     def unsubscribe(self, listener: "Listener"):
-        self.emitter.off("distance", listener)
+        self._emitter.off("distance", listener)
 
     async def distance_watcher(self):
         initial_value = self._distance.value
@@ -69,11 +69,11 @@ class DistanceService:
                 hasattr(self, "stop_event")
                 and self._process
                 and self._process.is_alive()
-                and not self.task_manager.stop_event.is_set()
+                and not self._task_manager.stop_event.is_set()
                 and not self.stop_event.is_set()
             ):
                 if not self.loading:
-                    await self.emitter.emit("distance", self.distance)
+                    await self._emitter.emit("distance", self.distance)
                     await asyncio.sleep(self.interval)
                 elif initial_value == self._distance.value:
                     await asyncio.sleep(self.interval)
@@ -93,18 +93,18 @@ class DistanceService:
 
     async def start_all(self):
         await self.stop_all()
-        async with self.async_lock:
+        async with self._async_lock:
             self.loading = True
             await asyncio.to_thread(self._start_process)
-            self.task_manager.start_task(
+            self._task_manager.start_task(
                 self.distance_watcher, task_name="distance_watcher"
             )
 
     async def stop_all(self):
-        async with self.async_lock:
+        async with self._async_lock:
             await asyncio.to_thread(self._cancel_process)
-            if self.task_manager.task:
-                await self.task_manager.cancel_task()
+            if self._task_manager.task:
+                await self._task_manager.cancel_task()
 
     @property
     def distance(self):
@@ -112,12 +112,12 @@ class DistanceService:
 
     @property
     def running(self):
-        with self.lock:
+        with self._lock:
             return self._process and self._process.is_alive()
 
     def _start_process(self):
         if self.robot_config.ultrasonic:
-            with self.lock:
+            with self._lock:
                 self._process = mp.Process(
                     target=distance_process,
                     args=(
@@ -132,7 +132,7 @@ class DistanceService:
                 self._process.start()
 
     def _cancel_process(self):
-        with self.lock:
+        with self._lock:
             if self._process is None:
                 _log.info("No distance process to stop")
             else:
@@ -160,10 +160,10 @@ class DistanceService:
             - Cancels any running tasks and stops the distance _process.
             - Deletes class properties associated with multiprocessing and async state.
         """
-        await self.task_manager.cancel_task()
+        await self._task_manager.cancel_task()
         await asyncio.to_thread(self._cancel_process)
-        async with self.async_lock:
-            with self.lock:
+        async with self._async_lock:
+            with self._lock:
                 self.__dict__.pop("stop_event", None)
                 self.__dict__.pop("_process", None)
                 self.__dict__.pop("_distance", None)
