@@ -1,5 +1,6 @@
 from typing import Optional, Union
 
+from app.schemas.robot.avoid_obstacles import AvoidParams
 from app.schemas.robot.battery import BatteryConfig
 from app.schemas.robot.distance import UltrasonicConfig
 from app.schemas.robot.led import LedConfig
@@ -96,6 +97,15 @@ class HardwareConfig(BaseModel):
             description="Configuration for the LED.",
         ),
     ] = None
+
+    avoid_obstacles_params: Annotated[
+        AvoidParams,
+        Field(
+            ...,
+            title="Avoid Obstacles Config",
+            description="Parameters for Avoid Obstacles Mode",
+        ),
+    ] = AvoidParams()
 
 
 @partial_model

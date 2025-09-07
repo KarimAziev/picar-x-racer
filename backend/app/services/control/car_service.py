@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Union, cast
 
 from app.core.px_logger import Logger
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout, ServoNotFoundError
-from app.schemas.robot.avoid_obstacles import AvoidParams, AvoidState
+from app.schemas.robot.avoid_obstacles import AvoidState
+from app.schemas.robot.config import HardwareConfig
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
 from fastapi import WebSocket
@@ -48,14 +49,24 @@ class CarService:
 
         self.app_settings_manager = app_settings_manager
 
+        self.config = HardwareConfig(**config_manager.load_data())
+
         self.app_settings = Settings(**app_settings_manager.load_data())
 
-        self.app_settings_manager.on(
+        self.config_manager.on(
             self.app_settings_manager.UPDATE_EVENT, self.refresh_config
         )
 
-        self.app_settings_manager.on(
+        self.config_manager.on(
             self.app_settings_manager.LOAD_EVENT, self.refresh_config
+        )
+
+        self.app_settings_manager.on(
+            self.app_settings_manager.UPDATE_EVENT, self.refresh_settings
+        )
+
+        self.app_settings_manager.on(
+            self.app_settings_manager.LOAD_EVENT, self.refresh_settings
         )
 
         self.auto_measure_distance_mode = False
@@ -83,7 +94,7 @@ class CarService:
 
         self._avoid_task: Union[asyncio.Task, None] = None
         self._avoid_state: Union[AvoidState, None] = None
-        self._avoid_params = AvoidParams()
+        self._avoid_params = self.config.avoid_obstacles_params
         self._prefer_right: bool = True
         self._state_since: float = time.monotonic()
         self._ema_distance: Union[float, None] = None
@@ -93,6 +104,10 @@ class CarService:
         self._last_broadcast: float = 0.0
 
     def refresh_config(self, data: Dict[str, Any]):
+        self.config = HardwareConfig(**data)
+        self._avoid_params = self.config.avoid_obstacles_params
+
+    def refresh_settings(self, data: Dict[str, Any]):
         self.app_settings = Settings(**data)
 
     async def broadcast(self):
@@ -613,8 +628,8 @@ class CarService:
         Moves the car in the specified direction at the given speed.
 
         Args:
-            direction (int): The direction to move the car (1 for forward, -1 for backward).
-            speed (int): The speed at which to move the car.
+            direction: The direction to move the car (1 for forward, -1 for backward).
+            speed: The speed at which to move the car.
         """
         if direction == 1:
             await asyncio.to_thread(self.px.forward, speed)
@@ -666,7 +681,19 @@ class CarService:
             await asyncio.sleep(0.5)
 
     async def cleanup(self) -> None:
+        async_handlers = [
+            self._stop_avoid_loop,
+            self.handle_stop,
+            self.distance_service.stop_all,
+        ]
+        for fn in async_handlers:
+            try:
+                await fn()
+            except Exception:
+                pass
+
         try:
             await asyncio.to_thread(self.px.cleanup)
+
         except Exception as e:
             _log.error("Failed to cleanup Picarx: %s", e)
