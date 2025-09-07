@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from app.managers.async_task_manager import AsyncTaskManager
     from app.managers.file_management.json_data_manager import JsonDataManager
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 class LEDService:
@@ -70,7 +70,7 @@ class LEDService:
         Args:
             new_config: The dictionary with new robot config.
         """
-        logger.info("Updating robot led_config", new_config)
+        _log.info("Updating robot led_config", new_config)
         self.robot_config = HardwareConfig(**new_config)
         self.led_config = self.robot_config.led
         if self.running:
@@ -104,7 +104,7 @@ class LEDService:
         """
         if self.led_config:
             with self.lock:
-                logger.info("Starting LED process")
+                _log.info("Starting LED process")
                 self._process = mp.Process(
                     target=led_process,
                     args=(
@@ -123,22 +123,22 @@ class LEDService:
         """
         with self.lock:
             if self._process is None:
-                logger.info("LED _process is None, skipping stop")
+                _log.info("No LED process to stop")
             else:
                 self.stop_event.set()
-                logger.info("LED _process set stop_event")
+                _log.info("LED process set stop_event")
                 self._process.join(10)
-                logger.info("LED _process joined")
+                _log.info("LED process joined")
                 if self._process.is_alive():
-                    logger.warning(
-                        "Force terminating LED _process since it's still alive."
+                    _log.warning(
+                        "Force terminating LED process since it's still alive."
                     )
                     self._process.terminate()
                     self._process.join(5)
                     self._process.close()
-            logger.info("Clearing stop event")
+            _log.info("Clearing stop event")
             self.stop_event.clear()
-            logger.info("Stop event cleared")
+            _log.info("Stop event cleared")
 
     @property
     def running(self) -> bool:
@@ -158,7 +158,7 @@ class LEDService:
         Args:
             new_pin: The new pin (int or str) to use for the LED.
         """
-        logger.info("Updating LED pin to %s", new_pin)
+        _log.info("Updating LED pin to %s", new_pin)
         if self.led_config:
             self.led_config.pin = new_pin
         if self.running:
@@ -175,7 +175,7 @@ class LEDService:
         Args:
             new_interval: The new interval (in seconds) for blinking.
         """
-        logger.info("Updating LED interval to %s", new_interval)
+        _log.info("Updating LED interval to %s", new_interval)
         if self.led_config:
             self.led_config.interval = new_interval
         if self.running:
