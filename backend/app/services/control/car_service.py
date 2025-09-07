@@ -1,13 +1,17 @@
 import asyncio
 import inspect
 import json
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Union
+import math
+import time
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Union, cast
 
 from app.core.px_logger import Logger
 from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout, ServoNotFoundError
+from app.schemas.robot.avoid_obstacles import AvoidParams, AvoidState
 from app.schemas.settings import Settings
 from app.types.car import CarServiceState
 from fastapi import WebSocket
+from robot_hat import constrain
 from robot_hat.services.motor_service import MotorServiceDirection
 from robot_hat.sunfounder.utils import reset_mcu_sync
 
@@ -76,6 +80,17 @@ class CarService:
                     name,
                     exc_info=True,
                 )
+
+        self._avoid_task: Union[asyncio.Task, None] = None
+        self._avoid_state: Union[AvoidState, None] = None
+        self._avoid_params = AvoidParams()
+        self._prefer_right: bool = True
+        self._state_since: float = time.monotonic()
+        self._ema_distance: Union[float, None] = None
+        self._last_distance_ts: Union[float, None] = None
+        self._last_cmd = {"dir": 0, "speed": 0, "steer": 0.0}
+        self._prev_distance_interval: Union[float, None] = None
+        self._last_broadcast: float = 0.0
 
     def refresh_config(self, data: Dict[str, Any]):
         self.app_settings = Settings(**data)
@@ -287,26 +302,257 @@ class CarService:
 
     async def handle_avoid_obstacles(self, _=None) -> None:
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
+
         if self.avoid_obstacles_mode:
             await self.handle_stop()
-            self.auto_measure_distance_mode = self.distance_service.running
-            self.auto_measure_distance_mode_prev_interval = (
-                self.distance_service.interval
-            )
-            self.distance_service.subscribe(self.avoid_obstacles_subscriber)
-            self.distance_service.interval = 0.1
-            await self.distance_service.start_all()
-        else:
-            self.distance_service.unsubscribe(self.avoid_obstacles_subscriber)
-            await self.handle_stop()
-            await self.distance_service.stop_all()
-            if self.auto_measure_distance_mode_prev_interval:
-                self.distance_service.interval = (
-                    self.auto_measure_distance_mode_prev_interval
-                )
 
+            self.auto_measure_distance_mode = self.distance_service.running
+            self._prev_distance_interval = self.distance_service.interval
+
+            self.distance_service.interval = max(0.05, self._avoid_params.loop_period_s)
+            await self.distance_service.start_all()
+
+            self._avoid_state = AvoidState.CRUISSE if False else AvoidState.CRUISE
+            self._prefer_right = True
+            self._state_since = time.monotonic()
+            self._ema_distance = None
+            self._last_distance_ts = None
+            self._last_cmd = {"dir": 0, "speed": 0, "steer": 0.0}
+
+            self._avoid_task = asyncio.create_task(self._avoid_loop())
+        else:
+            await self._stop_avoid_loop()
+
+            await self.handle_stop()
+
+            await self.distance_service.stop_all()
+            if self._prev_distance_interval is not None:
+                self.distance_service.interval = self._prev_distance_interval
             if self.auto_measure_distance_mode:
                 await self.distance_service.start_all()
+
+    async def _stop_avoid_loop(self) -> None:
+        if self._avoid_task:
+            self._avoid_task.cancel()
+            try:
+                await self._avoid_task
+            except asyncio.CancelledError:
+                pass
+            finally:
+                self._avoid_task = None
+
+    def _smooth_distance(self, d: Union[float, None]) -> Union[float, None]:
+        now = time.monotonic()
+
+        invalid = (
+            d is None
+            or not isinstance(d, (int, float))
+            or not math.isfinite(d)
+            or d < 0
+        )
+        if invalid:
+            if self._last_distance_ts is None:
+                self._last_distance_ts = now
+            return self._ema_distance
+
+        d_val: float = float(cast(float, d))
+
+        d_val = min(d_val, self._avoid_params.max_range_cm)
+
+        self._last_distance_ts = now
+
+        if self._ema_distance is None:
+            self._ema_distance = d_val
+        else:
+            a: float = float(self._avoid_params.ema_alpha)
+            ema = self._ema_distance
+            self._ema_distance = a * d_val + (1.0 - a) * ema
+        return self._ema_distance
+
+    def _is_stale(self) -> bool:
+        if self._last_distance_ts is None:
+            return True
+        return (
+            time.monotonic() - self._last_distance_ts
+        ) > self._avoid_params.stale_timeout_s
+
+    def _ramp(
+        self, current: float, target: float, dt: float, accel: float, decel: float
+    ) -> float:
+        delta = target - current
+        if delta > 0:
+            max_step = accel * dt
+            delta = min(delta, max_step)
+        else:
+            max_step = decel * dt
+            delta = max(delta, -max_step)
+        return current + delta
+
+    def _transition(self, new_state: AvoidState) -> None:
+        self._avoid_state = new_state
+        self._state_since = time.monotonic()
+
+    def _state_time(self) -> float:
+        return time.monotonic() - self._state_since
+
+    async def _apply_drive(
+        self, direction: MotorServiceDirection, speed: int, steer: float
+    ) -> None:
+
+        if not self.px.steering_servo:
+            raise ServoNotFoundError("Servo not found")
+
+        steer = constrain(
+            steer, self.px.steering_servo.min_angle, self.px.steering_servo.max_angle
+        )
+        speed = max(0, min(min(self.max_speed or 80, speed), 100))
+
+        if steer != self._last_cmd["steer"]:
+            await self.handle_set_servo_dir_angle(steer)
+            self._last_cmd["steer"] = steer
+
+        if direction != self.px.state["direction"] or speed != self.px.state["speed"]:
+            if direction == 0 or speed == 0:
+                await self.handle_stop()
+                self._last_cmd["dir"] = 0
+                self._last_cmd["speed"] = 0
+            else:
+                await self.move(direction, speed)
+                self._last_cmd["dir"] = direction
+                self._last_cmd["speed"] = speed
+
+    async def _avoid_loop(self) -> None:
+        p = self._avoid_params
+        last_time = time.monotonic()
+        try:
+            while (
+                self.avoid_obstacles_mode
+                and self.distance_service._process
+                and self.distance_service._process.is_alive()
+            ):
+                loop_start = time.monotonic()
+                dt = loop_start - last_time
+                last_time = loop_start
+
+                raw_d = self.distance_service.distance
+                d = self._smooth_distance(raw_d)
+
+                target_dir = 0
+                target_speed = 0
+                target_steer = 0.0
+
+                stale = self._is_stale()
+                if stale:
+                    (
+                        self._transition(AvoidState.WAIT)
+                        if self._avoid_state != AvoidState.WAIT
+                        else None
+                    )
+                    target_dir, target_speed, target_steer = 0, 0, 0.0
+                else:
+                    dval = d if d is not None else 0.0
+
+                    if self._avoid_state == AvoidState.CRUISE:
+                        target_steer = 0.0
+                        if dval < p.stop:
+                            self._transition(AvoidState.REVERSE)
+                        elif dval < p.danger:
+                            self._transition(AvoidState.TURN)
+                        else:
+                            if dval <= p.caution:
+                                target_speed = p.turn_speed
+                            elif dval >= p.safe:
+                                target_speed = p.forward_speed
+                            else:
+                                frac = (dval - p.caution) / (p.safe - p.caution)
+                                target_speed = int(
+                                    p.turn_speed
+                                    + frac * (p.forward_speed - p.turn_speed)
+                                )
+                            target_dir = 1
+
+                    elif self._avoid_state == AvoidState.TURN:
+                        target_dir = 1
+                        target_speed = p.turn_speed
+                        target_steer = (
+                            p.turn_angle if self._prefer_right else -p.turn_angle
+                        )
+
+                        if dval < p.stop:
+                            self._transition(AvoidState.REVERSE)
+                        elif dval >= p.safe and self._state_time() >= p.hold_cruise_s:
+                            self._transition(AvoidState.CRUISE)
+
+                    elif self._avoid_state == AvoidState.REVERSE:
+                        target_dir = -1
+                        target_speed = p.reverse_speed
+                        target_steer = (
+                            -p.reverse_angle if self._prefer_right else p.reverse_angle
+                        )
+
+                        if self._state_time() >= p.reverse_time_s:
+                            self._transition(AvoidState.WAIT)
+                            self._prefer_right = not self._prefer_right
+
+                    elif self._avoid_state == AvoidState.WAIT:
+                        target_dir = 0
+                        target_speed = 0
+                        target_steer = 0.0
+                        if self._state_time() >= p.wait_time_s:
+                            self._transition(AvoidState.TURN)
+                    else:
+                        self._transition(AvoidState.CRUISE)
+                    _log.debug("target_steer=%s, dval=%s", target_steer, dval)
+
+                current_speed = self.px.state["speed"]
+                current_dir = self.px.state["direction"]
+                desired_dir = target_dir
+                ramp_target_speed = target_speed
+
+                if desired_dir != current_dir and (current_speed > 0):
+                    ramp_target_speed = 0
+
+                ramped = self._ramp(
+                    current=current_speed,
+                    target=ramp_target_speed,
+                    dt=dt if dt > 0 else p.loop_period_s,
+                    accel=p.accel_rate,
+                    decel=p.decel_rate,
+                )
+
+                if ramped == 0 and current_speed != 0 and desired_dir != current_dir:
+                    await self.handle_stop()
+
+                out_speed = int(round(ramped))
+                out_dir = current_dir
+                if out_speed == 0:
+                    out_dir = 0
+                elif current_speed == 0 and desired_dir != 0:
+                    out_dir = desired_dir
+
+                _log.debug("out_speed=%s, out_dir=%s", out_speed, out_dir)
+                await self._apply_drive(out_dir, out_speed, target_steer)
+
+                now = time.monotonic()
+                if now - self._last_broadcast > 0.2:
+                    self._last_broadcast = now
+                    await self.broadcast()
+
+                elapsed = time.monotonic() - loop_start
+                sleep_time = max(0.0, p.loop_period_s - elapsed)
+                await asyncio.sleep(sleep_time)
+        except asyncio.CancelledError:
+            await self.handle_stop()
+            await self.broadcast()
+        except ServoNotFoundError:
+            await self.connection_manager.error("Servo is not found!")
+            await self.handle_stop()
+            await self.broadcast()
+        except Exception:
+            _log.error("Avoid loop crashed", exc_info=True)
+            await self.handle_stop()
+            await self.connection_manager.error("Avoid obstacles loop crashed")
+            await self.broadcast()
 
     async def servos_test(self, _=None) -> None:
         servos = [
