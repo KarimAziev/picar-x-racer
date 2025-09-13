@@ -7,6 +7,7 @@ import StringOrNumberField from "@/ui/StringOrNumberField.vue";
 import TextField from "@/ui/TextField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import { FieldType } from "@/ui/JsonSchema/interface";
+import PinChooser from "@/ui/PinChooser/PinChooserDialog.vue";
 
 export const simpleTypes: Partial<Record<FieldType, boolean>> = {
   string: true,
@@ -25,6 +26,7 @@ export const componentsWithDefaults = defineComponents(
     motor_direction: MotorDirection,
     select: SelectField,
     calibration_offset: CalibrationOffset,
+    pin: PinChooser,
   },
   {
     integer: {
@@ -54,6 +56,7 @@ export const componentsWithDefaults = defineComponents(
 
     motor_direction: {},
     select: {},
+    pin: {},
   },
 );
 

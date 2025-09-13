@@ -210,6 +210,10 @@ export type ExtractStringPropsKey<Obj extends Record<string, any>> = {
   [Key in keyof Obj]: Obj[Key] extends string ? Key : never;
 }[keyof Obj];
 
+export type ExtractStringOrNumberPropsKey<Obj extends Record<string, any>> = {
+  [Key in keyof Obj]: Obj[Key] extends string | number ? Key : never;
+}[keyof Obj];
+
 /**
  * Utility type to make all properties of a type required (non-optional).
  *

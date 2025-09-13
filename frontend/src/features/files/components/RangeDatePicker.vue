@@ -33,7 +33,6 @@ const dates = ref(getDateRangeFilterValue());
 watch(
   () => dateRangeFilter.value,
   () => {
-    console.log("DATE RANGEFILTER CHANGED");
     dates.value = getDateRangeFilterValue();
   },
 );

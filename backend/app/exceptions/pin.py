@@ -1,0 +1,2 @@
+class PinFactoryNotAvailable(Exception):
+    pass

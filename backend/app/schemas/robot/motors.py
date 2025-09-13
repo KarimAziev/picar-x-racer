@@ -106,7 +106,7 @@ class I2CDCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Direction (phase) pin",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"type": "pin"},
             description="The GPIO pin that the phase (direction) input of the motor driver chip is connected to.",
             examples=["D4", "D5", 23, 24],
         ),
@@ -146,7 +146,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Forward PIN",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"type": "pin"},
             description="The GPIO pin that the forward input of the motor driver chip "
             "is connected to.",
         ),
@@ -155,7 +155,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Union[int, str],
         Field(
             ...,
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"type": "pin"},
             title="Backward PIN",
             description="The GPIO pin that the forward input of the motor driver chip "
             "is connected to.",
@@ -166,7 +166,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Enable PIN",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"type": "pin"},
             description="The GPIO pin that enables the motor. "
             "Required for **some** motor controller boards.",
         ),
@@ -203,7 +203,7 @@ class PhaseMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Enable PIN",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"type": "pin"},
             description="GPIO pin for the phase/direction. ",
         ),
     ]
@@ -222,7 +222,7 @@ class PhaseMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Enable PIN",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"type": "pin"},
             description="The GPIO pin that enables the motor. "
             "Required for **some** motor controller boards.",
         ),

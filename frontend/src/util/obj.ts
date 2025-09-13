@@ -1,7 +1,7 @@
 import {
   Narrow,
   FlattenObject,
-  ExtractStringPropsKey,
+  ExtractStringOrNumberPropsKey,
 } from "@/util/ts-helpers";
 import {
   isEmpty,
@@ -393,7 +393,7 @@ export function splitObjIntoGroups(
 
 export const groupBy = <
   Obj extends Record<string, any>,
-  Prop extends ExtractStringPropsKey<Obj>,
+  Prop extends ExtractStringOrNumberPropsKey<Obj>,
 >(
   propName: Prop,
   objs: Obj[],
@@ -415,7 +415,7 @@ export const groupBy = <
 
 export const groupWith = <
   Obj extends Record<string, any>,
-  Prop extends ExtractStringPropsKey<Obj>,
+  Prop extends ExtractStringOrNumberPropsKey<Obj>,
   Fn extends (obj: Obj) => any,
 >(
   propName: Prop,

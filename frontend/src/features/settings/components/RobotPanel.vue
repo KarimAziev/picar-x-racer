@@ -1,4 +1,7 @@
 <template>
+  <Fieldset legend="Board Info" toggleable :id="`${popupStore.tab}-board-info`">
+    <BoardInfo />
+  </Fieldset>
   <Fieldset legend="General" toggleable collapsed :id="popupStore.tab">
     <RobotSettings />
     <Divider />
@@ -36,12 +39,18 @@ const RobotConfig = defineAsyncComponent({
   delay: 0,
 });
 
+const BoardInfo = defineAsyncComponent({
+  loader: () => import("@/ui/BoardInfo.vue"),
+  loadingComponent: FieldsetSkeleton,
+  delay: 0,
+  errorComponent: ErrorComponent,
+});
+
 const RobotSettings = defineAsyncComponent({
   loader: () =>
     import("@/features/settings/components/robot/RobotSettings.vue"),
   loadingComponent: FieldsetSkeleton,
   delay: 0,
-  errorComponent: ErrorComponent,
 });
 const CalibrationPanel = defineAsyncComponent({
   loader: () =>

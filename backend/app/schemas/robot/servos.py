@@ -206,7 +206,7 @@ class GPIOAngularServoConfig(ServoConfig):
         Union[str, int],
         Field(
             ...,
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"type": "pin"},
             title="GPIO PIN",
             description="Broadcom (BCM) pin number for the GPIO pins, as opposed to physical (BOARD) numbering.",
             examples=["GPIO17", "GPIO27", 1, 2],
