@@ -47,7 +47,7 @@ class YOLOHailoAdapter:
         """
         info: Tuple[List[LayerInfo], List[LayerInfo]] = self.hailo.describe()
         input_layers, output_layers = info
-        logger.info(
+        logger.debug(
             "Input layers='%s', output layers='%s'", input_layers, output_layers
         )
         for _, shape, _ in output_layers:
@@ -86,7 +86,7 @@ class YOLOHailoAdapter:
         original_h, original_w = source.shape[:2]
 
         if (source.shape[0] != expected_h) or (source.shape[1] != expected_w):
-            logger.info(
+            logger.debug(
                 f"Letterboxing input from {source.shape[:2]} to {(expected_h, expected_w)}"
             )
 
