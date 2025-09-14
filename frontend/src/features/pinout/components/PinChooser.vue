@@ -1,28 +1,25 @@
 <template>
-  <div class="p-4 space-y-6">
+  <div class="md:p-2 lg:p-4">
     <SelectField
-      label="Pin layout"
+      :filter="false"
+      label="Pin Layout"
       :options="layoutOptions"
       v-model="selectedLayout"
     />
-    <div
-      v-for="(header, headerKey) in pinHeaders"
-      :key="headerKey"
-      class="bg-white/5 rounded-lg p-3 border border-gray-200/10"
-    >
+    <div v-for="(header, headerKey) in pinHeaders" :key="headerKey">
       <div class="flex items-center justify-between mb-3">
         <div class="text-lg font-semibold">{{ header.name }}</div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-1 md:gap-4 lg:gap-12">
         <div
-          class="flex-1 gap-2"
+          class="flex-1"
           v-for="(pinRows, i) in groupColumnsSorted(header.pins)"
           :key="`${headerKey}-${i}`"
         >
           <div
             v-for="pin in pinRows"
             :key="`${headerKey}-${i}-${pin.name}`"
-            class="p-2"
+            class="p-1"
           >
             <PinButton
               :pin-info="pin"

@@ -3,16 +3,22 @@
     <Dialog
       v-model:visible="visible"
       header="Choose a pin"
-      content-class="min-h-[35vh] max-h-[70vh] overflow-auto"
+      content-class="min-h-[40vh] overflow-auto"
       dismissableMask
       @show="handleSelectBeforeShow"
       @hide="handleSelectBeforeHide"
     >
       <PinChooser @update:model-value="updateValue" :model-value="modelValue" />
 
-      <div class="text-right">
-        <Button label="Close" class="p-button-text" @click="visible = false" />
-      </div>
+      <template #footer>
+        <div class="text-right">
+          <Button
+            label="Close"
+            class="p-button-text"
+            @click="visible = false"
+          />
+        </div>
+      </template>
     </Dialog>
 
     <Field

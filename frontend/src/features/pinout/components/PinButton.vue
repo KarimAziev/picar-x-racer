@@ -1,13 +1,15 @@
 <template>
-  <div class="flex items-center gap-4 shadow-sm">
+  <div class="flex items-center gap-4">
     <button
       @click="handleClick"
       :class="[
-        'rounded-full flex items-center justify-center border-2 p-2 w-28',
+        'rounded-full flex items-center justify-center border-2 p-0.5 w-28',
         !isDisabled
-          ? 'bg-gradient-to-b from-[var(--p-primary-900)] to-[var(--p-primary-300)] cursor-pointer'
-          : 'bg-slate-800 cursor-not-allowed',
-        selected ? 'border-yellow-300 cursor-default' : 'border-gray-700',
+          ? 'bg-gradient-to-b from-[var(--p-primary-900)] to-[var(--p-primary-600)] cursor-pointer text-gray-200'
+          : 'bg-slate-800 cursor-not-allowed text-gray-300',
+        selected
+          ? 'border-yellow-300 border-2 cursor-default shadow-sm'
+          : 'border-gray-700',
         !selected && !isDisabled
           ? 'transition-opacity duration-300 ease-in-out hover:opacity-70 hover:bg-button-text-primary-hover-background focus:opacity-70 focus:outline-none focus:ring-current'
           : undefined,
