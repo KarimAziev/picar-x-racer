@@ -8,7 +8,6 @@ import { useStore as useThemeStore } from "@/features/settings/stores/theme";
 import { useStore as useFPSStore } from "@/features/settings/stores/fps";
 import { useStore as useTTSStore } from "@/features/settings/stores/tts";
 import { useStore as useRobotStore } from "@/features/settings/stores/robot";
-import { useStore as useDeviceInfoStore } from "@/features/settings/stores/device-info";
 
 export {
   useSettingsStore,
@@ -21,5 +20,4 @@ export {
   useFPSStore,
   useTTSStore,
   useRobotStore,
-  useDeviceInfoStore,
 };

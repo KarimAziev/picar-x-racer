@@ -40,7 +40,7 @@ const RobotConfig = defineAsyncComponent({
 });
 
 const BoardInfo = defineAsyncComponent({
-  loader: () => import("@/ui/BoardInfo.vue"),
+  loader: () => import("@/features/pinout/components/BoardInfo.vue"),
   loadingComponent: FieldsetSkeleton,
   delay: 0,
   errorComponent: ErrorComponent,

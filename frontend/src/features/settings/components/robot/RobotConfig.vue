@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from "vue";
 
-import { useRobotStore, useDeviceInfoStore } from "@/features/settings/stores";
+import { useRobotStore } from "@/features/settings/stores";
 import JsonSchema from "@/ui/JsonSchema/JsonSchema.vue";
 import { cloneDeep } from "@/util/obj";
 import { isDataChangedPred } from "@/features/settings/components/robot/util";
@@ -43,7 +43,6 @@ import Loader from "@/features/settings/components/robot/Loader.vue";
 defineProps<{ idPrefix: string }>();
 
 const store = useRobotStore();
-const deviceInfoStore = useDeviceInfoStore();
 const currValue = ref(cloneDeep(store.data));
 
 const handleSave = async () => {
@@ -103,7 +102,6 @@ onMounted(async () => {
   if (!store.config) {
     loading.value = true;
     await store.fetchFieldsConfig();
-    await deviceInfoStore.fetchDataOnce();
     loading.value = false;
   }
 });

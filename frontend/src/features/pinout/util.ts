@@ -3,8 +3,8 @@ import type {
   PinSchema,
   PinInfoNormalized,
 } from "@/features/pinout/store";
-import type { ValueLabelOption } from "@/types/common";
 import { isNil } from "@/util/guards";
+import { ValueLabelOption } from "@/types/common";
 import { groupBy } from "@/util/obj";
 import {
   commonPinsLayoutDescriptions,
@@ -23,10 +23,11 @@ import {
 export const parsePrefixNumber = (
   raw: string,
 ): { prefix: string; num: string } | null => {
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   const s = String(raw).trim();
 
-  // If there's a colon, treat left of colon as prefix and require right side be digits.
   const colonIdx = s.indexOf(":");
   if (colonIdx !== -1) {
     const left = s.slice(0, colonIdx).trim();
@@ -38,7 +39,6 @@ export const parsePrefixNumber = (
     return null;
   }
 
-  // Otherwise match letter-start prefix + trailing digits (BOARD1, BCM17, GPIO2)
   const m = s.match(/^([A-Za-z][A-Za-z0-9]*?)(\d+)$/);
   if (m) {
     return { prefix: m[1].toUpperCase(), num: m[2] };
@@ -57,7 +57,7 @@ export const pinValueLayout = (
   const parsed = parsePrefixNumber(value);
   if (parsed) {
     const result = options.find((opt) => opt.value === parsed.prefix)?.value;
-    console.log("result", result, "options", options);
+
     return result;
   }
 };

@@ -4,7 +4,7 @@ import { robotApi } from "@/api";
 import { normalizePins } from "@/ui/PinChooser/util";
 import type { ValueLabelOption } from "@/types/common";
 
-export interface PinInfo {
+export interface PinSchema {
   /**
    * Pin name to display
    */
@@ -52,7 +52,7 @@ export interface PinHeader {
    */
   rows: number;
   pins: {
-    [key: string]: PinInfo;
+    [key: string]: PinSchema;
   };
 }
 
@@ -60,7 +60,7 @@ export type PinMapping = {
   [key: string]: PinHeader;
 };
 
-export interface PinInfoNormalized extends PinInfo {
+export interface PinInfoNormalized extends PinSchema {
   selectable?: boolean;
   layouts: Record<string, string>;
 }
@@ -69,7 +69,7 @@ export interface LayoutOption extends ValueLabelOption {
   count: number;
 }
 
-export interface BoardInfo {
+export interface BoardMetadata {
   model: string;
   bluetooth: boolean;
   csi: number;
@@ -88,13 +88,13 @@ export interface BoardInfo {
   wifi: boolean;
 }
 export interface DeviceInfo {
-  board: BoardInfo;
+  board: BoardMetadata;
   headers: PinMapping;
 }
 
 export interface State {
   pins: PinMapping;
-  board: BoardInfo | null;
+  board: BoardMetadata | null;
   loading: boolean;
   loaded?: boolean;
   hash: Map<string | number, PinInfoNormalized>;
@@ -110,7 +110,7 @@ const defaultState: State = {
   layoutOptions: [],
 };
 
-export const useStore = defineStore("device-info", {
+export const useStore = defineStore("pinout", {
   state: () => ({ ...defaultState }),
   actions: {
     async fetchData() {
@@ -118,9 +118,7 @@ export const useStore = defineStore("device-info", {
 
       try {
         this.loading = true;
-        const response = await robotApi.get<DeviceInfo>(
-          "/px/api/settings/pins",
-        );
+        const response = await robotApi.get<DeviceInfo>("/px/api/pinout");
 
         const headers = response.headers;
 

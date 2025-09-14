@@ -46,24 +46,19 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-
-import type { PinInfo } from "@/features/settings/stores/device-info";
-import type { Props as FieldProps } from "@/ui/Field.vue";
-
-import { useDeviceInfoStore } from "@/features/settings/stores";
+import type { PinSchema } from "@/features/pinout/store";
+import { useStore as usePinoutStore } from "@/features/pinout/store";
 import { isNumber } from "@/util/guards";
-import { powerLabels } from "@/ui/PinChooser/config";
+import { powerLabels } from "@/features/pinout/config";
 
-const deviceInfoStore = useDeviceInfoStore();
+const pinoutStore = usePinoutStore();
 
 export type ModelValue = string | number | null;
 
-export interface Props extends FieldProps {
-  label?: string;
+export interface Props {
   readonly?: boolean;
   disabled?: boolean;
-  tooltip?: string;
-  pinInfo: PinInfo;
+  pinInfo: PinSchema;
   pinLayout?: string;
   selected?: boolean;
 }
@@ -74,9 +69,7 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: ModelValue): void;
 }>();
 
-const pinExtended = computed(() =>
-  deviceInfoStore.hash.get(props.pinInfo.name),
-);
+const pinExtended = computed(() => pinoutStore.hash.get(props.pinInfo.name));
 
 const pinValue = computed(() => {
   if (!props.pinLayout) {

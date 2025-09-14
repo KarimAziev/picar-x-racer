@@ -7,16 +7,13 @@ from typing import Annotated, Any, Dict
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
-from app.exceptions.pin import PinFactoryNotAvailable
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.robot.calibration import CalibrationConfig
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
-from app.schemas.robot.pin import DeviceInfo
 from app.services.connection_service import ConnectionService
 from app.services.control.settings_service import SettingsService
-from app.services.sensors.pin_service import PinService
 from app.util.doc_util import build_response_description
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 router = APIRouter()
 
@@ -160,21 +157,3 @@ def get_calibration_settings(
             "calibration_direction"
         ),
     }
-
-
-@router.get(
-    "/px/api/settings/pins",
-    response_model=DeviceInfo,
-    summary="Retrieve Pins mapping and board info",
-)
-def get_pins():
-    """
-    Retrieve Pin mappings.
-    """
-    try:
-        return PinService.device_info()
-    except PinFactoryNotAvailable as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception:
-        _log.info("Unexpected error while retrieving Pins info", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to retrieve Pins info")

@@ -13,6 +13,7 @@ from app.services.control.car_service import CarService
 from app.services.control.settings_service import SettingsService
 from app.services.sensors.distance_service import DistanceService
 from app.services.sensors.led_service import LEDService
+from app.services.sensors.pinout_service import PinoutService
 from app.services.sensors.speed_estimator import SpeedEstimator
 from fastapi import Depends
 from robot_hat.i2c.smbus_manager import SMBusManager
@@ -133,6 +134,10 @@ def get_robot_service(
         led_service=led_service,
         speed_estimator=speed_estimator,
     )
+
+
+def get_pinout_service() -> PinoutService:
+    return PinoutService()
 
 
 class LifespanAppDeps(TypedDict):

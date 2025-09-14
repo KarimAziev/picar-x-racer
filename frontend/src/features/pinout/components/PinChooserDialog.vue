@@ -8,7 +8,7 @@
       @show="handleSelectBeforeShow"
       @hide="handleSelectBeforeHide"
     >
-      <PinChooser v-bind="props" @update:model-value="updateValue" />
+      <PinChooser @update:model-value="updateValue" :model-value="modelValue" />
 
       <div class="text-right">
         <Button label="Close" class="p-button-text" @click="visible = false" />
@@ -40,19 +40,17 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import { isNil } from "@/util/guards";
-
-import Field from "@/ui/Field.vue";
 import type { Props as FieldProps } from "@/ui/Field.vue";
+import Field from "@/ui/Field.vue";
+import { useStore as usePinoutStore } from "@/features/pinout/store";
+import { usePopupStore } from "@/features/settings/stores";
+import type { ModelValue } from "@/features/pinout/components/PinButton.vue";
+import PinChooser from "@/features/pinout/components/PinChooser.vue";
 
-import { usePopupStore, useDeviceInfoStore } from "@/features/settings/stores";
-import PinChooser from "@/ui/PinChooser/PinChooser.vue";
-
-const deviceStore = useDeviceInfoStore();
+const deviceStore = usePinoutStore();
 const popupStore = usePopupStore();
 
 const visible = ref(false);
-
-type ModelValue = string | number | null;
 
 export interface Props extends FieldProps {
   modelValue: ModelValue;

@@ -85,11 +85,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { useDeviceInfoStore } from "@/features/settings/stores";
-import type { BoardInfo } from "@/features/settings/stores/device-info";
+import { useStore as usePinoutStore } from "@/features/pinout/store";
+import type { BoardMetadata } from "@/features/pinout/store";
 
-const deviceStore = useDeviceInfoStore();
-const boardInfo = computed<BoardInfo | null>(() => deviceStore.board);
+const deviceStore = usePinoutStore();
+const boardInfo = computed<BoardMetadata | null>(() => deviceStore.board);
 
 const memoryLabel = computed(() => {
   if (!boardInfo.value) return "";

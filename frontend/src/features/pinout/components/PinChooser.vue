@@ -39,33 +39,22 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-
-import type {
-  PinInfo,
-  PinMapping,
-} from "@/features/settings/stores/device-info";
 import { isString, isNumber } from "@/util/guards";
-import type { Props as FieldProps } from "@/ui/Field.vue";
 import SelectField from "@/ui/SelectField.vue";
+import { useStore as usePinoutStore } from "@/features/pinout/store";
+import { pinValueLayout, groupColumnsSorted } from "@/features/pinout/util";
+import PinButton from "@/features/pinout/components/PinButton.vue";
+import type { ModelValue } from "@/features/pinout/components/PinButton.vue";
+import type { PinSchema, PinMapping } from "@/features/pinout/store";
 
-import { useDeviceInfoStore } from "@/features/settings/stores";
-import { pinValueLayout, groupColumnsSorted } from "@/ui/PinChooser/util";
-import PinButton from "@/ui/PinChooser/PinButton.vue";
+const pinoutStore = usePinoutStore();
 
-const deviceInfoStore = useDeviceInfoStore();
+const pinHeaders = computed<PinMapping>(() => pinoutStore.pins);
 
-const pinHeaders = computed<PinMapping>(() => deviceInfoStore.pins);
+const layoutOptions = computed(() => pinoutStore.layoutOptions);
 
-const layoutOptions = computed(() => deviceInfoStore.layoutOptions);
-
-export type ModelValue = string | number | null;
-
-export interface Props extends FieldProps {
+export interface Props {
   modelValue: ModelValue;
-  label?: string;
-  readonly?: boolean;
-  disabled?: boolean;
-  tooltip?: string;
 }
 
 const props = defineProps<Props>();
@@ -76,7 +65,7 @@ const emit = defineEmits<{
 
 const modelNormalizedValue = computed(() =>
   isNumber(props.modelValue)
-    ? deviceInfoStore.hash.get(props.modelValue)?.name
+    ? pinoutStore.hash.get(props.modelValue)?.name
     : props.modelValue,
 );
 
@@ -84,20 +73,16 @@ const selectedLayout = ref(
   pinValueLayout(layoutOptions.value, modelNormalizedValue.value),
 );
 
-const isSelected = (pin: PinInfo | null | undefined) => {
+const isSelected = (pin: PinSchema | null | undefined) => {
   if (!pin) {
     return false;
   }
-  if (isNumber(props.modelValue)) {
-    return pin.gpio_number === props.modelValue;
-  } else if (isString(props.modelValue)) {
-    return (
-      pin.name === props.modelValue ||
-      (pin.names && pin.names.includes(props.modelValue))
-    );
-  } else {
-    return false;
-  }
+  return isNumber(props.modelValue)
+    ? pin.gpio_number === props.modelValue
+    : isString(props.modelValue)
+      ? pin.name === props.modelValue ||
+        (pin.names && pin.names.includes(props.modelValue))
+      : false;
 };
 
 watch(layoutOptions, (newVal) => {
