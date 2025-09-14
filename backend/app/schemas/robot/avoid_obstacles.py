@@ -12,6 +12,10 @@ class AvoidState(Enum):
 
 
 class AvoidParams(BaseModel):
+    """
+    The configuration for the avoid obstacles mode.
+    """
+
     safe: Annotated[
         float,
         Field(
