@@ -31,6 +31,7 @@
       :messageClass="messageClass"
     >
       <Button
+        size="small"
         class="w-fit min-w-32"
         outlined
         @click="visible = true"
