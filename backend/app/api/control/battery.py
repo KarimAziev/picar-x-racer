@@ -2,12 +2,11 @@
 Endpoints related to the battery monitoring.
 """
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
-from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.schemas.battery import BatteryStatusResponse
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 
 if TYPE_CHECKING:
     from app.services.sensors.battery_service import BatteryService
