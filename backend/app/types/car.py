@@ -4,7 +4,7 @@ from robot_hat.services.motor_service import MotorServiceDirection
 
 
 class PicarBaseState(TypedDict):
-    speed: int
+    speed: float
     direction: MotorServiceDirection
 
 
