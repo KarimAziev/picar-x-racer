@@ -15,14 +15,17 @@ from app.schemas.robot.motors import (
 )
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.types.car import PicarState
-from robot_hat import MotorService, ServoService
-from robot_hat.factories.motor_factory import MotorFactory
-from robot_hat.factories.pwm_factory import PWMFactory
-from robot_hat.i2c.smbus_manager import SMBusManager
-from robot_hat.interfaces.motor_abc import MotorABC
-from robot_hat.services.motor_service import MotorServiceDirection
-from robot_hat.servos.gpio_angular_servo import GPIOAngularServo
-from robot_hat.servos.servo import Servo
+from robot_hat import (
+    GPIOAngularServo,
+    MotorABC,
+    MotorFactory,
+    MotorService,
+    MotorServiceDirection,
+    PWMFactory,
+    Servo,
+    ServoService,
+    SMBusManager,
+)
 
 logger = Logger(name=__name__)
 

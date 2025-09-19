@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING, Union
 
 from app.core.px_logger import Logger
 from gpiozero.exc import PinError, PinFixedPull
-from robot_hat import Pin
-from robot_hat.exceptions import (
+from robot_hat import (
     InvalidPin,
     InvalidPinInterruptTrigger,
     InvalidPinMode,
     InvalidPinName,
     InvalidPinPull,
+    Pin,
 )
 
 if os.getenv("ROBOT_HAT_MOCK_SMBUS"):

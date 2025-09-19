@@ -7,10 +7,7 @@ from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.connection import ConnectionEvent
 from app.schemas.robot.battery import INA219BatteryDriverConfig, SunfounderBatteryConfig
 from app.schemas.robot.config import HardwareConfig
-from robot_hat.drivers.adc.INA219 import INA219Config
-from robot_hat.interfaces.battery_abc import BatteryABC
-from robot_hat.services.battery.sunfounder_battery import Battery as SunfounderBattery
-from robot_hat.services.battery.ups_s3_battery import Battery as UPS_S3
+from robot_hat import BatteryABC, INA219Battery, INA219Config, SunfounderBattery
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -138,14 +135,14 @@ class BatteryService:
     def make_battery_adapter(
         config: HardwareConfig,
         bus_manager: "SMBusManager",
-    ) -> Union[UPS_S3, SunfounderBattery, None]:
+    ) -> Union[INA219Battery, SunfounderBattery, None]:
         if config.battery is None or not config.battery.enabled:
             return None
 
         driver = config.battery.driver
         bus = bus_manager.get_bus(driver.bus)
         if isinstance(driver, INA219BatteryDriverConfig):
-            return UPS_S3(
+            return INA219Battery(
                 address=driver.addr_int,
                 config=INA219Config(
                     bus_voltage_range=driver.config.bus_voltage_range,
