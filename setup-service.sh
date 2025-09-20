@@ -7,6 +7,8 @@
 
 SERVICE_NAME="picar_x_racer.service"
 USER=$(logname)
+USER_ID=$(id -u "$USER")
+RUNTIME_DIR="/run/user/$USER_ID"
 PROJECT_DIR=$(pwd)
 LOG_DIR="/home/$USER/.cache/picar-x-racer/logs"
 PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
@@ -106,9 +108,18 @@ case "$COMMAND" in
     chmod -R u+rwX "$LOG_DIR"
 
     echo "Enabling linger for user $USER..."
-    sudo loginctl enable-linger "$USER" || {
-      echo "Warning: failed to enable linger for $USER"
-    }
+    if ! sudo loginctl enable-linger "$USER"; then
+      echo "Warning: failed to enable linger for $USER (continuing)"
+    fi
+
+    if [[ ! -d "$RUNTIME_DIR" ]]; then
+      echo "Creating runtime dir $RUNTIME_DIR..."
+      sudo mkdir -p "$RUNTIME_DIR"
+      sudo chown "$USER:$USER" "$RUNTIME_DIR"
+      sudo chmod 700 "$RUNTIME_DIR"
+    fi
+
+    export XDG_RUNTIME_DIR="$RUNTIME_DIR"
 
     echo "Creating user unit directory at $USER_UNIT_DIR..."
     sudo -u "$USER" mkdir -p "$USER_UNIT_DIR"
@@ -140,15 +151,60 @@ EOL
     echo "Installing user unit to $USER_UNIT_FILE..."
     sudo mv "./$SERVICE_NAME" "$USER_UNIT_FILE"
     sudo chown "$USER:$USER" "$USER_UNIT_FILE"
-    sudo -u "$USER" systemctl --user daemon-reload
 
-    echo "Enabling and starting the user service..."
-    if sudo -u "$USER" systemctl --user enable --now "$SERVICE_NAME"; then
-      echo "Service enabled and started as user $USER."
-      echo "Logs: journalctl --user -u $SERVICE_NAME or $LOG_DIR"
+    echo "Attempting to enable/start the user service for $USER..."
+
+    print_manual_instructions() {
+      cat << MSG
+
+Could not start the user service automatically from this script.
+Possible causes:
+  - There is no per-user dbus/systemd session available for $USER right now.
+  - dbus-run-session (dbus-user-session package) is not installed.
+
+You can either:
+  1) Log in once as $USER (SSH/console) and run:
+       systemctl --user daemon-reload
+       systemctl --user enable --now $SERVICE_NAME
+
+  2) Or run this one-liner as root to start it now using a transient session (requires dbus-run-session):
+       sudo -u $USER dbus-run-session --systemd -- /bin/bash -lc "systemctl --user daemon-reload && systemctl --user enable --now $SERVICE_NAME"
+
+To install dbus-run-session on Debian/Bookworm:
+  apt-get update && apt-get install -y dbus-user-session
+
+View logs after starting with:
+  sudo -u $USER journalctl --user -u $SERVICE_NAME -f
+
+MSG
+    }
+
+    if sudo -u "$USER" bash -c 'command -v dbus-run-session >/dev/null 2>&1'; then
+      if sudo -u "$USER" env XDG_RUNTIME_DIR="$RUNTIME_DIR" dbus-run-session --systemd -- /bin/bash -lc "systemctl --user daemon-reload && systemctl --user enable --now '$SERVICE_NAME'"; then
+        echo "Service enabled and started as user $USER (via dbus-run-session)."
+        echo "View logs with: sudo -u $USER journalctl --user -u $SERVICE_NAME -f"
+        exit 0
+      else
+        echo "Failed to start service via dbus-run-session."
+        print_manual_instructions
+        exit 0
+      fi
+    fi
+
+    if sudo -u "$USER" env XDG_RUNTIME_DIR="$RUNTIME_DIR" systemctl --user daemon-reload &> /dev/null; then
+      if sudo -u "$USER" env XDG_RUNTIME_DIR="$RUNTIME_DIR" systemctl --user enable --now "$SERVICE_NAME"; then
+        echo "Service enabled and started as user $USER."
+        echo "View logs with: sudo -u $USER journalctl --user -u $SERVICE_NAME -f"
+        exit 0
+      else
+        echo "Failed to enable/start unit via systemctl --user."
+        print_manual_instructions
+        exit 0
+      fi
     else
-      echo "Failed to start the user service. Run 'sudo -u $USER systemctl --user status $SERVICE_NAME' or check journalctl."
-      exit 1
+      echo "No per-user systemd instance available for $USER right now."
+      print_manual_instructions
+      exit 0
     fi
 
     echo "Setup complete."
