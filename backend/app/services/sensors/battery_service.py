@@ -84,6 +84,7 @@ class BatteryService:
                     )
 
         _log.info(
+            "Changed robot config, checking for battery parameters: "
             "should_close_adapter=%s, should_cancel_task=%s, disabled=%s",
             should_close_adapter,
             should_cancel_task,

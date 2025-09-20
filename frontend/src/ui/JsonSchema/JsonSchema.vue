@@ -365,7 +365,6 @@ const handleNewOption = () => {
   const newOpt = selectedOption.value;
   const prevData = oldData.value[newOpt];
   const branchModel = getNestedValue(props.model, props.path);
-
   oldData.value[oldOpt] = cloneDeep(branchModel);
 
   if (prevData) {

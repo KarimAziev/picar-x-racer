@@ -7,13 +7,14 @@ from typing import Annotated, Any, Dict
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
+from app.exceptions.settings import InvalidSettings, UnchangedSettings
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.robot.calibration import CalibrationConfig
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.services.connection_service import ConnectionService
 from app.services.control.settings_service import SettingsService
 from app.util.doc_util import build_response_description
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter()
 
@@ -113,9 +114,19 @@ async def merge_partial_settings(
     Merge partial robot settings with saved configuration.
     """
     _log.info("Saving partial robot hardware settings")
-    partial_settings = await asyncio.to_thread(
-        settings_service.merge_settings, settings
-    )
+
+    try:
+        partial_settings = await asyncio.to_thread(
+            settings_service.merge_settings, settings
+        )
+    except (UnchangedSettings, InvalidSettings) as err:
+        err_msg = str(err)
+        _log.error(err_msg)
+        raise HTTPException(status_code=409, detail=err_msg)
+    except Exception:
+        _log.error("Unhandled error during merging settings", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
     await connection_manager.broadcast_json(
         {
             "payload": partial_settings.model_dump(mode="json", exclude_unset=True),

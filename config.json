@@ -89,7 +89,7 @@
     "driver": {
       "driver_type": "Sunfounder",
       "channel": "A4",
-      "address": 64,
+      "address": "0x14",
       "bus": 1
     }
   },

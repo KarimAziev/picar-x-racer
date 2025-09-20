@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Union, cast
 
 from app.core.px_logger import Logger
+from app.exceptions.settings import UnchangedSettings
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.schemas.robot.motors import (
     GPIODCMotorConfig,
@@ -8,6 +9,7 @@ from app.schemas.robot.motors import (
     PhaseMotorConfig,
 )
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
+from app.util.diff import recursive_diff
 from robot_hat.interfaces.motor_abc import MotorABC
 
 if TYPE_CHECKING:
@@ -50,13 +52,13 @@ class SettingsService:
         _log.info("Merging hardware settings: %s", data_dict)
         updated_keys = data_dict.keys()
         if not updated_keys:
-            raise ValueError("No data to update")
+            raise UnchangedSettings("No data to update")
 
         _log.info("Saving data: %s", data_dict)
 
         saved_dict = self.config_manager.merge(data_dict)
         partial_saved_dict = {k: saved_dict.get(k) for k in updated_keys}
-        _log.info("partial_saved_dict=%s", partial_saved_dict)
+        _log.info("Partial saved settings=%s", partial_saved_dict)
         config = HardwareConfig(**{**self.px.config.model_dump(), **partial_saved_dict})
 
         self.px.config = config
@@ -67,7 +69,12 @@ class SettingsService:
 
     def save_settings(self, data: HardwareConfig) -> HardwareConfig:
         data_dict = self._model_json_dump(data)
-        _log.info("Saving data: %s", data_dict)
+        current_data = self._model_json_dump(self.saved_settings)
+        lines = recursive_diff(data_dict, current_data)
+        if lines:
+            _log.info("Saving settings changed:\n" + "\n".join(lines))
+        else:
+            _log.warning("Saving setting without changes")
         config = HardwareConfig(**self.config_manager.update(data_dict))
         self.px.config = config
         self.px.cleanup()
