@@ -36,10 +36,10 @@ Picar-X Racer is a robotics and AI platform designed to control either the [Pica
 >     - [Installation](#installation)
 >     - [Usage](#usage)
 >   - [Settings](#settings)
+>     - [Robot](#robot)
 >     - [General](#general)
 >     - [Models](#models)
 >     - [Keybindings](#keybindings)
->     - [Robot](#robot)
 >     - [Text-to-Speech (TTS)](#text-to-speech-tts)
 >     - [Music](#music)
 >     - [Photos](#photos)
@@ -237,6 +237,12 @@ To access settings:
 
 Here are the key sections of the **Settings** menu:
 
+### Robot
+
+![Robot](./demo/robot-hardware-settings.gif)
+
+Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
+
 ### General
 
 ![Settings](./demo/general-settings.gif)
@@ -261,12 +267,6 @@ Every function of the car and interface can be mapped to specific keys.
 
 - Default values are provided, but you can edit any setting directly from this tab.
 - Alternatively, use the "Shortcuts Settings Menu" on screen (`?`).
-
-### Robot
-
-![Robot](./demo/robot-settings.gif)
-
-Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
 
 ### Text-to-Speech (TTS)
 

@@ -7,7 +7,12 @@
     "calibration_mode": "negative",
     "name": "Camera Pan",
     "min_pulse": 700,
-    "max_pulse": 2300
+    "max_pulse": 2300,
+    "driver": {
+      "name": "Sunfounder",
+      "bus": 1,
+      "address": "0x14"
+    }
   },
   "cam_tilt_servo": {
     "channel": "P1",
@@ -17,7 +22,12 @@
     "calibration_mode": "negative",
     "name": "Camera Tilt",
     "min_pulse": 750,
-    "max_pulse": 2250
+    "max_pulse": 2250,
+    "driver": {
+      "name": "Sunfounder",
+      "bus": 1,
+      "address": "0x14"
+    }
   },
   "steering_servo": {
     "channel": "P2",
@@ -27,7 +37,12 @@
     "calibration_mode": "sum",
     "name": "Steering Direction",
     "min_pulse": 750,
-    "max_pulse": 2250
+    "max_pulse": 2250,
+    "driver": {
+      "name": "Sunfounder",
+      "bus": 1,
+      "address": "0x14"
+    }
   },
   "left_motor": {
     "dir_pin": "D4",
@@ -37,7 +52,12 @@
     "calibration_direction": 1,
     "calibration_speed_offset": 0.0,
     "period": 4095,
-    "prescaler": 10
+    "prescaler": 10,
+    "driver": {
+      "name": "Sunfounder",
+      "bus": 1,
+      "address": "0x14"
+    }
   },
   "right_motor": {
     "dir_pin": "D5",
@@ -47,7 +67,12 @@
     "calibration_direction": 1,
     "calibration_speed_offset": 0.0,
     "period": 4095,
-    "prescaler": 10
+    "prescaler": 10,
+    "driver": {
+      "name": "Sunfounder",
+      "bus": 1,
+      "address": "0x14"
+    }
   },
   "led": {
     "pin": 26,
