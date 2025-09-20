@@ -9,7 +9,8 @@ export type FieldType =
   | "hex"
   | "null"
   | "array"
-  | "string_or_number";
+  | "string_or_number"
+  | "pin";
 
 export type TypeOption = {
   type?: FieldType;

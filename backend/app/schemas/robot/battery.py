@@ -343,7 +343,7 @@ class BatteryConfig(BaseModel):
     The settings for configuring battery and power monitoring.
     """
 
-    enabled: EnabledField = True
+    enabled: EnabledField = False
 
     full_voltage: Annotated[
         float, Field(..., description="The maximum voltage.", examples=[8.4])

@@ -244,6 +244,10 @@ export const getComponentWithProps = (resolvedSchema: JSONSchema | null) => {
         : (resolvedSchema?.type as keyof typeof componentsWithDefaults)
     ];
 
+  if (!compSpec) {
+    return;
+  }
+
   const extraProps = renameKeys(
     renameMap,
     pick(
@@ -479,6 +483,7 @@ export const validateSimpleType = (
         break;
 
       case "string_or_number":
+      case "pin":
         validType = isString(model)
           ? !isEmptyString(model.trim())
           : isNumber(model);
@@ -497,7 +502,11 @@ export const validateSimpleType = (
     }
 
     if (!validType) {
-      errorMsg = `Invalid type: expected ${(rawSchema?.type || effectiveSchema.type).replace("_", " ")}`;
+      errorMsg =
+        isNil(model) || (isString(model) && isEmptyString(model.trim()))
+          ? "Required"
+          : `Invalid type: expected ${(rawSchema?.type || effectiveSchema.type).replace("_", " ")}`;
+
       return errorMsg;
     }
   }

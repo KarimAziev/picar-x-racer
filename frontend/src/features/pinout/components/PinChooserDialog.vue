@@ -22,23 +22,25 @@
     </Dialog>
 
     <Field
-      :message="message"
       :label="label"
       :fieldClassName="fieldClassName"
       :labelClassName="labelClassName"
       :tooltipHelp="tooltipHelp"
       :layout="layout"
-      :messageClass="messageClass"
+      class="gap-2"
     >
       <Button
         size="small"
+        :severity="invalid ? 'warn' : undefined"
         class="w-fit min-w-32"
         outlined
         @click="visible = true"
         v-tooltip="tooltip"
+        :class="messageClass"
         :disabled="readonly || disabled"
       >
         {{ displayLabel }}
+        <span v-if="message">({{ message }})</span>
       </Button>
     </Field>
   </div>
@@ -65,9 +67,12 @@ export interface Props extends FieldProps {
   readonly?: boolean;
   disabled?: boolean;
   tooltip?: string;
+  invalid?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: null,
+});
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: ModelValue): void;
