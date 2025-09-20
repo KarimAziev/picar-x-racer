@@ -180,14 +180,25 @@ MSG
     }
 
     if sudo -u "$USER" bash -c 'command -v dbus-run-session >/dev/null 2>&1'; then
-      if sudo -u "$USER" env XDG_RUNTIME_DIR="$RUNTIME_DIR" dbus-run-session --systemd -- /bin/bash -lc "systemctl --user daemon-reload && systemctl --user enable --now '$SERVICE_NAME'"; then
-        echo "Service enabled and started as user $USER (via dbus-run-session)."
-        echo "View logs with: sudo -u $USER journalctl --user -u $SERVICE_NAME -f"
-        exit 0
+      if sudo -u "$USER" dbus-run-session --help 2>&1 | grep -q -- '--systemd'; then
+        echo "Using dbus-run-session --systemd to start a transient user manager..."
+        if sudo -u "$USER" env XDG_RUNTIME_DIR="$RUNTIME_DIR" dbus-run-session --systemd -- /bin/bash -lc "systemctl --user daemon-reload && systemctl --user enable --now '$SERVICE_NAME'"; then
+          echo "Service enabled and started as user $USER (via dbus-run-session --systemd)."
+          echo "View logs with: sudo -u $USER journalctl --user -u $SERVICE_NAME -f"
+          exit 0
+        else
+          echo "Failed to start service via dbus-run-session --systemd."
+        fi
       else
-        echo "Failed to start service via dbus-run-session."
-        print_manual_instructions
-        exit 0
+        echo "dbus-run-session present but does not support --systemd. Trying fallback: start systemd --user inside dbus-run-session..."
+        if sudo -u "$USER" env XDG_RUNTIME_DIR="$RUNTIME_DIR" dbus-run-session -- /bin/bash -lc \
+          "nohup systemd --user >/dev/null 2>&1 & sleep 0.6; systemctl --user daemon-reload && systemctl --user enable --now '$SERVICE_NAME'"; then
+          echo "Service enabled and started as user $USER (via dbus-run-session + systemd --user)."
+          echo "View logs with: sudo -u $USER journalctl --user -u $SERVICE_NAME -f"
+          exit 0
+        else
+          echo "Failed to start service via dbus-run-session + systemd --user fallback."
+        fi
       fi
     fi
 
