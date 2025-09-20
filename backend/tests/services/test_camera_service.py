@@ -132,9 +132,6 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
     """Asysynchronous tests for async methods."""
 
     def setUp(self):
-        from app.core.singleton_meta import SingletonMeta
-
-        SingletonMeta._instances.pop(CameraService, None)
 
         self.detection_service = cast(DetectionService, DummyDetectionService())
         self.settings_service = cast(SettingsService, DummyFileService())
@@ -229,9 +226,6 @@ class TestCameraServiceSync(unittest.TestCase):
     """Synchronous tests for non-async methods."""
 
     def setUp(self):
-        from app.core.singleton_meta import SingletonMeta
-
-        SingletonMeta._instances.pop(CameraService, None)
 
         self.detection_service = cast(DetectionService, DummyDetectionService())
         self.settings_service = cast(SettingsService, DummyFileService())

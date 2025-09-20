@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from app.schemas.battery import BatterySettings
 from app.schemas.camera import CameraSettings
 from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
@@ -189,7 +188,7 @@ class RobotSettings(BaseModel):
     )
     auto_measure_distance_delay_ms: Optional[int] = Field(
         None,
-        ge=500,
+        ge=0,
         description="The time interval, in milliseconds, between successive automatic distance measurements. "
         "This is applicable only when `auto_measure_distance_mode` is enabled. "
         "The value must be at least 500 ms.",
@@ -201,10 +200,6 @@ class Settings(BaseModel):
     """
     A model representing application-wide settings.
     """
-
-    battery: BatterySettings = Field(
-        ..., description="Configuration for battery settings."
-    )
 
     general: General = Field(
         ...,

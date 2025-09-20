@@ -17,7 +17,7 @@ export interface WebSocketOptions {
   /** The binary type of the WebSocket (e.g., "arraybuffer"). */
   binaryType?: WebSocket["binaryType"];
   /** A callback invoked when the WebSocket connection is opened. */
-  onOpen?: () => void;
+  onOpen?: () => Promise<void>;
   /** A callback invoked when the WebSocket connection is closed. */
   onClose?: () => void;
   /** A callback invoked during the cleanup process. */
@@ -122,11 +122,11 @@ export function useWebSocket(options: WebSocketOptions): WebSocketModel {
       ws.value.binaryType = options.binaryType;
     }
 
-    ws.value.onopen = () => {
+    ws.value.onopen = async () => {
       loading.value = false;
       connected.value = true;
       if (options.onOpen) {
-        options.onOpen();
+        await options.onOpen();
       }
 
       while (messageQueue.value.length > 0) {

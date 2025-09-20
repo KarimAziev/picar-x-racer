@@ -80,7 +80,7 @@ if TYPE_CHECKING:
 
 
 router = APIRouter()
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 abs_file_name_query = Annotated[
     str,
@@ -169,7 +169,7 @@ async def upload_custom_file(
     except InvalidFileName:
         raise HTTPException(status_code=400, detail="Invalid filename.")
     except Exception:
-        logger.error("Unhandled exception during file upload", exc_info=True)
+        _log.error("Unhandled exception during file upload", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to upload the file.")
 
 
@@ -203,7 +203,7 @@ async def upload_file_in_aliased_dir(
     except InvalidFileName:
         raise HTTPException(status_code=400, detail="Invalid filename.")
     except Exception:
-        logger.error("Unhandled exception during file upload", exc_info=True)
+        _log.error("Unhandled exception during file upload", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to upload the file.")
 
 
@@ -226,7 +226,7 @@ async def remove_file(
     filename = expand_home_dir(filename)
     alias_dir, handler = find_file_handler(filename, handlers)
 
-    logger.info("Removing file '%s'", filename)
+    _log.info("Removing file '%s'", filename)
     try:
 
         if handler:
@@ -249,25 +249,25 @@ async def remove_file(
             )
         return {"success": result, "filename": filename}
     except (ActiveMusicTrackRemovalError, DefaultFileRemoveAttempt) as e:
-        logger.warning(str(e))
+        _log.warning(str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except FileNotFoundError:
-        logger.warning("File %s not found", filename)
+        _log.warning("File %s not found", filename)
         raise HTTPException(status_code=404, detail="File not found")
     except InvalidFileName:
         raise HTTPException(status_code=400, detail="Invalid filename.")
     except PermissionError as e:
-        logger.error("Permission denied: %s", e)
+        _log.error("Permission denied: %s", e)
         raise HTTPException(status_code=403, detail="Permission denied")
     except OSError:
-        logger.error(
+        _log.error(
             "OS error while removing file '%s'",
             filename,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=f"Failed to remove '{filename}'")
     except Exception:
-        logger.error(
+        _log.error(
             "Unhandled error while removing file '%s'",
             filename,
             exc_info=True,
@@ -305,7 +305,7 @@ def download_file(
                 dir = file_name_parent_directory(filename).as_posix()
                 directory_fn = lambda _: dir
                 archive_name = f"{basename}.zip"
-                logger.info(f"Created archive {archive_name}")
+                _log.info(f"Created archive {archive_name}")
                 buffer, content_length = zip_files_generator(
                     filenames=[filename], directory_fn=directory_fn
                 )
@@ -323,30 +323,28 @@ def download_file(
             except HTTPException:
                 raise
             except Exception as e:
-                logger.error(f"Error creating archive: {e}")
+                _log.error(f"Error creating archive: {e}")
                 raise HTTPException(status_code=500, detail="Internal server error")
     except FileNotFoundError:
-        logger.warning("File %s not found", filename)
+        _log.warning("File %s not found", filename)
         raise HTTPException(status_code=404, detail="File not found")
     except InvalidFileName:
         raise HTTPException(status_code=400, detail="Invalid filename.")
     except PermissionError as e:
-        logger.error("Permission denied: %s", e)
+        _log.error("Permission denied: %s", e)
         raise HTTPException(status_code=403, detail="Permission denied")
     except RuntimeError:
-        logger.error(
-            "Runtime error while processing file '%s'", filename, exc_info=True
-        )
+        _log.error("Runtime error while processing file '%s'", filename, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
     except OSError:
-        logger.error(
+        _log.error(
             "OS error while accessing file '%s'",
             filename,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=f"Failed to download '{filename}'")
     except Exception:
-        logger.error(
+        _log.error(
             "Unhandled error '%s'",
             filename,
             exc_info=True,
@@ -381,7 +379,7 @@ def download_file_in_aliased_dir(
             try:
                 directory_fn = lambda _: manager.root_directory
                 archive_name = f"{filename}.zip"
-                logger.info(f"Created archive {archive_name}")
+                _log.info(f"Created archive {archive_name}")
                 buffer, content_length = zip_files_generator(
                     filenames=[filename], directory_fn=directory_fn
                 )
@@ -399,7 +397,7 @@ def download_file_in_aliased_dir(
             except HTTPException:
                 raise
             except Exception as e:
-                logger.error(f"Error creating archive: {e}")
+                _log.error(f"Error creating archive: {e}")
                 raise HTTPException(status_code=500, detail="Internal server error")
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
@@ -420,7 +418,7 @@ def download_custom_files_as_archive(
     try:
         directory_fn = lambda f: file_name_parent_directory(f).as_posix()
         archive_name = payload.archive_name
-        logger.info(f"Created archive {archive_name}")
+        _log.info(f"Created archive {archive_name}")
         buffer, content_length = zip_files_generator(payload.filenames, directory_fn)
         return StreamingResponse(
             iter(lambda: buffer.read(4096), b""),
@@ -436,7 +434,7 @@ def download_custom_files_as_archive(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating archive: {e}")
+        _log.error(f"Error creating archive: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -456,7 +454,7 @@ def download_files_as_archive_from_aliased_dir(
     try:
         directory_fn = lambda _: manager.root_directory
         archive_name = payload.archive_name
-        logger.info(f"Created archive {archive_name}")
+        _log.info(f"Created archive {archive_name}")
         buffer, content_length = zip_files_generator(payload.filenames, directory_fn)
         return StreamingResponse(
             iter(lambda: buffer.read(4096), b""),
@@ -472,7 +470,7 @@ def download_files_as_archive_from_aliased_dir(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating archive: {e}")
+        _log.error(f"Error creating archive: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -590,7 +588,7 @@ def list_files(
         )
         return result
     except PermissionError as e:
-        logger.error("Permission denied: %s", e)
+        _log.error("Permission denied: %s", e)
         raise HTTPException(status_code=403, detail="Permission denied")
 
 
@@ -615,7 +613,7 @@ def list_files_in_aliased_dir(
         )
         return result
     except PermissionError as e:
-        logger.error("Permission denied: %s", e)
+        _log.error("Permission denied: %s", e)
         raise HTTPException(status_code=403, detail="Permission denied")
 
 
@@ -722,7 +720,7 @@ async def mkdir_in_aliased_dir(
     connection_manager: "ConnectionService" = request.app.state.app_manager
     filename = request_body.filename
     root_dir = manager.root_directory
-    logger.info("Creating directory %s", filename)
+    _log.info("Creating directory %s", filename)
     file_path = pathlib.Path(os.path.join(root_dir, filename))
     await asyncio.to_thread(file_path.mkdir, parents=True)
     await connection_manager.broadcast_json(
@@ -749,9 +747,7 @@ async def rename_file(
     filename = request_body.filename
     new_name = request_body.new_name
     alias_dir, handler = find_file_handler(filename, handlers)
-    logger.info(
-        "renaming filename %s to %s, alias_dir=%s", filename, new_name, alias_dir
-    )
+    _log.info("renaming filename %s to %s, alias_dir=%s", filename, new_name, alias_dir)
     try:
         if handler:
             await asyncio.to_thread(
@@ -766,7 +762,7 @@ async def rename_file(
                 new_name,
             )
 
-        logger.info("Renamed file")
+        _log.info("Renamed file")
         await connection_manager.broadcast_json(
             {
                 "type": "renamed",
@@ -778,7 +774,7 @@ async def rename_file(
                 ],
             }
         )
-        logger.info("New name exists")
+        _log.info("New name exists")
         return {
             "success": os.path.exists(new_name),
             "error": None,
@@ -786,15 +782,15 @@ async def rename_file(
             "new_name": new_name,
         }
     except FileNotFoundError as e:
-        logger.error("Failed to rename file: %s", e)
+        _log.error("Failed to rename file: %s", e)
         raise HTTPException(status_code=404, detail="File not found")
     except InvalidFileName:
         raise HTTPException(status_code=400, detail="Invalid filename.")
     except PermissionError as e:
-        logger.error("Permission denied: %s", e)
+        _log.error("Permission denied: %s", e)
         raise HTTPException(status_code=403, detail="Permission denied")
     except OSError:
-        logger.error(
+        _log.error(
             "OS error while renaming file '%s' to '%s'",
             filename,
             new_name,
@@ -804,7 +800,7 @@ async def rename_file(
             status_code=500, detail=f"Failed to rename '{filename}' to '{new_name}'"
         )
     except Exception:
-        logger.error(
+        _log.error(
             "Unhandled error while renaming file '%s' to '%s'",
             filename,
             new_name,
@@ -889,7 +885,7 @@ def write_file_in_aliased_dir(
         )
 
         full_path = resolve_absolute_path(payload.path, dir)
-        logger.info(
+        _log.info(
             "Writing the file %s, resolved dir %s, payload.dir %s",
             full_path,
             dir,
@@ -915,7 +911,7 @@ def write_file(
     """
     try:
         full_path = resolve_absolute_path(payload.path, payload.dir)
-        logger.info(
+        _log.info(
             "Writing the file %s, payload.dir %s",
             full_path,
             payload.dir,
@@ -941,7 +937,7 @@ def stream_video_in_aliased_dir(
     """
     Stream a video file with support for partial content.
     """
-    logger.info("Streaming video %s, alias_dir=%s", filename, alias_dir)
+    _log.info("Streaming video %s, alias_dir=%s", filename, alias_dir)
     try:
         file_path = manager.convert_video_for_streaming(filename)
         if file_path is None:
@@ -972,7 +968,7 @@ def stream_audio_in_aliased_dir(
     """
     Stream an audio file with support for partial content.
     """
-    logger.info("Streaming audio %s, alias_dir=%s", filename, alias_dir)
+    _log.info("Streaming audio %s, alias_dir=%s", filename, alias_dir)
     audio_path = resolve_absolute_path(filename, manager.root_directory)
 
     audio_media_types = {

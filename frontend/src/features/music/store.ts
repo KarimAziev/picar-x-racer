@@ -1,4 +1,3 @@
-import axios from "axios";
 import { defineStore } from "pinia";
 import { constrain } from "@/util/constrain";
 import { downloadFile, removeFile } from "@/features/settings/api";
@@ -7,6 +6,7 @@ import { useMessagerStore } from "@/features/messager";
 import { isNumber } from "@/util/guards";
 import { cycleValue } from "@/util/cycleValue";
 import type { FileDetail } from "@/features/files/interface";
+import { appApi } from "@/api";
 
 export enum MusicMode {
   LOOP = "loop",
@@ -64,13 +64,12 @@ export const useStore = defineStore("music", {
       try {
         this.loading = true;
 
-        const response = await axios.get<{
+        const response = await appApi.get<{
           volume: number;
           files: FileDetail[];
         }>(`/api/music`);
-        const respData = response.data;
-        this.data = respData.files;
-        this.volume = respData.volume;
+        this.data = response.files;
+        this.volume = response.volume;
       } catch (error) {
         messager.handleError(error, `Error fetching ${mediaType}`);
       } finally {
@@ -83,7 +82,7 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        await axios.post("/api/music/toggle-play");
+        await appApi.post("/api/music/toggle-play");
       } catch (error) {
         messager.handleError(error, `Error toggling music playing`);
       } finally {
@@ -96,7 +95,7 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        await axios.post("/api/music/stop");
+        await appApi.post("/api/music/stop");
       } catch (error) {
         messager.handleError(error, `Error stopping music`);
       } finally {
@@ -109,7 +108,7 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        await axios.post("/api/music/next-track");
+        await appApi.post("/api/music/next-track");
       } catch (error) {
         messager.handleError(error, `Error switching to next track`);
       } finally {
@@ -122,7 +121,7 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        await axios.post("/api/music/prev-track");
+        await appApi.post("/api/music/prev-track");
       } catch (error) {
         messager.handleError(error, `Error switching to previous track`);
       } finally {
@@ -135,7 +134,7 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        await axios.post("/api/music/track", { track });
+        await appApi.post("/api/music/track", { track });
       } catch (error) {
         messager.handleError(error, `Error seeking music`);
       } finally {
@@ -147,10 +146,9 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        const { data } = await axios.post<MusicPlayerInfo>(
-          "/api/music/position",
-          { position },
-        );
+        const data = await appApi.post<MusicPlayerInfo>("/api/music/position", {
+          position,
+        });
         this.player = data;
       } catch (error) {
         messager.handleError(error, `Error seeking music`);
@@ -164,7 +162,7 @@ export const useStore = defineStore("music", {
 
       try {
         this.loading = true;
-        await axios.post("/api/music/mode", { mode });
+        await appApi.post("/api/music/mode", { mode });
       } catch (error) {
         messager.handleError(error, `Error updating player mode`);
       } finally {
@@ -221,8 +219,11 @@ export const useStore = defineStore("music", {
     async setVolume(volume: number) {
       const messager = useMessagerStore();
       try {
-        const response = await axios.post("/api/audio/volume", { volume });
-        this.volume = response.data.volume;
+        const response = await appApi.post<{ volume: number }>(
+          "/api/audio/volume",
+          { volume },
+        );
+        this.volume = response.volume;
       } catch (error) {
         messager.handleError(error);
       }
@@ -230,10 +231,10 @@ export const useStore = defineStore("music", {
     async getVolume() {
       const messager = useMessagerStore();
       try {
-        const response = await axios.get<{ volume: number }>(
+        const response = await appApi.get<{ volume: number }>(
           "/api/audio/volume",
         );
-        this.volume = response.data.volume;
+        this.volume = response.volume;
         return this.volume;
       } catch (error) {
         messager.handleError(error);
@@ -243,7 +244,7 @@ export const useStore = defineStore("music", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } = await axios.post<{ message: string }>(
+        const data = await appApi.post<{ message: string }>(
           "/api/music/order",
           tracks,
         );

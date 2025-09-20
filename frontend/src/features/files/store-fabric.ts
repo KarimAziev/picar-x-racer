@@ -1,5 +1,5 @@
-import axios from "axios";
 import { defineStore } from "pinia";
+import { appApi } from "@/api";
 import { useMessagerStore } from "@/features/messager";
 import {
   downloadFile,
@@ -121,7 +121,7 @@ export const makeFileStore = (
         try {
           this.loading = true;
           this.emptyMessage = defaultState["emptyMessage"];
-          const response = await axios.post<FileResponseModel>(
+          const response = await appApi.post<FileResponseModel>(
             mapConcat(["/api/files/list", scope], "/"),
             {
               dir: this.dir,
@@ -131,10 +131,10 @@ export const makeFileStore = (
               root_dir: rootDir || this.root_dir,
             },
           );
-          this.filter_info = response.data.filter_info;
-          this.data = response.data.data;
-          this.dir = response.data.dir;
-          this.root_dir = response.data.root_dir;
+          this.filter_info = response.filter_info;
+          this.data = response.data;
+          this.dir = response.dir;
+          this.root_dir = response.root_dir;
         } catch (error) {
           messager.handleError(error, "Error fetching data");
           const errMsg = retrieveError(error);
@@ -174,7 +174,7 @@ export const makeFileStore = (
             { ...this.removingRows },
           );
           this.removingRows = removingHash;
-          const { data } = await batchRemoveFiles(filenames, scope);
+          const data = await batchRemoveFiles(filenames, scope);
           const msgParams = getBatchFilesErrorMessage(data, "remove");
           if (msgParams) {
             messager.error(msgParams.error, msgParams.title);
@@ -230,7 +230,7 @@ export const makeFileStore = (
             { ...this.removingRows },
           );
           this.removingRows = removingHash;
-          const { data } = await batchMoveFiles(scope, filenames, dir);
+          const data = await batchMoveFiles(scope, filenames, dir);
           const msgParams = getBatchFilesErrorMessage(data, "move");
           if (msgParams) {
             messager.error(msgParams.error, msgParams.title);

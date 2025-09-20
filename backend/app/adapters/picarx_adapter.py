@@ -1,88 +1,77 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, List, Optional, Union
 
-from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
-from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout
-from app.schemas.config import ConfigSchema
-from robot_hat import MotorConfig, MotorFabric, MotorService, ServoService
+from app.core.px_logger import Logger
+from app.exceptions.robot import (
+    MotorNotFoundError,
+    RobotI2CBusError,
+    RobotI2CTimeout,
+    ServoNotFoundError,
+)
+from app.schemas.robot.config import HardwareConfig
+from app.schemas.robot.motors import (
+    GPIODCMotorConfig,
+    I2CDCMotorConfig,
+    PhaseMotorConfig,
+)
+from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
+from app.types.car import PicarState
+from robot_hat import (
+    GPIOAngularServo,
+    MotorABC,
+    MotorFactory,
+    MotorService,
+    MotorServiceDirection,
+    PWMFactory,
+    Servo,
+    ServoService,
+    SMBusManager,
+)
 
-logger = Logger(name=__name__, app_name="px_robot")
+logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
 
 
-class PicarxAdapter(metaclass=SingletonMeta):
+class PicarxAdapter:
     def __init__(
-        self,
-        config_manager: "JsonDataManager",
-    ):
+        self, config_manager: "JsonDataManager", smbus_manager: SMBusManager
+    ) -> None:
         self.config_manager = config_manager
+        self.smbus_manager = smbus_manager
+        self._motor_addresses: List[int] = []
+        self.cam_pan_servo: Optional[ServoService] = None
+        self.cam_tilt_servo: Optional[ServoService] = None
+        self.steering_servo: Optional[ServoService] = None
+        self.left_motor: Optional[MotorABC] = None
+        self.right_motor: Optional[MotorABC] = None
+        self.motor_controller: Optional[MotorService] = None
+        self.init_hardware()
 
-        self.config = ConfigSchema(**config_manager.load_data())
+    def init_hardware(self) -> None:
+        self.config = HardwareConfig(**self.config_manager.load_data())
 
-        self.cam_pan_servo = ServoService(
-            servo_pin=self.config.cam_pan_servo.servo_pin,
-            calibration_offset=self.config.cam_pan_servo.calibration_offset,
-            min_angle=self.config.cam_pan_servo.min_angle,
-            max_angle=self.config.cam_pan_servo.max_angle,
-            calibration_mode=self.config.cam_pan_servo.calibration_mode,
-            name=self.config.cam_pan_servo.name,
-        )
-        self.cam_tilt_servo = ServoService(
-            servo_pin=self.config.cam_tilt_servo.servo_pin,
-            calibration_offset=self.config.cam_tilt_servo.calibration_offset,
-            min_angle=self.config.cam_tilt_servo.min_angle,
-            max_angle=self.config.cam_tilt_servo.max_angle,
-            calibration_mode=self.config.cam_tilt_servo.calibration_mode,
-            name=self.config.cam_tilt_servo.name,
-        )
-        self.steering_servo = ServoService(
-            servo_pin=self.config.steering_servo.servo_pin,
-            calibration_offset=self.config.steering_servo.calibration_offset,
-            min_angle=self.config.steering_servo.min_angle,
-            max_angle=self.config.steering_servo.max_angle,
-            calibration_mode=self.config.steering_servo.calibration_mode,
-            name=self.config.steering_servo.name,
-        )
+        logger.debug("Initializing config %s", self.config)
 
-        left_motor, right_motor = MotorFabric.create_motor_pair(
-            MotorConfig(
-                dir_pin=self.config.left_motor.dir_pin,
-                pwm_pin=self.config.left_motor.pwm_pin,
-                calibration_direction=self.config.left_motor.calibration_direction,
-                max_speed=self.config.left_motor.max_speed,
-                name=self.config.left_motor.name,
-                period=self.config.left_motor.period,
-                prescaler=self.config.left_motor.prescaler,
-            ),
-            MotorConfig(
-                dir_pin=self.config.right_motor.dir_pin,
-                pwm_pin=self.config.right_motor.pwm_pin,
-                calibration_direction=self.config.right_motor.calibration_direction,
-                max_speed=self.config.right_motor.max_speed,
-                name=self.config.right_motor.name,
-                period=self.config.right_motor.period,
-                prescaler=self.config.right_motor.prescaler,
-            ),
-        )
-
-        self.motor_controller = MotorService(
-            left_motor=left_motor, right_motor=right_motor
-        )
+        for fn in [
+            self._init_pan_servo,
+            self._init_tilt_servo,
+            self._init_steering_servo,
+            self._init_left_motor,
+            self._init_right_motor,
+            self._init_motor_controller,
+        ]:
+            fn()
 
     @property
-    def motor_addresses(self) -> list[int]:
+    def motor_addresses(self) -> List[int]:
         """
         Get the I2C addresses for the left and right motors' speed pins.
         """
-        return [
-            self.motor_controller.left_motor.speed_pin.address,
-            self.motor_controller.right_motor.speed_pin.address,
-        ]
+        return self._motor_addresses
 
     @property
-    def state(self) -> Dict[str, Any]:
+    def state(self) -> PicarState:
         """
         Returns key metrics of the current state as a dictionary.
 
@@ -94,99 +83,118 @@ class PicarxAdapter(metaclass=SingletonMeta):
         - "cam_tilt_angle": Current camera tilt angle.
         """
         return {
-            "speed": self.motor_controller.speed,
-            "direction": self.motor_controller.direction,
-            "steering_servo_angle": self.steering_servo.current_angle,
-            "cam_pan_angle": self.cam_pan_servo.current_angle,
-            "cam_tilt_angle": self.cam_tilt_servo.current_angle,
+            "speed": self.motor_controller.speed if self.motor_controller else 0,
+            "direction": (
+                self.motor_controller.direction if self.motor_controller else 0
+            ),
+            "steering_servo_angle": (
+                self.steering_servo.current_angle if self.steering_servo else 0
+            ),
+            "cam_pan_angle": (
+                self.cam_pan_servo.current_angle if self.cam_pan_servo else 0
+            ),
+            "cam_tilt_angle": (
+                self.cam_tilt_servo.current_angle if self.cam_tilt_servo else 0
+            ),
         }
 
     def set_dir_servo_angle(self, value: float) -> None:
         """
-        Set the servo angle for the vehicle's steering direction.
+        Set the steering servo angle.
 
         Args:
-           value (float): Desired angle
-
+            value: Desired angle.
         Raises:
-           RobotI2CTimeout: If the operation fails due to a timeout.
-           RobotI2CBusError: If the operation fails due to a bus-related error.
+            ServoNotFoundError: If servo not configured.
+            RobotI2CTimeout: If the operation times out.
+            RobotI2CBusError: If the operation fails due to a bus error.
         """
+        if not self.steering_servo:
+            raise ServoNotFoundError("Steering servo not configured")
         try:
             self.steering_servo.set_angle(value)
         except TimeoutError:
             raise RobotI2CTimeout(
                 operation="set direction servo angle",
-                addresses=[self.steering_servo.servo.address],
+                addresses=[],
             )
         except OSError as e:
             raise RobotI2CBusError(
                 operation="set direction servo angle",
-                addresses=[self.steering_servo.servo.address],
+                addresses=[],
                 errno=e.errno,
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
-    def set_cam_pan_angle(self, value: int) -> None:
+    def set_cam_pan_angle(self, value: float) -> None:
         """
         Set the camera pan angle.
 
         Args:
-           value (int): Desired angle
+           value: Desired angle
 
         Raises:
-           RobotI2CTimeout: If the operation fails due to a timeout.
-           RobotI2CBusError: If the operation fails due to a bus-related error.
+           ServoNotFoundError: If servo not configured.
+           RobotI2CTimeout: If the operation times out.
+           RobotI2CBusError: If the operation fails due to a bus error.
         """
+        if not self.cam_pan_servo:
+            raise ServoNotFoundError("Pan servo is not configured")
         try:
             self.cam_pan_servo.set_angle(value)
         except TimeoutError:
             raise RobotI2CTimeout(
                 operation="set camera pan angle",
-                addresses=[self.cam_pan_servo.servo.address],
+                addresses=[],
             )
         except OSError as e:
             raise RobotI2CBusError(
                 operation="set camera pan angle",
-                addresses=[self.cam_pan_servo.servo.address],
+                addresses=[],
                 errno=e.errno,
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
-    def set_cam_tilt_angle(self, value: int) -> None:
+    def set_cam_tilt_angle(self, value: float) -> None:
         """
         Set the camera tilt angle.
 
         Args:
-           value (int): Desired angle
+           value: Desired angle
 
         Raises:
-           RobotI2CTimeout: If the operation fails due to a timeout.
-           RobotI2CBusError: If the operation fails due to a bus-related error.
+           ServoNotFoundError: If servo not configured.
+           RobotI2CTimeout: If the operation times out.
+           RobotI2CBusError: If the operation fails due to a bus error.
         """
+        if not self.cam_tilt_servo:
+            raise ServoNotFoundError("Tilt servo is not configured")
+
         try:
             self.cam_tilt_servo.set_angle(value)
         except TimeoutError:
             raise RobotI2CTimeout(
                 operation="set camera tilt angle",
-                addresses=[self.cam_tilt_servo.servo.address],
+                addresses=[],
             )
         except OSError as e:
             raise RobotI2CBusError(
                 operation="set camera tilt angle",
-                addresses=[self.cam_tilt_servo.servo.address],
+                addresses=[],
                 errno=e.errno,
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
-    def move(self, speed: int, direction: int) -> None:
+    def move(self, speed: int, direction: MotorServiceDirection) -> None:
         """
         Move the robot forward or backward.
 
         Args:
-        - speed (int): The base speed at which to move.
-        - direction (int): 1 for forward, -1 for backward.
+        - speed: The base speed at which to move.
+        - direction: 1 for forward, -1 for backward.
         """
+        if not self.motor_controller:
+            raise MotorNotFoundError("Motors not found or not configured")
         self.motor_controller.move(speed, direction)
 
     def forward(self, speed: int) -> None:
@@ -197,10 +205,13 @@ class PicarxAdapter(metaclass=SingletonMeta):
            speed (int): The base speed at which to move.
 
         Raises:
+           MotorNotFoundError: If the motor controller is not configured or not found.
            RobotI2CTimeout: If the operation fails due to a timeout.
            RobotI2CBusError: If the operation fails due to a bus-related error.
         """
         logger.debug("Forward: 100/%s", speed)
+        if not self.motor_controller:
+            raise MotorNotFoundError("Motors not found or not configured")
         try:
             self.move(speed, direction=1)
         except TimeoutError:
@@ -224,10 +235,13 @@ class PicarxAdapter(metaclass=SingletonMeta):
            speed (int): The base speed at which to move.
 
         Raises:
+           MotorNotFoundError: If the motor controller is not configured or not found.
            RobotI2CTimeout: If the operation fails due to a timeout.
            RobotI2CBusError: If the operation fails due to a bus-related error.
         """
         logger.debug("Backward: 100/%s", speed)
+        if not self.motor_controller:
+            raise MotorNotFoundError("Motors not found or not configured")
         try:
             self.move(speed, direction=-1)
         except TimeoutError:
@@ -238,22 +252,23 @@ class PicarxAdapter(metaclass=SingletonMeta):
         except OSError as e:
             raise RobotI2CBusError(
                 operation=f"move backward ({speed})",
-                addresses=[
-                    self.motor_controller.left_motor.speed_pin.address,
-                    self.motor_controller.right_motor.speed_pin.address,
-                ],
+                addresses=[],
                 errno=e.errno,
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
     def stop(self) -> None:
         """
-        Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a short delay between attempts.
+        Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a
+        short delay between attempts.
 
         Raises:
+           MotorNotFoundError: If the motor controller is not configured or not found.
            RobotI2CTimeout: If the operation fails due to a timeout.
            RobotI2CBusError: If the operation fails due to a bus-related error.
         """
+        if not self.motor_controller:
+            raise MotorNotFoundError("Motors not found or not configured")
         try:
             return self.motor_controller.stop_all()
         except TimeoutError:
@@ -275,30 +290,179 @@ class PicarxAdapter(metaclass=SingletonMeta):
         associated I2C connections for both motors and servos.
         """
 
-        self.stop()
+        if self.motor_controller:
+            try:
+                self.stop()
+                self.motor_controller.close()
+            except RobotI2CTimeout as e:
+                logger.error("I2C timeout error closing motors %s", e)
+            except RobotI2CBusError as e:
+                logger.error("I2C bus error closing motors %s", e)
+            except Exception as e:
+                logger.error(
+                    "Unexpected error while closing motor controller %s",
+                    e,
+                    exc_info=True,
+                )
+        else:
+            for motor in [self.left_motor, self.right_motor]:
+                if motor:
+                    try:
+                        motor.close()
+                    except Exception as e:
+                        logger.error("Error closing motor %s", e)
 
-        for service in [
-            self.motor_controller.left_motor,
-            self.motor_controller.right_motor,
+        self._motor_addresses = []
+
+        self.right_motor = None
+        self.left_motor = None
+
+        for servo_service in [
+            self.steering_servo,
+            self.cam_tilt_servo,
+            self.cam_pan_servo,
         ]:
-            try:
-                logger.info("Closing speed pin for %s motor", service.name)
-                service.speed_pin.close()
-            except Exception as err:
-                logger.error(
-                    "Error closing speed pin for %s motor: %s", service.name, err
-                )
-            try:
-                logger.info("Closing direction pin for %s motor", service.name)
-                service.direction_pin.close()
-            except Exception as err:
-                logger.error(
-                    "Error closing direction pin for %s motor: %s", service.name, err
-                )
+            if servo_service:
+                try:
+                    servo_service.close()
+                except (TimeoutError, OSError) as e:
+                    err_msg = str(e)
+                    logger.error(err_msg)
+                except Exception as e:
+                    logger.error("Error closing servo %s", e)
 
-        for service in [self.cam_pan_servo, self.cam_tilt_servo, self.steering_servo]:
-            try:
-                logger.info("Closing servo %s", service.name)
-                service.servo.close()
-            except Exception as err:
-                logger.error("Error closing servo %s: %s", service.name, err)
+    def _init_pan_servo(self) -> None:
+        try:
+            self.cam_pan_servo = (
+                self._make_servo(self.config.cam_pan_servo)
+                if self.config.cam_pan_servo and self.config.cam_pan_servo.enabled
+                else None
+            )
+        except (TimeoutError, OSError) as e:
+            logger.error("Failed to initialize pan servo: %s", e)
+        except Exception:
+            logger.error("Unexpected error while initializing pan servo", exc_info=True)
+
+    def _init_tilt_servo(self) -> None:
+        try:
+            self.cam_tilt_servo = (
+                self._make_servo(self.config.cam_tilt_servo)
+                if self.config.cam_tilt_servo and self.config.cam_tilt_servo.enabled
+                else None
+            )
+        except (TimeoutError, OSError) as e:
+            logger.error("Failed to initialize tilt servo: %s", e)
+        except Exception:
+            logger.error(
+                "Unexpected error while initializing tilt servo", exc_info=True
+            )
+
+    def _init_steering_servo(self) -> None:
+        try:
+            self.steering_servo = (
+                self._make_servo(self.config.steering_servo)
+                if self.config.steering_servo and self.config.steering_servo.enabled
+                else None
+            )
+
+        except (TimeoutError, OSError) as e:
+            logger.error("Failed to initialize steering servo: %s", e)
+        except Exception:
+            logger.error(
+                "Unexpected error while initializing steering servo", exc_info=True
+            )
+
+    def _init_motor_controller(self) -> None:
+        try:
+            self.motor_controller = (
+                MotorService(left_motor=self.left_motor, right_motor=self.right_motor)
+                if self.left_motor and self.right_motor
+                else None
+            )
+
+        except (TimeoutError, OSError) as e:
+            logger.error("Failed to initialize motors controller: %s", e)
+        except Exception:
+            logger.error(
+                "Unexpected error initializing motors controller", exc_info=True
+            )
+
+    def _init_left_motor(self) -> None:
+        try:
+            self.left_motor = (
+                self._make_motor(self.config.left_motor)
+                if self.config.left_motor
+                else None and self.config.left_motor.enabled
+            )
+
+            if self.left_motor and isinstance(self.config.left_motor, I2CDCMotorConfig):
+                self._motor_addresses.append(self.config.left_motor.driver.addr_int)
+
+        except (TimeoutError, OSError) as e:
+            logger.error("Failed to initialize left motor: %s", e)
+        except Exception:
+            logger.error(
+                "Unexpected error while initializing left motor", exc_info=True
+            )
+
+    def _init_right_motor(self) -> None:
+        try:
+            self.right_motor = (
+                self._make_motor(self.config.right_motor)
+                if self.config.right_motor and self.config.right_motor.enabled
+                else None
+            )
+
+            if self.right_motor and isinstance(
+                self.config.right_motor, I2CDCMotorConfig
+            ):
+                self._motor_addresses.append(self.config.right_motor.driver.addr_int)
+
+        except (TimeoutError, OSError) as e:
+            logger.error("Failed to initialize right motor: %s", e)
+        except Exception:
+            logger.error(
+                "Unexpected error while initializing right motor", exc_info=True
+            )
+
+    def _make_motor(
+        self, motor_config: Union[I2CDCMotorConfig, GPIODCMotorConfig, PhaseMotorConfig]
+    ) -> Optional[MotorABC]:
+        data_class = motor_config.to_dataclass()
+        return MotorFactory.create_motor(data_class)
+
+    def _make_servo(
+        self, servo_config: Union[GPIOAngularServoConfig, AngularServoConfig]
+    ) -> ServoService:
+        if isinstance(servo_config, AngularServoConfig):
+            driver = PWMFactory.create_pwm_driver(
+                bus=self.smbus_manager.get_bus(servo_config.driver.bus),
+                config=servo_config.driver.to_dataclass(),
+            )
+
+            servo = Servo(
+                channel=servo_config.channel,
+                driver=driver,
+                min_angle=servo_config.min_angle,
+                max_angle=servo_config.max_angle,
+                min_pulse=servo_config.min_pulse,
+                max_pulse=servo_config.max_pulse,
+            )
+            if servo_config.driver.freq:
+                driver.set_pwm_freq(servo_config.driver.freq)
+        else:
+            servo = GPIOAngularServo(
+                servo_config.pin,
+                min_angle=servo_config.min_angle,
+                max_angle=servo_config.max_angle,
+                min_pulse=servo_config.min_pulse,
+                max_pulse=servo_config.max_pulse,
+            )
+        return ServoService(
+            servo=servo,
+            calibration_offset=servo_config.calibration_offset,
+            min_angle=servo_config.min_angle,
+            max_angle=servo_config.max_angle,
+            calibration_mode=servo_config.calibration_mode,
+            name=servo_config.name,
+        )

@@ -1,7 +1,7 @@
 import {
   Narrow,
   FlattenObject,
-  ExtractStringPropsKey,
+  ExtractStringOrNumberPropsKey,
 } from "@/util/ts-helpers";
 import {
   isEmpty,
@@ -157,6 +157,7 @@ export function cloneDeep<T>(value: T): T {
         clonedObj[key] = cloneDeep((value as Record<string, any>)[key]);
       }
     }
+    ``;
     return clonedObj as T;
   }
 
@@ -392,7 +393,7 @@ export function splitObjIntoGroups(
 
 export const groupBy = <
   Obj extends Record<string, any>,
-  Prop extends ExtractStringPropsKey<Obj>,
+  Prop extends ExtractStringOrNumberPropsKey<Obj>,
 >(
   propName: Prop,
   objs: Obj[],
@@ -414,7 +415,7 @@ export const groupBy = <
 
 export const groupWith = <
   Obj extends Record<string, any>,
-  Prop extends ExtractStringPropsKey<Obj>,
+  Prop extends ExtractStringOrNumberPropsKey<Obj>,
   Fn extends (obj: Obj) => any,
 >(
   propName: Prop,
@@ -497,4 +498,16 @@ export const findAncestors = <
     }
   }
   return [];
+};
+
+export const isObjectContainsStringDeep = (obj: any) => {
+  if (isPlainObject(obj)) {
+    return Object.values(obj).some(isObjectContainsStringDeep);
+  } else if (Array.isArray(obj)) {
+    return obj.some(isObjectContainsStringDeep);
+  } else if (isString(obj)) {
+    return true;
+  } else {
+    return false;
+  }
 };

@@ -6,6 +6,7 @@
     :labelClassName="labelClassName"
     :tooltipHelp="tooltipHelp"
     :layout="layout"
+    :messageClass="messageClass"
   >
     <Select
       :pt="{ input: { id: field, name: field } }"
@@ -15,7 +16,6 @@
       :optionValue="optionValue"
       v-tooltip="tooltipText"
       filter
-      autoFilterFocus
       :class="props.inputClassName"
       v-model="currentValue"
       :invalid="invalid"

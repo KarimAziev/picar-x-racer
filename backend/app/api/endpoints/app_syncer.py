@@ -4,9 +4,9 @@ Websocket endpoint for synchronizing app state between several clients.
 
 import asyncio
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
-from app.api.deps import get_camera_service, get_detection_service, get_music_service
+from app.api import deps
 from app.core.logger import Logger
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from app.services.media.music_service import MusicService
 
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 router = APIRouter()
@@ -27,9 +27,11 @@ router = APIRouter()
 @router.websocket("/ws/sync")
 async def app_synchronizer(
     websocket: WebSocket,
-    detection_service: "DetectionService" = Depends(get_detection_service),
-    camera_service: "CameraService" = Depends(get_camera_service),
-    music_service: "MusicService" = Depends(get_music_service),
+    detection_service: Annotated[
+        "DetectionService", Depends(deps.get_detection_service)
+    ],
+    camera_service: Annotated["CameraService", Depends(deps.get_camera_service)],
+    music_service: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Websocket endpoint for synchronizing app state between several clients.
@@ -93,13 +95,15 @@ async def app_synchronizer(
                     await asyncio.to_thread(handler, payload)
 
     except WebSocketDisconnect:
-        logger.info("Synchronization WebSocket Disconnected")
+        _log.info("App Synchronizer: Synchronization WebSocket Disconnected")
         await connection_manager.disconnect(websocket, should_close=False)
     except asyncio.CancelledError:
-        logger.info("Gracefully shutting down Synchronization WebSocket connection")
+        _log.info(
+            "App Synchronizer: Gracefully shutting down Synchronization WebSocket connection"
+        )
         await connection_manager.disconnect(websocket)
     except KeyboardInterrupt:
-        logger.info("Synchronization WebSocket interrupted")
+        _log.info("App Synchronizer: Synchronization WebSocket interrupted")
         await connection_manager.disconnect(websocket)
     finally:
         await connection_manager.broadcast_json(

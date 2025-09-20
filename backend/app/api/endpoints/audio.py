@@ -3,7 +3,7 @@ Endpoints related to audio functionalities, including volume controls.
 """
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
 from app.core.logger import Logger
@@ -75,7 +75,7 @@ logger = Logger(__name__)
 async def set_volume(
     request: Request,
     payload: VolumeData,
-    audio_manager: "AudioService" = Depends(deps.get_audio_service),
+    audio_manager: Annotated["AudioService", Depends(deps.get_audio_service)],
 ):
     """
     Set the playback volume level.
@@ -158,7 +158,7 @@ async def set_volume(
     },
 )
 async def get_volume(
-    audio_manager: "AudioService" = Depends(deps.get_audio_service),
+    audio_manager: Annotated["AudioService", Depends(deps.get_audio_service)],
 ):
     """
     Retrieve the current playback volume level.
@@ -194,7 +194,9 @@ async def get_volume(
 @router.websocket("/ws/audio-stream")
 async def audio_stream_ws(
     websocket: WebSocket,
-    audio_service: "AudioStreamService" = Depends(deps.get_audio_stream_service),
+    audio_service: Annotated[
+        "AudioStreamService", Depends(deps.get_audio_stream_service)
+    ],
 ):
     """
     WebSocket endpoint for providing audio stream to a client.

@@ -1,3 +1,5 @@
+import { isNil, isNumber } from "./guards";
+
 /**
  * Converts a string to start case (capitalizes the first letter of each word).
  *
@@ -40,3 +42,67 @@ export function ensurePrefix(prefix: string, str?: string) {
         ? `${prefix}${str}`
         : str;
 }
+
+export const trimSuffix = (str: string, suffix: string) => {
+  if (str.endsWith(suffix)) {
+    return str.slice(0, -suffix.length);
+  }
+  return str;
+};
+
+export const trimPrefix = (str: string, prefix: string) => {
+  if (str.startsWith(prefix)) {
+    return str.slice(1);
+  }
+  return str;
+};
+
+export const extractLetterPrefix = (value: string) => {
+  const re = /^([a-z]+)/i;
+  const match = value.match(re);
+  return match ? match[1] : null;
+};
+
+export function splitStringByWhitespace(
+  input: string,
+  maxLength: number,
+): string[] {
+  if (maxLength <= 0) {
+    throw new Error("maxLength must be a positive integer.");
+  }
+
+  const words = input.split(/\s+/);
+  const result: string[] = [];
+  let currentPiece = "";
+
+  for (const word of words) {
+    if (word.length > maxLength) {
+      throw new Error(
+        `The word "${word}" exceeds the maximum allowed length of ${maxLength}.`,
+      );
+    }
+
+    const appended = currentPiece ? currentPiece + " " + word : word;
+
+    if (appended.length > maxLength) {
+      result.push(currentPiece);
+      currentPiece = word;
+    } else {
+      currentPiece = appended;
+    }
+  }
+
+  if (currentPiece) {
+    result.push(currentPiece);
+  }
+
+  return result;
+}
+
+export const stringifyArrSafe = (
+  items: (string | null | undefined | number)[],
+  separator = ".",
+) =>
+  items
+    .flatMap((v) => (isNil(v) ? [] : isNumber(v) ? [`${v}`] : [v]))
+    .join(separator);

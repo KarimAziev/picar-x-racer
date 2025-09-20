@@ -1,6 +1,5 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
-import axios from "axios";
 import type { TreeNode } from "primevue/treenode";
 import { useMessagerStore } from "@/features/messager";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
@@ -9,6 +8,7 @@ import {
   DetectionResponse,
 } from "@/features/detection/interface";
 import { OverlayStyle } from "@/features/detection/enums";
+import { appApi } from "@/api";
 
 export interface State extends DetectionResponse {
   data: DetectionSettings;
@@ -54,7 +54,10 @@ export const useStore = defineStore("detection-settings", {
     async updateData(payload: DetectionSettings) {
       const messager = useMessagerStore();
       try {
-        await axios.post<DetectionSettings>("/api/detection/settings", payload);
+        await appApi.post<DetectionSettings>(
+          "/api/detection/settings",
+          payload,
+        );
       } catch (error) {
         messager.handleError(error);
       } finally {
@@ -66,7 +69,7 @@ export const useStore = defineStore("detection-settings", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } = await axios.get<DetectionSettings>(
+        const data = await appApi.get<DetectionSettings>(
           "/api/detection/settings",
         );
         this.data = data;
@@ -93,7 +96,8 @@ export const useStore = defineStore("detection-settings", {
             this.timestamp = data.timestamp;
           }
         },
-        onOpen: () => {
+
+        onOpen: async () => {
           messager.remove((m) => [msg.retry, msg.error].includes(m.text));
         },
         onClose: () => {

@@ -12,7 +12,7 @@ from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.schemas.system import ShutdownResponse
 from app.services.sensors.led_service import LEDService
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 if TYPE_CHECKING:
     from app.services.control.car_service import CarService
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from app.services.sensors.distance_service import DistanceService
 
 router = APIRouter()
-logger = Logger(name=__name__)
+_log = Logger(name=__name__)
 
 
 @router.get(
@@ -33,9 +33,7 @@ logger = Logger(name=__name__)
     "and 'errors' will include a list of error messages describing the encountered problems",
 )
 async def shutdown(
-    battery_service: Annotated[
-        "BatteryService", Depends(robot_deps.get_battery_service)
-    ],
+    request: Request,
     robot_service: Annotated["CarService", Depends(robot_deps.get_robot_service)],
     distance_service: Annotated[
         "DistanceService", Depends(robot_deps.get_distance_service)
@@ -46,33 +44,35 @@ async def shutdown(
     Initiates a graceful shutdown of the robot application's core services.
     """
     errors = []
+    battery_service: "BatteryService" = request.app.state.battery_service
     try:
-        logger.debug("Gracefully stopping battery service")
+
+        _log.debug("Gracefully stopping battery service")
         await battery_service.cleanup_connection_manager()
     except Exception as e:
         errors.append(str(e))
-        logger.error("Failed to cleanup battery service: %s", e)
+        _log.error("Failed to cleanup battery service: %s", e)
 
     try:
-        logger.debug("Gracefully stopping robot service")
+        _log.debug("Gracefully stopping robot service")
         await robot_service.cleanup()
     except Exception as e:
         errors.append(str(e))
-        logger.error("Failed to cleanup robot service: %s", e)
+        _log.error("Failed to cleanup robot service: %s", e)
 
     try:
-        logger.debug("Gracefully stopping distance service")
+        _log.debug("Gracefully stopping distance service")
         await distance_service.cleanup()
     except Exception as e:
-        logger.debug("Gracefully stopping distance service")
+        _log.debug("Gracefully stopping distance service")
         errors.append(str(e))
-        logger.error("Failed to cleanup distance service: %s", e)
+        _log.error("Failed to cleanup distance service: %s", e)
 
     try:
         await led_service.cleanup()
     except Exception as e:
         errors.append(str(e))
-        logger.error("Failed to cleanup LED service: %s", e)
+        _log.error("Failed to cleanup LED service: %s", e)
 
     if errors:
         return {"errors": errors, "success": False}

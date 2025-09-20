@@ -3,14 +3,13 @@ from typing import Any, Dict, Optional
 
 from app.config.config import settings as app_config
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.util.file_util import load_json_file
 
 logger = Logger(name=__name__)
 
 
-class SettingsService(metaclass=SingletonMeta):
+class SettingsService:
     """
     Service for managing file operations related to user settings.
     """
@@ -52,34 +51,6 @@ class SettingsService(metaclass=SingletonMeta):
         Saves new settings to the user settings file.
         """
         return self.settings_manager.merge(new_settings)
-
-    def get_calibration_config(self) -> Dict[str, Any]:
-        """
-        Loads calibration settings from a configuration file.
-
-        Returns:
-            Dictionary with calibration settings.
-        """
-
-        config = self.get_robot_config()
-
-        return {
-            "steering_servo_offset": config.get("steering_servo", {}).get(
-                "calibration_offset"
-            ),
-            "cam_tilt_servo_offset": config.get("cam_tilt_servo", {}).get(
-                "calibration_offset"
-            ),
-            "cam_pan_servo_offset": config.get("cam_pan_servo", {}).get(
-                "calibration_offset"
-            ),
-            "left_motor_direction": config.get("left_motor", {}).get(
-                "calibration_direction"
-            ),
-            "right_motor_direction": config.get("right_motor", {}).get(
-                "calibration_direction"
-            ),
-        }
 
     def get_robot_config(self) -> Dict[str, Any]:
         """

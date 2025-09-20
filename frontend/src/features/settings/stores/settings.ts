@@ -1,4 +1,3 @@
-import axios from "axios";
 import { defineStore } from "pinia";
 import { cycleValue } from "@/util/cycleValue";
 import { isObjectEquals, pick, setObjProp, getObjProp } from "@/util/obj";
@@ -22,6 +21,7 @@ import {
 } from "@/features/detection";
 import { useStore as useMusicStore, MusicMode } from "@/features/music";
 import type { Settings, ToggleableKey } from "@/features/settings/interface";
+import { appApi } from "@/api";
 
 export interface State {
   loading?: boolean;
@@ -48,7 +48,7 @@ export const defaultState: State = {
       show_player: true,
       show_object_detection_settings: true,
       text_to_speech_input: true,
-      show_battery_indicator: true,
+      show_battery_indicator: false,
       show_connections_indicator: true,
       show_auto_measure_distance_button: true,
       show_audio_stream_button: true,
@@ -64,14 +64,6 @@ export const defaultState: State = {
     tts: {
       default_tts_language: "en",
       texts: [],
-    },
-    battery: {
-      full_voltage: 8.4,
-      warn_voltage: 7.15,
-      danger_voltage: 6.5,
-      min_voltage: 6.0,
-      auto_measure_seconds: 60,
-      cache_seconds: 2,
     },
 
     robot: {
@@ -104,7 +96,7 @@ export const useStore = defineStore("settings", {
     generalSettings({ data }) {
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
-      const settingsData = pick(["general", "battery"], data);
+      const settingsData = pick(["general"], data);
       return {
         ...settingsData,
         camera: cameraStore.data,
@@ -127,16 +119,17 @@ export const useStore = defineStore("settings", {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();
       const streamStore = useStreamStore();
+
       if (this.retryTimer) {
         clearTimeout(this.retryTimer);
       }
       try {
         this.loading = true;
         const [response] = await Promise.all([
-          axios.get<Settings>("/api/settings"),
+          appApi.get<Settings>("/api/settings"),
           streamStore.fetchEnhancers(),
         ]);
-        this.data = response.data;
+        this.data = response;
         this.error = undefined;
       } catch (error) {
         this.error = retrieveError(error).text;
@@ -212,7 +205,7 @@ export const useStore = defineStore("settings", {
       const messager = useMessagerStore();
       this.saving = true;
       try {
-        await axios.post("/api/settings", data);
+        await appApi.post("/api/settings", data);
         messager.info("Settings saved");
       } catch (error) {
         messager.handleError(error, "Error saving settings");
@@ -240,7 +233,7 @@ export const useStore = defineStore("settings", {
     async speakText(text: string, language?: string) {
       const messager = useMessagerStore();
       try {
-        await axios.post(`/api/tts/speak`, {
+        await appApi.post(`/api/tts/speak`, {
           text: text,
           lang: language,
         });
@@ -288,7 +281,7 @@ export const useStore = defineStore("settings", {
     async shutdown() {
       const messager = useMessagerStore();
       try {
-        await axios.get("/api/system/shutdown");
+        await appApi.get("/api/system/shutdown");
       } catch (error) {
         messager.handleError(error);
       }
@@ -296,7 +289,7 @@ export const useStore = defineStore("settings", {
     async restart() {
       const messager = useMessagerStore();
       try {
-        await axios.get("/api/system/restart");
+        await appApi.get("/api/system/restart");
       } catch (error) {
         messager.handleError(error);
       }

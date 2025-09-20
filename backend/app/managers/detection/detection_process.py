@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     import multiprocessing as mp
     from multiprocessing.synchronize import Event
 
-logger = Logger(name=__name__)
+_log = Logger(name=__name__)
 
 verbose_enabled = sys.stdout.isatty()
 
@@ -63,7 +63,7 @@ def detection_process_func(
                     err_msg
                     or f"Failed to load the model {model}. Exiting detection process."
                 )
-                logger.error(msg)
+                _log.error(msg)
                 data: DetectionLoadErrorMessage = {"success": False, "error": msg}
                 put_to_queue(out_queue, data, reraise=True)
                 return
@@ -86,7 +86,7 @@ def detection_process_func(
                             )
                             labels = control_message.get("labels")
 
-                            logger.info(f"confidence: {confidence}")
+                            _log.info(f"confidence: {confidence}")
                             if confidence:
                                 confidence_threshold = confidence
                 except queue.Empty:
@@ -125,7 +125,7 @@ def detection_process_func(
                     break
                 except Exception as e:
                     err: DetectionErrorMessage = {"error": str(e)}
-                    logger.error(
+                    _log.error(
                         "Unhandled exception in detection process", exc_info=True
                     )
                     put_to_queue(out_queue, err, reraise=True)
@@ -137,7 +137,7 @@ def detection_process_func(
                 }
 
                 if verbose:
-                    logger.info(f"Detection result: {detection_result}")
+                    _log.info(f"Detection result: {detection_result}")
                     prev_time = time.time()
 
                 put_to_queue(
@@ -150,13 +150,13 @@ def detection_process_func(
             EOFError,
             ConnectionResetError,
         ) as e:
-            logger.warning(
+            _log.warning(
                 "Connection-related error occurred in detection process: %s",
                 type(e).__name__,
             )
         except KeyboardInterrupt:
-            logger.warning("Detection process received keyboard interrupt, exiting.")
+            _log.warning("Detection process received keyboard interrupt, exiting.")
             stop_event.set()
 
         finally:
-            logger.info("Detection process is finished.")
+            _log.info("Detection process is finished.")

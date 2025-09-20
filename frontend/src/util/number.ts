@@ -42,3 +42,9 @@ export const resizeToFit = (
 
 export const takePercentage = (value: number, percent: number): number =>
   (value * percent) / 100;
+
+export const parseTrailingNumber = (value: string) => {
+  const re = /(\d+)$/;
+  const match = value.match(re);
+  return match ? +match[1] : null;
+};

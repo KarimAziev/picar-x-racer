@@ -1,16 +1,16 @@
-import axios from "axios";
 import {
   APIMediaType,
   RemoveFileResponse,
 } from "@/features/settings/interface";
 import { isString } from "@/util/guards";
+import { appApi } from "@/api";
 
 export const downloadFile = async (
   mediaType: string,
   fileName: string,
   onProgress?: (progress: number) => void,
 ) => {
-  const response = await axios.get(
+  const response = await appApi.get<Blob>(
     `/api/files/download/${mediaType}?filename=${encodeURIComponent(fileName)}`,
     {
       responseType: "blob",
@@ -27,7 +27,7 @@ export const downloadFile = async (
       },
     },
   );
-  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const url = window.URL.createObjectURL(new Blob([response]));
   const link = document.createElement("a");
 
   link.href = url;
@@ -51,7 +51,7 @@ export const extractContentDispositionFilename = (
 };
 
 export const removeFile = (mediaType: APIMediaType, file: string) =>
-  axios.delete<RemoveFileResponse>(
+  appApi.delete<RemoveFileResponse>(
     `/api/files/remove/${mediaType}?filename=${encodeURIComponent(file)}`,
   );
 
@@ -59,6 +59,6 @@ export const batchRemoveFiles = (
   mediaType: APIMediaType,
   filenames: string[],
 ) =>
-  axios.post<RemoveFileResponse[]>(`/api/files/remove-batch/${mediaType}`, {
+  appApi.post<RemoveFileResponse[]>(`/api/files/remove-batch/${mediaType}`, {
     filenames,
   });

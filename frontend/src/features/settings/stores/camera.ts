@@ -1,10 +1,10 @@
 import axios from "axios";
 import { defineStore } from "pinia";
-
 import { useMessagerStore } from "@/features/messager";
 import { constrain } from "@/util/constrain";
 import { Device, CameraSettings } from "@/features/settings/interface";
 import { retrieveError } from "@/util/error";
+import { appApi } from "@/api";
 
 export const dimensions = [
   [640, 480],
@@ -49,7 +49,7 @@ export const useStore = defineStore("camera", {
       try {
         this.loading = true;
 
-        await axios.post<CameraSettings>(
+        await appApi.post<CameraSettings>(
           "/api/camera/settings",
           payload || this.data,
         );
@@ -74,12 +74,10 @@ export const useStore = defineStore("camera", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } = await axios.get<CameraSettings>(
-          "/api/camera/settings",
-        );
+        const data = await appApi.get<CameraSettings>("/api/camera/settings");
         this.data = data;
       } catch (error) {
-        messager.handleError(error, "Error fetching video feed settings");
+        messager.handleError(error, "Error fetching camera settings");
       } finally {
         this.loading = false;
       }
@@ -89,7 +87,7 @@ export const useStore = defineStore("camera", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } = await axios.get<{ devices: Device[] }>(
+        const data = await appApi.get<{ devices: Device[] }>(
           "/api/camera/devices",
         );
         this.devices = data.devices;
@@ -151,7 +149,7 @@ export const useStore = defineStore("camera", {
     async capturePhoto() {
       const messager = useMessagerStore();
       try {
-        const { data } = await axios.get<PhotoCaptureResponse>(
+        const data = await appApi.get<PhotoCaptureResponse>(
           "/api/camera/capture-photo",
         );
 

@@ -15,6 +15,10 @@ const timeout = ref<NodeJS.Timeout>();
 const sideOffset = "60px";
 const bottomOffset = "60px";
 
+const handleStopAll = () => {
+  controllerStore.updateCombined({ speed: 0, direction: 0, servoAngle: 0 });
+};
+
 const { joystickZone: joystickZoneY, params } = useJoystickControl(
   controllerStore,
   robotStore,
@@ -23,8 +27,7 @@ const { joystickZone: joystickZoneY, params } = useJoystickControl(
   },
   {
     onEnd: () => {
-      controllerStore.stop();
-      controllerStore.resetDirServoAngle();
+      handleStopAll();
     },
   },
 );

@@ -1,15 +1,26 @@
-import asyncio
 import inspect
 import threading
 import weakref
 from functools import partial
-from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, overload
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+    overload,
+)
 
 from app.core.logger import Logger
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 Listener = Union[Callable[..., Any], Callable[..., Awaitable[Any]]]
+StoredListener = Union[Listener, weakref.WeakMethod]
+EventsMap = Dict[str, List[StoredListener]]
 
 T = TypeVar("T", bound=Listener)
 
@@ -27,7 +38,7 @@ class AsyncEventEmitter:
     """
 
     def __init__(self):
-        self.events = {}
+        self.events: EventsMap = {}
         self.lock = threading.Lock()
 
     @overload
@@ -102,11 +113,11 @@ class AsyncEventEmitter:
                 and listener not in self.events[event_name]
             ):
                 self.events[event_name].append(resolved_listener)
-                logger.debug(
+                _log.debug(
                     "Added listener '%s' to event '%s'", listener_name, event_name
                 )
             else:
-                logger.info(
+                _log.info(
                     "Duplicate listener '%s' not added to event '%s'",
                     listener_name,
                     event_name,
@@ -136,7 +147,7 @@ class AsyncEventEmitter:
         ```
         """
         if event_name not in self.events:
-            logger.warning(
+            _log.warning(
                 "Attempted to remove a listener from non-existent event '%s'",
                 event_name,
             )
@@ -190,17 +201,18 @@ class AsyncEventEmitter:
             listener_name = self.get_listener_name(resolved_listener)
 
             try:
-                logger.debug(
+                _log.debug(
                     "Emitting event '%s' to listener '%s'",
                     event_name,
                     listener_name,
                 )
-                if asyncio.iscoroutinefunction(resolved_listener):
+                fn = getattr(resolved_listener, "__func__", resolved_listener)
+                if inspect.iscoroutinefunction(fn):
                     await resolved_listener(*args, **kwargs)
                 else:
                     resolved_listener(*args, **kwargs)
             except Exception:
-                logger.error(
+                _log.error(
                     "Error running event '%s' listener '%s'",
                     event_name,
                     listener_name,

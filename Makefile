@@ -25,8 +25,11 @@ dev-without-install:
 
 dev-with-install: frontend-install backend-venv-install dev-without-install
 
+# update-robot-hat:
+# 	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && pip install --upgrade --force-reinstall robot-hat"
+
 update-robot-hat:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && pip install --upgrade --force-reinstall robot-hat"
+	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && pip install git+https://github.com/KarimAziev/robot-hat.git@dev#egg=robot_hat"
 
 # Frontend installation and build
 frontend-install:

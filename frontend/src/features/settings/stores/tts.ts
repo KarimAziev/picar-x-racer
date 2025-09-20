@@ -1,6 +1,6 @@
-import axios from "axios";
 import { defineStore } from "pinia";
 import { useMessagerStore } from "@/features/messager";
+import { appApi } from "@/api";
 
 export interface LanguageOption {
   value: string;
@@ -19,8 +19,7 @@ export const useStore = defineStore("tts", {
       const messager = useMessagerStore();
       try {
         this.loading = true;
-        const { data } =
-          await axios.get<LanguageOption[]>("/api/tts/languages");
+        const data = await appApi.get<LanguageOption[]>("/api/tts/languages");
         this.data = data;
       } catch (error) {
         messager.handleError(error);

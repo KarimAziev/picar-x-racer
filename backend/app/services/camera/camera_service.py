@@ -9,7 +9,6 @@ import numpy as np
 from app.config.video_enhancers import frame_enhancers
 from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import (
     CameraDeviceError,
@@ -30,13 +29,16 @@ if TYPE_CHECKING:
     from app.services.media.video_recorder_service import VideoRecorderService
     from cv2.typing import MatLike
 
+_log = Logger(name=__name__)
 
-class CameraService(metaclass=SingletonMeta):
+
+class CameraService:
     """
-    The `CameraService` singleton class manages camera operations, video streaming,
-    and object detection functionality. It handles starting and stopping the camera,
-    capturing frames, streaming video to clients, and processing object detection in
-    a separate process.
+    The `CameraService` manages camera operations, video streaming, and object detection
+    functionality.
+
+    It handles starting and stopping the camera, capturing frames, streaming video to
+    clients, and processing object detection in a separate process.
     """
 
     def __init__(
@@ -48,9 +50,8 @@ class CameraService(metaclass=SingletonMeta):
         video_recorder: "VideoRecorderService",
     ):
         """
-        Initializes the `CameraService` singleton instance.
+        Initializes the `CameraService` instance.
         """
-        self.logger = Logger(name=__name__)
         self.file_manager = settings_service
         self.detection_service = detection_service
         self.video_device_adapter = video_device_adapter
@@ -88,22 +89,20 @@ class CameraService(metaclass=SingletonMeta):
     async def notify_video_record_end(self, task: asyncio.Task[Union[str, None]]):
         try:
             video_file = await task
-            self.logger.info("video_file result='%s'", video_file)
+            _log.info("video_file result='%s'", video_file)
             if video_file:
-                self.logger.info(f"Post-processing successful: {video_file}")
+                _log.info(f"Post-processing successful: {video_file}")
                 rel_name = os.path.basename(video_file)
                 await self.connection_manager.broadcast_json(
                     {"type": "video_record_end", "payload": rel_name}
                 )
             else:
-                self.logger.error("Video processing failed")
+                _log.error("Video processing failed")
                 await self.connection_manager.broadcast_json(
                     {"type": "video_record_error", "payload": "Video processing failed"}
                 )
         except Exception:
-            self.logger.error(
-                "Unexpected error in video processing callback:", exc_info=True
-            )
+            _log.error("Unexpected error in video processing callback:", exc_info=True)
             self.emitter.emit("video_record_error", "Video processing error")
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
@@ -126,7 +125,7 @@ class CameraService(metaclass=SingletonMeta):
         - `Exception`: If the camera restart or other related operations unexpectedly fail.
         """
         if self.shutting_down:
-            self.logger.warning("Service is shutting down.")
+            _log.warning("Service is shutting down.")
             raise CameraShutdownInProgressError("The camera is shutting down.")
 
         self.camera_settings = settings
@@ -149,7 +148,7 @@ class CameraService(metaclass=SingletonMeta):
             The updated streaming settings.
         """
         if self.shutting_down:
-            self.logger.warning("Service is shutting down.")
+            _log.warning("Service is shutting down.")
             raise CameraShutdownInProgressError("The camera is shutting down.")
 
         is_recording_start = (
@@ -167,9 +166,7 @@ class CameraService(metaclass=SingletonMeta):
         should_restart = (
             self.camera_device_error or is_recording_start or not self.camera_run
         )
-        self.logger.info(
-            "Updating stream settings, should camera restart %s", should_restart
-        )
+        _log.info("Updating stream settings, should camera restart %s", should_restart)
         self.stream_settings = settings
         if should_restart:
             await asyncio.to_thread(self.restart_camera)
@@ -223,7 +220,7 @@ class CameraService(metaclass=SingletonMeta):
                         self.actual_fps is not None
                         and abs(self.actual_fps - prev_fps) > 1
                     ):
-                        self.logger.info("FPS: %s", self.actual_fps)
+                        _log.info("FPS: %s", self.actual_fps)
                         prev_fps = self.actual_fps
 
                 enhance_mode = self.stream_settings.enhance_mode
@@ -252,7 +249,7 @@ class CameraService(metaclass=SingletonMeta):
                     self._process_frame(frame)
 
         except KeyboardInterrupt:
-            self.logger.info("Keyboard interrupt, stopping camera loop")
+            _log.info("Keyboard interrupt, stopping camera loop")
         except (
             ConnectionResetError,
             BrokenPipeError,
@@ -260,19 +257,17 @@ class CameraService(metaclass=SingletonMeta):
             ConnectionError,
             ConnectionRefusedError,
         ) as e:
-            self.logger.warning(
+            _log.warning(
                 "Stopped camera loop due to connection-related error: %s",
                 type(e).__name__,
             )
         except Exception:
-            self.logger.error(
-                "Unhandled exception occurred in camera loop", exc_info=True
-            )
+            _log.error("Unhandled exception occurred in camera loop", exc_info=True)
         finally:
             self._release_cap_safe()
             self.video_recorder.stop_recording_safe()
             self.stream_img = None
-            self.logger.info("Camera loop terminated and camera released.")
+            _log.info("Camera loop terminated and camera released.")
 
     def _process_frame(self, frame: "MatLike") -> None:
         """Handle frame detection."""
@@ -322,11 +317,11 @@ class CameraService(metaclass=SingletonMeta):
         - Starts a dedicated thread to run the capture loop.
         """
 
-        self.logger.info("Starting camera.")
+        _log.info("Starting camera.")
         if self.shutting_down:
-            self.logger.warning("Service is shutting down.")
+            _log.warning("Service is shutting down.")
         if self.camera_run:
-            self.logger.warning("Camera is already running.")
+            _log.warning("Camera is already running.")
             return
         self.camera_run = True
         self.emitter.emit("frame_error", None)
@@ -336,11 +331,17 @@ class CameraService(metaclass=SingletonMeta):
             cap, props = self.video_device_adapter.setup_video_capture(
                 self.camera_settings
             )
-            self.logger.info(
-                "Camera props %s, video record is %s",
+            _log.info(
+                "Starting camera with props %s",
                 props,
-                self.stream_settings.video_record,
             )
+            if self.stream_settings.video_record:
+                _log.info(
+                    "Starting camera recording"
+                    if self.camera_settings.width and self.camera_settings.height
+                    else f"Skipping camera recording due to missed width {self.camera_settings.width} or height ({self.camera_settings.height})"
+                )
+
             self.cap = cap
             self.camera_settings = props
             if (
@@ -365,13 +366,13 @@ class CameraService(metaclass=SingletonMeta):
             err_msg = str(e)
             self.camera_device_error = err_msg
             self.stream_img = None
-            self.logger.error(err_msg)
+            _log.error(err_msg)
             raise
 
         except Exception:
             self.stop_camera()
             self.camera_run = False
-            self.logger.error("Unhandled exception", exc_info=True)
+            _log.error("Unhandled exception", exc_info=True)
             raise
 
     async def start_camera_and_wait_for_stream_img(self):
@@ -388,7 +389,7 @@ class CameraService(metaclass=SingletonMeta):
             if self.stream_img is not None:
                 break
             if counter <= 1:
-                self.logger.debug("waiting for stream img")
+                _log.debug("waiting for stream img")
                 counter += 1
             await asyncio.sleep(0.05)
 
@@ -403,26 +404,26 @@ class CameraService(metaclass=SingletonMeta):
         Gracefully stops the camera capture thread and cleans up associated resources.
         """
         if not self.camera_run:
-            self.logger.info("Camera is not running.")
+            _log.info("Camera is not running.")
             self._release_cap_safe()
             return
 
-        self.logger.info("Stopping camera")
+        _log.info("Stopping camera")
 
         self.camera_run = False
 
-        self.logger.info("Checking camera capture thread")
+        _log.info("Checking camera capture thread")
 
         if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
-            self.logger.info("Stopping camera capture thread")
+            _log.info("Stopping camera capture thread")
             self.capture_thread.join()
-            self.logger.info("Stopped camera capture thread")
+            _log.info("Stopped camera capture thread")
 
     def restart_camera(self) -> None:
         """
         Restarts the camera by stopping and reinitializing it.
         """
-        self.logger.info("Restarting camera")
+        _log.info("Restarting camera")
         cam_running = self.camera_run
         if cam_running:
             self.stop_camera()

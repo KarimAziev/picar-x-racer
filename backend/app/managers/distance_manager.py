@@ -1,9 +1,17 @@
 import os
 from time import sleep
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from app.core.px_logger import Logger
-from robot_hat import Pin
+from gpiozero.exc import PinError, PinFixedPull
+from robot_hat import (
+    InvalidPin,
+    InvalidPinInterruptTrigger,
+    InvalidPinMode,
+    InvalidPinName,
+    InvalidPinPull,
+    Pin,
+)
 
 if os.getenv("ROBOT_HAT_MOCK_SMBUS"):
     from robot_hat import UltrasonicMock as Ultrasonic
@@ -16,14 +24,14 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 def distance_process(
-    trig_pin: str,
-    echo_pin: str,
+    trig_pin: Union[int, str],
+    echo_pin: Union[int, str],
     stop_event: "Event",
-    value: "Synchronized",
+    value: "Synchronized[float]",
     interval: float = 0.01,
     timeout=0.017,
 ):
@@ -37,16 +45,15 @@ def distance_process(
             try:
                 val = float(ultrasonic.read())
                 value.value = val
-                logger.debug(
-                    "val %s, synchronized value=%s, interval %s",
-                    val,
+                _log.debug(
+                    "Distance process read value=%s with interval %s",
                     value.value,
                     interval,
                 )
 
                 sleep(interval)
             except ValueError as e:
-                logger.error("Aborting distance process: %s", str(e))
+                _log.error("Aborting distance process: %s", str(e))
                 break
     except (
         ConnectionError,
@@ -55,14 +62,28 @@ def distance_process(
         EOFError,
         ConnectionResetError,
     ) as e:
-        logger.warning(
+        _log.warning(
             "Connection-related error occurred in distance process."
             "Exception handled: %s",
             type(e).__name__,
         )
+    except (
+        InvalidPinName,
+        InvalidPinInterruptTrigger,
+        InvalidPin,
+        InvalidPinMode,
+        InvalidPinPull,
+        PinFixedPull,
+        PinError,
+    ) as e:
+        _log.error(
+            "Pin related error occurred in distance process '%s': %s",
+            type(e).__name__,
+            e,
+        )
     except KeyboardInterrupt:
-        logger.warning("Distance process received KeyboardInterrupt, exiting.")
+        _log.warning("Distance process received KeyboardInterrupt, exiting.")
     except Exception:
-        logger.error("Unhandled exception in distance process", exc_info=True)
+        _log.error("Unhandled exception in distance process", exc_info=True)
     finally:
-        logger.info("Distance process is terminating.")
+        _log.info("Distance process is terminating.")

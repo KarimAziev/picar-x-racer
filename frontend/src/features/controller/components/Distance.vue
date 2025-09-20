@@ -1,7 +1,8 @@
 <template>
   <div class="flex justify-between text-left items-center" v-if="isLoaded">
     <span clas="flex items-center">
-      <span class="font-bold">Distance</span> &nbsp;
+      <span class="font-bold">Distance</span>
+      &nbsp;
 
       <ButtonIcon
         :disabled="avoidObstacles"
@@ -30,7 +31,9 @@ import ButtonIcon from "@/ui/ButtonIcon.vue";
 const settingsStore = useSettingsStore();
 const distanceStore = useDistanceStore();
 
-const distance = computed(() => `${distanceStore.distance.toFixed(2)}cm`);
+const distance = computed(
+  () => `${(distanceStore.distance || 0).toFixed(2)}cm`,
+);
 const isLoaded = computed(() => settingsStore.loaded);
 const controllerStore = useControllerStore();
 const avoidObstacles = computed(() => controllerStore.avoidObstacles);

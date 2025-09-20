@@ -29,7 +29,7 @@
     <ToggleableView setting="general.show_object_detection_settings">
       <DetectionControls />
     </ToggleableView>
-    <CalibrationModeInfo />
+    <CalibrationModeInfo id="calibration-mode-info" />
     <ToggleableView setting="general.text_to_speech_input">
       <TextToSpeechInput />
     </ToggleableView>

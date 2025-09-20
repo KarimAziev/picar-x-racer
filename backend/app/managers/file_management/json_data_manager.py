@@ -7,7 +7,6 @@ from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.util.atomic_write import atomic_write
 from app.util.file_util import load_json_file
-from app.util.perfomance import measure_time
 
 
 class JsonDataManagerEvent(Enum):
@@ -87,7 +86,6 @@ class JsonDataManager(EventEmitter):
             else self._template_file
         )
 
-    @measure_time
     def load_data(self) -> Dict[str, Any]:
         """
         Load the current JSON data, either from the cache or the appropriate source file.

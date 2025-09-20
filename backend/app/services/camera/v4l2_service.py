@@ -19,7 +19,6 @@ from functools import lru_cache
 from typing import List, Optional, Set, Union, cast
 
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.core.video_device_abc import VideoDeviceABC
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.types.v4l2_types import (
@@ -87,10 +86,10 @@ class v4l2_frmsizeenum(ctypes.Structure):
 
 VIDIOC_ENUM_FRAMESIZES = _IOWR("V", 74, v4l2_frmsizeenum)
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
-class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
+class V4L2Service(VideoDeviceABC):
     def __init__(self):
         self.failed_devices: Set[str] = set()
         self.succeed_devices: Set[str] = set()
@@ -130,7 +129,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
             with fd_open(device_path, os.O_RDWR) as fd:
                 fcntl.ioctl(fd, VIDIOC_G_FMT, fmt)
         except Exception as e:
-            logger.error(f"VIDIOC_G_FMT failed on {device_path}: {e}")
+            _log.error(f"VIDIOC_G_FMT failed on {device_path}: {e}")
             return None
 
         width = fmt.fmt.pix.width
@@ -159,7 +158,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
         A list of device configurations for all video devices.
         """
         devices: List[str] = self._enumerate_video_devices()
-        logger.debug("Found video devices: %s", devices)
+        _log.debug("Found video devices: %s", devices)
 
         all_configs: List[DeviceType] = []
         for dev in devices:
@@ -167,7 +166,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
             if cap is None:
                 continue
             if not (cap.capabilities & 0x00000001):
-                logger.debug("%s does not support capture", dev)
+                _log.debug("%s does not support capture", dev)
                 continue
 
             configs: List[DeviceType] = self._get_device_configurations(dev)
@@ -194,7 +193,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
                 if re.match(r"^video\d+$", name):
                     devices.append(os.path.join(dev_dir, name))
         except Exception as e:
-            logger.error(f"Could not list directory {dev_dir}: {e}")
+            _log.error(f"Could not list directory {dev_dir}: {e}")
         return sorted(devices)
 
     def _query_capabilities(self, device_path: str) -> Optional[v4l2_capability]:
@@ -207,7 +206,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
             with fd_open(device_path, os.O_RDWR) as fd:
                 fcntl.ioctl(fd, VIDIOC_QUERYCAP, cap)
         except Exception as e:
-            logger.warning(f"VIDIOC_QUERYCAP failed on {device_path}: {e}")
+            _log.warning(f"VIDIOC_QUERYCAP failed on {device_path}: {e}")
             return None
         return cap
 
@@ -245,7 +244,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
                     )
                     index += 1
         except Exception as e:
-            logger.error(f"Failed to enumerate formats on {device_path}: {e}")
+            _log.error(f"Failed to enumerate formats on {device_path}: {e}")
 
         return formats
 
@@ -311,7 +310,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
                         frame_sizes.append(continuous_config)
                     index += 1
         except Exception as e:
-            logger.error(f"Failed to enumerate frame sizes on {device_path}: {e}")
+            _log.error(f"Failed to enumerate frame sizes on {device_path}: {e}")
         return frame_sizes
 
     def _enumerate_frameintervals(
@@ -370,7 +369,7 @@ class V4L2Service(VideoDeviceABC, metaclass=SingletonMeta):
                         )
                     index += 1
         except Exception as e:
-            logger.error(f"Failed to enumerate frame intervals on {device_path}: {e}")
+            _log.error(f"Failed to enumerate frame intervals on {device_path}: {e}")
         return intervals
 
     def _get_device_configurations(self, device_path: str) -> List[DeviceType]:
@@ -495,4 +494,4 @@ if __name__ == "__main__":
     service = V4L2Service()
     all_configs = service.list_video_devices()
 
-    logger.info("Result: %s", all_configs)
+    _log.info("Result: %s", all_configs)

@@ -5,7 +5,7 @@
       <TooltipHelp v-if="tooltipHelp" :tooltip="tooltipHelp" />
     </span>
     <slot></slot>
-    <span class="bg-transparent text-red-500 text-sm">
+    <span :class="messageClass" class="bg-transparent text-red-500 text-sm">
       {{ message }}
     </span>
   </div>
@@ -19,11 +19,12 @@ export type FieldLayout = "col" | "row-reverse" | "row" | "col-reverse";
 
 export type Props = {
   message?: string | null;
-  label?: string;
+  label?: string | null;
   fieldClassName?: string;
   labelClassName?: string;
   layout?: FieldLayout;
   tooltipHelp?: string;
+  messageClass?: string;
 };
 
 const props = defineProps<Props>();

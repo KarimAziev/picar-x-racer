@@ -12,11 +12,11 @@ export interface Callbacks {
   onEnd?: (outputData: nipplejs.JoystickOutputData) => void;
 }
 
-const BACKWARD_MIN = 210;
-const BACKWARD_MAX = 330;
+export const BACKWARD_MIN = 210;
+export const BACKWARD_MAX = 330;
 
-const MIN_JOYSTICK_ANGLE = 0;
-const HALF_CIRCLE_MAX = 180;
+export const MIN_JOYSTICK_ANGLE = 0;
+export const HALF_CIRCLE_MAX = 180;
 
 export const useJoystickControl = (
   controllerStore: ReturnType<typeof useControllerStore>,
@@ -43,8 +43,8 @@ export const useJoystickControl = (
 
     const speed = Math.round(Math.round(distance * 2) / 10) * 10;
 
-    const minServoAngle = robotStore.data.steering_servo.min_angle;
-    const maxServoAngle = robotStore.data.steering_servo.max_angle;
+    const minServoAngle = robotStore.data.steering_servo.dec_step;
+    const maxServoAngle = robotStore.data.steering_servo.inc_step;
 
     const directionWithinRange =
       (isPlainForward ? direction : direction - HALF_CIRCLE_MAX) -
@@ -56,8 +56,8 @@ export const useJoystickControl = (
       maxServoAngle;
 
     const clampedValue = constrain(
-      robotStore.data.steering_servo.min_angle,
-      robotStore.data.steering_servo.max_angle,
+      robotStore.data.steering_servo.dec_step,
+      robotStore.data.steering_servo.inc_step,
       value,
     );
 

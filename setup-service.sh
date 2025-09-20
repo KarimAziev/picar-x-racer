@@ -15,17 +15,16 @@ PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
 BACKEND_SCRIPT="$PROJECT_DIR/backend/run.py"
 
 print_help() {
-  echo "Usage: sudo ./setup-service.sh [command]"
-  echo ""
-  echo "Commands:"
-  echo "  install    Set up the Picar-X Racer systemd service to start on boot."
-  echo "  uninstall  Uninstall the Picar-X Racer systemd service."
-  echo "  help       Display this help message."
-  echo ""
-  echo "Examples:"
-  echo "  sudo ./setup-service.sh install"
-  echo "  sudo ./setup-service.sh uninstall"
-  echo "  ./setup-service.sh help"
+  cat << EOF
+Usage: sudo ./setup-service.sh [command]
+
+Setup or Uninstall Picar-X Racer as a systemd user service (with linger).
+
+Commands:
+  install, i, -i        Install the Picar-X Racer as a systemd --user service and enable linger.
+  uninstall, U, -U, u   Uninstall both system and user service files.
+  help, -h, --help      Show this message.
+EOF
 }
 
 print_command_help() {
@@ -47,29 +46,26 @@ print_command_help() {
   esac
 }
 
-if [[ "$1" == "--help" || "$2" == "--help" ]]; then
-  if [[ -n "$1" && "$1" != "--help" ]]; then
-    print_command_help "$1"
-  else
-    print_help
-  fi
+if [[ "$1" == "--help" || "$2" == "--help" || "$1" == "-h" || "$2" == "-h" ]]; then
+  print_help
   exit 0
 fi
 
 if [[ -z "$1" ]]; then
-  echo "Error: No command provided. Use './setup-service.sh help' for usage information."
+  echo "Error: No command provided. Use './setup-service.sh -h' for usage information."
+  print_help
   exit 1
 fi
 
 COMMAND="$1"
 
 case "$COMMAND" in
-  help)
+  help | -h | --help | h)
     print_help
     exit 0
     ;;
 
-  uninstall)
+  uninstall | U | -U | u | -u)
     echo "Disabling and removing $SERVICE_NAME..."
     sudo systemctl stop "$SERVICE_NAME"
     sudo systemctl disable "$SERVICE_NAME"
@@ -88,7 +84,7 @@ case "$COMMAND" in
     exit 0
     ;;
 
-  install)
+  install | i | -i)
     echo "Setting up the Picar-X Racer systemd service..."
 
     if [[ ! -f "Makefile" ]]; then
@@ -147,6 +143,9 @@ Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_ID/bus
 Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
 Environment=PX_LOG_DIR=$LOG_DIR
+Environment=HAILO_MONITOR=0
+Environment=HAILO_TRACE=0
+Environment=HAILORT_LOGGER_PATH=NONE
 ExecStart=$PYTHON_BINARY $BACKEND_SCRIPT
 Restart=always
 StandardOutput=journal

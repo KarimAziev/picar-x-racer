@@ -19,7 +19,6 @@ export interface Settings {
   general: General;
   robot: Robot;
   tts: TTS;
-  battery: Battery;
   music: Music;
   camera: CameraSettings;
   stream: StreamSettings;
@@ -39,6 +38,7 @@ export interface Battery {
   min_voltage: number;
   auto_measure_seconds: number;
   cache_seconds: number;
+  enabled: boolean;
 }
 
 export interface General {
@@ -273,4 +273,31 @@ export interface FileFilterRequest {
   filters?: FileFilterModel;
   search?: SearchModel;
   ordering: OrderingModel;
+}
+
+export interface PinInfo {
+  name: string;
+  /**
+   * An integer containing the physical pin number on the header (starting from 1 in accordance with convention).
+   */
+  number: number;
+  /**
+   * An integer indicating on which row the pin is physically located in the header (1-based)
+   *
+   */
+  row: number;
+  /**
+   * An integer indicating in which column the pin is physically located in the header (1-based)
+   */
+  col: number;
+  names: string[];
+  interfaces: string[];
+  pull: string;
+}
+
+export interface PinHeader {
+  name: string;
+  columns: number;
+  rows: number;
+  pins: PinInfo;
 }

@@ -3,12 +3,12 @@ Endpoints related to music playing.
 """
 
 import asyncio
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Annotated, List
 
 from app.api import deps
 from app.core.logger import Logger
 from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
-from app.exceptions.music import MusicPlayerError
+from app.exceptions.music import MusicInitError, MusicPlayerError
 from app.schemas.common import Message
 from app.schemas.music import (
     MusicModePayload,
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from app.services.media.music_service import MusicService
 
 router = APIRouter()
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 @router.post(
@@ -51,7 +51,7 @@ logger = Logger(__name__)
     },
 )
 async def toggle_play_music(
-    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Toggle play or pause of the current track.
@@ -62,11 +62,14 @@ async def toggle_play_music(
         await asyncio.to_thread(music_player.toggle_playing)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        _log.error(f"Failed to init the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error(f"Failed to toggle music playing: {err}")
+        _log.error(f"Failed to toggle music playing: {err}")
         raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:
-        logger.error(
+        _log.error(
             "Unexpected error occurred while toggling music playing.", exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to toggle music playing.")
@@ -103,7 +106,7 @@ async def toggle_play_music(
 )
 async def play_track(
     payload: MusicTrackPayload,
-    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Play a specified music track.
@@ -115,16 +118,19 @@ async def play_track(
         await asyncio.to_thread(music_player.play_track, payload.track)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        _log.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error(f"Failed to play the track %s: %s", payload.track, err)
+        _log.error(f"Failed to play the track %s: %s", payload.track, err)
         raise HTTPException(status_code=400, detail=str(err))
     except FileNotFoundError:
-        logger.error("The music file for '%s' is not found", payload.track)
+        _log.error("The music file for '%s' is not found", payload.track)
         raise HTTPException(
             status_code=404, detail=f"The track '{payload.track}' is not found."
         )
     except Exception as err:
-        logger.error(
+        _log.error(
             "Unexpected error while playing the track '%s'.",
             payload.track,
             exc_info=True,
@@ -154,7 +160,7 @@ async def play_track(
     },
 )
 async def stop_playing(
-    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Stop playback of the current track.
@@ -167,11 +173,14 @@ async def stop_playing(
         await asyncio.to_thread(music_player.stop_playing)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        _log.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error(f"Failed to stop the playing: %s", err)
+        _log.error(f"Failed to stop the playing: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:
-        logger.error("Unexpected error while stopping the track.", exc_info=True)
+        _log.error("Unexpected error while stopping the track.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to stop playing.")
 
 
@@ -197,7 +206,7 @@ async def stop_playing(
 )
 async def update_position(
     payload: MusicPositionPayload,
-    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Update the playback position of the current track.
@@ -211,16 +220,19 @@ async def update_position(
     Broadcasts the state to connected clients.
     """
     next_pos = float(payload.position)
-    logger.info(f"Updating music position to %s", next_pos)
+    _log.info(f"Updating music position to %s", next_pos)
     try:
         await asyncio.to_thread(music_player.update_position, next_pos)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        _log.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to update the playback position: %s", err)
+        _log.error("Failed to update the playback position: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error(
+        _log.error(
             "Unexpected error occurred while seeking the playback position",
             exc_info=True,
         )
@@ -249,7 +261,7 @@ async def update_position(
 )
 async def update_mode(
     payload: MusicModePayload,
-    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Endpoint to update the playback mode of the music player.
@@ -260,11 +272,14 @@ async def update_mode(
         await asyncio.to_thread(music_player.update_mode, payload.mode)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        _log.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to update the playback mode: %s", err)
+        _log.error("Failed to update the playback mode: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error("Unexpected error while updating the mode.", exc_info=True)
+        _log.error("Unexpected error while updating the mode.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to update the mode.")
 
 
@@ -289,7 +304,7 @@ async def update_mode(
     },
 )
 async def next_track(
-    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Switch to the next track in the playlist.
@@ -306,11 +321,14 @@ async def next_track(
         await asyncio.to_thread(music_player.next_track)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        _log.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to switch the track: %s", err)
+        _log.error("Failed to switch the track: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error("Unexpected error while switching the track.", exc_info=True)
+        _log.error("Unexpected error while switching the track.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to switch the track.")
 
 
@@ -335,7 +353,7 @@ async def next_track(
     },
 )
 async def prev_track(
-    music_player: "MusicService" = Depends(deps.get_music_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
 ):
     """
     Endpoint to switch to the previous track in the playlist.
@@ -352,11 +370,14 @@ async def prev_track(
         await asyncio.to_thread(music_player.prev_track)
         await music_player.broadcast_state()
         return music_player.current_state
+    except MusicInitError as err:
+        _log.error(f"Failed to initialize the module mixer: {err}")
+        raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
-        logger.error("Failed to switch the track: %s", err)
+        _log.error("Failed to switch the track: %s", err)
         raise HTTPException(status_code=400, detail=str(err))
     except Exception:
-        logger.error("Unexpected error while switching the track.", exc_info=True)
+        _log.error("Unexpected error while switching the track.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to switch the track.")
 
 
@@ -385,8 +406,10 @@ async def prev_track(
 async def save_music_order(
     request: Request,
     order: List[str],
-    music_player: "MusicService" = Depends(deps.get_music_service),
-    music_file_service: "MusicFileService" = Depends(deps.get_music_file_service),
+    music_player: Annotated["MusicService", Depends(deps.get_music_service)],
+    music_file_service: Annotated[
+        "MusicFileService", Depends(deps.get_music_file_service)
+    ],
 ):
     """
     Save the custom order of music tracks in the playlist.
@@ -401,7 +424,7 @@ async def save_music_order(
     -------------
     A message confirming the successful update of the music order.
     """
-    logger.info("Music order update %s", order)
+    _log.info("Music order update %s", order)
     connection_manager: "ConnectionService" = request.app.state.app_manager
     try:
         sorted_tracks = await asyncio.to_thread(
@@ -413,7 +436,7 @@ async def save_music_order(
         )
         return {"message": "Music order saved successfully!"}
     except Exception:
-        logger.error("Unexpected error while saving the music order", exc_info=True)
+        _log.error("Unexpected error while saving the music order", exc_info=True)
         raise HTTPException(status_code=400, detail="Failed to update music order.")
 
 
@@ -434,8 +457,8 @@ async def save_music_order(
     },
 )
 async def get_music_tracks(
-    file_manager: "MusicFileService" = Depends(deps.get_music_file_service),
-    audio_manager: "AudioService" = Depends(deps.get_audio_service),
+    file_manager: Annotated["MusicFileService", Depends(deps.get_music_file_service)],
+    audio_manager: Annotated["AudioService", Depends(deps.get_audio_service)],
 ):
     """
     Retrieve the list of available music tracks.
@@ -448,9 +471,9 @@ async def get_music_tracks(
     try:
         music_volume = await asyncio.to_thread(audio_manager.get_volume)
     except (AmixerNotInstalled, AudioVolumeError) as e:
-        logger.error("Couldn't retrieve a volume: %s", e)
+        _log.error("Couldn't retrieve a volume: %s", e)
     except Exception:
-        logger.error("Unexpected error while getting the volume level", exc_info=True)
+        _log.error("Unexpected error while getting the volume level", exc_info=True)
     try:
         files = file_manager.list_sorted_tracks()
         return {
@@ -458,5 +481,5 @@ async def get_music_tracks(
             "volume": music_volume,
         }
     except Exception:
-        logger.error("Unexpected error while retrieving music files.", exc_info=True)
+        _log.error("Unexpected error while retrieving music files.", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve music files.")

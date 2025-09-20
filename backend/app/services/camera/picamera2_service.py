@@ -3,12 +3,11 @@ from functools import lru_cache
 from typing import Dict, List, Optional, Union
 
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.schemas.camera import DeviceStepwise, DeviceType
 from app.services.camera.v4l2_service import VideoDeviceABC
 from app.types.picamera_types import GlobalCameraInfo
 
-logger = Logger(name=__name__)
+_log = Logger(name=__name__)
 
 
 PIXEL_FORMATS_TO_PICAMERA2_MAP: Dict[str, str] = {
@@ -27,7 +26,7 @@ PICAMERA2_TO_PIXEL_FORMATS_MAP: Dict[str, str] = {
 PICAMERA_TO_PIXEL_FORMATS_KEYS = PIXEL_FORMATS_TO_PICAMERA2_MAP.keys()
 
 
-class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
+class PicameraService(VideoDeviceABC):
     def list_video_devices(self) -> List[DeviceType]:
         return self._list_video_devices()
 
@@ -36,10 +35,10 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
         try:
             from picamera2 import Picamera2
         except Exception:
-            logger.warning("Picamera2 is not installed")
+            _log.warning("Picamera2 is not installed")
             return []
 
-        logger.info("Listing picamera2 devices")
+        _log.info("Listing picamera2 devices")
 
         try:
             devices: List[GlobalCameraInfo] = Picamera2.global_camera_info()
@@ -129,21 +128,21 @@ class PicameraService(VideoDeviceABC, metaclass=SingletonMeta):
                         )
                         detected.extend(formats)
                 except Exception as e:
-                    logger.error("Picamera error for device %d: %s", i, e)
+                    _log.error("Picamera error for device %d: %s", i, e)
                 finally:
                     if picam2 is not None:
                         try:
                             picam2.close()
                         except Exception as e:
-                            logger.error("Failed to close picamera2 instance: %s", e)
+                            _log.error("Failed to close picamera2 instance: %s", e)
 
             return detected
         except Exception as e:
-            logger.error("Failed to retrieve Picamera devices: %s")
+            _log.error("Failed to retrieve Picamera devices: %s")
             return []
 
 
 if __name__ == "__main__":
     service = PicameraService()
     result = service.list_video_devices()
-    logger.info(f"picamera2 devices={result}")
+    _log.info(f"picamera2 devices={result}")

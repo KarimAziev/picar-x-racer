@@ -152,7 +152,7 @@ export const useKeyboardControls = (
   const removeKeyEventListeners = () => {
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
-    window.removeEventListener("cleanup", cleanup);
+    window.removeEventListener("beforeunload", cleanup);
   };
 
   const connectWS = () => {

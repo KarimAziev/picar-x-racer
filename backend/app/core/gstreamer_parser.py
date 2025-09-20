@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 from app.core.logger import Logger
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 class GStreamerParser:
@@ -89,7 +89,7 @@ class GStreamerParser:
                     fps = float(num) / float(den)
                     fps_results.add(fps)
                 except Exception as e:
-                    logger.error("Error processing fraction '%s': %s", frac, e)
+                    _log.error("Error processing fraction '%s': %s", frac, e)
 
         # handling such format "framerate=(fraction){ 15/1, 30/1 }"
         elif framerate_match := re.search(
@@ -106,13 +106,13 @@ class GStreamerParser:
                         fps = float(num) / float(den)
                         fps_results.add(fps)
                     except Exception as e:
-                        logger.error(
+                        _log.error(
                             "Error processing fraction '%s': %s",
                             frac_str,
                             e,
                         )
             else:
-                logger.warning(
+                _log.warning(
                     "No valid fractions found in framerate group: %s",
                     frac_list_str,
                 )

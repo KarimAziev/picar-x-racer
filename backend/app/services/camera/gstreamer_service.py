@@ -5,20 +5,20 @@ to yield a list of DeviceType objects.
 
 import shutil
 from functools import lru_cache
-from typing import List, Optional
+from typing import Any, List, Optional
 
+from app.config.config import settings
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.core.video_device_abc import VideoDeviceABC
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
 from app.util.video_checksum import get_dev_video_checksum
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
-class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
+class GStreamerService(VideoDeviceABC):
     @staticmethod
     @lru_cache()
     def gstreamer_available() -> bool:
@@ -40,7 +40,7 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
             if shutil.which("gst-launch-1.0") is not None:
                 gstreamer_on_system = True
         except Exception as e:
-            logger.error("Error while checking system for GStreamer: %s", e)
+            _log.error("Error while checking system for GStreamer: %s", e)
 
         return gstreamer_on_system
 
@@ -129,17 +129,37 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
         A list of DeviceType objects (`DiscreteDevice` or `DeviceStepwise`) describing
         video devices detected by GStreamer with their capabilities.
         """
-        logger.info("CACHED METHOD")
         try:
             import gi  # type: ignore
 
             gi.require_version("Gst", "1.0")
-            from gi.repository import Gst  # type: ignore
+            from gi.repository import GLib, Gst  # type: ignore
 
             Gst.init(None)
         except Exception:
-            logger.warning("Failed to import 'gi'")
+            _log.warning("Failed to import 'gi'")
             return []
+
+        def log_filter_handler(
+            domain: str,
+            level: GLib.LogLevelFlags,
+            message: str,
+            user_data: Optional[Any],
+        ) -> None:
+            if "gst_value_set_int_range_step" in message:
+                return
+            GLib.log_default_handler(domain, level, message, user_data)
+
+        handler_id: Optional[int] = (
+            GLib.log_set_handler(
+                "GStreamer",
+                GLib.LogLevelFlags.LEVEL_CRITICAL | GLib.LogLevelFlags.FLAG_FATAL,
+                log_filter_handler,
+                None,
+            )
+            if settings.PX_LOG_LEVEL != "DEBUG"
+            else None
+        )
 
         monitor: Gst.DeviceMonitor = Gst.DeviceMonitor.new()
 
@@ -183,7 +203,7 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
                 ok_w, width = structure.get_int("width")
                 ok_h, height = structure.get_int("height")
                 ok_f, num, den = structure.get_fraction("framerate")
-                logger.debug(
+                _log.debug(
                     "display_name=%s, object_path=%s, pixel_format='%s', media_type='%s' num='%s', den='%s', ok_f='%s'",
                     display_name,
                     object_path,
@@ -221,9 +241,7 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
                                 )
                                 results.append(device_obj)
                             except Exception as e:
-                                logger.error(
-                                    "Error processing framerate fraction: %s", e
-                                )
+                                _log.error("Error processing framerate fraction: %s", e)
                     else:
                         struct_str = structure.to_string()
                         fractions_fps = GStreamerParser.parse_framerate(struct_str)
@@ -278,7 +296,9 @@ class GStreamerService(VideoDeviceABC, metaclass=SingletonMeta):
                             pass
 
         monitor.stop()
-        logger.debug("gstreamer devices %s", results)
+        if handler_id:
+            GLib.log_remove_handler("GStreamer", handler_id)
+        _log.debug("gstreamer devices %s", results)
         return results
 
 

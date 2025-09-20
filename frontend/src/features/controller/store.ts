@@ -25,10 +25,22 @@ import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
 import { useAppSyncStore } from "@/features/syncer";
-import type { Data as RobotData } from "@/features/settings/stores/robot";
 
 export const ACCELERATION = 10;
 export const MIN_SPEED = ACCELERATION;
+
+export interface UpdatePayloadResponse {
+  speed: number;
+  direction: number;
+  servoAngle: number;
+  camPan: number;
+  camTilt: number;
+  maxSpeed: number;
+  distance: number;
+  avoidObstacles: boolean;
+  autoMeasureDistanceMode: boolean;
+  ledBlinking: boolean;
+}
 
 export interface Modes {
   /**
@@ -39,6 +51,9 @@ export interface Modes {
    * Whether calibration mode is enabled.
    */
   calibrationMode: boolean;
+  /**
+   * Whether led is blinking
+   */
   ledBlinking: boolean;
 }
 
@@ -66,6 +81,10 @@ export interface Gauges {
    */
   camTilt: number;
 }
+
+export type UpdateCombinedPayload = Partial<{
+  [K in keyof Gauges]: Gauges[K] | null;
+}>;
 
 export interface StoreState extends Gauges, Modes {
   model: ShallowRef<WebSocketModel> | null;
@@ -117,6 +136,31 @@ export const useControllerStore = defineStore("controller", {
         const { type, payload, error } = data;
 
         switch (type) {
+          case "update": {
+            const typedPayload: UpdatePayloadResponse = payload;
+            const shouldSteeringReverse =
+              robotStore.data?.steering_servo?.reverse;
+            const shouldTiltReverse = robotStore.data?.cam_tilt_servo?.reverse;
+            const shouldPanReverse = robotStore.data?.cam_pan_servo.reverse;
+            this.speed = typedPayload.speed;
+            this.direction = typedPayload.direction;
+            this.servoAngle = shouldSteeringReverse
+              ? -typedPayload.servoAngle
+              : typedPayload.servoAngle;
+            this.camTilt = shouldTiltReverse
+              ? -typedPayload.camTilt
+              : typedPayload.camTilt;
+            this.camPan = shouldPanReverse
+              ? -typedPayload.camPan
+              : typedPayload.camPan;
+            this.maxSpeed = typedPayload.maxSpeed;
+            this.avoidObstacles = typedPayload.avoidObstacles;
+            this.ledBlinking = typedPayload.ledBlinking;
+            settingsStore.data.robot.auto_measure_distance_mode =
+              typedPayload.autoMeasureDistanceMode;
+
+            break;
+          }
           case "battery": {
             batteryStore.$patch({
               voltage: payload.voltage,
@@ -145,7 +189,8 @@ export const useControllerStore = defineStore("controller", {
             if (error) {
               messager.error(error, "distance error");
             } else {
-              distanceStore.distance = payload;
+              distanceStore.distance = payload.distance;
+              distanceStore.speed = payload.speed;
             }
 
             break;
@@ -154,16 +199,21 @@ export const useControllerStore = defineStore("controller", {
             this.speed = 0;
             break;
 
-          case "setServoDirAngle":
-            this.servoAngle = payload;
+          case "setServoDirAngle": {
+            const shouldReverse = robotStore.data?.steering_servo?.reverse;
+            this.servoAngle = shouldReverse ? -payload : payload;
             break;
+          }
 
-          case "setCamPanAngle":
-            this.camPan = payload;
+          case "setCamPanAngle": {
+            const shouldReverse = robotStore.data?.cam_pan_servo?.reverse;
+            this.camPan = shouldReverse ? -payload : payload;
             break;
+          }
 
           case "setCamTiltAngle":
-            this.camTilt = payload;
+            const shouldReverse = robotStore.data?.cam_tilt_servo?.reverse;
+            this.camTilt = shouldReverse ? -payload : payload;
             break;
 
           case "avoidObstacles":
@@ -173,8 +223,20 @@ export const useControllerStore = defineStore("controller", {
             });
             break;
 
-          case "updateCalibration":
+          case "robot_partial_settings":
+            robotStore.partialData = payload;
+            Object.entries(payload).forEach(([key, value]) => {
+              robotStore.data[key as keyof typeof robotStore.data] =
+                value as any;
+            });
+
+            break;
+          case "robot_settings":
             robotStore.data = payload;
+            break;
+
+          case "updateCalibration":
+            robotStore.mergeCalibrationData(payload);
             break;
 
           case "saveCalibration":
@@ -218,6 +280,9 @@ export const useControllerStore = defineStore("controller", {
         port: +(import.meta.env.VITE_WS_APP_PORT || "8001"),
         onMessage: handleMessage,
         logPrefix: "px",
+        onOpen: async () => {
+          await robotStore.fetchData();
+        },
       });
       this.model.initWS();
     },
@@ -246,10 +311,6 @@ export const useControllerStore = defineStore("controller", {
           this.toggleAutoMeasureDistanceMode,
         ],
         [this.avoidObstacles, false, this.toggleAvoidObstaclesMode],
-        [this.speed, 0, this.stop],
-        [this.servoAngle, 0, this.resetDirServoAngle],
-        [this.camPan, 0, this.resetCamPan],
-        [this.camTilt, 0, this.resetCamTilt],
       ] as const;
 
       actionValueLists.forEach(([value, requiredValue, action]) => {
@@ -257,6 +318,7 @@ export const useControllerStore = defineStore("controller", {
           action();
         }
       });
+      this.updateCombined({ servoAngle: 0, camPan: 0, camTilt: 0, speed: 0 });
     },
 
     // command workers
@@ -269,26 +331,43 @@ export const useControllerStore = defineStore("controller", {
     },
     setCamTiltAngle(angle: number): void {
       const robotStore = useRobotStore();
+      const shouldReverse = robotStore.data?.cam_tilt_servo?.reverse;
       const nextAngle = Math.trunc(
         constrain(
           robotStore.data.cam_tilt_servo.min_angle,
           robotStore.data.cam_tilt_servo.max_angle,
-          angle,
+          shouldReverse ? -angle : angle,
         ),
       );
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
     },
 
+    setDirServoAngle(servoAngle: number) {
+      const robotStore = useRobotStore();
+      const shouldReverse = robotStore.data?.steering_servo?.reverse;
+      const nextAngle = constrain(
+        robotStore.data.steering_servo.min_angle,
+        robotStore.data.steering_servo.max_angle,
+        shouldReverse ? -servoAngle : servoAngle,
+      );
+      this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
+    },
+
     setCamPanAngle(servoAngle: number): void {
       const robotStore = useRobotStore();
+      const shouldReverse = robotStore.data?.cam_pan_servo?.reverse;
       const nextAngle = Math.trunc(
         constrain(
           robotStore.data.cam_pan_servo.min_angle,
           robotStore.data.cam_pan_servo.max_angle,
-          servoAngle,
+          shouldReverse ? -servoAngle : servoAngle,
         ),
       );
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
+    },
+
+    updateCombined(payload: UpdateCombinedPayload): void {
+      this.sendMessage({ action: "update", payload });
     },
 
     move(speed: number, direction: number) {
@@ -313,15 +392,6 @@ export const useControllerStore = defineStore("controller", {
       this.move(speed, -1);
     },
 
-    setDirServoAngle(servoAngle: number) {
-      const robotStore = useRobotStore();
-      const nextAngle = constrain(
-        robotStore.data.steering_servo.min_angle,
-        robotStore.data.steering_servo.max_angle,
-        servoAngle,
-      );
-      this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
-    },
     // commands
     accelerate() {
       this.forward(Math.min(this.speed + ACCELERATION, this.maxSpeed));
@@ -372,15 +442,22 @@ export const useControllerStore = defineStore("controller", {
     },
 
     increaseCamTilt() {
-      this.setCamTiltAngle(this.camTilt + 5);
+      const robotStore = useRobotStore();
+      this.setCamTiltAngle(
+        this.camTilt + robotStore.data.cam_tilt_servo.inc_step,
+      );
     },
 
     decreaseCamTilt() {
-      this.setCamTiltAngle(this.camTilt - 5);
+      const robotStore = useRobotStore();
+      this.setCamTiltAngle(
+        this.camTilt + robotStore.data.cam_tilt_servo.dec_step,
+      );
     },
 
     increaseCamPan() {
-      this.setCamPanAngle(this.camPan + 5);
+      const robotStore = useRobotStore();
+      this.setCamPanAngle(this.camPan + robotStore.data.cam_pan_servo.inc_step);
     },
 
     resetCamPan() {
@@ -388,12 +465,12 @@ export const useControllerStore = defineStore("controller", {
     },
 
     decreaseCamPan() {
-      this.setCamPanAngle(this.camPan - 5);
+      const robotStore = useRobotStore();
+      this.setCamPanAngle(this.camPan + robotStore.data.cam_pan_servo.dec_step);
     },
 
     resetCameraRotate() {
-      this.resetCamPan();
-      this.resetCamTilt();
+      this.updateCombined({ camTilt: 0, camPan: 0 });
     },
 
     resetDirServoAngle(): void {
@@ -452,11 +529,17 @@ export const useControllerStore = defineStore("controller", {
     },
     left() {
       const robotStore = useRobotStore();
-      this.setDirServoAngle(robotStore.data.steering_servo.min_angle);
+      this.setDirServoAngle(
+        robotStore.data.steering_servo.dec_step ||
+          robotStore.data.steering_servo.min_angle,
+      );
     },
     right() {
       const robotStore = useRobotStore();
-      this.setDirServoAngle(robotStore.data.steering_servo.max_angle);
+      this.setDirServoAngle(
+        robotStore.data.steering_servo.inc_step ||
+          robotStore.data.steering_servo.max_angle,
+      );
     },
 
     toggleCalibration() {
@@ -500,9 +583,6 @@ export const useControllerStore = defineStore("controller", {
     },
     saveCalibration() {
       this.sendMessage({ action: "saveCalibration" });
-    },
-    saveRobotConfig(payload: RobotData) {
-      this.sendMessage({ action: "saveConfig", payload });
     },
     servoTest() {
       this.sendMessage({ action: "servoTest" });
@@ -548,7 +628,7 @@ export const useControllerStore = defineStore("controller", {
     },
     openGeneralSettings() {
       const popupStore = usePopupStore();
-      popupStore.tab = SettingsTab.GENERAL;
+      popupStore.tab = popupStore.tab || SettingsTab.GENERAL;
       popupStore.isOpen = true;
     },
     toggleTextInfo() {

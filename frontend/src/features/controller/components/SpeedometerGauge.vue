@@ -14,7 +14,11 @@
       <span class="center-label" ref="centerLabelRef">
         {{ adjustedValue }}
       </span>
-      <span class="extra-info" v-if="extraInfo">{{ extraInfo }}</span>
+      <template v-if="$slots.extra">
+        <span class="extra-info">
+          <slot name="extra" />
+        </span>
+      </template>
     </div>
     <div class="outer-labels">
       <span
@@ -42,7 +46,6 @@ export interface SpeedometerParams {
   segments: number;
   disabledThreshold?: number;
   class?: string;
-  extraInfo?: string | number;
   size?: number;
   maxAngle?: number;
 }

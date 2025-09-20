@@ -2,21 +2,33 @@
 Endpoints for handling video feed settings and WebSocket connections for streaming real-time video.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
 from app.config.video_enhancers import frame_enhancers
 from app.core.logger import Logger
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraShutdownInProgressError,
+)
 from app.schemas.stream import EnhancersResponse, StreamSettings
 from app.services.connection_service import ConnectionService
 from app.util.doc_util import build_response_description
-from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 
 if TYPE_CHECKING:
     from app.services.camera.camera_service import CameraService
     from app.services.camera.stream_service import StreamService
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 router = APIRouter()
@@ -33,19 +45,31 @@ router = APIRouter()
 async def update_video_feed_settings(
     request: Request,
     payload: StreamSettings,
-    camera_manager: "CameraService" = Depends(deps.get_camera_service),
+    camera_manager: Annotated["CameraService", Depends(deps.get_camera_service)],
 ):
     """
     Update the video feed settings and broadcasts the updated settings to all
     connected clients.
     """
-    logger.info("Video feed update payload %s", payload)
+    _log.info("Video feed update payload %s", payload)
+
     connection_manager: "ConnectionService" = request.app.state.app_manager
-    result: StreamSettings = await camera_manager.update_stream_settings(payload)
-    await connection_manager.broadcast_json(
-        {"type": "stream", "payload": result.model_dump()}
-    )
-    return result
+    try:
+        result: StreamSettings = await camera_manager.update_stream_settings(payload)
+        await connection_manager.broadcast_json(
+            {"type": "stream", "payload": result.model_dump()}
+        )
+        return result
+    except (CameraDeviceError, CameraNotFoundError) as err:
+        err_msg = str(err)
+        _log.error(err_msg)
+        await connection_manager.error(err_msg)
+        raise HTTPException(status_code=400, detail=str(err))
+    except CameraShutdownInProgressError as err:
+        raise HTTPException(status_code=503, detail=str(err))
+    except Exception as err:
+        _log.error("Unexpected error while updating video feed settings", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update stream settings")
 
 
 @router.get(
@@ -60,7 +84,7 @@ async def update_video_feed_settings(
     ),
 )
 def get_video_settings(
-    camera_manager: "CameraService" = Depends(deps.get_camera_service),
+    camera_manager: Annotated["CameraService", Depends(deps.get_camera_service)],
 ):
     """
     Retrieve the current video feed settings.
@@ -73,7 +97,7 @@ def get_video_settings(
 )
 async def ws(
     websocket: WebSocket,
-    stream_service: "StreamService" = Depends(deps.get_stream_service),
+    stream_service: Annotated["StreamService", Depends(deps.get_stream_service)],
 ):
     """
     WebSocket endpoint for providing a video stream, including an embedded timestamp.
@@ -86,8 +110,10 @@ async def ws(
         await stream_service.video_stream(websocket)
     except WebSocketDisconnect:
         pass
+    except RuntimeError as e:
+        _log.error("Runtime error in video stream: %s", e)
     except Exception:
-        logger.error("Unexpected error in video stream: ", exc_info=True)
+        _log.error("Unexpected error in video stream: ", exc_info=True)
 
 
 @router.get(

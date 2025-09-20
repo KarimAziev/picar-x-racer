@@ -4,7 +4,7 @@ Endpoints for handling object detection.
 
 import asyncio
 import queue
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
 from app.core.logger import Logger
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.detection.detection_service import DetectionService
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 router = APIRouter()
@@ -91,7 +91,9 @@ router = APIRouter()
 async def update_detection_settings(
     request: Request,
     payload: DetectionSettings,
-    detection_service: "DetectionService" = Depends(deps.get_detection_service),
+    detection_service: Annotated[
+        "DetectionService", Depends(deps.get_detection_service)
+    ],
 ):
     """
     Endpoint to update object detection settings.
@@ -100,7 +102,7 @@ async def update_detection_settings(
     returns the updated settings.
     """
     connection_manager: "ConnectionService" = request.app.state.app_manager
-    logger.info("Detection update payload %s", payload)
+    _log.info("Detection update payload %s", payload)
     if detection_service.shutting_down:
         raise HTTPException(
             status_code=503, detail="Detection process is shutting down"
@@ -140,7 +142,9 @@ async def update_detection_settings(
     ),
 )
 def get_detection_settings(
-    detection_service: "DetectionService" = Depends(deps.get_detection_service),
+    detection_service: Annotated[
+        "DetectionService", Depends(deps.get_detection_service)
+    ],
 ):
     """
     Endpoint to retrieve the current detection configuration.
@@ -153,8 +157,12 @@ def get_detection_settings(
 @router.websocket("/ws/object-detection")
 async def object_detection(
     websocket: WebSocket,
-    detection_service: "DetectionService" = Depends(deps.get_detection_service),
-    detection_notifier: "ConnectionService" = Depends(deps.get_detection_notifier),
+    detection_service: Annotated[
+        "DetectionService", Depends(deps.get_detection_service)
+    ],
+    detection_notifier: Annotated[
+        "ConnectionService", Depends(deps.get_detection_notifier)
+    ],
 ):
     """
     WebSocket endpoint for real-time object detection updates.
@@ -168,6 +176,7 @@ async def object_detection(
         while websocket.application_state == WebSocketState.CONNECTED:
             if (
                 detection_service.shutting_down
+                or websocket.app.state.cancelled
                 or not hasattr(detection_service, "stop_event")
                 or detection_service.stop_event.is_set()
             ):
@@ -190,17 +199,19 @@ async def object_detection(
                 ConnectionError,
                 ConnectionRefusedError,
             ) as e:
-                logger.warning(
+                _log.warning(
                     "Connection-related error while getting the detection result: %s",
                     type(e).__name__,
                 )
                 break
 
     except asyncio.CancelledError:
-        logger.info("WebSocket handler received cancellation signal.")
+        _log.info("Detection WebSocket: received cancellation signal")
         await detection_notifier.disconnect(websocket)
 
     except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected gracefully.")
+        _log.info("Detection WebSocket: client disconnected gracefully.")
+    except RuntimeError as e:
+        _log.error("Detection WebSocket: Runtime error %s", e)
     finally:
         detection_notifier.remove(websocket)

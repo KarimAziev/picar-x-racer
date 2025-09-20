@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 
 from app.core.px_logger import Logger
 from app.managers.led_manager import led_process
-from app.schemas.config import ConfigSchema
+from app.schemas.robot.config import HardwareConfig
 
 if TYPE_CHECKING:
     from app.core.async_emitter import AsyncEventEmitter
     from app.managers.async_task_manager import AsyncTaskManager
     from app.managers.file_management.json_data_manager import JsonDataManager
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 class LEDService:
@@ -48,7 +48,7 @@ class LEDService:
         config_manager: "JsonDataManager",
     ):
         self.config_manager = config_manager
-        self.robot_config = ConfigSchema(**config_manager.load_data())
+        self.robot_config = HardwareConfig(**config_manager.load_data())
         self.led_config = self.robot_config.led
         self.stop_event = mp.Event()
         self.emitter = emitter
@@ -70,8 +70,8 @@ class LEDService:
         Args:
             new_config: The dictionary with new robot config.
         """
-        logger.info("Updating robot led_config", new_config)
-        self.robot_config = ConfigSchema(**new_config)
+        _log.info("Updating robot led_config", new_config)
+        self.robot_config = HardwareConfig(**new_config)
         self.led_config = self.robot_config.led
         if self.running:
             await self.stop_all()
@@ -102,17 +102,18 @@ class LEDService:
 
         Creates a new multiprocessing.Process to run led_process with the current configuration.
         """
-        with self.lock:
-            logger.info("Starting LED process")
-            self._process = mp.Process(
-                target=led_process,
-                args=(
-                    self.led_config.pin,
-                    self.stop_event,
-                    self.led_config.interval,
-                ),
-            )
-            self._process.start()
+        if self.led_config:
+            with self.lock:
+                _log.info("Starting LED process")
+                self._process = mp.Process(
+                    target=led_process,
+                    args=(
+                        self.led_config.pin,
+                        self.stop_event,
+                        self.led_config.interval,
+                    ),
+                )
+                self._process.start()
 
     def _cancel_process(self):
         """
@@ -122,22 +123,22 @@ class LEDService:
         """
         with self.lock:
             if self._process is None:
-                logger.info("LED _process is None, skipping stop")
+                _log.info("No LED process to stop")
             else:
                 self.stop_event.set()
-                logger.info("LED _process set stop_event")
+                _log.info("LED process set stop_event")
                 self._process.join(10)
-                logger.info("LED _process joined")
+                _log.info("LED process joined")
                 if self._process.is_alive():
-                    logger.warning(
-                        "Force terminating LED _process since it's still alive."
+                    _log.warning(
+                        "Force terminating LED process since it's still alive."
                     )
                     self._process.terminate()
                     self._process.join(5)
                     self._process.close()
-            logger.info("Clearing stop event")
+            _log.info("Clearing stop event")
             self.stop_event.clear()
-            logger.info("Stop event cleared")
+            _log.info("Stop event cleared")
 
     @property
     def running(self) -> bool:
@@ -157,8 +158,9 @@ class LEDService:
         Args:
             new_pin: The new pin (int or str) to use for the LED.
         """
-        logger.info("Updating LED pin to %s", new_pin)
-        self.led_config.pin = new_pin
+        _log.info("Updating LED pin to %s", new_pin)
+        if self.led_config:
+            self.led_config.pin = new_pin
         if self.running:
             await self.stop_all()
             await self.start_all()
@@ -173,8 +175,9 @@ class LEDService:
         Args:
             new_interval: The new interval (in seconds) for blinking.
         """
-        logger.info("Updating LED interval to %s", new_interval)
-        self.led_config.interval = new_interval
+        _log.info("Updating LED interval to %s", new_interval)
+        if self.led_config:
+            self.led_config.interval = new_interval
         if self.running:
             await self.stop_all()
             await self.start_all()
@@ -190,7 +193,7 @@ class LEDService:
             await led_service.cleanup()
         """
         await self.stop_all()
-        for prop in ["stop_event", "_process"]:
-            if hasattr(self, prop):
-                logger.info(f"Removing {prop}")
-                delattr(self, prop)
+        async with self.async_lock:
+            with self.lock:
+                self.__dict__.pop("stop_event", None)
+                self.__dict__.pop("_process", None)

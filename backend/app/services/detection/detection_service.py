@@ -6,7 +6,6 @@ import time
 from typing import TYPE_CHECKING, Optional, Union
 
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.exceptions.detection import (
     DetectionModelLoadError,
     DetectionProcessClosing,
@@ -34,7 +33,7 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 
-class DetectionService(metaclass=SingletonMeta):
+class DetectionService:
     """
     A service class for managing object detection processes. This service handles
     starting, stopping, and updating settings for object detection using multiprocessing
@@ -461,9 +460,9 @@ class DetectionService(metaclass=SingletonMeta):
                     logger.info(f"Cleaning non empty queue {name}")
                     queue_item.get_nowait()
 
-                logger.info("Closing %s", name)
+                logger.info("Closing %s", name.replace("_", " "))
                 queue_item.close()
-                logger.info("Joining %s", name)
+                logger.info("Joining %s", name.replace("_", " "))
                 queue_item.join_thread()
             except (
                 ConnectionError,
@@ -586,5 +585,5 @@ class DetectionService(metaclass=SingletonMeta):
             "detection_process",
         ]:
             if hasattr(self, prop):
-                logger.info(f"Removing {prop}")
+                logger.info(f"Removing {prop.replace('_', ' ')}")
                 delattr(self, prop)

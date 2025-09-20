@@ -2,12 +2,11 @@
 Endpoints related to the battery monitoring.
 """
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
-from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.schemas.battery import BatteryStatusResponse
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 if TYPE_CHECKING:
     from app.services.sensors.battery_service import BatteryService
@@ -24,9 +23,7 @@ logger = Logger(name=__name__)
     "e.g., '7.1,' and the remaining battery charge as a percentage.",
 )
 async def get_battery_voltage(
-    battery_manager: Annotated[
-        "BatteryService", Depends(robot_deps.get_battery_service)
-    ],
+    request: Request,
 ):
     """
     Read the ADC (Analog-to-Digital Converter) value and convert it to a voltage.
@@ -45,9 +42,11 @@ async def get_battery_voltage(
     A value of 0% indicates the voltage is at or below the minimum,
     and 100% indicates it is at the full voltage.
     """
+    battery_manager: "BatteryService" = request.app.state.battery_service
+    logger.info("get battery voltage")
     (voltage, percentage) = await battery_manager.broadcast_state()
     logger.debug(
-        "Retrieved battery status - Voltage: %sV, Percentage: %s%", voltage, percentage
+        "Retrieved battery status - Voltage: %sV, Percentage: %s", voltage, percentage
     )
     if voltage is not None:
         return {"voltage": voltage, "percentage": percentage}

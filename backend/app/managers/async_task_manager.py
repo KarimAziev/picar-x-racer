@@ -5,11 +5,11 @@ from app.core.logger import Logger
 
 Worker = Callable[..., Coroutine[Any, Any, Any]]
 
+_log = Logger(__name__)
+
 
 class AsyncTaskManager:
     def __init__(self):
-
-        self.logger = Logger(__name__)
         self.stop_event = asyncio.Event()
         self.task: Optional[asyncio.Task[Any]] = None
         self.task_name: Optional[str] = None
@@ -46,15 +46,15 @@ class AsyncTaskManager:
         log_prefix = f"task {self.task_name}" if self.task_name else "task"
 
         if self.task:
-            self.logger.info("Cancelling %s", log_prefix)
+            _log.info("Cancelling %s", log_prefix)
             try:
                 self.stop_event.set()
                 self.task.cancel()
                 await self.task
             except asyncio.CancelledError:
-                self.logger.info("Cancelled %s", log_prefix)
+                _log.info("Cancelled %s", log_prefix)
                 self.task = None
             finally:
                 self.stop_event.clear()
         else:
-            self.logger.info("Skipping cancelling %s", log_prefix)
+            _log.info("Skipping cancelling %s", log_prefix)

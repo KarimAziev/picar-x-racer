@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 def led_process(
@@ -28,7 +28,7 @@ def led_process(
                 led.off()
                 sleep(interval)
             except ValueError as e:
-                logger.error("Aborting LED process: %s", str(e))
+                _log.error("Aborting LED process: %s", str(e))
                 break
     except (
         ConnectionError,
@@ -37,19 +37,19 @@ def led_process(
         EOFError,
         ConnectionResetError,
     ) as e:
-        logger.warning(
+        _log.warning(
             "Connection-related error occurred in LED process." "Exception handled: %s",
             type(e).__name__,
         )
     except KeyboardInterrupt:
-        logger.warning("LED process received KeyboardInterrupt, exiting.")
+        _log.warning("LED process received KeyboardInterrupt, exiting.")
     except Exception:
-        logger.error("Unhandled exception in LED process", exc_info=True)
+        _log.error("Unhandled exception in LED process", exc_info=True)
     finally:
-        logger.info("LED process is terminating")
+        _log.info("LED process is terminating")
         if led:
-            logger.info("Closing LED.")
+            _log.info("Closing LED.")
             try:
                 led.close()
             except Exception as e:
-                logger.warning("Failed to close LED: %s", e)
+                _log.warning("Failed to close LED: %s", e)

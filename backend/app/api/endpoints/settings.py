@@ -3,7 +3,7 @@ Endpoints to retrieve and update various application settings.
 """
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
 from app.core.logger import Logger
@@ -31,7 +31,9 @@ router = APIRouter()
         Settings, "Successful response with current settings."
     ),
 )
-def get_settings(file_service: "SettingsService" = Depends(deps.get_settings_service)):
+def get_settings(
+    file_service: Annotated["SettingsService", Depends(deps.get_settings_service)]
+):
     """
     Retrieve the current application settings.
     """
@@ -49,10 +51,10 @@ def get_settings(file_service: "SettingsService" = Depends(deps.get_settings_ser
 async def update_settings(
     request: Request,
     new_settings: SettingsUpdateRequest,
-    file_service: "SettingsService" = Depends(deps.get_settings_service),
-    robot_communication_service: "RobotCommunicationService" = Depends(
-        deps.get_robot_communication_service
-    ),
+    file_service: Annotated["SettingsService", Depends(deps.get_settings_service)],
+    robot_communication_service: Annotated[
+        "RobotCommunicationService", Depends(deps.get_robot_communication_service)
+    ],
 ):
     """
     Update the application settings. Also refresh the settings in the robot app.

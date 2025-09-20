@@ -1,11 +1,11 @@
-import axios from "axios";
 import { APIMediaType, BatchFileStatus } from "@/features/files/interface";
 import { retrieveError } from "@/util/error";
 import {
-  extractContentDispositionFilename,
   mapConcat,
+  extractContentDispositionFilename,
 } from "@/features/files/util";
 import { Nullable } from "@/util/ts-helpers";
+import { appApi } from "@/api";
 
 export const makeImagePreviewURL = (
   path: string,
@@ -57,21 +57,24 @@ export const downloadFile = async (
   mediaType: Nullable<APIMediaType>,
   onProgress?: (progress: number) => void,
 ) => {
-  const response = await axios.get(makeDownloadURL(fileName, mediaType), {
-    responseType: "blob",
-    onDownloadProgress: (progressEvent) => {
-      if (progressEvent.total) {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total,
-        );
+  const response = await appApi.get<Blob>(
+    makeDownloadURL(fileName, mediaType),
+    {
+      responseType: "blob",
+      onDownloadProgress: (progressEvent) => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total,
+          );
 
-        if (onProgress) {
-          onProgress(percentCompleted);
+          if (onProgress) {
+            onProgress(percentCompleted);
+          }
         }
-      }
+      },
     },
-  });
-  const url = window.URL.createObjectURL(new Blob([response.data]));
+  );
+  const url = window.URL.createObjectURL(new Blob([response]));
   const link = document.createElement("a");
 
   link.href = url;
@@ -88,7 +91,7 @@ export const downloadFilesAsArchive = async (
   onProgress?: (progress: number) => void,
 ) => {
   try {
-    const response = await axios.post<Blob>(
+    const response = await appApi.post<Blob>(
       mapConcat(["/api/files/download/archive", aliasDir], "/"),
       {
         archive_name: downloadName || aliasDir || "files_archive.zip",
@@ -112,6 +115,7 @@ export const downloadFilesAsArchive = async (
           }
         },
       },
+      true,
     );
 
     const archiveName =
@@ -135,7 +139,7 @@ export const downloadFilesAsArchive = async (
 };
 
 export const removeFile = (file: string) =>
-  axios.delete<BatchFileStatus>(
+  appApi.delete<BatchFileStatus>(
     `/api/files/remove?filename=${encodeURIComponent(file)}`,
   );
 
@@ -143,7 +147,7 @@ export const batchRemoveFiles = (
   filenames: string[],
   mediaType: Nullable<APIMediaType>,
 ) =>
-  axios.post<BatchFileStatus[]>(
+  appApi.post<BatchFileStatus[]>(
     mapConcat(["/api/files/remove-batch", mediaType], "/"),
     {
       filenames,
@@ -155,7 +159,7 @@ export const batchMoveFiles = (
   filenames: string[],
   dir: string,
 ) =>
-  axios.post<BatchFileStatus[]>(
+  appApi.post<BatchFileStatus[]>(
     mapConcat(["/api/files/move", mediaType], "/"),
     {
       filenames,
@@ -164,13 +168,13 @@ export const batchMoveFiles = (
   );
 
 export const renameFile = (filename: string, new_name: string) =>
-  axios.post<BatchFileStatus[]>("/api/files/rename", {
+  appApi.post<BatchFileStatus[]>("/api/files/rename", {
     filename,
     new_name,
   });
 
 export const makeDir = (filename: string, mediaType: Nullable<APIMediaType>) =>
-  axios.post<BatchFileStatus[]>(
+  appApi.post<BatchFileStatus[]>(
     mapConcat(["/api/files/mkdir", mediaType], "/"),
     {
       filename,

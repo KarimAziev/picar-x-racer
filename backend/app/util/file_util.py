@@ -1,29 +1,19 @@
 import json
 import os
 import re
-import shutil
 import tempfile
 import zipfile
 from io import BytesIO
 from os import path
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
 from app.util.mime_type_helper import guess_mime_type
 
 T = TypeVar("T")
 
 
-def copy_file_if_not_exists(source: str, target: str):
-    """
-    Copies a file from source to target if the target file does not exist.
-    """
-    if os.path.exists(source) and not os.path.exists(target):
-        ensure_parent_dir_exists(target)
-        shutil.copyfile(source, target)
-
-
-def load_json_file(file: str):
+def load_json_file(file: str) -> Any:
     """
     Load and parse a JSON file from the specified file path.
 
@@ -44,23 +34,7 @@ def load_json_file(file: str):
         return json.load(f)
 
 
-def ensure_parent_dir_exists(file: str):
-    """
-    Ensure that the parent directory for the specified file exists.
-    If the directory does not exist, it creates the necessary directories.
-
-    Parameters:
-    file (str): The complete path to the file whose parent directory should be checked or created.
-
-    Example:
-    >>> ensure_parent_dir_exists("/path/to/file.txt")
-    # If "/path/to" does not exist, it will be created.
-    """
-    directory = path.dirname(file)
-    os.makedirs(directory, exist_ok=True)
-
-
-def resolve_absolute_path(file: str, *dir_segmens):
+def resolve_absolute_path(file: str, *dir_segmens) -> str:
     """
     Resolve the file path either as an absolute path or relative to given directories.
 
@@ -153,7 +127,7 @@ def file_to_relative(filename: Union[str, Path], directory: Union[str, Path]) ->
     return os.path.relpath(filename, directory)
 
 
-def is_parent_directory(parent_dir: str, file_path: str):
+def is_parent_directory(parent_dir: str, file_path: str) -> bool:
     """
     Check if a given directory is a parent (or ancestor) of a specified file
     or directory, or if it is the same directory as the file path provided.
@@ -249,7 +223,7 @@ def generate_zip_tempfile(
     return temp_file.name, os.path.getsize(temp_file.name)
 
 
-def file_details(filename: str, directory: Optional[str] = None):
+def file_details(filename: str, directory: Optional[str] = None) -> Dict[str, Any]:
     content_type = guess_mime_type(filename)
     file_stat = Path(filename).stat()
     file_mod_time = file_stat.st_mtime
@@ -265,7 +239,7 @@ def file_details(filename: str, directory: Optional[str] = None):
     }
 
 
-def expand_home_dir(directory: str):
+def expand_home_dir(directory: str) -> str:
     if directory.startswith("~"):
         directory = os.path.expanduser(directory)
     return directory
@@ -278,7 +252,6 @@ def directory_files_recursively(
     predicate: Optional[Callable[[str], bool]] = None,
     file_processor: Callable[[str, str], T] = file_details,
 ) -> List[T]:
-
     if directory.startswith("~"):
         directory = os.path.expanduser(directory)
 

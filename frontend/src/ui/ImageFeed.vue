@@ -5,21 +5,20 @@
     :class="{
       'h-[90%]': !imgInitted && !errorMsg,
     }"
-    ><div
+  >
+    <div
       class="text-center text-error text-xl font-black absolute inset-0 flex items-center justify-center uppercase"
     >
       {{ errorMsg }}
-    </div></ScanLines
-  >
+    </div>
+  </ScanLines>
   <img
     v-else
     ref="imgRef"
     class="w-full block h-[99%] shadow-[0_0_4px_2px] shadow-primary-500 select-none cursor-grab touch-none"
     :draggable="false"
     @load="handleImageOnLoad"
-    :class="{
-      'opacity-0': imgLoading,
-    }"
+    :class="imgClass"
     alt="Video"
   />
   <canvas
@@ -39,6 +38,8 @@ import { useDetectionStore, useWebsocketStream } from "@/features/detection";
 import { drawOverlay } from "@/features/detection/overlays/overlay";
 import { overlayStyleHandlers } from "@/features/detection/config";
 
+const props = defineProps<{ imgClass?: string }>();
+
 const camStore = useCameraStore();
 const detectionStore = useDetectionStore();
 const themeStore = useThemeStore();
@@ -56,6 +57,11 @@ const {
   active: isVideoStreamActive,
   imgInitted,
 } = useWebsocketStream({ url: "api/ws/video-stream", imgRef });
+
+const imgClass = computed(() => ({
+  "opacity-0": imgLoading.value,
+  [props.imgClass || ""]: !!props.imgClass,
+}));
 
 const isOverlayEnabled = computed(
   () => detectionStore.data.active && isVideoStreamActive.value,

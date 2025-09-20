@@ -3,24 +3,22 @@ import re
 import subprocess
 from typing import Union
 
-from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
+from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
 from pydub import AudioSegment
 
 debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
 
+_log = Logger(__name__)
 
-class AudioService(metaclass=SingletonMeta):
+
+class AudioService:
     """
     Service to handle audio playback volume adjustments and interactions with audio files.
 
     This class is responsible for interacting with the system's `amixer` tool to
     retrieve and modify the playback device's volume level.
     """
-
-    def __init__(self):
-        self.logger = Logger(__name__)
 
     def get_audio_duration(self, filename: str):
         """
@@ -62,12 +60,12 @@ class AudioService(metaclass=SingletonMeta):
             else:
                 raise AudioVolumeError("Volume information not found in amixer output.")
         except FileNotFoundError:
-            self.logger.warning(
+            _log.warning(
                 "Command 'amixer get Master' failed: 'amixer' is not installed or missing in PATH."
             )
             raise AmixerNotInstalled("'amixer' is not installed on the system.")
         except subprocess.CalledProcessError as e:
-            self.logger.error(
+            _log.error(
                 "Failed to execute 'amixer' command. Non-zero exit code returned. Command output: %s",
                 (
                     e.output.decode("utf-8")
@@ -79,7 +77,7 @@ class AudioService(metaclass=SingletonMeta):
                 "Error getting the volume due to a command execution failure."
             )
         except Exception as e:
-            self.logger.error("Unexpected error in get_volume", exc_info=True)
+            _log.error("Unexpected error in get_volume", exc_info=True)
             raise AudioVolumeError("An unexpected error occurred.")
 
     def set_volume(self, volume_percentage: Union[int, float]):
@@ -107,13 +105,13 @@ class AudioService(metaclass=SingletonMeta):
             )
 
         except FileNotFoundError:
-            self.logger.warning(
+            _log.warning(
                 "Command 'amixer sset Master %s' failed: 'amixer' is not installed or missing in PATH.",
                 volume_percentage,
             )
             raise AmixerNotInstalled("'amixer' is not installed on the system.")
         except subprocess.CalledProcessError as e:
-            self.logger.error(
+            _log.error(
                 "Failed to execute 'amixer' command. Non-zero exit code returned. Command output: %s",
                 (
                     e.output.decode("utf-8")
@@ -125,5 +123,5 @@ class AudioService(metaclass=SingletonMeta):
                 "Error setting the volume due to a command execution failure."
             )
         except Exception as e:
-            self.logger.error("Unexpected error in set_volume", exc_info=True)
+            _log.error("Unexpected error in set_volume", exc_info=True)
             raise AudioVolumeError("Failed to set the volume.")

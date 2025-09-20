@@ -11,6 +11,7 @@ process to guarantee that control operations are never blocked.
 """
 
 import os
+import signal
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Optional
 
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
 
 Logger.setup_from_env()
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 @asynccontextmanager
@@ -44,7 +45,12 @@ async def lifespan(app: FastAPI):
     detection_manager: Optional["DetectionService"] = None
     music_file_service: Optional["MusicFileService"] = None
 
+    def cancel_server(*_) -> None:
+        _log.info(f"🛑 Received signal to stop {app.title}")
+        app.state.cancelled = True
+
     try:
+        signal.signal(signal.SIGINT, cancel_server)
         from app.api import deps
         from app.util.solve_lifespan import solve_lifespan
 
@@ -75,36 +81,36 @@ async def lifespan(app: FastAPI):
                 with open(signal_file_path, "w") as f:
                     f.write("Backend is ready")
             except Exception as e:
-                logger.error(f"Failed to create signal file: {e}")
+                _log.error(f"Failed to create signal file: {e}")
 
         print_initial_message(browser_url)
         yield
     except asyncio.CancelledError:
-        logger.warning(
+        _log.warning(
             "Lifespan was cancelled mid-shutdown (first-level). Proceeding to final cleanup."
         )
     finally:
         app.state.cancelled = True
 
-        logger.info(f"Stopping 🚗 {app.title} application")
+        _log.info(f"Stopping {app.title}")
         try:
             if music_file_service:
                 await music_file_service.music_service.cleanup()
         except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up music_file_service.")
+            _log.warning("Cancelled while cleaning up music_file_service.")
             raise
 
         try:
             if detection_manager:
                 await detection_manager.cleanup()
         except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up detection_manager.")
+            _log.warning("Cancelled while cleaning up detection_manager.")
             raise
 
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
 
-        logger.info(f"Application 🚗 {app.title} stopped")
+        _log.info(f"{app.title} stopped")
 
 
 from app.api.endpoints import api_router, serve_router, tags_metadata
@@ -114,7 +120,7 @@ app = FastAPI(
     title="Picar X Racer Core Application",
     summary="General-purpose APIs that are not directly related to the robot's hardware interactions.",
     description=__doc__ or "",
-    version="0.0.1",
+    version="1.0.0",
     contact={
         "name": "Karim Aziiev",
         "email": "karim.aziiev@gmail.com",

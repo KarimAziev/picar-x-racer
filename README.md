@@ -2,7 +2,7 @@
 
 # Picar-X Racer
 
-**Picar-X Racer** is a robotics and AI platform designed to control the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) on Raspberry Pi. It also supports AI, camera operations, multimedia functionality, and real-time object detection across other Linux-based systems like Ubuntu, with no robot required.
+Picar-X Racer is a robotics and AI platform designed to control either the [Picar-X vehicle](https://docs.sunfounder.com/projects/picar-x/en/stable/) running on a Raspberry Pi or a custom robot (e.g., using Waveshare's [RPi Motor Driver Board](https://www.waveshare.com/rpi-motor-driver-board.htm), [Servo Driver HAT](https://www.waveshare.com/wiki/Servo_Driver_HAT), and [UPS Module S3](https://www.waveshare.com/wiki/UPS_Module_3S)). It also supports AI, camera operations, multimedia functionality, and real-time object detection on other Linux-based systems (for example, Ubuntu) without requiring a physical robot.
 
 ![Demo](./demo/picar-x-racer-demo.gif)
 
@@ -36,10 +36,10 @@
 >     - [Installation](#installation)
 >     - [Usage](#usage)
 >   - [Settings](#settings)
+>     - [Robot](#robot)
 >     - [General](#general)
 >     - [Models](#models)
 >     - [Keybindings](#keybindings)
->     - [Robot](#robot)
 >     - [Text-to-Speech (TTS)](#text-to-speech-tts)
 >     - [Music](#music)
 >     - [Photos](#photos)
@@ -62,6 +62,7 @@
 >     - [Development Environment Setup](#development-environment-setup)
 >     - [Running Tests](#running-tests)
 >     - [API Documentation](#api-documentation)
+>   - [Print your own robot](#print-your-own-robot)
 >   - [Project Status](#project-status)
 
 <!-- markdown-toc end -->
@@ -221,11 +222,11 @@ Once the application is running, open your browser and navigate to the following
 http://<your-raspberry-pi-ip>:8000
 ```
 
-After accessing the control interface, you can customize your experience through the settings panel.
+After accessing the control interface, you can customize your experience through the settings panel. To configure your robot parameters, start with Settings -> Robot.
 
 ## Settings
 
-The **Settings** menu enables you to manage every aspect of your Picar-X Racer experience. It provides extensive customization for multimedia, object detection, keybindings, and much more.
+The **Settings** menu enables you to manage every aspect of your Picar-X Racer experience. It provides customization for hardware peripherals, multimedia, object detection, keybindings, and much more.
 
 To access settings:
 
@@ -235,6 +236,12 @@ To access settings:
    - `?` to directly access the keybindings menu.
 
 Here are the key sections of the **Settings** menu:
+
+### Robot
+
+![Robot](./demo/robot-hardware-settings.gif)
+
+Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
 
 ### General
 
@@ -260,12 +267,6 @@ Every function of the car and interface can be mapped to specific keys.
 
 - Default values are provided, but you can edit any setting directly from this tab.
 - Alternatively, use the "Shortcuts Settings Menu" on screen (`?`).
-
-### Robot
-
-![Robot](./demo/robot-settings.gif)
-
-Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
 
 ### Text-to-Speech (TTS)
 
@@ -531,6 +532,10 @@ You can access the API documentation at:
 - `http://<your-raspberry-pi-ip>:8001/docs` or `http://<your-raspberry-pi-ip>:8001/redoc` (for the car control server)
 
 Two servers are used, with the car control server running in a separate process from the main server to ensure that control operations are never blocked.
+
+## Print your own robot
+
+If you want to print a ready-to-use model, you may want to look at the [picar-cad](https://github.com/KarimAziev/picar-cad/tree/main) project.
 
 ## Project Status
 

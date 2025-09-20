@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from app.adapters.hailo_adapter import YOLOHailoAdapter
     from ultralytics import YOLO
 
-logger = Logger(__name__)
+_log = Logger(__name__)
 
 
 def perform_detection(
@@ -81,7 +81,7 @@ def perform_detection(
     except ValueError as e:
         error_message = str(e)
         if "Dimension mismatch" in error_message:
-            logger.error(error_message)
+            _log.error(error_message)
             raise DetectionDimensionMismatch(error_message)
         else:
             raise

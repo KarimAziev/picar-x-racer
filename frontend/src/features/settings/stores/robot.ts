@@ -1,80 +1,17 @@
 import { defineStore } from "pinia";
-import axios from "axios";
 import { useMessagerStore } from "@/features/messager";
 import type { Nullable } from "@/util/ts-helpers";
-import { makeUrl } from "@/util/url";
-
-export interface Field {
-  type: string | string[];
-  label: string;
-  description: string;
-  options?: (string | number)[];
-}
-export interface CalibrationMode {
-  type: string;
-  label: string;
-  description: string;
-  examples: string[];
-  options?: string[];
-}
-export interface Servo {
-  servo_pin: Pin;
-  min_angle: CalibrationOffset;
-  max_angle: CalibrationOffset;
-  calibration_offset: CalibrationOffset;
-  calibration_mode: CalibrationMode;
-  name: CalibrationMode;
-}
-
-export interface CalibrationOffset {
-  type: CalibrationOffsetType;
-  label: string;
-  description: string;
-  examples: number[];
-  options?: number[];
-}
-
-export enum CalibrationOffsetType {
-  Float = "float",
-  Int = "int",
-  Literal = "literal",
-}
-
-export interface Pin {
-  type: TypeElement[];
-  label: string;
-  description: string;
-  examples: Array<number | string>;
-}
-
-export enum TypeElement {
-  Int = "int",
-  Str = "str",
-}
-
-export interface TMotor {
-  dir_pin: Pin;
-  pwm_pin: Pin;
-  max_speed: CalibrationOffset;
-  name: CalibrationMode;
-  calibration_direction: CalibrationOffset;
-  calibration_speed_offset: CalibrationOffset;
-  period: CalibrationOffset;
-  prescaler: CalibrationOffset;
-}
-
-export interface FieldsConfig {
-  cam_pan_servo: Servo;
-  cam_tilt_servo: Servo;
-  steering_servo: Servo;
-  left_motor: TMotor;
-  right_motor: TMotor;
-}
+import { Battery } from "@/features/settings/interface";
+import type { JSONSchema } from "@/ui/JsonSchema/interface";
+import { robotApi } from "@/api";
+import { omit, pick } from "@/util/obj";
 
 export interface State {
   data: Data;
   loading: boolean;
-  config: Partial<FieldsConfig>;
+  config: JSONSchema | null;
+  partialData?: Partial<Data>;
+  loaded?: boolean;
 }
 
 type ServoCalibrationMode = "sum" | "negative";
@@ -85,7 +22,11 @@ export interface ServoConfig {
   max_angle: number;
   calibration_offset: Nullable<number>;
   calibration_mode?: Nullable<ServoCalibrationMode>;
+  dec_step: number;
+  inc_step: number;
   name: Nullable<string>;
+  reverse: boolean;
+  enabled: boolean;
 }
 
 export interface MotorConfig {
@@ -114,6 +55,10 @@ export interface MotorsData {
   right_motor: MotorConfig;
 }
 
+export interface CalibrationData
+  extends ServoCalibrationData,
+    MotorsCalibrationData {}
+
 export type MotorsCalibrationData = {
   [P in keyof MotorsData]: Pick<MotorConfig, "calibration_direction">;
 };
@@ -125,15 +70,20 @@ export interface LEDConfig {
 }
 export interface Data extends ServoData, MotorsData {
   led: LEDConfig;
+  battery: Battery;
 }
 
 const defaultServo = {
   servo_pin: null,
   min_angle: -30,
   max_angle: 30,
+  dec_step: -5,
+  inc_step: 5,
   calibration_offset: null,
   calibration_mode: null,
+  reverse: false,
   name: null,
+  enabled: true,
 };
 
 const motorDefaults = {
@@ -153,7 +103,8 @@ const ledDefaults = {
 };
 const defaultState: State = {
   loading: false,
-  config: {},
+  loaded: false,
+  config: null,
   data: {
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,
@@ -161,6 +112,15 @@ const defaultState: State = {
     left_motor: motorDefaults,
     right_motor: motorDefaults,
     led: ledDefaults,
+    battery: {
+      full_voltage: 8.4,
+      warn_voltage: 7.15,
+      danger_voltage: 6.5,
+      min_voltage: 6.0,
+      auto_measure_seconds: 60,
+      cache_seconds: 2,
+      enabled: false,
+    },
   },
 };
 
@@ -170,8 +130,8 @@ export const useStore = defineStore("robot", {
   getters: {
     maxSpeed({ data }) {
       return Math.min(
-        data.left_motor.max_speed || 100,
-        data.right_motor.max_speed || 100,
+        data?.left_motor?.max_speed || 100,
+        data?.right_motor?.max_speed || 100,
       );
     },
     calibration({
@@ -184,23 +144,25 @@ export const useStore = defineStore("robot", {
       },
     }) {
       return {
-        steering_servo_offset: steering_servo.calibration_offset,
-        cam_pan_servo_offset: cam_pan_servo.calibration_offset,
-        cam_tilt_servo_offset: cam_tilt_servo.calibration_offset,
-        left_motor_direction: left_motor.calibration_direction,
-        right_motor_direction: right_motor.calibration_direction,
+        steering_servo_offset: steering_servo?.calibration_offset,
+        cam_pan_servo_offset: cam_pan_servo?.calibration_offset,
+        cam_tilt_servo_offset: cam_tilt_servo?.calibration_offset,
+        left_motor_direction: left_motor?.calibration_direction,
+        right_motor_direction: right_motor?.calibration_direction,
       };
     },
   },
   actions: {
     async fetchFieldsConfig() {
       const messager = useMessagerStore();
-      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
-      const url = makeUrl("px/api/settings/robot-fields", port);
+
       try {
         this.loading = true;
-        const response = await axios.get<FieldsConfig>(url);
-        this.config = response.data;
+        const response = await robotApi.get<JSONSchema>(
+          "px/api/settings/json-schema",
+        );
+
+        this.config = response;
       } catch (error) {
         messager.handleError(error);
       } finally {
@@ -209,17 +171,60 @@ export const useStore = defineStore("robot", {
     },
     async fetchData() {
       const messager = useMessagerStore();
-      const port = +(import.meta.env.VITE_WS_APP_PORT || "8001");
-      const url = makeUrl("px/api/settings/config", port);
+
       try {
         this.loading = true;
-        const response = await axios.get<Data>(url);
-        this.data = response.data;
+        const response = await robotApi.get<Data>("px/api/settings/config");
+
+        this.data = response;
+      } catch (error) {
+        messager.handleError(error, `Error fetching robot config`);
+      } finally {
+        this.loading = false;
+        this.loaded = true;
+      }
+    },
+    async saveData(data: Data) {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        const response = await robotApi.put<Data>(
+          "/px/api/settings/config",
+          data,
+        );
+
+        this.data = response;
       } catch (error) {
         messager.handleError(error, `Error fetching robot config`);
       } finally {
         this.loading = false;
       }
+    },
+    async updatePartialData(data: Partial<Data>) {
+      const messager = useMessagerStore();
+
+      try {
+        this.loading = true;
+        await robotApi.patch<Partial<Data>>("px/api/settings/config", data);
+      } catch (error) {
+        messager.handleError(error, `Error fetching robot config`);
+      } finally {
+        this.loading = false;
+      }
+    },
+    mergeCalibrationData(payload: Partial<CalibrationData>) {
+      const servos = omit(["left_motor", "right_motor"], payload);
+      const motors = pick(["left_motor", "right_motor"], payload);
+      Object.entries(servos).forEach(([key, cal]) => {
+        this.data[key as keyof ServoCalibrationData].calibration_offset =
+          cal.calibration_offset;
+      });
+
+      Object.entries(motors).forEach(([key, cal]) => {
+        this.data[key as keyof MotorsCalibrationData].calibration_direction =
+          cal.calibration_direction;
+      });
     },
   },
 });

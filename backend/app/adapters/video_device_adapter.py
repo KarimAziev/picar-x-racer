@@ -5,23 +5,22 @@ from app.adapters.picamera_capture_adapter import PicameraCaptureAdapter
 from app.adapters.v4l2_capture_adapter import V4l2CaptureAdapter
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
-from app.core.singleton_meta import SingletonMeta
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings, DeviceType
 from app.util.os_checks import is_raspberry_pi
-
-logger = Logger(name=__name__)
 
 if TYPE_CHECKING:
     from app.services.camera.gstreamer_service import GStreamerService
     from app.services.camera.picamera2_service import PicameraService
     from app.services.camera.v4l2_service import V4L2Service
 
+_log = Logger(name=__name__)
 
-class VideoDeviceAdapter(metaclass=SingletonMeta):
+
+class VideoDeviceAdapter:
     """
-    A singleton class responsible for managing video capturing devices.
+    A class responsible for managing video capturing devices.
     """
 
     def __init__(
@@ -35,11 +34,11 @@ class VideoDeviceAdapter(metaclass=SingletonMeta):
         self.picam_service = picam_service
         self.devices: List[DeviceType] = []
 
-    def try_device_props(
+    def _try_device_props(
         self, device: str, camera_settings: CameraSettings
     ) -> Optional[Tuple[VideoCaptureABC, CameraSettings]]:
         api, device_path = GStreamerParser.parse_device_path(device)
-        logger.info("device='%s', device_path='%s'", device, device_path)
+        _log.info("Trying device: '%s', with device path: '%s'", device, device_path)
         if api is None:
             api = (
                 "v4l2"
@@ -124,7 +123,7 @@ class VideoDeviceAdapter(metaclass=SingletonMeta):
         self, camera_settings: CameraSettings
     ) -> Tuple[VideoCaptureABC, CameraSettings]:
         devices = self.list_devices()
-        logger.info("setup_video_capture device=%s", camera_settings.device)
+        _log.info("Setting up video device: %s", camera_settings.device)
         if camera_settings.device is not None:
             device_path = GStreamerParser.strip_api_prefix(camera_settings.device)
             video_device: Optional[str] = None
@@ -133,16 +132,16 @@ class VideoDeviceAdapter(metaclass=SingletonMeta):
                     video_device = camera_settings.device
                     break
 
-            logger.info(
-                "video_device found=%s, camera_settings.device='%s'",
-                video_device,
-                camera_settings.device,
-            )
-
             if video_device is None:
+                _log.error("Video device %s is not available", camera_settings.device)
                 raise CameraNotFoundError("Video device is not available")
             else:
-                result = self.try_device_props(video_device, camera_settings)
+                _log.info(
+                    "Found video device: %s, trying its settings",
+                    video_device,
+                )
+
+                result = self._try_device_props(video_device, camera_settings)
                 if result is None:
                     raise CameraDeviceError("Video capture failed")
                 else:
@@ -151,7 +150,7 @@ class VideoDeviceAdapter(metaclass=SingletonMeta):
             result = None
             if len(devices) > 0:
                 device_name = devices[0].device
-                result = self.try_device_props(device_name, camera_settings)
+                result = self._try_device_props(device_name, camera_settings)
 
             if result is None:
                 raise CameraNotFoundError("Couldn't find video device")

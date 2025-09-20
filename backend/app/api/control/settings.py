@@ -1,86 +1,139 @@
 """
-Endpoints to synchronize configuration settings from the main application to the robot
-application.
-Typically, when settings changes occur in the main app, this endpoint is invoked by an
-integration service (e.g., via HTTP) to update the internal configuration of
-robot-dependent services.
+Endpoints with robot-specific settings and calibration.
 """
 
-from typing import TYPE_CHECKING, Annotated, Any, Dict
+import asyncio
+from typing import Annotated, Any, Dict
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
+from app.exceptions.settings import InvalidSettings, UnchangedSettings
 from app.managers.file_management.json_data_manager import JsonDataManager
-from app.schemas.config import CalibrationConfig, ConfigSchema
-from app.schemas.settings import Settings
+from app.schemas.robot.calibration import CalibrationConfig
+from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
+from app.services.connection_service import ConnectionService
+from app.services.control.settings_service import SettingsService
 from app.util.doc_util import build_response_description
-from app.util.pydantic_helpers import schema_to_dynamic_json
-from fastapi import APIRouter, Depends
-
-if TYPE_CHECKING:
-    from app.services.control.car_service import CarService
-    from app.services.sensors.battery_service import BatteryService
+from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter()
 
-logger = Logger(name=__name__)
-
-
-@router.post(
-    "/px/api/settings/update",
-    response_model=Settings,
-    summary="Reload settings for dependent services.",
-)
-async def update_settings(
-    new_settings: Settings,
-    battery_manager: Annotated[
-        "BatteryService", Depends(robot_deps.get_battery_service)
-    ],
-    robot_service: Annotated["CarService", Depends(robot_deps.get_robot_service)],
-):
-    """
-    Reload settings for dependent services.
-    """
-    robot_service.app_settings = new_settings
-
-    logger.debug("Updating robot app settings")
-
-    if new_settings.battery:
-        logger.debug("Updating battery settings")
-        battery_manager.update_battery_settings(new_settings.battery)
-
-    return new_settings
+_log = Logger(name=__name__)
 
 
 @router.get(
-    "/px/api/settings/robot-fields",
+    "/px/api/settings/json-schema",
     response_model=Dict[str, Any],
-    summary="Retrieve current robot configuration",
+    summary="Retrieve JSON schema of hardware configuration fields. ",
+    responses={
+        200: {
+            "description": "A JSON schema with extra properties for UI.",
+            "content": {
+                "application/json": {"example": HardwareConfig.model_json_schema()}
+            },
+        },
+    },
 )
-def get_fields_config():
+def get_json_schema():
     """
     Retrieve the a JSON-like schema representation of robot config settings.
+
+    Used for dynamic rendering of corresponding settings on the UI.
     """
-    return schema_to_dynamic_json(ConfigSchema)
+    return HardwareConfig.model_json_schema()
 
 
 @router.get(
     "/px/api/settings/config",
-    response_model=ConfigSchema,
-    summary="Retrieve current robot configuration",
+    response_model=HardwareConfig,
+    summary="Retrieve the saved or default robot configuration",
     response_description=build_response_description(
-        ConfigSchema, "Successful response with the robot configuration."
+        HardwareConfig, "Successful response with the robot configuration."
     ),
 )
 def get_config_settings(
-    config_manager: "JsonDataManager" = Depends(robot_deps.get_config_manager),
+    config_manager: Annotated[
+        "JsonDataManager", Depends(robot_deps.get_config_manager)
+    ],
 ):
     """
-    Retrieve the robot config.
+    Retrieve currently saved or default robot configuration.
     """
-    logger.debug("Retrieving robot config settings")
+    _log.debug("Retrieving robot config settings")
     data = config_manager.load_data()
     return data
+
+
+@router.put(
+    "/px/api/settings/config",
+    response_model=HardwareConfig,
+    summary="Update robot settings.",
+    response_description=build_response_description(
+        HardwareConfig, "Successful response with the robot configuration."
+    ),
+)
+async def update_settings(
+    settings: HardwareConfig,
+    settings_service: Annotated[
+        "SettingsService", Depends(robot_deps.get_robot_settings_service)
+    ],
+    connection_manager: Annotated[
+        "ConnectionService", Depends(robot_deps.get_connection_manager)
+    ],
+):
+    """
+    Update robot settings.
+    """
+    _log.info("Saving robot hardware settings")
+    data = await asyncio.to_thread(settings_service.save_settings, settings)
+    await connection_manager.broadcast_json(
+        {"payload": data.model_dump(mode="json"), "type": "robot_settings"}
+    )
+    return data
+
+
+@router.patch(
+    "/px/api/settings/config",
+    response_model=PartialHardwareConfig,
+    summary="Merge partial robot settings.",
+    response_description=build_response_description(
+        PartialHardwareConfig,
+        "Successful response with the partial robot configuration.",
+    ),
+)
+async def merge_partial_settings(
+    settings: PartialHardwareConfig,
+    settings_service: Annotated[
+        "SettingsService", Depends(robot_deps.get_robot_settings_service)
+    ],
+    connection_manager: Annotated[
+        "ConnectionService", Depends(robot_deps.get_connection_manager)
+    ],
+):
+    """
+    Merge partial robot settings with saved configuration.
+    """
+    _log.info("Saving partial robot hardware settings")
+
+    try:
+        partial_settings = await asyncio.to_thread(
+            settings_service.merge_settings, settings
+        )
+    except (UnchangedSettings, InvalidSettings) as err:
+        err_msg = str(err)
+        _log.error(err_msg)
+        raise HTTPException(status_code=409, detail=err_msg)
+    except Exception:
+        _log.error("Unhandled error during merging settings", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+    await connection_manager.broadcast_json(
+        {
+            "payload": partial_settings.model_dump(mode="json", exclude_unset=True),
+            "type": "robot_partial_settings",
+        }
+    )
+    return partial_settings
 
 
 @router.get(
@@ -89,12 +142,14 @@ def get_config_settings(
     summary="Retrieve saved (or default) calibration settings.",
 )
 def get_calibration_settings(
-    config_manager: "JsonDataManager" = Depends(robot_deps.get_config_manager),
+    config_manager: Annotated[
+        "JsonDataManager", Depends(robot_deps.get_config_manager)
+    ],
 ):
     """
     Retrieve saved calibration settings.
     """
-    logger.debug("Retrieving robot calibration settings")
+    _log.debug("Retrieving robot calibration settings")
     config = config_manager.load_data()
     return {
         "steering_servo_offset": config.get("steering_servo", {}).get(
