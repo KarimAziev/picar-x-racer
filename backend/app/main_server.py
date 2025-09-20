@@ -120,7 +120,7 @@ app = FastAPI(
     title="Picar X Racer Core Application",
     summary="General-purpose APIs that are not directly related to the robot's hardware interactions.",
     description=__doc__ or "",
-    version="0.0.1",
+    version="1.0.0",
     contact={
         "name": "Karim Aziiev",
         "email": "karim.aziiev@gmail.com",

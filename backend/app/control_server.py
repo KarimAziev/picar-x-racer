@@ -155,7 +155,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Robot Control Application",
-    version="0.0.1",
+    version="1.0.0",
     summary="API for the robot's hardware interactions.",
     description=__doc__ or "",
     lifespan=lifespan,
