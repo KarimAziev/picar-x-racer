@@ -1,58 +1,35 @@
 #!/bin/bash
-# Setup or Uninstall Picar-X Racer as a systemd service.
+# Setup or Uninstall Picar-X Racer as a systemd user service (with linger).
 # Usage:
-# - To install the service on boot: sudo ./setup-service.sh install
-# - To uninstall the service: sudo ./setup-service.sh uninstall
-# - To display this help: ./setup-service.sh help
+#   sudo ./setup-service.sh install
+#   sudo ./setup-service.sh uninstall
+#   ./setup-service.sh help
 
 SERVICE_NAME="picar_x_racer.service"
 USER=$(logname)
-GROUP=$(id -g "$USER")
-USER_ID=$(id -u "$USER")
 PROJECT_DIR=$(pwd)
 LOG_DIR="/home/$USER/.cache/picar-x-racer/logs"
 PYTHON_BINARY="$PROJECT_DIR/backend/.venv/bin/python3"
 BACKEND_SCRIPT="$PROJECT_DIR/backend/run.py"
+USER_UNIT_DIR="/home/$USER/.config/systemd/user"
+USER_UNIT_FILE="$USER_UNIT_DIR/$SERVICE_NAME"
+SYSTEM_UNIT_FILE="/etc/systemd/system/$SERVICE_NAME"
 
 print_help() {
-  echo "Usage: sudo ./setup-service.sh [command]"
-  echo ""
-  echo "Commands:"
-  echo "  install    Set up the Picar-X Racer systemd service to start on boot."
-  echo "  uninstall  Uninstall the Picar-X Racer systemd service."
-  echo "  help       Display this help message."
-  echo ""
-  echo "Examples:"
-  echo "  sudo ./setup-service.sh install"
-  echo "  sudo ./setup-service.sh uninstall"
-  echo "  ./setup-service.sh help"
+  cat << EOF
+Usage: sudo ./setup-service.sh [command]
+
+Setup or Uninstall Picar-X Racer as a systemd user service (with linger).
+
+Commands:
+  install, i, -i        Install the Picar-X Racer as a systemd --user service and enable linger.
+  uninstall, U, -U, u   Uninstall both system and user service files.
+  help, -h, --help      Show this message.
+EOF
 }
 
-print_command_help() {
-  case "$1" in
-    install)
-      echo "Usage: sudo ./setup-service.sh install"
-      echo "Set up the Picar-X Racer systemd service to start on boot."
-      ;;
-    uninstall)
-      echo "Usage: sudo ./setup-service.sh uninstall"
-      echo "Uninstall the Picar-X Racer systemd service."
-      ;;
-    help)
-      print_help
-      ;;
-    *)
-      echo "No help available for '$1'. Use './setup-service.sh help' for general usage."
-      ;;
-  esac
-}
-
-if [[ "$1" == "--help" || "$2" == "--help" ]]; then
-  if [[ -n "$1" && "$1" != "--help" ]]; then
-    print_command_help "$1"
-  else
-    print_help
-  fi
+if [[ "$1" == "--help" || "$2" == "--help" || "$1" == "-h" || "$2" == "-h" ]]; then
+  print_help
   exit 0
 fi
 
@@ -64,18 +41,33 @@ fi
 COMMAND="$1"
 
 case "$COMMAND" in
-  help)
+  help | -h | --help | h)
     print_help
     exit 0
     ;;
 
-  uninstall)
-    echo "Disabling and removing $SERVICE_NAME..."
-    sudo systemctl stop "$SERVICE_NAME"
-    sudo systemctl disable "$SERVICE_NAME"
-    sudo rm -f "/etc/systemd/system/$SERVICE_NAME"
-    sudo systemctl daemon-reload
-    sudo systemctl reset-failed
+  uninstall | U | -U | u | -u)
+    echo "Uninstalling Picar-X Racer service..."
+
+    if sudo -u "$USER" systemctl --user status "$SERVICE_NAME" &> /dev/null; then
+      echo "Stopping user service..."
+      sudo -u "$USER" systemctl --user stop "$SERVICE_NAME" || true
+      sudo -u "$USER" systemctl --user disable "$SERVICE_NAME" || true
+    fi
+    if [[ -f "$USER_UNIT_FILE" ]]; then
+      echo "Removing user unit at $USER_UNIT_FILE"
+      sudo rm -f "$USER_UNIT_FILE"
+    fi
+    sudo -u "$USER" systemctl --user daemon-reload || true
+
+    if [[ -f "$SYSTEM_UNIT_FILE" ]]; then
+      echo "Stopping and removing system unit..."
+      sudo systemctl stop "$SERVICE_NAME" || true
+      sudo systemctl disable "$SERVICE_NAME" || true
+      sudo rm -f "$SYSTEM_UNIT_FILE"
+      sudo systemctl daemon-reload
+      sudo systemctl reset-failed
+    fi
 
     if [[ -d "$LOG_DIR" ]]; then
       echo "Removing log directory at $LOG_DIR..."
@@ -84,12 +76,12 @@ case "$COMMAND" in
       echo "Log directory $LOG_DIR not found. Skipping..."
     fi
 
-    echo "$SERVICE_NAME has been uninstalled successfully."
+    echo "Uninstall complete."
     exit 0
     ;;
 
-  install)
-    echo "Setting up the Picar-X Racer systemd service..."
+  install | i | -i)
+    echo "Setting up the Picar-X Racer systemd user service for user $USER..."
 
     if [[ ! -f "Makefile" ]]; then
       echo "Error: This script must be run from the project root (where the Makefile is located)."
@@ -99,7 +91,6 @@ case "$COMMAND" in
     if [[ ! -f "$PYTHON_BINARY" ]]; then
       echo "Error: Virtual environment not found in '$PROJECT_DIR/backend/.venv'."
       echo "Please set up the virtual environment before setting up the service."
-      echo "You can use: 'bash ./backend/setup_env.sh'."
       exit 1
     fi
 
@@ -109,41 +100,28 @@ case "$COMMAND" in
       sudo chown -R "$USER:$USER" "$LOG_DIR"
     fi
 
-    echo "Setting up log files in $LOG_DIR..."
     touch "$LOG_DIR/app.log" "$LOG_DIR/error.log"
-
-    echo "Setting permissions for $LOG_DIR..."
     sudo chown -R "$USER:$USER" "$LOG_DIR"
     chmod 640 "$LOG_DIR/app.log" "$LOG_DIR/error.log"
     chmod -R u+rwX "$LOG_DIR"
 
-    if [[ -f "/etc/systemd/system/$SERVICE_NAME" ]]; then
-      read -rp "Service $SERVICE_NAME already exists. Do you want to overwrite it? [y/N]: " confirm
-      if [[ "$confirm" != "y" ]]; then
-        echo "Cancelled setup."
-        exit 0
-      fi
-    fi
+    echo "Enabling linger for user $USER..."
+    sudo loginctl enable-linger "$USER" || {
+      echo "Warning: failed to enable linger for $USER"
+    }
 
-    TMP_SERVICE_FILE="./$SERVICE_NAME"
+    echo "Creating user unit directory at $USER_UNIT_DIR..."
+    sudo -u "$USER" mkdir -p "$USER_UNIT_DIR"
 
-    cat > "$TMP_SERVICE_FILE" << EOL
+    cat > "./$SERVICE_NAME" << EOL
 [Unit]
-Description=Picar-X Racer Backend Service
+Description=Picar-X Racer Backend Service (user)
 After=network-online.target
-Wants=network-online.target
-After=sound.target
-Requires=sound.target
 
 [Service]
 Type=simple
-User=$USER
-Group=$GROUP
 WorkingDirectory=$PROJECT_DIR/backend
 Environment=PYTHONUNBUFFERED=1
-Environment=XDG_RUNTIME_DIR=/run/user/$USER_ID
-Environment=DISPLAY=:0
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_ID/bus
 Environment="PATH=/usr/bin:/bin:/usr/local/bin"
 Environment=HOME=/home/$USER
 Environment=PX_LOG_DIR=$LOG_DIR
@@ -156,32 +134,24 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 EOL
 
-    echo "Installing $SERVICE_NAME to systemd..."
-    sudo mv "$TMP_SERVICE_FILE" /etc/systemd/system/$SERVICE_NAME
-    rm -f "$TMP_SERVICE_FILE"
+    echo "Installing user unit to $USER_UNIT_FILE..."
+    sudo mv "./$SERVICE_NAME" "$USER_UNIT_FILE"
+    sudo chown "$USER:$USER" "$USER_UNIT_FILE"
+    sudo -u "$USER" systemctl --user daemon-reload
 
-    echo "Reloading systemd daemon..."
-    sudo systemctl daemon-reload
-
-    echo "Enabling $SERVICE_NAME to start on system boot..."
-    sudo systemctl enable "$SERVICE_NAME"
-
-    echo "Starting $SERVICE_NAME..."
-    if sudo systemctl start "$SERVICE_NAME"; then
-      echo "$SERVICE_NAME has started successfully!"
-      echo "Logs can be found at: $LOG_DIR"
+    echo "Enabling and starting the user service..."
+    if sudo -u "$USER" systemctl --user enable --now "$SERVICE_NAME"; then
+      echo "Service enabled and started as user $USER."
+      echo "Logs: journalctl --user -u $SERVICE_NAME or $LOG_DIR"
     else
-      echo "Error: $SERVICE_NAME failed to start."
-      echo "Run 'sudo journalctl -xe -u $SERVICE_NAME' for detailed logs."
+      echo "Failed to start the user service. Run 'sudo -u $USER systemctl --user status $SERVICE_NAME' or check journalctl."
       exit 1
     fi
 
-    echo "To disable the service, run 'sudo systemctl disable $SERVICE_NAME'."
-    echo "To stop the service, run 'sudo systemctl stop $SERVICE_NAME'."
-    echo "To view logs, run 'sudo journalctl -u $SERVICE_NAME' or check $LOG_DIR."
+    echo "Setup complete."
     exit 0
     ;;
 
