@@ -3,13 +3,27 @@ import inspect
 import threading
 import weakref
 from functools import partial
-from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, overload
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Dict,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from app.core.logger import Logger
 
 logger = Logger(__name__)
 
 Listener = Union[Callable[..., Any], Callable[..., Awaitable[Any]]]
+StoredListener = Union[Listener, weakref.WeakMethod]
+EventsMap = Dict[str, List[StoredListener]]
 
 T = TypeVar("T", bound=Listener)
 
@@ -28,7 +42,7 @@ class EventEmitter:
     """
 
     def __init__(self):
-        self.events = {}
+        self.events: EventsMap = {}
         self.lock = threading.Lock()
 
     @overload
@@ -196,16 +210,20 @@ class EventEmitter:
                     event_name,
                     listener_name,
                 )
-                if asyncio.iscoroutinefunction(resolved_listener):
+                fn = getattr(resolved_listener, "__func__", resolved_listener)
+                if inspect.iscoroutinefunction(fn):
+                    coro = cast(
+                        Coroutine[Any, Any, Any], resolved_listener(*args, **kwargs)
+                    )
                     try:
                         loop = asyncio.get_running_loop()
                     except RuntimeError:
                         loop = None
 
                     if loop:
-                        asyncio.create_task(resolved_listener(*args, **kwargs))
+                        asyncio.create_task(coro)
                     else:
-                        asyncio.run(resolved_listener(*args, **kwargs))
+                        asyncio.run(coro)
                 else:
                     resolved_listener(*args, **kwargs)
             except Exception:
