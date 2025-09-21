@@ -218,7 +218,7 @@ class MusicService:
         """
         self.play_task = asyncio.create_task(self.broadcast_loop())
 
-    def pygame_mixer_ensure(self):
+    def pygame_mixer_ensure(self) -> None:
         """
         Ensures the pygame mixer is initialized properly.
 
