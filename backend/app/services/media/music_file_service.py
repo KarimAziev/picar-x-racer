@@ -30,7 +30,7 @@ _log = Logger(__name__)
 class MusicFileService(FileManagerService):
     def __init__(
         self, music_service: MusicService, default_music_dir: str, *args, **kwargs
-    ):
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.music_service = music_service
         self.default_music_dir = default_music_dir
@@ -107,7 +107,7 @@ class MusicFileService(FileManagerService):
 
         return sorted_tracks
 
-    def save_custom_music_order(self, filenames: List[str]):
+    def save_custom_music_order(self, filenames: List[str]) -> List[FileDetail]:
         files_cache = self.cache_manager.get_cache()
         order_set: Set[str] = set()
 

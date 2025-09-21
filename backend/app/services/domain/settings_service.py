@@ -19,7 +19,7 @@ class SettingsService:
         user_settings_file=app_config.PX_SETTINGS_FILE,
         default_user_settings_file=app_config.DEFAULT_USER_SETTINGS,
         config_file=app_config.ROBOT_CONFIG_FILE,
-    ):
+    ) -> None:
 
         self.default_user_settings_file = default_user_settings_file
         self.user_settings_file = user_settings_file
@@ -39,7 +39,7 @@ class SettingsService:
         )
         self.settings: Dict[str, Any] = self.settings_manager.load_data()
 
-    def _reload_settings(self, data: Dict[str, Any]):
+    def _reload_settings(self, data: Dict[str, Any]) -> None:
         self.settings = data
 
     def load_settings(self) -> Dict[str, Any]:

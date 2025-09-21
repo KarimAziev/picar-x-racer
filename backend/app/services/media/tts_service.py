@@ -1,4 +1,6 @@
 from app.core.logger import Logger
+from typing import Dict, List
+
 from app.exceptions.tts import TextToSpeechException
 from google_speech_pyplay import LANGUAGES_OPTIONS, Speech
 
@@ -11,14 +13,14 @@ class TTSService:
     using Google Translate TTS (Text To Speech) API.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the TTSService instance.
         """
         self.is_playing = False
 
     @staticmethod
-    def available_languages():
+    def available_languages() -> List[Dict[str, str]]:
         return LANGUAGES_OPTIONS
 
     def text_to_speech(self, words: str, lang="en") -> None:

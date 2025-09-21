@@ -20,7 +20,7 @@ class AudioService:
     retrieve and modify the playback device's volume level.
     """
 
-    def get_audio_duration(self, filename: str):
+    def get_audio_duration(self, filename: str) -> float:
         """
         Get the duration of an audio file in seconds.
         """
@@ -28,7 +28,7 @@ class AudioService:
         secs = len(audio) / 1000.0
         return secs
 
-    def get_volume(self):
+    def get_volume(self) -> int:
         """
         Retrieves the current playback volume level.
 
@@ -80,7 +80,7 @@ class AudioService:
             _log.error("Unexpected error in get_volume", exc_info=True)
             raise AudioVolumeError("An unexpected error occurred.")
 
-    def set_volume(self, volume_percentage: Union[int, float]):
+    def set_volume(self, volume_percentage: Union[int, float]) -> None:
         """
         Sets the playback volume to the specified level.
 

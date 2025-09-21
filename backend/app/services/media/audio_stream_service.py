@@ -15,7 +15,7 @@ class AudioStreamService:
     Service to capture audio in real time using the microphone.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sample_rate = 44100
         self.channels = 1
         self.block_size = 1024

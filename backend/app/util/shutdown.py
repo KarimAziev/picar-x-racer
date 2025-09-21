@@ -3,7 +3,7 @@ from app.core.logger import Logger
 logger = Logger(__name__)
 
 
-def power_off():
+def power_off() -> None:
     """
     Trigger a system shutdown using the systemd D-Bus interface.
 
@@ -35,7 +35,7 @@ def power_off():
         raise
 
 
-def restart():
+def restart() -> None:
     """
         Trigger a system restart using the systemd D-Bus interface.
 

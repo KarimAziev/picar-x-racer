@@ -90,7 +90,7 @@ _log = Logger(__name__)
 
 
 class V4L2Service(VideoDeviceABC):
-    def __init__(self):
+    def __init__(self) -> None:
         self.failed_devices: Set[str] = set()
         self.succeed_devices: Set[str] = set()
 

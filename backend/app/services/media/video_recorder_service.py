@@ -20,7 +20,7 @@ class VideoRecorderService:
     video recordings.
     """
 
-    def __init__(self, file_manager: "FileManagerService"):
+    def __init__(self, file_manager: "FileManagerService") -> None:
         self.file_manager = file_manager
         self.video_writer: Optional[cv2.VideoWriter] = None
         self.current_video_path: Optional[str] = None

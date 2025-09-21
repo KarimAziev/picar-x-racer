@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class V4l2CaptureAdapter(VideoCaptureABC):
     def __init__(
         self, device: str, camera_settings: CameraSettings, service: "V4L2Service"
-    ):
+    ) -> None:
         super().__init__(service=service)
         self.service = service
         self._cap, self._settings = self._try_device_props(device, camera_settings)

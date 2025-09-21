@@ -51,7 +51,7 @@ color_conversions: Dict[str, Union[int, None]] = {
 class PicameraCaptureAdapter(VideoCaptureABC):
     def __init__(
         self, device: str, camera_settings: CameraSettings, service: "PicameraService"
-    ):
+    ) -> None:
         super().__init__(service=service)
 
         import picamera2.formats as formats

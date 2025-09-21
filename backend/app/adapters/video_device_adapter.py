@@ -28,7 +28,7 @@ class VideoDeviceAdapter:
         v4l2_service: "V4L2Service",
         gstreamer_service: "GStreamerService",
         picam_service: "PicameraService",
-    ):
+    ) -> None:
         self.v4l2_service = v4l2_service
         self.gstreamer_service = gstreamer_service
         self.picam_service = picam_service

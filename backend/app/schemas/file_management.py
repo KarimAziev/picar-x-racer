@@ -227,7 +227,7 @@ class DownloadArchiveRequestPayload(BaseModel):
     ] = ""
 
     @model_validator(mode="after")
-    def validate_archive_name(self):
+    def validate_archive_name(self) -> "DownloadArchiveRequestPayload":
         if not isinstance(self.archive_name, str) or not self.archive_name.strip():
             self.archive_name = "archive"
 

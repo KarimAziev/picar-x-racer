@@ -35,7 +35,7 @@ def detection_process_func(
     detection_queue: "mp.Queue[DetectionQueueData]",
     control_queue: "mp.Queue[DetectionControlMessage]",
     out_queue: "mp.Queue[Union[DetectionReadyMessage, DetectionLoadErrorMessage, DetectionErrorMessage]]",
-):
+) -> None:
     """
     A function that runs in a separate multiprocessing process to perform object detection on input frames.
 

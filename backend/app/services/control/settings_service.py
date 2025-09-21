@@ -34,7 +34,7 @@ class SettingsService:
             "left_motor",
             "right_motor",
         ],
-    ):
+    ) -> None:
         self.px = picarx
         self.config_manager = config_manager
         self.saved_settings = HardwareConfig(**self.config_manager.load_data())
@@ -44,7 +44,7 @@ class SettingsService:
         self.config_manager.on(self.config_manager.UPDATE_EVENT, self.refresh_config)
         self.config_manager.on(self.config_manager.LOAD_EVENT, self.refresh_config)
 
-    def refresh_config(self, data: Dict[str, Any]):
+    def refresh_config(self, data: Dict[str, Any]) -> None:
         self.saved_settings = HardwareConfig(**data)
 
     def merge_settings(self, data: PartialHardwareConfig) -> PartialHardwareConfig:
@@ -93,7 +93,7 @@ class SettingsService:
         round_trip: bool = False,
         warnings: Union[bool, Literal["none", "warn", "error"]] = True,
         serialize_as_any: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         excluded_servo_data = {
             k: {"saved_calibration_offset"} for k in self._servo_field_names
         }
@@ -113,7 +113,7 @@ class SettingsService:
             serialize_as_any=serialize_as_any,
         )
 
-    def get_saved_settings(self):
+    def get_saved_settings(self) -> HardwareConfig:
         return self.saved_settings
 
     def get_current_settings(self) -> HardwareConfig:

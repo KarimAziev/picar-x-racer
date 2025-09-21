@@ -45,7 +45,7 @@ class DetectionService:
         settings_service: "SettingsService",
         file_manager: "FileManagerService",
         connection_manager: "ConnectionService",
-    ):
+    ) -> None:
         self.lock = asyncio.Lock()
         self.settings_service = settings_service
         self.connection_manager = connection_manager
@@ -495,7 +495,7 @@ class DetectionService:
         self,
         qitem: Optional["mp.Queue"],
         item,
-    ):
+    ) -> None:
 
         if qitem is None:
             return None

@@ -30,7 +30,7 @@ def is_usb_device_connected(vendor_id: int, product_id: int) -> bool:
         return False
 
 
-def is_google_coral_connected():
+def is_google_coral_connected() -> bool:
     """
     Verifies whether a Google Coral USB device is connected.
 

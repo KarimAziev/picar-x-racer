@@ -180,7 +180,7 @@ class FileManager:
         return responses, success_responses
 
     @staticmethod
-    def get_directory_size(directory: str):
+    def get_directory_size(directory: str) -> int:
         total_size = 0
         for dirpath, _, filenames in os.walk(directory):
             for f in filenames:
@@ -279,7 +279,7 @@ class FileManager:
 
     def sort_files(
         self, files: List[FileDetail], ordering: Optional[OrderingModel] = None
-    ):
+    ) -> List[FileDetail]:
         """
         Sorts the provided list of file details objects by applying an ordering based on
         the specified field and direction.
@@ -412,14 +412,14 @@ class FileManager:
 
         Directories are always placed before files within each folder.
         """
-        nodes = {}
-        order_map = {}
+        nodes: Dict[str, GroupedFile] = {}
+        order_map: Dict[str, int] = {}
         for idx, f in enumerate(files):
             node = GroupedFile(**f.model_dump(), children=[] if f.is_dir else None)
             nodes[node.path] = node
             order_map[node.path] = idx
 
-        roots = []
+        roots: List[GroupedFile] = []
         for node in nodes.values():
             parent_path = os.path.dirname(node.path)
             if parent_path and parent_path in nodes:
@@ -430,7 +430,7 @@ class FileManager:
             else:
                 roots.append(node)
 
-        def sort_children(node: GroupedFile):
+        def sort_children(node: GroupedFile) -> None:
             if node.children is not None and node.children:
                 node.children.sort(
                     key=lambda child: (

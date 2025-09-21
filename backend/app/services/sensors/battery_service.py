@@ -23,7 +23,7 @@ class BatteryService:
         config_manager: "JsonDataManager",
         smbus_manager: "SMBusManager",
         app_loop: asyncio.AbstractEventLoop,
-    ):
+    ) -> None:
         """
         Initializes the BatteryService with required file and connection services.
         """
@@ -221,7 +221,7 @@ class BatteryService:
 
         return value
 
-    def setup_connection_manager(self):
+    def setup_connection_manager(self) -> None:
         """
         Subscribes battery monitoring tasks to the events emitted by the WebSocket connection manager.
 
@@ -237,7 +237,7 @@ class BatteryService:
             ConnectionEvent.FIRST_ACTIVE_CONNECTION.value, self._start_broadcast_task
         )
 
-    def close_battery_adapter(self):
+    def close_battery_adapter(self) -> None:
         if self.battery_adapter:
             try:
                 _log.info("Closing ADC battery adapter")
@@ -246,7 +246,7 @@ class BatteryService:
                 _log.error("Failed to close ADC battery adapter: %s", e)
             self.battery_adapter = None
 
-    async def cleanup_connection_manager(self):
+    async def cleanup_connection_manager(self) -> None:
         """
         Cancels the battery monitoring task and unsubscribes from the events emitted by the WebSocket
         connection manager.

@@ -1,7 +1,7 @@
 import sys
 
 
-def print_initial_message(browser_url: str):
+def print_initial_message(browser_url: str) -> None:
     """
     Print an initial message to the terminal indicating that the app is ready.
 

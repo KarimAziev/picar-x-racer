@@ -10,7 +10,7 @@ from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout, ServoNotFoun
 from app.schemas.robot.avoid_obstacles import AvoidState
 from app.schemas.robot.config import HardwareConfig
 from app.schemas.settings import Settings
-from app.types.car import CarServiceState
+from app.types.car import CarServiceBroadcastPayload, CarServiceState
 from fastapi import WebSocket
 from robot_hat import constrain
 from robot_hat.services.motor_service import MotorServiceDirection
@@ -39,7 +39,7 @@ class CarService:
         config_manager: "JsonDataManager",
         led_service: "LEDService",
         speed_estimator: "SpeedEstimator",
-    ):
+    ) -> None:
         self.px = px
         self.connection_manager = connection_manager
         self.calibration = calibration_service
@@ -103,17 +103,17 @@ class CarService:
         self._prev_distance_interval: Union[float, None] = None
         self._last_broadcast: float = 0.0
 
-    def refresh_config(self, data: Dict[str, Any]):
+    def refresh_config(self, data: Dict[str, Any]) -> None:
         self.config = HardwareConfig(**data)
         self._avoid_params = self.config.avoid_obstacles_params
 
-    def refresh_settings(self, data: Dict[str, Any]):
+    def refresh_settings(self, data: Dict[str, Any]) -> None:
         self.app_settings = Settings(**data)
 
-    async def broadcast(self):
+    async def broadcast(self) -> None:
         await self.connection_manager.broadcast_json(self.broadcast_payload)
 
-    async def broadcast_calibration(self):
+    async def broadcast_calibration(self) -> None:
         await self.connection_manager.broadcast_json(
             {
                 "type": "updateCalibration",
@@ -151,7 +151,7 @@ class CarService:
         }
 
     @property
-    def broadcast_payload(self):
+    def broadcast_payload(self) -> CarServiceBroadcastPayload:
         """
         Returns the dictionary used for notifying clients about the current state.
 
@@ -164,7 +164,7 @@ class CarService:
             "payload": self.current_state,
         }
 
-    async def process_action(self, action: str, payload, websocket: WebSocket):
+    async def process_action(self, action: str, payload, websocket: WebSocket) -> None:
         """
         Processes specific actions received from WebSocket messages and performs the corresponding operations.
 
@@ -636,7 +636,7 @@ class CarService:
         elif direction == -1:
             await asyncio.to_thread(self.px.backward, speed)
 
-    async def start_auto_measure_distance(self, _: Any = None):
+    async def start_auto_measure_distance(self, _: Any = None) -> None:
         self.auto_measure_distance_mode = True
         self.app_settings_manager.load_data()
 
@@ -648,7 +648,7 @@ class CarService:
         self.distance_service.interval = distance_secs
         await self.distance_service.start_all()
 
-    async def stop_auto_measure_distance(self, _: Any = None):
+    async def stop_auto_measure_distance(self, _: Any = None) -> None:
         await self.distance_service.stop_all()
         self.auto_measure_distance_mode = False
         self.speed_estimator.reset()

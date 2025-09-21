@@ -14,7 +14,7 @@ def led_process(
     pin: Union[str, int],
     stop_event: "Event",
     interval: float = 0.1,
-):
+) -> None:
     from gpiozero import LED
 
     led: Optional[LED] = None

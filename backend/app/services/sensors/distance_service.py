@@ -1,7 +1,7 @@
 import asyncio
 import multiprocessing as mp
 import threading
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from app.core.px_logger import Logger
 from app.managers.distance_manager import distance_process
@@ -24,7 +24,7 @@ class DistanceService:
         task_manager: "AsyncTaskManager",
         config_manager: "JsonDataManager",
         interval=0.017,
-    ):
+    ) -> None:
 
         self.config_manager = config_manager
         self.robot_config = HardwareConfig(**config_manager.load_data())
@@ -56,13 +56,13 @@ class DistanceService:
             await self.stop_all()
             await self.start_all()
 
-    def subscribe(self, listener: "Listener"):
+    def subscribe(self, listener: "Listener") -> None:
         self._emitter.on("distance", listener)
 
-    def unsubscribe(self, listener: "Listener"):
+    def unsubscribe(self, listener: "Listener") -> None:
         self._emitter.off("distance", listener)
 
-    async def distance_watcher(self):
+    async def distance_watcher(self) -> None:
         initial_value = self._distance.value
         try:
             while (
@@ -91,7 +91,7 @@ class DistanceService:
         finally:
             self.loading = False
 
-    async def start_all(self):
+    async def start_all(self) -> None:
         await self.stop_all()
         async with self._async_lock:
             self.loading = True
@@ -100,22 +100,22 @@ class DistanceService:
                 self.distance_watcher, task_name="distance_watcher"
             )
 
-    async def stop_all(self):
+    async def stop_all(self) -> None:
         async with self._async_lock:
             await asyncio.to_thread(self._cancel_process)
             if self._task_manager.task:
                 await self._task_manager.cancel_task()
 
     @property
-    def distance(self):
+    def distance(self) -> float:
         return round(self._distance.value, 2)
 
     @property
-    def running(self):
+    def running(self) -> Optional[bool]:
         with self._lock:
             return self._process and self._process.is_alive()
 
-    def _start_process(self):
+    def _start_process(self) -> None:
         if self.robot_config.ultrasonic:
             with self._lock:
                 self._process = mp.Process(
@@ -131,7 +131,7 @@ class DistanceService:
                 )
                 self._process.start()
 
-    def _cancel_process(self):
+    def _cancel_process(self) -> None:
         with self._lock:
             if self._process is None:
                 _log.info("No distance process to stop")

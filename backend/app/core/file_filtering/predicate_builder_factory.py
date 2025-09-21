@@ -26,7 +26,7 @@ class PredicateBuilderFactory:
     Factory to select appropriate predicate builders based on filter field.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.builders: List[PredicateBuilder] = [
             DateTimePredicateBuilder(),
             StringArrayPredicateBuilder(),

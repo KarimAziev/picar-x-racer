@@ -14,7 +14,7 @@ def encode(
     format=".jpg",
     params: Sequence[int] = [],
     frame_enhancer: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-):
+) -> bytes:
     """
     Encode the frame array to the specified format.
     If the frame is 16-bit (for instance from a "RGB161616" or "BGR161616" format),
@@ -61,7 +61,9 @@ def resize_frame(
 def get_frame_size(frame: None) -> Tuple[None, None]: ...
 @overload
 def get_frame_size(frame: np.ndarray) -> Tuple[int, int]: ...
-def get_frame_size(frame: Optional[np.ndarray]):
+def get_frame_size(
+    frame: Optional[np.ndarray],
+) -> Union[Tuple[int, int], Tuple[None, None]]:
     if frame is None:
         return (None, None)
     original_height, original_width = frame.shape[:2]

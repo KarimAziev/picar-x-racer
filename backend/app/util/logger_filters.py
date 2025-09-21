@@ -4,7 +4,7 @@ from logging import Filter
 
 
 class RateLimitFilter(Filter):
-    def __init__(self, limit=10):
+    def __init__(self, limit=10) -> None:
         super().__init__()
         self.limit = limit
         self.log_timestamps = defaultdict(float)

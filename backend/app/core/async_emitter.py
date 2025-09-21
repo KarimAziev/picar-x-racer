@@ -37,7 +37,7 @@ class AsyncEventEmitter:
     - Regular functions (not bound to an instance) are stored as strong references.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.events: EventsMap = {}
         self.lock = threading.Lock()
 

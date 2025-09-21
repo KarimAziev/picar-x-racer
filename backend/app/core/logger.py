@@ -26,7 +26,7 @@ class Logger:
         self,
         name: str,
         app_name: Optional[str] = None,
-    ):
+    ) -> None:
         if app_name is not None:
             Logger._app_logger_name = app_name
 
@@ -41,7 +41,7 @@ class Logger:
         self.logger = logging.getLogger(full_name)
 
     @staticmethod
-    def setup_logging():
+    def setup_logging() -> None:
         """
         Configures a dictionary-based logging configuration based on the
         environment variables for log directory and level.
@@ -62,14 +62,14 @@ class Logger:
 
         dictConfig(log_config)
 
-    def set_level(self, level: int):
+    def set_level(self, level: int) -> None:
         """Dynamically set log level for this logger (file handlers only)."""
         if level not in self.LEVELS.values():
             raise ValueError(f"Invalid log level: {level}")
         self.logger.setLevel(level)
 
     @classmethod
-    def set_global_log_level(cls, level: int):
+    def set_global_log_level(cls, level: int) -> None:
         """Dynamically adjust log levels for file-based handlers."""
         if level not in cls.LEVELS.values():
             raise ValueError(f"Invalid log level: {level}")
@@ -77,7 +77,7 @@ class Logger:
         app_logger.setLevel(level)
 
     @staticmethod
-    def setup_global(log_level: str):
+    def setup_global(log_level: str) -> None:
         """Set the global log level dynamically (via string)."""
         valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if log_level not in valid_log_levels:
@@ -86,18 +86,18 @@ class Logger:
         Logger.set_global_log_level(log_level_constant)
 
     @staticmethod
-    def setup_from_env():
+    def setup_from_env() -> None:
         """Set global log level using PX_LOG_LEVEL from the environment."""
         log_level = os.getenv("PX_LOG_LEVEL", "INFO").upper()
         Logger.setup_global(log_level)
 
-    def debug(self, message: str, *args, **kwargs):
+    def debug(self, message: str, *args, **kwargs) -> None:
         self.logger.debug(message, *args, **kwargs)
 
-    def info(self, message: str, *args, **kwargs):
+    def info(self, message: str, *args, **kwargs) -> None:
         self.logger.info(message, *args, **kwargs)
 
-    def warning(self, message: str, *args, **kwargs):
+    def warning(self, message: str, *args, **kwargs) -> None:
         self.logger.warning(message, *args, **kwargs)
 
     def error(
@@ -106,17 +106,17 @@ class Logger:
         *args,
         exc_info: Optional[Union[bool, BaseException]] = None,
         **kwargs,
-    ):
+    ) -> None:
         self.logger.error(message, *args, exc_info=exc_info, **kwargs)
 
-    def exception(self, message: str, *args, **kwargs):
+    def exception(self, message: str, *args, **kwargs) -> None:
         self.logger.exception(message, *args, **kwargs)
 
-    def critical(self, message: str, *args, **kwargs):
+    def critical(self, message: str, *args, **kwargs) -> None:
         self.logger.critical(message, *args, **kwargs)
 
     @staticmethod
-    def log_exception(message: str, exc: Optional[Exception] = None):
+    def log_exception(message: str, exc: Optional[Exception] = None) -> None:
         if exc:
             logging.exception(message, exc_info=exc)
         else:
