@@ -6,7 +6,7 @@ class RobotI2CError(Exception):
     Base exception class for all Robot I2C-related errors.
     """
 
-    def __init__(self, operation: str, addresses: List[int], message: str):
+    def __init__(self, operation: str, addresses: List[int], message: str) -> None:
         super().__init__(message)
         self.operation = operation
         self.addresses = addresses
@@ -18,7 +18,7 @@ class RobotI2CTimeout(RobotI2CError):
     Exception raised for I2C timeouts during robot operations.
     """
 
-    def __init__(self, operation: str, addresses: List[int]):
+    def __init__(self, operation: str, addresses: List[int]) -> None:
         super().__init__(
             operation,
             addresses,
@@ -37,7 +37,7 @@ class RobotI2CBusError(RobotI2CError):
         addresses: List[int],
         errno: Optional[int],
         strerror: Optional[str],
-    ):
+    ) -> None:
         base_msg = f"I2C bus error during '{operation}' (addresses: {', '.join([f'0x{addr:02X}' for addr in addresses])})"
         parts = [
             base_msg,

@@ -23,3 +23,8 @@ class CarServiceState(PicarBaseState):
     distance: float
     autoMeasureDistanceMode: Union[bool, None]
     ledBlinking: bool
+
+
+class CarServiceBroadcastPayload(TypedDict):
+    type: str
+    payload: PicarBaseState

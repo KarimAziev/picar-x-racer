@@ -46,7 +46,7 @@ class GstreamerPipelineBuilder:
         "v4l2src": "device",
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._device: Optional[str] = None
         self._width: Optional[int] = None
         self._height: Optional[int] = None

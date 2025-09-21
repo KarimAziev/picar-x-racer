@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from app.core.logger import Logger
 from app.util.video_utils import letterbox
+from google_speech_pyplay.speech import Generator
 
 logger = Logger(__name__)
 
@@ -18,7 +19,7 @@ class YOLOHailoAdapter:
         batch_size: Optional[int] = None,
         output_type: str = "FLOAT32",
         labels: Optional[Dict] = None,
-    ):
+    ) -> None:
         """
         Initialize the Hailo adapter.
 
@@ -196,11 +197,11 @@ class _DummyBoxes:
     Each iteration returns a _DummyDetection.
     """
 
-    def __init__(self, detections, names: Dict):
+    def __init__(self, detections, names: Dict) -> None:
         self._detections = detections
         self.names = names
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[_DummyDetection, Any, None]:
         for det in self._detections:
             yield _DummyDetection(det, self.names)
 

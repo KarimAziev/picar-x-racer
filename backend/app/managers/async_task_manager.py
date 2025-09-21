@@ -9,7 +9,7 @@ _log = Logger(__name__)
 
 
 class AsyncTaskManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.stop_event = asyncio.Event()
         self.task: Optional[asyncio.Task[Any]] = None
         self.task_name: Optional[str] = None

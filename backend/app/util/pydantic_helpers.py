@@ -21,7 +21,7 @@ from pydantic.fields import FieldInfo
 T = TypeVar("T", bound="BaseModel")
 
 
-def partial_model(model: Type[BaseModel]):
+def partial_model(model: Type[T]) -> Type[T]:
     """
     Create a new Pydantic model in which all fields of the given model are optional.
 
@@ -88,7 +88,7 @@ def schema_to_dynamic_json(schema: Type[BaseModel]) -> Dict[str, Any]:
     Dynamically generates a JSON-like schema representation of a Pydantic model.
 
     Args:
-        schema (Type[BaseModel]): A Pydantic model class (not an instance).
+        schema: A Pydantic model class (not an instance).
 
     Returns:
         A representation of the schema as a JSON-like object.

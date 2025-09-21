@@ -26,12 +26,12 @@ class StreamService:
     The `StreamService` class is responsible for streaming video frames to connected clients.
     """
 
-    def __init__(self, camera_service: "CameraService"):
+    def __init__(self, camera_service: "CameraService") -> None:
         self.camera_service = camera_service
         self.active_clients = 0
         self.loading = False
 
-    def _check_app_cancelled(self, websocket: WebSocket):
+    def _check_app_cancelled(self, websocket: WebSocket) -> Optional[bool]:
         if websocket.app.state.cancelled or self.camera_service.shutting_down:
             _log.warning("Streaming loop breaks due to cancelled app state.")
             return True

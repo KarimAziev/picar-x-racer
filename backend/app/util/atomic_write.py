@@ -1,7 +1,7 @@
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional, Union
+from typing import IO, Any, Generator, Optional, Union
 
 from app.core.logger import Logger
 
@@ -11,7 +11,7 @@ _log = Logger(__name__)
 @contextmanager
 def atomic_write(
     file_name: Union[str, Path], mode: str = "w", encoding: Optional[str] = None
-):
+) -> Generator[IO[Any], Any, None]:
     """
     Context manager for atomic writing to a file.
 

@@ -48,7 +48,7 @@ class CameraService:
         connection_manager: "ConnectionService",
         video_device_adapter: "VideoDeviceAdapter",
         video_recorder: "VideoRecorderService",
-    ):
+    ) -> None:
         """
         Initializes the `CameraService` instance.
         """
@@ -79,14 +79,16 @@ class CameraService:
         self.emitter = EventEmitter()
         self.emitter.on("frame_error", self.notify_camera_error)
 
-    async def notify_camera_error(self, error: Optional[str]):
+    async def notify_camera_error(self, error: Optional[str]) -> None:
         self.camera_device_error = error
 
         await self.connection_manager.broadcast_json(
             {"type": "camera_error", "payload": error}
         )
 
-    async def notify_video_record_end(self, task: asyncio.Task[Union[str, None]]):
+    async def notify_video_record_end(
+        self, task: asyncio.Task[Union[str, None]]
+    ) -> None:
         try:
             video_file = await task
             _log.info("video_file result='%s'", video_file)
@@ -375,7 +377,7 @@ class CameraService:
             _log.error("Unhandled exception", exc_info=True)
             raise
 
-    async def start_camera_and_wait_for_stream_img(self):
+    async def start_camera_and_wait_for_stream_img(self) -> None:
         """
         Starts the camera asynchronously and ensures it is ready for streaming.
         """

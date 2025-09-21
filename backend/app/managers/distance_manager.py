@@ -34,7 +34,7 @@ def distance_process(
     value: "Synchronized[float]",
     interval: float = 0.01,
     timeout=0.017,
-):
+) -> None:
     try:
         ultrasonic = Ultrasonic(
             Pin(trig_pin),

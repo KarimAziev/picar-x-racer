@@ -284,7 +284,7 @@ class PicarxAdapter:
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """
         Clean up hardware resources by stopping all motors and gracefully closing all
         associated I2C connections for both motors and servos.

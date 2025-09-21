@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
 
         app.state.battery_service = battery_service
 
-        async def broadcast_distance(distance: float):
+        async def broadcast_distance(distance: float) -> None:
             rel_speed = (
                 cast(int, robot_service.current_state["speed"]) if robot_service else 0
             )

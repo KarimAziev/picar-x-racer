@@ -58,7 +58,9 @@ def resolve_absolute_path(file: str, *dir_segmens) -> str:
     return path.abspath(path.join(*dir_segmens, file))
 
 
-def get_files_with_extension(directory: str, extension: Union[str, Tuple[str, ...]]):
+def get_files_with_extension(
+    directory: str, extension: Union[str, Tuple[str, ...]]
+) -> List[str]:
     """
     Recursively scans the provided directory and returns all files with the specified extension.
     """

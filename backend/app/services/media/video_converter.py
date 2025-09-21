@@ -3,7 +3,7 @@ import os
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from app.core.logger import Logger
 from app.util.file_util import file_name_parent_directory
@@ -29,7 +29,7 @@ class VideoConverter:
     @staticmethod
     def ffmpeg_command(
         input_file: Union[str, PathLike[str]], output_file: Union[str, PathLike[str]]
-    ):
+    ) -> List[str]:
         return [
             "ffmpeg",
             "-y",

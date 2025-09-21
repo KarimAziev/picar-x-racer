@@ -47,7 +47,7 @@ class ConnectionService(AsyncEventEmitter):
         log_prefix: Optional[str] = None,
         *args,
         **kwargs,
-    ):
+    ) -> None:
         """
         Initializes the ConnectionService instance.
 
@@ -61,7 +61,7 @@ class ConnectionService(AsyncEventEmitter):
         self._log_prefix = "" if log_prefix is None else log_prefix
         self.active_connections: list[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket) -> None:
         """
         Establishes a WebSocket connection by accepting it and adding it to the active connections list.
 
@@ -98,7 +98,7 @@ class ConnectionService(AsyncEventEmitter):
             await self.emit(ConnectionEvent.FIRST_ACTIVE_CONNECTION.value)
         self._log.info("%sConnected %d clients", self._log_prefix, clients_count)
 
-    async def disconnect(self, websocket: WebSocket, should_close=True):
+    async def disconnect(self, websocket: WebSocket, should_close=True) -> None:
         """
         Handles the disconnection of a WebSocket connection. Removes the connection from the active
         connections list and attempts to close the WebSocket gracefully, if still connected.
@@ -144,7 +144,7 @@ class ConnectionService(AsyncEventEmitter):
 
         self._log.info("%sConnected %d clients", self._log_prefix, clients_count)
 
-    def remove(self, websocket: WebSocket):
+    def remove(self, websocket: WebSocket) -> None:
         """
         Removes a WebSocket connection from the list of active connections.
 
@@ -157,7 +157,7 @@ class ConnectionService(AsyncEventEmitter):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
-    async def broadcast_json(self, data: Any, mode: str = "text"):
+    async def broadcast_json(self, data: Any, mode: str = "text") -> None:
         """
         Broadcasts a JSON-serializable payload to all connected WebSocket clients.
         Automatically handles disconnected clients during the broadcast.
@@ -183,7 +183,7 @@ class ConnectionService(AsyncEventEmitter):
         for connection in disconnected_clients:
             await self.disconnect(connection)
 
-    async def broadcast_bytes(self, data: Any):
+    async def broadcast_bytes(self, data: Any) -> None:
         """
         Broadcasts a binary payload to all connected WebSocket clients.
         Automatically handles disconnected clients during the broadcast.
@@ -205,7 +205,7 @@ class ConnectionService(AsyncEventEmitter):
         for connection in disconnected_clients:
             await self.disconnect(connection)
 
-    async def broadcast(self, data: str):
+    async def broadcast(self, data: str) -> None:
         """
         Broadcasts a text message to all connected WebSocket clients.
         Automatically handles disconnected clients during the broadcast.
@@ -227,7 +227,7 @@ class ConnectionService(AsyncEventEmitter):
         for connection in disconnected_clients:
             await self.disconnect(connection)
 
-    async def info(self, msg: str):
+    async def info(self, msg: str) -> None:
         """
         Broadcasts an informational (success) message to all connected WebSocket clients.
 
@@ -235,7 +235,7 @@ class ConnectionService(AsyncEventEmitter):
         """
         await self.broadcast_json({"type": "info", "payload": msg})
 
-    async def error(self, msg: str):
+    async def error(self, msg: str) -> None:
         """
         Broadcasts an error message to all connected clients.
 
@@ -243,7 +243,7 @@ class ConnectionService(AsyncEventEmitter):
         """
         await self.broadcast_json({"type": "error", "payload": msg})
 
-    async def warning(self, msg: str):
+    async def warning(self, msg: str) -> None:
         """
         Broadcasts a warning message to all connected WebSocket clients.
 

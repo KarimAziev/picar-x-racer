@@ -3,7 +3,7 @@ import os
 import sys
 import time
 from os import path
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from app.core.logger import Logger
 from app.exceptions.music import MusicInitError, MusicPlayerError
@@ -43,7 +43,7 @@ class MusicService:
         mode: MusicPlayerMode,
         music_dir: str,
         default_music_dir: str,
-    ):
+    ) -> None:
         """
         Initializes the MusicService with required file and connection services.
         """
@@ -156,7 +156,7 @@ class MusicService:
             _log.info("Skipping cancelling music player task")
 
     @property
-    def current_state(self):
+    def current_state(self) -> Dict[str, Any]:
         """
         Returns key metrics of the current state as a dictionary.
 
@@ -328,9 +328,7 @@ class MusicService:
         current_index = (
             self.playlist.index(self.track) if self.track in self.playlist else -1
         )
-        next_index = (current_index + 1) % len(
-            self.playlist
-        )  # Wrap around to the first track
+        next_index = (current_index + 1) % len(self.playlist)
         self.track = self.playlist[next_index]
         self.position = 0
         self.duration = self.get_track_duration(self.track)
@@ -351,9 +349,7 @@ class MusicService:
         current_index = (
             self.playlist.index(self.track) if self.track in self.playlist else -1
         )
-        prev_index = (current_index - 1) % len(
-            self.playlist
-        )  # Wrap around to the last track
+        prev_index = (current_index - 1) % len(self.playlist)
         self.track = self.playlist[prev_index]
         self.position = 0
         self.duration = self.get_track_duration(self.track)
@@ -422,11 +418,10 @@ class MusicService:
                             self.is_playing = False
                             break
 
-            # Broadcast player state to clients
             await self.broadcast_state()
             await asyncio.sleep(0.5)
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """
         Shuts down the music service and ensures proper cleanup of resources.
         """

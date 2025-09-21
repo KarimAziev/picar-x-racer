@@ -82,15 +82,15 @@ class FileManagerService:
         )
 
     @classmethod
-    def is_video(cls, file_detail: FileDetail):
+    def is_video(cls, file_detail: FileDetail) -> bool:
         return file_detail.type == "video" and not cls.is_archive(file_detail)
 
     @classmethod
-    def is_audio(cls, file_detail: FileDetail):
+    def is_audio(cls, file_detail: FileDetail) -> bool:
         return file_detail.type == "audio" and not cls.is_archive(file_detail)
 
     @classmethod
-    def is_archive(cls, file_detail: FileDetail):
+    def is_archive(cls, file_detail: FileDetail) -> bool:
         return file_detail.name.endswith(
             (".zip", ".tar", ".tar.gz", ".tgz", ".7z", ".rar")
         )
@@ -279,7 +279,7 @@ class FileManagerService:
         file_model.duration = self._duration(file_model)
         return file_model
 
-    def _preview_image_path(self, video_file: Union[str, PathLike[str]]):
+    def _preview_image_path(self, video_file: Union[str, PathLike[str]]) -> str:
         basename = str(
             Path(
                 file_to_relative(

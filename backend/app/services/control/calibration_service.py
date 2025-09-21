@@ -22,7 +22,7 @@ class CalibrationService:
         picarx: "PicarxAdapter",
         settings_service: "SettingsService",
         **kwargs,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         self.px = picarx
         self.step = 0.1

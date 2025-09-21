@@ -42,7 +42,9 @@ class CalibrationConfig(BaseModel):
     right_motor_direction: MotorDirectionField = 1
 
     @field_validator("left_motor_direction", "right_motor_direction")
-    def validate_motor_direction(cls, value):
+    def validate_motor_direction(
+        cls, value: MotorDirectionField
+    ) -> MotorDirectionField:
         if value not in (-1, 1):
             raise ValueError("Motor direction must be either 1 or -1.")
         return value

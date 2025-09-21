@@ -1,5 +1,5 @@
 import queue
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -10,10 +10,12 @@ from app.core.logger import Logger
 logger = Logger(__name__)
 
 
-def clear_queue(qitem: Optional[Union["Queue", "mp.Queue"]], reraise=False):
+def clear_queue(
+    qitem: Optional[Union["Queue", "mp.Queue"]], reraise: bool = False
+) -> Optional[List[Any]]:
     if qitem is None:
         return None
-    messages = []
+    messages: List[Any] = []
     try:
         while qitem and not qitem.empty():
             try:
@@ -40,11 +42,11 @@ def clear_queue(qitem: Optional[Union["Queue", "mp.Queue"]], reraise=False):
 
 def put_to_queue(
     qitem: Optional[Union["Queue", "mp.Queue"]],
-    item,
-    block=False,
-    timeout: Optional[int] = None,
-    reraise=False,
-):
+    item: Any,
+    block: bool = False,
+    timeout: Optional[float] = None,
+    reraise: bool = False,
+) -> Optional[Any]:
 
     if qitem is None:
         return None
@@ -66,14 +68,15 @@ def put_to_queue(
     ):
         if reraise:
             raise
+    return None
 
 
 def clear_and_put(
     qitem: Optional[Union["Queue", "mp.Queue"]],
-    item,
-    block=False,
-    timeout: Optional[int] = None,
-):
+    item: Any,
+    block: bool = False,
+    timeout: Optional[float] = None,
+) -> Optional[Any]:
 
     if qitem is None:
         return None
@@ -95,7 +98,7 @@ def clear_and_put(
             "Failed to clear the queue to connection error: %s",
             type(e).__name__,
         )
-        return
+        return None
 
     try:
         if block is False:
@@ -117,3 +120,4 @@ def clear_and_put(
             "Failed to put data into the queue due to a connection-related issue: %s",
             type(e).__name__,
         )
+    return None

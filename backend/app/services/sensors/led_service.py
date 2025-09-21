@@ -46,7 +46,7 @@ class LEDService:
         emitter: "AsyncEventEmitter",
         task_manager: "AsyncTaskManager",
         config_manager: "JsonDataManager",
-    ):
+    ) -> None:
         self.config_manager = config_manager
         self.robot_config = HardwareConfig(**config_manager.load_data())
         self.led_config = self.robot_config.led
@@ -77,7 +77,7 @@ class LEDService:
             await self.stop_all()
             await self.start_all()
 
-    async def start_all(self):
+    async def start_all(self) -> None:
         """
         Stops any running LED process and starts a new one.
 
@@ -87,7 +87,7 @@ class LEDService:
         async with self.async_lock:
             await asyncio.to_thread(self._start_process)
 
-    async def stop_all(self):
+    async def stop_all(self) -> None:
         """
         Stops the LED process if it is running.
 
@@ -96,7 +96,7 @@ class LEDService:
         async with self.async_lock:
             await asyncio.to_thread(self._cancel_process)
 
-    def _start_process(self):
+    def _start_process(self) -> None:
         """
         Starts the LED process using the led_process function.
 
@@ -115,7 +115,7 @@ class LEDService:
                 )
                 self._process.start()
 
-    def _cancel_process(self):
+    def _cancel_process(self) -> None:
         """
         Cancels the running LED process.
 

@@ -56,7 +56,7 @@ class JsonDataManager(EventEmitter):
     UPDATE_EVENT = JsonDataManagerEvent.UPDATE.value
     LOAD_EVENT = JsonDataManagerEvent.LOAD.value
 
-    def __init__(self, target_file: str, template_file: str, *args, **kwargs):
+    def __init__(self, target_file: str, template_file: str, *args, **kwargs) -> None:
         """
         Initialize the JSON data manager.
 
@@ -73,7 +73,7 @@ class JsonDataManager(EventEmitter):
         self._cache: Dict[str, Any] = self.load_data()
 
     @property
-    def source_file(self):
+    def source_file(self) -> str:
         """
         Determine the current source file being used.
 

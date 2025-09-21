@@ -5,7 +5,9 @@ if TYPE_CHECKING:
     import multiprocessing as mp
 
 
-def terminate_processes(processes: List[Optional["mp.Process"]], allow_exit=False):
+def terminate_processes(
+    processes: List[Optional["mp.Process"]], allow_exit=False
+) -> None:
     """
     Gracefully terminates a list of multiprocessing processes.
 

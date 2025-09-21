@@ -14,7 +14,7 @@ class VideoCaptureABC(metaclass=ABCMeta):
     Abstract class responsible for managing video capturing.
     """
 
-    def __init__(self, service: VideoDeviceABC):
+    def __init__(self, service: VideoDeviceABC) -> None:
         self.service = service
 
     @property

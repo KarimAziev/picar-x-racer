@@ -77,14 +77,14 @@ class SpeedEstimator:
         self._dt_prev: Optional[float] = None
 
     @staticmethod
-    def _mat_add(a, b):
+    def _mat_add(a: List[List[float]], b: List[List[float]]) -> List[List[float]]:
         return [
             [a[0][0] + b[0][0], a[0][1] + b[0][1]],
             [a[1][0] + b[1][0], a[1][1] + b[1][1]],
         ]
 
     @staticmethod
-    def _mat_mul(a, b):
+    def _mat_mul(a: List[List[float]], b: List[List[float]]) -> List[List[float]]:
         return [
             [
                 a[0][0] * b[0][0] + a[0][1] * b[1][0],
@@ -97,14 +97,14 @@ class SpeedEstimator:
         ]
 
     @staticmethod
-    def _mat_vec_mul(a, v):
+    def _mat_vec_mul(a: List[List[float]], v: List[float]) -> List[float]:
         return [
             a[0][0] * v[0] + a[0][1] * v[1],
             a[1][0] * v[0] + a[1][1] * v[1],
         ]
 
     @staticmethod
-    def _transpose(a):
+    def _transpose(a: List[List[float]]) -> List[List[float]]:
         return [[a[0][0], a[1][0]], [a[0][1], a[1][1]]]
 
     def reset(self) -> None:

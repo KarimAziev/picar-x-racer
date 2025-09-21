@@ -1,15 +1,14 @@
 from abc import ABCMeta
+from typing import Any, ClassVar, Dict, Type, TypeVar, cast
+
+T = TypeVar("T")
 
 
 class SingletonMeta(ABCMeta):
-    """
-    This is a thread-safe implementation of Singleton.
-    """
+    _instances: ClassVar[Dict[Type[Any], Any]] = {}
 
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
+    def __call__(cls: Type[T], *args: Any, **kwargs: Any) -> T:
+        if cls not in SingletonMeta._instances:
             instance = super().__call__(*args, **kwargs)
-            cls._instances[cls] = instance
-        return cls._instances[cls]
+            SingletonMeta._instances[cls] = instance
+        return cast(T, SingletonMeta._instances[cls])

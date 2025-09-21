@@ -12,7 +12,9 @@ from watchdog.events import (
 
 
 class ReloadHandler(FileSystemEventHandler):
-    def __init__(self, callback, ignore_patterns: List[str] = [], debounce_duration=2):
+    def __init__(
+        self, callback, ignore_patterns: List[str] = [], debounce_duration=2
+    ) -> None:
         """
         :param callback: The function to be called when a file change is detected
         :param ignore_patterns: List of file patterns to be ignored (e.g., ['test.py'])
@@ -25,14 +27,14 @@ class ReloadHandler(FileSystemEventHandler):
         self.restart_pending = False
         self._debounce_timer = None
 
-    def _debounce_restart(self, file_name: str):
+    def _debounce_restart(self, file_name: str) -> None:
         """Call the callback after debounce delay."""
         file_name_base = os.path.basename(file_name)
         print(f"File change detected in {file_name_base}. Restarting application...")
         self.restart_pending = True
         self.callback()
 
-    def on_any_event(self, event):
+    def on_any_event(self, event) -> None:
         file_name = event.src_path
 
         if event.event_type in [

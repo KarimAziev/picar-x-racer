@@ -7,7 +7,7 @@ class ExcludePathFilter(logging.Filter):
     A logging filter to exclude logs containing specific paths.
     """
 
-    def __init__(self, excluded_paths: List):
+    def __init__(self, excluded_paths: List) -> None:
         super().__init__()
         self.excluded_paths = excluded_paths
 

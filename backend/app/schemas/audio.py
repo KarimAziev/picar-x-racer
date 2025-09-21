@@ -30,7 +30,7 @@ class VolumeData(BaseModel):
     )
 
     @field_validator("volume", mode="before")
-    def process_volume(cls, value):
+    def process_volume(cls, value) -> int:
         """
         Validates and processes the `volume` field.
 
