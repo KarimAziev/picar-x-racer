@@ -1,7 +1,8 @@
 import socket
+from typing import Any
 
 
-def get_ip_address() -> socket._RetAddress:
+def get_ip_address() -> Any:
     """
     Returns the local IP address of the machine. If unable to determine, defaults to 127.0.0.1.
     """
