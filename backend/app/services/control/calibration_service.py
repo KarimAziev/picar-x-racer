@@ -153,7 +153,7 @@ class CalibrationService:
         return updated.model_dump(mode="json")
 
     def current_calibration_settings(self) -> Dict[str, Any]:
-        data_map = {}
+        data_map: Dict[str, Any] = {}
 
         for servo_name in [
             "steering_servo",

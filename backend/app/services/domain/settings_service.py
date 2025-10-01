@@ -1,12 +1,10 @@
-from os import path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.config.config import settings as app_config
 from app.core.logger import Logger
 from app.managers.file_management.json_data_manager import JsonDataManager
-from app.util.file_util import load_json_file
 
-logger = Logger(name=__name__)
+_log = Logger(name=__name__)
 
 
 class SettingsService:
@@ -21,45 +19,34 @@ class SettingsService:
         config_file=app_config.ROBOT_CONFIG_FILE,
     ) -> None:
 
-        self.default_user_settings_file = default_user_settings_file
-        self.user_settings_file = user_settings_file
-        self.config_file = config_file
+        self._default_user_settings_file = default_user_settings_file
+        self._user_settings_file = user_settings_file
+        self._config_file = config_file
 
-        self.cache: Optional[Dict[str, Any]] = None
-        self.settings_manager = JsonDataManager(
-            target_file=self.user_settings_file,
-            template_file=self.default_user_settings_file,
+        self._settings_manager = JsonDataManager(
+            target_file=self._user_settings_file,
+            template_file=self._default_user_settings_file,
         )
-        self.settings_manager.on(
-            self.settings_manager.UPDATE_EVENT, self._reload_settings
+        self._settings_manager.on(
+            self._settings_manager.UPDATE_EVENT, self._reload_settings
         )
 
-        self.settings_manager.on(
-            self.settings_manager.LOAD_EVENT, self._reload_settings
+        self._settings_manager.on(
+            self._settings_manager.LOAD_EVENT, self._reload_settings
         )
-        self.settings: Dict[str, Any] = self.settings_manager.load_data()
+        self.settings: Dict[str, Any] = self._settings_manager.load_data()
 
     def _reload_settings(self, data: Dict[str, Any]) -> None:
+        _log.debug("Refreshing settings")
         self.settings = data
 
     def load_settings(self) -> Dict[str, Any]:
         """Loads user settings from a JSON file, using cache if file is not modified."""
-        return self.settings_manager.load_data()
+        _log.debug("Loading settings")
+        return self._settings_manager.load_data()
 
     def save_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         """
         Saves new settings to the user settings file.
         """
-        return self.settings_manager.merge(new_settings)
-
-    def get_robot_config(self) -> Dict[str, Any]:
-        """
-        Loads calibration settings from a configuration file.
-
-        Returns:
-            dict: Calibration settings in JSON format.
-        """
-
-        if path.exists(self.config_file):
-            return load_json_file(self.config_file)
-        return load_json_file(app_config.DEFAULT_ROBOT_CONFIG_FILE)
+        return self._settings_manager.merge(new_settings)

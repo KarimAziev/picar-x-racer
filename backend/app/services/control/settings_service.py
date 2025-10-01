@@ -58,7 +58,7 @@ class SettingsService:
 
         saved_dict = self.config_manager.merge(data_dict)
         partial_saved_dict = {k: saved_dict.get(k) for k in updated_keys}
-        _log.info("Partial saved settings=%s", partial_saved_dict)
+        _log.info("Partially saved settings: %s", partial_saved_dict)
         config = HardwareConfig(**{**self.px.config.model_dump(), **partial_saved_dict})
 
         self.px.config = config

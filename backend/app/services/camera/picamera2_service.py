@@ -34,15 +34,18 @@ class PicameraService(VideoDeviceABC):
     def _list_video_devices(self) -> List[DeviceType]:
         try:
             from picamera2 import Picamera2
-        except Exception:
+        except ImportError:
             _log.warning("Picamera2 is not installed")
+            return []
+        except Exception:
+            _log.warning("Unexpected error while importing Picamera2", exc_info=True)
             return []
 
         _log.info("Listing picamera2 devices")
 
         try:
             devices: List[GlobalCameraInfo] = Picamera2.global_camera_info()
-            detected = []
+            detected: List[DeviceType] = []
 
             for i, device in enumerate(devices):
                 picam2: Optional[Picamera2] = None
@@ -127,8 +130,12 @@ class PicameraService(VideoDeviceABC):
                             )
                         )
                         detected.extend(formats)
-                except Exception as e:
-                    _log.error("Picamera error for device %d: %s", i, e)
+                except RuntimeError as e:
+                    _log.error("Picamera runtime error for device %d: %s", i, e)
+                except Exception:
+                    _log.error(
+                        "Unexpected Picamera error for device %d:", i, exc_info=True
+                    )
                 finally:
                     if picam2 is not None:
                         try:
