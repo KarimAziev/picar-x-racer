@@ -8,6 +8,7 @@ from app.schemas.connection import ConnectionEvent
 from app.schemas.robot.battery import (
     INA219BatteryDriverConfig,
     INA226BatteryDriverConfig,
+    INA260BatteryDriverConfig,
     SunfounderBatteryConfig,
 )
 from app.schemas.robot.config import HardwareConfig
@@ -15,6 +16,7 @@ from robot_hat import (
     BatteryABC,
     INA219Battery,
     INA226Battery,
+    INA260Battery,
     SunfounderBattery,
 )
 
@@ -156,7 +158,13 @@ class BatteryService:
     def make_battery_adapter(
         config: HardwareConfig,
         bus_manager: "SMBusManager",
-    ) -> Union[INA219Battery, INA226Battery, SunfounderBattery, None]:
+    ) -> Union[
+        INA219Battery,
+        INA226Battery,
+        INA260Battery,
+        SunfounderBattery,
+        None,
+    ]:
         if config.battery is None or not config.battery.enabled:
             return None
 
@@ -170,6 +178,12 @@ class BatteryService:
             )
         elif isinstance(driver, INA226BatteryDriverConfig):
             return INA226Battery(
+                address=driver.addr_int,
+                config=driver.to_dataclass(),
+                bus=bus,
+            )
+        elif isinstance(driver, INA260BatteryDriverConfig):
+            return INA260Battery(
                 address=driver.addr_int,
                 config=driver.to_dataclass(),
                 bus=bus,

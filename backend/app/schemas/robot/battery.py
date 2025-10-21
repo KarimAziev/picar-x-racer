@@ -2,11 +2,21 @@ from typing import Literal, Optional, Union
 
 from app.schemas.robot.common import AddressField, AddressModel, EnabledField, IC2Bus
 from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
-from robot_hat import INA219ADCResolution, INA219BusVoltageRange
+from robot_hat import (
+    INA219ADCResolution,
+    INA219BusVoltageRange,
+    INA219Gain,
+    INA219Mode,
+    INA226AvgMode,
+    INA226ConversionTime,
+    INA226Mode,
+    INA260AveragingCount,
+    INA260ConversionTime,
+    INA260Mode,
+)
 from robot_hat import INA219Config as INA219DriverConfig
-from robot_hat import INA219Gain, INA219Mode, INA226AvgMode
 from robot_hat import INA226Config as INA226DriverConfig
-from robot_hat import INA226ConversionTime, INA226Mode
+from robot_hat import INA260Config as INA260DriverConfig
 from robot_hat.drivers.adc.sunfounder_adc import (
     ADC_ALLOWED_CHANNELS,
     ADC_ALLOWED_CHANNELS_DESCRIPTION,
@@ -331,6 +341,196 @@ class INA219BatteryDriverConfig(AddressModel):
         )
 
 
+DEFAULT_INA260_CONFIG = INA260DriverConfig()
+
+INA260_AVERAGING_OPTIONS = [
+    {"value": INA260AveragingCount.COUNT_1, "label": "1 sample"},
+    {"value": INA260AveragingCount.COUNT_4, "label": "4 samples"},
+    {"value": INA260AveragingCount.COUNT_16, "label": "16 samples"},
+    {"value": INA260AveragingCount.COUNT_64, "label": "64 samples"},
+    {"value": INA260AveragingCount.COUNT_128, "label": "128 samples"},
+    {"value": INA260AveragingCount.COUNT_256, "label": "256 samples"},
+    {"value": INA260AveragingCount.COUNT_512, "label": "512 samples"},
+    {"value": INA260AveragingCount.COUNT_1024, "label": "1024 samples"},
+]
+
+INA260_CONVERSION_TIME_OPTIONS = [
+    {"value": INA260ConversionTime.TIME_140_US, "label": "140µs"},
+    {"value": INA260ConversionTime.TIME_204_US, "label": "204µs"},
+    {"value": INA260ConversionTime.TIME_332_US, "label": "332µs"},
+    {"value": INA260ConversionTime.TIME_588_US, "label": "588µs"},
+    {"value": INA260ConversionTime.TIME_1_1_MS, "label": "1.1ms"},
+    {"value": INA260ConversionTime.TIME_2_116_MS, "label": "2.116ms"},
+    {"value": INA260ConversionTime.TIME_4_156_MS, "label": "4.156ms"},
+    {"value": INA260ConversionTime.TIME_8_244_MS, "label": "8.244ms"},
+]
+
+INA260_MODE_OPTIONS = [
+    {"value": INA260Mode.SHUTDOWN, "label": "Shutdown"},
+    {"value": INA260Mode.CURRENT_TRIGGERED, "label": "Current triggered"},
+    {"value": INA260Mode.BUS_TRIGGERED, "label": "Bus triggered"},
+    {
+        "value": INA260Mode.SHUNT_AND_BUS_TRIGGERED,
+        "label": "Shunt + bus triggered",
+    },
+    {"value": INA260Mode.POWER_DOWN_4, "label": "Power down"},
+    {
+        "value": INA260Mode.CURRENT_CONTINUOUS,
+        "label": "Current continuous",
+    },
+    {"value": INA260Mode.BUS_CONTINUOUS, "label": "Bus continuous"},
+    {"value": INA260Mode.CONTINUOUS, "label": "Shunt + bus continuous"},
+]
+
+
+class INA260Config(BaseModel):
+    """Extended configuration for the INA260 integrated current and voltage monitor."""
+
+    averaging_count: Annotated[
+        INA260AveragingCount,
+        WithJsonSchema(
+            {
+                "title": "Averaging count",
+                "description": "Number of samples included in the rolling conversion average.",
+                "type": "select",
+                "props": {"options": INA260_AVERAGING_OPTIONS},
+                "examples": [DEFAULT_INA260_CONFIG.averaging_count],
+            }
+        ),
+    ] = DEFAULT_INA260_CONFIG.averaging_count
+
+    voltage_conversion_time: Annotated[
+        INA260ConversionTime,
+        WithJsonSchema(
+            {
+                "title": "Bus conversion time",
+                "description": "Conversion interval for bus voltage measurements. Longer windows improve noise rejection.",
+                "type": "select",
+                "props": {"options": INA260_CONVERSION_TIME_OPTIONS},
+                "examples": [DEFAULT_INA260_CONFIG.voltage_conversion_time],
+            }
+        ),
+    ] = DEFAULT_INA260_CONFIG.voltage_conversion_time
+
+    current_conversion_time: Annotated[
+        INA260ConversionTime,
+        WithJsonSchema(
+            {
+                "title": "Current conversion time",
+                "description": "Conversion interval for shunt current measurements. Longer windows improve precision at the cost of speed.",
+                "type": "select",
+                "props": {"options": INA260_CONVERSION_TIME_OPTIONS},
+                "examples": [DEFAULT_INA260_CONFIG.current_conversion_time],
+            }
+        ),
+    ] = DEFAULT_INA260_CONFIG.current_conversion_time
+
+    mode: Annotated[
+        INA260Mode,
+        WithJsonSchema(
+            {
+                "title": "Operating mode",
+                "description": "Measurement mode controlling how the shunt and bus channels are sampled.",
+                "type": "select",
+                "props": {"options": INA260_MODE_OPTIONS},
+                "examples": [DEFAULT_INA260_CONFIG.mode],
+            }
+        ),
+    ] = DEFAULT_INA260_CONFIG.mode
+
+    alert_mask: Annotated[
+        int,
+        Field(
+            ...,
+            title="Alert mask",
+            description="Bitmask written to the mask/enable register (0-65535).",
+            ge=0,
+            le=0xFFFF,
+            examples=[DEFAULT_INA260_CONFIG.alert_mask],
+        ),
+    ] = DEFAULT_INA260_CONFIG.alert_mask
+
+    alert_limit: Annotated[
+        int,
+        Field(
+            ...,
+            title="Alert limit",
+            description="Threshold register programmed for alert reporting (0-65535).",
+            ge=0,
+            le=0xFFFF,
+            examples=[DEFAULT_INA260_CONFIG.alert_limit],
+        ),
+    ] = DEFAULT_INA260_CONFIG.alert_limit
+
+    shunt_resistance_ohms: Annotated[
+        float,
+        Field(
+            ...,
+            title="Shunt resistance (Ω)",
+            description="Effective shunt resistance used to derive current from measured voltage.",
+            gt=0,
+            le=0.01,
+            examples=[DEFAULT_INA260_CONFIG.shunt_resistance_ohms],
+            json_schema_extra={
+                "props": {
+                    "step": 0.0001,
+                    "minFractionDigits": 0,
+                    "maxFractionDigits": 6,
+                }
+            },
+        ),
+    ] = DEFAULT_INA260_CONFIG.shunt_resistance_ohms
+
+    reset_on_init: Annotated[
+        bool,
+        Field(
+            ...,
+            title="Reset on init",
+            description="Set the RESET bit before applying the configuration to force sensor defaults.",
+            examples=[DEFAULT_INA260_CONFIG.reset_on_init],
+        ),
+    ] = DEFAULT_INA260_CONFIG.reset_on_init
+
+    def to_dataclass(self) -> INA260DriverConfig:
+        """Convert this Pydantic model to the underlying robot_hat dataclass."""
+
+        return INA260DriverConfig(
+            averaging_count=self.averaging_count,
+            voltage_conversion_time=self.voltage_conversion_time,
+            current_conversion_time=self.current_conversion_time,
+            mode=self.mode,
+            alert_mask=self.alert_mask,
+            alert_limit=self.alert_limit,
+            shunt_resistance_ohms=self.shunt_resistance_ohms,
+            reset_on_init=self.reset_on_init,
+        )
+
+
+class INA260BatteryDriverConfig(AddressModel):
+    """Configuration wrapper for an INA260-based voltage and current sensor."""
+
+    driver_type: Annotated[
+        Literal["INA260"],
+        Field(..., title="Driver type", frozen=True),
+    ] = "INA260"
+    config: Annotated[
+        INA260Config,
+        Field(
+            ...,
+            title="INA260 config",
+            description="Parameters for the INA260 integrated sensor.",
+        ),
+    ] = INA260Config()
+    address: AddressField = "0x40"
+
+    bus: IC2Bus = 1
+
+    def to_dataclass(self) -> INA260DriverConfig:
+        """Convert to the robot_hat INA260Config dataclass."""
+
+        return self.config.to_dataclass()
+
+
 DEFAULT_INA226_CONFIG = INA226DriverConfig.from_shunt(
     shunt_ohms=0.002,
     max_expected_amps=3.0,
@@ -617,6 +817,7 @@ class BatteryConfig(BaseModel):
             SunfounderBatteryConfig,
             INA219BatteryDriverConfig,
             INA226BatteryDriverConfig,
+            INA260BatteryDriverConfig,
         ],
         Field(discriminator="driver_type"),
     ] = SunfounderBatteryConfig()
@@ -650,5 +851,9 @@ if __name__ == "__main__":
         "\n\033[1m\033[32m INA226 Battery Driver Config \033[0m\033[36mJSON schema:\033[0m"
     )
     pp(INA226BatteryDriverConfig.model_json_schema())
+    print(
+        "\n\033[1m\033[32m INA260 Battery Driver Config \033[0m\033[36mJSON schema:\033[0m"
+    )
+    pp(INA260BatteryDriverConfig.model_json_schema())
     print("\n\033[1m\033[32m Battery config \033[0m\033[36mJSON schema:\033[0m")
     pp(BatteryConfig.model_json_schema())
