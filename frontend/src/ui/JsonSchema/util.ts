@@ -697,8 +697,7 @@ export const validateAll = (
       if (
         arrErrors.some(
           (itemErr) =>
-            itemErr &&
-            (typeof itemErr === "string" || Object.keys(itemErr).length > 0),
+            itemErr && (isString(itemErr) || Object.keys(itemErr).length > 0),
         )
       ) {
         return arrErrors;
