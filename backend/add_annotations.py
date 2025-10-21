@@ -78,17 +78,18 @@ import shutil
 import signal
 import sys
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import cv2
+import numpy as np
 
+from app.core.logger import Logger
 from app.util.file_util import (
     file_name_parent_directory,
     get_directory_name,
     get_files_with_extension,
     resolve_absolute_path,
 )
-from app.core.logger import Logger
 from app.util.overlay_detecton import draw_overlay
 
 logger = Logger(__name__)
@@ -102,7 +103,7 @@ class ImageAnnotator:
         labels_dir: Optional[Union[Path, str]] = None,
         labels_dict: Optional[dict[int, str]] = None,
         clear_output: bool = False,
-    ):
+    ) -> None:
         self.images_dir = images_dir
         self.out_dir = out_dir
         self.labels_dir = labels_dir if labels_dir else self.infer_labels_dir()
@@ -114,7 +115,7 @@ class ImageAnnotator:
             self.clear_output_directory()
         Path(self.out_dir).mkdir(parents=True, exist_ok=True)
 
-    def clear_output_directory(self):
+    def clear_output_directory(self) -> None:
         """Clears out all files in the output directory without deleting the directory itself."""
         if os.path.exists(self.out_dir):
             for filename in os.listdir(self.out_dir):
@@ -127,7 +128,7 @@ class ImageAnnotator:
                 except Exception as e:
                     logger.error(f"Failed to delete {file_path}. Reason: {e}")
 
-    def get_label_file(self, img_path: str):
+    def get_label_file(self, img_path: str) -> str:
         """Determines the label file path for a given image."""
         if self.labels_dir is not None:
             return os.path.join(self.labels_dir, Path(img_path).stem + ".txt")
@@ -142,7 +143,7 @@ class ImageAnnotator:
             )
             return label_txt_file
 
-    def infer_labels_dir(self):
+    def infer_labels_dir(self) -> str:
         """Infers the labels directory based on the images directory structure."""
         parent_dir_name = get_directory_name(self.images_dir)
         labels_dir = os.path.join(
@@ -162,7 +163,9 @@ class ImageAnnotator:
         sys.exit(1)
 
     @staticmethod
-    def parse_yolo_label_file(file_path: str):
+    def parse_yolo_label_file(
+        file_path: str,
+    ) -> List[Tuple[int, float, float, float, float]]:
         """
         Parses a YOLO formatted label file.
 
@@ -190,7 +193,7 @@ class ImageAnnotator:
 
         return labels
 
-    def parse_label_and_annotate_img(self, img_path: str):
+    def parse_label_and_annotate_img(self, img_path: str) -> np.ndarray:
         """Reads an image and overlays annotations based on label files."""
         frame = cv2.imread(img_path)
 
@@ -219,14 +222,14 @@ class ImageAnnotator:
 
         return frame
 
-    def write_annotated_img_by_labels(self, img_path: str):
+    def write_annotated_img_by_labels(self, img_path: str) -> None:
         """Writes an annotated image to the output directory."""
         frame = self.parse_label_and_annotate_img(img_path)
         out_name = os.path.join(self.out_dir, os.path.basename(img_path))
         cv2.imwrite(out_name, frame)
         logger.info(f"Image saved with annotations: {out_name}")
 
-    def process_images(self):
+    def process_images(self) -> None:
         """Processes all images in the images directory."""
         image_files = get_files_with_extension(
             self.images_dir, (".jpg", ".png", ".jpeg")
@@ -236,7 +239,7 @@ class ImageAnnotator:
             self.write_annotated_img_by_labels(file)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="A script to annotate images based on YOLO format label files "
         "by overlaying bounding boxes and optional labels on the images. "
@@ -321,7 +324,7 @@ def main():
         sys.exit(1)
 
 
-def signal_handler(sig, frame):
+def signal_handler(sig, frame) -> None:
     logger.info("You pressed Ctrl+C! Exiting gracefully...")
     sys.exit(0)
 

@@ -23,6 +23,7 @@ class PinSchema(BaseModel):
             ...,
             title="Name",
             description="Pin Name",
+            json_schema_extra={"shared": True},
             examples=["GPIO17", "GND", "TR00 TAP", "RUN"],
         ),
     ]

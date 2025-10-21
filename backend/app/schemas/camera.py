@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Self
 
 
 class PhotoResponse(BaseModel):
@@ -122,7 +122,7 @@ class CameraSettings(BaseModel):
     ] = False
 
     @model_validator(mode="after")
-    def validate_dimensions(cls, values):
+    def validate_dimensions(cls, values) -> Self:
         width = values.width
         height = values.height
         if (width is not None and height is None) or (

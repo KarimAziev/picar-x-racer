@@ -5,9 +5,18 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 from app.core.px_logger import Logger
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.connection import ConnectionEvent
-from app.schemas.robot.battery import INA219BatteryDriverConfig, SunfounderBatteryConfig
+from app.schemas.robot.battery import (
+    INA219BatteryDriverConfig,
+    INA226BatteryDriverConfig,
+    SunfounderBatteryConfig,
+)
 from app.schemas.robot.config import HardwareConfig
-from robot_hat import BatteryABC, INA219Battery, INA219Config, SunfounderBattery
+from robot_hat import (
+    BatteryABC,
+    INA219Battery,
+    INA226Battery,
+    SunfounderBattery,
+)
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -76,8 +85,19 @@ class BatteryService:
 
         if old_config_dict and next_battery_config:
             for key, value in old_config_dict.items():
+                next_value = next_battery_config.get(key)
+                _log.info(
+                    "KEY=%s, OLD_VALUE=%s",
+                    key,
+                    value,
+                )
+                _log.info(
+                    "KEY=%s, NEXT_VALUE= %s",
+                    key,
+                    next_value,
+                )
                 if key == "driver":
-                    should_close_adapter = next_battery_config.get(key) != value
+                    should_close_adapter = next_value != value
                 else:
                     should_cancel_task = (
                         should_cancel_task or value != next_battery_config.get(key)
@@ -136,7 +156,7 @@ class BatteryService:
     def make_battery_adapter(
         config: HardwareConfig,
         bus_manager: "SMBusManager",
-    ) -> Union[INA219Battery, SunfounderBattery, None]:
+    ) -> Union[INA219Battery, INA226Battery, SunfounderBattery, None]:
         if config.battery is None or not config.battery.enabled:
             return None
 
@@ -145,16 +165,13 @@ class BatteryService:
         if isinstance(driver, INA219BatteryDriverConfig):
             return INA219Battery(
                 address=driver.addr_int,
-                config=INA219Config(
-                    bus_voltage_range=driver.config.bus_voltage_range,
-                    gain=driver.config.gain,
-                    bus_adc_resolution=driver.config.bus_adc_resolution,
-                    shunt_adc_resolution=driver.config.shunt_adc_resolution,
-                    mode=driver.config.mode,
-                    current_lsb=driver.config.current_lsb,
-                    calibration_value=driver.config.calibration_value,
-                    power_lsb=driver.config.power_lsb,
-                ),
+                config=driver.to_dataclass(),
+                bus=bus,
+            )
+        elif isinstance(driver, INA226BatteryDriverConfig):
+            return INA226Battery(
+                address=driver.addr_int,
+                config=driver.to_dataclass(),
                 bus=bus,
             )
         elif isinstance(driver, SunfounderBatteryConfig):

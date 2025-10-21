@@ -6,7 +6,7 @@ from app.schemas.robot.pwm import PWMDriverConfig
 from app.util.validator import ValidationRuleBuilder, Validator
 from pydantic import BaseModel, Field, model_validator
 from robot_hat import ServoCalibrationMode
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Self
 
 logger = Logger(__name__)
 
@@ -49,6 +49,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             title="Reversed",
+            json_schema_extra={"shared": True},
             description="Indicates whether the input angle should be logically reversed before being sent to the servo",
         ),
     ] = False
@@ -57,6 +58,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             description="A name for the servo (useful for debugging/logging). ",
+            json_schema_extra={"shared": True},
             examples=["Steering Direction", "Camera Pan"],
         ),
     ]
@@ -66,7 +68,7 @@ class ServoConfig(BaseModel):
             0.0,
             description="A calibration offset for fine-tuning servo angles.",
             examples=[0.0, 0.4, -4.2],
-            json_schema_extra={"type": "calibration_offset"},
+            json_schema_extra={"type": "calibration_offset", "shared": True},
         ),
     ] = 0
     saved_calibration_offset: Annotated[
@@ -77,6 +79,7 @@ class ServoConfig(BaseModel):
             examples=[0.0, 0.4, -4.2],
             json_schema_extra={
                 "type": "number",
+                "shared": True,
                 "props": {"disabled": True},
             },
         ),
@@ -86,6 +89,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             description="Minimum allowable angle for the servo",
+            json_schema_extra={"shared": True},
             examples=[-30, -45],
             le=360,
             ge=-360,
@@ -96,6 +100,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             description="Maximum allowable angle for the servo",
+            json_schema_extra={"shared": True},
             examples=[30, 45],
             le=360,
             ge=-360,
@@ -108,6 +113,7 @@ class ServoConfig(BaseModel):
             description="The step value by which the servo's angle decreases. Must be a negative integer.",
             examples=[-5, -10],
             lt=0,
+            json_schema_extra={"shared": True},
         ),
     ] = -5
     inc_step: Annotated[
@@ -117,6 +123,7 @@ class ServoConfig(BaseModel):
             description="The step value by which the servo's angle increases. Must be a positive integer.",
             gt=0,
             examples=[5, 2],
+            json_schema_extra={"shared": True},
         ),
     ] = 5
     min_pulse: Annotated[
@@ -127,6 +134,7 @@ class ServoConfig(BaseModel):
             examples=[500],
             json_schema_extra={
                 "cross_field_validation": {"lessThan": "max_pulse"},
+                "shared": True,
             },
             ge=20,
         ),
@@ -137,6 +145,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             description="The maximum pulse width in microseconds (µs) corresponding to the servo's maximum position.",
+            json_schema_extra={"shared": True},
             examples=[2500],
             le=3000,
         ),
@@ -155,12 +164,13 @@ class ServoConfig(BaseModel):
             json_schema_extra={
                 "tooltipHelp": "Specifies how calibration offsets are applied.",
                 "title": "Calibration mode",
+                "shared": True,
             },
         ),
     ] = ServoCalibrationMode.NEGATIVE
 
     @model_validator(mode="after")
-    def validate_servo_config(self):
+    def validate_servo_config(self) -> Self:
         if self.saved_calibration_offset is None:
             self.saved_calibration_offset = self.calibration_offset
 

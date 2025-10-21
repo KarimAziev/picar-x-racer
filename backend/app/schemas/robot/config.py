@@ -24,7 +24,7 @@ class HardwareConfig(BaseModel):
     """
 
     steering_servo: Annotated[
-        Union[GPIOAngularServoConfig, AngularServoConfig, None],
+        Union[GPIOAngularServoConfig, AngularServoConfig],
         Field(
             ...,
             title="Steering Servo",
@@ -33,9 +33,9 @@ class HardwareConfig(BaseModel):
                 "cross_field_validation": servo_cross_field_validators,
             },
         ),
-    ] = None
+    ]
     cam_pan_servo: Annotated[
-        Union[GPIOAngularServoConfig, AngularServoConfig, None],
+        Union[GPIOAngularServoConfig, AngularServoConfig],
         Field(
             ...,
             title="Camera Pan Servo",
@@ -44,32 +44,32 @@ class HardwareConfig(BaseModel):
                 "cross_field_validation": servo_cross_field_validators,
             },
         ),
-    ] = None
+    ]
     cam_tilt_servo: Annotated[
-        Union[GPIOAngularServoConfig, AngularServoConfig, None],
+        Union[GPIOAngularServoConfig, AngularServoConfig],
         Field(
             ...,
             title="Camera Tilt Servo",
             description="Configuration for the camera tilt servo.",
         ),
-    ] = None
+    ]
 
     left_motor: Annotated[
-        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig, None],
+        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig],
         Field(
             ...,
             title="Left Motor",
             description="Configuration for the left motor.",
         ),
-    ] = None
+    ]
     right_motor: Annotated[
-        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig, None],
+        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig],
         Field(
             ...,
             title="Right Motor",
             description="Configuration for the right motor.",
         ),
-    ] = None
+    ]
 
     battery: Annotated[
         Optional[BatteryConfig],

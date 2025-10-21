@@ -26,7 +26,7 @@ MotorDirectionField = Annotated[
         ge=-1,
         le=1,
         description="Initial motor direction calibration (+1/-1)",
-        json_schema_extra={"type": "motor_direction"},
+        json_schema_extra={"type": "motor_direction", "shared": True},
         examples=[1, -1],
     ),
 ]
@@ -34,9 +34,9 @@ MotorDirectionField = Annotated[
 
 class MotorBaseConfig(BaseModel):
     enabled: EnabledField = True
-    calibration_direction: MotorDirectionField
+    calibration_direction: MotorDirectionField = 1
     saved_calibration_direction: Annotated[
-        Optional[MotorDirection],
+        MotorDirection,
         Field(
             default=1,
             ge=-1,
@@ -44,16 +44,18 @@ class MotorBaseConfig(BaseModel):
             description="Saved motor direction calibration (+1/-1)",
             json_schema_extra={
                 "type": "integer",
+                "shared": True,
                 "props": {"disabled": True, "hidden": True},
             },
             examples=[1, -1],
         ),
-    ] = None
+    ] = 1
     name: Annotated[
         str,
         Field(
             ...,
             title="Name",
+            json_schema_extra={"shared": True},
             description="Human-readable name for the motor",
             examples=["left", "right"],
         ),
@@ -63,14 +65,15 @@ class MotorBaseConfig(BaseModel):
         Field(
             ...,
             title="Max speed",
+            json_schema_extra={"shared": True},
             description="Maximum allowable speed for the motor.",
             examples=[100, 90],
             gt=0,
         ),
-    ]
+    ] = 80
 
     @model_validator(mode="after")
-    def validate_motor_config(self):
+    def validate_motor_config(self) -> "MotorBaseConfig":
         """
         Ensure logical consistency in motor configuration:
         - calibration_direction should be either 1 or -1.
@@ -157,7 +160,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
             ...,
             json_schema_extra={"type": "pin"},
             title="Backward PIN",
-            description="The GPIO pin that the forward input of the motor driver chip "
+            description="The GPIO pin that the backward input of the motor driver chip "
             "is connected to.",
         ),
     ]
@@ -176,6 +179,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="PWM",
+            json_schema_extra={"shared": True},
             description="Whether to construct PWM Output Device instances for "
             "the motor controller pins, allowing both direction and speed control.",
         ),
@@ -202,7 +206,7 @@ class PhaseMotorConfig(MotorBaseConfig):
         Union[int, str],
         Field(
             ...,
-            title="Enable PIN",
+            title="Phase PIN",
             json_schema_extra={"type": "pin"},
             description="GPIO pin for the phase/direction. ",
         ),
@@ -212,6 +216,7 @@ class PhaseMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="PWM",
+            json_schema_extra={"shared": True},
             description="Whether to construct PWM Output Device instances for "
             "the motor controller pins, allowing both direction and speed control.",
         ),
@@ -223,8 +228,7 @@ class PhaseMotorConfig(MotorBaseConfig):
             ...,
             title="Enable PIN",
             json_schema_extra={"type": "pin"},
-            description="The GPIO pin that enables the motor. "
-            "Required for **some** motor controller boards.",
+            description="The GPIO pin that the enable (speed) input of the motor driver chip is connected to.",
         ),
     ]
 

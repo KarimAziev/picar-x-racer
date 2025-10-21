@@ -96,8 +96,12 @@ export const detectCandidateIndex = (
   parentSchema?: JSONSchema | null,
   defs?: Record<string, JSONSchema> | undefined,
 ): number => {
-  if (!data || isEmptyArray(effectiveAnyOf)) {
+  if (isEmptyArray(effectiveAnyOf)) {
     return 0;
+  }
+
+  if (data === null) {
+    return effectiveAnyOf.findIndex((item) => item.type === "null");
   }
 
   if (
@@ -108,8 +112,9 @@ export const detectCandidateIndex = (
       parentSchema.discriminator.propertyName,
     )
   ) {
-    const discVal = (data as any)[parentSchema.discriminator.propertyName];
+    const discVal = data[parentSchema.discriminator.propertyName];
     const mapping = parentSchema.discriminator.mapping;
+
     const mappedRef = mapping && mapping[discVal];
 
     if (mappedRef) {
@@ -122,12 +127,16 @@ export const detectCandidateIndex = (
 
       if (Array.isArray(rawOptions) && rawOptions.length > 0) {
         const exactIdx = rawOptions.findIndex((opt) => opt.$ref === mappedRef);
-        if (exactIdx >= 0) return exactIdx;
+        if (exactIdx >= 0) {
+          return exactIdx;
+        }
 
         const mappedName = mappedRef.split("/").pop();
         if (mappedName) {
           const idxByName = rawOptions.findIndex((opt) => {
-            if (opt.$ref) return opt.$ref.split("/").pop() === mappedName;
+            if (opt.$ref) {
+              return opt.$ref.split("/").pop() === mappedName;
+            }
             const resolved = resolveRef(opt, defs);
             return (
               !!resolved &&
@@ -196,12 +205,19 @@ export const fillDefaults = (
   if (!schema || !target) {
     return;
   }
+
   if (schema.type === "object" && schema.properties) {
     for (const [key, propSchema] of Object.entries(schema.properties)) {
       if (!isUndefined(propSchema?.const)) {
         target[key] = propSchema.const;
-      } else if (!isUndefined((propSchema as any).default)) {
+      } else if (
+        !isUndefined((propSchema as any).default) &&
+        (propSchema.shared ? isUndefined(target[key]) : true)
+        // !isNull((propSchema as any).default)
+      ) {
         target[key] = (propSchema as any).default;
+      } else if (isPlainObject(target) && !target.hasOwnProperty(key)) {
+        target[key] = null;
       }
       if (
         propSchema &&
@@ -524,7 +540,18 @@ export const validateSimpleType = (
 ) => {
   let errorMsg: string = "";
 
-  if (effectiveSchema.type) {
+  const isNotRequired = (
+    rawSchema?.anyOf ||
+    rawSchema?.oneOf ||
+    rawSchema?.items?.oneOf ||
+    rawSchema?.items?.anyOf ||
+    []
+  ).find((item) => item.type === "null");
+
+  const isModelNull = model === null;
+  const isModelValidNull = isNotRequired && isModelNull;
+
+  if (effectiveSchema.type && !isModelValidNull) {
     let validType = true;
     switch (effectiveSchema.type) {
       case "string":
@@ -555,6 +582,9 @@ export const validateSimpleType = (
           validType = true;
         } else if (isString(model)) {
           validType = /^0x[0-9a-fA-F]+$/.test(model);
+          if (!validType) {
+            errorMsg = "Invalid hex number!";
+          }
         } else {
           validType = false;
         }
@@ -563,6 +593,9 @@ export const validateSimpleType = (
         validType = true;
     }
 
+    if (!isEmptyString(errorMsg)) {
+      return errorMsg;
+    }
     if (!validType) {
       errorMsg =
         isNil(model) || (isString(model) && isEmptyString(model.trim()))
@@ -600,7 +633,7 @@ export const validateSimpleType = (
     }
   }
 
-  if (typeof model === "string" && effectiveSchema.pattern) {
+  if (isString(model) && effectiveSchema.pattern) {
     const reg = new RegExp(effectiveSchema.pattern);
     if (!reg.test(model)) {
       errorMsg += ` Must match pattern "${effectiveSchema.pattern}".`;
@@ -644,8 +677,13 @@ export const validateAll = (
         rawSchema,
         defs,
       );
-      effectiveSchema = options[candidateIndex] as JSONSchema;
+
+      effectiveSchema = (options[candidateIndex] || rawSchema) as JSONSchema;
     }
+  }
+
+  if (!effectiveSchema) {
+    return null;
   }
 
   let errors: Record<string, any> = {};
