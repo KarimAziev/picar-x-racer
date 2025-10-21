@@ -1,4 +1,4 @@
-![Platform](<https://img.shields.io/badge/Platform-Raspberry%20PI%204%20%26%205-hsl(340%2C%2070%25%2C%2050%25)>) ![Python Support](https://img.shields.io/badge/Python-3.9%20%E2%80%93%203.12-blue?logo=python) ![Node.js Support](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js) ![License](https://img.shields.io/github/license/KarimAziev/picar-x-racer) ![Picar-X Racer](https://img.shields.io/badge/Picar--X%20Racer-Powered%20Car-8A2BE2?logo=https://github.com/user-attachments/assets/9a735e3f-a0dd-4cff-aa90-19b28e251317)
+![Platform](<https://img.shields.io/badge/Platform-Raspberry%20PI%204%20%26%205-hsl(340%2C%2070%25%2C%2050%25)>) ![Node.js Support](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js) ![License](https://img.shields.io/github/license/KarimAziev/picar-x-racer) ![Picar-X Racer](https://img.shields.io/badge/Picar--X%20Racer-Powered%20Car-8A2BE2?logo=https://github.com/user-attachments/assets/9a735e3f-a0dd-4cff-aa90-19b28e251317)
 
 # Picar-X Racer
 
@@ -69,8 +69,8 @@ Picar-X Racer is a robotics and AI platform designed to control either the [Pica
 
 ## Prerequisites
 
-- Python 3.9-3.12
-- Node.js (version 20 or higher)
+- Python 3.10-3.12
+- Node.js (version 22 or higher)
 - make
 
 ## Supported Camera Backends
