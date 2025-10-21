@@ -30,14 +30,12 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from "vue";
-
 import { useRobotStore } from "@/features/settings/stores";
-import JsonSchema from "@/ui/JsonSchema/JsonSchema.vue";
 import { cloneDeep } from "@/util/obj";
 import { isDataChangedPred } from "@/features/settings/components/robot/util";
-import type { Data } from "@/features/settings/stores/robot";
 import { validateAll, resolveRefRecursive } from "@/ui/JsonSchema/util";
 import { isPlainObject } from "@/util/guards";
+import JsonSchema from "@/ui/JsonSchema/JsonSchema.vue";
 import Loader from "@/features/settings/components/robot/Loader.vue";
 
 defineProps<{ idPrefix: string }>();
@@ -55,19 +53,22 @@ const resolvedSchemas = computed(() => {
   if (!store.config || !store.config["$defs"]) {
     return null;
   }
+
   return resolveRefRecursive(
     cloneDeep(store.config),
     cloneDeep(store.config["$defs"]),
   );
 });
 
-const invalidData = computed(() => {
-  if (!resolvedSchemas.value) {
-    return null;
-  }
-
-  return validateAll(resolvedSchemas.value, currValue.value);
-});
+const invalidData = computed(() =>
+  !resolvedSchemas.value
+    ? null
+    : validateAll(
+        resolvedSchemas.value,
+        currValue.value,
+        resolvedSchemas.value?.$defs,
+      ),
+);
 
 const disabled = computed(() => {
   if (isPlainObject(invalidData.value)) {

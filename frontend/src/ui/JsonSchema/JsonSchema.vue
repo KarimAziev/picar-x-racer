@@ -277,7 +277,12 @@ const effectiveAnyOf = computed(() =>
 );
 const anyOfOptions = computed(() => mapAnyOfOptions(effectiveAnyOf.value));
 const detectedCandidateIndex = computed(() =>
-  detectCandidateIndex(localValue.value, effectiveAnyOf.value),
+  detectCandidateIndex(
+    localValue.value,
+    effectiveAnyOf.value,
+    resolvedSchema.value,
+    props.defs,
+  ),
 );
 
 const selections = ref<number[]>([]);
