@@ -82,7 +82,10 @@ from app.util.file_util import (
 def export_yolo_model_to_edgetpu(
     yolo_model_path: str, target_path: Optional[str], imgsz: int
 ) -> None:
-    from ultralytics import YOLO
+    try:
+        from ultralytics import YOLO  # type: ignore[reportPrivateImportUsage]
+    except Exception:
+        from ultralytics.models.yolo import YOLO
 
     from app.config.config import settings
 

@@ -54,7 +54,10 @@ from app.config.config import settings
 from app.managers.model_manager import ModelManager
 
 if TYPE_CHECKING:
-    from ultralytics import YOLO
+    try:
+        from ultralytics import YOLO  # type: ignore[reportPrivateImportUsage]
+    except Exception:
+        from ultralytics.models.yolo import YOLO
 
 
 class DummyYOLO:

@@ -8,7 +8,11 @@ from app.util.video_utils import letterbox
 
 if TYPE_CHECKING:
     from app.adapters.hailo_adapter import YOLOHailoAdapter
-    from ultralytics import YOLO
+
+    try:
+        from ultralytics import YOLO  # type: ignore[reportPrivateImportUsage]
+    except Exception:
+        from ultralytics.models.yolo import YOLO
 
 _log = Logger(__name__)
 
