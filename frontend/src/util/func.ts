@@ -94,3 +94,8 @@ export function allPass<T>(fns: ((...args: any) => boolean)[], value?: T) {
     ? <T>(value: T) => fns.every((fn) => fn(value))
     : fns.every((fn) => fn(value));
 }
+
+export const compareByLength = <T extends { length?: number }>(
+  a?: T,
+  b?: T,
+): number => (a?.length ?? 0) - (b?.length ?? 0);

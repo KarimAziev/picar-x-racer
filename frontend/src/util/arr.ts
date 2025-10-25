@@ -1,3 +1,5 @@
+import { compareByLength } from "@/util/func";
+
 export const uniq = <T>(items: T[]) => Array.from(new Set(items));
 
 export const takeWhile = <T>(items: T[], pred: (arg: T) => boolean) => {
@@ -8,3 +10,9 @@ export const takeWhile = <T>(items: T[], pred: (arg: T) => boolean) => {
   }
   return result;
 };
+
+export function sortByLengthAsc<T extends { length?: number }>(
+  items: T[],
+): T[] {
+  return [...items].sort(compareByLength);
+}

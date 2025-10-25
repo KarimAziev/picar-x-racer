@@ -18,7 +18,24 @@
           @update:model-value="updateDevice"
           :nodes="devices as TreeNode[]"
           v-model:model-value="selectedDevice as unknown as TreeNode"
-        />
+        >
+          <template #nodeLabel="slot">
+            <div :class="slot.class">
+              <span v-if="/^[a-z_0-9]+[\s][^-]/gim.test(slot.label as string)">
+                <span class="font-bold">
+                  {{ slot.label.split(" ")[0] }}
+                </span>
+                &nbsp;
+                <span>
+                  {{ (slot.label.split(" ") as string[]).slice(1).join(" ") }}
+                </span>
+              </span>
+              <span v-else>
+                {{ slot.label }}
+              </span>
+            </div>
+          </template>
+        </TreeSelect>
       </Field>
     </div>
 
@@ -201,12 +218,21 @@ import {
   findAlternative,
 } from "@/features/settings/components/camera/util";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
+import { commonPathPrefix } from "@/util/str";
+import { sortByLengthAsc } from "@/util/arr";
 
 const camStore = useCameraStore();
 
-const devices = computed(
-  () => mapChildren(groupDevices(camStore.devices)) as DeviceNode[],
-);
+const devices = computed(() => {
+  const grouped = mapChildren(groupDevices(camStore.devices)) as DeviceNode[];
+  const prefix = commonPathPrefix(grouped.map((item) => item.label));
+
+  return grouped.map(({ label, ...item }) => ({
+    ...item,
+    tooltip: label,
+    label: sortByLengthAsc(label.substring(prefix.length).split(" ")).join(" "),
+  }));
+});
 
 const useGstreamer = ref(camStore.data.use_gstreamer);
 
@@ -235,10 +261,9 @@ const stepwisePresetValue = ref<PresetOptionValue | undefined>(
 const label = computed(() => {
   const val = selectedDevice.value?.device;
   const name = selectedDevice.value?.name;
-  const camLabel = [name, val]
-    .filter((v) => !!v)
-    .sort((a, b) => (a?.length || 0) - (b?.length || 0))
-    .join(": ");
+  const camLabel = sortByLengthAsc(
+    [name, val].filter((v) => !!v) as string[],
+  ).join(": ");
 
   return camLabel.length > 0 ? camLabel : "Camera Device: ";
 });

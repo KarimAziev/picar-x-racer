@@ -25,7 +25,7 @@
     @show="handleSelectBeforeShow"
     @hide="handleSelectBeforeHide"
   >
-    <div class="relative w-[280px] flex flex-col">
+    <div class="relative min-w-72 flex flex-col" :class="popoverContentClass">
       <template v-if="$slots.header">
         <slot name="header"></slot>
       </template>
@@ -46,9 +46,19 @@
         >
           <template #row="{ node, options }">
             <RowWrapper
-              v-tooltip="node[labelProp]"
+              v-tooltip="{
+                value: node.tooltip || node[labelProp],
+                pt: {
+                  root: {
+                    style: 'width: max-content; display: flex;',
+                  },
+                  text: {
+                    style: 'white-space: pre;',
+                  },
+                },
+              }"
               @click="handleSelectOrExpand(node)"
-              class="grid grid-cols-[10%_90%] gap-y-2 items-center h-[40px] hover:bg-mask focus:border focus:border-form-field-focus-border-color relative px-2"
+              class="grid grid-cols-[10%_90%] gap-y-2 items-center h-[40px] focus:border focus:border-form-field-focus-border-color relative px-2 transition"
               :draggable="false"
               :data-virtual-index="options.index"
               :path="node[keyProp]"
@@ -58,6 +68,8 @@
               :class="{
                 [rowClass as string]: !!rowClass,
                 'cursor-pointer': selectable(node) || node.children,
+                'hover:bg-mask': !isNodeSelected(node),
+                'bg-highlight': isNodeSelected(node) || hasSelectedChild(node),
               }"
             >
               <template v-if="$slots.nodeExpand">
@@ -74,7 +86,15 @@
                 :children="node.children"
               />
 
-              <div class="block truncate">
+              <template v-if="$slots.nodeLabel">
+                <slot
+                  name="nodeLabel"
+                  class="block truncate"
+                  :label="node.label"
+                  v-bind="node"
+                ></slot>
+              </template>
+              <div class="block truncate" v-else>
                 {{ node && node[labelProp] }}
               </div>
             </RowWrapper>
@@ -113,6 +133,7 @@ export interface Props extends TreeProps {
   selectable?: (node: TreeNode) => boolean;
   listClass?: string;
   placeholder?: string | null;
+  popoverContentClass?: string;
 }
 
 const virtualTree = useTemplateRef("virtualTree");
@@ -168,6 +189,34 @@ const handleToggleExpandNode = (node: TreeNode) => {
   if (node.children) {
     toggleExpand(node[props.keyProp]);
   }
+};
+
+const isNodeSelected = (node: TreeNode) => {
+  return !!(
+    props.modelValue && props.modelValue[props.keyProp] === node[props.keyProp]
+  );
+};
+
+const hasSelectedChild = (node: TreeNode) => {
+  if (!props.modelValue || !node.children || node.children.length === 0) {
+    return false;
+  }
+
+  const targetKey = props.modelValue[props.keyProp];
+
+  // iterative DFS to avoid recursion depth issues
+  const stack: TreeNode[] = [...node.children];
+  while (stack.length) {
+    const n = stack.pop()!;
+    if (n[props.keyProp] === targetKey) {
+      return true;
+    }
+    if (n.children && n.children.length) {
+      stack.push(...n.children);
+    }
+  }
+
+  return false;
 };
 
 const handleSelectOrExpand = (node: TreeNode, close: boolean = true) => {

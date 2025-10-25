@@ -106,3 +106,41 @@ export const stringifyArrSafe = (
   items
     .flatMap((v) => (isNil(v) ? [] : isNumber(v) ? [`${v}`] : [v]))
     .join(separator);
+
+/**
+ * Returns the longest common path-like prefix from `paths`, ending at the last separator.
+ * If no common separator boundary exists, returns an empty string.
+ *
+ * Examples:
+ * commonPathPrefix([
+ *   "picamera2:/base/axi/pcie@1000120000/rp1/i2c@88000/imx708@1a",
+ *   "picamera2:/base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a"
+ * ]) -> "picamera2:/base/axi/pcie@1000120000/rp1/"
+ *
+ * commonPathPrefix(["/dev/video0", "/dev/video1"]) -> "/dev/"
+ */
+export function commonPathPrefix(paths: string[], sep: string = "/"): string {
+  if (paths.length === 0) {
+    return "";
+  }
+
+  let prefix = paths[0];
+  for (let i = 1; i < paths.length; i++) {
+    const s = paths[i];
+    const max = Math.min(prefix.length, s.length);
+    let j = 0;
+    while (j < max && prefix[j] === s[j]) {
+      j++;
+    }
+    prefix = prefix.slice(0, j);
+    if (prefix === "") {
+      return "";
+    }
+  }
+
+  const lastSep = prefix.lastIndexOf(sep);
+  if (lastSep === -1) {
+    return "";
+  }
+  return prefix.slice(0, lastSep + 1);
+}
