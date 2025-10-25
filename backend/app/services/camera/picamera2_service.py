@@ -14,7 +14,7 @@ _log = Logger(name=__name__)
 
 PIXEL_FORMATS_TO_PICAMERA2_MAP: Dict[str, str] = {
     "I420": "YUV420",
-    "YV12": "YVU420",
+    # "YV12": "YVU420",
     "RGBx": "XRGB8888",
     "RGB": "RGB888",
     "BGR": "BGR888",
@@ -129,12 +129,11 @@ class PicameraService(VideoDeviceABC):
                         max_fps = round(max_fps)
                         api = "picamera2"
                         device_full = f"{api}:{device_path}"
-                        name = device.get("Model")
 
                         formats = [
                             DeviceStepwise(
                                 device=device_full,
-                                name=name,
+                                name=device_model,
                                 api=api,
                                 height_step=2,
                                 width_step=2,
@@ -154,7 +153,7 @@ class PicameraService(VideoDeviceABC):
                         detected.append(
                             DeviceStepwise(
                                 device=device_full,
-                                name=name,
+                                name=device_model,
                                 api=api,
                                 height_step=2,
                                 width_step=2,
