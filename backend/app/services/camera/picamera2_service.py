@@ -71,7 +71,7 @@ class PicameraService(VideoDeviceABC):
                     device_location = device.get("Location")
 
                     _log.info(
-                        f"Probing picamera2 device {device_num} ({device_path})"
+                        f"Probing picamera2 device {device_num} ({device_path}) "
                         f"model={device_model}, "
                         f"rotation={device_rotation}, "
                         f"location={device_location}"
