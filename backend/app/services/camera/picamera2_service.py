@@ -1,4 +1,6 @@
 import math
+import threading
+import time
 from functools import lru_cache
 from typing import Dict, List, Optional, Union
 
@@ -25,6 +27,8 @@ PICAMERA2_TO_PIXEL_FORMATS_MAP: Dict[str, str] = {
 
 PICAMERA_TO_PIXEL_FORMATS_KEYS = PIXEL_FORMATS_TO_PICAMERA2_MAP.keys()
 
+_picamera2_lock = threading.Lock()
+
 
 class PicameraService(VideoDeviceABC):
     def list_video_devices(self) -> List[DeviceType]:
@@ -32,26 +36,63 @@ class PicameraService(VideoDeviceABC):
 
     @lru_cache()
     def _list_video_devices(self) -> List[DeviceType]:
-        try:
-            from picamera2 import Picamera2
-        except ImportError:
-            _log.warning("Picamera2 is not installed")
-            return []
-        except Exception:
-            _log.warning("Unexpected error while importing Picamera2", exc_info=True)
-            return []
+        with _picamera2_lock:
+            try:
+                from picamera2 import Picamera2
+            except ImportError:
+                _log.warning("Picamera2 is not installed")
+                return []
+            except Exception:
+                _log.warning(
+                    "Unexpected error while importing Picamera2", exc_info=True
+                )
+                return []
 
-        _log.info("Listing picamera2 devices")
+            _log.info("Listing picamera2 devices")
+
+            try:
+                devices: List[GlobalCameraInfo] = Picamera2.global_camera_info()
+            except Exception:
+                _log.error("Failed to retrieve Picamera devices:", exc_info=True)
+                return []
 
         try:
             devices: List[GlobalCameraInfo] = Picamera2.global_camera_info()
             detected: List[DeviceType] = []
 
-            for i, device in enumerate(devices):
+            for device in devices:
                 picam2: Optional[Picamera2] = None
                 try:
-                    picam2 = Picamera2(i)
-                    sensor_modes = picam2.sensor_modes
+
+                    device_path = device.get("Id")
+                    device_num = device.get("Num")
+                    device_model = device.get("Model")
+                    device_rotation = device.get("Rotation")
+                    device_location = device.get("Location")
+
+                    _log.info(
+                        f"Probing picamera2 device {device_num} ({device_path})"
+                        f"model={device_model}, "
+                        f"rotation={device_rotation}, "
+                        f"location={device_location}"
+                    )
+
+                    time.sleep(0.1)
+
+                    with _picamera2_lock:
+                        try:
+                            picam2 = Picamera2(device_num)
+                            sensor_modes = picam2.sensor_modes
+
+                        finally:
+                            if picam2 is not None:
+                                try:
+                                    picam2.close()
+                                except Exception as e:
+                                    _log.error(
+                                        "Failed to close picamera2 instance: %s", e
+                                    )
+                                picam2 = None
 
                     sizes = [
                         mode.get("size")
@@ -86,7 +127,6 @@ class PicameraService(VideoDeviceABC):
                         max_height = int(max(heights))
                         min_fps = math.ceil(min_fps)
                         max_fps = round(max_fps)
-                        device_path: str = device.get("Id")
                         api = "picamera2"
                         device_full = f"{api}:{device_path}"
                         name = device.get("Model")
@@ -131,17 +171,19 @@ class PicameraService(VideoDeviceABC):
                         )
                         detected.extend(formats)
                 except RuntimeError as e:
-                    _log.error("Picamera runtime error for device %d: %s", i, e)
+                    _log.error(
+                        "Picamera runtime error for device %d: %s, %s",
+                        device.get("Num"),
+                        device.get("Model"),
+                        e,
+                    )
                 except Exception:
                     _log.error(
-                        "Unexpected Picamera error for device %d:", i, exc_info=True
+                        "Unexpected Picamera error for device %d:",
+                        device.get("Num"),
+                        device.get("Model"),
+                        exc_info=True,
                     )
-                finally:
-                    if picam2 is not None:
-                        try:
-                            picam2.close()
-                        except Exception as e:
-                            _log.error("Failed to close picamera2 instance: %s", e)
 
             return detected
         except Exception as e:
