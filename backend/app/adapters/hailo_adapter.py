@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 from app.core.logger import Logger
 from app.util.video_utils import letterbox
-from google_speech_pyplay.speech import Generator
 
 logger = Logger(__name__)
 
