@@ -106,6 +106,9 @@ class ModelManager:
         except KeyboardInterrupt:
             _log.warning("Detection model context received KeyboardInterrupt.")
             return self.model, "Detection model context received KeyboardInterrupt."
+        except Exception as e:
+            _log.error("An error occured while loading the model", exc_info=True)
+            return self.model, str(e)
 
     def __exit__(
         self,
