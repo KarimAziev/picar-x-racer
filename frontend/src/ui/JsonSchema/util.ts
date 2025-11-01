@@ -93,22 +93,94 @@ export const mapEnumOptions = (resolvedSchema: JSONSchema | null) =>
 export const detectCandidateIndex = (
   data: Record<string | number, any> | null,
   effectiveAnyOf: JSONSchema[],
+  parentSchema?: JSONSchema | null,
+  defs?: Record<string, JSONSchema> | undefined,
 ): number => {
-  if (!data || isEmptyArray(effectiveAnyOf)) {
+  if (isEmptyArray(effectiveAnyOf)) {
     return 0;
   }
+
+  if (data === null) {
+    return effectiveAnyOf.findIndex((item) => item.type === "null");
+  }
+
+  if (
+    parentSchema?.discriminator &&
+    parentSchema.discriminator.propertyName &&
+    Object.prototype.hasOwnProperty.call(
+      data,
+      parentSchema.discriminator.propertyName,
+    )
+  ) {
+    const discVal = data[parentSchema.discriminator.propertyName];
+    const mapping = parentSchema.discriminator.mapping;
+
+    const mappedRef = mapping && mapping[discVal];
+
+    if (mappedRef) {
+      const rawOptions =
+        parentSchema.anyOf ||
+        parentSchema.oneOf ||
+        parentSchema.items?.anyOf ||
+        parentSchema.items?.oneOf ||
+        [];
+
+      if (Array.isArray(rawOptions) && rawOptions.length > 0) {
+        const exactIdx = rawOptions.findIndex((opt) => opt.$ref === mappedRef);
+        if (exactIdx >= 0) {
+          return exactIdx;
+        }
+
+        const mappedName = mappedRef.split("/").pop();
+        if (mappedName) {
+          const idxByName = rawOptions.findIndex((opt) => {
+            if (opt.$ref) {
+              return opt.$ref.split("/").pop() === mappedName;
+            }
+            const resolved = resolveRef(opt, defs);
+            return (
+              !!resolved &&
+              (resolved.title === mappedName ||
+                (resolved as any).$id === mappedName)
+            );
+          });
+          if (idxByName >= 0) {
+            return idxByName;
+          }
+        }
+      }
+    }
+  }
+
   let bestIndex = 0;
   let bestScore = -1;
 
   effectiveAnyOf.forEach((schema, index) => {
+    if (schema.properties) {
+      for (const prop of Object.keys(schema.properties)) {
+        const propSchema = (schema.properties as any)[prop];
+        if (
+          propSchema &&
+          !isUndefined(propSchema.const) &&
+          Object.prototype.hasOwnProperty.call(data, prop) &&
+          (data as any)[prop] === propSchema.const
+        ) {
+          bestIndex = index;
+          bestScore = Number.POSITIVE_INFINITY;
+          return;
+        }
+      }
+    }
+
     let score = 0;
     if (schema.properties) {
       Object.keys(schema.properties).forEach((prop) => {
-        if (data.hasOwnProperty(prop)) {
+        if (Object.prototype.hasOwnProperty.call(data, prop)) {
           score++;
         }
       });
     }
+
     if (schema.type === "integer" && Number.isInteger(data)) {
       score++;
     } else if (schema.type === "number" && isNumber(data)) {
@@ -116,11 +188,13 @@ export const detectCandidateIndex = (
     } else if (schema.type === "string" && isString(data)) {
       score++;
     }
-    if (score > bestScore) {
+
+    if (bestScore !== Number.POSITIVE_INFINITY && score > bestScore) {
       bestScore = score;
       bestIndex = index;
     }
   });
+
   return bestIndex;
 };
 
@@ -128,16 +202,22 @@ export const fillDefaults = (
   target: Record<string, any>,
   schema: JSONSchema,
 ): void => {
-  if (!schema || !target) return;
+  if (!schema || !target) {
+    return;
+  }
+
   if (schema.type === "object" && schema.properties) {
     for (const [key, propSchema] of Object.entries(schema.properties)) {
       if (!isUndefined(propSchema?.const)) {
         target[key] = propSchema.const;
       } else if (
-        isUndefined(target[key]) &&
-        !isUndefined((propSchema as any).default)
+        !isUndefined((propSchema as any).default) &&
+        (propSchema.shared ? isUndefined(target[key]) : true)
+        // !isNull((propSchema as any).default)
       ) {
         target[key] = (propSchema as any).default;
+      } else if (isPlainObject(target) && !target.hasOwnProperty(key)) {
+        target[key] = null;
       }
       if (
         propSchema &&
@@ -342,8 +422,8 @@ export const evaluateCondition = (
   }
 };
 
-export const resolveRefRecursive = (
-  schema: JSONSchema | TypeOption,
+export const resolveRefRecursive = <Schema extends JSONSchema | TypeOption>(
+  schema: Schema,
   defs: Record<string, JSONSchema> | undefined,
 ) => {
   if (!schema || !isPlainObject(schema)) {
@@ -390,9 +470,7 @@ export const resolveRefRecursive = (
   const mixedTypes = ["items"];
 
   nestedObjectsKeys.forEach((jkey) => {
-    const props = (schema as JSONSchema)[
-      jkey as keyof typeof schema
-    ] as JSONSchema;
+    const props = (schema as Schema)[jkey as keyof typeof schema] as JSONSchema;
     if (props && isPlainObject(props)) {
       Object.keys(props).forEach((key) => {
         props[key as keyof typeof props] = resolveRefRecursive(
@@ -404,7 +482,7 @@ export const resolveRefRecursive = (
   });
 
   arrTypes.forEach((arrKey) => {
-    const val = (schema as JSONSchema)[arrKey as keyof typeof schema];
+    const val = (schema as Schema)[arrKey as keyof typeof schema];
     if (Array.isArray(val)) {
       const mapped = val.map(
         (subSchema) => resolveRefRecursive(subSchema, defs) as JSONSchema,
@@ -414,7 +492,7 @@ export const resolveRefRecursive = (
   });
 
   mixedTypes.forEach((arrKey) => {
-    const val = (schema as JSONSchema)[arrKey as keyof typeof schema] as
+    const val = (schema as Schema)[arrKey as keyof typeof schema] as
       | JSONSchema
       | JSONSchema[];
     if (!val) {
@@ -462,7 +540,18 @@ export const validateSimpleType = (
 ) => {
   let errorMsg: string = "";
 
-  if (effectiveSchema.type) {
+  const isNotRequired = (
+    rawSchema?.anyOf ||
+    rawSchema?.oneOf ||
+    rawSchema?.items?.oneOf ||
+    rawSchema?.items?.anyOf ||
+    []
+  ).find((item) => item.type === "null");
+
+  const isModelNull = model === null;
+  const isModelValidNull = isNotRequired && isModelNull;
+
+  if (effectiveSchema.type && !isModelValidNull) {
     let validType = true;
     switch (effectiveSchema.type) {
       case "string":
@@ -493,6 +582,9 @@ export const validateSimpleType = (
           validType = true;
         } else if (isString(model)) {
           validType = /^0x[0-9a-fA-F]+$/.test(model);
+          if (!validType) {
+            errorMsg = "Invalid hex number!";
+          }
         } else {
           validType = false;
         }
@@ -501,6 +593,9 @@ export const validateSimpleType = (
         validType = true;
     }
 
+    if (!isEmptyString(errorMsg)) {
+      return errorMsg;
+    }
     if (!validType) {
       errorMsg =
         isNil(model) || (isString(model) && isEmptyString(model.trim()))
@@ -538,7 +633,7 @@ export const validateSimpleType = (
     }
   }
 
-  if (typeof model === "string" && effectiveSchema.pattern) {
+  if (isString(model) && effectiveSchema.pattern) {
     const reg = new RegExp(effectiveSchema.pattern);
     if (!reg.test(model)) {
       errorMsg += ` Must match pattern "${effectiveSchema.pattern}".`;
@@ -554,17 +649,41 @@ export const validateSimpleType = (
   return errorMsg.trim().length > 0 ? errorMsg : null;
 };
 
-export const validateAll = (rawSchema: JSONSchema | null, model: any): any => {
+export const validateAll = (
+  rawSchema: JSONSchema | null,
+  model: any,
+  defs?: Record<string, JSONSchema> | undefined,
+): any => {
   if (!rawSchema) return null;
 
   let effectiveSchema: JSONSchema = rawSchema;
-  if (rawSchema.anyOf || rawSchema.oneOf) {
-    const options = rawSchema.anyOf || rawSchema.oneOf;
+
+  if (
+    rawSchema.anyOf ||
+    rawSchema.oneOf ||
+    rawSchema.items?.anyOf ||
+    rawSchema.items?.oneOf
+  ) {
+    const options =
+      rawSchema.anyOf ||
+      rawSchema.oneOf ||
+      rawSchema.items?.anyOf ||
+      rawSchema.items?.oneOf;
 
     if (options) {
-      const candidateIndex = detectCandidateIndex(model, options);
-      effectiveSchema = options[candidateIndex];
+      const candidateIndex = detectCandidateIndex(
+        model,
+        options as JSONSchema[],
+        rawSchema,
+        defs,
+      );
+
+      effectiveSchema = (options[candidateIndex] || rawSchema) as JSONSchema;
     }
+  }
+
+  if (!effectiveSchema) {
+    return null;
   }
 
   let errors: Record<string, any> = {};
@@ -594,7 +713,7 @@ export const validateAll = (rawSchema: JSONSchema | null, model: any): any => {
 
     Object.entries(effectiveSchema.properties).forEach(([key, propSchema]) => {
       const childValue = model ? model[key] : undefined;
-      const childErrors = validateAll(propSchema, childValue);
+      const childErrors = validateAll(propSchema, childValue, defs);
       if (
         childErrors &&
         (isString(childErrors) || Object.keys(childErrors).length > 0)
@@ -610,14 +729,13 @@ export const validateAll = (rawSchema: JSONSchema | null, model: any): any => {
       return "Expected an array.";
     } else {
       const arrErrors = model.map((item: any) =>
-        validateAll(effectiveSchema.items!, item),
+        validateAll(effectiveSchema.items!, item, defs),
       );
 
       if (
         arrErrors.some(
           (itemErr) =>
-            itemErr &&
-            (typeof itemErr === "string" || Object.keys(itemErr).length > 0),
+            itemErr && (isString(itemErr) || Object.keys(itemErr).length > 0),
         )
       ) {
         return arrErrors;

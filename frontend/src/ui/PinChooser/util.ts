@@ -57,7 +57,7 @@ export const pinValueLayout = (
   const parsed = parsePrefixNumber(value);
   if (parsed) {
     const result = options.find((opt) => opt.value === parsed.prefix)?.value;
-    console.log("result", result, "options", options);
+
     return result;
   }
 };

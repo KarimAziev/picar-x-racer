@@ -4,7 +4,7 @@ import time
 from typing import Union
 
 
-def wait_for_backend_ready(signal_file_path: str, timeout: int = 60):
+def wait_for_backend_ready(signal_file_path: str, timeout: int = 60) -> bool:
     """
     Waits for the backend to create a signal file indicating it is ready.
 
@@ -30,7 +30,7 @@ def start_frontend_app(
     frontend_port: Union[int, str] = 4000,
     api_port: Union[int, str] = 8000,
     ws_port: Union[int, str] = 8001,
-):
+) -> None:
     """
     Starts the frontend application using `npm run dev`, but after making sure the backend is ready.
     """

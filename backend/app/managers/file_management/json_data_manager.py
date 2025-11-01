@@ -98,6 +98,7 @@ class JsonDataManager(EventEmitter):
         try:
             modified_time = os.path.getmtime(source_file)
         except OSError:
+            self._logger.error("Failed to get modified time for file '%s'", source_file)
             modified_time = None
 
         if (
@@ -110,6 +111,7 @@ class JsonDataManager(EventEmitter):
             self._cache: Dict[str, Any] = load_json_file(source_file)
             self._last_modified_time = modified_time
             self._last_cached_file = source_file
+            self._logger.debug("Emitting load event")
             self.emit(self.LOAD_EVENT, self._cache)
         else:
             self._logger.debug(f"Using cache for {self._last_cached_file}")
@@ -129,8 +131,18 @@ class JsonDataManager(EventEmitter):
         self._logger.info("Saving '%s'", self._target_file)
         with atomic_write(self._target_file) as tmp:
             json.dump(data, tmp, indent=2)
+        try:
+            self._last_modified_time = os.path.getmtime(self._target_file)
+        except OSError:
+            self._logger.error(
+                "Failed to get modified time for file '%s'", self._target_file
+            )
+            self._last_modified_time = None
         self._cache = data
-        self._logger.info("File '%s' sucessfully saved", self._target_file)
+        self._last_cached_file = self._target_file
+        self._logger.info(
+            "File '%s' sucessfully saved, emitting update event", self._target_file
+        )
         self.emit(self.UPDATE_EVENT, self._cache)
         return self._cache
 

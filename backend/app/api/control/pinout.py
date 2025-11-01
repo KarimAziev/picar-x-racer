@@ -29,7 +29,7 @@ _log = Logger(name=__name__)
 )
 def get_pinout(
     pinout_service: Annotated["PinoutService", Depends(robot_deps.get_pinout_service)],
-):
+) -> BoardLayout:
     """
     Retrieve board pinout that combines board metadata with a mapping of headers to their pins.
     """

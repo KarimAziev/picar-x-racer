@@ -201,6 +201,7 @@ class CameraService:
         prev_fps = 0.0
 
         self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
+
         try:
             while not self.shutting_down and self.camera_run and self.cap:
                 frame_start_time = time.time()
@@ -341,7 +342,9 @@ class CameraService:
                 _log.info(
                     "Starting camera recording"
                     if self.camera_settings.width and self.camera_settings.height
-                    else f"Skipping camera recording due to missed width {self.camera_settings.width} or height ({self.camera_settings.height})"
+                    else f"Skipping camera recording due to missed "
+                    f"width {self.camera_settings.width} or "
+                    f"height {self.camera_settings.height}"
                 )
 
             self.cap = cap
@@ -357,10 +360,10 @@ class CameraService:
                     height=self.camera_settings.height,
                     fps=float(fps or 30),
                 )
-            self.capture_thread = threading.Thread(
+            self._capture_thread = threading.Thread(
                 target=self._camera_thread_func, daemon=True
             )
-            self.capture_thread.start()
+            self._capture_thread.start()
             self.camera_device_error = None
 
         except (CameraNotFoundError, CameraDeviceError) as e:
@@ -391,7 +394,7 @@ class CameraService:
             if self.stream_img is not None:
                 break
             if counter <= 1:
-                _log.debug("waiting for stream img")
+                _log.debug("Waiting for stream img")
                 counter += 1
             await asyncio.sleep(0.05)
 
@@ -410,15 +413,13 @@ class CameraService:
             self._release_cap_safe()
             return
 
-        _log.info("Stopping camera")
+        _log.info("Stopping camera and checking camera capture thread")
 
         self.camera_run = False
 
-        _log.info("Checking camera capture thread")
-
-        if hasattr(self, "capture_thread") and self.capture_thread.is_alive():
+        if hasattr(self, "_capture_thread") and self._capture_thread.is_alive():
             _log.info("Stopping camera capture thread")
-            self.capture_thread.join()
+            self._capture_thread.join()
             _log.info("Stopped camera capture thread")
 
     def restart_camera(self) -> None:

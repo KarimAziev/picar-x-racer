@@ -3,7 +3,7 @@ from typing import Union
 import uvicorn
 
 
-def start_control_app(port: Union[str, int], log_level: str):
+def start_control_app(port: Union[str, int], log_level: str) -> None:
     uvicorn_config = {
         "app": "app.control_server:app",
         "host": "0.0.0.0",
@@ -14,7 +14,7 @@ def start_control_app(port: Union[str, int], log_level: str):
     uvicorn.run(**uvicorn_config)
 
 
-def main():
+def main() -> None:
     import multiprocessing as mp
 
     try:

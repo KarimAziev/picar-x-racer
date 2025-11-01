@@ -55,6 +55,11 @@ export interface CrossFieldRule {
   };
 }
 
+export interface Discriminator {
+  propertyName: string;
+  mapping: Record<string, string>;
+}
+
 export interface JSONSchemaBase {
   title?: string;
   type?: FieldType;
@@ -87,9 +92,10 @@ export interface JSONSchemaBase {
   props?: Props;
   ge?: number;
   le?: number;
-  discriminator?: any;
+  discriminator?: Discriminator;
   const?: string;
   cross_field_validation?: CrossFieldRule[];
+  shared?: boolean;
 }
 
 export interface JSONSchema extends JSONSchemaBase {

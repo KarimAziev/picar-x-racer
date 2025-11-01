@@ -5,7 +5,7 @@ from typing import Optional
 from app.util.proc import terminate_processes
 
 
-def main():
+def main() -> None:
     import multiprocessing as mp
 
     try:
@@ -72,7 +72,7 @@ def main():
             )
             frontend_dev_process.start()
 
-            def restart_app():
+            def restart_app() -> None:
                 nonlocal main_app_process, websocket_app_process
                 terminate_processes([websocket_app_process, main_app_process])
                 main_app_process = mp.Process(

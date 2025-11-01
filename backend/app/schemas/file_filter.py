@@ -28,7 +28,7 @@ class FilterMatchMode(str, Enum):
     BETWEEN = "between"
 
     @classmethod
-    def _missing_(cls, value):
+    def _missing_(cls, value) -> Optional[FilterMatchMode]:
         if isinstance(value, str):
             value = value.lower()
             for member in cls:

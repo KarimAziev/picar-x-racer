@@ -81,8 +81,11 @@ from app.util.file_util import (
 
 def export_yolo_model_to_edgetpu(
     yolo_model_path: str, target_path: Optional[str], imgsz: int
-):
-    from ultralytics import YOLO
+) -> None:
+    try:
+        from ultralytics import YOLO  # type: ignore[reportPrivateImportUsage]
+    except Exception:
+        from ultralytics.models.yolo import YOLO
 
     from app.config.config import settings
 
@@ -117,7 +120,7 @@ def export_yolo_model_to_edgetpu(
         raise FileNotFoundError(f"Exported file not found: {export_file}")
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     from app.config.config import settings
 
     parser = argparse.ArgumentParser(

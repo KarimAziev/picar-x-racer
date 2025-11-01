@@ -277,7 +277,12 @@ const effectiveAnyOf = computed(() =>
 );
 const anyOfOptions = computed(() => mapAnyOfOptions(effectiveAnyOf.value));
 const detectedCandidateIndex = computed(() =>
-  detectCandidateIndex(localValue.value, effectiveAnyOf.value),
+  detectCandidateIndex(
+    localValue.value,
+    effectiveAnyOf.value,
+    resolvedSchema.value,
+    props.defs,
+  ),
 );
 
 const selections = ref<number[]>([]);
@@ -365,10 +370,20 @@ const handleNewOption = () => {
   const newOpt = selectedOption.value;
   const prevData = oldData.value[newOpt];
   const branchModel = getNestedValue(props.model, props.path);
+
   oldData.value[oldOpt] = cloneDeep(branchModel);
 
   if (prevData) {
     localValue.value = prevData;
+  } else if (selectedSchema.value?.type === "null") {
+    localValue.value = null;
+  } else if (selectedSchema.value?.type === "object" && !branchModel) {
+    const prevOptions = Object.values(oldData.value).reduce(
+      (acc, item) => ({ ...acc, ...item }),
+      {},
+    );
+    localValue.value = cloneDeep(prevOptions) as Record<string, any>;
+    fillDefaults(localValue.value, selectedSchema.value);
   } else if (selectedSchema.value && isPlainObject(branchModel)) {
     fillDefaults(branchModel, selectedSchema.value);
   }

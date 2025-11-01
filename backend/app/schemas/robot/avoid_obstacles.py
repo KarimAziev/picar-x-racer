@@ -2,6 +2,7 @@ from enum import Enum, auto
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Self
 
 
 class AvoidState(Enum):
@@ -113,7 +114,7 @@ class AvoidParams(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
     @model_validator(mode="after")
-    def _order_ok(self):
+    def _order_ok(self) -> Self:
         if not (self.safe >= self.caution >= self.danger >= self.stop):
             raise ValueError("Distances must satisfy: safe ≥ caution ≥ danger ≥ stop")
         return self

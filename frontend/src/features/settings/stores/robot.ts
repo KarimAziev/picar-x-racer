@@ -42,6 +42,7 @@ export interface MotorConfig {
 
 export interface ServoData {
   cam_pan_servo: ServoConfig;
+
   cam_tilt_servo: ServoConfig;
   steering_servo: ServoConfig;
 }

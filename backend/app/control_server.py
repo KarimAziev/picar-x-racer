@@ -9,7 +9,7 @@ The application provides robot-controlling functionality, including:
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, AsyncGenerator, Optional, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,7 +35,7 @@ logger = Logger(name=__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     connection_service: Optional["ConnectionService"] = None
     robot_service: Optional["CarService"] = None
     distance_service: Optional["DistanceService"] = None

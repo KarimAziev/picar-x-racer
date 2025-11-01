@@ -14,7 +14,11 @@ _log = Logger(__name__)
 
 if TYPE_CHECKING:
     from app.adapters.hailo_adapter import YOLOHailoAdapter
-    from ultralytics import YOLO
+
+    try:
+        from ultralytics import YOLO  # type: ignore[reportPrivateImportUsage]
+    except Exception:
+        from ultralytics.models.yolo import YOLO
 
 
 class ModelManager:
@@ -66,7 +70,12 @@ class ModelManager:
                     return self.model, self.error_msg
                 _log.info("Hailo model loaded successfully")
             else:
-                from ultralytics import YOLO
+                try:
+                    from ultralytics import (
+                        YOLO,  # type: ignore[reportPrivateImportUsage]
+                    )
+                except Exception:
+                    from ultralytics.models.yolo import YOLO
 
                 if YOLO is None:
                     msg = "ultralytics YOLO not available."

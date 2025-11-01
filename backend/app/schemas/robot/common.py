@@ -68,7 +68,7 @@ class AddressModel(BaseModel):
     address: AddressField
 
     @field_validator("address", mode="before")
-    def parse_hex_address(cls, value):
+    def parse_hex_address(cls, value) -> AddressField:
         if isinstance(value, str):
             if not re.fullmatch(r"0[xX][0-9a-fA-F]+", value):
                 raise ValueError(
