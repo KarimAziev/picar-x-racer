@@ -85,8 +85,9 @@ class DummyVideoRecorder:
     def __init__(self):
         self.current_video_path = None
 
-    def start_recording(self, width, height, fps):
+    def start_recording(self, capture, width, height, fps):
         self.recording = True
+        self.capture = capture
         self.width = width
         self.height = height
         self.fps = fps

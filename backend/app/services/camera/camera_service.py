@@ -356,6 +356,7 @@ class CameraService:
             ):
                 fps = self.camera_settings.fps or self.actual_fps
                 self.video_recorder.start_recording(
+                    capture=self.cap,
                     width=self.camera_settings.width,
                     height=self.camera_settings.height,
                     fps=float(fps or 30),
