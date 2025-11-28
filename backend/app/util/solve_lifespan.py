@@ -76,6 +76,14 @@ def solve_lifespan(
         )
         dependant = get_dependant(path="/", call=lifespan)
         async with AsyncExitStack() as async_exit_stack:
+            request_astack = await async_exit_stack.enter_async_context(
+                AsyncExitStack()
+            )
+            function_astack = await async_exit_stack.enter_async_context(
+                AsyncExitStack()
+            )
+            fake_request.scope["fastapi_inner_astack"] = request_astack
+            fake_request.scope["fastapi_function_astack"] = function_astack
             solved = await solve_dependencies(
                 request=fake_request,
                 dependant=dependant,

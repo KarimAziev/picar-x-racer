@@ -9,7 +9,8 @@
     "dev": "vite --open",
     "build": "vue-tsc -b && vite build -c vite.config.prod.ts",
     "preview": "vite preview",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
     "@codemirror/lang-html": "^6.4.9",

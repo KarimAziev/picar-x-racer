@@ -1,5 +1,4 @@
 numpy==1.26.4
-robot-hat>=2.0.0
 google_speech_pyplay
 pandas
 colorlog
@@ -8,8 +7,8 @@ pydantic
 pydantic-settings
 pydub
 pygame
-fastapi[standard]
-starlette
+fastapi[standard]>=0.122.0
+starlette>=0.50.0
 uvicorn[standard]
 python-multipart
 ultralytics

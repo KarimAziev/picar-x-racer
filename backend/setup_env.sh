@@ -6,6 +6,7 @@ INTERACTIVE="non-interactive"
 SKIP_PROMPT="yes"
 SKIP_DBUS=0
 SKIP_GSTREAMER=0
+SKIP_POLKIT=0
 MINIMAL=0
 DRY_RUN=0
 POLKIT_RULE_FILE="/etc/polkit-1/rules.d/99-reboot-no-auth.rules"
@@ -16,11 +17,9 @@ SYSTEM_SITE_PACKAGES=
 log_info() {
   printf "\033[32m[INFO]\033[0m %s\n" "$1"
 }
-
 log_error() {
   printf "\033[31m[ERROR]\033[0m %s\n" "$1" >&2
 }
-
 log_warn() {
   echo -e "\033[1;33m[WARNING]\033[0m $1" >&2
 }
@@ -33,6 +32,17 @@ is_raspberry_pi() {
   fi
   return 1
 }
+
+OS_TYPE="$(uname -s)"
+DISTRO=""
+if [ "$OS_TYPE" = "Linux" ]; then
+  if [ -f /etc/os-release ]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    DISTRO="$ID"
+  fi
+fi
+
 STEPS=(install_system_deps setup_gstreamer create_venv install_python_deps)
 if is_raspberry_pi; then
   log_info "Raspberry Pi detected. Adding 'setup_polkit_rule' to the default steps."
@@ -44,6 +54,8 @@ fi
 USER_STEPS=()
 SKIP_STEPS=()
 
+# sudo handling: on macOS we won't use sudo for brew commands,
+# and brew should not be run as root.
 if [ "$(id -u)" -ne 0 ]; then
   SUDO="sudo"
 else
@@ -64,33 +76,12 @@ Options:
   --minimal                 Minimal installation (only mandatory steps).
   --system-site-packages    Enable shared system-level Python packages in the virtual environment
                             (default: enabled on Raspberry Pi, disabled otherwise).
-  --no-system-site-packages Disable shared system-level Python packages in the virtual environment
-                            (default: disabled on non-Raspberry Pi, enabled otherwise).
+  --no-system-site-packages Disable shared system-level Python packages in the virtual environment.
   -s STEPS                  Comma-separated list of steps to execute.
-                            (Overrides default steps if provided.)
   -n STEPS                  Comma-separated list of steps to skip.
-                            Available steps: install_system_deps, setup_gstreamer, create_venv,
-                            install_python_deps, setup_polkit_rule.
   --dry-run                 Perform a dry run, showing commands without executing them.
 
-Available steps:
-  install_system_deps       OS-level dependencies (apt-get update, install build tools, meson, etc.)
-  create_venv               Create Python virtual environment (.venv)
-  install_python_deps       Install pip packages from requirements.txt
-  setup_gstreamer           Install GStreamer and its OS-level dependencies
-  setup_polkit_rule         Set up a Polkit rule to allow users in the 'sudo' group
-                            to power off and reboot the system (useful for enabling these options
-                            in the UI without requiring sudo).
-
-Examples:
-  $0                        Run all default steps in non-interactive mode.
-  $0 -i                     Run interactively (prompt before each step)
-  $0 --minimal              Only perform minimal installation (skip setup_gstreamer and setup_polkit_rule).
-  $0 -s setup_gstreamer     Install GStreamer.
-  $0 -s setup_polkit_rule   Setup polkit rule for power off and rebooting from UI.
-  $0 -s create_venv,install_python_deps Create venv and install pip dependencies.
-  $0 --dry-run              Perform a dry run, showing commands without executing them.
-  $0 -n setup_gstreamer     Skip GStreamer installation.
+Available steps: install_system_deps, create_venv, install_python_deps, setup_gstreamer, setup_polkit_rule
 EOF
   exit 0
 }
@@ -111,9 +102,7 @@ command_exists() {
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case $1 in
-      -h | --help)
-        usage
-        ;;
+      -h | --help) usage ;;
       -i)
         INTERACTIVE="interactive"
         SKIP_PROMPT="no"
@@ -122,34 +111,20 @@ parse_args() {
         INTERACTIVE="non-interactive"
         SKIP_PROMPT="yes"
         ;;
-      --skip-polkit)
-        SKIP_POLKIT=1
-        ;;
-      --skip-dbus)
-        SKIP_DBUS=1
-        ;;
-      --skip-gstreamer)
-        SKIP_GSTREAMER=1
-        ;;
-      --minimal)
-        MINIMAL=1
-        ;;
-      --dry-run)
-        DRY_RUN=1
-        ;;
-      --system-site-packages)
-        SYSTEM_SITE_PACKAGES=1
-        ;;
-      --no-system-site-packages)
-        SYSTEM_SITE_PACKAGES=0
-        ;;
+      --skip-polkit) SKIP_POLKIT=1 ;;
+      --skip-dbus) SKIP_DBUS=1 ;;
+      --skip-gstreamer) SKIP_GSTREAMER=1 ;;
+      --minimal) MINIMAL=1 ;;
+      --dry-run) DRY_RUN=1 ;;
+      --system-site-packages) SYSTEM_SITE_PACKAGES=1 ;;
+      --no-system-site-packages) SYSTEM_SITE_PACKAGES=0 ;;
       -s)
         if [[ -n $2 ]]; then
           IFS=',' read -r -a USER_STEPS <<< "$2"
           STEPS=("${USER_STEPS[@]}")
           shift
         else
-          log_error "-s requires a comma-separated list of steps."
+          log_error "-s requires a comma-separated list"
           usage
         fi
         ;;
@@ -158,7 +133,7 @@ parse_args() {
           IFS=',' read -r -a SKIP_STEPS <<< "$2"
           shift
         else
-          log_error "-n requires a comma-separated list of steps to skip."
+          log_error "-n requires a comma-separated list"
           usage
         fi
         ;;
@@ -171,17 +146,20 @@ parse_args() {
   done
 }
 
-install_system_deps() {
-  log_info "Installing system-level dependencies..."
+install_system_deps_linux() {
+  log_info "Installing system-level dependencies via apt (Linux)..."
+
   run_cmd "$SUDO apt-get update"
-  run_cmd "$SUDO apt-get install -y build-essential meson"
-  log_info "Installing system-level dependencies for pydub..."
+  run_cmd "$SUDO apt-get install -y build-essential meson ninja-build pkg-config python3-dev python3-venv"
+
+  # pydub/ffmpeg
   run_cmd "$SUDO apt-get install -y ffmpeg libavcodec-extra"
-  # for sounddevice
+
+  # portaudio for sounddevice
   run_cmd "$SUDO apt-get install -y portaudio19-dev"
 
-  # for PyGObject
-  run_cmd "$SUDO apt-get install -y libcairo2-dev pkg-config python3-dev libgirepository1.0-dev gir1.2-gtk-3.0"
+  # PyGObject / GTK deps
+  run_cmd "$SUDO apt-get install -y libcairo2-dev libgirepository1.0-dev gir1.2-gtk-3.0 libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev"
 
   if [[ $SKIP_DBUS -eq 0 ]]; then
     log_info "Installing dbus development libraries..."
@@ -194,6 +172,47 @@ install_system_deps() {
   fi
 }
 
+install_system_deps_macos() {
+  log_info "Installing system-level dependencies via Homebrew (macOS)..."
+
+  if [ "$(id -u)" -eq 0 ]; then
+    log_error "Do not run this script as root on macOS (Homebrew should not be run as root). Aborting."
+    exit 1
+  fi
+
+  if ! command_exists brew; then
+    log_warn "Homebrew not found. Please install Homebrew first: https://brew.sh/"
+    log_info "If you want the script to attempt installing Homebrew automatically, re-run with --dry-run disabled and modify the script accordingly."
+    exit 1
+  fi
+
+  # Basic build tools
+  run_cmd "brew update"
+  run_cmd "brew install meson ninja pkg-config"
+
+  # ffmpeg, portaudio, etc.
+  run_cmd "brew install ffmpeg portaudio cairo gobject-introspection glib gettext"
+
+  # GStreamer
+  run_cmd "brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav"
+
+  # optional: gtk3 (note: may pull lots of deps)
+  run_cmd "brew install gtk+3" || log_warn "gtk+3 failed to install via brew (may be optional for your app)."
+
+  log_info "Homebrew packages installed. Note: some Python bindings (PyGObject) may still require pip wheels or manual steps."
+}
+
+install_system_deps() {
+  if [ "$OS_TYPE" = "Darwin" ]; then
+    install_system_deps_macos
+  elif [ "$OS_TYPE" = "Linux" ]; then
+    install_system_deps_linux
+  else
+    log_error "Unsupported OS: $OS_TYPE"
+    exit 1
+  fi
+}
+
 create_venv() {
   if ! command_exists python3; then
     log_error "Python 3 is not installed or not in PATH. Please install it and try again."
@@ -203,7 +222,6 @@ create_venv() {
   if [ -d ".venv" ]; then
     log_info "Virtual environment '.venv' already exists. Skipping creation."
   else
-
     if [[ -z $SYSTEM_SITE_PACKAGES ]]; then
       if is_raspberry_pi; then
         SYSTEM_SITE_PACKAGES=1
@@ -235,14 +253,20 @@ install_python_deps() {
   run_cmd "pip install -r requirements.txt"
   run_cmd "pip install platformdirs -U --force-reinstall"
 
-  if python -c "import sys; sys.exit(0) if sys.version_info < (3, 12) else sys.exit(1)"; then
-    log_info "Python version < 3.12: Installing tflite-runtime..."
-    run_cmd "pip install tflite-runtime"
+  if [ "$OS_TYPE" != "Darwin" ]; then
+    # If python < 3.12 install tflite-runtime
+    if python - << 'PY' 2> /dev/null; then
+import sys
+sys.exit(0 if sys.version_info < (3,12) else 1)
+PY
+      log_info "Python version < 3.12: Installing tflite-runtime..."
+      run_cmd "pip install tflite-runtime" || log_warn "tflite-runtime install failed; this may not be available on all platforms."
+    fi
   fi
 
   if ! is_raspberry_pi; then
     log_info "Non-Raspberry Pi system detected. Installing dev dependencies..."
-    run_cmd "pip install -r requirements-dev.txt"
+    run_cmd "pip install -r requirements-dev.txt" || log_warn "Some dev requirements may not have macOS wheels and may need manual install."
   fi
 }
 
@@ -251,9 +275,19 @@ setup_gstreamer() {
     log_info "Skipping GStreamer installation."
     return
   fi
+
   log_info "Installing system dependencies for GStreamer support..."
 
-  run_cmd "$SUDO apt-get install -y python3-dev python3-numpy \
+  if [ "$OS_TYPE" = "Darwin" ]; then
+    # macOS: brew packages already installed by install_system_deps_macos
+    log_info "On macOS, ensure you have gstreamer and gst plugins installed via Homebrew."
+    if ! command_exists gst-launch-1.0; then
+      log_info "gst-launch-1.0 not found. Installing gstreamer and plugins"
+      run_cmd "brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav"
+    fi
+  else
+    # Linux apt-based install
+    run_cmd "$SUDO apt-get install -y python3-dev python3-numpy \
       libunwind-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
       gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
       gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl \
@@ -263,9 +297,9 @@ setup_gstreamer() {
       libgstreamer1.0-dev libgtk-3-dev \
       libpng-dev libjpeg-dev libopenexr-dev libtiff-dev libwebp-dev \
       libopencv-dev x264 libx264-dev libssl-dev ffmpeg"
-
-  run_cmd "$SUDO apt-get install -y python3-gi gir1.2-gstreamer-1.0"
-  log_info "GStreamer is successfully installed"
+    run_cmd "$SUDO apt-get install -y python3-gi gir1.2-gstreamer-1.0"
+  fi
+  log_info "GStreamer step completed."
 }
 
 setup_polkit_rule() {
@@ -273,6 +307,12 @@ setup_polkit_rule() {
     log_info "Skipping setup polkit rule."
     return
   fi
+
+  if [ "$OS_TYPE" = "Darwin" ]; then
+    log_info "Polkit/systemd are Linux-specific; skipping polkit setup on macOS."
+    return
+  fi
+
   if [ -f "$POLKIT_RULE_FILE" ]; then
     log_warn "Polkit rule already exists at $POLKIT_RULE_FILE. Skipping rule creation."
   else
@@ -330,7 +370,7 @@ execute_steps() {
 
 main() {
   parse_args "$@"
-  log_info "Running in $INTERACTIVE mode. Dry-run mode is $([ $DRY_RUN -eq 1 ] && echo Enabled || echo Disabled)."
+  log_info "Running in $INTERACTIVE mode on OS=$OS_TYPE DISTRO=$DISTRO. Dry-run mode is $([ $DRY_RUN -eq 1 ] && echo Enabled || echo Disabled)."
 
   if [[ $MINIMAL -eq 1 ]]; then
     log_info "Minimal installation requested; optional steps will be removed."
