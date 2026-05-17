@@ -24,6 +24,11 @@ GITHUB_ASSETS_NAMES = (
         for suffix in ("", "-cls", "-seg", "-pose", "-obb")
     ]
     + [f"yolo12{k}{suffix}.pt" for k in "nsmlx" for suffix in ("",)]
+    + [
+        f"yolo26{k}{suffix}.pt"
+        for k in "nsmlx"
+        for suffix in ("", "-cls", "-seg", "-pose", "-obb")
+    ]
     + [f"yolov5{k}{resolution}u.pt" for k in "nsmlx" for resolution in ("", "6")]
     + [f"yolov3{k}u.pt" for k in ("", "-spp", "-tiny")]
     + [f"yolov8{k}-world.pt" for k in "smlx"]
