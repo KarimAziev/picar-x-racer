@@ -12,7 +12,7 @@ declare module 'vue' {
     Breadcrumb: typeof import('primevue/breadcrumb')['default']
     Button: typeof import('primevue/button')['default']
     ButtonGroup: typeof import('primevue/buttongroup')['default']
-    Chneckbox: typeof import('primevue/checkbox')['default']
+    Checkbox: typeof import('primevue/checkbox')['default']
     ColorPicker: typeof import('primevue/colorpicker')['default']
     Column: typeof import('primevue/column')['default']
     DataTable: typeof import('primevue/datatable')['default']
