@@ -48,22 +48,22 @@
         <SelectField
           :label="resolvedSchema.title"
           :options="anyOfOptions"
-          v-model="selections[index as number]"
+          v-model="selections[+index]"
           :tooltipHelp="tooltipHelp"
         />
       </ArraySelectWrapper>
-      <ArrayPanel @remove:click="handleRemoveArrayItem(index as number)">
+      <ArrayPanel @remove:click="handleRemoveArrayItem(+index)">
         <JsonSchema
           inhibitFieldset
           :origModel="origModel"
           :level="level + 1"
           :collapsed="false"
-          :idPrefix="`${idPrefix}-${[selections[index as number], ...path, index].join('-')}`"
-          :key="[selections[index as number], ...path, index].join('-')"
+          :idPrefix="`${idPrefix}-${[selections[+index], ...path, index].join('-')}`"
+          :key="[selections[+index], ...path, index].join('-')"
           :schema="
             (resolvedSchema.items?.anyOf
               ? resolveRef(
-                  resolvedSchema.items?.anyOf[selections[index as number]],
+                  resolvedSchema.items?.anyOf[selections[+index]],
                   defs,
                 )
               : resolvedSchema.items) || null
