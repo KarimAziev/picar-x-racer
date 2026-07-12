@@ -4,7 +4,6 @@ import type { Nullable } from "@/util/ts-helpers";
 import { Battery } from "@/features/settings/interface";
 import type { JSONSchema } from "@/ui/JsonSchema/interface";
 import { robotApi } from "@/api";
-import { omit, pick } from "@/util/obj";
 
 export interface State {
   data: Data;
@@ -30,6 +29,7 @@ export interface ServoConfig {
 }
 
 export interface MotorConfig {
+  enabled: boolean;
   dir_pin: Nullable<string | number>;
   pwm_pin: Nullable<string | number>;
   max_speed: Nullable<number>;
@@ -52,16 +52,14 @@ export type ServoCalibrationData = {
 };
 
 export interface MotorsData {
-  left_motor: MotorConfig;
-  right_motor: MotorConfig;
+  motors: MotorConfig[];
 }
 
-export interface CalibrationData
-  extends ServoCalibrationData,
-    MotorsCalibrationData {}
+export type CalibrationData = Partial<ServoCalibrationData> &
+  MotorsCalibrationData;
 
 export type MotorsCalibrationData = {
-  [P in keyof MotorsData]: Pick<MotorConfig, "calibration_direction">;
+  motors: Pick<MotorConfig, "calibration_direction">[];
 };
 
 export interface LEDConfig {
@@ -70,6 +68,7 @@ export interface LEDConfig {
   name: string | null;
 }
 export interface Data extends ServoData, MotorsData {
+  schema_version: number;
   led: LEDConfig;
   battery: Battery;
 }
@@ -88,6 +87,7 @@ const defaultServo = {
 };
 
 const motorDefaults = {
+  enabled: true,
   dir_pin: null,
   pwm_pin: null,
   max_speed: null,
@@ -107,11 +107,11 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
+    schema_version: 1,
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,
     steering_servo: defaultServo,
-    left_motor: motorDefaults,
-    right_motor: motorDefaults,
+    motors: [{ ...motorDefaults }, { ...motorDefaults }],
     led: ledDefaults,
     battery: {
       full_voltage: 8.4,
@@ -130,26 +130,18 @@ export const useStore = defineStore("robot", {
 
   getters: {
     maxSpeed({ data }) {
-      return Math.min(
-        data?.left_motor?.max_speed || 100,
-        data?.right_motor?.max_speed || 100,
-      );
+      const speeds = data.motors
+        .filter((motor) => motor.enabled)
+        .map((motor) => motor.max_speed || 100);
+      return speeds.length ? Math.min(...speeds) : 100;
     },
-    calibration({
-      data: {
-        steering_servo,
-        cam_pan_servo,
-        cam_tilt_servo,
-        left_motor,
-        right_motor,
-      },
-    }) {
+    calibration({ data }) {
+      const { steering_servo, cam_pan_servo, cam_tilt_servo, motors } = data;
       return {
         steering_servo_offset: steering_servo?.calibration_offset,
         cam_pan_servo_offset: cam_pan_servo?.calibration_offset,
         cam_tilt_servo_offset: cam_tilt_servo?.calibration_offset,
-        left_motor_direction: left_motor?.calibration_direction,
-        right_motor_direction: right_motor?.calibration_direction,
+        motor_directions: motors.map((motor) => motor.calibration_direction),
       };
     },
   },
@@ -215,16 +207,20 @@ export const useStore = defineStore("robot", {
       }
     },
     mergeCalibrationData(payload: Partial<CalibrationData>) {
-      const servos = omit(["left_motor", "right_motor"], payload);
-      const motors = pick(["left_motor", "right_motor"], payload);
+      const { motors, ...servos } = payload;
       Object.entries(servos).forEach(([key, cal]) => {
+        if (!cal) return;
         this.data[key as keyof ServoCalibrationData].calibration_offset =
           cal.calibration_offset;
       });
 
-      Object.entries(motors).forEach(([key, cal]) => {
-        this.data[key as keyof MotorsCalibrationData].calibration_direction =
-          cal.calibration_direction;
+      let activeIndex = 0;
+      this.data.motors.forEach((motor) => {
+        if (!motor.enabled) return;
+        const calibration = motors?.[activeIndex++];
+        if (calibration) {
+          motor.calibration_direction = calibration.calibration_direction;
+        }
       });
     },
   },

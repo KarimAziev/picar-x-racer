@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import List, Literal, Optional, Union
 
 from app.schemas.robot.avoid_obstacles import AvoidParams
 from app.schemas.robot.battery import BatteryConfig
@@ -22,6 +22,14 @@ class HardwareConfig(BaseModel):
     """
     The configuration for the robot components and sensors.
     """
+
+    schema_version: Annotated[
+        Literal[1],
+        Field(
+            title="Schema version",
+            json_schema_extra={"props": {"disabled": True, "hidden": True}},
+        ),
+    ] = 1
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],
@@ -54,20 +62,23 @@ class HardwareConfig(BaseModel):
         ),
     ]
 
-    left_motor: Annotated[
-        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig],
+    motors: Annotated[
+        List[Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig]],
         Field(
             ...,
-            title="Left Motor",
-            description="Configuration for the left motor.",
-        ),
-    ]
-    right_motor: Annotated[
-        Union[GPIODCMotorConfig, I2CDCMotorConfig, PhaseMotorConfig],
-        Field(
-            ...,
-            title="Right Motor",
-            description="Configuration for the right motor.",
+            title="Motors",
+            description=(
+                "Motor configuration. One configured motor uses SingleMotorService; "
+                "two configured motors use MotorService."
+            ),
+            min_length=1,
+            max_length=2,
+            json_schema_extra={
+                "props": {
+                    "addLabel": "Add motor",
+                    "itemLabel": "Motor",
+                }
+            },
         ),
     ]
 

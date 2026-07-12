@@ -13,6 +13,7 @@ EnabledField = Annotated[
         ...,
         title="Enabled",
         description="Whether the device or sensor is enabled.",
+        json_schema_extra={"shared": True},
     ),
 ]
 

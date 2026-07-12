@@ -44,15 +44,22 @@
     :description="resolvedSchema.description"
   >
     <div v-for="(_, index) in localValue" :key="index" class="mb-4">
-      <ArraySelectWrapper v-if="anyOfOptions && !!anyOfOptions.length">
-        <SelectField
-          :label="resolvedSchema.title"
-          :options="anyOfOptions"
-          v-model="selections[+index]"
-          :tooltipHelp="tooltipHelp"
-        />
-      </ArraySelectWrapper>
-      <ArrayPanel @remove:click="handleRemoveArrayItem(+index)">
+      <ArrayPanel
+        :title="arrayItemTitle(+index)"
+        :remove-disabled="
+          (localValue?.length || 0) <= (resolvedSchema.minItems || 0)
+        "
+        @remove:click="handleRemoveArrayItem(+index)"
+      >
+        <ArraySelectWrapper v-if="anyOfOptions && !!anyOfOptions.length">
+          <SelectField
+            :label="resolvedSchema.title"
+            :options="anyOfOptions"
+            v-model="selections[+index]"
+            :tooltipHelp="tooltipHelp"
+            @update:model-value="handleArrayOptionChange(+index, $event)"
+          />
+        </ArraySelectWrapper>
         <JsonSchema
           inhibitFieldset
           :origModel="origModel"
@@ -80,7 +87,11 @@
       <Button
         size="small"
         icon="pi pi-plus"
-        label="Add Item"
+        :label="resolvedSchema.props?.addLabel || 'Add item'"
+        :disabled="
+          resolvedSchema.maxItems !== undefined &&
+          (localValue?.length || 0) >= resolvedSchema.maxItems
+        "
         @click="handleAddListItem"
         class="w-fit"
         severity="secondary"
@@ -202,39 +213,38 @@ import ArrayPanel from "@/ui/JsonSchema/ArrayPanel.vue";
 import ArraySelectWrapper from "@/ui/JsonSchema/ArraySelectWrapper.vue";
 import FieldsPanel from "@/ui/JsonSchema/FieldsPanel.vue";
 
-const props = withDefaults(
-  defineProps<{
-    schema: JSONSchema | null;
-    model: Record<string | number, any> | null;
-    origModel: Record<string | number, any> | null;
-    invalidData?: Record<string | number, any> | null;
-    path: (string | number)[];
-    defs?: Record<string, JSONSchema>;
-    idPrefix: string;
-    tooltipHelp?: string;
-    collapsed?: boolean;
-    level: number;
-    inhibitFieldset?: boolean;
-    dataComparator?: <
-      V extends Record<string, any>,
-      B extends Record<string, any>,
-    >(
-      origData: V,
-      newData: B,
-    ) => boolean;
-  }>(),
-  {
-    level: 0,
-    collapsed: true,
-    dataComparator: <
-      V extends Record<string, any>,
-      B extends Record<string, any>,
-    >(
-      origData: V,
-      newData: B,
-    ) => isObjectEquals(origData, newData),
-  },
-);
+type Props = {
+  schema: JSONSchema | null;
+  model: Record<string | number, any> | null;
+  origModel: Record<string | number, any> | null;
+  invalidData?: Record<string | number, any> | null;
+  path: (string | number)[];
+  defs?: Record<string, JSONSchema>;
+  idPrefix: string;
+  tooltipHelp?: string;
+  collapsed?: boolean;
+  level: number;
+  inhibitFieldset?: boolean;
+  dataComparator?: <
+    V extends Record<string, any>,
+    B extends Record<string, any>,
+  >(
+    origData: V,
+    newData: B,
+  ) => boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+  level: 0,
+  collapsed: true,
+  dataComparator: <
+    V extends Record<string, any>,
+    B extends Record<string, any>,
+  >(
+    origData: V,
+    newData: B,
+  ) => isObjectEquals(origData, newData),
+});
 
 const emit = defineEmits<{
   (e: "handleSave", data: Record<string, any>): void;
@@ -347,14 +357,22 @@ const handleSave = () => {
 
 const handleRemoveArrayItem = (indexToRemove: number) => {
   const parentArray = getNestedValue(props.model, props.path);
-  if (Array.isArray(parentArray)) {
+  const minItems = resolvedSchema.value?.minItems || 0;
+  if (Array.isArray(parentArray) && parentArray.length > minItems) {
     parentArray.splice(Number(indexToRemove), 1);
+    selections.value.splice(Number(indexToRemove), 1);
   }
 };
 
 const handleAddListItem = () => {
   if (!Array.isArray(localValue.value)) {
     localValue.value = [];
+  }
+  if (
+    resolvedSchema.value?.maxItems !== undefined &&
+    localValue.value.length >= resolvedSchema.value.maxItems
+  ) {
+    return;
   }
   const newItem = resolveNewListItem(
     resolvedSchema.value,
@@ -363,6 +381,44 @@ const handleAddListItem = () => {
   );
 
   localValue.value.push(newItem);
+  selections.value.push(optionSelectedRef.value);
+};
+
+const arrayItemTitle = (index: number) => {
+  const item = localValue.value?.[index];
+  return (
+    item?.name ||
+    `${resolvedSchema.value?.props?.itemLabel || "Item"} ${index + 1}`
+  );
+};
+
+const handleArrayOptionChange = (index: number, selection: number) => {
+  if (!Array.isArray(localValue.value)) {
+    return;
+  }
+  selections.value[index] = selection;
+  const oldItem = localValue.value[index];
+  const newItem = resolveNewListItem(
+    resolvedSchema.value,
+    selections.value[index],
+    props.defs,
+  );
+  const schema = getSelectedSchema(
+    effectiveAnyOf.value,
+    selections.value[index],
+    props.defs,
+  );
+  if (isPlainObject(oldItem) && isPlainObject(newItem) && schema?.properties) {
+    Object.entries(schema.properties).forEach(([key, fieldSchema]) => {
+      if (
+        fieldSchema.shared &&
+        Object.prototype.hasOwnProperty.call(oldItem, key)
+      ) {
+        newItem[key] = oldItem[key];
+      }
+    });
+  }
+  localValue.value[index] = newItem;
 };
 
 const handleNewOption = () => {
@@ -395,7 +451,14 @@ watch(
   localValue,
   (newItems) => {
     if (Array.isArray(newItems)) {
-      selections.value = newItems.map((_) => detectedCandidateIndex.value || 0);
+      selections.value = newItems.map((item) =>
+        detectCandidateIndex(
+          item,
+          effectiveAnyOf.value,
+          resolvedSchema.value?.items,
+          props.defs,
+        ),
+      );
     }
   },
   { immediate: true },

@@ -180,8 +180,6 @@ class CarService:
             "decreaseCamTiltCali": self.calibration.decrease_cam_tilt_angle,
             "increaseServoDirCali": self.calibration.increase_servo_dir_angle,
             "decreaseServoDirCali": self.calibration.decrease_servo_dir_angle,
-            "reverseRightMotor": self.calibration.reverse_right_motor,
-            "reverseLeftMotor": self.calibration.reverse_left_motor,
             "resetCalibration": self.calibration.reset_calibration,
             "saveCalibration": self.calibration.save_calibration,
             "getCalibrationData": self.calibration.current_calibration_settings,
@@ -191,8 +189,8 @@ class CarService:
             "updateServoDirCali": self.calibration.update_servo_dir_angle,
             "updateCamPanCali": self.calibration.update_cam_pan_angle,
             "updateCamTiltCali": self.calibration.update_cam_tilt_angle,
-            "updateLeftMotorCaliDir": self.calibration.update_left_motor_direction,
-            "updateRightMotorCaliDir": self.calibration.update_right_motor_direction,
+            "reverseMotor": self.calibration.reverse_motor,
+            "updateMotorCaliDir": self.calibration.update_motor_direction,
         }
 
         actions_map = {

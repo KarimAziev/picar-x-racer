@@ -88,6 +88,8 @@ export interface JSONSchemaBase {
   exclusiveMinimum?: number;
   pattern?: string;
   uniqueItems?: string;
+  minItems?: number;
+  maxItems?: number;
   tooltipHelp?: string;
   props?: Props;
   ge?: number;

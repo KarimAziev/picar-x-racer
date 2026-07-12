@@ -1,15 +1,14 @@
 <template>
-  <Fieldset legend="Motors direction" toggleable>
+  <Fieldset v-if="enabledMotors.length" legend="Motors direction" toggleable>
     <div class="flex flex-col gap-y-2">
       <MotorDirection
-        v-for="(obj, groupName) in motorHandlers"
-        :key="groupName"
-        v-if="robotStore.data"
+        v-for="entry in enabledMotors"
+        :key="entry.configIndex"
         layout="row"
         label-class-name="flex-1"
-        @update:model-value="obj.calibration_direction"
-        :label="startCase(groupName)"
-        v-model="robotStore.data[groupName].calibration_direction"
+        @update:model-value="updateDirection(entry.serviceIndex, $event)"
+        :label="entry.motor.name || `Motor ${entry.configIndex + 1}`"
+        v-model="entry.motor.calibration_direction"
       />
     </div>
   </Fieldset>
@@ -18,21 +17,22 @@
 <script setup lang="ts">
 import { useControllerStore } from "@/features/controller/store";
 import { useRobotStore } from "@/features/settings/stores";
-import type { MotorsCalibrationData } from "@/features/settings/stores/robot";
-import type { MapObjectsDeepTo } from "@/util/ts-helpers";
 import Fieldset from "primevue/fieldset";
 import MotorDirection from "@/features/settings/components/calibration/MotorDirection.vue";
-import { startCase } from "@/util/str";
+import { computed } from "vue";
 
 const controllerStore = useControllerStore();
 const robotStore = useRobotStore();
 
-const motorHandlers: MapObjectsDeepTo<MotorsCalibrationData, () => void> = {
-  left_motor: {
-    calibration_direction: controllerStore.reverseLeftMotor,
-  },
-  right_motor: {
-    calibration_direction: controllerStore.reverseRightMotor,
-  },
+const enabledMotors = computed(() =>
+  robotStore.data.motors
+    .flatMap((motor, configIndex) =>
+      motor.enabled ? [{ motor, configIndex }] : [],
+    )
+    .map((entry, serviceIndex) => ({ ...entry, serviceIndex })),
+);
+
+const updateDirection = (index: number, value: number) => {
+  controllerStore.updateMotorCaliDir(index, value);
 };
 </script>

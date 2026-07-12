@@ -22,7 +22,6 @@ logger = Logger(__name__)
 MotorDirectionField = Annotated[
     MotorDirection,
     Field(
-        default=1,
         ge=-1,
         le=1,
         description="Initial motor direction calibration (+1/-1)",
@@ -57,7 +56,7 @@ class MotorBaseConfig(BaseModel):
             title="Name",
             json_schema_extra={"shared": True},
             description="Human-readable name for the motor",
-            examples=["left", "right"],
+            examples=["Left", "Right"],
         ),
     ]
     max_speed: Annotated[

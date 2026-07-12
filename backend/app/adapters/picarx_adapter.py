@@ -24,8 +24,10 @@ from robot_hat import (
     PWMFactory,
     Servo,
     ServoService,
+    SingleMotorService,
     SMBusManager,
 )
+from robot_hat.services.base_motor_service import BaseMotorService
 
 logger = Logger(name=__name__)
 
@@ -43,9 +45,8 @@ class PicarxAdapter:
         self.cam_pan_servo: Optional[ServoService] = None
         self.cam_tilt_servo: Optional[ServoService] = None
         self.steering_servo: Optional[ServoService] = None
-        self.left_motor: Optional[MotorABC] = None
-        self.right_motor: Optional[MotorABC] = None
-        self.motor_controller: Optional[MotorService] = None
+        self.motors: List[MotorABC] = []
+        self.motor_controller: Optional[BaseMotorService] = None
         self.init_hardware()
 
     def init_hardware(self) -> None:
@@ -57,8 +58,7 @@ class PicarxAdapter:
             self._init_pan_servo,
             self._init_tilt_servo,
             self._init_steering_servo,
-            self._init_left_motor,
-            self._init_right_motor,
+            self._init_motors,
             self._init_motor_controller,
         ]:
             fn()
@@ -287,7 +287,7 @@ class PicarxAdapter:
     def cleanup(self) -> None:
         """
         Clean up hardware resources by stopping all motors and gracefully closing all
-        associated I2C connections for both motors and servos.
+        associated I2C connections for motors and servos.
         """
 
         if self.motor_controller:
@@ -305,7 +305,7 @@ class PicarxAdapter:
                     exc_info=True,
                 )
         else:
-            for motor in [self.left_motor, self.right_motor]:
+            for motor in self.motors:
                 if motor:
                     try:
                         motor.close()
@@ -313,9 +313,8 @@ class PicarxAdapter:
                         logger.error("Error closing motor %s", e)
 
         self._motor_addresses = []
-
-        self.right_motor = None
-        self.left_motor = None
+        self.motors = []
+        self.motor_controller = None
 
         for servo_service in [
             self.steering_servo,
@@ -374,11 +373,15 @@ class PicarxAdapter:
 
     def _init_motor_controller(self) -> None:
         try:
-            self.motor_controller = (
-                MotorService(left_motor=self.left_motor, right_motor=self.right_motor)
-                if self.left_motor and self.right_motor
-                else None
-            )
+            configured_count = len(self.config.motors)
+            if configured_count == 1 and len(self.motors) == 1:
+                self.motor_controller = SingleMotorService(motor=self.motors[0])
+            elif configured_count == 2 and len(self.motors) == 2:
+                self.motor_controller = MotorService(
+                    left_motor=self.motors[0], right_motor=self.motors[1]
+                )
+            else:
+                self.motor_controller = None
 
         except (TimeoutError, OSError) as e:
             logger.error("Failed to initialize motors controller: %s", e)
@@ -387,43 +390,25 @@ class PicarxAdapter:
                 "Unexpected error initializing motors controller", exc_info=True
             )
 
-    def _init_left_motor(self) -> None:
-        try:
-            self.left_motor = (
-                self._make_motor(self.config.left_motor)
-                if self.config.left_motor
-                else None and self.config.left_motor.enabled
-            )
-
-            if self.left_motor and isinstance(self.config.left_motor, I2CDCMotorConfig):
-                self._motor_addresses.append(self.config.left_motor.driver.addr_int)
-
-        except (TimeoutError, OSError) as e:
-            logger.error("Failed to initialize left motor: %s", e)
-        except Exception:
-            logger.error(
-                "Unexpected error while initializing left motor", exc_info=True
-            )
-
-    def _init_right_motor(self) -> None:
-        try:
-            self.right_motor = (
-                self._make_motor(self.config.right_motor)
-                if self.config.right_motor and self.config.right_motor.enabled
-                else None
-            )
-
-            if self.right_motor and isinstance(
-                self.config.right_motor, I2CDCMotorConfig
-            ):
-                self._motor_addresses.append(self.config.right_motor.driver.addr_int)
-
-        except (TimeoutError, OSError) as e:
-            logger.error("Failed to initialize right motor: %s", e)
-        except Exception:
-            logger.error(
-                "Unexpected error while initializing right motor", exc_info=True
-            )
+    def _init_motors(self) -> None:
+        self.motors = []
+        for index, motor_config in enumerate(self.config.motors):
+            if not motor_config.enabled:
+                continue
+            try:
+                motor = self._make_motor(motor_config)
+                if motor:
+                    self.motors.append(motor)
+                    if isinstance(motor_config, I2CDCMotorConfig):
+                        self._motor_addresses.append(motor_config.driver.addr_int)
+            except (TimeoutError, OSError) as e:
+                logger.error("Failed to initialize motor %s: %s", index + 1, e)
+            except Exception:
+                logger.error(
+                    "Unexpected error while initializing motor %s",
+                    index + 1,
+                    exc_info=True,
+                )
 
     def _make_motor(
         self, motor_config: Union[I2CDCMotorConfig, GPIODCMotorConfig, PhaseMotorConfig]

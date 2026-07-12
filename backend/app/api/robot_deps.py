@@ -7,6 +7,7 @@ from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
 from app.managers.async_task_manager import AsyncTaskManager
 from app.managers.file_management.json_data_manager import JsonDataManager
+from app.migrations.robot_config import create_robot_config_migrator
 from app.services.connection_service import ConnectionService
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
@@ -44,6 +45,7 @@ def get_config_manager() -> JsonDataManager:
     return JsonDataManager(
         target_file=app_config.ROBOT_CONFIG_FILE,
         template_file=app_config.DEFAULT_ROBOT_CONFIG_FILE,
+        migrator=create_robot_config_migrator(),
     )
 
 

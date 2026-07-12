@@ -1,16 +1,10 @@
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Literal, Union, cast
 
 from app.core.px_logger import Logger
 from app.exceptions.settings import UnchangedSettings
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
-from app.schemas.robot.motors import (
-    GPIODCMotorConfig,
-    I2CDCMotorConfig,
-    PhaseMotorConfig,
-)
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.util.diff import recursive_diff
-from robot_hat.interfaces.motor_abc import MotorABC
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
@@ -30,16 +24,11 @@ class SettingsService:
             "cam_tilt_servo",
             "cam_pan_servo",
         ],
-        motor_field_names=[
-            "left_motor",
-            "right_motor",
-        ],
     ) -> None:
         self.px = picarx
         self.config_manager = config_manager
         self.saved_settings = HardwareConfig(**self.config_manager.load_data())
         self._servo_field_names = servo_field_names
-        self._motor_field_names = motor_field_names
 
         self.config_manager.on(self.config_manager.UPDATE_EVENT, self.refresh_config)
         self.config_manager.on(self.config_manager.LOAD_EVENT, self.refresh_config)
@@ -97,12 +86,12 @@ class SettingsService:
         excluded_servo_data = {
             k: {"saved_calibration_offset"} for k in self._servo_field_names
         }
-        excluded_motors_data = {
-            k: {"saved_calibration_direction"} for k in self._motor_field_names
-        }
         return data.model_dump(
             mode="json",
-            exclude={**excluded_servo_data, **excluded_motors_data},
+            exclude={
+                **excluded_servo_data,
+                "motors": {"__all__": {"saved_calibration_direction"}},
+            },
             context=context,
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_defaults,
@@ -128,13 +117,8 @@ class SettingsService:
                 servo_config.calibration_offset = servo.calibration_offset
 
         if self.px.motor_controller:
-            for motor_name in self._motor_field_names:
-                motor: Optional["MotorABC"] = getattr(self.px, motor_name)
-
-                motor_config: Union[
-                    PhaseMotorConfig, GPIODCMotorConfig, I2CDCMotorConfig, None
-                ] = getattr(config, motor_name)
-                if motor and motor_config:
-                    motor_config.calibration_direction = motor.direction
+            active_configs = [motor for motor in config.motors if motor.enabled]
+            for motor, motor_config in zip(self.px.motors, active_configs):
+                motor_config.calibration_direction = motor.direction
 
         return config

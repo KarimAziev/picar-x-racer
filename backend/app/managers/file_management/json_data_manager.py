@@ -1,12 +1,15 @@
 import json
 import os
 from enum import Enum
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.util.atomic_write import atomic_write
 from app.util.file_util import load_json_file
+
+if TYPE_CHECKING:
+    from app.migrations.json_data import JsonDataMigrator
 
 
 class JsonDataManagerEvent(Enum):
@@ -56,18 +59,27 @@ class JsonDataManager(EventEmitter):
     UPDATE_EVENT = JsonDataManagerEvent.UPDATE.value
     LOAD_EVENT = JsonDataManagerEvent.LOAD.value
 
-    def __init__(self, target_file: str, template_file: str, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        target_file: str,
+        template_file: str,
+        *args,
+        migrator: Optional["JsonDataMigrator"] = None,
+        **kwargs,
+    ) -> None:
         """
         Initialize the JSON data manager.
 
         Args:
             target_file: The path to the primary target file.
             template_file: The path to the fallback template file, used if the target file doesn't exist.
+            migrator: Optional versioned JSON migrator applied before data is cached or written.
         """
         super().__init__(*args, **kwargs)
         self._logger = Logger(name=__name__)
         self._target_file = target_file
         self._template_file = template_file
+        self._migrator = migrator
         self._last_modified_time = None
         self._last_cached_file = None
         self._cache: Dict[str, Any] = self.load_data()
@@ -108,7 +120,21 @@ class JsonDataManager(EventEmitter):
             or self._last_cached_file != source_file
         ):
             self._logger.info(f"Loading data from {source_file}")
-            self._cache: Dict[str, Any] = load_json_file(source_file)
+            data: Dict[str, Any] = load_json_file(source_file)
+            if self._migrator:
+                result = self._migrator.migrate(data)
+                data = result.data
+                if result.changed:
+                    self._logger.info(
+                        "Migrated '%s' from schema version %s to %s",
+                        source_file,
+                        result.from_version,
+                        result.to_version,
+                    )
+                    if source_file == self._target_file:
+                        self._write_file(data)
+                        modified_time = self._get_modified_time(self._target_file)
+            self._cache = data
             self._last_modified_time = modified_time
             self._last_cached_file = source_file
             self._logger.debug("Emitting load event")
@@ -128,16 +154,11 @@ class JsonDataManager(EventEmitter):
         Returns:
             The updated JSON data.
         """
+        if self._migrator:
+            data = self._migrator.migrate(data).data
         self._logger.info("Saving '%s'", self._target_file)
-        with atomic_write(self._target_file) as tmp:
-            json.dump(data, tmp, indent=2)
-        try:
-            self._last_modified_time = os.path.getmtime(self._target_file)
-        except OSError:
-            self._logger.error(
-                "Failed to get modified time for file '%s'", self._target_file
-            )
-            self._last_modified_time = None
+        self._write_file(data)
+        self._last_modified_time = self._get_modified_time(self._target_file)
         self._cache = data
         self._last_cached_file = self._target_file
         self._logger.info(
@@ -145,6 +166,17 @@ class JsonDataManager(EventEmitter):
         )
         self.emit(self.UPDATE_EVENT, self._cache)
         return self._cache
+
+    def _write_file(self, data: Dict[str, Any]) -> None:
+        with atomic_write(self._target_file) as tmp:
+            json.dump(data, tmp, indent=2)
+
+    def _get_modified_time(self, file_name: str) -> Optional[float]:
+        try:
+            return os.path.getmtime(file_name)
+        except OSError:
+            self._logger.error("Failed to get modified time for file '%s'", file_name)
+            return None
 
     def merge(self, partial_data: Dict[str, Any]) -> Dict[str, Any]:
         """

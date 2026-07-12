@@ -118,11 +118,6 @@ class CalibrationService:
 
         return self.current_calibration_settings()
 
-    def reverse_left_motor(self) -> Dict[str, Any]:
-        if self.px.motor_controller:
-            return self._reverse_motor(self.px.motor_controller.left_motor)
-        return self.current_calibration_settings()
-
     def _update_motor(
         self, motor: Optional[MotorABC], value: MotorDirection
     ) -> Dict[str, Any]:
@@ -130,21 +125,20 @@ class CalibrationService:
             motor.update_calibration_direction(value)
         return self.current_calibration_settings()
 
-    def update_left_motor_direction(self, value: MotorDirection) -> Dict[str, Any]:
-        if not self.px.motor_controller:
-            return self.current_calibration_settings()
-        return self._update_motor(self.px.motor_controller.left_motor, value)
+    def _get_motor(self, index: int) -> MotorABC:
+        if index < 0 or index >= len(self.px.motors):
+            raise ValueError(f"Motor {index + 1} is not configured")
+        return self.px.motors[index]
 
-    def update_right_motor_direction(self, value: MotorDirection) -> Dict[str, Any]:
-        if not self.px.motor_controller:
-            return self.current_calibration_settings()
-        return self._update_motor(self.px.motor_controller.right_motor, value)
+    def reverse_motor(self, index: int) -> Dict[str, Any]:
+        return self._reverse_motor(self._get_motor(index))
 
-    def reverse_right_motor(self) -> Dict[str, Any]:
-        if self.px.motor_controller and self.px.motor_controller.right_motor:
-            return self._reverse_motor(self.px.motor_controller.right_motor)
-        else:
-            raise ValueError("No right motor")
+    def update_motor_direction(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        index = int(data["index"])
+        value = data["value"]
+        if value not in (-1, 1):
+            raise ValueError("Motor direction must be either 1 or -1")
+        return self._update_motor(self._get_motor(index), value)
 
     def save_calibration(self) -> Dict[str, Any]:
         _log.info("Saving current calibration settings")
@@ -165,14 +159,9 @@ class CalibrationService:
             if servo is not None:
                 data_map[servo_name] = {"calibration_offset": servo.calibration_offset}
 
-        for motor_name in [
-            "left_motor",
-            "right_motor",
-        ]:
-            motor: Optional["MotorABC"] = getattr(self.px, motor_name)
-
-            if motor is not None:
-                data_map[motor_name] = {"calibration_direction": motor.direction}
+        data_map["motors"] = [
+            {"calibration_direction": motor.direction} for motor in self.px.motors
+        ]
 
         _log.info("Calibration settings %s", data_map)
 

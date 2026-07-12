@@ -1,6 +1,7 @@
 from app.core.logger import Logger
 from app.schemas.robot.motors import MotorDirectionField
 from pydantic import BaseModel, Field, field_validator
+from typing import List
 from typing_extensions import Annotated
 
 logger = Logger(__name__)
@@ -38,14 +39,15 @@ class CalibrationConfig(BaseModel):
         ),
     ] = 0.0
 
-    left_motor_direction: MotorDirectionField = 1
-    right_motor_direction: MotorDirectionField = 1
+    motor_directions: Annotated[
+        List[MotorDirectionField], Field(min_length=1, max_length=2)
+    ] = Field(default_factory=lambda: [1, 1])
 
-    @field_validator("left_motor_direction", "right_motor_direction")
+    @field_validator("motor_directions")
     def validate_motor_direction(
-        cls, value: MotorDirectionField
-    ) -> MotorDirectionField:
-        if value not in (-1, 1):
+        cls, value: List[MotorDirectionField]
+    ) -> List[MotorDirectionField]:
+        if any(direction not in (-1, 1) for direction in value):
             raise ValueError("Motor direction must be either 1 or -1.")
         return value
 
@@ -56,7 +58,6 @@ if __name__ == "__main__":
     pp(
         CalibrationConfig(
             steering_servo_offset=2,
-            left_motor_direction=-1,
-            right_motor_direction=1,
+            motor_directions=[-1, 1],
         ).model_dump()
     )

@@ -7,11 +7,17 @@
     }"
   >
     <template #header>
-      <div class="flex w-full justify-end absolute top-1 left-0">
+      <div class="flex w-full items-center justify-between top-1 left-0">
+        <span class="text-md font-bold">{{ title }}</span>
         <Button
           @click="handleRemove"
+          :disabled="removeDisabled"
           icon="pi pi-times"
-          class="p-button-rounded p-button-danger p-button-text"
+          severity="danger"
+          text
+          rounded
+          size="small"
+          aria-label="Remove item"
         />
       </div>
     </template>
@@ -20,6 +26,11 @@
 </template>
 
 <script setup lang="ts">
+defineProps<{
+  title?: string;
+  removeDisabled?: boolean;
+}>();
+
 const emit = defineEmits(["remove:click"]);
 
 const handleRemove = () => {

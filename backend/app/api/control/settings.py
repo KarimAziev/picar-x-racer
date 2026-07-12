@@ -161,10 +161,7 @@ def get_calibration_settings(
         "cam_pan_servo_offset": config.get("cam_pan_servo", {}).get(
             "calibration_offset"
         ),
-        "left_motor_direction": config.get("left_motor", {}).get(
-            "calibration_direction"
-        ),
-        "right_motor_direction": config.get("right_motor", {}).get(
-            "calibration_direction"
-        ),
+        "motor_directions": [
+            motor.get("calibration_direction", 1) for motor in config.get("motors", [])
+        ],
     }

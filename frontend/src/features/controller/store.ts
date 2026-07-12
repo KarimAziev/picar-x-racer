@@ -575,11 +575,8 @@ export const useControllerStore = defineStore("controller", {
     decreaseServoDirCali() {
       this.sendMessage({ action: "decreaseServoDirCali" });
     },
-    reverseLeftMotor() {
-      this.sendMessage({ action: "reverseLeftMotor" });
-    },
-    reverseRightMotor() {
-      this.sendMessage({ action: "reverseRightMotor" });
+    reverseMotor(index: number) {
+      this.sendMessage({ action: "reverseMotor", payload: index });
     },
     saveCalibration() {
       this.sendMessage({ action: "saveCalibration" });
@@ -599,11 +596,11 @@ export const useControllerStore = defineStore("controller", {
     updateCamTiltCali(value: number) {
       this.sendMessage({ action: "updateCamTiltCali", payload: value });
     },
-    updateLeftMotorCaliDir(value: number) {
-      this.sendMessage({ action: "updateLeftMotorCaliDir", payload: value });
-    },
-    updateRightMotorCaliDir(value: number) {
-      this.sendMessage({ action: "updateRightMotorCaliDir", payload: value });
+    updateMotorCaliDir(index: number, value: number) {
+      this.sendMessage({
+        action: "updateMotorCaliDir",
+        payload: { index, value },
+      });
     },
     resetMCU() {
       const messager = useMessagerStore();

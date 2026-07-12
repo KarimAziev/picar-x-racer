@@ -658,17 +658,8 @@ export const validateAll = (
 
   let effectiveSchema: JSONSchema = rawSchema;
 
-  if (
-    rawSchema.anyOf ||
-    rawSchema.oneOf ||
-    rawSchema.items?.anyOf ||
-    rawSchema.items?.oneOf
-  ) {
-    const options =
-      rawSchema.anyOf ||
-      rawSchema.oneOf ||
-      rawSchema.items?.anyOf ||
-      rawSchema.items?.oneOf;
+  if (rawSchema.anyOf || rawSchema.oneOf) {
+    const options = rawSchema.anyOf || rawSchema.oneOf;
 
     if (options) {
       const candidateIndex = detectCandidateIndex(
@@ -728,6 +719,18 @@ export const validateAll = (
     if (!Array.isArray(model)) {
       return "Expected an array.";
     } else {
+      if (
+        effectiveSchema.minItems !== undefined &&
+        model.length < effectiveSchema.minItems
+      ) {
+        return `Add at least ${effectiveSchema.minItems} item${effectiveSchema.minItems === 1 ? "" : "s"}.`;
+      }
+      if (
+        effectiveSchema.maxItems !== undefined &&
+        model.length > effectiveSchema.maxItems
+      ) {
+        return `No more than ${effectiveSchema.maxItems} item${effectiveSchema.maxItems === 1 ? "" : "s"} are allowed.`;
+      }
       const arrErrors = model.map((item: any) =>
         validateAll(effectiveSchema.items!, item, defs),
       );
