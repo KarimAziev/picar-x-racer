@@ -9,7 +9,6 @@ import vue from "@vitejs/plugin-vue";
 // https://vitejs.dev/config/
 export const baseConfig = {
   envDir: "./",
-  keepProcessEnv: true,
   plugins: [
     vue(),
     tailwindcssPlugin(),
