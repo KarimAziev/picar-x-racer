@@ -67,12 +67,12 @@ export const useWebsocketStream = (params: WebsocketStreamParams) => {
     }
 
     const { timestamp, serverFps, blob } = extractFrameWithMetadata(data);
-    const imageUrl = urlCreator.createObjectURL(blob);
 
     detectionStore.setCurrentFrameTimestamp(timestamp);
     fpsStore.updateServerFPS(serverFps);
 
     if (params.imgRef.value) {
+      const imageUrl = urlCreator.createObjectURL(blob);
       params.imgRef.value.onload = handleImageOnLoad;
       params.imgRef.value.src = imageUrl;
       currentImageBlobUrl.value = imageUrl;
