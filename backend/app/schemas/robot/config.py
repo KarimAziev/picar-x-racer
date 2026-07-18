@@ -14,7 +14,7 @@ from app.schemas.robot.servos import (
     cross_field_validators as servo_cross_field_validators,
 )
 from app.util.pydantic_helpers import partial_model
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Annotated
 
 
@@ -24,12 +24,12 @@ class HardwareConfig(BaseModel):
     """
 
     schema_version: Annotated[
-        Literal[1],
+        Literal[2],
         Field(
             title="Schema version",
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
-    ] = 1
+    ] = 2
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],
@@ -82,14 +82,21 @@ class HardwareConfig(BaseModel):
         ),
     ]
 
-    battery: Annotated[
-        Optional[BatteryConfig],
+    batteries: Annotated[
+        List[BatteryConfig],
         Field(
             ...,
-            title="Battery",
-            description="Configuration for the battery.",
+            title="Batteries",
+            description="Configurations for monitored batteries and power supplies.",
+            json_schema_extra={
+                "uniqueItemProperty": "name",
+                "props": {
+                    "addLabel": "Add battery",
+                    "itemLabel": "Battery",
+                },
+            },
         ),
-    ] = None
+    ] = Field(default_factory=list)
 
     ultrasonic: Annotated[
         Union[UltrasonicConfig, None],
@@ -117,6 +124,13 @@ class HardwareConfig(BaseModel):
             description="Parameters for Avoid Obstacles Mode",
         ),
     ] = AvoidParams()
+
+    @model_validator(mode="after")
+    def validate_unique_battery_names(self) -> "HardwareConfig":
+        names = [battery.name.strip().casefold() for battery in self.batteries]
+        if len(names) != len(set(names)):
+            raise ValueError("Battery names must be unique")
+        return self
 
 
 @partial_model

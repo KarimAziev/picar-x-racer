@@ -21,6 +21,9 @@ class TestRobotConfigMigration(unittest.TestCase):
     def make_legacy_config(self):
         data = deepcopy(self.current_config)
         data.pop("schema_version")
+        battery = data.pop("batteries")[0]
+        battery.pop("name")
+        data["battery"] = battery
         motors = data.pop("motors")
         for motor in motors:
             motor["pwm_pin"] = motor.pop("channel")
@@ -33,8 +36,8 @@ class TestRobotConfigMigration(unittest.TestCase):
     def test_migrates_legacy_motor_fields(self):
         result = create_robot_config_migrator().migrate(self.make_legacy_config())
 
-        self.assertEqual(result.applied_versions, (1,))
-        self.assertEqual(result.data["schema_version"], 1)
+        self.assertEqual(result.applied_versions, (1, 2))
+        self.assertEqual(result.data["schema_version"], 2)
         self.assertNotIn("left_motor", result.data)
         self.assertNotIn("right_motor", result.data)
         self.assertEqual(
@@ -43,7 +46,48 @@ class TestRobotConfigMigration(unittest.TestCase):
         )
         self.assertNotIn("pwm_pin", result.data["motors"][0])
         self.assertNotIn("period", result.data["motors"][0])
+        self.assertNotIn("battery", result.data)
+        self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
         HardwareConfig.model_validate(result.data)
+
+    def test_migrates_v1_battery_to_named_collection(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 1
+        battery = data.pop("batteries")[0]
+        battery.pop("name")
+        data["battery"] = battery
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(result.applied_versions, (2,))
+        self.assertEqual(result.data["schema_version"], 2)
+        self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
+
+    def test_rejects_ambiguous_battery_shapes(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 1
+        data["battery"] = deepcopy(data["batteries"][0])
+
+        with self.assertRaisesRegex(JsonDataMigrationError, "both legacy"):
+            create_robot_config_migrator().migrate(data)
+
+    def test_rejects_invalid_legacy_battery(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 1
+        data.pop("batteries")
+        data["battery"] = "invalid"
+
+        with self.assertRaisesRegex(JsonDataMigrationError, "must be an object"):
+            create_robot_config_migrator().migrate(data)
+
+    def test_rejects_duplicate_battery_names(self):
+        data = deepcopy(self.current_config)
+        duplicate = deepcopy(data["batteries"][0])
+        duplicate["name"] = " main BATTERY "
+        data["batteries"].append(duplicate)
+
+        with self.assertRaisesRegex(ValidationError, "names must be unique"):
+            HardwareConfig.model_validate(data)
 
     def test_rejects_ambiguous_motor_shapes(self):
         data = self.make_legacy_config()
@@ -67,7 +111,7 @@ class TestRobotConfigMigration(unittest.TestCase):
 
             persisted = json.loads(target.read_text())
             self.assertEqual(manager.load_data(), persisted)
-            self.assertEqual(persisted["schema_version"], 1)
+            self.assertEqual(persisted["schema_version"], 2)
             self.assertIn("motors", persisted)
             self.assertNotIn("left_motor", persisted)
 
@@ -83,7 +127,7 @@ class TestRobotConfigMigration(unittest.TestCase):
                 migrator=create_robot_config_migrator(),
             )
 
-            self.assertEqual(manager.load_data()["schema_version"], 1)
+            self.assertEqual(manager.load_data()["schema_version"], 2)
             self.assertFalse(target.exists())
 
     def test_manager_does_not_overwrite_invalid_migration(self):

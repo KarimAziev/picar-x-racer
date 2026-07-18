@@ -10,6 +10,8 @@ import {
   isEmpty,
   isNumber,
   isEmptyString,
+  isBoolean,
+  isNull,
 } from "@/util/guards";
 import { startCase, trimSuffix } from "@/util/str";
 import {
@@ -100,7 +102,7 @@ export const detectCandidateIndex = (
     return 0;
   }
 
-  if (data === null) {
+  if (isNull(data)) {
     return effectiveAnyOf.findIndex((item) => item.type === "null");
   }
 
@@ -213,7 +215,6 @@ export const fillDefaults = (
       } else if (
         !isUndefined((propSchema as any).default) &&
         (propSchema.shared ? isUndefined(target[key]) : true)
-        // !isNull((propSchema as any).default)
       ) {
         target[key] = (propSchema as any).default;
       } else if (isPlainObject(target) && !target.hasOwnProperty(key)) {
@@ -221,8 +222,8 @@ export const fillDefaults = (
       }
       if (
         propSchema &&
-        typeof target[key] === "object" &&
-        propSchema.type === "object"
+        propSchema.type === "object" &&
+        typeof target[key] === "object"
       ) {
         fillDefaults(target[key], propSchema);
       }
@@ -393,7 +394,7 @@ export const evaluateCondition = (
 ): boolean => {
   let expected = condition.value;
 
-  if (typeof expected === "string" && expected.startsWith("$")) {
+  if (isString(expected) && expected.startsWith("$")) {
     const refField = expected.substring(1);
     expected = model ? model[refField] : undefined;
   }
@@ -548,7 +549,7 @@ export const validateSimpleType = (
     []
   ).find((item) => item.type === "null");
 
-  const isModelNull = model === null;
+  const isModelNull = isNull(model);
   const isModelValidNull = isNotRequired && isModelNull;
 
   if (effectiveSchema.type && !isModelValidNull) {
@@ -559,16 +560,16 @@ export const validateSimpleType = (
         break;
       case "number":
       case "integer":
-        validType = typeof model === "number";
+        validType = isNumber(model);
         if (effectiveSchema.type === "integer" && !Number.isInteger(model)) {
           validType = false;
         }
         break;
       case "boolean":
-        validType = typeof model === "boolean";
+        validType = isBoolean(model);
         break;
       case "null":
-        validType = model === null;
+        validType = isNull(model);
         break;
 
       case "string_or_number":
@@ -578,7 +579,7 @@ export const validateSimpleType = (
           : isNumber(model);
         break;
       case "hex":
-        if (typeof model === "number") {
+        if (isNumber(model)) {
           validType = true;
         } else if (isString(model)) {
           validType = /^0x[0-9a-fA-F]+$/.test(model);
@@ -696,7 +697,7 @@ export const validateAll = (
   ) {
     if (Array.isArray(effectiveSchema.required)) {
       effectiveSchema.required.forEach((requiredKey) => {
-        if (model === undefined || model === null || !(requiredKey in model)) {
+        if (isNil(model) || !(requiredKey in model)) {
           errors[requiredKey] = "This field is required.";
         }
       });
@@ -719,6 +720,16 @@ export const validateAll = (
     if (!Array.isArray(model)) {
       return "Expected an array.";
     } else {
+      if (effectiveSchema.uniqueItemProperty) {
+        const property = effectiveSchema.uniqueItemProperty;
+        const values = model.map((item) => {
+          const value = item?.[property];
+          return isString(value) ? value.trim().toLocaleLowerCase() : value;
+        });
+        if (new Set(values).size !== values.length) {
+          return `${startCase(property)} values must be unique.`;
+        }
+      }
       if (
         effectiveSchema.minItems !== undefined &&
         model.length < effectiveSchema.minItems

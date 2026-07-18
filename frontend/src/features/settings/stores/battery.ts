@@ -3,34 +3,49 @@ import { retrieveError } from "@/util/error";
 import { robotApi } from "@/api";
 
 export interface BatteryResponse {
-  voltage: number;
-  percentage: number;
+  name: string;
+  voltage: number | null;
+  current: number | null;
+  percentage: number | null;
+  error: string | null;
 }
 
-export interface State extends BatteryResponse {
+export interface State {
+  batteries: BatteryResponse[];
   loading: boolean;
   error?: string;
 }
 
 const defaultState: State = {
   loading: true,
-  voltage: 0,
-  percentage: 0,
+  batteries: [],
 };
 
 export const useStore = defineStore("battery", {
-  state: () => ({ ...defaultState }),
+  state: (): State => ({ ...defaultState, batteries: [] }),
 
   actions: {
-    async fetchBatteryStatus() {
+    mergeBatteryMetrics(payload: BatteryResponse[]) {
+      payload.forEach((metrics) => {
+        const index = this.batteries.findIndex(
+          (battery) => battery.name === metrics.name,
+        );
+        if (index === -1) {
+          this.batteries.push(metrics);
+        } else {
+          this.batteries[index] = metrics;
+        }
+      });
+      this.loading = false;
+      this.error = undefined;
+    },
+    async fetchBatteryMetrics() {
       try {
         this.loading = true;
-        const response = await robotApi.get<BatteryResponse>(
+        const response = await robotApi.get<BatteryResponse[]>(
           "/px/api/battery-status",
         );
-        const { voltage, percentage } = response;
-        this.voltage = voltage;
-        this.percentage = percentage;
+        this.batteries = response;
         this.error = undefined;
       } catch (error) {
         this.error = retrieveError(error).text;

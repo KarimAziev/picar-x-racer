@@ -70,7 +70,7 @@ export interface LEDConfig {
 export interface Data extends ServoData, MotorsData {
   schema_version: number;
   led: LEDConfig;
-  battery: Battery;
+  batteries: Battery[];
 }
 
 const defaultServo = {
@@ -107,21 +107,13 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
-    schema_version: 1,
+    schema_version: 2,
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,
     steering_servo: defaultServo,
     motors: [{ ...motorDefaults }, { ...motorDefaults }],
     led: ledDefaults,
-    battery: {
-      full_voltage: 8.4,
-      warn_voltage: 7.15,
-      danger_voltage: 6.5,
-      min_voltage: 6.0,
-      auto_measure_seconds: 60,
-      cache_seconds: 2,
-      enabled: false,
-    },
+    batteries: [],
   },
 };
 

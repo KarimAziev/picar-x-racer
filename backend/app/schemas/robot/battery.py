@@ -785,6 +785,17 @@ class BatteryConfig(BaseModel):
     The settings for configuring battery and power monitoring.
     """
 
+    name: Annotated[
+        str,
+        Field(
+            min_length=1,
+            title="Name",
+            description="Unique human-readable name for this monitored supply.",
+            examples=["Main battery", "Servo supply", "Raspberry Pi"],
+            json_schema_extra={"shared": True},
+        ),
+    ] = "Battery"
+
     enabled: EnabledField = False
 
     full_voltage: Annotated[
@@ -821,6 +832,13 @@ class BatteryConfig(BaseModel):
         ],
         Field(discriminator="driver_type"),
     ] = SunfounderBatteryConfig()
+
+    @field_validator("name")
+    def validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Battery name must not be blank")
+        return value
 
     @model_validator(mode="after")
     def validate_voltage_levels(cls, model) -> "BatteryConfig":

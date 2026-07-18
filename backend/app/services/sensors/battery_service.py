@@ -1,11 +1,13 @@
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from app.core.px_logger import Logger
 from app.managers.file_management.json_data_manager import JsonDataManager
+from app.schemas.battery import BatteryStatusResponse
 from app.schemas.connection import ConnectionEvent
 from app.schemas.robot.battery import (
+    BatteryConfig,
     INA219BatteryDriverConfig,
     INA226BatteryDriverConfig,
     INA260BatteryDriverConfig,
@@ -35,140 +37,86 @@ class BatteryService:
         smbus_manager: "SMBusManager",
         app_loop: asyncio.AbstractEventLoop,
     ) -> None:
-        """
-        Initializes the BatteryService with required file and connection services.
-        """
-
         self.config_manager = config_manager
         self.connection_manager = connection_manager
         self.config = HardwareConfig(**config_manager.load_data())
         self._smbus_manager = smbus_manager
         self._stop_event = asyncio.Event()
         self._task: Optional[asyncio.Task] = None
-        self._last_measure_voltage: Optional[float] = None
-        self._last_measure_time: Optional[float] = None
         self._lock = asyncio.Lock()
         self._app_loop = app_loop
+        self._metrics_cache: Dict[str, Tuple[float, BatteryStatusResponse]] = {}
+        self._last_broadcast_time: Dict[str, float] = {}
+        self._adapter_errors: Dict[str, str] = {}
+        self.battery_adapters: Dict[str, BatteryABC] = {}
         self.config_manager.on(self.config_manager.UPDATE_EVENT, self.update_config)
         self.config_manager.on(self.config_manager.LOAD_EVENT, self.update_config)
-        self.battery_adapter: Optional[BatteryABC] = None
-        try:
-            self.battery_adapter = self.make_battery_adapter(
-                self.config, bus_manager=self._smbus_manager
-            )
-        except Exception as e:
-            _log.error("Failed to init battery adapter: %s ", e)
+        self._initialize_adapters()
+
+    @property
+    def enabled_batteries(self) -> List[BatteryConfig]:
+        return [battery for battery in self.config.batteries if battery.enabled]
 
     def update_config(self, new_config: Dict[str, Any]) -> None:
-        """
-        Updates the robot configuration.
+        next_config = HardwareConfig(**new_config)
+        if self.config.batteries == next_config.batteries:
+            self.config = next_config
+            return
 
-        If the distance process is running, it will be stopped and restarted with the new
-        configuration.
+        if not self._app_loop.is_running():
+            self.config = next_config
+            self.close_battery_adapters()
+            self._reset_runtime_state()
+            self._initialize_adapters()
+            return
 
-        Args:
-            new_config: The dictionary with new robot config.
-        """
-        old_config_dict = (
-            self.config.battery.model_dump() if self.config.battery else None
-        )
-        self.config = HardwareConfig(**new_config)
+        try:
+            running_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = None
 
-        next_battery_config = (
-            self.config.battery.model_dump() if self.config.battery else None
-        )
-        _log.info(
-            "Updating battery config",
-        )
-
-        should_close_adapter = False
-        should_cancel_task = False
-        disabled = not self.config.battery or not self.config.battery.enabled
-
-        if old_config_dict and next_battery_config:
-            for key, value in old_config_dict.items():
-                next_value = next_battery_config.get(key)
-                _log.info(
-                    "KEY=%s, OLD_VALUE=%s",
-                    key,
-                    value,
-                )
-                _log.info(
-                    "KEY=%s, NEXT_VALUE= %s",
-                    key,
-                    next_value,
-                )
-                if key == "driver":
-                    should_close_adapter = next_value != value
-                else:
-                    should_cancel_task = (
-                        should_cancel_task or value != next_battery_config.get(key)
-                    )
-
-        _log.info(
-            "Changed robot config, checking for battery parameters: "
-            "should_close_adapter=%s, should_cancel_task=%s, disabled=%s",
-            should_close_adapter,
-            should_cancel_task,
-            disabled,
-        )
-        if should_close_adapter or should_cancel_task or disabled:
-            if self._app_loop and self._app_loop.is_running():
-                fut = asyncio.run_coroutine_threadsafe(
-                    self._cancel_broadcast_task(), self._app_loop
-                )
-                try:
-                    fut.result(timeout=5)
-                except Exception as e:
-                    _log.error("Error while canceling broadcast task: %s", e)
-            else:
-                _log.error("App loop is not running-cannot cancel broadcast task.")
-
-        if should_close_adapter or disabled:
-            self.close_battery_adapter()
-
-        if not disabled:
+        if running_loop is self._app_loop:
+            self._app_loop.create_task(self._apply_config(next_config))
+        else:
+            future = asyncio.run_coroutine_threadsafe(
+                self._apply_config(next_config), self._app_loop
+            )
             try:
-                if should_close_adapter or not self.battery_adapter:
-                    self.battery_adapter = self.make_battery_adapter(
-                        self.config, bus_manager=self._smbus_manager
-                    )
-                if should_cancel_task or not self._task:
-                    if self._app_loop and self._app_loop.is_running():
-                        self._app_loop.call_soon_threadsafe(self._start_broadcast_task)
-                    else:
-                        _log.error(
-                            "App loop is not running-cannot start broadcast task."
-                        )
-            except Exception as e:
-                _log.error("Failed to init battery adapter: %s", e)
-                if self._app_loop and self._app_loop.is_running():
-                    asyncio.run_coroutine_threadsafe(
-                        self.connection_manager.error(
-                            f"Failed to init battery adapter {e}"
-                        ),
-                        self._app_loop,
-                    )
-                else:
-                    _log.error(
-                        "App loop not running-cannot report error via connection_manager."
-                    )
+                future.result(timeout=5)
+            except Exception as error:
+                _log.error("Error while updating battery configuration: %s", error)
+
+    async def _apply_config(self, next_config: HardwareConfig) -> None:
+        await self._cancel_broadcast_task()
+        self.config = next_config
+        self.close_battery_adapters()
+        self._reset_runtime_state()
+        self._initialize_adapters()
+        self._start_broadcast_task()
+
+    def _reset_runtime_state(self) -> None:
+        self._metrics_cache.clear()
+        self._last_broadcast_time.clear()
+
+    def _initialize_adapters(self) -> None:
+        self._adapter_errors = {}
+        for battery in self.enabled_batteries:
+            try:
+                adapter = self.make_battery_adapter(
+                    battery, bus_manager=self._smbus_manager
+                )
+                self.battery_adapters[battery.name] = adapter
+            except Exception as error:
+                message = str(error)
+                self._adapter_errors[battery.name] = message
+                _log.error("Failed to initialize battery '%s': %s", battery.name, error)
 
     @staticmethod
     def make_battery_adapter(
-        config: HardwareConfig,
+        config: BatteryConfig,
         bus_manager: "SMBusManager",
-    ) -> Union[
-        INA219Battery,
-        INA226Battery,
-        INA260Battery,
-        SunfounderBattery,
-        None,
-    ]:
-        if config.battery is None or not config.battery.enabled:
-            return None
-
-        driver = config.battery.driver
+    ) -> BatteryABC:
+        driver = config.driver
         bus = bus_manager.get_bus(driver.bus)
         if isinstance(driver, INA219BatteryDriverConfig):
             return INA219Battery(
@@ -176,91 +124,87 @@ class BatteryService:
                 config=driver.to_dataclass(),
                 bus=bus,
             )
-        elif isinstance(driver, INA226BatteryDriverConfig):
+        if isinstance(driver, INA226BatteryDriverConfig):
             return INA226Battery(
                 address=driver.addr_int,
                 config=driver.to_dataclass(),
                 bus=bus,
             )
-        elif isinstance(driver, INA260BatteryDriverConfig):
+        if isinstance(driver, INA260BatteryDriverConfig):
             return INA260Battery(
                 address=driver.addr_int,
                 config=driver.to_dataclass(),
                 bus=bus,
             )
-        elif isinstance(driver, SunfounderBatteryConfig):
+        if isinstance(driver, SunfounderBatteryConfig):
             return SunfounderBattery(
                 channel=driver.channel, address=driver.addr_int, bus=bus
             )
+        raise TypeError(f"Unsupported battery driver: {type(driver).__name__}")
 
-    async def read_voltage(self) -> Optional[float]:
-        """
-        Reads the battery voltage using an ADC (Analog-to-Digital Converter) or uses a cached
-        value if the last measurement occurred recently.
+    @staticmethod
+    def _read_adapter_metrics(adapter: BatteryABC) -> Tuple[float, Optional[float]]:
+        try:
+            metrics = adapter.get_battery_metrics()
+            return metrics.voltage, metrics.current
+        except NotImplementedError:
+            return adapter.get_battery_voltage(), None
 
-        Platform behavior:
-        - On a Raspberry Pi, the function uses the actual hardware ADC interface.
-        - On other platforms (e.g., local development or testing), it uses a mock ADC implementation.
+    async def read_metrics(self, battery: BatteryConfig) -> BatteryStatusResponse:
+        cached = self._metrics_cache.get(battery.name)
+        if cached and time.monotonic() - cached[0] <= battery.cache_seconds:
+            return cached[1]
 
-        Cache behavior:
-        To optimize performance and reduce frequent hardware queries, the method employs a caching mechanism.
+        adapter = self.battery_adapters.get(battery.name)
+        if adapter is None:
+            error = self._adapter_errors.get(
+                battery.name, "Battery adapter is not initialized"
+            )
+            return BatteryStatusResponse(
+                name=battery.name,
+                voltage=None,
+                current=None,
+                percentage=None,
+                error=error,
+            )
 
-        If a voltage measurement is requested within the time interval specified by the `BatteryConfig.cache_seconds`
-        after the last reading, a cached value is returned instead of performing a new ADC measurement.
-
-        Returns:
-            The current battery voltage as a floating-point value, or None if the reading fails.
-
-        Usage:
-            ```python
-            voltage = await battery_manager.read_voltage()
-            print(f"Battery voltage: {voltage}V")
-            ```
-        """
-        if self.config.battery is None:
-            return
-        if (
-            self._last_measure_time is not None
-            and (time.time() - self._last_measure_time)
-            <= self.config.battery.cache_seconds
-        ):
-            _log.debug("Using cached voltage value %s", self._last_measure_voltage)
-            return self._last_measure_voltage
-
-        value: Optional[float] = None
-        if self.battery_adapter is None:
-            if (
-                self.config.battery
-                and self.config.battery.driver
-                and self.config.battery.enabled
-            ):
-                await self.connection_manager.error(
-                    "Error reading voltage: no battery adapter"
-                )
-            return
         async with self._lock:
+            cached = self._metrics_cache.get(battery.name)
+            if cached and time.monotonic() - cached[0] <= battery.cache_seconds:
+                return cached[1]
             try:
-                value = await asyncio.to_thread(
-                    self.battery_adapter.get_battery_voltage
+                voltage, current = await asyncio.to_thread(
+                    self._read_adapter_metrics, adapter
                 )
-            except Exception as e:
-                _log.error("Error reading voltage: %s", e)
-                await self.connection_manager.error(f"Error reading voltage: {e}")
+            except Exception as error:
+                _log.error("Error reading battery '%s': %s", battery.name, error)
+                return BatteryStatusResponse(
+                    name=battery.name,
+                    voltage=None,
+                    current=None,
+                    percentage=None,
+                    error=str(error),
+                )
 
-        self._last_measure_time = time.time()
-        self._last_measure_voltage = value
+        status = BatteryStatusResponse(
+            name=battery.name,
+            voltage=voltage,
+            current=current,
+            percentage=self._calculate_battery_percentage(battery, voltage),
+            error=None,
+        )
+        self._metrics_cache[battery.name] = (time.monotonic(), status)
+        return status
 
-        return value
+    async def read_all_metrics(
+        self, batteries: Optional[Sequence[BatteryConfig]] = None
+    ) -> List[BatteryStatusResponse]:
+        selected = list(batteries) if batteries is not None else self.enabled_batteries
+        return await asyncio.gather(
+            *(self.read_metrics(battery) for battery in selected)
+        )
 
     def setup_connection_manager(self) -> None:
-        """
-        Subscribes battery monitoring tasks to the events emitted by the WebSocket connection manager.
-
-        On the first active connection, it starts the battery measurement loop, broadcasting
-        the battery state to all clients.
-
-        The task is canceled when there are no active connections.
-        """
         self.connection_manager.on(
             ConnectionEvent.LAST_CONNECTION.value, self._cancel_broadcast_task
         )
@@ -268,20 +212,16 @@ class BatteryService:
             ConnectionEvent.FIRST_ACTIVE_CONNECTION.value, self._start_broadcast_task
         )
 
-    def close_battery_adapter(self) -> None:
-        if self.battery_adapter:
+    def close_battery_adapters(self) -> None:
+        for name, adapter in self.battery_adapters.items():
             try:
-                _log.info("Closing ADC battery adapter")
-                self.battery_adapter.close()
-            except Exception as e:
-                _log.error("Failed to close ADC battery adapter: %s", e)
-            self.battery_adapter = None
+                _log.info("Closing battery adapter '%s'", name)
+                adapter.close()
+            except Exception as error:
+                _log.error("Failed to close battery adapter '%s': %s", name, error)
+        self.battery_adapters = {}
 
     async def cleanup_connection_manager(self) -> None:
-        """
-        Cancels the battery monitoring task and unsubscribes from the events emitted by the WebSocket
-        connection manager.
-        """
         self.connection_manager.off(
             ConnectionEvent.FIRST_ACTIVE_CONNECTION.value, self._start_broadcast_task
         )
@@ -289,132 +229,97 @@ class BatteryService:
             ConnectionEvent.LAST_CONNECTION.value, self._cancel_broadcast_task
         )
         await self._cancel_broadcast_task()
-        self.close_battery_adapter()
+        self.close_battery_adapters()
 
-    async def broadcast_state(self) -> Tuple[Optional[float], Optional[float]]:
-        """
-        Broadcasts the current battery level to all connected clients.
-        """
-        value: Optional[float] = await self.read_voltage()
-        percentage = (
-            self._calculate_battery_percentage(value) if value is not None else None
-        )
-
-        if value is not None:
+    async def broadcast_state(
+        self, batteries: Optional[Sequence[BatteryConfig]] = None
+    ) -> List[BatteryStatusResponse]:
+        selected = list(batteries) if batteries is not None else self.enabled_batteries
+        statuses = await self.read_all_metrics(selected)
+        if statuses:
             await self.connection_manager.broadcast_json(
                 {
                     "type": "battery",
-                    "payload": {"voltage": value, "percentage": percentage},
+                    "payload": [status.model_dump(mode="json") for status in statuses],
                 }
             )
+            now = time.monotonic()
+            for battery in selected:
+                self._last_broadcast_time[battery.name] = now
+        return statuses
 
-        return (value, percentage)
-
-    def _calculate_battery_percentage(self, voltage: float) -> float:
-        """
-        Calculates the remaining battery charge as a percentage.
-
-        This value is calculated based on the voltage relative to the battery's
-        configured minimum and full voltage levels.
-
-        A value of 0% indicates the voltage is at or below the minimum,
-        and 100% indicates it is at the full voltage.
-        """
-        assert (
-            self.config.battery
-        ), "Battery config shouldn't be none for calculating percentage"
-        adjusted_voltage = max(0, voltage - self.config.battery.min_voltage)
-        total_adjusted_voltage = (
-            self.config.battery.full_voltage - self.config.battery.min_voltage
-        )
-        percentage = (adjusted_voltage / total_adjusted_voltage) * 100
+    @staticmethod
+    def _calculate_battery_percentage(battery: BatteryConfig, voltage: float) -> float:
+        adjusted_voltage = max(0.0, voltage - battery.min_voltage)
+        voltage_range = battery.full_voltage - battery.min_voltage
+        percentage = min(100.0, (adjusted_voltage / voltage_range) * 100)
         return int(percentage * 10) / 10
 
     def _start_broadcast_task(self) -> None:
-        """
-        Starts a background task to periodically broadcast the battery state.
-        """
         if (
             self._task is None
-            and self.config.battery
-            and self.config.battery.enabled
-            and self.battery_adapter
+            and self.enabled_batteries
+            and self.connection_manager.active_connections
         ):
-            _log.info("Starting broadcast loop for battery")
+            _log.info("Starting battery broadcast loop")
             self._task = asyncio.create_task(self._broadcast_loop())
 
     async def _cancel_broadcast_task(self) -> None:
-        """
-        Cancels the currently running broadcast task, if active.
-
-        This method unsets the stop event and ensures proper cleanup after
-        the task cancellation.
-        """
-
-        if self._task:
-            _log.info("Cancelling battery task")
-            try:
-                self._stop_event.set()
-                self._task.cancel()
-                await self._task
-            except asyncio.CancelledError:
-                _log.info("Battery task was cancelled")
-            finally:
-                self._task = None
-                self._stop_event.clear()
-        else:
-            _log.info("Skipping cancelling battery task")
+        if not self._task:
+            return
+        _log.info("Cancelling battery task")
+        try:
+            self._stop_event.set()
+            self._task.cancel()
+            await self._task
+        except asyncio.CancelledError:
+            _log.info("Battery task was cancelled")
+        finally:
+            self._task = None
+            self._stop_event.clear()
 
     async def _broadcast_loop(self) -> None:
-        """
-        Asynchronous loop to handle continuous broadcasting of the battery state.
-        """
-        while (
-            not self._stop_event.is_set()
-            and self.config.battery
-            and self.config.battery.enabled
-            and self.battery_adapter
-        ):
-            (voltage, percentage) = await self.broadcast_state()
-            if voltage is None:
-                _log.error(
-                    "Reading voltage is failed, next measuring after %s",
-                    self.config.battery.auto_measure_seconds,
-                )
-            else:
-                if voltage >= self.config.battery.warn_voltage:
-                    _log.info(
-                        "Battery voltage: %s (%s%%), next measurement after %s",
-                        voltage,
-                        percentage,
-                        self.config.battery.auto_measure_seconds,
-                    )
-                elif (
-                    voltage < self.config.battery.warn_voltage
-                    and voltage > self.config.battery.danger_voltage
-                ):
-                    _log.warning(
-                        "Battery voltage: %s (%s%%), next measurement after %s",
-                        voltage,
-                        percentage,
-                        self.config.battery.auto_measure_seconds,
-                    )
-                elif (
-                    voltage < self.config.battery.danger_voltage
-                    and voltage > self.config.battery.min_voltage
-                ):
-                    _log.error(
-                        "Danger voltage: %s (%s%%), next measurement after %s",
-                        voltage,
-                        percentage,
-                        self.config.battery.auto_measure_seconds,
-                    )
-                else:
-                    _log.critical(
-                        "Critical battery voltage: %s (%s%%), next measurement after %s",
-                        voltage,
-                        percentage,
-                        self.config.battery.auto_measure_seconds,
-                    )
+        while not self._stop_event.is_set() and self.enabled_batteries:
+            now = time.monotonic()
+            due = [
+                battery
+                for battery in self.enabled_batteries
+                if now - self._last_broadcast_time.get(battery.name, float("-inf"))
+                >= battery.auto_measure_seconds
+            ]
+            if due:
+                statuses = await self.broadcast_state(due)
+                for battery, status in zip(due, statuses):
+                    self._log_status(battery, status)
 
-            await asyncio.sleep(self.config.battery.auto_measure_seconds)
+            now = time.monotonic()
+            delays = [
+                max(
+                    0.1,
+                    battery.auto_measure_seconds
+                    - (now - self._last_broadcast_time.get(battery.name, now)),
+                )
+                for battery in self.enabled_batteries
+            ]
+            await asyncio.sleep(min(delays, default=1.0))
+
+    @staticmethod
+    def _log_status(battery: BatteryConfig, status: BatteryStatusResponse) -> None:
+        if status.error or status.voltage is None:
+            _log.error("Battery '%s': %s", battery.name, status.error or "read failed")
+            return
+        message = "Battery '%s': %sV (%s%%), next measurement after %ss"
+        args = (
+            battery.name,
+            status.voltage,
+            status.percentage,
+            battery.auto_measure_seconds,
+        )
+        if status.voltage >= battery.warn_voltage:
+            _log.info(message, *args)
+        elif status.voltage > battery.danger_voltage:
+            _log.warning(message, *args)
+        elif status.voltage > battery.min_voltage:
+            _log.error(message, *args)
+        else:
+            _log.critical(message, *args)

@@ -33,8 +33,8 @@ export const isArray = Array.isArray;
 export const isError = (error: unknown): error is Error =>
   error instanceof Error;
 
-export const isEmptyString = (value: unknown) =>
-  isString(value) && !value.length;
+export const isEmptyString = (value: unknown) => value === "";
+
 export const isEmptyArray = (value: unknown) => isArray(value) && !value.length;
 
 export const isEmpty = (value: unknown) =>
@@ -48,6 +48,10 @@ export const isBigint = (v: unknown): v is bigint => typeof v === "bigint";
 export const isBoolean = (v: unknown) => typeof v === "boolean";
 export const isSymbol = (v: unknown): v is symbol => typeof v === "symbol";
 export const isNull = (v: unknown): v is null => v === null;
+
+export const isObjectLike = (v: unknown): v is object =>
+  typeof v === "object" && !isNull(v);
+
 export const isUndefined = (v: unknown): v is undefined => v === undefined;
 
 export const isInput = (v: unknown): v is HTMLInputElement =>

@@ -162,12 +162,7 @@ export const useControllerStore = defineStore("controller", {
             break;
           }
           case "battery": {
-            batteryStore.$patch({
-              voltage: payload.voltage,
-              percentage: payload.percentage,
-              error: undefined,
-              loading: false,
-            });
+            batteryStore.mergeBatteryMetrics(payload);
             break;
           }
 
@@ -616,7 +611,7 @@ export const useControllerStore = defineStore("controller", {
     // UI commands
     getBatteryVoltage() {
       const batteryStore = useBatteryStore();
-      batteryStore.fetchBatteryStatus();
+      batteryStore.fetchBatteryMetrics();
     },
     openShortcutsSettings() {
       const popupStore = usePopupStore();

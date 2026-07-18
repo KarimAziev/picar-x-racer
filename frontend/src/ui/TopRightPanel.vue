@@ -1,6 +1,6 @@
 <template>
   <div
-    class="absolute right-[1px] z-12 flex items-center gap-x-3"
+    class="absolute right-[1px] z-13 flex items-center gap-x-3"
     :class="class"
   >
     <slot></slot>

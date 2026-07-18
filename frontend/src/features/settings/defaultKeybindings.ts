@@ -69,7 +69,7 @@ export const commandLabels: Record<string, string> = {
   playMusic: "Play music",
   sayText: "Say Text",
   takePhoto: "Make photo",
-  getBatteryVoltage: "Show Battery Voltage",
+  getBatteryVoltage: "Show Battery Metrics",
   openShortcutsSettings: "Open Shortcuts Settings",
   openGeneralSettings: "Open General Settings",
   increaseQuality: "Increase Video Quality",

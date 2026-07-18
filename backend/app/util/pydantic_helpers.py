@@ -69,6 +69,7 @@ def partial_model(model: Type[T]) -> Type[T]:
     ) -> Tuple[Any, FieldInfo]:
         new = deepcopy(field)
         new.default = default
+        new.default_factory = None
         new.annotation = Optional[field.annotation]  # type: ignore
         return new.annotation, new
 

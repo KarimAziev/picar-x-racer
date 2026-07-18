@@ -43,9 +43,7 @@ async def websocket_endpoint(
         await connection_manager.connect(websocket)
         if (
             len(connection_manager.active_connections) > 1
-            and battery_manager.config.battery
-            and battery_manager.config.battery.enabled
-            and battery_manager.battery_adapter
+            and battery_manager.enabled_batteries
         ):
             try:
                 await battery_manager.broadcast_state()

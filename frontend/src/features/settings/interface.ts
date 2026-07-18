@@ -32,6 +32,7 @@ export type ToggleableKey = FlattenBooleanObjectKeys<
 export type AllProps = FlattenObject<Settings>;
 
 export interface Battery {
+  name: string;
   full_voltage: number;
   warn_voltage: number;
   danger_voltage: number;

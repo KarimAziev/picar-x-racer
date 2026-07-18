@@ -63,63 +63,63 @@ const TTSPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/TTSPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const MusicPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/MusicPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const VideoPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/VideoPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const KeybindingsPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/KeybindingsPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const GeneralPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/GeneralPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const PhotosPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/PhotosPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const ModelsPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/ModelsPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const RobotPanel = defineAsyncComponent({
   loader: () => import("@/features/settings/components/RobotPanel.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const FileExplorer = defineAsyncComponent({
   loader: () => import("@/features/files/components/FileExplorer.vue"),
   loadingComponent: Skeleton,
   errorComponent: ErrorComponent,
-  delay: 0,
+  delay: 200,
 });
 
 const popupStore = usePopupStore();
@@ -131,6 +131,6 @@ onMounted(() => {
     if (isFunction((tabListRef.value as any)?.updateInkBar)) {
       (tabListRef.value as any)?.updateInkBar();
     }
-  }, 1000);
+  }, 100);
 });
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <div class="text-inherit flex items-center" :class="class">
+  <div class="text-inherit flex" :class="class">
     <span> {{ value }}&nbsp;</span>
     <i class="pi text-inherit" :class="icon" />
   </div>

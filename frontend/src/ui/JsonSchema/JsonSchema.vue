@@ -380,6 +380,25 @@ const handleAddListItem = () => {
     props.defs,
   );
 
+  const uniqueProperty = resolvedSchema.value?.uniqueItemProperty;
+  if (uniqueProperty && isPlainObject(newItem)) {
+    const normalizeValue = (value: unknown) =>
+      typeof value === "string" ? value.trim().toLocaleLowerCase() : value;
+    const existingValues = new Set(
+      localValue.value.map((item: any) =>
+        normalizeValue(item?.[uniqueProperty]),
+      ),
+    );
+    if (existingValues.has(normalizeValue(newItem[uniqueProperty]))) {
+      const prefix = resolvedSchema.value?.props?.itemLabel || "Item";
+      let suffix = 2;
+      while (existingValues.has(normalizeValue(`${prefix} ${suffix}`))) {
+        suffix += 1;
+      }
+      newItem[uniqueProperty] = `${prefix} ${suffix}`;
+    }
+  }
+
   localValue.value.push(newItem);
   selections.value.push(optionSelectedRef.value);
 };

@@ -56,4 +56,13 @@ describe("polymorphic array schemas", () => {
       ]),
     ).toBe("No more than 2 items are allowed.");
   });
+
+  it("enforces a schema-defined unique item property", () => {
+    expect(
+      validateAll({ ...motorsSchema, uniqueItemProperty: "name" }, [
+        { forward_pin: 6, name: "Main" },
+        { channel: "P12", name: " main " },
+      ]),
+    ).toBe("Name values must be unique.");
+  });
 });
