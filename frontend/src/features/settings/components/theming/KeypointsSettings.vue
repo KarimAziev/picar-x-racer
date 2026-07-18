@@ -14,8 +14,8 @@
         v-model:size="store.keypointsSize"
         :initialColor="defaultState.keypointsColor"
         :initialSize="defaultState.keypointsSize"
-        @update:color="store.updateKeypointsColor"
-        @update:size="store.updateKeypointsSize"
+        @update:color="handleUpdateKeypointsColor"
+        @update:size="handleUpdateKeypointsSize"
         :isResetDisabled="isResetDisabled"
         @reset="
           () => {
@@ -67,6 +67,19 @@ const handleSelectBeforeHide = () => {
 };
 
 const store = useThemeStore();
+
+const handleUpdateKeypointsColor = (newColor?: string) => {
+  if (newColor) {
+    store.updateKeypointsColor(newColor);
+  }
+};
+
+const handleUpdateKeypointsSize = (newSize?: number) => {
+  if (newSize !== undefined) {
+    store.updateKeypointsSize(newSize);
+  }
+};
+
 const isResetDisabled = computed(
   () =>
     defaultState.keypointsColor === store.keypointsColor &&

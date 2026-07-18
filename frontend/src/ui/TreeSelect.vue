@@ -1,7 +1,6 @@
 <template>
   <button
     :disabled="disabled || loading"
-    ref="btnRef"
     class="tree-btn w-full flex justify-between pl-3 border transition-colors border-form-field-border rounded-form-field text-form-field-color bg-form-field-background disabled:text-form-field-disabled-color focus:not-disabled:border-form-field-focus-border-color hover:not-disabled:not-focus:border-form-field-hover-border-color"
     type="button"
     @click="toggle"
@@ -138,7 +137,6 @@ export interface Props extends TreeProps {
 
 const virtualTree = useTemplateRef("virtualTree");
 const op = ref<InstanceType<typeof Popover>>();
-const btnRef = ref<HTMLButtonElement>();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const expandedNodes = ref<Set<string>>(new Set());

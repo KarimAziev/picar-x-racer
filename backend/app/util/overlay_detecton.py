@@ -1,14 +1,18 @@
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import cv2
 import numpy as np
 from app.core.logger import Logger
-from typing_extensions import Any, Union
+from app.schemas.detection import OverlayStyle
 
 logger = Logger(__name__)
 
 
-def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
+def overlay_detection(
+    frame: np.ndarray,
+    detection_result: Any,
+    overlay_style: OverlayStyle = OverlayStyle.BOX,
+) -> np.ndarray:
     """
     Overlays detection results onto the frame.
 
@@ -27,12 +31,44 @@ def overlay_detection(frame: np.ndarray, detection_result: Any) -> np.ndarray:
     """
 
     for detection in detection_result:
+        segments = detection.get("segments")
+        if segments:
+            frame = draw_segmentation_overlay(frame, segments)
+
+        if overlay_style == OverlayStyle.NO_BBOX_SEGMENT:
+            continue
+
         x1, y1, x2, y2 = detection["bbox"]
 
         label = detection["label"]
         confidence = detection["confidence"]
         frame = draw_overlay(frame, x1, y1, x2, y2, label, confidence)
 
+    return frame
+
+
+def draw_segmentation_overlay(
+    frame: np.ndarray,
+    segments: Any,
+    color: tuple[int, int, int] = (191, 255, 0),
+    alpha: float = 0.25,
+) -> np.ndarray:
+    """
+    Draws filled instance segmentation polygons on an image frame.
+    """
+    overlay = frame.copy()
+
+    for segment in segments:
+        points = np.array(
+            [[int(point["x"]), int(point["y"])] for point in segment],
+            dtype=np.int32,
+        )
+        if len(points) < 3:
+            continue
+        cv2.fillPoly(overlay, [points], color)
+        cv2.polylines(frame, [points], isClosed=True, color=color, thickness=2)
+
+    cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
     return frame
 
 

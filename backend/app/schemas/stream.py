@@ -60,6 +60,14 @@ class StreamSettings(BaseModel):
         ),
     ] = True
 
+    include_detection_overlay_in_media: Annotated[
+        bool,
+        Field(
+            ...,
+            description="Whether captured photos and recorded videos should include detection overlays.",
+        ),
+    ] = True
+
     rotation: Annotated[
         ImageRotation,
         Field(

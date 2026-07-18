@@ -43,12 +43,14 @@ export interface DetectionResponse {
 }
 
 export type Keypoint = { x: number; y: number };
+export type DetectionSegment = Keypoint[];
 
 export interface DetectionResult {
   bbox: [number, number, number, number];
   label: string;
   confidence: number;
   keypoints?: Keypoint[];
+  segments?: DetectionSegment[];
 }
 
 export interface ItemConfig {

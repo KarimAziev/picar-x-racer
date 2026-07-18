@@ -23,4 +23,6 @@ export enum OverlayStyle {
   AIM = "aim",
   MIXED = "mixed",
   POSE = "pose",
+  BBOX_SEGMENT = "bbox-segment",
+  NO_BBOX_SEGMENT = "no-bbox-segment",
 }

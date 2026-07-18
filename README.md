@@ -310,6 +310,8 @@ Follow these steps to enable real-time object detection:
    - **Aim**: A minimalistic crosshair over detected objects.
    - **Mixed**: A combination of box annotations and aim visuals.
    - **Pose**: Draws keypoints representing specific body joints without boxes. Requires pose estimation model, i.e. yolo11n-pose.pt.
+   - **Bbox Segment**: Draws segmentation masks with bounding boxes, class labels, and confidence. Requires segmentation model, i.e. yolo11n-seg.pt.
+   - **No Bbox Segment**: Draws only segmentation masks without bounding boxes or labels. Requires segmentation model, i.e. yolo11n-seg.pt.
 5. Toggle switch to activate detection.
 
 Output results, such as bounding boxes and labels, will immediately appear on the live camera feed.

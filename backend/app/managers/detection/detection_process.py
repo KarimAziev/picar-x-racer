@@ -16,6 +16,7 @@ from app.types.detection import (
     DetectionQueueData,
     DetectionReadyMessage,
     DetectionResult,
+    DetectionSegmentResult,
 )
 from app.util.queue_helpers import put_to_queue
 
@@ -104,7 +105,11 @@ def detection_process_func(
 
                 try:
                     detection_result: List[
-                        Union[DetectionResult, DetectionPoseResult]
+                        Union[
+                            DetectionResult,
+                            DetectionPoseResult,
+                            DetectionSegmentResult,
+                        ]
                     ] = perform_detection(
                         frame=frame,
                         yolo_model=yolo_model,

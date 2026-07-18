@@ -23,7 +23,7 @@
               optionValue="value"
               :placeholder="`${startCase(field)} filter`"
               v-model:model-value="store.filters[field].value"
-              @update:model-value="store.fetchData"
+              @update:model-value="() => store.fetchData()"
             >
               <template #dropdownicon>
                 <i class="pi pi-angle-down" />
@@ -36,7 +36,7 @@
             showButtonBar
             :inputId="`from-date-${store.mediaType}`"
             class="w-40"
-            @update:model-value="store.fetchData"
+            @update:model-value="() => store.fetchData()"
             v-model:model-value="store.filters.modified.constraints[0].value"
             label="From Date"
           />
@@ -44,19 +44,19 @@
             showButtonBar
             :inputId="`to-date-${store.mediaType}`"
             class="w-40"
-            @update:model-value="store.fetchData"
+            @update:model-value="() => store.fetchData()"
             v-model:model-value="store.filters.modified.constraints[1].value"
             label="To Date"
           />
         </div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex">
         <Button
           severity="info"
-          :disabled="!store.hasFilters"
+          :disabled="resetButtonDisabled"
           @click="store.resetFilters"
           label="Reset filters"
-          icon="pi pi-reset"
+          icon="pi pi-eraser"
         ></Button>
       </div>
     </div>
@@ -159,7 +159,7 @@
       @update:ordering="handleSort"
       v-model:checked-all="isAllChecked"
       @toggle:check-all="handleMarkAll"
-      @update:filters="store.fetchData"
+      @update:filters="() => store.fetchData()"
     />
     <Divider />
     <div class="h-[300px] sm:h-[400px] relative" :class="listClass">
@@ -457,17 +457,15 @@ const VideoGallery = defineAsyncComponent({
   loader: () => import("@/ui/VideoGallery.vue"),
 });
 
-const props = withDefaults(
-  defineProps<{
-    store: FileStore;
-    uploadURL?: string;
-    rowClass?: string;
-    listClass?: string;
-  }>(),
-  {},
-);
-
+const props = defineProps<{
+  store: FileStore;
+  uploadURL?: string;
+  rowClass?: string;
+  listClass?: string;
+}>();
 const uploaderRef = useTemplateRef("uploaderRef");
+
+const resetButtonDisabled = computed(() => !props.store.hasFilters);
 
 const videoPopupVisible = ref<boolean>(false);
 const selectedVideo = ref<GroupedFile>();

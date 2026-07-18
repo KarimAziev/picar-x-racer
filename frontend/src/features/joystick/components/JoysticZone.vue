@@ -1,9 +1,10 @@
 <template>
-  <div ref="joystickZoneY" class="joystick-zone-left"></div>
-  <div ref="joystickZoneX" class="joystick-zone-right"></div>
+  <div :ref="setJoystickZoneY" class="joystick-zone-left"></div>
+  <div :ref="setJoystickZoneX" class="joystick-zone-right"></div>
 </template>
 <script setup lang="ts">
 import { ref } from "vue";
+import type { VNodeRef } from "vue";
 import { useControllerStore } from "@/features/controller/store";
 import { useJoystickControl } from "@/features/joystick/composables/useJoysticManager";
 import { useRobotStore } from "@/features/settings/stores";
@@ -69,4 +70,12 @@ const { joystickZone: joystickZoneX } = useJoystickControl(
     onEnd: handleEnd,
   },
 );
+
+const setJoystickZoneY: VNodeRef = (element) => {
+  joystickZoneY.value = element instanceof HTMLElement ? element : null;
+};
+
+const setJoystickZoneX: VNodeRef = (element) => {
+  joystickZoneX.value = element instanceof HTMLElement ? element : null;
+};
 </script>

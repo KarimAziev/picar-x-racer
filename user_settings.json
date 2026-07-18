@@ -58,6 +58,7 @@
     "video_record": false,
     "render_fps": true,
     "auto_stop_camera_on_disconnect": true,
+    "include_detection_overlay_in_media": true,
     "rotation": 0
   },
   "detection": {

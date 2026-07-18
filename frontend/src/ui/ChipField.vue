@@ -9,7 +9,6 @@
     :messageClass="messageClass"
   >
     <TextInput
-      ref="inputRef"
       :invalid="!!msg"
       :id="field"
       :pt="{ input: { id: field } }"
@@ -87,7 +86,6 @@ const handleFocus = (ev: Event) => {
 };
 
 const inputValue = ref("");
-const inputRef = ref<HTMLInputElement | null>(null);
 const popupStore = usePopupStore();
 const handleSelectBeforeShow = () => {
   popupStore.isEscapable = false;

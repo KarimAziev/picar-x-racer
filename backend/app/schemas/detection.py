@@ -17,12 +17,18 @@ class OverlayStyle(str, Enum):
     - **mixed**: Draws crosshair lines within the first detection, and for others, a bounding box.
     - **pose**`: Draws keypoints representing specific body joints without boxes.
               Requires pose estimation model, i.e. yolo11n-pose.pt.
+    - **bbox-segment**`: Draws instance segmentation masks with bounding boxes.
+              Requires segmentation model, i.e. yolo11n-seg.pt.
+    - **no-bbox-segment**`: Draws instance segmentation masks without bounding boxes or labels.
+              Requires segmentation model, i.e. yolo11n-seg.pt.
     """
 
     BOX = "box"
     AIM = "aim"
     MIXED = "mixed"
     POSE = "pose"
+    BBOX_SEGMENT = "bbox-segment"
+    NO_BBOX_SEGMENT = "no-bbox-segment"
 
 
 class DetectionSettings(BaseModel):

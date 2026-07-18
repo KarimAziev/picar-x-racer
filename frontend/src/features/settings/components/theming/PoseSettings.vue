@@ -77,16 +77,18 @@ const resetDisabled = computed(
       props.initialFiber === renderFiber.value),
 );
 
-const handleUpdateColor = (newColor: string) => {
+const handleUpdateColor = (newColor?: string) => {
   emit("update:color", newColor);
 };
 
-const handleUpdateSize = (newColor: number | number[]) => {
-  emit("update:size", newColor as number);
+const handleUpdateSize = (newSize?: number | number[]) => {
+  if (newSize !== undefined) {
+    emit("update:size", newSize as number);
+  }
 };
 
-const handleUpdateFiber = (newColor: string) => {
-  emit("update:renderFiber", newColor);
+const handleUpdateFiber = (newValue?: boolean) => {
+  emit("update:renderFiber", newValue);
 };
 
 const handleReset = () => {

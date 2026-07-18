@@ -88,8 +88,36 @@ def prepare_photo_frame(
     detection_settings: Optional[DetectionSettings] = None,
     detection_state: Optional[Union[DetectionQueueData, DetectionResultData]] = None,
     frame_timestamp: Optional[float] = None,
+    render_detection_overlay: bool = True,
+) -> np.ndarray:
+    result = prepare_detection_overlay_frame(
+        frame=frame,
+        detection_settings=detection_settings,
+        detection_state=detection_state,
+        frame_timestamp=frame_timestamp,
+        render_detection_overlay=render_detection_overlay,
+    )
+
+    if rotation == ImageRotation.rotate_90:
+        return cv2.rotate(np.ascontiguousarray(result), cv2.ROTATE_90_CLOCKWISE)
+    if rotation == ImageRotation.rotate_180:
+        return cv2.rotate(np.ascontiguousarray(result), cv2.ROTATE_180)
+    if rotation == ImageRotation.rotate_270:
+        return cv2.rotate(np.ascontiguousarray(result), cv2.ROTATE_90_COUNTERCLOCKWISE)
+    return result
+
+
+def prepare_detection_overlay_frame(
+    frame: np.ndarray,
+    detection_settings: Optional[DetectionSettings] = None,
+    detection_state: Optional[Union[DetectionQueueData, DetectionResultData]] = None,
+    frame_timestamp: Optional[float] = None,
+    render_detection_overlay: bool = True,
 ) -> np.ndarray:
     result = frame.copy()
+
+    if not render_detection_overlay:
+        return result
 
     if detection_settings and detection_settings.active and detection_state:
         detection_result = detection_state.get("detection_result") or []
@@ -99,12 +127,10 @@ def prepare_photo_frame(
             detection_timestamp,
             detection_settings.overlay_draw_threshold,
         ):
-            result = overlay_detection(result, detection_result)
+            result = overlay_detection(
+                result,
+                detection_result,
+                detection_settings.overlay_style,
+            )
 
-    if rotation == ImageRotation.rotate_90:
-        return cv2.rotate(np.ascontiguousarray(result), cv2.ROTATE_90_CLOCKWISE)
-    if rotation == ImageRotation.rotate_180:
-        return cv2.rotate(np.ascontiguousarray(result), cv2.ROTATE_180)
-    if rotation == ImageRotation.rotate_270:
-        return cv2.rotate(np.ascontiguousarray(result), cv2.ROTATE_90_COUNTERCLOCKWISE)
     return result

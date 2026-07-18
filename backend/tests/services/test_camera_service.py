@@ -9,24 +9,39 @@ import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.core.video_capture_abc import VideoCaptureABC
 from app.schemas.camera import CameraSettings
+from app.schemas.detection import DetectionSettings, OverlayStyle
 from app.schemas.stream import StreamSettings
 from app.services.camera.camera_service import CameraService
 from app.services.connection_service import ConnectionService
 from app.services.detection.detection_service import DetectionService
 from app.services.domain.settings_service import SettingsService
 from app.services.media.video_recorder_service import VideoRecorderService
+from app.types.detection import DetectionQueueData
 
 
 class DummyDetectionService:
     def __init__(self):
-        self.detection_settings = type(
+        self.detection_settings: Any = type(
             "Dummy", (), {"active": False, "img_size": 300}
         )()
         self.loading = False
         self.shutting_down = False
+        self.detection_result: Optional[DetectionQueueData] = None
+        self.poll_count = 0
 
     def put_frame(self, frame_data: np.ndarray):
         self.last_frame = frame_data
+
+    def poll_detection_result(self) -> Optional[DetectionQueueData]:
+        self.poll_count += 1
+        return self.detection_result
+
+    @property
+    def current_state(self) -> DetectionQueueData:
+        return self.detection_result or {
+            "detection_result": [],
+            "timestamp": time.time(),
+        }
 
 
 class DummyFileService:
@@ -465,6 +480,88 @@ class TestCameraServiceSync(unittest.TestCase):
             self.settings_service.saved_settings[-1]["camera"]["fps"],
             30,
         )
+
+    def test_video_recording_writes_detection_overlay_when_enabled(self):
+        capture = OneShotVideoCapture()
+        self.camera_service.video_device_adapter = cast(
+            VideoDeviceAdapter, SequenceVideoDeviceAdapter([capture])
+        )
+        self.camera_service.stream_settings = StreamSettings(
+            format=".jpg",
+            quality=90,
+            enhance_mode=None,
+            video_record=True,
+            render_fps=True,
+            include_detection_overlay_in_media=True,
+        )
+        self.detection_service.detection_settings = DetectionSettings(
+            model="yolo11n.pt",
+            confidence=0.4,
+            active=True,
+            img_size=640,
+            labels=None,
+            overlay_draw_threshold=60.0,
+            overlay_style=OverlayStyle.BOX,
+        )
+        self.detection_service.detection_result = {
+            "detection_result": [
+                {
+                    "bbox": [10, 10, 40, 40],
+                    "label": "person",
+                    "confidence": 0.95,
+                }
+            ],
+            "timestamp": time.time(),
+        }
+
+        self.camera_service.start_camera()
+
+        self.assertTrue(wait_until(lambda: self.camera_service._capture_thread is None))
+        written = self.video_recorder.last_frame_written
+        self.assertEqual(tuple(written[10, 10]), (191, 255, 0))
+        self.assertGreater(self.detection_service.poll_count, 0)
+
+    def test_video_recording_skips_detection_overlay_when_disabled(self):
+        capture = OneShotVideoCapture()
+        self.camera_service.video_device_adapter = cast(
+            VideoDeviceAdapter, SequenceVideoDeviceAdapter([capture])
+        )
+        self.camera_service.stream_settings = StreamSettings(
+            format=".jpg",
+            quality=90,
+            enhance_mode=None,
+            video_record=True,
+            render_fps=True,
+            include_detection_overlay_in_media=False,
+        )
+        self.detection_service.detection_settings = DetectionSettings(
+            model="yolo11n.pt",
+            confidence=0.4,
+            active=True,
+            img_size=640,
+            labels=None,
+            overlay_draw_threshold=60.0,
+            overlay_style=OverlayStyle.BOX,
+        )
+        self.detection_service.detection_result = {
+            "detection_result": [
+                {
+                    "bbox": [10, 10, 40, 40],
+                    "label": "person",
+                    "confidence": 0.95,
+                }
+            ],
+            "timestamp": time.time(),
+        }
+
+        self.camera_service.start_camera()
+
+        self.assertTrue(wait_until(lambda: self.camera_service._capture_thread is None))
+        written = self.video_recorder.last_frame_written
+        self.assertTrue(
+            np.array_equal(written, np.zeros((480, 640, 3), dtype=np.uint8))
+        )
+        self.assertEqual(self.detection_service.poll_count, 0)
 
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ export interface StreamSettings {
    */
   render_fps: boolean;
   auto_stop_camera_on_disconnect?: boolean;
+  include_detection_overlay_in_media?: boolean;
   rotation?: number | null;
 }
 
@@ -48,6 +49,7 @@ export const defaultState: State = {
     quality: 100,
     render_fps: false,
     auto_stop_camera_on_disconnect: true,
+    include_detection_overlay_in_media: true,
     rotation: null,
   },
   enhancers: [],

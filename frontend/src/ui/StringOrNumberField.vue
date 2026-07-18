@@ -91,7 +91,6 @@ const options = computed(() =>
           }
           if (isString(prevValue)) {
             const prefix = extractLetterPrefix(prevValue);
-            console.log("prefix", prefix, "prevValue", prevValue);
             return `${prefix || ""}${val}`;
           }
 

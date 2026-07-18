@@ -4,7 +4,7 @@
       color-picker-id="primary-color"
       :options="colorOptions"
       v-model:color="store.primaryColor"
-      @update:color="store.updatePrimaryColor"
+      @update:color="handleUpdatePrimaryColor"
     >
       <Button
         size="small"
@@ -24,6 +24,12 @@ import ColorOptions from "@/features/settings/components/theming/ColorOptions.vu
 import { colorOptions } from "@/features/settings/components/theming/colors";
 
 const store = useThemeStore();
+
+const handleUpdatePrimaryColor = (newColor?: string) => {
+  if (newColor) {
+    store.updatePrimaryColor(newColor);
+  }
+};
 
 const resetDisabled = computed(() => store.isPrimaryColorDefault);
 </script>

@@ -76,6 +76,101 @@ export const drawDetectionOverlay = (
   }
 };
 
+export const drawDetectionSegment = (
+  ctx: CanvasRenderingContext2D,
+  scaleX: number,
+  scaleY: number,
+  detection: DetectionResult,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+) => {
+  const { label, confidence, bbox, keypoints, segments } = detection;
+
+  if (segments?.length) {
+    drawSegments(ctx, scaleX, scaleY, segments);
+  }
+
+  if (bbox) {
+    let [x1, y1, x2, y2] = bbox;
+
+    x1 = x1 * scaleX;
+    y1 = y1 * scaleY;
+    x2 = x2 * scaleX;
+    y2 = y2 * scaleY;
+
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    drawLabelWithConfidence(label, confidence, ctx, x1, y1);
+  }
+
+  if (keypoints) {
+    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+  }
+};
+
+export const drawDetectionSegmentOnly = (
+  ctx: CanvasRenderingContext2D,
+  scaleX: number,
+  scaleY: number,
+  detection: DetectionResult,
+) => {
+  if (detection.segments?.length) {
+    drawSegments(ctx, scaleX, scaleY, detection.segments);
+  }
+};
+
+const drawSegments = (
+  ctx: CanvasRenderingContext2D,
+  scaleX: number,
+  scaleY: number,
+  segments: NonNullable<DetectionResult["segments"]>,
+) => {
+  ctx.save();
+  const strokeStyle = ctx.strokeStyle;
+  const fillStyle = ctx.fillStyle;
+
+  ctx.globalAlpha = 0.24;
+  ctx.fillStyle = fillStyle;
+  segments.forEach((segment) => {
+    if (segment.length < 3) {
+      return;
+    }
+    ctx.beginPath();
+    segment.forEach((point, index) => {
+      const x = point.x * scaleX;
+      const y = point.y * scaleY;
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.closePath();
+    ctx.fill();
+  });
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = strokeStyle;
+  segments.forEach((segment) => {
+    if (segment.length < 3) {
+      return;
+    }
+    ctx.beginPath();
+    segment.forEach((point, index) => {
+      const x = point.x * scaleX;
+      const y = point.y * scaleY;
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.closePath();
+    ctx.stroke();
+  });
+  ctx.restore();
+};
+
 /**
  * Draws crosshair lines (centered) within the bounding box for the detected object.
  * Calls `drawLabelWithConfidence` to display the label and confidence.

@@ -15,8 +15,8 @@
         :initialSize="defaultState.skeletonSize"
         :initialColor="defaultState.skeletonColor"
         :isResetDisabled="isResetDisabled"
-        @update:color="store.updateSkeletonColor"
-        @update:size="store.updateSkeletonSize"
+        @update:color="handleUpdateSkeletonColor"
+        @update:size="handleUpdateSkeletonSize"
         @reset="
           () => {
             store.skeletonColor = defaultState.skeletonColor;
@@ -70,6 +70,18 @@ const handleSelectBeforeHide = () => {
 };
 
 const store = useThemeStore();
+
+const handleUpdateSkeletonColor = (newColor?: string) => {
+  if (newColor) {
+    store.updateSkeletonColor(newColor);
+  }
+};
+
+const handleUpdateSkeletonSize = (newSize?: number) => {
+  if (newSize !== undefined) {
+    store.updateSkeletonSize(newSize);
+  }
+};
 
 const isResetDisabled = computed(
   () =>

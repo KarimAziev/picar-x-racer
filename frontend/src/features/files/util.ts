@@ -1,7 +1,8 @@
-import { isString } from "@/util/guards";
+import { isString, isPlainObject } from "@/util/guards";
 import type {
   BatchFileStatus,
   FilterFieldStringArray,
+  FilterFieldDatetime,
 } from "@/features/files/interface";
 import { Nullable } from "@/util/ts-helpers";
 import { allPass } from "@/util/func";
@@ -89,8 +90,12 @@ export const mapChildren = <DataItem>(
   });
 };
 
-export const isPlainFilter = (filter: any): filter is FilterFieldStringArray =>
-  filter && Object.hasOwn(filter, "match_mode") && filter.match_mode;
+export const isPlainFilter = (
+  filter: unknown,
+): filter is FilterFieldStringArray =>
+  isPlainObject(filter) &&
+  Object.hasOwn(filter, "match_mode") &&
+  filter.match_mode;
 
 export const mapConcat = (vals: Nullable<string>[], separator = "") =>
   vals.filter((v) => v).join(separator);
@@ -102,3 +107,8 @@ export const expandFileName = (
   const filteredDirs = dirs.filter(allPass([isString, (v) => v.length > 0]));
   return [...filteredDirs, file].join("/");
 };
+
+export const isDateFilter = (filter: unknown): filter is FilterFieldDatetime =>
+  isPlainObject(filter) &&
+  Object.hasOwn(filter, "constraints") &&
+  Array.isArray(filter.constraints);

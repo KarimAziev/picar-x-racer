@@ -79,6 +79,39 @@ class TestPhotoUtils(unittest.TestCase):
 
         self.assertTrue(np.array_equal(result, frame))
 
+    def test_prepare_photo_frame_skips_detection_overlay_when_disabled(self):
+        frame = np.zeros((80, 80, 3), dtype=np.uint8)
+        detection_settings = DetectionSettings(
+            model="yolo11n.pt",
+            confidence=0.4,
+            active=True,
+            img_size=640,
+            labels=None,
+            overlay_draw_threshold=1.0,
+            overlay_style=OverlayStyle.BOX,
+        )
+        detection_state: DetectionQueueData = {
+            "detection_result": [
+                {
+                    "bbox": [10, 10, 40, 40],
+                    "label": "person",
+                    "confidence": 0.95,
+                }
+            ],
+            "timestamp": 10.0,
+        }
+
+        result = prepare_photo_frame(
+            frame=frame,
+            rotation=ImageRotation.rotate_0,
+            detection_settings=detection_settings,
+            detection_state=detection_state,
+            frame_timestamp=10.2,
+            render_detection_overlay=False,
+        )
+
+        self.assertTrue(np.array_equal(result, frame))
+
     def test_prepare_photo_frame_rotates_after_overlay(self):
         frame = np.zeros((40, 80, 3), dtype=np.uint8)
         detection_settings = DetectionSettings(
@@ -111,6 +144,47 @@ class TestPhotoUtils(unittest.TestCase):
 
         self.assertEqual(result.shape, (80, 40, 3))
         self.assertTrue(np.any(result[:, :, 1] == 255))
+
+    def test_prepare_photo_frame_renders_segment_without_bbox(self):
+        frame = np.zeros((80, 80, 3), dtype=np.uint8)
+        detection_settings = DetectionSettings(
+            model="yolo11n-seg.pt",
+            confidence=0.4,
+            active=True,
+            img_size=640,
+            labels=None,
+            overlay_draw_threshold=1.0,
+            overlay_style=OverlayStyle.NO_BBOX_SEGMENT,
+        )
+        detection_state: DetectionQueueData = {
+            "detection_result": [
+                {
+                    "bbox": [10, 10, 50, 50],
+                    "label": "person",
+                    "confidence": 0.95,
+                    "segments": [
+                        [
+                            {"x": 20, "y": 20},
+                            {"x": 40, "y": 20},
+                            {"x": 40, "y": 40},
+                            {"x": 20, "y": 40},
+                        ]
+                    ],
+                }
+            ],
+            "timestamp": 10.0,
+        }
+
+        result = prepare_photo_frame(
+            frame=frame,
+            rotation=ImageRotation.rotate_0,
+            detection_settings=detection_settings,
+            detection_state=detection_state,
+            frame_timestamp=10.2,
+        )
+
+        self.assertTrue(np.any(result[20:41, 20:41, 1] > 0))
+        self.assertTrue(np.array_equal(result[10, 10], np.zeros(3, dtype=np.uint8)))
 
 
 if __name__ == "__main__":

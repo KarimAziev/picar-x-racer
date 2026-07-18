@@ -24,8 +24,8 @@ import { SortDirection } from "@/features/files/enums";
 import type { Nullable } from "@/util/ts-helpers";
 import { omit, cloneDeep } from "@/util/obj";
 import { FilterMatchMode } from "@/features/files/enums";
-import { isArray, isEmpty } from "@/util/guards";
-import { where, allPass } from "@/util/func";
+import { isNonEmptyArray } from "@/util/guards";
+import { where } from "@/util/func";
 import {
   getBatchFilesErrorMessage,
   mapConcat,
@@ -102,14 +102,21 @@ export const makeFileStore = (
   >,
 ) =>
   defineStore(name, {
-    state: () => ({ ...cloneDeep(defaultState), ...cloneDeep(initialState) }),
+    state: (): State => ({
+      ...cloneDeep(defaultState),
+      ...cloneDeep(initialState),
+    }),
     getters: {
       mediaType() {
         return scope;
       },
       hasFilters({ filters }) {
-        return Object.values(filters).some((item) =>
-          where({ value: allPass([isArray, (v) => !isEmpty(v)]) }, item),
+        return (
+          (filters.modified.constraints &&
+            filters.modified.constraints.some((v) => v.value)) ||
+          Object.values(omit(["modified"], filters)).some(
+            where({ value: isNonEmptyArray }),
+          )
         );
       },
     },
@@ -274,9 +281,7 @@ export const makeFileStore = (
         }
       },
       async resetFilters() {
-        Object.keys(this.filters).forEach((key) => {
-          this.filters[key as keyof typeof this.filters].value = null;
-        });
+        this.filters = cloneDeep(defaultState.filters);
         await this.fetchData();
       },
     },

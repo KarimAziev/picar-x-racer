@@ -3,7 +3,13 @@ from typing import TYPE_CHECKING, List, Optional, Union
 import numpy as np
 from app.core.logger import Logger
 from app.exceptions.detection import DetectionDimensionMismatch
-from app.types.detection import DetectionKeypoint, DetectionPoseResult, DetectionResult
+from app.types.detection import (
+    DetectionKeypoint,
+    DetectionPoseResult,
+    DetectionResult,
+    DetectionSegment,
+    DetectionSegmentResult,
+)
 from app.util.video_utils import letterbox
 
 if TYPE_CHECKING:
@@ -15,6 +21,34 @@ if TYPE_CHECKING:
         from ultralytics.models.yolo import YOLO
 
 _log = Logger(__name__)
+
+
+def _scale_detection_point(
+    x: Union[float, int],
+    y: Union[float, int],
+    pad_left: int,
+    pad_top: int,
+    scale_x: float,
+    scale_y: float,
+) -> DetectionKeypoint:
+    return {
+        "x": int((float(x) - pad_left) * scale_x),
+        "y": int((float(y) - pad_top) * scale_y),
+    }
+
+
+def _scale_detection_segment(
+    segment: np.ndarray,
+    pad_left: int,
+    pad_top: int,
+    scale_x: float,
+    scale_y: float,
+) -> DetectionSegment:
+    points = segment.tolist() if hasattr(segment, "tolist") else segment
+    return [
+        _scale_detection_point(x, y, pad_left, pad_top, scale_x, scale_y)
+        for x, y in points
+    ]
 
 
 def perform_detection(
@@ -30,7 +64,7 @@ def perform_detection(
     confidence_threshold: float = 0.4,
     verbose: Optional[bool] = False,
     should_resize: bool = False,
-) -> List[Union[DetectionResult, DetectionPoseResult]]:
+) -> List[Union[DetectionResult, DetectionPoseResult, DetectionSegmentResult]]:
     """
     Performs object detection on a given frame and adjusts detected bounding boxes by undoing the letterbox
     padding before scaling the coordinates back to the original image dimensions.
@@ -93,10 +127,14 @@ def perform_detection(
     scale_x = original_width / float(resized_width)
     scale_y = original_height / float(resized_height)
 
-    detection_results: List[Union[DetectionResult, DetectionPoseResult]] = []
+    detection_results: List[
+        Union[DetectionResult, DetectionPoseResult, DetectionSegmentResult]
+    ] = []
     if hasattr(results, "boxes") and results.boxes is not None:
         idx = 0
-        keypoints = results.keypoints if results.keypoints is not None else None
+        keypoints = getattr(results, "keypoints", None)
+        masks = getattr(results, "masks", None)
+        mask_segments = getattr(masks, "xy", []) if masks is not None else []
 
         for detection in results.boxes:
             x1, y1, x2, y2 = detection.xyxy[0].tolist()
@@ -122,18 +160,42 @@ def perform_detection(
                 x2_final = int(x2_adj * scale_x)
                 y2_final = int(y2_adj * scale_y)
 
-                detection_entry: DetectionResult = {
+                detection_entry: Union[
+                    DetectionResult, DetectionPoseResult, DetectionSegmentResult
+                ] = {
                     "bbox": [x1_final, y1_final, x2_final, y2_final],
                     "label": label,
                     "confidence": conf,
                 }
+
+                if idx < len(mask_segments):
+                    segment = _scale_detection_segment(
+                        mask_segments[idx],
+                        pad_left,
+                        pad_top,
+                        scale_x,
+                        scale_y,
+                    )
+                    if len(segment) >= 3:
+                        detection_segment_entry: DetectionSegmentResult = {
+                            "bbox": detection_entry["bbox"],
+                            "label": detection_entry["label"],
+                            "confidence": detection_entry["confidence"],
+                            "segments": [segment],
+                        }
+                        detection_entry = detection_segment_entry
+
                 if keypoints is not None and idx < len(keypoints):
                     raw_keypoints = keypoints.xy[idx].tolist()
                     formatted_keypoints: List[DetectionKeypoint] = [
-                        {
-                            "x": int((x - pad_left) * scale_x),
-                            "y": int((y - pad_top) * scale_y),
-                        }
+                        _scale_detection_point(
+                            x,
+                            y,
+                            pad_left,
+                            pad_top,
+                            scale_x,
+                            scale_y,
+                        )
                         for (x, y) in raw_keypoints
                     ]
                     detection_pose_entry: DetectionPoseResult = {

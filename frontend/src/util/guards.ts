@@ -37,6 +37,9 @@ export const isEmptyString = (value: unknown) => value === "";
 
 export const isEmptyArray = (value: unknown) => isArray(value) && !value.length;
 
+export const isNonEmptyArray = (value: unknown) =>
+  isArray(value) && value.length > 0;
+
 export const isEmpty = (value: unknown) =>
   isArray(value) || isString(value)
     ? value.length === 0

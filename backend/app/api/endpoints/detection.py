@@ -4,7 +4,7 @@ Endpoints for handling object detection.
 
 import asyncio
 import queue
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Optional
 
 from app.api import deps
 from app.core.logger import Logger
@@ -173,6 +173,7 @@ async def object_detection(
     """
     try:
         await detection_notifier.connect(websocket)
+        last_broadcast_timestamp: Optional[float | None] = None
         while websocket.application_state == WebSocketState.CONNECTED:
             if (
                 detection_service.shutting_down
@@ -184,11 +185,25 @@ async def object_detection(
                 break
 
             try:
+                broadcasted = False
                 new_detection = await asyncio.to_thread(
-                    detection_service.detection_queue.get, timeout=0.1
+                    detection_service.poll_detection_result
                 )
-                detection_service.detection_result = new_detection
-                await detection_notifier.broadcast_json(detection_service.current_state)
+                current_state = detection_service.current_state
+                current_timestamp = (
+                    current_state.get("timestamp")
+                    if detection_service.detection_result is not None
+                    else None
+                )
+                if new_detection is not None or (
+                    current_timestamp is not None
+                    and current_timestamp != last_broadcast_timestamp
+                ):
+                    await detection_notifier.broadcast_json(current_state)
+                    last_broadcast_timestamp = current_timestamp
+                    broadcasted = True
+                if not broadcasted:
+                    await asyncio.sleep(0.1)
 
             except queue.Empty:
                 pass

@@ -491,6 +491,46 @@ class DetectionService:
             return None
         return self.clear_and_put(self.frame_queue, frame_data)
 
+    def poll_detection_result(
+        self,
+    ) -> Optional[Union[DetectionQueueData, DetectionResultData]]:
+        """
+        Drain pending detection results and keep the newest one as current state.
+
+        The detection queue has a size of one, so consumers use this method to share
+        the latest result without relying on a single WebSocket reader.
+        """
+        if (
+            self.shutting_down
+            or not hasattr(self, "detection_queue")
+            or self.detection_queue is None
+        ):
+            return None
+
+        latest: Optional[Union[DetectionQueueData, DetectionResultData]] = None
+        try:
+            while not self.shutting_down:
+                try:
+                    latest = self.detection_queue.get_nowait()
+                except queue.Empty:
+                    break
+        except (
+            ConnectionError,
+            ConnectionRefusedError,
+            BrokenPipeError,
+            EOFError,
+            ConnectionResetError,
+        ) as e:
+            logger.warning(
+                "Connection-related error while polling detection results: %s",
+                type(e).__name__,
+            )
+            return None
+
+        if latest is not None:
+            self.detection_result = latest
+        return latest
+
     def clear_and_put(
         self,
         qitem: Optional["mp.Queue"],

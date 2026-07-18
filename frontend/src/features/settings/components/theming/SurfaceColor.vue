@@ -4,7 +4,7 @@
       color-picker-id="surface-color"
       v-model:color="store.surfaceColor"
       :options="surfaceOptions"
-      @update:color="store.updateSurfaceColor"
+      @update:color="handleUpdateSurfaceColor"
     >
       <Button
         size="small"
@@ -24,6 +24,12 @@ import ColorOptions from "@/features/settings/components/theming/ColorOptions.vu
 import { surfaceOptions } from "@/presets/surfaces";
 
 const store = useThemeStore();
+
+const handleUpdateSurfaceColor = (newColor?: string) => {
+  if (newColor) {
+    store.updateSurfaceColor(newColor);
+  }
+};
 
 const resetDisabled = computed(() => store.isSurfaceColorDefault);
 </script>

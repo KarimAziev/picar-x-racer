@@ -7,6 +7,8 @@ import {
   setupCtx,
   drawDetectionsWith,
   drawDetectionOverlay,
+  drawDetectionSegment,
+  drawDetectionSegmentOnly,
   drawFullDetectionCrosshair,
   drawDetectionCrosshair,
   drawLabelWithConfidence,
@@ -129,4 +131,46 @@ export const drawKeypointsOnly = (
       drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
     }
   });
+};
+
+export const drawSegmentOverlay = (
+  canvas: HTMLCanvasElement,
+  elem: HTMLElement,
+  detectionData?: DetectionResult[],
+  font?: Nullable<string>,
+  color?: Nullable<string>,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+) => {
+  return drawDetectionsWith(
+    drawDetectionSegment,
+    canvas,
+    elem,
+    detectionData,
+    font,
+    color,
+    poseLines,
+    poseKeystrokes,
+  );
+};
+
+export const drawSegmentOnlyOverlay = (
+  canvas: HTMLCanvasElement,
+  elem: HTMLElement,
+  detectionData?: DetectionResult[],
+  font?: Nullable<string>,
+  color?: Nullable<string>,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+) => {
+  return drawDetectionsWith(
+    drawDetectionSegmentOnly,
+    canvas,
+    elem,
+    detectionData,
+    font,
+    color,
+    poseLines,
+    poseKeystrokes,
+  );
 };

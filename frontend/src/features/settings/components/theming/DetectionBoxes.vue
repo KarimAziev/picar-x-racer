@@ -4,7 +4,7 @@
     color-picker-id="detection-bbox-color"
     v-model:color="store.bboxesColor"
     :options="colorOptions"
-    @update:color="store.updateBBoxesColor"
+    @update:color="handleUpdateBBoxesColor"
   >
     <Button
       size="small"
@@ -29,6 +29,12 @@ import { defaultState } from "@/features/settings/stores/theme";
 const store = useThemeStore();
 
 defineProps<{ class?: string; title?: string }>();
+
+const handleUpdateBBoxesColor = (newColor?: string) => {
+  if (newColor) {
+    store.updateBBoxesColor(newColor);
+  }
+};
 
 const isResetDisabled = computed(
   () =>

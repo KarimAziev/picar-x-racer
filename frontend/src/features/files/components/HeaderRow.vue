@@ -13,7 +13,7 @@
       <Column
         v-for="(col, field) in group"
         :key="`${field as string}-column`"
-        v-bind="col"
+        v-bind="col as Record<string, any>"
         :field="field as string"
         v-if="filters && groupKey === 'filterable'"
         v-model:filter="
@@ -30,7 +30,7 @@
       <Column
         v-for="(col, field) in group"
         :key="`${field as string}-column-non-filter`"
-        v-bind="col"
+        v-bind="col as Record<string, any>"
         :field="field as string"
         v-else
         v-model:ordering="ordering"

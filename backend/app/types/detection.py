@@ -49,6 +49,9 @@ class DetectionKeypoint(TypedDict):
     y: float
 
 
+DetectionSegment = List[DetectionKeypoint]
+
+
 class DetectionResult(TypedDict):
     """
     Represents a basic detection result.
@@ -59,6 +62,17 @@ class DetectionResult(TypedDict):
     bbox: List[float]
     label: str
     confidence: float
+
+
+class DetectionSegmentResult(DetectionResult):
+    """
+    Represents a detection result with instance segmentation polygons.
+
+    The segments list contains one or more polygons, each represented as x/y
+    points mapped to the original frame coordinate space.
+    """
+
+    segments: List[DetectionSegment]
 
 
 class DetectionPoseResult(DetectionResult):
@@ -78,7 +92,9 @@ class DetectionQueueData(TypedDict):
     This structure is used to communicate detection outcomes, including their timestamps.
     """
 
-    detection_result: List[Union[DetectionResult, DetectionPoseResult]]
+    detection_result: List[
+        Union[DetectionResult, DetectionPoseResult, DetectionSegmentResult]
+    ]
     timestamp: float
 
 

@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, computed, Ref } from "vue";
+import { inject, computed, Ref, ref } from "vue";
 import { isNumber } from "@/util/guards";
 import type { UploadingFileDetail } from "@/features/files/interface";
 import Cell from "@/features/files/components/Cell.vue";
@@ -20,7 +20,10 @@ import Cell from "@/features/files/components/Cell.vue";
 export interface Props extends Pick<UploadingFileDetail, "path" | "progress"> {}
 const props = defineProps<Props>();
 
-const markedNodes = inject<Ref<Record<string, boolean>>>("markedNodes");
+const markedNodes = inject<Ref<Record<string, boolean>>>(
+  "markedNodes",
+  ref({}),
+);
 const isUploadingRow = computed(() => isNumber(props.progress));
 
 const emit = defineEmits(["toggle:checked"]);

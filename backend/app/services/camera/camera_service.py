@@ -20,6 +20,7 @@ from app.schemas.camera import CameraSettings
 from app.schemas.stream import StreamSettings
 from app.services.media.video_converter import VideoConverter
 from app.types.detection import DetectionFrameData
+from app.util.photo import prepare_detection_overlay_frame
 from app.util.video_utils import calc_fps, letterbox
 
 if TYPE_CHECKING:
@@ -278,6 +279,23 @@ class CameraService:
             return actual_fps
         return prev_fps
 
+    def _prepare_video_recording_frame(self, frame: np.ndarray) -> np.ndarray:
+        if not self.stream_settings.include_detection_overlay_in_media:
+            return frame
+
+        if not self.detection_service.detection_settings.active:
+            return frame
+
+        if hasattr(self.detection_service, "poll_detection_result"):
+            self.detection_service.poll_detection_result()
+
+        return prepare_detection_overlay_frame(
+            frame=frame,
+            detection_settings=self.detection_service.detection_settings,
+            detection_state=self.detection_service.current_state,
+            frame_timestamp=self.current_frame_timestamp,
+        )
+
     def _camera_thread_func(self, cap: VideoCaptureABC) -> None:
         """
         Camera capture loop function.
@@ -301,6 +319,7 @@ class CameraService:
                     self._dispatch_camera_error(None)
 
                 prev_fps = self._update_actual_fps(frame_start_time, prev_fps)
+                self.current_frame_timestamp = time.time()
 
                 enhance_mode = self.stream_settings.enhance_mode
                 frame_enhancer = (
@@ -323,7 +342,9 @@ class CameraService:
                         self.stream_settings.video_record
                         and self.stream_img is not None
                     ):
-                        self.video_recorder.write_frame(self.stream_img)
+                        self.video_recorder.write_frame(
+                            self._prepare_video_recording_frame(self.stream_img)
+                        )
 
                     self._process_frame(frame)
 
@@ -377,11 +398,12 @@ class CameraService:
                 self.detection_service.detection_settings.img_size,
             )
 
-            self.current_frame_timestamp = time.time()
+            frame_timestamp = self.current_frame_timestamp or time.time()
+            self.current_frame_timestamp = frame_timestamp
 
             frame_data: DetectionFrameData = {
                 "frame": resized_frame,
-                "timestamp": self.current_frame_timestamp,
+                "timestamp": frame_timestamp,
                 "original_height": original_height,
                 "original_width": original_width,
                 "resized_height": resized_height,

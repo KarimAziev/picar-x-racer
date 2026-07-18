@@ -14,6 +14,7 @@ from app.exceptions.camera import (
     CameraShutdownInProgressError,
 )
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
+from app.types.detection import DetectionQueueData, DetectionResultData
 from app.util.doc_util import build_response_description
 from app.util.photo import capture_photo, prepare_photo_frame
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,9 +22,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 if TYPE_CHECKING:
     from app.adapters.video_device_adapter import VideoDeviceAdapter
     from app.services.camera.camera_service import CameraService
-    from app.services.detection.detection_service import DetectionService
     from app.services.camera.gstreamer_service import GStreamerService
     from app.services.connection_service import ConnectionService
+    from app.services.detection.detection_service import DetectionService
     from app.services.file_management.file_manager_service import FileManagerService
 
 router = APIRouter()
@@ -177,17 +178,20 @@ async def take_photo(
     if frame is None:
         raise HTTPException(status_code=503, detail="Camera is not ready")
 
-    detection_state = (
-        detection_service.current_state
-        if detection_service.detection_settings.active
-        else None
-    )
+    detection_state: DetectionResultData | DetectionQueueData | None = None
+    if detection_service.detection_settings.active:
+        detection_service.poll_detection_result()
+        detection_state = detection_service.current_state
+
     frame = prepare_photo_frame(
         frame=frame,
         rotation=rotation,
         detection_settings=detection_service.detection_settings,
         detection_state=detection_state,
         frame_timestamp=camera_manager.current_frame_timestamp,
+        render_detection_overlay=(
+            camera_manager.stream_settings.include_detection_overlay_in_media
+        ),
     )
 
     status = await capture_photo(
