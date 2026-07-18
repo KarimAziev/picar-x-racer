@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Annotated, List
 
 from app.api import deps
 from app.core.logger import Logger
-from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
+from app.exceptions.audio import AudioVolumeError
 from app.exceptions.music import MusicInitError, MusicPlayerError
 from app.schemas.common import Message
 from app.schemas.music import (
@@ -470,7 +470,7 @@ async def get_music_tracks(
     music_volume = 0
     try:
         music_volume = await asyncio.to_thread(audio_manager.get_volume)
-    except (AmixerNotInstalled, AudioVolumeError) as e:
+    except AudioVolumeError as e:
         _log.error("Couldn't retrieve a volume: %s", e)
     except Exception:
         _log.error("Unexpected error while getting the volume level", exc_info=True)

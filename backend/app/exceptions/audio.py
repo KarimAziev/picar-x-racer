@@ -4,7 +4,19 @@ class AudioVolumeError(Exception):
     pass
 
 
-class AmixerNotInstalled(Exception):
-    """Exception raised when amixer is not installed on the system."""
+class AudioVolumeUnavailable(AudioVolumeError):
+    """Exception raised when no usable volume backend is available."""
+
+    pass
+
+
+class AudioVolumeUnsupported(AudioVolumeUnavailable):
+    """Exception raised when system volume control is unsupported."""
+
+    pass
+
+
+class AmixerNotInstalled(AudioVolumeUnavailable):
+    """Deprecated compatibility exception for unavailable ALSA volume control."""
 
     pass

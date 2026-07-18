@@ -1,127 +1,42 @@
-import os
-import re
-import subprocess
 from typing import Union
 
-from app.core.logger import Logger
-from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
-from pydub import AudioSegment
-
-debug = os.getenv("PX_LOG_LEVEL", "INFO").upper() == "DEBUG"
-
-_log = Logger(__name__)
+from app.services.media.audio_metadata_service import AudioMetadataService
+from app.services.media.volume_controller import VolumeController
 
 
 class AudioService:
     """
-    Service to handle audio playback volume adjustments and interactions with audio files.
-
-    This class is responsible for interacting with the system's `amixer` tool to
-    retrieve and modify the playback device's volume level.
+    Application-facing facade for audio metadata and system volume control.
     """
+
+    def __init__(
+        self,
+        volume_controller: VolumeController,
+        metadata_service: AudioMetadataService,
+    ) -> None:
+        self._volume_controller = volume_controller
+        self._metadata_service = metadata_service
 
     def get_audio_duration(self, filename: str) -> float:
         """
         Get the duration of an audio file in seconds.
         """
-        audio = AudioSegment.from_file(filename)
-        secs = len(audio) / 1000.0
-        return secs
+        return self._metadata_service.get_duration(filename)
 
     def get_volume(self) -> int:
         """
-        Retrieves the current playback volume level.
-
-        This method uses the `amixer` tool to fetch the volume of the "Master" device.
-
-        Returns:
-        --------------
-        The current volume as a percentage.
-
-        Raises:
-        --------------
-        - `AmixerNotInstalled`: If `amixer` is not installed on the system.
-        - `AudioVolumeError`: If an error occurs while retrieving the volume.
+        Retrieve the current playback volume level as a percentage.
         """
-        try:
-            result = subprocess.run(
-                ["amixer", "get", "Master"],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT if not debug else subprocess.DEVNULL,
-            )
-
-            output = result.stdout.decode("utf-8")
-
-            match = re.search(r"\[(\d+%)\]", output)
-
-            if match:
-                return int(match.group(1).rstrip("%"))
-            else:
-                raise AudioVolumeError("Volume information not found in amixer output.")
-        except FileNotFoundError:
-            _log.warning(
-                "Command 'amixer get Master' failed: 'amixer' is not installed or missing in PATH."
-            )
-            raise AmixerNotInstalled("'amixer' is not installed on the system.")
-        except subprocess.CalledProcessError as e:
-            _log.error(
-                "Failed to execute 'amixer' command. Non-zero exit code returned. Command output: %s",
-                (
-                    e.output.decode("utf-8")
-                    if hasattr(e, "output")
-                    else "No output available"
-                ),
-            )
-            raise AudioVolumeError(
-                "Error getting the volume due to a command execution failure."
-            )
-        except Exception as e:
-            _log.error("Unexpected error in get_volume", exc_info=True)
-            raise AudioVolumeError("An unexpected error occurred.")
+        return self._volume_controller.get_volume()
 
     def set_volume(self, volume_percentage: Union[int, float]) -> None:
         """
-        Sets the playback volume to the specified level.
-
-        This method uses the `amixer` tool to adjust the volume of the "Master" device.
+        Set the playback volume to the specified level.
 
         Args:
         --------------
         `volume_percentage`: Target volume (0 to 100).
 
-        Raises:
-        --------------
-        - `AmixerNotInstalled`: If `amixer` is not installed on the system.
-        - `AudioVolumeError`: If an error occurs while setting the volume.
         """
-        volume_percentage = int(max(0, min(100, volume_percentage)))
-        try:
-            subprocess.run(
-                ["amixer", "sset", "Master", f"{volume_percentage}%"],
-                check=True,
-                stdout=subprocess.PIPE if not debug else subprocess.DEVNULL,
-                stderr=subprocess.STDOUT if not debug else subprocess.DEVNULL,
-            )
-
-        except FileNotFoundError:
-            _log.warning(
-                "Command 'amixer sset Master %s' failed: 'amixer' is not installed or missing in PATH.",
-                volume_percentage,
-            )
-            raise AmixerNotInstalled("'amixer' is not installed on the system.")
-        except subprocess.CalledProcessError as e:
-            _log.error(
-                "Failed to execute 'amixer' command. Non-zero exit code returned. Command output: %s",
-                (
-                    e.output.decode("utf-8")
-                    if hasattr(e, "output")
-                    else "No output available"
-                ),
-            )
-            raise AudioVolumeError(
-                "Error setting the volume due to a command execution failure."
-            )
-        except Exception as e:
-            _log.error("Unexpected error in set_volume", exc_info=True)
-            raise AudioVolumeError("Failed to set the volume.")
+        normalized_volume = int(max(0, min(100, volume_percentage)))
+        self._volume_controller.set_volume(normalized_volume)

@@ -2,6 +2,7 @@ import os
 from functools import lru_cache
 from typing import Annotated, AsyncGenerator, Dict, TypedDict
 
+from app.adapters.audio.factory import create_volume_controller
 from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.config.config import settings as app_config
 from app.core.logger import Logger
@@ -24,6 +25,7 @@ from app.services.integration.robot_communication_service import (
     RobotCommunicationService,
 )
 from app.services.media.audio_service import AudioService
+from app.services.media.audio_metadata_service import AudioMetadataService
 from app.services.media.audio_stream_service import AudioStreamService
 from app.services.media.music_file_service import MusicFileService
 from app.services.media.music_service import MusicService
@@ -88,7 +90,10 @@ def get_robot_communication_service() -> RobotCommunicationService:
 
 @lru_cache()
 def get_audio_service() -> AudioService:
-    return AudioService()
+    return AudioService(
+        volume_controller=create_volume_controller(),
+        metadata_service=AudioMetadataService(),
+    )
 
 
 @lru_cache()

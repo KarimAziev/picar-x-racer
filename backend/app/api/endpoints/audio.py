@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
 from app.core.logger import Logger
-from app.exceptions.audio import AmixerNotInstalled, AudioVolumeError
+from app.exceptions.audio import (
+    AudioVolumeError,
+    AudioVolumeUnavailable,
+    AudioVolumeUnsupported,
+)
 from app.schemas.audio import VolumeData
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket
 
@@ -26,20 +30,22 @@ logger = Logger(__name__)
     summary="Set the playback volume to the specified level.",
     response_description="The volume level is returned as a normalized integer between 0 and 100.",
     responses={
-        404: {
-            "description": "Not Found. `amixer` is missing.",
+        501: {
+            "description": "System volume control is unsupported on this platform.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "'amixer' is not installed on the system."}
+                    "example": {
+                        "detail": "System volume control is not supported on Windows."
+                    }
                 }
             },
         },
         503: {
-            "description": "Service Unavailable. General audio issue.",
+            "description": "System volume control is unavailable or failed.",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Error setting the volume due to a command execution failure."
+                        "detail": "Linux volume control is unavailable because 'amixer' was not found."
                     }
                 }
             },
@@ -114,8 +120,10 @@ async def set_volume(
             logger.error(f"WebSocket broadcasting error: {ws_err}", exc_info=True)
 
         return {"volume": new_volume}
-    except AmixerNotInstalled as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except AudioVolumeUnsupported as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except AudioVolumeUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except AudioVolumeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception:
@@ -129,20 +137,22 @@ async def set_volume(
     summary="Retrieve the current volume level",
     response_description="The volume level is returned as a normalized integer between 0 and 100.",
     responses={
-        404: {
-            "description": "Not Found. `amixer` is missing.",
+        501: {
+            "description": "System volume control is unsupported on this platform.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "'amixer' is not installed on the system."}
+                    "example": {
+                        "detail": "System volume control is not supported on Windows."
+                    }
                 }
             },
         },
         503: {
-            "description": "Service Unavailable. General audio fetching issue.",
+            "description": "System volume control is unavailable or failed.",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Error getting the volume due to a command execution failure."
+                        "detail": "Linux volume control is unavailable because 'amixer' was not found."
                     }
                 }
             },
@@ -180,8 +190,10 @@ async def get_volume(
     try:
         current_volume = await asyncio.to_thread(audio_manager.get_volume)
         return {"volume": current_volume}
-    except AmixerNotInstalled as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except AudioVolumeUnsupported as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except AudioVolumeUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except AudioVolumeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception:
