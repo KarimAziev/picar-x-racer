@@ -69,7 +69,7 @@ Picar-X Racer is a robotics and AI platform designed to control either the [Pica
 
 ## Prerequisites
 
-- Python 3.10-3.12
+- Python 3.10-3.14
 - Node.js (version 24 or higher)
 - make
 
