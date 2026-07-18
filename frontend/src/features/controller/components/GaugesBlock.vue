@@ -17,7 +17,7 @@
     <ToggleableView setting="general.speedometer_view" v-if="!isMobile">
       <Speedometer />
     </ToggleableView>
-    <Messages
+    <MessageListContainer
       v-if="isMobile"
       class="max-h-[50px] overflow-y-scroll text-xs sm:max-h-[80px]"
     />
@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent, inject } from "vue";
 import ToggleableView from "@/ui/ToggleableView.vue";
-import Messages from "@/features/messager/components/MessageListContainer.vue";
+import MessageListContainer from "@/features/messager/components/MessageListContainer.vue";
 import type { Ref } from "vue";
 
 const isMobile = inject<Ref<boolean, boolean>>("isMobile");

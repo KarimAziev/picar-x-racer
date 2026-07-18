@@ -9,18 +9,15 @@
           class="px-2"
           ><template #icon>&#8722;</template></ButtonIcon
         >
-
-        <span class="relative"
-          >{{ slotProps.value }}
-          <ButtonIcon
-            v-tooltip="'Increase max speed'"
-            class="px-2 absolute top-0"
-            :disabled="incDisabled"
-            @click="handleIncMaxSpeed"
-            ><template #icon>&#43;</template></ButtonIcon
-          ></span
+        <ButtonIcon
+          v-tooltip="'Increase max speed'"
+          class="px-2"
+          :disabled="incDisabled"
+          @click="handleIncMaxSpeed"
+          ><template #icon>&#43;</template></ButtonIcon
         >
-      </span>
+        <span class="relative">{{ slotProps.value }} </span></span
+      >
     </template>
   </InfoItem>
 </template>
