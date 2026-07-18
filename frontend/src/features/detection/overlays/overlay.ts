@@ -2,6 +2,7 @@ import {
   DetectionResult,
   OverlayLinesParams,
   KeypointsParams,
+  SemanticMaskData,
 } from "@/features/detection/interface";
 import {
   setupCtx,
@@ -9,12 +10,24 @@ import {
   drawDetectionOverlay,
   drawDetectionSegment,
   drawDetectionSegmentOnly,
+  drawSemanticMask,
   drawFullDetectionCrosshair,
   drawDetectionCrosshair,
   drawLabelWithConfidence,
 } from "@/features/detection/overlays/util";
 import { drawKeypoints } from "@/features/detection/overlays/pose/canvasPoseRenderer";
 import { Nullable } from "@/util/ts-helpers";
+
+export type DetectionOverlayHandler = (
+  canvas: HTMLCanvasElement,
+  elem: HTMLElement,
+  detectionData?: DetectionResult[],
+  font?: Nullable<string>,
+  color?: Nullable<string>,
+  poseLines?: OverlayLinesParams,
+  poseKeystrokes?: KeypointsParams,
+  semanticMask?: SemanticMaskData | null,
+) => void;
 
 /**
  * Draws overlay annotations on a canvas for the detected objects using bounding boxes and labels.
@@ -173,4 +186,22 @@ export const drawSegmentOnlyOverlay = (
     poseLines,
     poseKeystrokes,
   );
+};
+
+export const drawSemanticOverlay = (
+  canvas: HTMLCanvasElement,
+  elem: HTMLElement,
+  _detectionData?: DetectionResult[],
+  font?: Nullable<string>,
+  color?: Nullable<string>,
+  _poseLines?: OverlayLinesParams,
+  _poseKeystrokes?: KeypointsParams,
+  semanticMask?: SemanticMaskData | null,
+) => {
+  const { ctx } = setupCtx(canvas, elem, font, color);
+  if (!ctx) {
+    return;
+  }
+
+  drawSemanticMask(ctx, semanticMask);
 };

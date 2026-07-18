@@ -47,6 +47,7 @@ export const useDetectionFields = (params?: FieldsParams): DetectionFields => {
     labels: detectionStore.data.labels,
     overlay_draw_threshold: detectionStore.data.overlay_draw_threshold,
     overlay_style: detectionStore.data.overlay_style,
+    segmentation_detail: detectionStore.data.segmentation_detail,
   });
 
   const updateData = async () => {

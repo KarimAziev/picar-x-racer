@@ -19,6 +19,8 @@ class DateTimePredicateBuilder(PredicateBuilder):
         self, filter_field: FilterFieldDatetime, field_name: str
     ) -> Callable[[FileDetail], bool]:
         start_date, end_date = filter_field.date_range()
+        if not start_date and not end_date:
+            return lambda _: True
 
         def datetime_predicate(f: FileDetail) -> bool:
             value: Optional[float] = getattr(f, field_name)

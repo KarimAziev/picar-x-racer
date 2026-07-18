@@ -96,8 +96,10 @@ class DetectionService:
             raise DetectionProcessLoading("Detection process is about to close!")
 
         detection_action = None
-        dict_data = settings.model_dump()
-        detection_data = self.detection_settings.model_dump(exclude_unset=True)
+        dict_data = settings.model_dump(mode="json")
+        detection_data = self.detection_settings.model_dump(
+            mode="json", exclude_unset=True
+        )
         detection_keys_to_restart = {
             "img_size",
             "model",
@@ -107,6 +109,7 @@ class DetectionService:
             "command": "set_detect_mode",
             "confidence": None,
             "labels": None,
+            "segmentation_detail": settings.segmentation_detail.value,
         }
 
         has_runtime_data = False
@@ -205,6 +208,7 @@ class DetectionService:
                     "command": "set_detect_mode",
                     "confidence": self.detection_settings.confidence,
                     "labels": self.detection_settings.labels,
+                    "segmentation_detail": self.detection_settings.segmentation_detail.value,
                 }
                 logger.info("Waiting for model %s", self.detection_settings.model)
                 await self.connection_manager.info(

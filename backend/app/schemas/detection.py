@@ -21,6 +21,8 @@ class OverlayStyle(str, Enum):
               Requires segmentation model, i.e. yolo11n-seg.pt.
     - **no-bbox-segment**`: Draws instance segmentation masks without bounding boxes or labels.
               Requires segmentation model, i.e. yolo11n-seg.pt.
+    - **semantic**`: Draws a dense semantic segmentation class map.
+              Requires semantic segmentation model, i.e. yolo26n-sem.pt.
     """
 
     BOX = "box"
@@ -29,6 +31,22 @@ class OverlayStyle(str, Enum):
     POSE = "pose"
     BBOX_SEGMENT = "bbox-segment"
     NO_BBOX_SEGMENT = "no-bbox-segment"
+    SEMANTIC = "semantic"
+
+
+class SegmentationDetail(str, Enum):
+    """
+    Segmentation overlay detail level.
+
+    Enum Values:
+    - **fast**: Favors smaller payloads and faster rendering.
+    - **balanced**: Default balance between detail and rendering cost.
+    - **detailed**: Keeps more segmentation detail at higher rendering cost.
+    """
+
+    FAST = "fast"
+    BALANCED = "balanced"
+    DETAILED = "detailed"
 
 
 class DetectionSettings(BaseModel):
@@ -78,6 +96,11 @@ class DetectionSettings(BaseModel):
         OverlayStyle.BOX,
         description=extract_clean_docstring(OverlayStyle),
         examples=[OverlayStyle.AIM.value],
+    )
+    segmentation_detail: SegmentationDetail = Field(
+        default=SegmentationDetail.BALANCED,
+        description=extract_clean_docstring(SegmentationDetail),
+        examples=[SegmentationDetail.BALANCED.value],
     )
 
     @model_validator(mode="after")

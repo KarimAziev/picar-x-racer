@@ -12,11 +12,10 @@ from app.types.detection import (
     DetectionErrorMessage,
     DetectionFrameData,
     DetectionLoadErrorMessage,
-    DetectionPoseResult,
+    DetectionProcessOutput,
     DetectionQueueData,
     DetectionReadyMessage,
-    DetectionResult,
-    DetectionSegmentResult,
+    SegmentationDetail,
 )
 from app.util.queue_helpers import put_to_queue
 
@@ -74,6 +73,7 @@ def detection_process_func(
             confidence_threshold = 0.3
             prev_time = time.time()
             labels: Optional[List[str]] = None
+            segmentation_detail: SegmentationDetail = "balanced"
 
             while not stop_event.is_set():
                 try:
@@ -86,10 +86,15 @@ def detection_process_func(
                                 "confidence"
                             )
                             labels = control_message.get("labels")
+                            next_segmentation_detail = control_message.get(
+                                "segmentation_detail"
+                            )
 
                             _log.info(f"confidence: {confidence}")
                             if confidence:
                                 confidence_threshold = confidence
+                            if next_segmentation_detail:
+                                segmentation_detail = next_segmentation_detail
                 except queue.Empty:
                     pass
 
@@ -104,13 +109,7 @@ def detection_process_func(
                 verbose = verbose_enabled and curr_time - prev_time >= 5
 
                 try:
-                    detection_result: List[
-                        Union[
-                            DetectionResult,
-                            DetectionPoseResult,
-                            DetectionSegmentResult,
-                        ]
-                    ] = perform_detection(
+                    detection_output: DetectionProcessOutput = perform_detection(
                         frame=frame,
                         yolo_model=yolo_model,
                         confidence_threshold=confidence_threshold,
@@ -123,6 +122,7 @@ def detection_process_func(
                         pad_top=frame_data["pad_top"],
                         should_resize=frame_data["should_resize"],
                         labels_to_detect=labels,
+                        segmentation_detail=segmentation_detail,
                     )
                 except DetectionDimensionMismatch as e:
                     err: DetectionErrorMessage = {"error": str(e)}
@@ -137,12 +137,14 @@ def detection_process_func(
                     break
 
                 detection_result_with_timestamp: DetectionQueueData = {
-                    "detection_result": detection_result,
+                    **detection_output,
                     "timestamp": frame_timestamp,
                 }
 
                 if verbose:
-                    _log.info(f"Detection result: {detection_result}")
+                    _log.info(
+                        f"Detection result: {detection_output['detection_result']}"
+                    )
                     prev_time = time.time()
 
                 put_to_queue(

@@ -39,6 +39,17 @@
       <template #footer>
         <ModelUpload />
       </template>
+      <template #nodeLabel="{ name, type, is_dir, path }">
+        <div class="min-w-0 flex items-center gap-2">
+          <span class="block truncate">{{ name }}</span>
+          <i
+            v-if="isSelectableModel(path, is_dir)"
+            class="shrink-0 text-xs text-form-field-icon-color"
+            :class="modelStateIcon(type)"
+            v-tooltip="modelStateTooltip(type)"
+          />
+        </div>
+      </template>
     </TreeSelect>
   </div>
 </template>
@@ -60,7 +71,7 @@ import { focusToKeyboardHandler } from "@/features/controller/util";
 import { useDetectionDataStore } from "@/features/files/stores";
 import TreeSelect from "@/ui/TreeSelect.vue";
 import type { TreeNode } from "@/types/tree";
-import { findItemInTree } from "@/features/files/components/util";
+import { findItemInTree, isLoadable } from "@/features/files/components/util";
 import { GroupedFile } from "@/features/files/interface";
 import { isSelectableModel } from "@/features/settings/util";
 import { useAsyncDebounce } from "@/composables/useDebounce";
@@ -175,6 +186,12 @@ const handleSearch = useAsyncDebounce(async (value: string | undefined) => {
     treeSelectRef.value?.expandAll();
   }
 }, 500);
+
+const modelStateIcon = (type?: string) =>
+  isLoadable(type) ? "pi pi-download" : "pi pi-file";
+
+const modelStateTooltip = (type?: string) =>
+  isLoadable(type) ? "Loadable model" : "Local model";
 
 watch(
   () => [detectionStore.data.model, dataStore.data],

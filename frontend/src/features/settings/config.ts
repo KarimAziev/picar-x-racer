@@ -1,7 +1,7 @@
 import { generateMultiplesOf32 } from "@/util/number";
 import { numberSequence } from "@/util/cycleValue";
 import { SettingsTab } from "@/features/settings/enums";
-import { OverlayStyle } from "@/features/detection";
+import { OverlayStyle, SegmentationDetail } from "@/features/detection";
 import { startCase } from "@/util/str";
 import { Settings } from "@/features/settings/interface";
 import { FlattenBooleanObjectKeys } from "@/util/ts-helpers";
@@ -116,6 +116,12 @@ export const overlayStyleOptions = Object.values(OverlayStyle).map((value) => ({
   value,
   label: startCase(value),
 }));
+export const segmentationDetailOptions = Object.values(SegmentationDetail).map(
+  (value) => ({
+    value,
+    label: startCase(value),
+  }),
+);
 
 export const videoQualityOptions = numberSequence(10, 100, 10).map((value) => ({
   value: value,

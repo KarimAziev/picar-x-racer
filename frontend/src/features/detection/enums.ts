@@ -25,4 +25,11 @@ export enum OverlayStyle {
   POSE = "pose",
   BBOX_SEGMENT = "bbox-segment",
   NO_BBOX_SEGMENT = "no-bbox-segment",
+  SEMANTIC = "semantic",
+}
+
+export enum SegmentationDetail {
+  FAST = "fast",
+  BALANCED = "balanced",
+  DETAILED = "detailed",
 }

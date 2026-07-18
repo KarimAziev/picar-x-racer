@@ -2,6 +2,7 @@
   <ModelFieldSet
     :imgSizeOptions="imgSizeOptions"
     :overlayStyleOptions="overlayStyleOptions"
+    :segmentationDetailOptions="segmentationDetailOptions"
     :loading="loading"
   />
   <ModelsTable />
@@ -15,6 +16,7 @@ import { useDetectionFields } from "@/features/detection";
 import {
   imgSizeOptions,
   overlayStyleOptions,
+  segmentationDetailOptions,
 } from "@/features/settings/config";
 import ModelFieldSet from "@/features/settings/components/detection/ModelFieldSet.vue";
 import ModelsTable from "@/features/settings/components/detection/ModelsTable.vue";

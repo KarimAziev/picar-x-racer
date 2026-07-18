@@ -121,8 +121,9 @@ def prepare_detection_overlay_frame(
 
     if detection_settings and detection_settings.active and detection_state:
         detection_result = detection_state.get("detection_result") or []
+        semantic_mask = detection_state.get("semantic_mask")
         detection_timestamp = detection_state.get("timestamp")
-        if detection_result and should_render_detection_overlay(
+        if (detection_result or semantic_mask) and should_render_detection_overlay(
             frame_timestamp,
             detection_timestamp,
             detection_settings.overlay_draw_threshold,
@@ -131,6 +132,7 @@ def prepare_detection_overlay_frame(
                 result,
                 detection_result,
                 detection_settings.overlay_style,
+                semantic_mask,
             )
 
     return result

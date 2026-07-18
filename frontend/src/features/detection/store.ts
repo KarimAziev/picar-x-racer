@@ -8,6 +8,7 @@ import {
   DetectionResponse,
 } from "@/features/detection/interface";
 import { OverlayStyle } from "@/features/detection/enums";
+import { SegmentationDetail } from "@/features/detection/enums";
 import { appApi } from "@/api";
 
 export interface State extends DetectionResponse {
@@ -27,9 +28,11 @@ export const defaultState: State = {
     labels: null,
     overlay_draw_threshold: 1,
     overlay_style: OverlayStyle.BOX,
+    segmentation_detail: SegmentationDetail.BALANCED,
   },
   detectors: [],
   detection_result: [],
+  semantic_mask: null,
   timestamp: null,
   connection: null,
 };
@@ -93,6 +96,7 @@ export const useStore = defineStore("detection-settings", {
         onMessage: (data: DetectionResponse) => {
           if (data.detection_result) {
             this.detection_result = data.detection_result;
+            this.semantic_mask = data.semantic_mask ?? null;
             this.timestamp = data.timestamp;
           }
         },
@@ -102,12 +106,14 @@ export const useStore = defineStore("detection-settings", {
         },
         onClose: () => {
           this.detection_result = [];
+          this.semantic_mask = null;
         },
         onError: () => {
           if (this.data.active) {
             messager.error(msg.error);
           }
           this.detection_result = [];
+          this.semantic_mask = null;
         },
         isRetryable: () =>
           new Promise((res) => {

@@ -56,6 +56,17 @@
         @update:model-value="updateDebounced"
         :options="overlayStyleOptions"
       />
+      <SelectField
+        fieldClassName="w-24"
+        :filter="false"
+        inputId="settings.detection.segmentation_detail"
+        v-model="fields.segmentation_detail"
+        label="Detail"
+        tooltipHelp="Segmentation overlay detail"
+        :loading="loading"
+        @update:model-value="updateDebounced"
+        :options="segmentationDetailOptions"
+      />
       <ChipField
         label="Labels"
         field="settings.detection.labels"
@@ -71,7 +82,11 @@
 import { inject } from "vue";
 import FieldSet from "primevue/fieldset";
 import type { DetectionFields } from "@/features/detection/composables/useDetectionFields";
-import { useDetectionStore, OverlayStyle } from "@/features/detection";
+import {
+  useDetectionStore,
+  OverlayStyle,
+  SegmentationDetail,
+} from "@/features/detection";
 import { ValueLabelOption } from "@/features/settings/interface";
 import NumberField from "@/ui/NumberField.vue";
 import SelectField from "@/ui/SelectField.vue";
@@ -87,6 +102,7 @@ const updateDebounced =
 defineProps<{
   imgSizeOptions?: ValueLabelOption<number>[];
   overlayStyleOptions: ValueLabelOption<OverlayStyle>[];
+  segmentationDetailOptions: ValueLabelOption<SegmentationDetail>[];
   loading?: boolean;
 }>();
 

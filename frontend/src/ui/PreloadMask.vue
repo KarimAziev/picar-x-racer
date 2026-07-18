@@ -1,7 +1,7 @@
 <template>
   <transition name="fade">
     <div
-      class="fixed inset-0 flex items-center justify-center z-50 w-full h-full"
+      class="HELLO fixed inset-0 flex items-center justify-center z-50 w-full h-full"
       v-if="showPreloader"
     >
       <div class="flex items-center justify-center flex-auto">
@@ -66,8 +66,8 @@ if (props.loading) {
 .fade-enter-active,
 .fade-leave-active {
   transition:
-    opacity 2s,
-    visibility 2s;
+    opacity 0.1s,
+    visibility 0.1s;
   visibility: visible;
 }
 

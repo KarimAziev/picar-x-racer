@@ -37,6 +37,7 @@ import { useCameraStore, useThemeStore } from "@/features/settings/stores";
 import { useDetectionStore, useWebsocketStream } from "@/features/detection";
 import { drawOverlay } from "@/features/detection/overlays/overlay";
 import { overlayStyleHandlers } from "@/features/detection/config";
+import type { DetectionResult } from "@/features/detection/interface";
 
 const props = defineProps<{ imgClass?: string }>();
 
@@ -69,42 +70,84 @@ const isOverlayEnabled = computed(
 
 const font = useCssVar("--canvas-font");
 const colorText = useCssVar("--color-text");
+let overlayAnimationFrame: number | null = null;
 
 const {
   addListeners: addCameraRotateListeners,
   removeListeners: removeCameraRotateListeners,
 } = useCameraRotate(imgRef);
 
+const drawDetectionResults = (newResults: DetectionResult[]) => {
+  if (!overlayCanvas.value || !imgRef.value) {
+    return;
+  }
+
+  const frameTimeStamp = detectionStore.currentFrameTimestamp;
+  const detectionTimeStamp = detectionStore.timestamp;
+
+  const enabled = detectionTimeStamp && frameTimeStamp;
+
+  if (!enabled) {
+    return drawOverlay(overlayCanvas.value, imgRef.value, []);
+  }
+  const timeDiff = frameTimeStamp - detectionTimeStamp;
+  const handler = overlayStyleHandlers[detectionStore.data.overlay_style];
+  if (timeDiff <= detectionStore.data.overlay_draw_threshold) {
+    handler(
+      overlayCanvas.value,
+      imgRef.value,
+      newResults,
+      font.value,
+      themeStore.bboxesColor || colorText.value,
+      themeStore.lines,
+      themeStore.keypoints,
+      detectionStore.semantic_mask,
+    );
+  } else {
+    handler(overlayCanvas.value, imgRef.value, []);
+  }
+};
+
+const scheduleOverlayDraw = (newResults: DetectionResult[]) => {
+  if (overlayAnimationFrame !== null) {
+    cancelAnimationFrame(overlayAnimationFrame);
+  }
+  overlayAnimationFrame = requestAnimationFrame(() => {
+    overlayAnimationFrame = null;
+    drawDetectionResults(newResults);
+  });
+};
+
 watch(
   () => detectionStore.detection_result,
   (newResults) => {
-    if (overlayCanvas.value && imgRef.value) {
-      const frameTimeStamp = detectionStore.currentFrameTimestamp;
-      const detectionTimeStamp = detectionStore.timestamp;
-
-      const enabled = detectionTimeStamp && frameTimeStamp;
-
-      if (!enabled) {
-        return drawOverlay(overlayCanvas.value, imgRef.value, []);
-      }
-      const timeDiff = frameTimeStamp - detectionTimeStamp;
-      const handler = overlayStyleHandlers[detectionStore.data.overlay_style];
-      if (timeDiff <= detectionStore.data.overlay_draw_threshold) {
-        handler(
-          overlayCanvas.value,
-          imgRef.value,
-          newResults,
-          font.value,
-          themeStore.bboxesColor || colorText.value,
-          themeStore.lines,
-          themeStore.keypoints,
-        );
-      } else {
-        handler(overlayCanvas.value, imgRef.value, []);
-      }
-    }
+    scheduleOverlayDraw(newResults);
   },
 );
+
+watch(
+  () => detectionStore.data.overlay_style,
+  () => {
+    scheduleOverlayDraw(detectionStore.detection_result);
+  },
+);
+
+watch(
+  () => detectionStore.semantic_mask,
+  () => {
+    scheduleOverlayDraw(detectionStore.detection_result);
+  },
+);
+
+watch(isOverlayEnabled, (enabled) => {
+  if (!enabled && overlayCanvas.value && imgRef.value) {
+    if (overlayAnimationFrame !== null) {
+      cancelAnimationFrame(overlayAnimationFrame);
+      overlayAnimationFrame = null;
+    }
+    drawOverlay(overlayCanvas.value, imgRef.value, []);
+  }
+});
 
 watch(
   () => imgRef.value,
@@ -144,6 +187,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  if (overlayAnimationFrame !== null) {
+    cancelAnimationFrame(overlayAnimationFrame);
+  }
   removeCameraRotateListeners();
   handleSocketsCleanup();
 });

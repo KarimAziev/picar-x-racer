@@ -1,4 +1,4 @@
-import { OverlayStyle } from "@/features/detection/enums";
+import { OverlayStyle, SegmentationDetail } from "@/features/detection/enums";
 
 export interface DetectionSettings {
   /**
@@ -34,10 +34,16 @@ export interface DetectionSettings {
    * The detection overlay styles
    */
   overlay_style: OverlayStyle;
+
+  /**
+   * The segmentation overlay detail level.
+   */
+  segmentation_detail: SegmentationDetail;
 }
 
 export interface DetectionResponse {
   detection_result: DetectionResult[];
+  semantic_mask?: SemanticMaskData | null;
   timestamp: number | null;
   loading: boolean;
 }
@@ -51,6 +57,13 @@ export interface DetectionResult {
   confidence: number;
   keypoints?: Keypoint[];
   segments?: DetectionSegment[];
+}
+
+export interface SemanticMaskData {
+  width: number;
+  height: number;
+  counts: [number, number][];
+  classes: Record<string, string>;
 }
 
 export interface ItemConfig {

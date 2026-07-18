@@ -1,8 +1,10 @@
-from typing import List, Literal, Optional, TypedDict, Union
+from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 import numpy as np
+from typing_extensions import NotRequired
 
 DetectionProcessCommand = Literal["set_detect_mode"]
+SegmentationDetail = Literal["fast", "balanced", "detailed"]
 
 
 class DetectionFrameData(TypedDict):
@@ -34,6 +36,7 @@ class DetectionControlMessage(TypedDict):
 
     confidence: Optional[float]
     labels: Optional[List[str]]
+    segmentation_detail: NotRequired[SegmentationDetail]
     command: DetectionProcessCommand
 
 
@@ -75,6 +78,17 @@ class DetectionSegmentResult(DetectionResult):
     segments: List[DetectionSegment]
 
 
+class SemanticMaskData(TypedDict):
+    """
+    Compact run-length encoded semantic segmentation class map.
+    """
+
+    width: int
+    height: int
+    counts: List[List[int]]
+    classes: Dict[int, str]
+
+
 class DetectionPoseResult(DetectionResult):
     """
     Represents a detection result with additional pose keypoints.
@@ -85,6 +99,20 @@ class DetectionPoseResult(DetectionResult):
     keypoints: List[DetectionKeypoint]
 
 
+DetectionResults = List[
+    Union[DetectionResult, DetectionPoseResult, DetectionSegmentResult]
+]
+
+
+class DetectionProcessOutput(TypedDict):
+    """
+    Represents the output of a single detection process inference.
+    """
+
+    detection_result: DetectionResults
+    semantic_mask: NotRequired[SemanticMaskData]
+
+
 class DetectionQueueData(TypedDict):
     """
     Represents a message containing detection results.
@@ -92,10 +120,9 @@ class DetectionQueueData(TypedDict):
     This structure is used to communicate detection outcomes, including their timestamps.
     """
 
-    detection_result: List[
-        Union[DetectionResult, DetectionPoseResult, DetectionSegmentResult]
-    ]
+    detection_result: DetectionResults
     timestamp: float
+    semantic_mask: NotRequired[SemanticMaskData]
 
 
 class DetectionResultData(DetectionQueueData):

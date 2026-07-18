@@ -79,6 +79,19 @@
       @before-hide="handleSelectBeforeHide"
       @hide="focusToKeyboardHandler"
     />
+    <SelectField
+      fieldClassName="w-24"
+      :filter="false"
+      inputId="segmentation_detail"
+      v-model="fields.segmentation_detail"
+      label="Detail"
+      :disabled="detectionStore.loading"
+      @update:model-value="updateDebounced"
+      :options="segmentationDetailOptions"
+      @before-show="handleSelectBeforeShow"
+      @before-hide="handleSelectBeforeHide"
+      @hide="focusToKeyboardHandler"
+    />
   </div>
 </template>
 
@@ -89,6 +102,7 @@ import NumberField from "@/ui/NumberField.vue";
 import {
   imgSizeOptions,
   overlayStyleOptions,
+  segmentationDetailOptions,
 } from "@/features/settings/config";
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";

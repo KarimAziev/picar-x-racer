@@ -4,6 +4,7 @@ import type {
   DetectionResult,
   OverlayLinesParams,
   KeypointsParams,
+  SemanticMaskData,
 } from "@/features/detection/interface";
 import {
   MAX_LINE_WIDTH,
@@ -171,6 +172,111 @@ const drawSegments = (
   ctx.restore();
 };
 
+const SEMANTIC_MASK_ALPHA = 96;
+const SEMANTIC_BACKGROUND_LABELS = new Set([
+  "background",
+  "void",
+  "unlabeled",
+  "unknown",
+]);
+
+let semanticCanvas: HTMLCanvasElement | null = null;
+
+const getSemanticCanvas = () => {
+  if (!semanticCanvas) {
+    semanticCanvas = document.createElement("canvas");
+  }
+  return semanticCanvas;
+};
+
+const hslToRgb = (hue: number, saturation: number, lightness: number) => {
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const huePrime = hue / 60;
+  const x = chroma * (1 - Math.abs((huePrime % 2) - 1));
+  const [r1, g1, b1] =
+    huePrime < 1
+      ? [chroma, x, 0]
+      : huePrime < 2
+        ? [x, chroma, 0]
+        : huePrime < 3
+          ? [0, chroma, x]
+          : huePrime < 4
+            ? [0, x, chroma]
+            : huePrime < 5
+              ? [x, 0, chroma]
+              : [chroma, 0, x];
+  const m = lightness - chroma / 2;
+  return [
+    Math.round((r1 + m) * 255),
+    Math.round((g1 + m) * 255),
+    Math.round((b1 + m) * 255),
+  ];
+};
+
+const getSemanticClassColor = (classId: number) => {
+  const hue = (classId * 47 + 19) % 360;
+  return hslToRgb(hue, 0.72, 0.52);
+};
+
+const isSemanticLabelVisible = (label?: string) => {
+  if (!label) {
+    return false;
+  }
+  return !SEMANTIC_BACKGROUND_LABELS.has(label.trim().toLowerCase());
+};
+
+export const drawSemanticMask = (
+  ctx: CanvasRenderingContext2D,
+  semanticMask?: SemanticMaskData | null,
+) => {
+  if (!semanticMask || semanticMask.width <= 0 || semanticMask.height <= 0) {
+    return;
+  }
+
+  const maskCanvas = getSemanticCanvas();
+  if (maskCanvas.width !== semanticMask.width) {
+    maskCanvas.width = semanticMask.width;
+  }
+  if (maskCanvas.height !== semanticMask.height) {
+    maskCanvas.height = semanticMask.height;
+  }
+
+  const maskCtx = maskCanvas.getContext("2d");
+  if (!maskCtx) {
+    return;
+  }
+
+  const imageData = maskCtx.createImageData(
+    semanticMask.width,
+    semanticMask.height,
+  );
+  let pixelOffset = 0;
+  const pixelCount = semanticMask.width * semanticMask.height;
+
+  semanticMask.counts.forEach(([classId, count]) => {
+    const label = semanticMask.classes[String(classId)];
+    const visible = isSemanticLabelVisible(label);
+    const [r, g, b] = visible ? getSemanticClassColor(classId) : [0, 0, 0];
+    const alpha = visible ? SEMANTIC_MASK_ALPHA : 0;
+    const nextOffset = Math.min(pixelCount, pixelOffset + count);
+
+    for (; pixelOffset < nextOffset; pixelOffset += 1) {
+      const offset = pixelOffset * 4;
+      imageData.data[offset] = r;
+      imageData.data[offset + 1] = g;
+      imageData.data[offset + 2] = b;
+      imageData.data[offset + 3] = alpha;
+    }
+  });
+
+  maskCtx.putImageData(imageData, 0, 0);
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(maskCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.restore();
+};
+
 /**
  * Draws crosshair lines (centered) within the bounding box for the detected object.
  * Calls `drawLabelWithConfidence` to display the label and confidence.
@@ -313,8 +419,12 @@ export const setupCtx = (
   const scaleX = displayedWidth / originalWidth;
   const scaleY = displayedHeight / originalHeight;
 
-  canvas.width = displayedWidth;
-  canvas.height = displayedHeight;
+  if (canvas.width !== displayedWidth) {
+    canvas.width = displayedWidth;
+  }
+  if (canvas.height !== displayedHeight) {
+    canvas.height = displayedHeight;
+  }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 

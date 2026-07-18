@@ -40,6 +40,9 @@ class TestVideoUtils(unittest.TestCase):
         result_bytes = encode(self.dummy_frame, format=".jpg")
         self.assertIsInstance(result_bytes, bytes)
         decoded = cv2.imdecode(np.frombuffer(result_bytes, np.uint8), cv2.IMREAD_COLOR)
+        self.assertIsNotNone(decoded)
+        if decoded is None:
+            self.fail("Expected encoded image to decode")
         self.assertEqual(decoded.shape, self.dummy_frame.shape)
 
     def test_encode_with_valid_enhancer(self):
@@ -48,6 +51,9 @@ class TestVideoUtils(unittest.TestCase):
             self.dummy_frame, format=".jpg", frame_enhancer=dummy_enhancer
         )
         decoded = cv2.imdecode(np.frombuffer(result_bytes, np.uint8), cv2.IMREAD_COLOR)
+        self.assertIsNotNone(decoded)
+        if decoded is None:
+            self.fail("Expected encoded image to decode")
         # Because the dummy enhancer adds 10, the frame should be different from self.dummy_frame.
         # We cannot compare pixel-by-pixel because JPEG encoding is lossy,
         # so we simply check that output dimensions are maintained.
@@ -61,6 +67,9 @@ class TestVideoUtils(unittest.TestCase):
         )
         decoded = cv2.imdecode(np.frombuffer(result_bytes, np.uint8), cv2.IMREAD_COLOR)
         mock_logger_error.assert_called_once()
+        self.assertIsNotNone(decoded)
+        if decoded is None:
+            self.fail("Expected encoded image to decode")
         self.assertEqual(decoded.shape, self.dummy_frame.shape)
 
     #

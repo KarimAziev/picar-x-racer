@@ -305,6 +305,7 @@ Follow these steps to enable real-time object detection:
 3. Configure the detection panel with appropriate parameters:
    - **Image size**: Match the size your model expects (e.g., `320`, `640`).
    - **Threshold**: Control overlay synchronization (e.g., `1.2` seconds).
+   - **Detail**: Control segmentation overlay detail. `Fast` sends smaller masks/polygons, `Balanced` is the default, and `Detailed` preserves more segmentation detail at a higher rendering cost.
 4. Select the **Style** you want for detection overlays and start detection.
    - **Box**: Bounding boxes with class labels and confidence.
    - **Aim**: A minimalistic crosshair over detected objects.
@@ -312,6 +313,7 @@ Follow these steps to enable real-time object detection:
    - **Pose**: Draws keypoints representing specific body joints without boxes. Requires pose estimation model, i.e. yolo11n-pose.pt.
    - **Bbox Segment**: Draws segmentation masks with bounding boxes, class labels, and confidence. Requires segmentation model, i.e. yolo11n-seg.pt.
    - **No Bbox Segment**: Draws only segmentation masks without bounding boxes or labels. Requires segmentation model, i.e. yolo11n-seg.pt.
+   - **Semantic**: Draws a dense semantic segmentation class map. Requires semantic segmentation model, i.e. yolo26n-sem.pt.
 5. Toggle switch to activate detection.
 
 Output results, such as bounding boxes and labels, will immediately appear on the live camera feed.

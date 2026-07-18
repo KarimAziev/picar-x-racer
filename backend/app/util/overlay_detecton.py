@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from app.core.logger import Logger
 from app.schemas.detection import OverlayStyle
+from app.types.detection import SemanticMaskData
 
 logger = Logger(__name__)
 
@@ -12,6 +13,7 @@ def overlay_detection(
     frame: np.ndarray,
     detection_result: Any,
     overlay_style: OverlayStyle = OverlayStyle.BOX,
+    semantic_mask: Optional[SemanticMaskData] = None,
 ) -> np.ndarray:
     """
     Overlays detection results onto the frame.
@@ -30,6 +32,9 @@ def overlay_detection(
     The frame with detection overlays.
     """
 
+    if overlay_style == OverlayStyle.SEMANTIC:
+        return draw_semantic_segmentation_overlay(frame, semantic_mask)
+
     for detection in detection_result:
         segments = detection.get("segments")
         if segments:
@@ -45,6 +50,78 @@ def overlay_detection(
         frame = draw_overlay(frame, x1, y1, x2, y2, label, confidence)
 
     return frame
+
+
+def draw_semantic_segmentation_overlay(
+    frame: np.ndarray,
+    semantic_mask: Optional[SemanticMaskData],
+    alpha: float = 0.38,
+) -> np.ndarray:
+    """
+    Draws a dense semantic segmentation class map on an image frame.
+    """
+    if not semantic_mask:
+        return frame
+
+    width = semantic_mask["width"]
+    height = semantic_mask["height"]
+    counts = semantic_mask["counts"]
+    classes = semantic_mask["classes"]
+    if width <= 0 or height <= 0 or not counts:
+        return frame
+
+    flat_mask = np.zeros(width * height, dtype=np.int32)
+    offset = 0
+    for class_id, count in counts:
+        next_offset = min(flat_mask.size, offset + count)
+        flat_mask[offset:next_offset] = class_id
+        offset = next_offset
+        if offset >= flat_mask.size:
+            break
+
+    class_map = flat_mask.reshape((height, width))
+    overlay = np.zeros((height, width, 3), dtype=np.uint8)
+    alpha_map = np.zeros((height, width), dtype=np.float32)
+
+    for class_id, label in classes.items():
+        if _is_semantic_background_label(label):
+            continue
+        class_pixels = class_map == int(class_id)
+        if not np.any(class_pixels):
+            continue
+        overlay[class_pixels] = _semantic_class_color(int(class_id))
+        alpha_map[class_pixels] = alpha
+
+    if not np.any(alpha_map):
+        return frame
+
+    frame_height, frame_width = frame.shape[:2]
+    overlay = cv2.resize(
+        overlay,
+        (frame_width, frame_height),
+        interpolation=cv2.INTER_NEAREST,
+    )
+    alpha_map = cv2.resize(
+        alpha_map,
+        (frame_width, frame_height),
+        interpolation=cv2.INTER_NEAREST,
+    )[:, :, None]
+    blended = (
+        frame.astype(np.float32) * (1 - alpha_map)
+        + overlay.astype(np.float32) * alpha_map
+    )
+    return blended.astype(np.uint8)
+
+
+def _is_semantic_background_label(label: str) -> bool:
+    return label.strip().lower() in {"background", "void", "unlabeled", "unknown"}
+
+
+def _semantic_class_color(class_id: int) -> tuple[int, int, int]:
+    hue = (class_id * 47 + 19) % 180
+    hsv = np.array([[[hue, 184, 224]]], dtype=np.uint8)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
+    return int(bgr[0]), int(bgr[1]), int(bgr[2])
 
 
 def draw_segmentation_overlay(

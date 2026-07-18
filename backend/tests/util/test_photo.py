@@ -186,6 +186,39 @@ class TestPhotoUtils(unittest.TestCase):
         self.assertTrue(np.any(result[20:41, 20:41, 1] > 0))
         self.assertTrue(np.array_equal(result[10, 10], np.zeros(3, dtype=np.uint8)))
 
+    def test_prepare_photo_frame_renders_semantic_mask(self):
+        frame = np.zeros((80, 80, 3), dtype=np.uint8)
+        detection_settings = DetectionSettings(
+            model="yolo26n-sem.pt",
+            confidence=0.4,
+            active=True,
+            img_size=640,
+            labels=None,
+            overlay_draw_threshold=1.0,
+            overlay_style=OverlayStyle.SEMANTIC,
+        )
+        detection_state: DetectionQueueData = {
+            "detection_result": [],
+            "semantic_mask": {
+                "width": 2,
+                "height": 2,
+                "counts": [[0, 1], [1, 3]],
+                "classes": {0: "background", 1: "road"},
+            },
+            "timestamp": 10.0,
+        }
+
+        result = prepare_photo_frame(
+            frame=frame,
+            rotation=ImageRotation.rotate_0,
+            detection_settings=detection_settings,
+            detection_state=detection_state,
+            frame_timestamp=10.2,
+        )
+
+        self.assertTrue(np.array_equal(result[0, 0], frame[0, 0]))
+        self.assertFalse(np.array_equal(result[79, 79], frame[79, 79]))
+
 
 if __name__ == "__main__":
     unittest.main()
