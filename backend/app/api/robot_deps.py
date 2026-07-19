@@ -12,6 +12,9 @@ from app.migrations.robot_config import create_robot_config_migrator
 from app.schemas.robot.config import HardwareConfig
 from app.services.connection_service import ConnectionService
 from app.services.autonomy import (
+    AckermannOdometryConfig,
+    AckermannOdometryEstimator,
+    AckermannOdometryService,
     ActuationCalibration,
     HardwareController,
     LinearActuatorTranslator,
@@ -164,6 +167,30 @@ def get_motion_control_service(
 
 
 @lru_cache(maxsize=1)
+def get_odometry_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> Optional[AckermannOdometryService]:
+    """Build odometry only after measured Ackermann geometry is enabled."""
+
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    odometry = config.ackermann_odometry
+    if not odometry.enabled:
+        return None
+    if odometry.wheelbase_m is None:
+        raise ValueError("Ackermann odometry is enabled without wheelbase calibration")
+    return AckermannOdometryService(
+        topic_bus,
+        AckermannOdometryEstimator(
+            AckermannOdometryConfig(
+                wheelbase_m=odometry.wheelbase_m,
+                max_steering_age_seconds=odometry.max_steering_age_ms / 1000,
+            )
+        ),
+    )
+
+
+@lru_cache(maxsize=1)
 def get_robot_settings_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
@@ -223,6 +250,7 @@ class LifespanAppDeps(TypedDict):
     smbus_manager: SMBusManager
     motion_control_service: Optional[MotionControlService]
     topic_bus: TopicBus
+    odometry_service: Optional[AckermannOdometryService]
 
 
 async def get_lifespan_dependencies(
@@ -238,6 +266,9 @@ async def get_lifespan_dependencies(
         Optional[MotionControlService], Depends(get_motion_control_service)
     ],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    odometry_service: Annotated[
+        Optional[AckermannOdometryService], Depends(get_odometry_service)
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -250,5 +281,6 @@ async def get_lifespan_dependencies(
         "smbus_manager": smbus_manager,
         "motion_control_service": motion_control_service,
         "topic_bus": topic_bus,
+        "odometry_service": odometry_service,
     }
     yield deps

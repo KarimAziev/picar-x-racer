@@ -63,6 +63,15 @@ export interface MotionControlConfig {
   max_reverse_speed_mps: number | null;
 }
 
+export interface AckermannOdometryConfig {
+  enabled: boolean;
+  wheelbase_m: number | null;
+  wheel_radius_m: number | null;
+  encoder_ticks_per_revolution: number | null;
+  gear_ratio: number;
+  max_steering_age_ms: number;
+}
+
 export type CalibrationData = Partial<ServoCalibrationData> &
   MotorsCalibrationData;
 
@@ -78,6 +87,7 @@ export interface LEDConfig {
 export interface Data extends ServoData, MotorsData {
   schema_version: number;
   motion_control: MotionControlConfig;
+  ackermann_odometry: AckermannOdometryConfig;
   led: LEDConfig;
   batteries: Battery[];
 }
@@ -116,13 +126,21 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
-    schema_version: 3,
+    schema_version: 4,
     motion_control: {
       enabled: false,
       control_frequency_hz: 20,
       command_timeout_ms: 250,
       max_forward_speed_mps: null,
       max_reverse_speed_mps: null,
+    },
+    ackermann_odometry: {
+      enabled: false,
+      wheelbase_m: null,
+      wheel_radius_m: null,
+      encoder_ticks_per_revolution: null,
+      gear_ratio: 1.0,
+      max_steering_age_ms: 250,
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

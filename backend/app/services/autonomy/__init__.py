@@ -21,6 +21,12 @@ from app.services.autonomy.messages import (
     SafetySeverity,
 )
 from app.services.autonomy.motion_arbiter import MotionArbiter
+from app.services.autonomy.odometry import (
+    AckermannOdometryConfig,
+    AckermannOdometryEstimator,
+    AckermannOdometryService,
+    OdometryInputError,
+)
 from app.services.autonomy.motion_control_service import (
     ModeTransitionError,
     MotionControlService,
@@ -36,6 +42,9 @@ from app.services.autonomy.topic_bus import (
 
 __all__ = [
     "ActuationCalibration",
+    "AckermannOdometryConfig",
+    "AckermannOdometryEstimator",
+    "AckermannOdometryService",
     "ActuatorCommand",
     "ArbitrationResult",
     "DriveDirection",
@@ -50,6 +59,7 @@ __all__ = [
     "MotionIntent",
     "MotionLimits",
     "MotionSource",
+    "OdometryInputError",
     "RobotMode",
     "SafetyConstraint",
     "SafetySeverity",

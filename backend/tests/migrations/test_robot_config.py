@@ -22,6 +22,7 @@ class TestRobotConfigMigration(unittest.TestCase):
         data = deepcopy(self.current_config)
         data.pop("schema_version")
         data.pop("motion_control")
+        data.pop("ackermann_odometry")
         battery = data.pop("batteries")[0]
         battery.pop("name")
         data["battery"] = battery
@@ -37,8 +38,8 @@ class TestRobotConfigMigration(unittest.TestCase):
     def test_migrates_legacy_motor_fields(self):
         result = create_robot_config_migrator().migrate(self.make_legacy_config())
 
-        self.assertEqual(result.applied_versions, (1, 2, 3))
-        self.assertEqual(result.data["schema_version"], 3)
+        self.assertEqual(result.applied_versions, (1, 2, 3, 4))
+        self.assertEqual(result.data["schema_version"], 4)
         self.assertNotIn("left_motor", result.data)
         self.assertNotIn("right_motor", result.data)
         self.assertEqual(
@@ -50,6 +51,7 @@ class TestRobotConfigMigration(unittest.TestCase):
         self.assertNotIn("battery", result.data)
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
         self.assertEqual(result.data["motion_control"], {"enabled": False})
+        self.assertEqual(result.data["ackermann_odometry"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
     def test_migrates_v1_battery_to_named_collection(self):
@@ -61,8 +63,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (2, 3))
-        self.assertEqual(result.data["schema_version"], 3)
+        self.assertEqual(result.applied_versions, (2, 3, 4))
+        self.assertEqual(result.data["schema_version"], 4)
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
 
     def test_migrates_v2_with_disabled_motion_control(self):
@@ -72,8 +74,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (3,))
-        self.assertEqual(result.data["schema_version"], 3)
+        self.assertEqual(result.applied_versions, (3, 4))
+        self.assertEqual(result.data["schema_version"], 4)
         self.assertEqual(result.data["motion_control"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
@@ -96,6 +98,45 @@ class TestRobotConfigMigration(unittest.TestCase):
         data = deepcopy(self.current_config)
         data["schema_version"] = 2
         data["motion_control"] = "enabled"
+
+        with self.assertRaisesRegex(JsonDataMigrationError, "must be an object"):
+            create_robot_config_migrator().migrate(data)
+
+    def test_migrates_v3_with_disabled_ackermann_odometry(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 3
+        data.pop("ackermann_odometry")
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(result.applied_versions, (4,))
+        self.assertEqual(result.data["schema_version"], 4)
+        self.assertEqual(result.data["ackermann_odometry"], {"enabled": False})
+        HardwareConfig.model_validate(result.data)
+
+    def test_v4_preserves_prerelease_odometry_values(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 3
+        data["ackermann_odometry"] = {
+            "enabled": True,
+            "wheelbase_m": 0.15,
+            "wheel_radius_m": 0.03,
+            "encoder_ticks_per_revolution": 20,
+            "gear_ratio": 2.0,
+            "max_steering_age_ms": 200,
+        }
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(
+            result.data["ackermann_odometry"],
+            data["ackermann_odometry"],
+        )
+
+    def test_v4_rejects_invalid_ackermann_odometry_shape(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 3
+        data["ackermann_odometry"] = "enabled"
 
         with self.assertRaisesRegex(JsonDataMigrationError, "must be an object"):
             create_robot_config_migrator().migrate(data)
@@ -148,7 +189,7 @@ class TestRobotConfigMigration(unittest.TestCase):
 
             persisted = json.loads(target.read_text())
             self.assertEqual(manager.load_data(), persisted)
-            self.assertEqual(persisted["schema_version"], 3)
+            self.assertEqual(persisted["schema_version"], 4)
             self.assertIn("motors", persisted)
             self.assertNotIn("left_motor", persisted)
 
@@ -164,7 +205,7 @@ class TestRobotConfigMigration(unittest.TestCase):
                 migrator=create_robot_config_migrator(),
             )
 
-            self.assertEqual(manager.load_data()["schema_version"], 3)
+            self.assertEqual(manager.load_data()["schema_version"], 4)
             self.assertFalse(target.exists())
 
     def test_manager_does_not_overwrite_invalid_migration(self):

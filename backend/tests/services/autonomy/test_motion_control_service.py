@@ -18,7 +18,7 @@ from app.services.autonomy import (
     SafetySeverity,
     TopicBus,
 )
-from app.services.autonomy.topics import MOTION_COMMANDED
+from app.services.autonomy.topics import MOTION_COMMANDED, STEERING_STATE
 
 
 class FakeClock:
@@ -164,11 +164,21 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
             MOTION_COMMANDED,
             replay_latest=False,
         )
+        steering_subscription = self.topic_bus.subscribe(
+            STEERING_STATE,
+            replay_latest=False,
+        )
         self.service.submit(self.intent(speed=0.5))
 
         result = await self.service.step()
 
         self.assertEqual(await subscription.get(), result.command)
+        steering = await steering_subscription.get()
+        self.assertEqual(
+            steering.commanded_angle_rad,
+            result.command.steering_angle_rad,
+        )
+        self.assertEqual(steering.header.frame_id, "base_link")
 
     async def test_hardware_failure_transitions_to_fault_and_invalidates_intents(
         self,

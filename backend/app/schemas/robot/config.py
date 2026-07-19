@@ -10,6 +10,7 @@ from app.schemas.robot.motors import (
     PhaseMotorConfig,
 )
 from app.schemas.robot.motion_control import MotionControlConfig
+from app.schemas.robot.odometry import AckermannOdometryConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.schemas.robot.servos import (
     cross_field_validators as servo_cross_field_validators,
@@ -25,12 +26,12 @@ class HardwareConfig(BaseModel):
     """
 
     schema_version: Annotated[
-        Literal[3],
+        Literal[4],
         Field(
             title="Schema version",
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
-    ] = 3
+    ] = 4
 
     motion_control: Annotated[
         MotionControlConfig,
@@ -42,6 +43,14 @@ class HardwareConfig(BaseModel):
             ),
         ),
     ] = MotionControlConfig()
+
+    ackermann_odometry: Annotated[
+        AckermannOdometryConfig,
+        Field(
+            title="Ackermann odometry",
+            description="Measured chassis geometry and drive-encoder calibration.",
+        ),
+    ] = AckermannOdometryConfig()
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],

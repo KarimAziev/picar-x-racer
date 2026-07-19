@@ -4,6 +4,7 @@ import asyncio
 from typing import Dict, Optional
 
 from app.core.logger import Logger
+from app.schemas.autonomy import MessageHeader, SteeringState
 from app.services.autonomy.actuation import HardwareController
 from app.services.autonomy.messages import (
     ArbitrationResult,
@@ -15,7 +16,7 @@ from app.services.autonomy.messages import (
 )
 from app.services.autonomy.motion_arbiter import MotionArbiter
 from app.services.autonomy.topic_bus import TopicBus
-from app.services.autonomy.topics import MOTION_COMMANDED
+from app.services.autonomy.topics import MOTION_COMMANDED, STEERING_STATE
 
 
 _log = Logger(__name__)
@@ -50,6 +51,7 @@ class MotionControlService:
         self._last_result: Optional[ArbitrationResult] = None
         self._last_error: Optional[Exception] = None
         self._estop_reason: Optional[str] = None
+        self._steering_state_sequence = 0
 
     @property
     def mode(self) -> RobotMode:
@@ -164,6 +166,20 @@ class MotionControlService:
             if self._topic_bus:
                 try:
                     self._topic_bus.publish(MOTION_COMMANDED, result.command)
+                    self._steering_state_sequence += 1
+                    self._topic_bus.publish(
+                        STEERING_STATE,
+                        SteeringState(
+                            header=MessageHeader(
+                                sequence=self._steering_state_sequence,
+                                frame_id="base_link",
+                                timestamp_monotonic_ns=(
+                                    result.command.selected_monotonic_ns
+                                ),
+                            ),
+                            commanded_angle_rad=result.command.steering_angle_rad,
+                        ),
+                    )
                 except Exception:
                     _log.error("Failed to publish commanded motion", exc_info=True)
             return result
