@@ -63,6 +63,7 @@
       {{ safetySummary }}
     </div>
     <LidarScanPreview />
+    <OccupancyGridPreview />
   </div>
 </template>
 
@@ -74,6 +75,7 @@ import {
   type SensorName,
 } from "@/features/autonomy";
 import LidarScanPreview from "@/features/settings/components/robot/LidarScanPreview.vue";
+import OccupancyGridPreview from "@/features/settings/components/robot/OccupancyGridPreview.vue";
 
 const store = useAutonomyStore();
 let statusTimer: ReturnType<typeof setInterval> | null = null;

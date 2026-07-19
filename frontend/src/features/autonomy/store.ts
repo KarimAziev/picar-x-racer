@@ -78,6 +78,17 @@ export interface SafetyTelemetry {
   reason: string | null;
 }
 
+export interface OccupancyGrid {
+  header: MessageHeader;
+  width: number;
+  height: number;
+  resolution_m: number;
+  origin_x_m: number;
+  origin_y_m: number;
+  origin_yaw_rad: number;
+  data: number[];
+}
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
@@ -88,7 +99,9 @@ export type TelemetryEnvelope =
 export interface State {
   loading: boolean;
   error: string | null;
+  mapError: string | null;
   sensors: SensorPublisherStatus[];
+  localMap: OccupancyGrid | null;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
 }
@@ -96,7 +109,9 @@ export interface State {
 const defaultState: State = {
   loading: false,
   error: null,
+  mapError: null,
   sensors: [],
+  localMap: null,
   latest: {},
   connection: null,
 };
@@ -121,6 +136,24 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.error = retrieveError(error).text;
       } finally {
         this.loading = false;
+      }
+    },
+
+    async refreshLocalMap() {
+      try {
+        this.localMap = await robotApi.get<OccupancyGrid>(
+          "/px/api/map/current",
+        );
+        this.mapError = null;
+      } catch (error) {
+        const status = (error as { response?: { status?: number } }).response
+          ?.status;
+        if (status === 404) {
+          this.localMap = null;
+          this.mapError = null;
+        } else {
+          this.mapError = retrieveError(error).text;
+        }
       }
     },
 
