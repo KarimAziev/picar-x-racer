@@ -1,12 +1,33 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional, Sequence, Union
 
 import cv2
 import numpy as np
 from app.core.logger import Logger
 from app.schemas.detection import OverlayStyle
-from app.types.detection import SemanticMaskData
+from app.types.detection import DetectionKeypoint, SemanticMaskData
 
 logger = Logger(__name__)
+
+OVERLAY_COLOR = (191, 255, 0)
+OVERLAY_TEXT_COLOR = (102, 51, 0)
+POSE_SKELETON = (
+    (0, 1),
+    (0, 2),
+    (1, 3),
+    (2, 4),
+    (5, 6),
+    (5, 7),
+    (7, 9),
+    (6, 8),
+    (8, 10),
+    (5, 11),
+    (6, 12),
+    (11, 12),
+    (11, 13),
+    (13, 15),
+    (12, 14),
+    (14, 16),
+)
 
 
 def overlay_detection(
@@ -35,21 +56,133 @@ def overlay_detection(
     if overlay_style == OverlayStyle.SEMANTIC:
         return draw_semantic_segmentation_overlay(frame, semantic_mask)
 
-    for detection in detection_result:
-        segments = detection.get("segments")
-        if segments:
-            frame = draw_segmentation_overlay(frame, segments)
+    for index, detection in enumerate(detection_result):
+        x1, y1, x2, y2 = detection["bbox"]
+        label = detection["label"]
+        confidence = detection["confidence"]
+        keypoints = detection.get("keypoints")
+
+        if overlay_style in (
+            OverlayStyle.BBOX_SEGMENT,
+            OverlayStyle.NO_BBOX_SEGMENT,
+        ):
+            segments = detection.get("segments")
+            if segments:
+                frame = draw_segmentation_overlay(frame, segments)
 
         if overlay_style == OverlayStyle.NO_BBOX_SEGMENT:
             continue
+        if overlay_style == OverlayStyle.POSE:
+            frame = draw_label(frame, x1, y1, label, confidence)
+            frame = draw_pose_overlay(frame, keypoints)
+            continue
+        if overlay_style == OverlayStyle.AIM:
+            frame = draw_crosshair_overlay(
+                frame,
+                x1,
+                y1,
+                x2,
+                y2,
+                label,
+                confidence,
+                keypoints,
+                full_frame=index == 0,
+            )
+            continue
+        if overlay_style == OverlayStyle.MIXED and index == 0:
+            frame = draw_crosshair_overlay(
+                frame,
+                x1,
+                y1,
+                x2,
+                y2,
+                label,
+                confidence,
+                keypoints,
+                full_frame=True,
+            )
+            continue
 
-        x1, y1, x2, y2 = detection["bbox"]
-
-        label = detection["label"]
-        confidence = detection["confidence"]
         frame = draw_overlay(frame, x1, y1, x2, y2, label, confidence)
+        frame = draw_pose_overlay(frame, keypoints)
 
     return frame
+
+
+def draw_crosshair_overlay(
+    frame: np.ndarray,
+    x1: Union[float, int],
+    y1: Union[float, int],
+    x2: Union[float, int],
+    y2: Union[float, int],
+    label: Optional[str] = None,
+    confidence: Optional[float] = None,
+    keypoints: Optional[Sequence[DetectionKeypoint]] = None,
+    full_frame: bool = False,
+    color: tuple[int, int, int] = OVERLAY_COLOR,
+) -> np.ndarray:
+    """Draw crosshair lines centered on a detection or its nose keypoint."""
+    x1, y1, x2, y2 = [int(val) for val in (x1, y1, x2, y2)]
+    mid_x = (x1 + x2) // 2
+    mid_y = (y1 + y2) // 2
+
+    if keypoints:
+        nose = keypoints[0]
+        mid_x = int(nose["x"])
+        mid_y = int(nose["y"])
+
+    frame_height, frame_width = frame.shape[:2]
+    horizontal_start = 0 if full_frame else x1
+    horizontal_end = frame_width - 1 if full_frame else x2
+    vertical_start = 0 if full_frame else y1
+    vertical_end = frame_height - 1 if full_frame else y2
+    cv2.line(
+        frame,
+        (horizontal_start, mid_y),
+        (horizontal_end, mid_y),
+        color,
+        2,
+    )
+    cv2.line(
+        frame,
+        (mid_x, vertical_start),
+        (mid_x, vertical_end),
+        color,
+        2,
+    )
+    frame = draw_label(frame, x1, y1, label, confidence)
+    return draw_pose_overlay(frame, keypoints)
+
+
+def draw_pose_overlay(
+    frame: np.ndarray,
+    keypoints: Optional[Sequence[DetectionKeypoint]],
+    color: tuple[int, int, int] = OVERLAY_COLOR,
+) -> np.ndarray:
+    """Draw the standard 17-point pose skeleton when keypoints are available."""
+    if not keypoints:
+        return frame
+
+    points = [(int(keypoint["x"]), int(keypoint["y"])) for keypoint in keypoints]
+
+    for start_index, end_index in POSE_SKELETON:
+        if start_index >= len(points) or end_index >= len(points):
+            continue
+        start = points[start_index]
+        end = points[end_index]
+        if not _is_visible_keypoint(start) or not _is_visible_keypoint(end):
+            continue
+        cv2.line(frame, start, end, color, 2)
+
+    for point in points:
+        if _is_visible_keypoint(point):
+            cv2.circle(frame, point, 3, color, cv2.FILLED)
+
+    return frame
+
+
+def _is_visible_keypoint(point: tuple[int, int]) -> bool:
+    return point[0] >= 0 and point[1] > 0
 
 
 def draw_semantic_segmentation_overlay(
@@ -182,51 +315,48 @@ def draw_overlay(
     - If only `confidence` or `label` is provided, only the relevant value is shown.
     """
     x1, y1, x2, y2 = [int(val) for val in (x1, y1, x2, y2)]
-    bg_color = (191, 255, 0)
-    fg_color = (102, 51, 0)
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color=OVERLAY_COLOR, thickness=2)
+    return draw_label(frame, x1, y1, label, confidence)
 
-    cv2.rectangle(frame, (x1, y1), (x2, y2), color=bg_color, thickness=2)
 
-    if label is not None or confidence is not None:
-        font_face = cv2.FONT_HERSHEY_SIMPLEX
-        text_thickness = 2
+def draw_label(
+    frame: np.ndarray,
+    x1: Union[float, int],
+    y1: Union[float, int],
+    label: Optional[str] = None,
+    confidence: Optional[float] = None,
+) -> np.ndarray:
+    """Draw a detection label and confidence at the top-left of its bounds."""
+    if label is None and confidence is None:
+        return frame
 
-        text = (
-            f"{label}: {confidence:.2f}"
-            if label is not None and confidence is not None
-            else label if label is not None else f"{confidence:.2f}"
-        )
-        text = text.upper()
+    x1, y1 = int(x1), int(y1)
+    font_face = cv2.FONT_HERSHEY_SIMPLEX
+    text_thickness = 2
+    text = (
+        f"{label}: {confidence:.2f}"
+        if label is not None and confidence is not None
+        else label if label is not None else f"{confidence:.2f}"
+    ).upper()
+    (text_width, text_height), _ = cv2.getTextSize(text, font_face, 0.5, text_thickness)
+    y1_text = max(y1 - text_height - 10, 0)
 
-        (text_width, text_height), _ = cv2.getTextSize(
-            text, font_face, 0.5, text_thickness
-        )
-
-        y1_text = max(y1 - text_height - 10, 0)
-
-        rect_x1 = x1
-        rect_y1 = y1_text
-        rect_x2 = x1 + text_width
-        rect_y2 = y1_text + text_height + 10
-
-        cv2.rectangle(
-            frame,
-            (rect_x1, rect_y1),
-            (rect_x2, rect_y2),
-            bg_color,
-            thickness=cv2.FILLED,
-        )
-
-        cv2.putText(
-            frame,
-            text,
-            (x1, y1_text + text_height + 5),
-            font_face,
-            0.5,
-            fg_color,
-            text_thickness,
-        )
-
+    cv2.rectangle(
+        frame,
+        (x1, y1_text),
+        (x1 + text_width, y1_text + text_height + 10),
+        OVERLAY_COLOR,
+        thickness=cv2.FILLED,
+    )
+    cv2.putText(
+        frame,
+        text,
+        (x1, y1_text + text_height + 5),
+        font_face,
+        0.5,
+        OVERLAY_TEXT_COLOR,
+        text_thickness,
+    )
     return frame
 
 
