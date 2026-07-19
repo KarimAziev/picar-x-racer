@@ -1,10 +1,12 @@
 import { ref, onBeforeUnmount } from "vue";
 
+type TimeoutId = ReturnType<typeof setTimeout>;
+
 export function useAsyncDebounce<T extends (...args: any[]) => Promise<void>>(
   func: T,
   waitFor: number,
 ) {
-  const timeout = ref<NodeJS.Timeout>();
+  const timeout = ref<TimeoutId>();
 
   onBeforeUnmount(() => {
     if (timeout.value) {
@@ -32,7 +34,7 @@ export function useDebounce<T extends (...args: any[]) => any>(
   func: T,
   waitFor: number,
 ) {
-  const timeout = ref<NodeJS.Timeout>();
+  const timeout = ref<TimeoutId>();
 
   onBeforeUnmount(() => {
     if (timeout.value) {

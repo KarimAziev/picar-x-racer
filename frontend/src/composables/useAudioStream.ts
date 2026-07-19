@@ -7,18 +7,20 @@ const createAudioContext = () => {
 
 export const useWebsocketAudio = (url: string = "ws/audio-stream") => {
   const audioContext = ref<AudioContext | null>(null);
-  const audioQueue = ref<Float32Array[]>([]);
+  const audioQueue: Float32Array<ArrayBuffer>[] = [];
   const isPlaying = ref(false);
 
   const handleOnMessage = (data: ArrayBuffer) => {
     const audioData = new Int16Array(data);
 
-    const audioBuffer = new Float32Array(audioData.length);
+    const audioBuffer = new Float32Array(
+      new ArrayBuffer(audioData.length * Float32Array.BYTES_PER_ELEMENT),
+    );
     for (let i = 0; i < audioData.length; i++) {
       audioBuffer[i] = audioData[i] / 32768;
     }
 
-    audioQueue.value.push(audioBuffer);
+    audioQueue.push(audioBuffer);
 
     if (!isPlaying.value) {
       processAudioQueue();
@@ -26,14 +28,14 @@ export const useWebsocketAudio = (url: string = "ws/audio-stream") => {
   };
 
   const processAudioQueue = () => {
-    if (audioQueue.value.length === 0) {
+    if (audioQueue.length === 0) {
       isPlaying.value = false;
       return;
     }
 
     isPlaying.value = true;
 
-    const audioBuffer = audioQueue.value.shift();
+    const audioBuffer = audioQueue.shift();
     if (!audioBuffer || !audioContext.value) {
       return;
     }
@@ -79,7 +81,7 @@ export const useWebsocketAudio = (url: string = "ws/audio-stream") => {
 
   const stopAudio = async () => {
     closeWS();
-    audioQueue.value.length = 0;
+    audioQueue.length = 0;
     isPlaying.value = false;
   };
 

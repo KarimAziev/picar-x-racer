@@ -2,6 +2,8 @@ import { ref } from "vue";
 import type { Ref } from "vue";
 import { makeWebsocketUrl } from "@/util/url";
 
+type TimeoutId = ReturnType<typeof setTimeout>;
+
 /**
  * Options for configuring the WebSocket connection.
  */
@@ -68,7 +70,7 @@ export interface WebSocketModel {
  */
 export function useWebSocket(options: WebSocketOptions): WebSocketModel {
   const ws = ref<WebSocket | null>(null);
-  const retryTimer = ref<NodeJS.Timeout | null>(null);
+  const retryTimer = ref<TimeoutId | null>(null);
   const loading = ref(false);
   const active = ref(false);
   const connected = ref(false);

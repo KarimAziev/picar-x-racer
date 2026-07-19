@@ -34,7 +34,7 @@ export interface State {
   data: FileDetail[];
   loading: boolean;
   volume?: number;
-  timer?: NodeJS.Timeout;
+  timer?: ReturnType<typeof setTimeout>;
   player: MusicPlayerInfo;
   isStreaming: boolean;
   inhibitPlayerSync: boolean;

@@ -25,6 +25,7 @@
 
 <script setup lang="ts">
 import { ref, watch, useAttrs } from "vue";
+import type { HTMLAttributes } from "vue";
 import ToggleSwitch from "primevue/toggleswitch";
 import type {
   ToggleSwitchProps,
@@ -42,11 +43,11 @@ export interface Props extends FieldProps {
   disabled?: boolean;
   tooltipHelp?: string;
   tooltip?: string;
-  class?: string;
+  class?: HTMLAttributes["class"];
 }
 const props = defineProps<Props>();
 
-const otherAttrs: ToggleSwitchProps = useAttrs();
+const otherAttrs = useAttrs() as Partial<ToggleSwitchProps>;
 
 const currentValue = ref(props.modelValue);
 

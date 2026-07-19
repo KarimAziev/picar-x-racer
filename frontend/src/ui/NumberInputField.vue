@@ -60,7 +60,7 @@ const props = withDefaults(defineProps<Props>(), {
   maxFractionDigits: 3,
   step: 1,
 });
-const otherAttrs: InputNumberProps = useAttrs();
+const otherAttrs = useAttrs() as Partial<InputNumberProps>;
 
 const currentValue = ref(props.modelValue);
 

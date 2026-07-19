@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import { ref, watch, useAttrs } from "vue";
+import type { HTMLAttributes } from "vue";
 import RadioButton from "primevue/radiobutton";
 import type { Props as FieldProps } from "@/ui/Field.vue";
 import { Option } from "@/util/vue-helpers";
@@ -31,7 +32,7 @@ export interface Props extends FieldProps {
   modelValue?: any;
   field?: string;
   options: Option[];
-  class?: string;
+  class?: HTMLAttributes["class"];
 }
 
 const props = defineProps<Props>();

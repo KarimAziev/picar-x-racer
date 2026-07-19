@@ -11,7 +11,7 @@ import { useRobotStore } from "@/features/settings/stores";
 
 const controllerStore = useControllerStore();
 const robotStore = useRobotStore();
-const timeout = ref<NodeJS.Timeout>();
+const timeout = ref<ReturnType<typeof setTimeout>>();
 
 const sideOffset = "60px";
 const bottomOffset = "60px";

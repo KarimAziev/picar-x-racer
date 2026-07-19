@@ -29,7 +29,7 @@ export interface State {
   saving?: boolean;
   data: Settings;
   error?: string;
-  retryTimer?: NodeJS.Timeout;
+  retryTimer?: ReturnType<typeof setTimeout>;
   retryCounter: number;
   text?: null | string;
   language?: null | string;

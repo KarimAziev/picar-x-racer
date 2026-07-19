@@ -33,9 +33,10 @@ export const isArray = Array.isArray;
 export const isError = (error: unknown): error is Error =>
   error instanceof Error;
 
-export const isEmptyString = (value: unknown) => value === "";
+export const isEmptyString = (value: unknown): value is "" => value === "";
 
-export const isEmptyArray = (value: unknown) => isArray(value) && !value.length;
+export const isEmptyArray = (value: unknown): value is [] =>
+  isArray(value) && !value.length;
 
 export const isNonEmptyArray = (value: unknown) =>
   isArray(value) && value.length > 0;

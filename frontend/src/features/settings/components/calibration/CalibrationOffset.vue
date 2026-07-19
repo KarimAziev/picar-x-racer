@@ -66,7 +66,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const robotStore = useRobotStore();
 const controllerStore = useControllerStore();
-const otherAttrs: InputNumberProps = useAttrs();
+const otherAttrs = useAttrs() as Partial<InputNumberProps>;
 
 const currentValue = ref(props.modelValue);
 

@@ -56,7 +56,7 @@ const props = withDefaults(defineProps<Props>(), {
   allowEmpty: false,
 });
 
-const otherAttrs: InputNumberProps = useAttrs();
+const otherAttrs = useAttrs() as Partial<InputNumberProps>;
 
 const currentValue = ref(props.value);
 
