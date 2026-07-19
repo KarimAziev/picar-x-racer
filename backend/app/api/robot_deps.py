@@ -18,6 +18,7 @@ from app.services.autonomy import (
     MotionArbiter,
     MotionControlService,
     MotionLimits,
+    TopicBus,
 )
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
@@ -48,6 +49,11 @@ def get_async_event_emitter() -> AsyncEventEmitter:
 @lru_cache()
 def get_async_task_manager() -> AsyncTaskManager:
     return AsyncTaskManager()
+
+
+@lru_cache()
+def get_robot_topic_bus() -> TopicBus:
+    return TopicBus()
 
 
 @lru_cache()
@@ -111,6 +117,7 @@ def get_picarx_adapter(
 def get_motion_control_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
 ) -> Optional[MotionControlService]:
     """Build the opt-in single-writer motion runtime from calibrated config."""
 
@@ -152,6 +159,7 @@ def get_motion_control_service(
             LinearActuatorTranslator(calibration),
         ),
         control_period_seconds=1.0 / motion.control_frequency_hz,
+        topic_bus=topic_bus,
     )
 
 
@@ -214,6 +222,7 @@ class LifespanAppDeps(TypedDict):
     config_manager: JsonDataManager
     smbus_manager: SMBusManager
     motion_control_service: Optional[MotionControlService]
+    topic_bus: TopicBus
 
 
 async def get_lifespan_dependencies(
@@ -228,6 +237,7 @@ async def get_lifespan_dependencies(
     motion_control_service: Annotated[
         Optional[MotionControlService], Depends(get_motion_control_service)
     ],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -239,5 +249,6 @@ async def get_lifespan_dependencies(
         "config_manager": config_manager,
         "smbus_manager": smbus_manager,
         "motion_control_service": motion_control_service,
+        "topic_bus": topic_bus,
     }
     yield deps

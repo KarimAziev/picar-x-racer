@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
     from app.services.connection_service import ConnectionService
     from app.services.autonomy.motion_control_service import MotionControlService
+    from app.services.autonomy.topic_bus import TopicBus
     from app.services.control.car_service import CarService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
@@ -47,6 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     smbus_manager: Optional["SMBusManager"] = None
     battery_service: Optional["BatteryService"] = None
     motion_control_service: Optional["MotionControlService"] = None
+    topic_bus: Optional["TopicBus"] = None
     try:
 
         from app.api import robot_deps
@@ -63,6 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             config_manager = deps.get("config_manager")
             smbus_manager = deps.get("smbus_manager")
             motion_control_service = deps.get("motion_control_service")
+            topic_bus = deps.get("topic_bus")
 
         app_loop = asyncio.get_running_loop()
 
@@ -155,6 +158,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise
         except Exception as e:
             logger.error("Failed to cleanup LED service: %s", e)
+
+    if topic_bus:
+        topic_bus.close()
 
     logger.info(f"Stopped {app.title}")
 

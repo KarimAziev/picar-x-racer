@@ -25,6 +25,14 @@ from app.services.autonomy.motion_control_service import (
     ModeTransitionError,
     MotionControlService,
 )
+from app.services.autonomy.topic_bus import (
+    SubscriptionClosed,
+    Topic,
+    TopicBus,
+    TopicDefinitionError,
+    TopicStats,
+    TopicSubscription,
+)
 
 __all__ = [
     "ActuationCalibration",
@@ -46,4 +54,10 @@ __all__ = [
     "SafetyConstraint",
     "SafetySeverity",
     "ModeTransitionError",
+    "SubscriptionClosed",
+    "Topic",
+    "TopicBus",
+    "TopicDefinitionError",
+    "TopicStats",
+    "TopicSubscription",
 ]

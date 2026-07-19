@@ -3,6 +3,7 @@
 import asyncio
 from typing import Dict, Optional
 
+from app.core.logger import Logger
 from app.services.autonomy.actuation import HardwareController
 from app.services.autonomy.messages import (
     ArbitrationResult,
@@ -13,6 +14,11 @@ from app.services.autonomy.messages import (
     SafetyConstraint,
 )
 from app.services.autonomy.motion_arbiter import MotionArbiter
+from app.services.autonomy.topic_bus import TopicBus
+from app.services.autonomy.topics import MOTION_COMMANDED
+
+
+_log = Logger(__name__)
 
 
 class ModeTransitionError(RuntimeError):
@@ -28,12 +34,14 @@ class MotionControlService:
         hardware_controller: HardwareController,
         *,
         control_period_seconds: float = 0.05,
+        topic_bus: Optional[TopicBus] = None,
     ) -> None:
         if control_period_seconds <= 0:
             raise ValueError("control_period_seconds must be greater than zero")
         self._arbiter = arbiter
         self._hardware_controller = hardware_controller
         self._control_period_seconds = control_period_seconds
+        self._topic_bus = topic_bus
         self._mode = RobotMode.DISARMED
         self._mode_generation = 0
         self._constraints: Dict[str, SafetyConstraint] = {}
@@ -153,6 +161,11 @@ class MotionControlService:
                 self._transition_to_fault(error)
                 raise
             self._last_result = result
+            if self._topic_bus:
+                try:
+                    self._topic_bus.publish(MOTION_COMMANDED, result.command)
+                except Exception:
+                    _log.error("Failed to publish commanded motion", exc_info=True)
             return result
 
     def start(self) -> None:

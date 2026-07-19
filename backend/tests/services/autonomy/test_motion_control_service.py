@@ -16,7 +16,9 @@ from app.services.autonomy import (
     RobotMode,
     SafetyConstraint,
     SafetySeverity,
+    TopicBus,
 )
+from app.services.autonomy.topics import MOTION_COMMANDED
 
 
 class FakeClock:
@@ -70,10 +72,12 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.controller = HardwareController(self.hardware, translator)
+        self.topic_bus = TopicBus()
         self.service = MotionControlService(
             self.arbiter,
             self.controller,
             control_period_seconds=0.001,
+            topic_bus=self.topic_bus,
         )
 
     def intent(
@@ -153,6 +157,18 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.command.linear_speed_mps, 0.25)
         self.assertEqual(result.limiting_constraint_ids, ("slow-zone",))
         self.assertEqual(self.hardware.calls[-1], ("forward", 20))
+
+    async def test_applied_command_is_published_for_telemetry_consumers(self) -> None:
+        await self.enter_manual_mode()
+        subscription = self.topic_bus.subscribe(
+            MOTION_COMMANDED,
+            replay_latest=False,
+        )
+        self.service.submit(self.intent(speed=0.5))
+
+        result = await self.service.step()
+
+        self.assertEqual(await subscription.get(), result.command)
 
     async def test_hardware_failure_transitions_to_fault_and_invalidates_intents(
         self,
