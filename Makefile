@@ -1,13 +1,14 @@
-FRONTEND_DIR := frontend
-BACKEND_DIR := backend
-VENV_DIR := $(BACKEND_DIR)/.venv
+FRONTEND_DIR ?= frontend
+BACKEND_DIR ?= backend
+VENV_DIR ?= $(abspath $(BACKEND_DIR)/.venv)
+VENV_PYTHON := $(VENV_DIR)/bin/python
 
 # Phony targets
 
-.PHONY: all dev dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all \
+.PHONY: all tests dev dev-debug dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all \
 	sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build \
 	backend-venv-install clean clean-pyc help backend-venv-run-debug backend-venv-run-warning \
-	update-robot-hat backend-test frontend-test
+	clean-build update-robot-hat update-robot-hat-dev backend-test frontend-test
 
 # Default target
 all: build-all-no-sudo
@@ -18,18 +19,18 @@ dev: dev-without-install
 
 # Development environment setup
 dev-debug:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --dev --log-level=DEBUG"
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --dev --log-level=DEBUG
 
 dev-without-install:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --dev"
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --dev
 
 dev-with-install: frontend-install backend-venv-install dev-without-install
 
 update-robot-hat:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && pip install --upgrade --force-reinstall robot-hat"
+	$(VENV_PYTHON) -m pip install --upgrade --force-reinstall robot-hat
 
 update-robot-hat-dev:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && pip install git+https://github.com/KarimAziev/robot-hat.git@dev#egg=robot_hat"
+	$(VENV_PYTHON) -m pip install "git+https://github.com/KarimAziev/robot-hat.git@dev#egg=robot_hat"
 
 # Frontend installation and build
 frontend-install:
@@ -55,22 +56,22 @@ build-all-no-sudo: frontend-install frontend-build
 
 # Backend setup in virtual environment
 backend-venv-install:
-	cd $(BACKEND_DIR) && bash ./setup_env.sh $(INSTALL_FLAGS)
+	cd $(BACKEND_DIR) && VENV_DIR="$(VENV_DIR)" bash ./setup_env.sh $(INSTALL_FLAGS)
 
 
 # Run backend tests in virtual environment
 backend-test:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -m unittest discover"
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -m unittest discover
 
 # Launch server in virtual environment
 backend-venv-run:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py"
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py
 
 backend-venv-run-debug:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --log-level=DEBUG"
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --log-level=DEBUG
 
 backend-venv-run-warning:
-	cd $(BACKEND_DIR) && bash -c "source .venv/bin/activate && python3 -u run.py --log-level=WARNING"
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --log-level=WARNING
 
 
 # Launch backend in sudo
@@ -83,6 +84,7 @@ sudo-build-all: frontend-install frontend-build backend-sudo-install backend-sud
 # Sudo installation
 backend-sudo-install:
 	sudo python3 -m pip install -r $(BACKEND_DIR)/requirements.txt
+	sudo python3 -m pip install --no-deps -r $(BACKEND_DIR)/requirements-no-deps.txt
 
 
 # Cleanup targets

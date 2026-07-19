@@ -12,17 +12,18 @@ fastapi[standard]~=0.128.0
 starlette~=0.50.0
 uvicorn[standard]~=0.40.0
 python-multipart
-ultralytics-opencv-headless
+ultralytics-opencv-headless~=8.4.101
+opencv-python-headless~=4.11.0.86
 pyusb~=1.3.1
 pyudev~=0.24.4
 watchdog~=6.0.0
 python-dotenv~=1.2.1
 sounddevice~=0.5.5
-dbus-python
-ncnn
+dbus-python; platform_system == "Linux"
+portalocker
+tqdm
 v4l2-python3
-opencv-python
-PyGObject==3.50.0
+PyGObject==3.50.0; platform_system != "Darwin"
 PyGObject-stubs~=2.16.0
 rapidfuzz~=3.14.3
 httpx~=0.28.1

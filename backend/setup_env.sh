@@ -9,6 +9,7 @@ SKIP_GSTREAMER=0
 SKIP_POLKIT=0
 MINIMAL=0
 DRY_RUN=0
+VENV_DIR="${VENV_DIR:-.venv}"
 POLKIT_RULE_FILE="/etc/polkit-1/rules.d/99-reboot-no-auth.rules"
 POLKIT_SERVICE="polkit.service"
 
@@ -43,6 +44,13 @@ if [ "$OS_TYPE" = "Linux" ]; then
   fi
 fi
 
+# macOS camera capture uses AVFoundation. Homebrew's GStreamer formula bundles
+# GTK 3 and GTK 4 plugins that warn while its plugin registry is generated, so
+# keep GStreamer opt-in on macOS.
+if [ "$OS_TYPE" = "Darwin" ]; then
+  SKIP_GSTREAMER=1
+fi
+
 STEPS=(install_system_deps setup_gstreamer create_venv install_python_deps)
 if is_raspberry_pi; then
   log_info "Raspberry Pi detected. Adding 'setup_polkit_rule' to the default steps."
@@ -72,6 +80,8 @@ Options:
   -y                        Run in non-interactive mode (default).
   --skip-dbus               Skip dbus-related setup.
   --skip-gstreamer          Skip GStreamer installation.
+  --with-gstreamer          Install GStreamer on macOS (not used by the
+                            application's AVFoundation camera backend).
   --skip-polkit             Skip adding the Polkit rule.
   --minimal                 Minimal installation (only mandatory steps).
   --system-site-packages    Enable shared system-level Python packages in the virtual environment
@@ -99,6 +109,24 @@ command_exists() {
   command -v "$1" > /dev/null 2>&1
 }
 
+brew_install_missing() {
+  local missing_packages=()
+  local package
+
+  for package in "$@"; do
+    if ! brew list --versions "$package" > /dev/null 2>&1; then
+      missing_packages+=("$package")
+    fi
+  done
+
+  if [[ ${#missing_packages[@]} -eq 0 ]]; then
+    log_info "Required Homebrew packages are already installed: $*"
+    return
+  fi
+
+  run_cmd "brew install ${missing_packages[*]}"
+}
+
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -114,6 +142,7 @@ parse_args() {
       --skip-polkit) SKIP_POLKIT=1 ;;
       --skip-dbus) SKIP_DBUS=1 ;;
       --skip-gstreamer) SKIP_GSTREAMER=1 ;;
+      --with-gstreamer) SKIP_GSTREAMER=0 ;;
       --minimal) MINIMAL=1 ;;
       --dry-run) DRY_RUN=1 ;;
       --system-site-packages) SYSTEM_SITE_PACKAGES=1 ;;
@@ -186,20 +215,19 @@ install_system_deps_macos() {
     exit 1
   fi
 
-  # Basic build tools
-  run_cmd "brew update"
-  run_cmd "brew install meson ninja pkg-config"
+  # A normal project build should not update the user's Homebrew installation or
+  # upgrade an already-installed dependency tree.
+  brew_install_missing meson ninja pkg-config ffmpeg portaudio
 
-  # ffmpeg, portaudio, etc.
-  run_cmd "brew install ffmpeg portaudio cairo gobject-introspection glib gettext"
+  if [[ $SKIP_GSTREAMER -eq 0 ]]; then
+    # Current Homebrew releases bundle the former gst-plugins-* formulas in the
+    # single gstreamer formula.
+    brew_install_missing gstreamer
+  else
+    log_info "Skipping GStreamer on macOS; camera capture uses AVFoundation."
+  fi
 
-  # GStreamer
-  run_cmd "brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav"
-
-  # optional: gtk3 (note: may pull lots of deps)
-  run_cmd "brew install gtk+3" || log_warn "gtk+3 failed to install via brew (may be optional for your app)."
-
-  log_info "Homebrew packages installed. Note: some Python bindings (PyGObject) may still require pip wheels or manual steps."
+  log_info "Required Homebrew packages are installed."
 }
 
 install_system_deps() {
@@ -219,8 +247,8 @@ create_venv() {
     exit 1
   fi
 
-  if [ -d ".venv" ]; then
-    log_info "Virtual environment '.venv' already exists. Skipping creation."
+  if [ -d "$VENV_DIR" ]; then
+    log_info "Virtual environment '$VENV_DIR' already exists. Skipping creation."
   else
     if [[ -z $SYSTEM_SITE_PACKAGES ]]; then
       if is_raspberry_pi; then
@@ -238,20 +266,40 @@ create_venv() {
       SYSTEM_SITE_PACKAGES_FLAG=""
     fi
 
-    log_info "Creating Python virtual environment in '.venv'..."
-    run_cmd "python3 -m venv $SYSTEM_SITE_PACKAGES_FLAG .venv"
+    log_info "Creating Python virtual environment in '$VENV_DIR'..."
+    run_cmd "python3 -m venv $SYSTEM_SITE_PACKAGES_FLAG \"$VENV_DIR\""
   fi
 }
 
 install_python_deps() {
   # shellcheck disable=SC1091
-  . .venv/bin/activate
+  . "$VENV_DIR/bin/activate"
 
   log_info "Upgrading pip..."
   run_cmd "pip install --quiet --upgrade pip"
   log_info "Installing Python dependencies from requirements.txt..."
   run_cmd "pip install -r requirements.txt"
+
+  # Older environments may retain the GUI wheel from previous requirements.
+  # Both OpenCV wheels install the same cv2 package, so reinstall headless after
+  # removing the GUI distribution to leave a complete, unambiguous installation.
+  if pip show opencv-python > /dev/null 2>&1; then
+    log_info "Replacing the GUI OpenCV wheel with opencv-python-headless..."
+    run_cmd "pip uninstall --yes opencv-python"
+    run_cmd "pip install --force-reinstall --no-deps opencv-python-headless"
+  fi
+
+  log_info "Installing packages whose optional GUI dependencies are intentionally omitted..."
+  run_cmd "pip install --no-deps -r requirements-no-deps.txt"
   run_cmd "pip install platformdirs -U --force-reinstall"
+
+  if [[ "$OS_TYPE" = "Darwin" && $SKIP_GSTREAMER -eq 0 ]]; then
+    log_info "Installing the optional PyGObject binding for GStreamer on macOS..."
+    run_cmd "pip install PyGObject==3.50.0"
+  elif [[ "$OS_TYPE" = "Darwin" ]] && pip show PyGObject > /dev/null 2>&1; then
+    log_info "Removing the unused PyGObject binding from the macOS environment..."
+    run_cmd "pip uninstall --yes PyGObject"
+  fi
 
   if [ "$OS_TYPE" != "Darwin" ]; then
     # If python < 3.12 install tflite-runtime
@@ -279,11 +327,10 @@ setup_gstreamer() {
   log_info "Installing system dependencies for GStreamer support..."
 
   if [ "$OS_TYPE" = "Darwin" ]; then
-    # macOS: brew packages already installed by install_system_deps_macos
-    log_info "On macOS, ensure you have gstreamer and gst plugins installed via Homebrew."
+    # macOS: the single Homebrew formula includes the core and plugin modules.
+    log_info "Checking the optional Homebrew GStreamer installation."
     if ! command_exists gst-launch-1.0; then
-      log_info "gst-launch-1.0 not found. Installing gstreamer and plugins"
-      run_cmd "brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav"
+      brew_install_missing gstreamer
     fi
   else
     # Linux apt-based install

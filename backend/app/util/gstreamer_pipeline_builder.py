@@ -4,18 +4,21 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.exceptions.camera import CameraDeviceError
+from app.util.os_checks import is_macos
 
 logger = Logger(__name__)
 
-try:
-    import gi
+Gst = None
+if not is_macos():
+    try:
+        import gi
 
-    gi.require_version("Gst", "1.0")
-    from gi.repository import Gst  # type: ignore
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst  # type: ignore
 
-    Gst.init([])
-except ImportError:
-    Gst = None
+        Gst.init([])
+    except ImportError:
+        pass
 
 StringOrNoneFunction = Callable[[], Optional[str]]
 
