@@ -21,6 +21,16 @@ if TYPE_CHECKING:
         from ultralytics.models.yolo import YOLO
 
 
+def _load_yolo_class() -> Type["YOLO"]:
+    """Load Ultralytics lazily so non-detection processes avoid its dependencies."""
+    try:
+        from ultralytics import YOLO  # type: ignore[reportPrivateImportUsage]
+    except Exception:
+        from ultralytics.models.yolo import YOLO
+
+    return YOLO
+
+
 class ModelManager:
     """
     ModelManager is a context manager for loading and managing a YOLO detection model.
@@ -70,14 +80,9 @@ class ModelManager:
                     return self.model, self.error_msg
                 _log.info("Hailo model loaded successfully")
             else:
-                try:
-                    from ultralytics import (
-                        YOLO,  # type: ignore[reportPrivateImportUsage]
-                    )
-                except Exception:
-                    from ultralytics.models.yolo import YOLO
+                yolo_class = _load_yolo_class()
 
-                if YOLO is None:
+                if yolo_class is None:
                     msg = "ultralytics YOLO not available."
                     _log.error(msg)
                     self.error_msg = msg
@@ -92,7 +97,7 @@ class ModelManager:
                             self.model_path = settings.YOLO_MODEL_PATH
                     _log.info(f"Loading YOLO model {self.model_path}")
                     try:
-                        self.model = YOLO(model=self.model_path, task="detect")
+                        self.model = yolo_class(model=self.model_path, task="detect")
                         _log.info("YOLO model loaded successfully")
                     except FileNotFoundError:
                         msg = f"Model's file {self.model_path} is not found"

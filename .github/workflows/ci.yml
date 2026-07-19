@@ -24,19 +24,16 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+            backend/requirements-no-deps.txt
 
       - name: Install Node.js (for Pyright)
         uses: actions/setup-node@v7
         with:
           node-version: 'current'
-
-      - name: Restore cached virtual environment
-        uses: actions/cache@v5
-        with:
-          path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('setup_env.sh', 'backend/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ matrix.python-version }}-
 
       - name: Setup backend environment
         run: bash setup_env.sh --skip-polkit

@@ -1,48 +1,3 @@
-# Monkey patch for matplotlib.ft2font module:
-# When using ultralytics, matplotlib is imported and its _check_versions
-# function attempts to load the ft2font C-extension. On some systems during
-# test discovery, this results in a segmentation fault
-
-
-class DummyFT2Font:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def some_method(self, *args, **kwargs):
-        pass
-
-
-class DummyFT2Image:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def some_image_method(self, *args, **kwargs):
-        pass
-
-
-class DummyKerning:
-    DEFAULT = 0
-
-
-DummyLoadFlags = 0
-
-# Additional stubs for Python 3.9+
-KERNING_DEFAULT = 0
-LOAD_NO_HINTING = 0
-LOAD_TARGET_LIGHT = 0
-
-# dummy_ft2font = types.ModuleType("matplotlib.ft2font")
-# dummy_ft2font.FT2Font = DummyFT2Font  # type: ignore
-# dummy_ft2font.FT2Image = DummyFT2Image  # type: ignore
-# dummy_ft2font.Kerning = DummyKerning  # type: ignore
-# dummy_ft2font.LoadFlags = DummyLoadFlags  # type: ignore
-# dummy_ft2font.KERNING_DEFAULT = KERNING_DEFAULT  # type: ignore
-# dummy_ft2font.LOAD_NO_HINTING = LOAD_NO_HINTING  # type: ignore
-# dummy_ft2font.LOAD_TARGET_LIGHT = LOAD_TARGET_LIGHT  # type: ignore
-
-# sys.modules["matplotlib.ft2font"] = dummy_ft2font
-
-
 import os
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, cast
@@ -81,7 +36,7 @@ class TestModelManager(unittest.TestCase):
         "app.managers.model_manager.resolve_absolute_path",
         lambda path, base: os.path.join(base, path),
     )
-    @patch("ultralytics.YOLO", new=DummyYOLO)
+    @patch("app.managers.model_manager._load_yolo_class", lambda: DummyYOLO)
     def test_custom_model_path_load_success(self):
         """Test that a custom provided model path is used and the model is loaded successfully."""
         custom_path = "custom_model.pt"
@@ -100,7 +55,7 @@ class TestModelManager(unittest.TestCase):
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, *_: path)
     @patch("app.managers.model_manager.os.path.exists")
     @patch("app.managers.model_manager.is_google_coral_connected")
-    @patch("ultralytics.YOLO", new=DummyYOLO)
+    @patch("app.managers.model_manager._load_yolo_class", lambda: DummyYOLO)
     def test_default_edge_tpu_path_load_success(
         self, mock_coral: MagicMock, mock_exists: MagicMock
     ):
@@ -127,7 +82,7 @@ class TestModelManager(unittest.TestCase):
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
     @patch("app.managers.model_manager.os.path.exists")
     @patch("app.managers.model_manager.is_google_coral_connected")
-    @patch("ultralytics.YOLO", new=DummyYOLO)
+    @patch("app.managers.model_manager._load_yolo_class", lambda: DummyYOLO)
     def test_default_yolo_model_path_load_success(
         self, mock_coral: MagicMock, mock_exists: MagicMock
     ):
@@ -153,13 +108,15 @@ class TestModelManager(unittest.TestCase):
 
     @patch("app.managers.model_manager._log.error")
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
-    @patch("ultralytics.YOLO")
-    def test_file_not_found_error(self, mock_yolo, _: MagicMock):
+    @patch("app.managers.model_manager._load_yolo_class")
+    def test_file_not_found_error(self, mock_yolo_loader: MagicMock, _: MagicMock):
         """
         Test that if YOLO initialization raises a FileNotFoundError,
         the error message is correctly set.
         """
-        mock_yolo.side_effect = FileNotFoundError("dummy file not found")
+        mock_yolo_loader.return_value.side_effect = FileNotFoundError(
+            "dummy file not found"
+        )
         custom_path = "nonexistent_model.pt"
         manager = ModelManager(model_path=custom_path)
 
@@ -170,14 +127,14 @@ class TestModelManager(unittest.TestCase):
         manager.__exit__(None, None, None)
 
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
-    @patch("ultralytics.YOLO")
-    def test_unexpected_exception(self, mock_yolo: MagicMock):
+    @patch("app.managers.model_manager._load_yolo_class")
+    def test_unexpected_exception(self, mock_yolo_loader: MagicMock):
         """
         Test that if YOLO initialization raises an unexpected Exception,
         the error message is correctly set.
         """
         with patch("app.managers.model_manager._log.error") as mock_logger_error:
-            mock_yolo.side_effect = Exception("unexpected")
+            mock_yolo_loader.return_value.side_effect = Exception("unexpected")
             custom_path = "unexpected_error_model.pt"
             manager = ModelManager(model_path=custom_path)
             model, error = manager.__enter__()
@@ -188,13 +145,13 @@ class TestModelManager(unittest.TestCase):
             mock_logger_error.assert_called_once()
 
     @patch("app.managers.model_manager.resolve_absolute_path", lambda path, base: path)
-    @patch("ultralytics.YOLO")
-    def test_keyboard_interrupt_handling(self, mock_yolo: MagicMock):
+    @patch("app.managers.model_manager._load_yolo_class")
+    def test_keyboard_interrupt_handling(self, mock_yolo_loader: MagicMock):
         """
         Test that if a KeyboardInterrupt is raised during model loading,
         the __enter__ method returns the expected message.
         """
-        mock_yolo.side_effect = KeyboardInterrupt
+        mock_yolo_loader.return_value.side_effect = KeyboardInterrupt
         manager = ModelManager(model_path="interrupt_model.pt")
         model, error = manager.__enter__()
         self.assertIsNone(model)
