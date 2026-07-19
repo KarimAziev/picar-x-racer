@@ -50,6 +50,7 @@ class DetectionKeypoint(TypedDict):
 
     x: float
     y: float
+    confidence: NotRequired[float]
 
 
 DetectionSegment = List[DetectionKeypoint]

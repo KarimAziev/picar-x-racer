@@ -30,11 +30,28 @@ class FakeSemanticMask:
         self.data = data
 
 
+class FakeKeypoints:
+    def __init__(self, coordinates, confidences=None):
+        self.xy = np.array(coordinates, dtype=np.float32)
+        self.conf = (
+            np.array(confidences, dtype=np.float32) if confidences is not None else None
+        )
+
+    def __len__(self):
+        return len(self.xy)
+
+
 class FakeResults:
-    def __init__(self, detections=None, segments=None, semantic_mask=None):
+    def __init__(
+        self,
+        detections=None,
+        segments=None,
+        semantic_mask=None,
+        keypoints=None,
+    ):
         self.boxes = detections
         self.masks = FakeMasks(segments or [])
-        self.keypoints = None
+        self.keypoints = keypoints
         self.semantic_mask = (
             FakeSemanticMask(semantic_mask) if semantic_mask is not None else None
         )
@@ -52,6 +69,38 @@ class FakeModel:
 
 
 class TestObjectDetection(unittest.TestCase):
+    def test_perform_detection_preserves_pose_keypoint_confidence(self):
+        detection = FakeDetection(
+            bbox=[10, 10, 90, 90],
+            confidence=0.9,
+            class_id=0,
+        )
+        keypoints = FakeKeypoints(
+            coordinates=[[[20, 30], [40, 50]]],
+            confidences=[[0.95, 0.12345]],
+        )
+        model = FakeModel(FakeResults([detection], keypoints=keypoints))
+
+        result = perform_detection(
+            frame=np.zeros((100, 100, 3), dtype=np.uint8),
+            yolo_model=cast(Any, model),
+            resized_height=100,
+            resized_width=100,
+            original_width=100,
+            original_height=100,
+            pad_top=0,
+            pad_left=0,
+            confidence_threshold=0.4,
+        )
+
+        self.assertEqual(
+            result["detection_result"][0].get("keypoints"),
+            [
+                {"x": 20, "y": 30, "confidence": 0.95},
+                {"x": 40, "y": 50, "confidence": 0.1235},
+            ],
+        )
+
     def test_perform_detection_maps_segmentation_polygon_to_original_frame(self):
         detection = FakeDetection(
             bbox=[10, 5, 60, 55],

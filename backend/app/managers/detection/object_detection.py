@@ -56,11 +56,15 @@ def _scale_detection_point(
     pad_top: int,
     scale_x: float,
     scale_y: float,
+    confidence: Optional[float] = None,
 ) -> DetectionKeypoint:
-    return {
+    point: DetectionKeypoint = {
         "x": int((float(x) - pad_left) * scale_x),
         "y": int((float(y) - pad_top) * scale_y),
     }
+    if confidence is not None:
+        point["confidence"] = round(float(confidence), 4)
+    return point
 
 
 def _scale_detection_segment(
@@ -405,6 +409,13 @@ def perform_detection(
 
                 if keypoints is not None and idx < len(keypoints):
                     raw_keypoints = keypoints.xy[idx].tolist()
+                    keypoint_confidences = getattr(keypoints, "conf", None)
+                    raw_keypoint_confidences = (
+                        keypoint_confidences[idx].tolist()
+                        if keypoint_confidences is not None
+                        and idx < len(keypoint_confidences)
+                        else []
+                    )
                     formatted_keypoints: List[DetectionKeypoint] = [
                         _scale_detection_point(
                             x,
@@ -413,8 +424,13 @@ def perform_detection(
                             pad_top,
                             scale_x,
                             scale_y,
+                            (
+                                raw_keypoint_confidences[point_index]
+                                if point_index < len(raw_keypoint_confidences)
+                                else None
+                            ),
                         )
-                        for (x, y) in raw_keypoints
+                        for point_index, (x, y) in enumerate(raw_keypoints)
                     ]
                     detection_pose_entry: DetectionPoseResult = {
                         "bbox": detection_entry["bbox"],

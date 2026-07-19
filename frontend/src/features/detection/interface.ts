@@ -48,7 +48,7 @@ export interface DetectionResponse {
   loading: boolean;
 }
 
-export type Keypoint = { x: number; y: number };
+export type Keypoint = { x: number; y: number; confidence?: number };
 export type DetectionSegment = Keypoint[];
 
 export interface DetectionResult {

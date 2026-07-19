@@ -10,6 +10,7 @@ logger = Logger(__name__)
 
 OVERLAY_COLOR = (191, 255, 0)
 OVERLAY_TEXT_COLOR = (102, 51, 0)
+KEYPOINT_CONFIDENCE_THRESHOLD = 0.02
 POSE_SKELETON = (
     (0, 1),
     (0, 2),
@@ -126,7 +127,7 @@ def draw_crosshair_overlay(
     mid_x = (x1 + x2) // 2
     mid_y = (y1 + y2) // 2
 
-    if keypoints:
+    if keypoints and _is_visible_keypoint(keypoints[0]):
         nose = keypoints[0]
         mid_x = int(nose["x"])
         mid_y = int(nose["y"])
@@ -163,26 +164,34 @@ def draw_pose_overlay(
     if not keypoints:
         return frame
 
-    points = [(int(keypoint["x"]), int(keypoint["y"])) for keypoint in keypoints]
-
     for start_index, end_index in POSE_SKELETON:
-        if start_index >= len(points) or end_index >= len(points):
+        if start_index >= len(keypoints) or end_index >= len(keypoints):
             continue
-        start = points[start_index]
-        end = points[end_index]
-        if not _is_visible_keypoint(start) or not _is_visible_keypoint(end):
+        start_keypoint = keypoints[start_index]
+        end_keypoint = keypoints[end_index]
+        if not _is_visible_keypoint(start_keypoint) or not _is_visible_keypoint(
+            end_keypoint
+        ):
             continue
+        start = (int(start_keypoint["x"]), int(start_keypoint["y"]))
+        end = (int(end_keypoint["x"]), int(end_keypoint["y"]))
         cv2.line(frame, start, end, color, 2)
 
-    for point in points:
-        if _is_visible_keypoint(point):
+    for keypoint in keypoints:
+        if _is_visible_keypoint(keypoint):
+            point = (int(keypoint["x"]), int(keypoint["y"]))
             cv2.circle(frame, point, 3, color, cv2.FILLED)
 
     return frame
 
 
-def _is_visible_keypoint(point: tuple[int, int]) -> bool:
-    return point[0] >= 0 and point[1] > 0
+def _is_visible_keypoint(keypoint: DetectionKeypoint) -> bool:
+    confidence = keypoint.get("confidence")
+    return (
+        keypoint["x"] >= 0
+        and keypoint["y"] > 0
+        and (confidence is None or confidence >= KEYPOINT_CONFIDENCE_THRESHOLD)
+    )
 
 
 def draw_semantic_segmentation_overlay(
@@ -336,7 +345,9 @@ def draw_label(
     text = (
         f"{label}: {confidence:.2f}"
         if label is not None and confidence is not None
-        else label if label is not None else f"{confidence:.2f}"
+        else label
+        if label is not None
+        else f"{confidence:.2f}"
     ).upper()
     (text_width, text_height), _ = cv2.getTextSize(text, font_face, 0.5, text_thickness)
     y1_text = max(y1 - text_height - 10, 0)

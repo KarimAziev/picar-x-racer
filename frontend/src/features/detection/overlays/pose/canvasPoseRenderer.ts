@@ -13,12 +13,23 @@ import {
 } from "@/features/detection/overlays/pose/config";
 
 import {
-  keystrokesPred,
+  KEYPOINT_CONFIDENCE_THRESHOLD,
   SkeletonLineSpec,
   scaleKeypoints,
   mergeSkeletonLines,
 } from "@/features/detection/overlays/pose/util";
 import { BODY_PARTS } from "@/features/detection/enums";
+
+export const isVisibleKeypoint = (
+  keypoint: Keypoint | undefined,
+): keypoint is Keypoint =>
+  Boolean(
+    keypoint &&
+    keypoint.x >= 0 &&
+    keypoint.y > 0 &&
+    (keypoint.confidence === undefined ||
+      keypoint.confidence >= KEYPOINT_CONFIDENCE_THRESHOLD),
+  );
 
 export const drawKeypoints = (
   ctx: CanvasRenderingContext2D,
@@ -67,7 +78,7 @@ export const renderMeshLine = (
   const start = keypoints[startIdx];
   const end = keypoints[endIdx];
 
-  if (!keystrokesPred(start) || !keystrokesPred(end)) {
+  if (!isVisibleKeypoint(start) || !isVisibleKeypoint(end)) {
     return;
   }
 
@@ -93,6 +104,10 @@ export const drawKeypointCircle = (
   getVar: (name: string) => string,
   keypointsParams?: KeypointsParams,
 ) => {
+  if (!isVisibleKeypoint(keypoint)) {
+    return;
+  }
+
   const keyPointProp = keypointsGroups[idx as BODY_PARTS];
   const size = (keypointsParams && keypointsParams[keyPointProp].size) || 25;
   const keyColor =
@@ -208,10 +223,10 @@ export const drawSpine = (
   const leftHip = keypoints[BODY_PARTS.LEFT_HIP];
   const rightHip = keypoints[BODY_PARTS.RIGHT_HIP];
   if (
-    keystrokesPred(leftShoulder) &&
-    keystrokesPred(rightShoulder) &&
-    keystrokesPred(leftHip) &&
-    keystrokesPred(rightHip)
+    isVisibleKeypoint(leftShoulder) &&
+    isVisibleKeypoint(rightShoulder) &&
+    isVisibleKeypoint(leftHip) &&
+    isVisibleKeypoint(rightHip)
   ) {
     const spineTop = {
       x: (leftShoulder.x + rightShoulder.x) / 2,

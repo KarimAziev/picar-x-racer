@@ -185,6 +185,31 @@ class TestOverlayDetection(unittest.TestCase):
         self.assertEqual(tuple(result[20, 20]), overlay_detecton.OVERLAY_COLOR)
         self.assertTrue(np.array_equal(result[0, 0], np.zeros(3, dtype=np.uint8)))
 
+    def test_pose_ignores_low_confidence_keypoints(self) -> None:
+        keypoints: list[DetectionKeypoint] = [
+            {"x": 10, "y": 20, "confidence": 0.2},
+            {"x": 30, "y": 20, "confidence": 0.9},
+        ]
+
+        result = overlay_detecton.draw_pose_overlay(self.frame, keypoints)
+
+        self.assertTrue(np.array_equal(result[20, 10], np.zeros(3, dtype=np.uint8)))
+        self.assertEqual(tuple(result[20, 30]), overlay_detecton.OVERLAY_COLOR)
+
+    def test_crosshair_ignores_low_confidence_nose(self) -> None:
+        result = overlay_detecton.draw_crosshair_overlay(
+            self.frame,
+            20,
+            30,
+            60,
+            70,
+            keypoints=[{"x": 25, "y": 35, "confidence": 0.2}],
+            full_frame=True,
+        )
+
+        self.assertEqual(tuple(result[50, 0]), overlay_detecton.OVERLAY_COLOR)
+        self.assertTrue(np.array_equal(result[35, 0], np.zeros(3, dtype=np.uint8)))
+
 
 if __name__ == "__main__":
     unittest.main()

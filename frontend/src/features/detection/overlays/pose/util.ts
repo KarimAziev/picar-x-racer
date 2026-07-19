@@ -16,6 +16,8 @@ export type SkeletonLineSpec = [
   string,
 ];
 
+export const KEYPOINT_CONFIDENCE_THRESHOLD = 0.5;
+
 export const keystrokesPred = where({
   y: (v: number) => v && v >= 0,
 });
@@ -29,9 +31,10 @@ export const scaleKeypoints = (
   scaleY: number,
   keypoints: Keypoint[],
 ) =>
-  keypoints.map(({ x, y }) => ({
+  keypoints.map(({ x, y, confidence }) => ({
     x: x * scaleX,
     y: y * scaleY,
+    ...(confidence === undefined ? {} : { confidence }),
   }));
 
 export const mergeSkeletonLines = (
