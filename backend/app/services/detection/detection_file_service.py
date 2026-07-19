@@ -1,6 +1,7 @@
 import os
 from typing import List, Optional, Set
 
+from app.core.logger import Logger
 from app.schemas.file_filter import (
     FileDetail,
     FileFilterModel,
@@ -12,9 +13,11 @@ from app.schemas.file_filter import (
 )
 from app.services.file_management.file_manager_service import FileManagerService
 
+_log = Logger(__name__)
+
 MODEL_FILE_SUFFIXES = ["_ncnn_model", ".pt", ".tflite", ".hef", ".onnx"]
 
-GITHUB_ASSETS_NAMES = (
+FALLBACK_YOLO_ASSETS_NAMES = frozenset(
     [
         f"yolov8{k}{suffix}.pt"
         for k in "nsmlx"
@@ -25,7 +28,9 @@ GITHUB_ASSETS_NAMES = (
         for k in "nsmlx"
         for suffix in ("", "-cls", "-seg", "-pose", "-obb")
     ]
-    + [f"yolo12{k}{suffix}.pt" for k in "nsmlx" for suffix in ("",)]
+    + [
+        f"yolo12{k}{suffix}.pt" for k in "nsmlx" for suffix in ("",)
+    ]  # detect models only currently
     + [
         f"yolo26{k}{suffix}.pt"
         for k in "nsmlx"
@@ -35,14 +40,23 @@ GITHUB_ASSETS_NAMES = (
     + [f"yolov3{k}u.pt" for k in ("", "-spp", "-tiny")]
     + [f"yolov8{k}-world.pt" for k in "smlx"]
     + [f"yolov8{k}-worldv2.pt" for k in "smlx"]
+    + [f"yoloe-v8{k}{suffix}.pt" for k in "sml" for suffix in ("-seg", "-seg-pf")]
+    + [f"yoloe-11{k}{suffix}.pt" for k in "sml" for suffix in ("-seg", "-seg-pf")]
+    + [f"yoloe-26{k}{suffix}.pt" for k in "nsmlx" for suffix in ("-seg", "-seg-pf")]
     + [f"yolov9{k}.pt" for k in "tsmce"]
     + [f"yolov10{k}.pt" for k in "nsmblx"]
     + [f"yolo_nas_{k}.pt" for k in "sml"]
     + [f"sam_{k}.pt" for k in "bl"]
+    + [f"sam2_{k}.pt" for k in "blst"]
+    + [f"sam2.1_{k}.pt" for k in "blst"]
     + [f"FastSAM-{k}.pt" for k in "sx"]
     + [f"rtdetr-{k}.pt" for k in "lx"]
-    + ["mobile_sam.pt"]
-    + ["calibration_image_sample_data_20x128x128x3_float32.npy.zip"]
+    + [
+        "mobile_sam.pt",
+        "mobileclip_blt.ts",
+        "yolo11n-grayscale.pt",
+        "calibration_image_sample_data_20x128x128x3_float32.npy.zip",
+    ]
 )
 
 
@@ -56,10 +70,22 @@ class DetectionFileService(FileManagerService):
             for file in os.listdir(self.root_directory):
                 loaded_models.add(file)
 
+        try:
+            from ultralytics.utils.downloads import GITHUB_ASSETS_NAMES
+        except ImportError:
+            _log.warning(
+                (
+                    "ultralytics.utils.downloads.GITHUB_ASSETS_NAMES not found, "
+                    "using fallback list of YOLO assets names."
+                )
+            )
+            GITHUB_ASSETS_NAMES = FALLBACK_YOLO_ASSETS_NAMES
+
         loadable_files: List[FileDetail] = []
         for key in GITHUB_ASSETS_NAMES:
             if (
-                not key.endswith(("-cls.pt", "-seg.pt", ".npy.pt", "-obb.pt"))
+                key.startswith("yolo")
+                and not key.endswith((".ts", "-cls.pt", ".npy.pt", "-obb.pt"))
                 and key not in loaded_models
             ):
                 loadable_files.append(
@@ -72,6 +98,7 @@ class DetectionFileService(FileManagerService):
                         modified=None,
                     )
                 )
+
         return loadable_files
 
     def get_files_tree(
