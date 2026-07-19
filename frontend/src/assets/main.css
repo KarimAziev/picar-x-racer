@@ -6,10 +6,12 @@
 @plugin "tailwindcss-primeui";
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
   --font-serif: var(--font-family);
-  --font-mono: var(--font-family), SFMono-Regular, Menlo, Monaco, Consolas,
+  --font-mono:
+    var(--font-family), SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 
   --color-form-field-border: var(--p-form-field-border-color);

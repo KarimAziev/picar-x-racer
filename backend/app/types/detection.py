@@ -35,6 +35,8 @@ class DetectionControlMessage(TypedDict):
     """
 
     confidence: Optional[float]
+    iou_threshold: NotRequired[Optional[float]]
+    max_detections: NotRequired[Optional[int]]
     labels: Optional[List[str]]
     segmentation_detail: NotRequired[SegmentationDetail]
     command: DetectionProcessCommand
@@ -164,3 +166,4 @@ class DetectionReadyMessage(TypedDict):
     """
 
     success: bool
+    labels: NotRequired[List[str]]

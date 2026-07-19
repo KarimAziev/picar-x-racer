@@ -1,5 +1,8 @@
 import { isImage } from "@/util/guards";
-import { drawKeypoints } from "@/features/detection/overlays/pose/canvasPoseRenderer";
+import {
+  drawKeypoints,
+  isVisibleKeypoint,
+} from "@/features/detection/overlays/pose/canvasPoseRenderer";
 import type {
   DetectionResult,
   OverlayLinesParams,
@@ -58,6 +61,7 @@ export const drawDetectionOverlay = (
   detection: DetectionResult,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { label, confidence, bbox, keypoints } = detection;
   if (bbox) {
@@ -73,7 +77,15 @@ export const drawDetectionOverlay = (
   }
 
   if (keypoints) {
-    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+    drawKeypoints(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      keypointConfidenceThreshold,
+    );
   }
 };
 
@@ -84,6 +96,7 @@ export const drawDetectionSegment = (
   detection: DetectionResult,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { label, confidence, bbox, keypoints, segments } = detection;
 
@@ -104,7 +117,15 @@ export const drawDetectionSegment = (
   }
 
   if (keypoints) {
-    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+    drawKeypoints(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      keypointConfidenceThreshold,
+    );
   }
 };
 
@@ -294,6 +315,7 @@ export const drawDetectionCrosshair = (
   detection: DetectionResult,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { label, confidence, bbox, keypoints } = detection;
 
@@ -308,8 +330,7 @@ export const drawDetectionCrosshair = (
   let midX = (x1 + x2) / 2;
   let midY = (y1 + y2) / 2;
 
-  if (noseCoords) {
-    const noseCoords = keypoints[BODY_PARTS.NOSE];
+  if (isVisibleKeypoint(noseCoords, keypointConfidenceThreshold)) {
     midX = noseCoords.x * scaleX;
     midY = noseCoords.y * scaleY;
   }
@@ -325,7 +346,15 @@ export const drawDetectionCrosshair = (
   ctx.stroke();
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
   if (keypoints) {
-    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+    drawKeypoints(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      keypointConfidenceThreshold,
+    );
   }
 };
 
@@ -346,6 +375,7 @@ export const drawFullDetectionCrosshair = (
   detection: DetectionResult,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { label, confidence, bbox, keypoints } = detection;
   let [x1, y1, x2, y2] = bbox;
@@ -358,8 +388,8 @@ export const drawFullDetectionCrosshair = (
   let midX = (x1 + x2) / 2;
   let midY = (y1 + y2) / 2;
 
-  if (keypoints && keypoints[BODY_PARTS.NOSE]) {
-    const noseCoords = keypoints[BODY_PARTS.NOSE];
+  const noseCoords = keypoints && keypoints[BODY_PARTS.NOSE];
+  if (isVisibleKeypoint(noseCoords, keypointConfidenceThreshold)) {
     midX = noseCoords.x * scaleX;
     midY = noseCoords.y * scaleY;
   }
@@ -377,7 +407,15 @@ export const drawFullDetectionCrosshair = (
   drawLabelWithConfidence(label, confidence, ctx, x1, y1);
 
   if (detection.keypoints) {
-    drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+    drawKeypoints(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      keypointConfidenceThreshold,
+    );
   }
 };
 
@@ -467,7 +505,7 @@ export const drawDetectionsWith = (
     detection: DetectionResult,
     poseLines?: OverlayLinesParams,
     poseKeystrokes?: KeypointsParams,
-    renderFiber?: boolean,
+    keypointConfidenceThreshold?: number,
   ) => void,
   canvas: HTMLCanvasElement,
   elem: HTMLElement,
@@ -476,7 +514,7 @@ export const drawDetectionsWith = (
   color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
-  renderFiber?: boolean,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
@@ -484,6 +522,14 @@ export const drawDetectionsWith = (
   }
 
   detectionData?.forEach((detection) => {
-    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes, renderFiber);
+    fn(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      keypointConfidenceThreshold,
+    );
   });
 };

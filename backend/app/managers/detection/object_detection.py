@@ -283,6 +283,8 @@ def perform_detection(
     pad_left: int,
     labels_to_detect: Optional[List[str]] = None,
     confidence_threshold: float = 0.4,
+    iou_threshold: float = 0.7,
+    max_detections: int = 300,
     verbose: Optional[bool] = False,
     should_resize: bool = False,
     segmentation_detail: SegmentationDetail = "balanced",
@@ -305,6 +307,8 @@ def perform_detection(
         pad_left: The left padding (in pixels) applied during letterbox.
         labels_to_detect: List of target labels to filter detections.
         confidence_threshold: Minimum confidence for a detection to be considered.
+        iou_threshold: IoU threshold used by non-maximum suppression.
+        max_detections: Maximum detections returned after non-maximum suppression.
         verbose: Verbosity flag.
         should_resize: If True, the frame is processed using the letterbox function.
 
@@ -335,6 +339,8 @@ def perform_detection(
                 source=resized_frame,
                 verbose=verbose,
                 conf=confidence_threshold,
+                iou=iou_threshold,
+                max_det=max_detections,
                 imgsz=resized_width,
             ),
         )

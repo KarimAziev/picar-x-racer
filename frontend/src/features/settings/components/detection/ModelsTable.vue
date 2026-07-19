@@ -10,7 +10,7 @@
         <RadioButton
           :disabled="!isSelectableModel(path, is_dir)"
           @update:modelValue="handleUpdateModel"
-          v-model="detectionStore.data.model"
+          :model-value="detectionStore.data.model"
           v-tooltip="'Select a model as default'"
           :inputId="`model-${path}`"
           :name="`model-${path}`"

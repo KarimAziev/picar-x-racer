@@ -63,12 +63,33 @@ class FakeModel:
 
     def __init__(self, results):
         self.results = results
+        self.predict_kwargs = {}
 
-    def predict(self, **_kwargs):
+    def predict(self, **kwargs):
+        self.predict_kwargs = kwargs
         return [self.results]
 
 
 class TestObjectDetection(unittest.TestCase):
+    def test_passes_nms_settings_to_model(self):
+        model = FakeModel(FakeResults([]))
+
+        perform_detection(
+            frame=np.zeros((100, 100, 3), dtype=np.uint8),
+            yolo_model=cast(Any, model),
+            resized_height=100,
+            resized_width=100,
+            original_width=100,
+            original_height=100,
+            pad_top=0,
+            pad_left=0,
+            iou_threshold=0.45,
+            max_detections=25,
+        )
+
+        self.assertEqual(model.predict_kwargs["iou"], 0.45)
+        self.assertEqual(model.predict_kwargs["max_det"], 25)
+
     def test_perform_detection_preserves_pose_keypoint_confidence(self):
         detection = FakeDetection(
             bbox=[10, 10, 90, 90],

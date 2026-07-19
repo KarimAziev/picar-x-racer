@@ -102,6 +102,7 @@ const drawDetectionResults = (newResults: DetectionResult[]) => {
       themeStore.lines,
       themeStore.keypoints,
       detectionStore.semantic_mask,
+      detectionStore.data.keypoint_confidence_threshold,
     );
   } else {
     handler(overlayCanvas.value, imgRef.value, []);

@@ -36,6 +36,7 @@ def overlay_detection(
     detection_result: Any,
     overlay_style: OverlayStyle = OverlayStyle.BOX,
     semantic_mask: Optional[SemanticMaskData] = None,
+    keypoint_confidence_threshold: float = KEYPOINT_CONFIDENCE_THRESHOLD,
 ) -> np.ndarray:
     """
     Overlays detection results onto the frame.
@@ -75,7 +76,9 @@ def overlay_detection(
             continue
         if overlay_style == OverlayStyle.POSE:
             frame = draw_label(frame, x1, y1, label, confidence)
-            frame = draw_pose_overlay(frame, keypoints)
+            frame = draw_pose_overlay(
+                frame, keypoints, confidence_threshold=keypoint_confidence_threshold
+            )
             continue
         if overlay_style == OverlayStyle.AIM:
             frame = draw_crosshair_overlay(
@@ -88,6 +91,7 @@ def overlay_detection(
                 confidence,
                 keypoints,
                 full_frame=index == 0,
+                keypoint_confidence_threshold=keypoint_confidence_threshold,
             )
             continue
         if overlay_style == OverlayStyle.MIXED and index == 0:
@@ -101,11 +105,14 @@ def overlay_detection(
                 confidence,
                 keypoints,
                 full_frame=True,
+                keypoint_confidence_threshold=keypoint_confidence_threshold,
             )
             continue
 
         frame = draw_overlay(frame, x1, y1, x2, y2, label, confidence)
-        frame = draw_pose_overlay(frame, keypoints)
+        frame = draw_pose_overlay(
+            frame, keypoints, confidence_threshold=keypoint_confidence_threshold
+        )
 
     return frame
 
@@ -121,13 +128,14 @@ def draw_crosshair_overlay(
     keypoints: Optional[Sequence[DetectionKeypoint]] = None,
     full_frame: bool = False,
     color: tuple[int, int, int] = OVERLAY_COLOR,
+    keypoint_confidence_threshold: float = KEYPOINT_CONFIDENCE_THRESHOLD,
 ) -> np.ndarray:
     """Draw crosshair lines centered on a detection or its nose keypoint."""
     x1, y1, x2, y2 = [int(val) for val in (x1, y1, x2, y2)]
     mid_x = (x1 + x2) // 2
     mid_y = (y1 + y2) // 2
 
-    if keypoints and _is_visible_keypoint(keypoints[0]):
+    if keypoints and _is_visible_keypoint(keypoints[0], keypoint_confidence_threshold):
         nose = keypoints[0]
         mid_x = int(nose["x"])
         mid_y = int(nose["y"])
@@ -152,13 +160,16 @@ def draw_crosshair_overlay(
         2,
     )
     frame = draw_label(frame, x1, y1, label, confidence)
-    return draw_pose_overlay(frame, keypoints)
+    return draw_pose_overlay(
+        frame, keypoints, confidence_threshold=keypoint_confidence_threshold
+    )
 
 
 def draw_pose_overlay(
     frame: np.ndarray,
     keypoints: Optional[Sequence[DetectionKeypoint]],
     color: tuple[int, int, int] = OVERLAY_COLOR,
+    confidence_threshold: float = KEYPOINT_CONFIDENCE_THRESHOLD,
 ) -> np.ndarray:
     """Draw the standard 17-point pose skeleton when keypoints are available."""
     if not keypoints:
@@ -169,28 +180,31 @@ def draw_pose_overlay(
             continue
         start_keypoint = keypoints[start_index]
         end_keypoint = keypoints[end_index]
-        if not _is_visible_keypoint(start_keypoint) or not _is_visible_keypoint(
-            end_keypoint
-        ):
+        if not _is_visible_keypoint(
+            start_keypoint, confidence_threshold
+        ) or not _is_visible_keypoint(end_keypoint, confidence_threshold):
             continue
         start = (int(start_keypoint["x"]), int(start_keypoint["y"]))
         end = (int(end_keypoint["x"]), int(end_keypoint["y"]))
         cv2.line(frame, start, end, color, 2)
 
     for keypoint in keypoints:
-        if _is_visible_keypoint(keypoint):
+        if _is_visible_keypoint(keypoint, confidence_threshold):
             point = (int(keypoint["x"]), int(keypoint["y"]))
             cv2.circle(frame, point, 3, color, cv2.FILLED)
 
     return frame
 
 
-def _is_visible_keypoint(keypoint: DetectionKeypoint) -> bool:
+def _is_visible_keypoint(
+    keypoint: DetectionKeypoint,
+    confidence_threshold: float = KEYPOINT_CONFIDENCE_THRESHOLD,
+) -> bool:
     confidence = keypoint.get("confidence")
     return (
         keypoint["x"] >= 0
         and keypoint["y"] > 0
-        and (confidence is None or confidence >= KEYPOINT_CONFIDENCE_THRESHOLD)
+        and (confidence is None or confidence >= confidence_threshold)
     )
 
 
@@ -345,9 +359,7 @@ def draw_label(
     text = (
         f"{label}: {confidence:.2f}"
         if label is not None and confidence is not None
-        else label
-        if label is not None
-        else f"{confidence:.2f}"
+        else label if label is not None else f"{confidence:.2f}"
     ).upper()
     (text_width, text_height), _ = cv2.getTextSize(text, font_face, 0.5, text_thickness)
     y1_text = max(y1 - text_height - 10, 0)

@@ -133,6 +133,7 @@ def prepare_detection_overlay_frame(
                 detection_result,
                 detection_settings.overlay_style,
                 semantic_mask,
+                detection_settings.keypoint_confidence_threshold,
             )
 
     return result

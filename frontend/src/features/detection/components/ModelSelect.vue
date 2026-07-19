@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[108px] md:w-[126px] xl:w-[148px]">
+  <div>
     <TreeSelect
       placeholder="Detection model"
       ref="treeSelectRef"
@@ -80,7 +80,7 @@ import { Nullable } from "@/util/ts-helpers";
 import { formatKeyEventItem } from "@/util/keyboard-util";
 import { omit } from "@/util/obj";
 
-defineProps<{ class?: string; label?: string }>();
+defineProps<{ label?: string }>();
 
 const treeSelectRef = useTemplateRef("treeSelectRef");
 const dataStore = useDetectionDataStore();

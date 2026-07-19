@@ -16,7 +16,7 @@ export type SkeletonLineSpec = [
   string,
 ];
 
-export const KEYPOINT_CONFIDENCE_THRESHOLD = 0.5;
+export const KEYPOINT_CONFIDENCE_THRESHOLD = 0.02;
 
 export const keystrokesPred = where({
   y: (v: number) => v && v >= 0,

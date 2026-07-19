@@ -1,8 +1,7 @@
 <template>
-  <FieldSet toggleable legend="Model parameters">
-    <div class="flex gap-2.5 flex-wrap">
+  <FieldSet toggleable legend="Model common parameters">
+    <div class="grid grid-cols-2 gap-1">
       <ToggleSwitchField
-        fieldClassName="items-center gap-2"
         label="Detection"
         field="settings.detection.active"
         @update:model-value="updateDebounced"
@@ -22,6 +21,7 @@
         :options="imgSizeOptions"
       />
       <NumberField
+        editable
         field="settings.detection.confidence"
         label="Confidence"
         :normalizeValue="roundToOneDecimalPlace"
@@ -34,6 +34,32 @@
         :step="0.1"
       />
       <NumberField
+        editable
+        field="settings.detection.iou_threshold"
+        label="IoU threshold"
+        :normalizeValue="roundToTwoDecimalPlaces"
+        @update:model-value="updateDebounced"
+        v-model="fields.iou_threshold"
+        tooltipHelp="Non-maximum suppression overlap threshold. Lower values remove more overlapping boxes, higher values retain more."
+        :loading="loading"
+        :min="0"
+        :max="1"
+        :step="0.05"
+      />
+      <NumberField
+        editable
+        field="settings.detection.max_detections"
+        label="Max detections"
+        @update:model-value="updateDebounced"
+        v-model="fields.max_detections"
+        tooltipHelp="Maximum number of detections returned for each image after non-maximum suppression."
+        :loading="loading"
+        :min="1"
+        :max="10000"
+        :step="1"
+      />
+      <NumberField
+        editable
         :normalizeValue="roundToOneDecimalPlace"
         tooltipHelp="The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur."
         field="settings.detection.overlay_draw_threshold"
@@ -46,7 +72,6 @@
         @update:model-value="updateDebounced"
       />
       <SelectField
-        fieldClassName="w-20"
         :filter="false"
         inputId="settings.detection.overlay_style"
         v-model="fields.overlay_style"
@@ -56,8 +81,20 @@
         @update:model-value="updateDebounced"
         :options="overlayStyleOptions"
       />
+      <NumberField
+        editable
+        field="settings.detection.keypoint_confidence_threshold"
+        label="Pose confidence"
+        :normalizeValue="roundToTwoDecimalPlaces"
+        @update:model-value="updateDebounced"
+        v-model="fields.keypoint_confidence_threshold"
+        tooltipHelp="Minimum confidence required to draw an individual pose keypoint"
+        :loading="loading"
+        :min="0"
+        :max="1"
+        :step="0.01"
+      />
       <SelectField
-        fieldClassName="w-24"
         :filter="false"
         inputId="settings.detection.segmentation_detail"
         v-model="fields.segmentation_detail"
@@ -69,8 +106,10 @@
       />
       <ChipField
         label="Labels"
+        fluid
         field="settings.detection.labels"
         v-model="fields.labels"
+        :suggestions="fields.available_labels"
         tooltipHelp="A list of labels to filter for specific object detections. Type label and press 'Enter'."
         @update:model-value="updateDebounced"
       />
@@ -92,7 +131,7 @@ import NumberField from "@/ui/NumberField.vue";
 import SelectField from "@/ui/SelectField.vue";
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 import ChipField from "@/ui/ChipField.vue";
-import { roundToOneDecimalPlace } from "@/util/number";
+import { roundToOneDecimalPlace, roundToTwoDecimalPlaces } from "@/util/number";
 
 const detectionStore = useDetectionStore();
 const fields = inject<DetectionFields["fields"]>("fields");

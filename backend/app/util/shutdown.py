@@ -21,7 +21,8 @@ def power_off() -> None:
     Raises:
         Exception: If the D-Bus interface is unavailable or the PowerOff request fails.
     """
-    import dbus
+
+    import dbus  # type: ignore
 
     try:
         bus = dbus.SystemBus()
@@ -52,7 +53,8 @@ def restart() -> None:
     Raises:
         Exception: If the D-Bus interface is unavailable or the Reboot request fails.
     """
-    import dbus
+
+    import dbus  # type: ignore
 
     try:
         bus = dbus.SystemBus()

@@ -1,7 +1,12 @@
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
-import { formatObjectDiff, groupWith, isObjectShallowEquals } from "@/util/obj";
+import {
+  formatObjectDiff,
+  groupWith,
+  isObjectShallowEquals,
+  omit,
+} from "@/util/obj";
 import { startCase } from "@/util/str";
 import {
   useSettingsStore,
@@ -208,7 +213,10 @@ export const useStore = defineStore("syncer", {
 
           case "detection": {
             if (!message) {
-              diffMsg = formatObjectDiff({ ...detectionStore.data }, payload);
+              diffMsg = formatObjectDiff(
+                { ...omit(["available_labels"], detectionStore.data) },
+                omit(["available_labels"], payload),
+              );
             }
 
             detectionStore.data = payload;

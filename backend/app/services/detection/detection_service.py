@@ -12,7 +12,7 @@ from app.exceptions.detection import (
     DetectionProcessError,
     DetectionProcessLoading,
 )
-from app.schemas.detection import DetectionSettings
+from app.schemas.detection import DetectionModelSettings, DetectionSettings
 from app.types.detection import (
     DetectionControlMessage,
     DetectionErrorMessage,
@@ -27,6 +27,7 @@ from app.util.queue_helpers import clear_queue
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
+    from app.services.detection.detection_profile_service import DetectionProfileService
     from app.services.domain.settings_service import SettingsService
     from app.services.file_management.file_manager_service import FileManagerService
 
@@ -45,15 +46,28 @@ class DetectionService:
         settings_service: "SettingsService",
         file_manager: "FileManagerService",
         connection_manager: "ConnectionService",
+        profile_service: "DetectionProfileService",
     ) -> None:
         self.lock = asyncio.Lock()
         self.settings_service = settings_service
         self.connection_manager = connection_manager
         self.file_manager = file_manager
+        self.profile_service = profile_service
 
-        self.detection_settings = DetectionSettings(
+        legacy_settings = DetectionSettings(
             **self.settings_service.settings.get("detection", {})
         )
+        self.profile_service.bootstrap_legacy(legacy_settings)
+        selected_model = self.profile_service.selected_model or legacy_settings.model
+        if selected_model:
+            profile = self.profile_service.select_model(selected_model)
+            self.detection_settings = DetectionSettings(
+                **profile.model_dump(),
+                model=selected_model,
+                active=legacy_settings.active,
+            )
+        else:
+            self.detection_settings = legacy_settings
         self.task_event = asyncio.Event()
         self.stop_event = mp.Event()
         self.frame_queue: mp.Queue[DetectionFrameData] = mp.Queue(maxsize=1)
@@ -95,6 +109,20 @@ class DetectionService:
         elif self.loading:
             raise DetectionProcessLoading("Detection process is about to close!")
 
+        model_changed = settings.model != self.detection_settings.model
+        if model_changed and settings.model:
+            profile = self.profile_service.select_model(settings.model)
+            settings = DetectionSettings(
+                **profile.model_dump(),
+                model=settings.model,
+                active=settings.active,
+            )
+        elif settings.model:
+            profile = DetectionModelSettings.model_validate(
+                settings.model_dump(exclude={"model", "active"})
+            )
+            self.profile_service.save_profile(settings.model, profile)
+
         detection_action = None
         dict_data = settings.model_dump(mode="json")
         detection_data = self.detection_settings.model_dump(
@@ -108,6 +136,8 @@ class DetectionService:
         runtime_data: DetectionControlMessage = {
             "command": "set_detect_mode",
             "confidence": None,
+            "iou_threshold": None,
+            "max_detections": None,
             "labels": None,
             "segmentation_detail": settings.segmentation_detail.value,
         }
@@ -207,6 +237,8 @@ class DetectionService:
                 command: DetectionControlMessage = {
                     "command": "set_detect_mode",
                     "confidence": self.detection_settings.confidence,
+                    "iou_threshold": self.detection_settings.iou_threshold,
+                    "max_detections": self.detection_settings.max_detections,
                     "labels": self.detection_settings.labels,
                     "segmentation_detail": self.detection_settings.segmentation_detail.value,
                 }
@@ -222,6 +254,13 @@ class DetectionService:
                         err_msg
                         if isinstance(err_msg, str)
                         else f"Model {self.detection_settings.model} failed to load."
+                    )
+
+                labels = msg.get("labels")
+                if labels and self.detection_settings.model:
+                    self.detection_settings.available_labels = labels
+                    self.profile_service.cache_available_labels(
+                        self.detection_settings.model, labels
                     )
 
                 await asyncio.to_thread(self.clear_and_put, self.control_queue, command)
@@ -357,6 +396,15 @@ class DetectionService:
                 logger.warning("Dimension mismatch: %s, retrying", error_message)
                 await self.stop_detection_process()
                 self.detection_settings = DetectionSettings(**next_settings)
+                if self.detection_settings.model:
+                    self.profile_service.save_profile(
+                        self.detection_settings.model,
+                        DetectionModelSettings.model_validate(
+                            self.detection_settings.model_dump(
+                                exclude={"model", "active"}
+                            )
+                        ),
+                    )
                 detection_start_task = asyncio.create_task(
                     self.start_detection_process()
                 )

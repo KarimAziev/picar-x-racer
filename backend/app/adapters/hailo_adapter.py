@@ -61,6 +61,8 @@ class YOLOHailoAdapter:
         source: np.ndarray,
         verbose: Optional[bool] = False,
         conf=0.4,
+        iou: Optional[float] = None,
+        max_det: Optional[int] = None,
         task="detect",
         imgsz: Optional[int] = None,
     ) -> List["_DummyResult"]:
@@ -76,6 +78,8 @@ class YOLOHailoAdapter:
             source: Input image (frame).
             verbose: Controls verbosity.
             conf: Confidence threshold.
+            iou: Ignored; NMS is part of the compiled Hailo model.
+            max_det: Ignored; the compiled Hailo output fixes the result count.
             task: Task string (ignored, kept for interface compatibility).
             imgsz: The image size used for inference.
 

@@ -1,5 +1,5 @@
 <template>
-  <div :class="class" class="flex md:max-w-56 flex-wrap gap-x-2">
+  <div class="flex md:max-w-56 flex-wrap gap-x-1">
     <div>
       <Field label="Detection" layout="row">
         <button
@@ -17,10 +17,10 @@
         </button>
       </Field>
 
-      <ModelSelect />
+      <ModelSelect class="w-48" />
     </div>
     <SelectField
-      fieldClassName="w-20"
+      fieldClassName="w-24"
       inputId="img_size"
       v-model="fields.img_size"
       placeholder="Img size"
@@ -34,7 +34,7 @@
       :options="imgSizeOptions"
     />
     <NumberField
-      fieldClassName="w-20"
+      fieldClassName="w-24"
       @keydown.stop="doNothing"
       @keyup.stop="doNothing"
       @keypress.stop="doNothing"
@@ -49,7 +49,56 @@
       @update:model-value="updateDebounced"
     />
     <NumberField
-      fieldClassName="my-0"
+      fieldClassName="w-24"
+      @keydown.stop="doNothing"
+      @keyup.stop="doNothing"
+      @keypress.stop="doNothing"
+      :normalizeValue="roundToTwoDecimalPlaces"
+      field="iou_threshold"
+      label="IoU"
+      v-model="fields.iou_threshold"
+      :disabled="detectionStore.loading"
+      :min="0"
+      :max="1"
+      :step="0.05"
+      tooltipHelp="Non-maximum suppression overlap threshold. Lower values remove more overlapping boxes; higher values retain more. Hailo models ignore this because NMS is compiled into the model."
+      @update:model-value="updateDebounced"
+    />
+    <NumberField
+      fieldClassName="w-24"
+      inputClassName="w-24!"
+      @keydown.stop="doNothing"
+      @keyup.stop="doNothing"
+      @keypress.stop="doNothing"
+      field="max_detections"
+      :editable="!isMobile"
+      label="Max det."
+      v-model="fields.max_detections"
+      :disabled="detectionStore.loading"
+      :min="1"
+      :max="10000"
+      :step="1"
+      tooltipHelp="Maximum number of detections returned for each image after non-maximum suppression. Hailo models ignore this because their output count is fixed."
+      @update:model-value="updateDebounced"
+    />
+    <NumberField
+      fieldClassName="w-24"
+      @keydown.stop="doNothing"
+      @keyup.stop="doNothing"
+      @keypress.stop="doNothing"
+      :normalizeValue="roundToTwoDecimalPlaces"
+      v-tooltip="'Minimum confidence required to draw a pose keypoint.'"
+      field="keypoint_confidence_threshold"
+      label="Pose conf."
+      v-model="fields.keypoint_confidence_threshold"
+      :disabled="detectionStore.loading"
+      :min="0"
+      :max="1"
+      :step="0.01"
+      @update:model-value="updateDebounced"
+    />
+    <NumberField
+      fieldClassName="w-24"
       @keydown.stop="doNothing"
       :normalizeValue="roundToOneDecimalPlace"
       @keyup.stop="doNothing"
@@ -67,7 +116,7 @@
       @update:model-value="updateDebounced"
     />
     <SelectField
-      fieldClassName="w-20"
+      fieldClassName="w-24"
       :filter="false"
       inputId="overlay_style"
       v-model="fields.overlay_style"
@@ -79,18 +128,16 @@
       @before-hide="handleSelectBeforeHide"
       @hide="focusToKeyboardHandler"
     />
-    <SelectField
+    <ChipField
       fieldClassName="w-24"
-      :filter="false"
-      inputId="segmentation_detail"
-      v-model="fields.segmentation_detail"
-      label="Detail"
+      inputClass="max-w-24!"
+      label="Labels"
+      field="labels"
+      v-model="fields.labels"
+      :suggestions="fields.available_labels"
       :disabled="detectionStore.loading"
+      tooltipHelp="Labels to include. Leave empty to detect every model label."
       @update:model-value="updateDebounced"
-      :options="segmentationDetailOptions"
-      @before-show="handleSelectBeforeShow"
-      @before-hide="handleSelectBeforeHide"
-      @hide="focusToKeyboardHandler"
     />
   </div>
 </template>
@@ -102,17 +149,18 @@ import NumberField from "@/ui/NumberField.vue";
 import {
   imgSizeOptions,
   overlayStyleOptions,
-  segmentationDetailOptions,
 } from "@/features/settings/config";
 import { useDetectionFields } from "@/features/detection";
 import SelectField from "@/ui/SelectField.vue";
+import ChipField from "@/ui/ChipField.vue";
 
-import { roundToOneDecimalPlace } from "@/util/number";
+import { roundToOneDecimalPlace, roundToTwoDecimalPlaces } from "@/util/number";
 import Field from "@/ui/Field.vue";
 import { focusToKeyboardHandler } from "@/features/controller/util";
 import ModelSelect from "@/features/detection/components/ModelSelect.vue";
+import { useDeviceWatcher } from "@/composables/useDeviceWatcher";
 
-defineProps<{ class?: string }>();
+const isMobile = useDeviceWatcher();
 
 const doNothing = () => {};
 

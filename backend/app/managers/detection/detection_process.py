@@ -28,6 +28,20 @@ _log = Logger(name=__name__)
 verbose_enabled = sys.stdout.isatty()
 
 
+def model_labels(model: object) -> List[str]:
+    """Return model class names in their declared class-index order."""
+    names = getattr(model, "names", None)
+    if isinstance(names, dict):
+        try:
+            items = sorted(names.items(), key=lambda item: int(item[0]))
+        except (TypeError, ValueError):
+            items = names.items()
+        return [str(label) for _, label in items]
+    if isinstance(names, (list, tuple)):
+        return [str(label) for label in names]
+    return []
+
+
 def detection_process_func(
     model: str,
     stop_event: "Event",
@@ -68,9 +82,14 @@ def detection_process_func(
                 put_to_queue(out_queue, data, reraise=True)
                 return
             else:
-                ready_msg: DetectionReadyMessage = {"success": True}
+                ready_msg: DetectionReadyMessage = {
+                    "success": True,
+                    "labels": model_labels(yolo_model),
+                }
                 put_to_queue(out_queue, ready_msg, reraise=True)
             confidence_threshold = 0.3
+            iou_threshold = 0.7
+            max_detections = 300
             prev_time = time.time()
             labels: Optional[List[str]] = None
             segmentation_detail: SegmentationDetail = "balanced"
@@ -85,14 +104,20 @@ def detection_process_func(
                             confidence: Union[float, None] = control_message.get(
                                 "confidence"
                             )
+                            next_iou_threshold = control_message.get("iou_threshold")
+                            next_max_detections = control_message.get("max_detections")
                             labels = control_message.get("labels")
                             next_segmentation_detail = control_message.get(
                                 "segmentation_detail"
                             )
 
                             _log.info(f"confidence: {confidence}")
-                            if confidence:
+                            if confidence is not None:
                                 confidence_threshold = confidence
+                            if next_iou_threshold is not None:
+                                iou_threshold = next_iou_threshold
+                            if next_max_detections is not None:
+                                max_detections = next_max_detections
                             if next_segmentation_detail:
                                 segmentation_detail = next_segmentation_detail
                 except queue.Empty:
@@ -113,6 +138,8 @@ def detection_process_func(
                         frame=frame,
                         yolo_model=yolo_model,
                         confidence_threshold=confidence_threshold,
+                        iou_threshold=iou_threshold,
+                        max_detections=max_detections,
                         verbose=verbose,
                         original_height=frame_data["original_height"],
                         original_width=frame_data["original_width"],

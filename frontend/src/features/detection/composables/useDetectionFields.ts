@@ -22,7 +22,11 @@ export type NormalizedData = {
 const denormalizers = {
   model: denormalizeValue,
   confidence: (v: number) => (isNumber(v) ? roundNumber(v, 1) : v),
+  iou_threshold: (v: number) => (isNumber(v) ? roundNumber(v, 2) : v),
+  max_detections: (v: number) => (isNumber(v) ? Math.round(v) : v),
   overlay_draw_threshold: (v: number) => (isNumber(v) ? roundNumber(v, 1) : v),
+  keypoint_confidence_threshold: (v: number) =>
+    isNumber(v) ? roundNumber(v, 2) : v,
 };
 
 export interface FieldsParams {
@@ -44,10 +48,15 @@ export const useDetectionFields = (params?: FieldsParams): DetectionFields => {
     img_size: detectionStore.data.img_size,
     active: detectionStore.data.active,
     confidence: detectionStore.data.confidence,
+    iou_threshold: detectionStore.data.iou_threshold,
+    max_detections: detectionStore.data.max_detections,
     labels: detectionStore.data.labels,
+    available_labels: detectionStore.data.available_labels,
     overlay_draw_threshold: detectionStore.data.overlay_draw_threshold,
     overlay_style: detectionStore.data.overlay_style,
     segmentation_detail: detectionStore.data.segmentation_detail,
+    keypoint_confidence_threshold:
+      detectionStore.data.keypoint_confidence_threshold,
   });
 
   const updateData = async () => {

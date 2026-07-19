@@ -22,13 +22,14 @@ import { BODY_PARTS } from "@/features/detection/enums";
 
 export const isVisibleKeypoint = (
   keypoint: Keypoint | undefined,
+  confidenceThreshold = KEYPOINT_CONFIDENCE_THRESHOLD,
 ): keypoint is Keypoint =>
   Boolean(
     keypoint &&
     keypoint.x >= 0 &&
     keypoint.y > 0 &&
     (keypoint.confidence === undefined ||
-      keypoint.confidence >= KEYPOINT_CONFIDENCE_THRESHOLD),
+      keypoint.confidence >= confidenceThreshold),
   );
 
 export const drawKeypoints = (
@@ -38,6 +39,7 @@ export const drawKeypoints = (
   detection: Pick<DetectionResult, "keypoints">,
   linesParams?: OverlayLinesParams,
   keypointsParams?: KeypointsParams,
+  confidenceThreshold = KEYPOINT_CONFIDENCE_THRESHOLD,
 ) => {
   if (!detection.keypoints || detection.keypoints.length < 2) {
     return;
@@ -61,11 +63,19 @@ export const drawKeypoints = (
   };
 
   mergeSkeletonLines(overlayLinesGrouped, linesParams).forEach((item) => {
-    renderMeshLine(ctx, keypoints, item, maxLineWidth);
+    renderMeshLine(ctx, keypoints, item, maxLineWidth, confidenceThreshold);
   });
 
   keypoints.forEach((item, i) => {
-    drawKeypointCircle(ctx, item, i, fontSize, getVar, keypointsParams);
+    drawKeypointCircle(
+      ctx,
+      item,
+      i,
+      fontSize,
+      getVar,
+      keypointsParams,
+      confidenceThreshold,
+    );
   });
 };
 
@@ -74,11 +84,15 @@ export const renderMeshLine = (
   keypoints: Keypoint[],
   [startIdx, endIdx, lWidth, colName, renderFiber]: SkeletonLineSpec,
   maxLineWidth: number,
+  confidenceThreshold = KEYPOINT_CONFIDENCE_THRESHOLD,
 ) => {
   const start = keypoints[startIdx];
   const end = keypoints[endIdx];
 
-  if (!isVisibleKeypoint(start) || !isVisibleKeypoint(end)) {
+  if (
+    !isVisibleKeypoint(start, confidenceThreshold) ||
+    !isVisibleKeypoint(end, confidenceThreshold)
+  ) {
     return;
   }
 
@@ -103,8 +117,9 @@ export const drawKeypointCircle = (
   fontSize: number,
   getVar: (name: string) => string,
   keypointsParams?: KeypointsParams,
+  confidenceThreshold = KEYPOINT_CONFIDENCE_THRESHOLD,
 ) => {
-  if (!isVisibleKeypoint(keypoint)) {
+  if (!isVisibleKeypoint(keypoint, confidenceThreshold)) {
     return;
   }
 

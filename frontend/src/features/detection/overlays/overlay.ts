@@ -27,6 +27,7 @@ export type DetectionOverlayHandler = (
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
   semanticMask?: SemanticMaskData | null,
+  keypointConfidenceThreshold?: number,
 ) => void;
 
 /**
@@ -45,6 +46,8 @@ export const drawOverlay = (
   color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  _semanticMask?: SemanticMaskData | null,
+  keypointConfidenceThreshold?: number,
 ) => {
   return drawDetectionsWith(
     drawDetectionOverlay,
@@ -55,6 +58,7 @@ export const drawOverlay = (
     color,
     poseLines,
     poseKeystrokes,
+    keypointConfidenceThreshold,
   );
 };
 
@@ -74,6 +78,8 @@ export const drawAimOverlay = (
   color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  _semanticMask?: SemanticMaskData | null,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
@@ -82,7 +88,15 @@ export const drawAimOverlay = (
 
   detectionData?.forEach((detection, i) => {
     const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionCrosshair;
-    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+    fn(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      keypointConfidenceThreshold,
+    );
   });
 };
 
@@ -102,6 +116,8 @@ export const drawAimMixedOverlay = (
   color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  _semanticMask?: SemanticMaskData | null,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
@@ -110,7 +126,15 @@ export const drawAimMixedOverlay = (
 
   detectionData?.forEach((detection, i) => {
     const fn = i === 0 ? drawFullDetectionCrosshair : drawDetectionOverlay;
-    fn(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+    fn(
+      ctx,
+      scaleX,
+      scaleY,
+      detection,
+      poseLines,
+      poseKeystrokes,
+      keypointConfidenceThreshold,
+    );
   });
 };
 
@@ -122,6 +146,8 @@ export const drawKeypointsOnly = (
   color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  _semanticMask?: SemanticMaskData | null,
+  keypointConfidenceThreshold?: number,
 ) => {
   const { ctx, scaleX, scaleY } = setupCtx(canvas, elem, font, color);
   if (!ctx) {
@@ -141,7 +167,15 @@ export const drawKeypointsOnly = (
     }
 
     if (keypoints) {
-      drawKeypoints(ctx, scaleX, scaleY, detection, poseLines, poseKeystrokes);
+      drawKeypoints(
+        ctx,
+        scaleX,
+        scaleY,
+        detection,
+        poseLines,
+        poseKeystrokes,
+        keypointConfidenceThreshold,
+      );
     }
   });
 };
@@ -154,6 +188,8 @@ export const drawSegmentOverlay = (
   color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  _semanticMask?: SemanticMaskData | null,
+  keypointConfidenceThreshold?: number,
 ) => {
   return drawDetectionsWith(
     drawDetectionSegment,
@@ -164,6 +200,7 @@ export const drawSegmentOverlay = (
     color,
     poseLines,
     poseKeystrokes,
+    keypointConfidenceThreshold,
   );
 };
 
@@ -175,6 +212,8 @@ export const drawSegmentOnlyOverlay = (
   color?: Nullable<string>,
   poseLines?: OverlayLinesParams,
   poseKeystrokes?: KeypointsParams,
+  _semanticMask?: SemanticMaskData | null,
+  keypointConfidenceThreshold?: number,
 ) => {
   return drawDetectionsWith(
     drawDetectionSegmentOnly,
@@ -185,6 +224,7 @@ export const drawSegmentOnlyOverlay = (
     color,
     poseLines,
     poseKeystrokes,
+    keypointConfidenceThreshold,
   );
 };
 

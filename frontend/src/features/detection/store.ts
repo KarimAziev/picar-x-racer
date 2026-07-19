@@ -23,12 +23,16 @@ export const defaultState: State = {
   data: {
     active: false,
     confidence: 0.4,
-    img_size: 640,
+    iou_threshold: 0.7,
+    max_detections: 300,
+    img_size: 320,
     model: null,
     labels: null,
+    available_labels: [],
     overlay_draw_threshold: 1,
     overlay_style: OverlayStyle.BOX,
     segmentation_detail: SegmentationDetail.BALANCED,
+    keypoint_confidence_threshold: 0.02,
   },
   detectors: [],
   detection_result: [],
@@ -57,10 +61,11 @@ export const useStore = defineStore("detection-settings", {
     async updateData(payload: DetectionSettings) {
       const messager = useMessagerStore();
       try {
-        await appApi.post<DetectionSettings>(
+        const data = await appApi.post<DetectionSettings>(
           "/api/detection/settings",
           payload,
         );
+        this.data = data;
       } catch (error) {
         messager.handleError(error);
       } finally {

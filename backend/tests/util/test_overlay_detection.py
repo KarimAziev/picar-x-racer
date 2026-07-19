@@ -42,7 +42,7 @@ class TestOverlayDetection(unittest.TestCase):
             patch.object(
                 overlay_detecton,
                 "draw_pose_overlay",
-                side_effect=lambda frame, *_args: frame,
+                side_effect=lambda frame, *_args, **_kwargs: frame,
             ) as draw_pose,
             patch.object(overlay_detecton, "draw_segmentation_overlay") as draw_segment,
         ):
@@ -99,7 +99,7 @@ class TestOverlayDetection(unittest.TestCase):
             patch.object(
                 overlay_detecton,
                 "draw_pose_overlay",
-                side_effect=lambda frame, *_args: frame,
+                side_effect=lambda frame, *_args, **_kwargs: frame,
             ) as draw_pose,
             patch.object(overlay_detecton, "draw_overlay") as draw_box,
         ):
@@ -187,7 +187,7 @@ class TestOverlayDetection(unittest.TestCase):
 
     def test_pose_ignores_low_confidence_keypoints(self) -> None:
         keypoints: list[DetectionKeypoint] = [
-            {"x": 10, "y": 20, "confidence": 0.2},
+            {"x": 10, "y": 20, "confidence": 0.01},
             {"x": 30, "y": 20, "confidence": 0.9},
         ]
 
@@ -205,6 +205,7 @@ class TestOverlayDetection(unittest.TestCase):
             70,
             keypoints=[{"x": 25, "y": 35, "confidence": 0.2}],
             full_frame=True,
+            keypoint_confidence_threshold=0.5,
         )
 
         self.assertEqual(tuple(result[50, 0]), overlay_detecton.OVERLAY_COLOR)

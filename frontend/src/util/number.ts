@@ -4,6 +4,7 @@ export const roundNumber = (value: number, fractionDigits?: number) => {
 };
 
 export const roundToOneDecimalPlace = (value: number) => roundNumber(value, 1);
+export const roundToTwoDecimalPlaces = (value: number) => roundNumber(value, 2);
 
 export const roundToNearest = (value: number, nearestValue: number) =>
   Math.round(value / nearestValue) * nearestValue;

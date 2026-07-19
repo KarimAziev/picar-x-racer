@@ -8,7 +8,24 @@
     :layout="layout"
     :messageClass="messageClass"
   >
+    <InputNumber
+      v-if="editable"
+      :modelValue="currentValue"
+      :inputId="inputId || field"
+      :pt="{ pcInput: { id: inputId || field } }"
+      :inputClass="inputClassName"
+      :invalid="invalid"
+      :step="step"
+      :min="min"
+      :max="max"
+      :readonly="readonly || loading"
+      :disabled="disabled"
+      showButtons
+      v-tooltip="tooltip"
+      @update:model-value="handleInputUpdate"
+    />
     <span
+      v-else
       class="wrapper p-inputnumber p-component p-inputwrapper p-inputwrapper-filled p-inputnumber-stacked"
     >
       <span
@@ -42,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import InputNumber from "primevue/inputnumber";
 import { ref, watch } from "vue";
 import Field from "@/ui/Field.vue";
 import type { Props as FieldProps } from "@/ui/Field.vue";
@@ -55,8 +73,11 @@ export interface Props extends FieldProps {
   modelValue?: any;
   invalid?: boolean;
   field?: string;
+  inputId?: string;
+  inputClassName?: string;
   readonly?: boolean;
   disabled?: boolean;
+  editable?: boolean;
   normalizeValue?: (val: number) => number;
   tooltip?: string;
 }
@@ -91,6 +112,16 @@ const handleUpdate = (val: number) => {
     props.normalizeValue && isNumber(val) ? props.normalizeValue(val) : val;
 
   emit("update:modelValue", currentValue.value);
+};
+
+const handleInputUpdate = (val: number | null) => {
+  if (isNumber(val)) {
+    handleUpdate(val);
+    return;
+  }
+
+  currentValue.value = val;
+  emit("update:modelValue", val);
 };
 
 const handleInc = () => {

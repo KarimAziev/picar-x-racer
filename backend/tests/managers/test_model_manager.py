@@ -2,8 +2,6 @@
 # When using ultralytics, matplotlib is imported and its _check_versions
 # function attempts to load the ft2font C-extension. On some systems during
 # test discovery, this results in a segmentation fault
-import sys
-import types
 
 
 class DummyFT2Font:
@@ -33,16 +31,16 @@ KERNING_DEFAULT = 0
 LOAD_NO_HINTING = 0
 LOAD_TARGET_LIGHT = 0
 
-dummy_ft2font = types.ModuleType("matplotlib.ft2font")
-dummy_ft2font.FT2Font = DummyFT2Font  # type: ignore
-dummy_ft2font.FT2Image = DummyFT2Image  # type: ignore
-dummy_ft2font.Kerning = DummyKerning  # type: ignore
-dummy_ft2font.LoadFlags = DummyLoadFlags  # type: ignore
-dummy_ft2font.KERNING_DEFAULT = KERNING_DEFAULT  # type: ignore
-dummy_ft2font.LOAD_NO_HINTING = LOAD_NO_HINTING  # type: ignore
-dummy_ft2font.LOAD_TARGET_LIGHT = LOAD_TARGET_LIGHT  # type: ignore
+# dummy_ft2font = types.ModuleType("matplotlib.ft2font")
+# dummy_ft2font.FT2Font = DummyFT2Font  # type: ignore
+# dummy_ft2font.FT2Image = DummyFT2Image  # type: ignore
+# dummy_ft2font.Kerning = DummyKerning  # type: ignore
+# dummy_ft2font.LoadFlags = DummyLoadFlags  # type: ignore
+# dummy_ft2font.KERNING_DEFAULT = KERNING_DEFAULT  # type: ignore
+# dummy_ft2font.LOAD_NO_HINTING = LOAD_NO_HINTING  # type: ignore
+# dummy_ft2font.LOAD_TARGET_LIGHT = LOAD_TARGET_LIGHT  # type: ignore
 
-sys.modules["matplotlib.ft2font"] = dummy_ft2font
+# sys.modules["matplotlib.ft2font"] = dummy_ft2font
 
 
 import os

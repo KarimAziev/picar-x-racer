@@ -27,11 +27,20 @@ describe("canvas pose keypoint visibility", () => {
     [{ x: -1, y: 10 }, false],
     [{ x: 10, y: 0 }, false],
     [{ x: 10, y: -1 }, false],
-    [{ x: 10, y: 10, confidence: 0.49 }, false],
-    [{ x: 10, y: 10, confidence: 0.5 }, true],
+    [{ x: 10, y: 10, confidence: 0.0199 }, false],
+    [{ x: 10, y: 10, confidence: 0.02 }, true],
     [undefined, false],
   ])("checks keypoint %o", (keypoint, expected) => {
     expect(isVisibleKeypoint(keypoint)).toBe(expected);
+  });
+
+  it("uses a supplied confidence threshold", () => {
+    expect(isVisibleKeypoint({ x: 10, y: 10, confidence: 0.2 }, 0.5)).toBe(
+      false,
+    );
+    expect(isVisibleKeypoint({ x: 10, y: 10, confidence: 0.5 }, 0.5)).toBe(
+      true,
+    );
   });
 
   it("preserves confidence while scaling keypoint coordinates", () => {

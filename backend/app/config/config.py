@@ -68,6 +68,10 @@ class AppConfig(BaseSettings):
         str, Field(..., description="The location to write user settings.")
     ] = path.join(_USER_CONFIG_DIR, APP_NAME, "user_settings.json")
 
+    DETECTION_PROFILES_FILE: Annotated[
+        str, Field(..., description="The location of per-model detection profiles.")
+    ] = path.join(_USER_CONFIG_DIR, APP_NAME, "detection_profiles.json")
+
     ROBOT_CONFIG_FILE: Annotated[
         str,
         Field(
@@ -94,6 +98,10 @@ class AppConfig(BaseSettings):
         str,
         Field(..., description="The default user settings template."),
     ] = path.join(_PROJECT_DIR, "user_settings.json")
+
+    DEFAULT_DETECTION_PROFILES: Annotated[
+        str, Field(..., description="The default detection profile template.")
+    ] = path.join(_PROJECT_DIR, "detection_profiles.json")
 
     DEFAULT_MUSIC_DIR: Annotated[
         str,

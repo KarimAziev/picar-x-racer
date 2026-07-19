@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Literal, Optional
 
 from app.util.doc_util import extract_clean_docstring
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -49,29 +49,36 @@ class SegmentationDetail(str, Enum):
     DETAILED = "detailed"
 
 
-class DetectionSettings(BaseModel):
-    """
-    A schema for defining detection configuration settings.
-    """
+class DetectionModelTask(str, Enum):
+    DETECT = "detect"
+    POSE = "pose"
+    INSTANCE_SEGMENTATION = "instance-segmentation"
+    SEMANTIC_SEGMENTATION = "semantic-segmentation"
 
-    model: Optional[str] = Field(
-        None,
-        description="The name of the object detection model to be used. For examples: 'yolov8n.pt'.",
-        examples=["yolov8n.pt", "yolo11n.pt", "yolo11m.pt"],
-    )
-    confidence: Optional[float] = Field(
-        None,
+
+class DetectionModelSettings(BaseModel):
+    """Settings persisted independently for each detection model."""
+
+    confidence: float = Field(
+        default=0.4,
         ge=0.0,
         le=1.0,
-        description="The confidence threshold for detections, between 0.0 and 1.0.",
-        examples=[0.4],
+        description="The confidence threshold for object detections.",
     )
-    active: bool = Field(
-        False,
-        description="Flag indicating whether the detection is currently active.",
+    iou_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="IoU threshold used by non-maximum suppression.",
+    )
+    max_detections: int = Field(
+        default=300,
+        ge=1,
+        le=10000,
+        description="Maximum number of detections returned for one image.",
     )
     img_size: int = Field(
-        640,
+        default=320,
         description=(
             "The image resolution size for the detection process."
             "Should be rounded up to the nearest multiple of 32."
@@ -79,12 +86,15 @@ class DetectionSettings(BaseModel):
         examples=[320, 256, 640],
     )
     labels: Optional[List[str]] = Field(
-        None,
-        description="A list of labels to filter for specific object detections, if desired.",
-        examples=[["person", "cat"]],
+        default_factory=list,
+        description="Labels to include, or an empty list to include every label.",
+    )
+    available_labels: List[str] = Field(
+        default_factory=list,
+        description="Labels reported by the model for UI completion.",
     )
     overlay_draw_threshold: float = Field(
-        1.0,
+        default=1.0,
         gt=0,
         description=(
             "The maximum allowable time difference (in seconds) between the frame timestamp "
@@ -102,6 +112,39 @@ class DetectionSettings(BaseModel):
         description=extract_clean_docstring(SegmentationDetail),
         examples=[SegmentationDetail.BALANCED.value],
     )
+    keypoint_confidence_threshold: float = Field(
+        default=0.02,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence required to render an individual pose keypoint.",
+    )
+
+    @field_validator("img_size", mode="before")
+    def validate_img_size(cls, img_size: int) -> int:
+        """Round image size up to a supported multiple of 32."""
+        min_size = 32
+
+        if isinstance(img_size, int):
+            if img_size < min_size:
+                raise ValueError(f"`img_size` must be at least {min_size}.")
+            return ((img_size + 31) // 32) * 32
+        return img_size
+
+
+class DetectionSettings(DetectionModelSettings):
+    """
+    A schema for defining detection configuration settings.
+    """
+
+    model: Optional[str] = Field(
+        None,
+        description="The name of the object detection model to be used. For examples: 'yolov8n.pt'.",
+        examples=["yolov8n.pt", "yolo11n.pt", "yolo11m.pt"],
+    )
+    active: bool = Field(
+        default=False,
+        description="Flag indicating whether the detection is currently active.",
+    )
 
     @model_validator(mode="after")
     def validate_active_model_dependency(self) -> "DetectionSettings":
@@ -114,18 +157,10 @@ class DetectionSettings(BaseModel):
             )
         return self
 
-    @field_validator("img_size", mode="before")
-    def validate_img_size(cls, img_size: int) -> int:
-        """
-        Validates that `img_size` is an integer rounded up to the nearest multiple of 32.
-        """
-        MIN_SIZE = 32
 
-        def round_up_to_multiple(value: int, multiple: int = 32) -> int:
-            """Rounds a value up to the nearest multiple of a given number."""
-            return ((value + multiple - 1) // multiple) * multiple
+class DetectionProfilesConfig(BaseModel):
+    """Versioned persisted model profiles and the last selected model."""
 
-        if isinstance(img_size, int):
-            if img_size < MIN_SIZE:
-                raise ValueError(f"`img_size` must be at least {MIN_SIZE}.")
-            return round_up_to_multiple(img_size)
+    schema_version: Literal[2] = 2
+    selected_model: Optional[str] = None
+    profiles: Dict[str, DetectionModelSettings] = Field(default_factory=dict)

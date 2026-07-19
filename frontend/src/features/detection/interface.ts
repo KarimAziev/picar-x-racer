@@ -11,13 +11,19 @@ export interface DetectionSettings {
    */
   confidence: number;
 
+  /** IoU threshold used by non-maximum suppression. */
+  iou_threshold: number;
+
+  /** Maximum number of detections returned for one image. */
+  max_detections: number;
+
   /**
    * Indicates whether detection is active.
    */
   active: boolean;
 
   /**
-   * The size of the image for detection (default is 640).
+   * The size of the image for detection (default is 320).
    */
   img_size: number;
 
@@ -25,6 +31,9 @@ export interface DetectionSettings {
    * A list of labels (e.g., object categories) to filter detections.
    */
   labels: string[] | null;
+
+  /** Labels declared by the selected model, used for input completion. */
+  available_labels: string[];
   /**
    * The maximum allowable time difference (in seconds) between the frame
    *  timestamp and the detection timestamp for overlay drawing to occur.
@@ -39,6 +48,9 @@ export interface DetectionSettings {
    * The segmentation overlay detail level.
    */
   segmentation_detail: SegmentationDetail;
+
+  /** Minimum confidence required to render an individual pose keypoint. */
+  keypoint_confidence_threshold: number;
 }
 
 export interface DetectionResponse {

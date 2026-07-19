@@ -17,6 +17,7 @@ from app.services.camera.stream_service import StreamService
 from app.services.camera.v4l2_service import V4L2Service
 from app.services.connection_service import ConnectionService
 from app.services.detection.detection_file_service import DetectionFileService
+from app.services.detection.detection_profile_service import DetectionProfileService
 from app.services.detection.detection_service import DetectionService
 from app.services.domain.settings_service import SettingsService
 from app.services.file_management.file_filter_service import FileFilterService
@@ -158,6 +159,11 @@ def get_settings_service() -> SettingsService:
 
 
 @lru_cache(maxsize=1)
+def get_detection_profile_service() -> DetectionProfileService:
+    return DetectionProfileService()
+
+
+@lru_cache(maxsize=1)
 def get_music_service(
     settings_service: Annotated[SettingsService, Depends(get_settings_service)],
     connection_manager: Annotated[ConnectionService, Depends(get_connection_service)],
@@ -225,11 +231,15 @@ def get_detection_service(
     settings_service: Annotated[SettingsService, Depends(get_settings_service)],
     connection_manager: Annotated[ConnectionService, Depends(get_connection_service)],
     file_manager: Annotated[FileManagerService, Depends(get_data_file_manager)],
+    profile_service: Annotated[
+        DetectionProfileService, Depends(get_detection_profile_service)
+    ],
 ) -> DetectionService:
     return DetectionService(
         settings_service=settings_service,
         file_manager=file_manager,
         connection_manager=connection_manager,
+        profile_service=profile_service,
     )
 
 
