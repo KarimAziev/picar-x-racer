@@ -5,6 +5,7 @@ from app.schemas.robot.battery import BatteryConfig
 from app.schemas.robot.distance import UltrasonicConfig
 from app.schemas.robot.led import LedConfig
 from app.schemas.robot.localization_sensors import LocalizationSensorsConfig
+from app.schemas.robot.mapping import LocalMappingConfig
 from app.schemas.robot.motors import (
     GPIODCMotorConfig,
     I2CDCMotorConfig,
@@ -71,6 +72,14 @@ class HardwareConfig(BaseModel):
             description="Fail-safe front-sector speed limiting and stop behavior.",
         ),
     ] = LidarSafetyConfig()
+
+    local_mapping: Annotated[
+        LocalMappingConfig,
+        Field(
+            title="Local occupancy mapping",
+            description="LiDAR ray integration in the odom frame.",
+        ),
+    ] = LocalMappingConfig()
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],
@@ -178,6 +187,11 @@ class HardwareConfig(BaseModel):
                 raise ValueError(
                     "LiDAR safety requires the LiDAR publisher to be enabled"
                 )
+        if self.local_mapping.enabled:
+            if not self.ackermann_odometry.enabled:
+                raise ValueError("local mapping requires Ackermann odometry")
+            if not self.localization_sensors.lidar.enabled:
+                raise ValueError("local mapping requires the LiDAR publisher")
         return self
 
 

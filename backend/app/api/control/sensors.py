@@ -5,14 +5,22 @@ from typing import Annotated
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
-from app.schemas.autonomy import LocalizationSensorStatus
+from app.schemas.autonomy import LocalizationSensorStatus, OccupancyGrid
 from app.services.autonomy import (
     LocalizationSensorService,
     SensorTelemetryStreamer,
     TopicBus,
     parse_telemetry_channels,
 )
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from app.services.autonomy.topics import LOCAL_MAP
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from starlette.websockets import WebSocketState
 
 
@@ -32,6 +40,20 @@ def get_localization_sensor_status(
     ],
 ) -> LocalizationSensorStatus:
     return sensor_service.status
+
+
+@router.get(
+    "/px/api/map/current",
+    response_model=OccupancyGrid,
+    summary="Retrieve the latest native local occupancy grid",
+)
+def get_current_local_map(
+    topic_bus: Annotated[TopicBus, Depends(robot_deps.get_robot_topic_bus)],
+) -> OccupancyGrid:
+    current_map = topic_bus.latest(LOCAL_MAP)
+    if current_map is None:
+        raise HTTPException(status_code=404, detail="No local map has been published")
+    return current_map
 
 
 async def _wait_for_disconnect(websocket: WebSocket) -> None:

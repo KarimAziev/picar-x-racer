@@ -127,11 +127,31 @@ class SafetyState(FrozenMessage):
     reason: Optional[str] = None
 
 
+class OccupancyGrid(FrozenMessage):
+    """ROS-compatible local occupancy grid in row-major order."""
+
+    header: MessageHeader
+    width: Annotated[int, Field(gt=0)]
+    height: Annotated[int, Field(gt=0)]
+    resolution_m: PositiveFiniteFloat
+    origin_x_m: FiniteFloat
+    origin_y_m: FiniteFloat
+    origin_yaw_rad: FiniteFloat = 0.0
+    data: Tuple[Annotated[int, Field(ge=-1, le=100)], ...]
+
+    @model_validator(mode="after")
+    def validate_data_size(self) -> Self:
+        if len(self.data) != self.width * self.height:
+            raise ValueError("occupancy data size must equal width times height")
+        return self
+
+
 __all__ = [
     "EncoderState",
     "ImuData",
     "LaserScan",
     "MessageHeader",
+    "OccupancyGrid",
     "Odometry2D",
     "SafetyState",
     "SteeringState",

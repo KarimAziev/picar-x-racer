@@ -37,6 +37,12 @@ from app.services.autonomy.lidar_safety import (
     LidarSafetyService,
     LidarSafetyZone,
 )
+from app.services.autonomy.local_mapping import (
+    LocalMappingService,
+    LocalOccupancyGrid,
+    LocalOccupancyGridConfig,
+    StaticTransform2D,
+)
 from app.services.autonomy.sensor_publishers import (
     EncoderPublisherService,
     IMUPublisherService,
@@ -82,6 +88,9 @@ __all__ = [
     "LidarSafetyService",
     "LidarSafetyZone",
     "LocalizationSensorService",
+    "LocalMappingService",
+    "LocalOccupancyGrid",
+    "LocalOccupancyGridConfig",
     "MotionArbiter",
     "MotionControlService",
     "MotionIntent",
@@ -94,6 +103,7 @@ __all__ = [
     "SafetySeverity",
     "ModeTransitionError",
     "SubscriptionClosed",
+    "StaticTransform2D",
     "Topic",
     "TopicBus",
     "TopicDefinitionError",

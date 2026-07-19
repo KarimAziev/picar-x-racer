@@ -123,6 +123,14 @@ export interface LidarSafetyConfig {
   min_obstacle_points: number;
 }
 
+export interface LocalMappingConfig {
+  enabled: boolean;
+  width_m: number;
+  height_m: number;
+  resolution_m: number;
+  max_odometry_age_ms: number;
+}
+
 export type CalibrationData = Partial<ServoCalibrationData> &
   MotorsCalibrationData;
 
@@ -141,6 +149,7 @@ export interface Data extends ServoData, MotorsData {
   ackermann_odometry: AckermannOdometryConfig;
   localization_sensors: LocalizationSensorsConfig;
   lidar_safety: LidarSafetyConfig;
+  local_mapping: LocalMappingConfig;
   led: LEDConfig;
   batteries: Battery[];
 }
@@ -248,6 +257,13 @@ const defaultState: State = {
       slow_distance_m: null,
       scan_timeout_ms: 500,
       min_obstacle_points: 2,
+    },
+    local_mapping: {
+      enabled: false,
+      width_m: 10,
+      height_m: 10,
+      resolution_m: 0.05,
+      max_odometry_age_ms: 250,
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

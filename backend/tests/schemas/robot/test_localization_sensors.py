@@ -77,6 +77,31 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         config = HardwareConfig.model_validate(data)
         self.assertTrue(config.lidar_safety.enabled)
 
+    def test_local_mapping_requires_odometry_and_lidar(self) -> None:
+        root_config = Path(__file__).parents[4] / "config.json"
+        data = json.loads(root_config.read_text())
+        data["local_mapping"] = {"enabled": True}
+
+        with self.assertRaisesRegex(ValidationError, "Ackermann odometry"):
+            HardwareConfig.model_validate(data)
+
+        data["ackermann_odometry"].update(
+            enabled=True,
+            wheelbase_m=0.2,
+            wheel_radius_m=0.03,
+            encoder_ticks_per_revolution=20,
+        )
+        with self.assertRaisesRegex(ValidationError, "LiDAR publisher"):
+            HardwareConfig.model_validate(data)
+
+        data["localization_sensors"]["lidar"].update(
+            enabled=True,
+            range_min_m=0.05,
+            range_max_m=12.0,
+        )
+        config = HardwareConfig.model_validate(data)
+        self.assertTrue(config.local_mapping.enabled)
+
 
 if __name__ == "__main__":
     unittest.main()

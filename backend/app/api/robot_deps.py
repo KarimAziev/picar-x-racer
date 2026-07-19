@@ -23,6 +23,9 @@ from app.services.autonomy import (
     LidarSafetyEvaluator,
     LidarSafetyService,
     LidarSafetyZone,
+    LocalMappingService,
+    LocalOccupancyGrid,
+    LocalOccupancyGridConfig,
     LidarPublisherService,
     LocalizationSensorService,
     IMUPublisherService,
@@ -31,6 +34,7 @@ from app.services.autonomy import (
     MotionLimits,
     TopicBus,
     UnavailableEncoderPublisher,
+    StaticTransform2D,
 )
 from app.services.autonomy.sensor_publishers import SensorPublisher
 from app.services.control.calibration_service import CalibrationService
@@ -323,6 +327,36 @@ def get_lidar_safety_service(
 
 
 @lru_cache(maxsize=1)
+def get_local_mapping_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> Optional[LocalMappingService]:
+    """Build the opt-in local map only when its sensor prerequisites validate."""
+
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    mapping = config.local_mapping
+    if not mapping.enabled:
+        return None
+    lidar_transform = config.localization_sensors.lidar.transform
+    return LocalMappingService(
+        topic_bus,
+        LocalOccupancyGrid(
+            LocalOccupancyGridConfig(
+                width_m=mapping.width_m,
+                height_m=mapping.height_m,
+                resolution_m=mapping.resolution_m,
+                sensor_transform=StaticTransform2D(
+                    x_m=lidar_transform.x_m,
+                    y_m=lidar_transform.y_m,
+                    yaw_rad=lidar_transform.yaw_rad,
+                ),
+            )
+        ),
+        max_odometry_age_seconds=mapping.max_odometry_age_ms / 1000,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_robot_settings_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
@@ -385,6 +419,7 @@ class LifespanAppDeps(TypedDict):
     odometry_service: Optional[AckermannOdometryService]
     localization_sensor_service: LocalizationSensorService
     lidar_safety_service: Optional[LidarSafetyService]
+    local_mapping_service: Optional[LocalMappingService]
 
 
 async def get_lifespan_dependencies(
@@ -409,6 +444,9 @@ async def get_lifespan_dependencies(
     lidar_safety_service: Annotated[
         Optional[LidarSafetyService], Depends(get_lidar_safety_service)
     ],
+    local_mapping_service: Annotated[
+        Optional[LocalMappingService], Depends(get_local_mapping_service)
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -424,5 +462,6 @@ async def get_lifespan_dependencies(
         "odometry_service": odometry_service,
         "localization_sensor_service": localization_sensor_service,
         "lidar_safety_service": lidar_safety_service,
+        "local_mapping_service": local_mapping_service,
     }
     yield deps

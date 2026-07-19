@@ -4,6 +4,7 @@ from app.schemas.autonomy import (
     EncoderState,
     ImuData,
     LaserScan,
+    OccupancyGrid,
     Odometry2D,
     SafetyState,
     SteeringState,
@@ -19,12 +20,14 @@ STEERING_STATE = Topic("/steering/state", SteeringState)
 ODOMETRY = Topic("/odom", Odometry2D)
 MOTION_COMMANDED = Topic("/motion/commanded", ActuatorCommand)
 SAFETY_STATE = Topic("/safety/state", SafetyState)
+LOCAL_MAP = Topic("/map", OccupancyGrid)
 
 
 __all__ = [
     "ENCODER_STATE",
     "IMU_DATA",
     "LIDAR_SCAN",
+    "LOCAL_MAP",
     "MOTION_COMMANDED",
     "ODOMETRY",
     "SAFETY_STATE",

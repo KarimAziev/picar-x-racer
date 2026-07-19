@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.services.sensors.distance_service import DistanceService
     from app.services.autonomy.sensor_publishers import LocalizationSensorService
     from app.services.autonomy.lidar_safety import LidarSafetyService
+    from app.services.autonomy.local_mapping import LocalMappingService
 
 router = APIRouter()
 _log = Logger(name=__name__)
@@ -48,6 +49,10 @@ async def shutdown(
     lidar_safety_service: Annotated[
         Optional["LidarSafetyService"],
         Depends(robot_deps.get_lidar_safety_service),
+    ],
+    local_mapping_service: Annotated[
+        Optional["LocalMappingService"],
+        Depends(robot_deps.get_local_mapping_service),
     ],
 ):
     """
@@ -89,6 +94,13 @@ async def shutdown(
     except Exception as e:
         errors.append(str(e))
         _log.error("Failed to cleanup localization sensor service: %s", e)
+
+    if local_mapping_service:
+        try:
+            await local_mapping_service.stop()
+        except Exception as e:
+            errors.append(str(e))
+            _log.error("Failed to cleanup local mapping service: %s", e)
 
     if lidar_safety_service:
         try:
