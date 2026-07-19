@@ -88,6 +88,9 @@ export type UpdateCombinedPayload = Partial<{
 
 export interface StoreState extends Gauges, Modes {
   model: ShallowRef<WebSocketModel> | null;
+  motionHeartbeat: ReturnType<typeof setInterval> | null;
+  requestedSpeed: number;
+  requestedDirection: number;
 }
 
 const defaultGauges: Gauges = {
@@ -109,6 +112,9 @@ const defaultState: StoreState = {
   ...defaultGauges,
   ...modes,
   model: null,
+  motionHeartbeat: null,
+  requestedSpeed: 0,
+  requestedDirection: 0,
 } as const;
 
 export interface WSMessageData {
@@ -278,6 +284,12 @@ export const useControllerStore = defineStore("controller", {
         onOpen: async () => {
           await robotStore.fetchData();
         },
+        onClose: () => {
+          this.clearMotionHeartbeat();
+          this.requestedSpeed = 0;
+          this.requestedDirection = 0;
+        },
+        queueMessages: false,
       });
       this.model.initWS();
     },
@@ -287,6 +299,8 @@ export const useControllerStore = defineStore("controller", {
       if (syncStore.active_connections <= 1 && this.speed !== 0) {
         this.stop();
       }
+
+      this.clearMotionHeartbeat();
 
       this.model?.cleanup();
       this.model = null;
@@ -367,15 +381,50 @@ export const useControllerStore = defineStore("controller", {
 
     move(speed: number, direction: number) {
       const robotStore = useRobotStore();
-      speed = constrain(0, this.maxSpeed, robotStore.maxSpeed);
-      if (this.speed !== speed || this.direction !== direction) {
-        this.sendMessage({
-          action: "move",
-          payload: {
-            direction,
-            speed,
-          },
-        });
+      speed = constrain(0, Math.min(this.maxSpeed, robotStore.maxSpeed), speed);
+      if (!this.model?.connected) {
+        this.clearMotionHeartbeat();
+        this.requestedSpeed = 0;
+        this.requestedDirection = 0;
+        return;
+      }
+      this.requestedSpeed = speed;
+      this.requestedDirection = direction;
+      this.sendRequestedMotion();
+      if (speed > 0 && direction !== 0) {
+        this.startMotionHeartbeat();
+      } else {
+        this.clearMotionHeartbeat();
+      }
+    },
+
+    sendRequestedMotion() {
+      this.sendMessage({
+        action: "move",
+        payload: {
+          direction: this.requestedDirection,
+          speed: this.requestedSpeed,
+        },
+      });
+    },
+
+    startMotionHeartbeat() {
+      if (this.motionHeartbeat) {
+        return;
+      }
+      this.motionHeartbeat = setInterval(() => {
+        if (!this.model?.connected) {
+          this.clearMotionHeartbeat();
+          return;
+        }
+        this.sendRequestedMotion();
+      }, 100);
+    },
+
+    clearMotionHeartbeat() {
+      if (this.motionHeartbeat) {
+        clearInterval(this.motionHeartbeat);
+        this.motionHeartbeat = null;
       }
     },
 
@@ -422,6 +471,9 @@ export const useControllerStore = defineStore("controller", {
       }
     },
     stop() {
+      this.clearMotionHeartbeat();
+      this.requestedSpeed = 0;
+      this.requestedDirection = 0;
       this.sendMessage({ action: "stop" });
     },
     increaseMaxSpeed() {

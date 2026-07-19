@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from app.managers.file_management.json_data_manager import JsonDataManager
     from app.services.connection_service import ConnectionService
+    from app.services.autonomy.motion_control_service import MotionControlService
     from app.services.control.car_service import CarService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config_manager: Optional["JsonDataManager"] = None
     smbus_manager: Optional["SMBusManager"] = None
     battery_service: Optional["BatteryService"] = None
+    motion_control_service: Optional["MotionControlService"] = None
     try:
 
         from app.api import robot_deps
@@ -60,6 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             speed_estimator = deps.get("speed_estimator")
             config_manager = deps.get("config_manager")
             smbus_manager = deps.get("smbus_manager")
+            motion_control_service = deps.get("motion_control_service")
 
         app_loop = asyncio.get_running_loop()
 
@@ -71,6 +74,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
 
         app.state.battery_service = battery_service
+
+        if robot_service and motion_control_service:
+            await robot_service.start_motion_control()
 
         async def broadcast_distance(distance: float) -> None:
             rel_speed = (

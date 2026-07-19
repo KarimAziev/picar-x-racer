@@ -32,6 +32,8 @@ export interface WebSocketOptions {
   autoReconnect?: boolean;
   /** A log prefix for identifying WebSocket logs. */
   logPrefix?: string;
+  /** Whether messages sent while disconnected should be replayed after reconnect. */
+  queueMessages?: boolean;
   /** A function that determines whether retries are allowed. */
   isRetryable?: () => Promise<boolean>;
 }
@@ -193,7 +195,7 @@ export function useWebSocket(options: WebSocketOptions): WebSocketModel {
     const msgString = JSON.stringify(message);
     if (connected.value) {
       ws.value?.send(msgString);
-    } else {
+    } else if (options.queueMessages !== false) {
       messageQueue.value.push(msgString);
     }
   };

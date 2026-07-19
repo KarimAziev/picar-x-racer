@@ -1,5 +1,6 @@
+import math
 from functools import lru_cache
-from typing import Annotated, AsyncGenerator, TypedDict
+from typing import Annotated, AsyncGenerator, Optional, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.config.config import settings as app_config
@@ -8,7 +9,16 @@ from app.core.logger import Logger
 from app.managers.async_task_manager import AsyncTaskManager
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.migrations.robot_config import create_robot_config_migrator
+from app.schemas.robot.config import HardwareConfig
 from app.services.connection_service import ConnectionService
+from app.services.autonomy import (
+    ActuationCalibration,
+    HardwareController,
+    LinearActuatorTranslator,
+    MotionArbiter,
+    MotionControlService,
+    MotionLimits,
+)
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
 from app.services.control.settings_service import SettingsService
@@ -98,6 +108,54 @@ def get_picarx_adapter(
 
 
 @lru_cache(maxsize=1)
+def get_motion_control_service(
+    picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+) -> Optional[MotionControlService]:
+    """Build the opt-in single-writer motion runtime from calibrated config."""
+
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    motion = config.motion_control
+    if not motion.enabled:
+        return None
+    if motion.max_forward_speed_mps is None or motion.max_reverse_speed_mps is None:
+        raise ValueError("Motion control is enabled without physical speed calibration")
+
+    enabled_motors = [motor for motor in config.motors if motor.enabled]
+    if not enabled_motors:
+        raise ValueError("Motion control requires at least one enabled motor")
+    max_motor_command = min(100, *(motor.max_speed for motor in enabled_motors))
+    max_steering_degrees = min(
+        abs(config.steering_servo.min_angle),
+        abs(config.steering_servo.max_angle),
+    )
+    if max_steering_degrees <= 0:
+        raise ValueError("Motion control requires a steering range around zero")
+
+    max_steering_radians = math.radians(max_steering_degrees)
+    limits = MotionLimits(
+        max_forward_speed_mps=motion.max_forward_speed_mps,
+        max_reverse_speed_mps=motion.max_reverse_speed_mps,
+        max_abs_steering_angle_rad=max_steering_radians,
+    )
+    calibration = ActuationCalibration(
+        max_forward_speed_mps=motion.max_forward_speed_mps,
+        max_reverse_speed_mps=motion.max_reverse_speed_mps,
+        max_abs_steering_angle_rad=max_steering_radians,
+        max_forward_command=max_motor_command,
+        max_reverse_command=max_motor_command,
+    )
+    return MotionControlService(
+        arbiter=MotionArbiter(limits),
+        hardware_controller=HardwareController(
+            picarx_adapter,
+            LinearActuatorTranslator(calibration),
+        ),
+        control_period_seconds=1.0 / motion.control_frequency_hz,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_robot_settings_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
@@ -125,6 +183,9 @@ def get_robot_service(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     led_service: Annotated[LEDService, Depends(get_led_service)],
     speed_estimator: Annotated[SpeedEstimator, Depends(get_speed_estimator)],
+    motion_control_service: Annotated[
+        Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
 ) -> CarService:
     return CarService(
         connection_manager=connection_manager,
@@ -135,6 +196,7 @@ def get_robot_service(
         config_manager=config_manager,
         led_service=led_service,
         speed_estimator=speed_estimator,
+        motion_control_service=motion_control_service,
     )
 
 
@@ -151,6 +213,7 @@ class LifespanAppDeps(TypedDict):
     speed_estimator: SpeedEstimator
     config_manager: JsonDataManager
     smbus_manager: SMBusManager
+    motion_control_service: Optional[MotionControlService]
 
 
 async def get_lifespan_dependencies(
@@ -162,6 +225,9 @@ async def get_lifespan_dependencies(
     speed_estimator: Annotated[SpeedEstimator, Depends(get_speed_estimator)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+    motion_control_service: Annotated[
+        Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -172,5 +238,6 @@ async def get_lifespan_dependencies(
         "speed_estimator": speed_estimator,
         "config_manager": config_manager,
         "smbus_manager": smbus_manager,
+        "motion_control_service": motion_control_service,
     }
     yield deps

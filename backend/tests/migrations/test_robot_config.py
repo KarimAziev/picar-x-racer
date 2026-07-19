@@ -21,6 +21,7 @@ class TestRobotConfigMigration(unittest.TestCase):
     def make_legacy_config(self):
         data = deepcopy(self.current_config)
         data.pop("schema_version")
+        data.pop("motion_control")
         battery = data.pop("batteries")[0]
         battery.pop("name")
         data["battery"] = battery
@@ -36,8 +37,8 @@ class TestRobotConfigMigration(unittest.TestCase):
     def test_migrates_legacy_motor_fields(self):
         result = create_robot_config_migrator().migrate(self.make_legacy_config())
 
-        self.assertEqual(result.applied_versions, (1, 2))
-        self.assertEqual(result.data["schema_version"], 2)
+        self.assertEqual(result.applied_versions, (1, 2, 3))
+        self.assertEqual(result.data["schema_version"], 3)
         self.assertNotIn("left_motor", result.data)
         self.assertNotIn("right_motor", result.data)
         self.assertEqual(
@@ -48,6 +49,7 @@ class TestRobotConfigMigration(unittest.TestCase):
         self.assertNotIn("period", result.data["motors"][0])
         self.assertNotIn("battery", result.data)
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
+        self.assertEqual(result.data["motion_control"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
     def test_migrates_v1_battery_to_named_collection(self):
@@ -59,9 +61,44 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (2,))
-        self.assertEqual(result.data["schema_version"], 2)
+        self.assertEqual(result.applied_versions, (2, 3))
+        self.assertEqual(result.data["schema_version"], 3)
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
+
+    def test_migrates_v2_with_disabled_motion_control(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 2
+        data.pop("motion_control")
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(result.applied_versions, (3,))
+        self.assertEqual(result.data["schema_version"], 3)
+        self.assertEqual(result.data["motion_control"], {"enabled": False})
+        HardwareConfig.model_validate(result.data)
+
+    def test_v3_preserves_prerelease_motion_control_values(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 2
+        data["motion_control"] = {
+            "enabled": True,
+            "control_frequency_hz": 25,
+            "command_timeout_ms": 200,
+            "max_forward_speed_mps": 0.8,
+            "max_reverse_speed_mps": 0.4,
+        }
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(result.data["motion_control"], data["motion_control"])
+
+    def test_v3_rejects_invalid_motion_control_shape(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 2
+        data["motion_control"] = "enabled"
+
+        with self.assertRaisesRegex(JsonDataMigrationError, "must be an object"):
+            create_robot_config_migrator().migrate(data)
 
     def test_rejects_ambiguous_battery_shapes(self):
         data = deepcopy(self.current_config)
@@ -111,7 +148,7 @@ class TestRobotConfigMigration(unittest.TestCase):
 
             persisted = json.loads(target.read_text())
             self.assertEqual(manager.load_data(), persisted)
-            self.assertEqual(persisted["schema_version"], 2)
+            self.assertEqual(persisted["schema_version"], 3)
             self.assertIn("motors", persisted)
             self.assertNotIn("left_motor", persisted)
 
@@ -127,7 +164,7 @@ class TestRobotConfigMigration(unittest.TestCase):
                 migrator=create_robot_config_migrator(),
             )
 
-            self.assertEqual(manager.load_data()["schema_version"], 2)
+            self.assertEqual(manager.load_data()["schema_version"], 3)
             self.assertFalse(target.exists())
 
     def test_manager_does_not_overwrite_invalid_migration(self):

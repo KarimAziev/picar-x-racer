@@ -9,6 +9,7 @@ from app.schemas.robot.motors import (
     I2CDCMotorConfig,
     PhaseMotorConfig,
 )
+from app.schemas.robot.motion_control import MotionControlConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.schemas.robot.servos import (
     cross_field_validators as servo_cross_field_validators,
@@ -24,12 +25,23 @@ class HardwareConfig(BaseModel):
     """
 
     schema_version: Annotated[
-        Literal[2],
+        Literal[3],
         Field(
             title="Schema version",
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
-    ] = 2
+    ] = 3
+
+    motion_control: Annotated[
+        MotionControlConfig,
+        Field(
+            title="Motion control",
+            description=(
+                "Physical speed calibration and watchdog settings for the "
+                "single-writer motion runtime."
+            ),
+        ),
+    ] = MotionControlConfig()
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],

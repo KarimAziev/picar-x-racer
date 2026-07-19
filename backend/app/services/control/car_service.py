@@ -10,6 +10,7 @@ from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout, ServoNotFoun
 from app.schemas.robot.avoid_obstacles import AvoidState
 from app.schemas.robot.config import HardwareConfig
 from app.schemas.settings import Settings
+from app.services.autonomy.messages import MotionIntent, MotionSource, RobotMode
 from app.types.car import CarServiceBroadcastPayload, CarServiceState
 from fastapi import WebSocket
 from robot_hat import constrain
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
     from app.managers.file_management.json_data_manager import JsonDataManager
     from app.services.connection_service import ConnectionService
+    from app.services.autonomy.motion_control_service import MotionControlService
     from app.services.control.calibration_service import CalibrationService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
@@ -39,6 +41,7 @@ class CarService:
         config_manager: "JsonDataManager",
         led_service: "LEDService",
         speed_estimator: "SpeedEstimator",
+        motion_control_service: Union["MotionControlService", None] = None,
     ) -> None:
         self.px = px
         self.connection_manager = connection_manager
@@ -46,6 +49,7 @@ class CarService:
         self.config_manager = config_manager
         self.led_service = led_service
         self.speed_estimator = speed_estimator
+        self.motion_control_service = motion_control_service
 
         self.app_settings_manager = app_settings_manager
 
@@ -102,6 +106,20 @@ class CarService:
         self._last_cmd = {"dir": 0, "speed": 0, "steer": 0.0}
         self._prev_distance_interval: Union[float, None] = None
         self._last_broadcast: float = 0.0
+        self._motion_sequences: Dict[MotionSource, int] = {}
+        self._desired_steering_degrees = 0.0
+
+    @property
+    def motion_control_enabled(self) -> bool:
+        return self.motion_control_service is not None
+
+    async def start_motion_control(self) -> None:
+        """Arm the opt-in runtime in manual mode and start its watchdog."""
+
+        if not self.motion_control_service:
+            return
+        await self.motion_control_service.set_mode(RobotMode.MANUAL)
+        self.motion_control_service.start()
 
     def refresh_config(self, data: Dict[str, Any]) -> None:
         self.config = HardwareConfig(**data)
@@ -297,10 +315,21 @@ class CarService:
             await self.connection_manager.error(f"Failed to reset MCU: {e}")
 
     async def handle_stop(self, _: Any = None) -> None:
+        if self.motion_control_service:
+            await self._submit_motion(0, 0, self._desired_steering_degrees)
+            return
         await asyncio.to_thread(self.px.stop)
 
     async def handle_set_servo_dir_angle(self, payload: float) -> None:
         angle = payload or 0
+        self._desired_steering_degrees = float(angle)
+        if self.motion_control_service:
+            await self._submit_motion(
+                cast(MotorServiceDirection, self.px.state["direction"]),
+                cast(int, self.px.state["speed"]),
+                self._desired_steering_degrees,
+            )
+            return
         if self.px.state["steering_servo_angle"] != angle:
             await asyncio.to_thread(self.px.set_dir_servo_angle, angle)
 
@@ -317,6 +346,8 @@ class CarService:
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
 
         if self.avoid_obstacles_mode:
+            if self.motion_control_service:
+                await self.motion_control_service.set_mode(RobotMode.AUTONOMOUS)
             await self.handle_stop()
 
             self.auto_measure_distance_mode = self.distance_service.running
@@ -337,6 +368,9 @@ class CarService:
             await self._stop_avoid_loop()
 
             await self.handle_stop()
+
+            if self.motion_control_service:
+                await self.motion_control_service.set_mode(RobotMode.MANUAL)
 
             await self.distance_service.stop_all()
             if self._prev_distance_interval is not None:
@@ -419,6 +453,14 @@ class CarService:
             steer, self.px.steering_servo.min_angle, self.px.steering_servo.max_angle
         )
         speed = max(0, min(min(self.max_speed or 80, speed), 100))
+
+        if self.motion_control_service:
+            self._desired_steering_degrees = float(steer)
+            await self._submit_motion(direction, speed, steer)
+            self._last_cmd["steer"] = steer
+            self._last_cmd["dir"] = direction if speed else 0
+            self._last_cmd["speed"] = speed
+            return
 
         if steer != self._last_cmd["steer"]:
             await self.handle_set_servo_dir_angle(steer)
@@ -568,11 +610,21 @@ class CarService:
             await self.broadcast()
 
     async def servos_test(self, _=None) -> None:
-        servos = [
-            (self.px.set_dir_servo_angle, [-30, 30, 0]),
-            (self.px.set_cam_pan_angle, [-30, 30, 0]),
-            (self.px.set_cam_tilt_angle, [-30, 30, 0]),
-        ]
+        if self.motion_control_service:
+            for angle in [-30, 30, 0]:
+                await self.handle_set_servo_dir_angle(angle)
+                await self.broadcast()
+                await asyncio.sleep(0.5)
+            servos = [
+                (self.px.set_cam_pan_angle, [-30, 30, 0]),
+                (self.px.set_cam_tilt_angle, [-30, 30, 0]),
+            ]
+        else:
+            servos = [
+                (self.px.set_dir_servo_angle, [-30, 30, 0]),
+                (self.px.set_cam_pan_angle, [-30, 30, 0]),
+                (self.px.set_cam_tilt_angle, [-30, 30, 0]),
+            ]
         for fn, args in servos:
             for arg in args:
                 await asyncio.to_thread(fn, arg)
@@ -615,6 +667,12 @@ class CarService:
         """
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
+        if self.motion_control_service:
+            if speed == 0 or direction == 0:
+                await self.handle_stop()
+            else:
+                await self.move(direction, speed)
+            return
         if self.px.state["direction"] != direction or speed != self.px.state["speed"]:
             if speed == 0 or direction == 0:
                 await self.handle_stop()
@@ -629,10 +687,83 @@ class CarService:
             direction: The direction to move the car (1 for forward, -1 for backward).
             speed: The speed at which to move the car.
         """
-        if direction == 1:
+        if self.motion_control_service:
+            await self._submit_motion(
+                direction,
+                speed,
+                self._desired_steering_degrees,
+            )
+        elif direction == 1:
             await asyncio.to_thread(self.px.forward, speed)
         elif direction == -1:
             await asyncio.to_thread(self.px.backward, speed)
+
+    async def _submit_motion(
+        self,
+        direction: MotorServiceDirection,
+        speed: int,
+        steering_degrees: float,
+    ) -> None:
+        service = self.motion_control_service
+        if service is None:
+            raise RuntimeError("Motion control is not enabled")
+        if direction not in (-1, 0, 1):
+            raise ValueError("Motion direction must be -1, 0, or 1")
+
+        source_by_mode = {
+            RobotMode.MANUAL: MotionSource.MANUAL,
+            RobotMode.AUTONOMOUS: MotionSource.AUTONOMY,
+            RobotMode.CALIBRATION: MotionSource.CALIBRATION,
+        }
+        source = source_by_mode.get(service.mode)
+        if source is None:
+            await service.step()
+            return
+
+        enabled_motors = [motor for motor in self.config.motors if motor.enabled]
+        if not enabled_motors:
+            raise ValueError("Motion control requires an enabled motor")
+        max_motor_command = min(100, *(motor.max_speed for motor in enabled_motors))
+        configured_max_speed = int(self.max_speed or max_motor_command)
+        command_speed = max(
+            0,
+            min(int(speed), max_motor_command, configured_max_speed),
+        )
+        motion_config = self.config.motion_control
+        physical_max = (
+            motion_config.max_forward_speed_mps
+            if direction == 1
+            else motion_config.max_reverse_speed_mps
+        )
+        if physical_max is None:
+            raise ValueError("Motion control speed calibration is missing")
+        linear_speed_mps = (
+            command_speed / max_motor_command * physical_max if direction else 0.0
+        )
+        if direction == -1:
+            linear_speed_mps = -linear_speed_mps
+
+        now = time.monotonic_ns()
+        sequence = self._motion_sequences.get(source, 0) + 1
+        self._motion_sequences[source] = sequence
+        result = service.submit(
+            MotionIntent(
+                command_id=f"{source.value}-{service.mode_generation}-{sequence}",
+                source=source,
+                sequence=sequence,
+                mode_generation=service.mode_generation,
+                linear_speed_mps=linear_speed_mps,
+                steering_angle_rad=math.radians(steering_degrees),
+                created_monotonic_ns=now,
+                expires_monotonic_ns=(
+                    now + motion_config.command_timeout_ms * 1_000_000
+                ),
+            )
+        )
+        if not result.accepted:
+            reason = result.rejection_reason.value if result.rejection_reason else None
+            raise ValueError(f"Motion command rejected: {reason or 'unknown reason'}")
+        await service.step()
 
     async def start_auto_measure_distance(self, _: Any = None) -> None:
         self.auto_measure_distance_mode = True
@@ -689,6 +820,12 @@ class CarService:
                 await fn()
             except Exception:
                 pass
+
+        if self.motion_control_service:
+            try:
+                await self.motion_control_service.stop()
+            except Exception as e:
+                _log.error("Failed to stop motion control service: %s", e)
 
         try:
             await asyncio.to_thread(self.px.cleanup)

@@ -55,6 +55,14 @@ export interface MotorsData {
   motors: MotorConfig[];
 }
 
+export interface MotionControlConfig {
+  enabled: boolean;
+  control_frequency_hz: number;
+  command_timeout_ms: number;
+  max_forward_speed_mps: number | null;
+  max_reverse_speed_mps: number | null;
+}
+
 export type CalibrationData = Partial<ServoCalibrationData> &
   MotorsCalibrationData;
 
@@ -69,6 +77,7 @@ export interface LEDConfig {
 }
 export interface Data extends ServoData, MotorsData {
   schema_version: number;
+  motion_control: MotionControlConfig;
   led: LEDConfig;
   batteries: Battery[];
 }
@@ -107,7 +116,14 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
-    schema_version: 2,
+    schema_version: 3,
+    motion_control: {
+      enabled: false,
+      control_frequency_hz: 20,
+      command_timeout_ms: 250,
+      max_forward_speed_mps: null,
+      max_reverse_speed_mps: null,
+    },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,
     steering_servo: defaultServo,

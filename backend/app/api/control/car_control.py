@@ -94,3 +94,8 @@ async def websocket_endpoint(
     finally:
         logger.info("Robot Connection Manager: Cleaning up WebSocket connection.")
         connection_manager.remove(websocket)
+        if not connection_manager.active_connections:
+            try:
+                await car_manager.handle_stop()
+            except Exception:
+                logger.error("Failed to stop robot after last client disconnected")
