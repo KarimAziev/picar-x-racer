@@ -1,5 +1,5 @@
 numpy==1.26.4
-robot-hat>=2.5.0
+robot-hat>=2.6.0
 google_speech_pyplay>=1.1.0
 pandas
 colorlog

@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "motion_control": {
     "enabled": false,
     "control_frequency_hz": 20,
@@ -14,6 +14,17 @@
     "encoder_ticks_per_revolution": null,
     "gear_ratio": 1.0,
     "max_steering_age_ms": 250
+  },
+  "localization_sensors": {
+    "lidar": {
+      "enabled": false
+    },
+    "imu": {
+      "enabled": false
+    },
+    "encoder": {
+      "enabled": false
+    }
   },
   "cam_pan_servo": {
     "channel": "P0",

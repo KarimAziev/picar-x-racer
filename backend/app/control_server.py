@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from app.services.autonomy.motion_control_service import MotionControlService
     from app.services.autonomy.odometry import AckermannOdometryService
     from app.services.autonomy.topic_bus import TopicBus
+    from app.services.autonomy.sensor_publishers import LocalizationSensorService
     from app.services.control.car_service import CarService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
@@ -51,6 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     motion_control_service: Optional["MotionControlService"] = None
     topic_bus: Optional["TopicBus"] = None
     odometry_service: Optional["AckermannOdometryService"] = None
+    localization_sensor_service: Optional["LocalizationSensorService"] = None
     try:
 
         from app.api import robot_deps
@@ -69,6 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             motion_control_service = deps.get("motion_control_service")
             topic_bus = deps.get("topic_bus")
             odometry_service = deps.get("odometry_service")
+            localization_sensor_service = deps.get("localization_sensor_service")
 
         app_loop = asyncio.get_running_loop()
 
@@ -85,6 +88,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await robot_service.start_motion_control()
         if odometry_service:
             odometry_service.start()
+        if localization_sensor_service:
+            await localization_sensor_service.start()
+            app.state.localization_sensor_service = localization_sensor_service
 
         async def broadcast_distance(distance: float) -> None:
             rel_speed = (
@@ -172,6 +178,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise
         except Exception as e:
             logger.error("Failed to cleanup odometry service: %s", e)
+
+    if localization_sensor_service:
+        try:
+            await localization_sensor_service.stop()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up localization sensors.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup localization sensors: %s", e)
 
     if topic_bus:
         topic_bus.close()

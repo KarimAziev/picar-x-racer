@@ -31,6 +31,14 @@ from app.services.autonomy.motion_control_service import (
     ModeTransitionError,
     MotionControlService,
 )
+from app.services.autonomy.sensor_publishers import (
+    EncoderPublisherService,
+    IMUPublisherService,
+    LaserScanConverter,
+    LidarPublisherService,
+    LocalizationSensorService,
+    UnavailableEncoderPublisher,
+)
 from app.services.autonomy.topic_bus import (
     SubscriptionClosed,
     Topic,
@@ -49,11 +57,16 @@ __all__ = [
     "ArbitrationResult",
     "DriveDirection",
     "DriveHardware",
+    "EncoderPublisherService",
     "HardwareController",
     "HardwareMotionCommand",
+    "IMUPublisherService",
     "IntentRejectionReason",
     "IntentSubmissionResult",
     "LinearActuatorTranslator",
+    "LaserScanConverter",
+    "LidarPublisherService",
+    "LocalizationSensorService",
     "MotionArbiter",
     "MotionControlService",
     "MotionIntent",
@@ -70,4 +83,5 @@ __all__ = [
     "TopicDefinitionError",
     "TopicStats",
     "TopicSubscription",
+    "UnavailableEncoderPublisher",
 ]

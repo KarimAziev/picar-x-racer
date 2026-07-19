@@ -72,6 +72,48 @@ export interface AckermannOdometryConfig {
   max_steering_age_ms: number;
 }
 
+export interface StaticTransformConfig {
+  x_m: number;
+  y_m: number;
+  z_m: number;
+  roll_rad: number;
+  pitch_rad: number;
+  yaw_rad: number;
+}
+
+export interface LocalizationSensorsConfig {
+  lidar: {
+    enabled: boolean;
+    driver: "rplidar_c1";
+    port: string;
+    baudrate: number;
+    timeout_s: number;
+    frame_id: string;
+    transform: StaticTransformConfig;
+    range_min_m: number | null;
+    range_max_m: number | null;
+    angular_resolution_deg: number;
+    min_measurements_per_scan: number;
+  };
+  imu: {
+    enabled: boolean;
+    driver: "sh3001";
+    bus: number;
+    address: number | string;
+    frame_id: string;
+    transform: StaticTransformConfig;
+    sample_frequency_hz: number;
+    accelerometer_range_g: 2 | 4 | 8 | 16;
+    gyroscope_range_dps: 125 | 250 | 500 | 1000 | 2000;
+  };
+  encoder: {
+    enabled: boolean;
+    driver: "external";
+    frame_id: string;
+    sample_frequency_hz: number;
+  };
+}
+
 export type CalibrationData = Partial<ServoCalibrationData> &
   MotorsCalibrationData;
 
@@ -88,6 +130,7 @@ export interface Data extends ServoData, MotorsData {
   schema_version: number;
   motion_control: MotionControlConfig;
   ackermann_odometry: AckermannOdometryConfig;
+  localization_sensors: LocalizationSensorsConfig;
   led: LEDConfig;
   batteries: Battery[];
 }
@@ -126,7 +169,7 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
-    schema_version: 4,
+    schema_version: 5,
     motion_control: {
       enabled: false,
       control_frequency_hz: 20,
@@ -141,6 +184,52 @@ const defaultState: State = {
       encoder_ticks_per_revolution: null,
       gear_ratio: 1.0,
       max_steering_age_ms: 250,
+    },
+    localization_sensors: {
+      lidar: {
+        enabled: false,
+        driver: "rplidar_c1",
+        port: "/dev/ttyUSB0",
+        baudrate: 460800,
+        timeout_s: 1,
+        frame_id: "laser",
+        transform: {
+          x_m: 0,
+          y_m: 0,
+          z_m: 0,
+          roll_rad: 0,
+          pitch_rad: 0,
+          yaw_rad: 0,
+        },
+        range_min_m: null,
+        range_max_m: null,
+        angular_resolution_deg: 1,
+        min_measurements_per_scan: 50,
+      },
+      imu: {
+        enabled: false,
+        driver: "sh3001",
+        bus: 1,
+        address: "0x36",
+        frame_id: "imu",
+        transform: {
+          x_m: 0,
+          y_m: 0,
+          z_m: 0,
+          roll_rad: 0,
+          pitch_rad: 0,
+          yaw_rad: 0,
+        },
+        sample_frequency_hz: 100,
+        accelerometer_range_g: 2,
+        gyroscope_range_dps: 2000,
+      },
+      encoder: {
+        enabled: false,
+        driver: "external",
+        frame_id: "encoder",
+        sample_frequency_hz: 100,
+      },
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

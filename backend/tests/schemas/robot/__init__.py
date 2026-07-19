@@ -1,0 +1,1 @@
+"""Robot hardware schema tests."""

@@ -1,6 +1,6 @@
 import math
 from functools import lru_cache
-from typing import Annotated, AsyncGenerator, Optional, TypedDict
+from typing import Annotated, AsyncGenerator, Dict, Optional, TypedDict
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.config.config import settings as app_config
@@ -10,6 +10,7 @@ from app.managers.async_task_manager import AsyncTaskManager
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.migrations.robot_config import create_robot_config_migrator
 from app.schemas.robot.config import HardwareConfig
+from app.schemas.autonomy import SensorName
 from app.services.connection_service import ConnectionService
 from app.services.autonomy import (
     AckermannOdometryConfig,
@@ -18,11 +19,17 @@ from app.services.autonomy import (
     ActuationCalibration,
     HardwareController,
     LinearActuatorTranslator,
+    LaserScanConverter,
+    LidarPublisherService,
+    LocalizationSensorService,
+    IMUPublisherService,
     MotionArbiter,
     MotionControlService,
     MotionLimits,
     TopicBus,
+    UnavailableEncoderPublisher,
 )
+from app.services.autonomy.sensor_publishers import SensorPublisher
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
 from app.services.control.settings_service import SettingsService
@@ -32,6 +39,7 @@ from app.services.sensors.pinout_service import PinoutService
 from app.services.sensors.speed_estimator import SpeedEstimator
 from fastapi import Depends
 from robot_hat.i2c.smbus_manager import SMBusManager
+from robot_hat import RPLidarC1, RPLidarC1Config, SH3001, SH3001Config
 
 logger = Logger(__name__)
 
@@ -179,14 +187,94 @@ def get_odometry_service(
         return None
     if odometry.wheelbase_m is None:
         raise ValueError("Ackermann odometry is enabled without wheelbase calibration")
+    if odometry.wheel_radius_m is None:
+        raise ValueError(
+            "Ackermann odometry is enabled without wheel radius calibration"
+        )
+    if odometry.encoder_ticks_per_revolution is None:
+        raise ValueError("Ackermann odometry is enabled without encoder calibration")
     return AckermannOdometryService(
         topic_bus,
         AckermannOdometryEstimator(
             AckermannOdometryConfig(
                 wheelbase_m=odometry.wheelbase_m,
+                wheel_radius_m=odometry.wheel_radius_m,
+                encoder_ticks_per_revolution=(odometry.encoder_ticks_per_revolution),
+                gear_ratio=odometry.gear_ratio,
                 max_steering_age_seconds=odometry.max_steering_age_ms / 1000,
             )
         ),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_localization_sensor_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+) -> LocalizationSensorService:
+    """Build lazy, opt-in hardware publishers from the persisted configuration."""
+
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    sensors = config.localization_sensors
+    publishers: Dict[SensorName, SensorPublisher] = {}
+    enabled_sensors = []
+
+    if sensors.lidar.enabled:
+        enabled_sensors.append("lidar")
+        range_min_m = sensors.lidar.range_min_m
+        range_max_m = sensors.lidar.range_max_m
+        if range_min_m is None or range_max_m is None:
+            raise ValueError("enabled lidar requires calibrated range limits")
+        lidar_config = RPLidarC1Config(
+            port=sensors.lidar.port,
+            baudrate=sensors.lidar.baudrate,
+            timeout=sensors.lidar.timeout_s,
+        )
+        publishers["lidar"] = LidarPublisherService(
+            topic_bus,
+            lambda: RPLidarC1(lidar_config),
+            LaserScanConverter(
+                frame_id=sensors.lidar.frame_id,
+                range_min_m=range_min_m,
+                range_max_m=range_max_m,
+                angular_resolution_deg=sensors.lidar.angular_resolution_deg,
+            ),
+            min_measurements_per_scan=(sensors.lidar.min_measurements_per_scan),
+        )
+
+    if sensors.imu.enabled:
+        enabled_sensors.append("imu")
+        imu_sensor_config = sensors.imu
+
+        def create_imu() -> SH3001:
+            bus = smbus_manager.get_bus(imu_sensor_config.bus)
+            return SH3001(
+                address=imu_sensor_config.address_int,
+                bus=bus,
+                config=SH3001Config(
+                    accelerometer_range_g=(imu_sensor_config.accelerometer_range_g),
+                    gyroscope_range_dps=imu_sensor_config.gyroscope_range_dps,
+                ),
+            )
+
+        publishers["imu"] = IMUPublisherService(
+            topic_bus,
+            create_imu,
+            frame_id=imu_sensor_config.frame_id,
+            sample_frequency_hz=imu_sensor_config.sample_frequency_hz,
+        )
+
+    if sensors.encoder.enabled:
+        enabled_sensors.append("encoder")
+        publishers["encoder"] = UnavailableEncoderPublisher(
+            "EncoderABC is configured, but no concrete robot-hat encoder driver "
+            "has been installed"
+        )
+
+    return LocalizationSensorService(
+        publishers,
+        enabled_sensors=enabled_sensors,
     )
 
 
@@ -251,6 +339,7 @@ class LifespanAppDeps(TypedDict):
     motion_control_service: Optional[MotionControlService]
     topic_bus: TopicBus
     odometry_service: Optional[AckermannOdometryService]
+    localization_sensor_service: LocalizationSensorService
 
 
 async def get_lifespan_dependencies(
@@ -269,6 +358,9 @@ async def get_lifespan_dependencies(
     odometry_service: Annotated[
         Optional[AckermannOdometryService], Depends(get_odometry_service)
     ],
+    localization_sensor_service: Annotated[
+        LocalizationSensorService, Depends(get_localization_sensor_service)
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -282,5 +374,6 @@ async def get_lifespan_dependencies(
         "motion_control_service": motion_control_service,
         "topic_bus": topic_bus,
         "odometry_service": odometry_service,
+        "localization_sensor_service": localization_sensor_service,
     }
     yield deps

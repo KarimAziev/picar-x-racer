@@ -22,6 +22,8 @@ class OdometryTestCase(unittest.TestCase):
         self.estimator = AckermannOdometryEstimator(
             AckermannOdometryConfig(
                 wheelbase_m=0.2,
+                wheel_radius_m=0.1,
+                encoder_ticks_per_revolution=20,
                 max_steering_age_seconds=0.5,
             )
         )
@@ -41,9 +43,6 @@ class OdometryTestCase(unittest.TestCase):
             ),
             ticks=delta_ticks,
             delta_ticks=delta_ticks,
-            ticks_per_revolution=20,
-            wheel_radius_m=0.1,
-            gear_ratio=1.0,
         )
 
     @staticmethod
@@ -162,15 +161,24 @@ class TestAckermannOdometryEstimator(OdometryTestCase):
             )
 
     def test_gear_ratio_reduces_wheel_distance(self) -> None:
-        self.estimator.update(
+        estimator = AckermannOdometryEstimator(
+            AckermannOdometryConfig(
+                wheelbase_m=0.2,
+                wheel_radius_m=0.1,
+                encoder_ticks_per_revolution=20,
+                gear_ratio=2.0,
+                max_steering_age_seconds=0.5,
+            )
+        )
+        estimator.update(
             self.encoder(1, 1_000_000_000),
             self.steering(1_000_000_000),
         )
-        encoder = self.encoder(2, 2_000_000_000, delta_ticks=20).model_copy(
-            update={"gear_ratio": 2.0}
-        )
 
-        result = self.estimator.update(encoder, self.steering(2_000_000_000))
+        result = estimator.update(
+            self.encoder(2, 2_000_000_000, delta_ticks=20),
+            self.steering(2_000_000_000),
+        )
 
         self.assertAlmostEqual(result.x_m, math.pi * 0.1)
 
@@ -179,7 +187,11 @@ class TestAckermannOdometryService(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.bus = TopicBus()
         self.estimator = AckermannOdometryEstimator(
-            AckermannOdometryConfig(wheelbase_m=0.2)
+            AckermannOdometryConfig(
+                wheelbase_m=0.2,
+                wheel_radius_m=0.1,
+                encoder_ticks_per_revolution=20,
+            )
         )
         self.service = AckermannOdometryService(self.bus, self.estimator)
 

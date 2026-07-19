@@ -4,12 +4,13 @@ import app.api.control.distance as distance
 import app.api.control.integration as integration
 import app.api.control.pinout as pinout
 import app.api.control.settings as settings
+import app.api.control.sensors as sensors
 import app.api.control.system as system
 from app.util.endpoints_metadata import build_routers_and_metadata
 from fastapi import APIRouter
 
 routers, tags_metadata = build_routers_and_metadata(
-    [system, settings, car_control, battery, distance, integration, pinout]
+    [system, settings, car_control, battery, distance, integration, pinout, sensors]
 )
 
 api_router = APIRouter()

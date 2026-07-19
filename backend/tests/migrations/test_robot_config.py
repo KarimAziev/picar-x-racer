@@ -23,6 +23,7 @@ class TestRobotConfigMigration(unittest.TestCase):
         data.pop("schema_version")
         data.pop("motion_control")
         data.pop("ackermann_odometry")
+        data.pop("localization_sensors")
         battery = data.pop("batteries")[0]
         battery.pop("name")
         data["battery"] = battery
@@ -38,8 +39,8 @@ class TestRobotConfigMigration(unittest.TestCase):
     def test_migrates_legacy_motor_fields(self):
         result = create_robot_config_migrator().migrate(self.make_legacy_config())
 
-        self.assertEqual(result.applied_versions, (1, 2, 3, 4))
-        self.assertEqual(result.data["schema_version"], 4)
+        self.assertEqual(result.applied_versions, (1, 2, 3, 4, 5))
+        self.assertEqual(result.data["schema_version"], 5)
         self.assertNotIn("left_motor", result.data)
         self.assertNotIn("right_motor", result.data)
         self.assertEqual(
@@ -52,6 +53,14 @@ class TestRobotConfigMigration(unittest.TestCase):
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
         self.assertEqual(result.data["motion_control"], {"enabled": False})
         self.assertEqual(result.data["ackermann_odometry"], {"enabled": False})
+        self.assertEqual(
+            result.data["localization_sensors"],
+            {
+                "lidar": {"enabled": False},
+                "imu": {"enabled": False},
+                "encoder": {"enabled": False},
+            },
+        )
         HardwareConfig.model_validate(result.data)
 
     def test_migrates_v1_battery_to_named_collection(self):
@@ -63,8 +72,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (2, 3, 4))
-        self.assertEqual(result.data["schema_version"], 4)
+        self.assertEqual(result.applied_versions, (2, 3, 4, 5))
+        self.assertEqual(result.data["schema_version"], 5)
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
 
     def test_migrates_v2_with_disabled_motion_control(self):
@@ -74,8 +83,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (3, 4))
-        self.assertEqual(result.data["schema_version"], 4)
+        self.assertEqual(result.applied_versions, (3, 4, 5))
+        self.assertEqual(result.data["schema_version"], 5)
         self.assertEqual(result.data["motion_control"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
@@ -109,8 +118,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (4,))
-        self.assertEqual(result.data["schema_version"], 4)
+        self.assertEqual(result.applied_versions, (4, 5))
+        self.assertEqual(result.data["schema_version"], 5)
         self.assertEqual(result.data["ackermann_odometry"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
@@ -137,6 +146,53 @@ class TestRobotConfigMigration(unittest.TestCase):
         data = deepcopy(self.current_config)
         data["schema_version"] = 3
         data["ackermann_odometry"] = "enabled"
+
+        with self.assertRaisesRegex(JsonDataMigrationError, "must be an object"):
+            create_robot_config_migrator().migrate(data)
+
+    def test_migrates_v4_with_disabled_localization_sensors(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 4
+        data.pop("localization_sensors")
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(result.applied_versions, (5,))
+        self.assertEqual(result.data["schema_version"], 5)
+        self.assertEqual(
+            result.data["localization_sensors"],
+            {
+                "lidar": {"enabled": False},
+                "imu": {"enabled": False},
+                "encoder": {"enabled": False},
+            },
+        )
+        HardwareConfig.model_validate(result.data)
+
+    def test_v5_preserves_prerelease_localization_sensor_values(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 4
+        data["localization_sensors"] = {
+            "lidar": {
+                "enabled": True,
+                "range_min_m": 0.05,
+                "range_max_m": 12.0,
+            },
+            "imu": {"enabled": True, "sample_frequency_hz": 50},
+            "encoder": {"enabled": False},
+        }
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(
+            result.data["localization_sensors"],
+            data["localization_sensors"],
+        )
+
+    def test_v5_rejects_invalid_localization_sensor_shape(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 4
+        data["localization_sensors"] = "enabled"
 
         with self.assertRaisesRegex(JsonDataMigrationError, "must be an object"):
             create_robot_config_migrator().migrate(data)
@@ -189,7 +245,7 @@ class TestRobotConfigMigration(unittest.TestCase):
 
             persisted = json.loads(target.read_text())
             self.assertEqual(manager.load_data(), persisted)
-            self.assertEqual(persisted["schema_version"], 4)
+            self.assertEqual(persisted["schema_version"], 5)
             self.assertIn("motors", persisted)
             self.assertNotIn("left_motor", persisted)
 
@@ -205,7 +261,7 @@ class TestRobotConfigMigration(unittest.TestCase):
                 migrator=create_robot_config_migrator(),
             )
 
-            self.assertEqual(manager.load_data()["schema_version"], 4)
+            self.assertEqual(manager.load_data()["schema_version"], 5)
             self.assertFalse(target.exists())
 
     def test_manager_does_not_overwrite_invalid_migration(self):

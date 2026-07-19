@@ -4,6 +4,7 @@ from app.schemas.robot.avoid_obstacles import AvoidParams
 from app.schemas.robot.battery import BatteryConfig
 from app.schemas.robot.distance import UltrasonicConfig
 from app.schemas.robot.led import LedConfig
+from app.schemas.robot.localization_sensors import LocalizationSensorsConfig
 from app.schemas.robot.motors import (
     GPIODCMotorConfig,
     I2CDCMotorConfig,
@@ -26,12 +27,12 @@ class HardwareConfig(BaseModel):
     """
 
     schema_version: Annotated[
-        Literal[4],
+        Literal[5],
         Field(
             title="Schema version",
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
-    ] = 4
+    ] = 5
 
     motion_control: Annotated[
         MotionControlConfig,
@@ -51,6 +52,16 @@ class HardwareConfig(BaseModel):
             description="Measured chassis geometry and drive-encoder calibration.",
         ),
     ] = AckermannOdometryConfig()
+
+    localization_sensors: Annotated[
+        LocalizationSensorsConfig,
+        Field(
+            title="Localization sensors",
+            description=(
+                "Disabled-by-default LiDAR, IMU, and drive-encoder acquisition."
+            ),
+        ),
+    ] = LocalizationSensorsConfig()
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],

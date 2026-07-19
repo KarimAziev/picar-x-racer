@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.services.control.car_service import CarService
     from app.services.sensors.battery_service import BatteryService
     from app.services.sensors.distance_service import DistanceService
+    from app.services.autonomy.sensor_publishers import LocalizationSensorService
 
 router = APIRouter()
 _log = Logger(name=__name__)
@@ -39,6 +40,10 @@ async def shutdown(
         "DistanceService", Depends(robot_deps.get_distance_service)
     ],
     led_service: Annotated["LEDService", Depends(robot_deps.get_led_service)],
+    sensor_service: Annotated[
+        "LocalizationSensorService",
+        Depends(robot_deps.get_localization_sensor_service),
+    ],
 ):
     """
     Initiates a graceful shutdown of the robot application's core services.
@@ -73,6 +78,12 @@ async def shutdown(
     except Exception as e:
         errors.append(str(e))
         _log.error("Failed to cleanup LED service: %s", e)
+
+    try:
+        await sensor_service.stop()
+    except Exception as e:
+        errors.append(str(e))
+        _log.error("Failed to cleanup localization sensor service: %s", e)
 
     if errors:
         return {"errors": errors, "success": False}

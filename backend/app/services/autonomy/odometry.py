@@ -17,11 +17,20 @@ class OdometryInputError(ValueError):
 @dataclass(frozen=True)
 class AckermannOdometryConfig:
     wheelbase_m: float
+    wheel_radius_m: float
+    encoder_ticks_per_revolution: int
+    gear_ratio: float = 1.0
     max_steering_age_seconds: float = 0.25
 
     def __post_init__(self) -> None:
         if not math.isfinite(self.wheelbase_m) or self.wheelbase_m <= 0:
             raise ValueError("wheelbase_m must be finite and greater than zero")
+        if not math.isfinite(self.wheel_radius_m) or self.wheel_radius_m <= 0:
+            raise ValueError("wheel_radius_m must be finite and greater than zero")
+        if self.encoder_ticks_per_revolution <= 0:
+            raise ValueError("encoder_ticks_per_revolution must be greater than zero")
+        if not math.isfinite(self.gear_ratio) or self.gear_ratio <= 0:
+            raise ValueError("gear_ratio must be finite and greater than zero")
         if (
             not math.isfinite(self.max_steering_age_seconds)
             or self.max_steering_age_seconds <= 0
@@ -90,9 +99,11 @@ class AckermannOdometryEstimator:
 
         dt_seconds = (timestamp - previous_timestamp) / 1_000_000_000
         wheel_revolutions = (
-            encoder.delta_ticks / encoder.ticks_per_revolution / encoder.gear_ratio
+            encoder.delta_ticks
+            / self.config.encoder_ticks_per_revolution
+            / self.config.gear_ratio
         )
-        distance_m = wheel_revolutions * 2 * math.pi * encoder.wheel_radius_m
+        distance_m = wheel_revolutions * 2 * math.pi * self.config.wheel_radius_m
         steering_angle = (
             steering.measured_angle_rad
             if steering.measured_angle_rad is not None

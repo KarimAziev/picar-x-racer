@@ -84,9 +84,6 @@ class EncoderState(FrozenMessage):
     header: MessageHeader
     ticks: int
     delta_ticks: int
-    ticks_per_revolution: Annotated[int, Field(gt=0)]
-    wheel_radius_m: PositiveFiniteFloat
-    gear_ratio: PositiveFiniteFloat = 1.0
 
 
 class SteeringState(FrozenMessage):
