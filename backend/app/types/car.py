@@ -23,6 +23,12 @@ class CarServiceState(PicarBaseState):
     distance: float
     autoMeasureDistanceMode: Union[bool, None]
     ledBlinking: bool
+    motionControlEnabled: bool
+    robotMode: str
+    motionGeneration: int
+    motionReason: Union[str, None]
+    emergencyStop: bool
+    motionFault: Union[str, None]
 
 
 class CarServiceBroadcastPayload(TypedDict):

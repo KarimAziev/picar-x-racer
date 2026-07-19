@@ -21,7 +21,10 @@ from app.services.autonomy.messages import (
     SafetySeverity,
 )
 from app.services.autonomy.motion_arbiter import MotionArbiter
-from app.services.autonomy.motion_control_service import MotionControlService
+from app.services.autonomy.motion_control_service import (
+    ModeTransitionError,
+    MotionControlService,
+)
 
 __all__ = [
     "ActuationCalibration",
@@ -42,4 +45,5 @@ __all__ = [
     "RobotMode",
     "SafetyConstraint",
     "SafetySeverity",
+    "ModeTransitionError",
 ]

@@ -155,6 +155,8 @@ class CarService:
         - "distance": The measured distance in centimeters.
         - "autoMeasureDistanceMode": Whether the auto measure distance mode is on.
         """
+        motion_service = self.motion_control_service
+        motion_result = motion_service.last_result if motion_service else None
         return {
             "speed": self.px.state["speed"],
             "direction": self.px.state["direction"],
@@ -166,6 +168,22 @@ class CarService:
             "distance": self.distance_service.distance,
             "autoMeasureDistanceMode": self.auto_measure_distance_mode,
             "ledBlinking": self.led_blinking,
+            "motionControlEnabled": motion_service is not None,
+            "robotMode": motion_service.mode.value if motion_service else "legacy",
+            "motionGeneration": (
+                motion_service.mode_generation if motion_service else 0
+            ),
+            "motionReason": (
+                motion_result.command.reason if motion_result is not None else None
+            ),
+            "emergencyStop": (
+                motion_service.mode == RobotMode.ESTOP if motion_service else False
+            ),
+            "motionFault": (
+                str(motion_service.last_error)
+                if motion_service and motion_service.last_error
+                else None
+            ),
         }
 
     @property
@@ -228,6 +246,10 @@ class CarService:
             "setLedInterval": self.handle_set_led_interval,
             "startLED": self.start_led_blinking,
             "stopLED": self.stop_led_blinking,
+            "emergencyStop": self.handle_emergency_stop,
+            "clearEmergencyStop": self.handle_clear_emergency_stop,
+            "clearMotionFault": self.handle_clear_motion_fault,
+            "setRobotMode": self.handle_set_robot_mode,
         }
 
         if action in calibration_actions_map:
@@ -319,6 +341,41 @@ class CarService:
             await self._submit_motion(0, 0, self._desired_steering_degrees)
             return
         await asyncio.to_thread(self.px.stop)
+
+    async def handle_emergency_stop(self, payload: Any = None) -> None:
+        reason = str(payload).strip() if payload is not None else "operator request"
+        if self.motion_control_service:
+            await self.motion_control_service.emergency_stop(reason)
+        else:
+            await asyncio.to_thread(self.px.stop)
+
+    async def handle_clear_emergency_stop(self, _: Any = None) -> None:
+        if not self.motion_control_service:
+            await self.connection_manager.error(
+                "Emergency-stop latching requires enabled motion control"
+            )
+            return
+        await self.motion_control_service.clear_emergency_stop()
+
+    async def handle_clear_motion_fault(self, _: Any = None) -> None:
+        if not self.motion_control_service:
+            await self.connection_manager.error("Motion control is not enabled")
+            return
+        await self.motion_control_service.clear_fault()
+
+    async def handle_set_robot_mode(self, payload: str) -> None:
+        if not self.motion_control_service:
+            await self.connection_manager.error("Motion control is not enabled")
+            return
+        try:
+            mode = RobotMode(payload)
+        except ValueError as error:
+            raise ValueError(f"Unknown robot mode: {payload}") from error
+        if mode in {RobotMode.ESTOP, RobotMode.FAULT}:
+            raise ValueError(
+                "Use the dedicated emergency-stop or fault operations for safety modes"
+            )
+        await self.motion_control_service.set_mode(mode)
 
     async def handle_set_servo_dir_angle(self, payload: float) -> None:
         angle = payload or 0

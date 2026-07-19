@@ -7,6 +7,7 @@ from app.services.autonomy import (
     ActuationCalibration,
     HardwareController,
     LinearActuatorTranslator,
+    ModeTransitionError,
     MotionArbiter,
     MotionControlService,
     MotionIntent,
@@ -167,6 +168,51 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.service.mode_generation, 2)
         self.assertIsInstance(self.service.last_error, OSError)
         self.assertEqual(self.hardware.calls[-1], ("stop", None))
+
+    async def test_emergency_stop_is_latched_until_explicitly_cleared(self) -> None:
+        await self.enter_manual_mode()
+        self.service.submit(self.intent())
+        await self.service.step()
+
+        stopped = await self.service.emergency_stop("operator button")
+
+        self.assertTrue(stopped.command.is_stop)
+        self.assertEqual(self.service.mode, RobotMode.ESTOP)
+        self.assertEqual(self.service.estop_reason, "operator button")
+        with self.assertRaisesRegex(ModeTransitionError, "latched"):
+            await self.service.set_mode(RobotMode.MANUAL)
+
+        disarmed = await self.service.clear_emergency_stop()
+
+        self.assertEqual(self.service.mode, RobotMode.DISARMED)
+        self.assertIsNone(self.service.estop_reason)
+        self.assertTrue(disarmed.command.is_stop)
+
+    async def test_clearing_estop_does_not_implicitly_rearm_motion(self) -> None:
+        await self.enter_manual_mode()
+        await self.service.emergency_stop("test")
+        await self.service.clear_emergency_stop()
+
+        result = self.service.submit(self.intent())
+
+        self.assertFalse(result.accepted)
+
+    async def test_fault_is_latched_and_can_only_clear_to_disarmed(self) -> None:
+        await self.enter_manual_mode()
+        self.service.submit(self.intent())
+        self.hardware.fail_forward = True
+        with self.assertRaises(OSError):
+            await self.service.step()
+
+        with self.assertRaisesRegex(ModeTransitionError, "fault is latched"):
+            await self.service.set_mode(RobotMode.MANUAL)
+
+        self.hardware.fail_forward = False
+        result = await self.service.clear_fault()
+
+        self.assertEqual(self.service.mode, RobotMode.DISARMED)
+        self.assertIsNone(self.service.last_error)
+        self.assertTrue(result.command.is_stop)
 
     async def test_periodic_loop_can_start_and_always_force_stops_on_shutdown(
         self,

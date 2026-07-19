@@ -40,7 +40,22 @@ export interface UpdatePayloadResponse {
   avoidObstacles: boolean;
   autoMeasureDistanceMode: boolean;
   ledBlinking: boolean;
+  motionControlEnabled: boolean;
+  robotMode: RobotMode;
+  motionGeneration: number;
+  motionReason: string | null;
+  emergencyStop: boolean;
+  motionFault: string | null;
 }
+
+export type RobotMode =
+  | "legacy"
+  | "disarmed"
+  | "manual"
+  | "autonomous"
+  | "calibration"
+  | "estop"
+  | "fault";
 
 export interface Modes {
   /**
@@ -91,6 +106,12 @@ export interface StoreState extends Gauges, Modes {
   motionHeartbeat: ReturnType<typeof setInterval> | null;
   requestedSpeed: number;
   requestedDirection: number;
+  motionControlEnabled: boolean;
+  robotMode: RobotMode;
+  motionGeneration: number;
+  motionReason: string | null;
+  emergencyStopActive: boolean;
+  motionFault: string | null;
 }
 
 const defaultGauges: Gauges = {
@@ -115,6 +136,12 @@ const defaultState: StoreState = {
   motionHeartbeat: null,
   requestedSpeed: 0,
   requestedDirection: 0,
+  motionControlEnabled: false,
+  robotMode: "legacy",
+  motionGeneration: 0,
+  motionReason: null,
+  emergencyStopActive: false,
+  motionFault: null,
 } as const;
 
 export interface WSMessageData {
@@ -162,6 +189,12 @@ export const useControllerStore = defineStore("controller", {
             this.maxSpeed = typedPayload.maxSpeed;
             this.avoidObstacles = typedPayload.avoidObstacles;
             this.ledBlinking = typedPayload.ledBlinking;
+            this.motionControlEnabled = typedPayload.motionControlEnabled;
+            this.robotMode = typedPayload.robotMode;
+            this.motionGeneration = typedPayload.motionGeneration;
+            this.motionReason = typedPayload.motionReason;
+            this.emergencyStopActive = typedPayload.emergencyStop;
+            this.motionFault = typedPayload.motionFault;
             settingsStore.data.robot.auto_measure_distance_mode =
               typedPayload.autoMeasureDistanceMode;
 
@@ -475,6 +508,21 @@ export const useControllerStore = defineStore("controller", {
       this.requestedSpeed = 0;
       this.requestedDirection = 0;
       this.sendMessage({ action: "stop" });
+    },
+    emergencyStop(reason = "operator request") {
+      this.clearMotionHeartbeat();
+      this.requestedSpeed = 0;
+      this.requestedDirection = 0;
+      this.sendMessage({ action: "emergencyStop", payload: reason });
+    },
+    clearEmergencyStop() {
+      this.sendMessage({ action: "clearEmergencyStop" });
+    },
+    clearMotionFault() {
+      this.sendMessage({ action: "clearMotionFault" });
+    },
+    setRobotMode(mode: Exclude<RobotMode, "legacy" | "estop" | "fault">) {
+      this.sendMessage({ action: "setRobotMode", payload: mode });
     },
     increaseMaxSpeed() {
       this.setMaxSpeed(this.maxSpeed + ACCELERATION);

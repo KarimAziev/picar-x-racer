@@ -15,6 +15,10 @@ from app.services.autonomy.messages import (
 from app.services.autonomy.motion_arbiter import MotionArbiter
 
 
+class ModeTransitionError(RuntimeError):
+    """Raised when attempting to bypass a latched safety mode."""
+
+
 class MotionControlService:
     """Own robot mode, run arbitration periodically, and feed one hardware writer."""
 
@@ -37,6 +41,7 @@ class MotionControlService:
         self._apply_lock = asyncio.Lock()
         self._last_result: Optional[ArbitrationResult] = None
         self._last_error: Optional[Exception] = None
+        self._estop_reason: Optional[str] = None
 
     @property
     def mode(self) -> RobotMode:
@@ -62,6 +67,10 @@ class MotionControlService:
     def control_period_seconds(self) -> float:
         return self._control_period_seconds
 
+    @property
+    def estop_reason(self) -> Optional[str]:
+        return self._estop_reason
+
     def submit(self, intent: MotionIntent) -> IntentSubmissionResult:
         """Submit against the current mode and its anti-replay generation."""
 
@@ -83,6 +92,43 @@ class MotionControlService:
     async def set_mode(self, mode: RobotMode) -> ArbitrationResult:
         """Invalidate old intents and apply the new mode's safe output immediately."""
 
+        if self._mode == RobotMode.ESTOP and mode != RobotMode.ESTOP:
+            raise ModeTransitionError(
+                "emergency stop is latched; clear it before changing mode"
+            )
+        if self._mode == RobotMode.FAULT and mode != RobotMode.FAULT:
+            raise ModeTransitionError("fault is latched; clear it before changing mode")
+        if mode == RobotMode.ESTOP:
+            return await self.emergency_stop("emergency stop requested")
+        return await self._set_mode_unchecked(mode)
+
+    async def emergency_stop(self, reason: str) -> ArbitrationResult:
+        """Latch emergency stop and synchronously apply a safe output."""
+
+        if not reason.strip():
+            raise ValueError("emergency stop reason must not be empty")
+        self._estop_reason = reason
+        if self._mode == RobotMode.FAULT:
+            return await self.step()
+        return await self._set_mode_unchecked(RobotMode.ESTOP)
+
+    async def clear_emergency_stop(self) -> ArbitrationResult:
+        """Clear an ESTOP into DISARMED; re-arming requires another transition."""
+
+        if self._mode != RobotMode.ESTOP:
+            raise ModeTransitionError("robot is not in emergency stop mode")
+        self._estop_reason = None
+        return await self._set_mode_unchecked(RobotMode.DISARMED)
+
+    async def clear_fault(self) -> ArbitrationResult:
+        """Attempt to clear a fault into DISARMED and re-assert hardware stop."""
+
+        if self._mode != RobotMode.FAULT:
+            raise ModeTransitionError("robot is not in fault mode")
+        self._last_error = None
+        return await self._set_mode_unchecked(RobotMode.DISARMED)
+
+    async def _set_mode_unchecked(self, mode: RobotMode) -> ArbitrationResult:
         if mode != self._mode:
             self._mode = mode
             self._mode_generation += 1
@@ -152,4 +198,4 @@ class MotionControlService:
             self._arbiter.clear()
 
 
-__all__ = ["MotionControlService"]
+__all__ = ["ModeTransitionError", "MotionControlService"]

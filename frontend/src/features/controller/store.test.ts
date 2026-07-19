@@ -57,4 +57,20 @@ describe("controller motion heartbeat", () => {
     vi.advanceTimersByTime(500);
     expect(websocket.send).toHaveBeenCalledTimes(callsAfterStop);
   });
+
+  it("cancels motion heartbeat before sending emergency stop", () => {
+    const store = useControllerStore();
+    store.initializeWebSocket();
+    store.move(50, 1);
+
+    store.emergencyStop("test button");
+
+    expect(websocket.send).toHaveBeenLastCalledWith({
+      action: "emergencyStop",
+      payload: "test button",
+    });
+    const callsAfterEstop = websocket.send.mock.calls.length;
+    vi.advanceTimersByTime(500);
+    expect(websocket.send).toHaveBeenCalledTimes(callsAfterEstop);
+  });
 });

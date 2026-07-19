@@ -140,6 +140,27 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(cast(float, self.hardware.calls[0][1]), 15.0)
         self.assertEqual(self.hardware.calls[-1], ("stop", None))
 
+    async def test_emergency_stop_handler_latches_until_clear(self) -> None:
+        await self.car.handle_move({"direction": 1, "speed": 40})
+
+        await self.car.handle_emergency_stop("web operator")
+
+        self.assertEqual(self.motion.mode, RobotMode.ESTOP)
+        self.assertEqual(self.motion.estop_reason, "web operator")
+        self.assertEqual(self.hardware.calls[-1], ("stop", None))
+
+        await self.car.handle_clear_emergency_stop()
+
+        self.assertEqual(self.motion.mode, RobotMode.DISARMED)
+
+    async def test_safety_modes_cannot_be_selected_through_generic_mode_action(
+        self,
+    ) -> None:
+        for mode in ["estop", "fault"]:
+            with self.subTest(mode=mode):
+                with self.assertRaisesRegex(ValueError, "dedicated"):
+                    await self.car.handle_set_robot_mode(mode)
+
 
 if __name__ == "__main__":
     unittest.main()
