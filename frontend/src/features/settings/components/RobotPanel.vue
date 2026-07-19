@@ -2,6 +2,14 @@
   <Fieldset legend="Board Info" toggleable :id="`${popupStore.tab}-board-info`">
     <BoardInfo />
   </Fieldset>
+  <Fieldset
+    legend="Localization Sensors"
+    toggleable
+    collapsed
+    :id="`${popupStore.tab}-localization-sensors`"
+  >
+    <SensorDiagnostics />
+  </Fieldset>
   <Fieldset legend="General" toggleable collapsed :id="popupStore.tab">
     <RobotSettings />
     <Divider />
@@ -41,6 +49,14 @@ const RobotConfig = defineAsyncComponent({
 
 const BoardInfo = defineAsyncComponent({
   loader: () => import("@/features/pinout/components/BoardInfo.vue"),
+  loadingComponent: FieldsetSkeleton,
+  delay: 0,
+  errorComponent: ErrorComponent,
+});
+
+const SensorDiagnostics = defineAsyncComponent({
+  loader: () =>
+    import("@/features/settings/components/robot/SensorDiagnostics.vue"),
   loadingComponent: FieldsetSkeleton,
   delay: 0,
   errorComponent: ErrorComponent,

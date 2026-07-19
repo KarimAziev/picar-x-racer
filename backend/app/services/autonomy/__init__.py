@@ -39,6 +39,11 @@ from app.services.autonomy.sensor_publishers import (
     LocalizationSensorService,
     UnavailableEncoderPublisher,
 )
+from app.services.autonomy.telemetry import (
+    SensorTelemetryStreamer,
+    make_telemetry_envelope,
+    parse_telemetry_channels,
+)
 from app.services.autonomy.topic_bus import (
     SubscriptionClosed,
     Topic,
@@ -71,6 +76,7 @@ __all__ = [
     "MotionControlService",
     "MotionIntent",
     "MotionLimits",
+    "SensorTelemetryStreamer",
     "MotionSource",
     "OdometryInputError",
     "RobotMode",
@@ -84,4 +90,6 @@ __all__ = [
     "TopicStats",
     "TopicSubscription",
     "UnavailableEncoderPublisher",
+    "make_telemetry_envelope",
+    "parse_telemetry_channels",
 ]

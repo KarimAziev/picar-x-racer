@@ -13,15 +13,23 @@ from app.schemas.autonomy.sensor_status import (
     SensorName,
     SensorPublisherStatus,
 )
+from app.schemas.autonomy.telemetry import (
+    LaserScanTelemetry,
+    TelemetryChannel,
+    TelemetryEnvelope,
+)
 
 __all__ = [
     "EncoderState",
     "ImuData",
     "LaserScan",
+    "LaserScanTelemetry",
     "LocalizationSensorStatus",
     "MessageHeader",
     "Odometry2D",
     "SensorName",
     "SensorPublisherStatus",
     "SteeringState",
+    "TelemetryChannel",
+    "TelemetryEnvelope",
 ]
