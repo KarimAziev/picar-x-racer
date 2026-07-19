@@ -20,6 +20,9 @@ from app.services.autonomy import (
     HardwareController,
     LinearActuatorTranslator,
     LaserScanConverter,
+    LidarSafetyEvaluator,
+    LidarSafetyService,
+    LidarSafetyZone,
     LidarPublisherService,
     LocalizationSensorService,
     IMUPublisherService,
@@ -279,6 +282,47 @@ def get_localization_sensor_service(
 
 
 @lru_cache(maxsize=1)
+def get_lidar_safety_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    motion_control_service: Annotated[
+        Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
+) -> Optional[LidarSafetyService]:
+    """Build fail-safe front-sector limiting only from explicit calibration."""
+
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    safety = config.lidar_safety
+    if not safety.enabled:
+        return None
+    if motion_control_service is None:
+        raise ValueError("LiDAR safety is enabled without motion control")
+    if safety.stop_distance_m is None or safety.slow_distance_m is None:
+        raise ValueError("LiDAR safety is enabled without measured distances")
+    max_forward_speed_mps = config.motion_control.max_forward_speed_mps
+    if max_forward_speed_mps is None:
+        raise ValueError("LiDAR safety is enabled without forward speed calibration")
+    lidar = config.localization_sensors.lidar
+    return LidarSafetyService(
+        topic_bus,
+        motion_control_service,
+        LidarSafetyEvaluator(
+            LidarSafetyZone(
+                front_half_angle_rad=math.radians(safety.front_half_angle_deg),
+                stop_distance_m=safety.stop_distance_m,
+                slow_distance_m=safety.slow_distance_m,
+                max_forward_speed_mps=max_forward_speed_mps,
+                sensor_x_m=lidar.transform.x_m,
+                sensor_y_m=lidar.transform.y_m,
+                sensor_yaw_rad=lidar.transform.yaw_rad,
+                min_obstacle_points=safety.min_obstacle_points,
+            )
+        ),
+        scan_timeout_seconds=safety.scan_timeout_ms / 1000,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_robot_settings_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
@@ -340,6 +384,7 @@ class LifespanAppDeps(TypedDict):
     topic_bus: TopicBus
     odometry_service: Optional[AckermannOdometryService]
     localization_sensor_service: LocalizationSensorService
+    lidar_safety_service: Optional[LidarSafetyService]
 
 
 async def get_lifespan_dependencies(
@@ -361,6 +406,9 @@ async def get_lifespan_dependencies(
     localization_sensor_service: Annotated[
         LocalizationSensorService, Depends(get_localization_sensor_service)
     ],
+    lidar_safety_service: Annotated[
+        Optional[LidarSafetyService], Depends(get_lidar_safety_service)
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -375,5 +423,6 @@ async def get_lifespan_dependencies(
         "topic_bus": topic_bus,
         "odometry_service": odometry_service,
         "localization_sensor_service": localization_sensor_service,
+        "lidar_safety_service": lidar_safety_service,
     }
     yield deps

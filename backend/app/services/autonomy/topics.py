@@ -5,6 +5,7 @@ from app.schemas.autonomy import (
     ImuData,
     LaserScan,
     Odometry2D,
+    SafetyState,
     SteeringState,
 )
 from app.services.autonomy.messages import ActuatorCommand
@@ -17,6 +18,7 @@ ENCODER_STATE = Topic("/encoder/state", EncoderState)
 STEERING_STATE = Topic("/steering/state", SteeringState)
 ODOMETRY = Topic("/odom", Odometry2D)
 MOTION_COMMANDED = Topic("/motion/commanded", ActuatorCommand)
+SAFETY_STATE = Topic("/safety/state", SafetyState)
 
 
 __all__ = [
@@ -25,5 +27,6 @@ __all__ = [
     "LIDAR_SCAN",
     "MOTION_COMMANDED",
     "ODOMETRY",
+    "SAFETY_STATE",
     "STEERING_STATE",
 ]

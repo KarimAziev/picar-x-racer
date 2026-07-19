@@ -6,7 +6,7 @@ rather, they trigger the cleanup methods of dependent services (battery, motor c
 distance sensing, etc.) that are part of the robot application.
 """
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Optional
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from app.services.sensors.battery_service import BatteryService
     from app.services.sensors.distance_service import DistanceService
     from app.services.autonomy.sensor_publishers import LocalizationSensorService
+    from app.services.autonomy.lidar_safety import LidarSafetyService
 
 router = APIRouter()
 _log = Logger(name=__name__)
@@ -43,6 +44,10 @@ async def shutdown(
     sensor_service: Annotated[
         "LocalizationSensorService",
         Depends(robot_deps.get_localization_sensor_service),
+    ],
+    lidar_safety_service: Annotated[
+        Optional["LidarSafetyService"],
+        Depends(robot_deps.get_lidar_safety_service),
     ],
 ):
     """
@@ -84,6 +89,13 @@ async def shutdown(
     except Exception as e:
         errors.append(str(e))
         _log.error("Failed to cleanup localization sensor service: %s", e)
+
+    if lidar_safety_service:
+        try:
+            await lidar_safety_service.stop()
+        except Exception as e:
+            errors.append(str(e))
+            _log.error("Failed to cleanup LiDAR safety service: %s", e)
 
     if errors:
         return {"errors": errors, "success": False}

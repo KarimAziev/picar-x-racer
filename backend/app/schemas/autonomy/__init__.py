@@ -6,6 +6,7 @@ from app.schemas.autonomy.messages import (
     LaserScan,
     MessageHeader,
     Odometry2D,
+    SafetyState,
     SteeringState,
 )
 from app.schemas.autonomy.sensor_status import (
@@ -29,6 +30,7 @@ __all__ = [
     "Odometry2D",
     "SensorName",
     "SensorPublisherStatus",
+    "SafetyState",
     "SteeringState",
     "TelemetryChannel",
     "TelemetryEnvelope",

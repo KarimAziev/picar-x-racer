@@ -50,6 +50,18 @@
       <span class="font-semibold">Odometry:</span>
       {{ odometrySummary }}
     </div>
+    <div
+      v-if="safetySummary"
+      class="rounded-lg px-3 py-2 text-xs"
+      :class="
+        safetyBlocked
+          ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200'
+          : 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200'
+      "
+    >
+      <span class="font-semibold">Forward safety:</span>
+      {{ safetySummary }}
+    </div>
   </div>
 </template>
 
@@ -106,6 +118,18 @@ const odometrySummary = computed(() => {
   if (!envelope || envelope.channel !== "odometry") return null;
   const { x_m, y_m, yaw_rad, linear_speed_mps } = envelope.payload;
   return `x ${formatNumber(x_m)} m · y ${formatNumber(y_m)} m · yaw ${formatNumber(yaw_rad)} rad · ${formatNumber(linear_speed_mps)} m/s`;
+});
+
+const safetyBlocked = computed(() => {
+  const envelope = store.latest.safety;
+  return envelope?.channel === "safety" && envelope.payload.forward_blocked;
+});
+
+const safetySummary = computed(() => {
+  const envelope = store.latest.safety;
+  if (!envelope || envelope.channel !== "safety") return null;
+  if (envelope.payload.reason) return envelope.payload.reason;
+  return `clear · up to ${formatNumber(envelope.payload.max_forward_speed_mps)} m/s`;
 });
 
 onMounted(() => {

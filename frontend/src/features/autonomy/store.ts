@@ -5,7 +5,7 @@ import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import { retrieveError } from "@/util/error";
 
 export type SensorName = "lidar" | "imu" | "encoder";
-export type TelemetryChannel = SensorName | "odometry";
+export type TelemetryChannel = SensorName | "odometry" | "safety";
 
 export interface SensorPublisherStatus {
   sensor: SensorName;
@@ -69,11 +69,21 @@ export interface OdometryTelemetry {
   yaw_rate_radps: number;
 }
 
+export interface SafetyTelemetry {
+  header: MessageHeader;
+  forward_blocked: boolean;
+  max_forward_speed_mps: number;
+  nearest_obstacle_m: number | null;
+  considered_points: number;
+  reason: string | null;
+}
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
   | BaseTelemetryEnvelope<"encoder", EncoderTelemetry>
-  | BaseTelemetryEnvelope<"odometry", OdometryTelemetry>;
+  | BaseTelemetryEnvelope<"odometry", OdometryTelemetry>
+  | BaseTelemetryEnvelope<"safety", SafetyTelemetry>;
 
 export interface State {
   loading: boolean;

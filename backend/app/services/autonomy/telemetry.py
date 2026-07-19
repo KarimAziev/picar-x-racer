@@ -14,7 +14,13 @@ from typing import (
     cast,
 )
 
-from app.schemas.autonomy import EncoderState, ImuData, LaserScan, Odometry2D
+from app.schemas.autonomy import (
+    EncoderState,
+    ImuData,
+    LaserScan,
+    Odometry2D,
+    SafetyState,
+)
 from app.schemas.autonomy.telemetry import (
     LaserScanTelemetry,
     TelemetryChannel,
@@ -22,7 +28,13 @@ from app.schemas.autonomy.telemetry import (
     json_safe_ranges,
 )
 from app.services.autonomy.topic_bus import Topic, TopicBus, TopicSubscription
-from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN, ODOMETRY
+from app.services.autonomy.topics import (
+    ENCODER_STATE,
+    IMU_DATA,
+    LIDAR_SCAN,
+    ODOMETRY,
+    SAFETY_STATE,
+)
 
 
 TelemetrySink = Callable[[Dict[str, Any]], Awaitable[None]]
@@ -32,6 +44,7 @@ TELEMETRY_TOPICS: Mapping[TelemetryChannel, Topic[Any]] = {
     "imu": IMU_DATA,
     "encoder": ENCODER_STATE,
     "odometry": ODOMETRY,
+    "safety": SAFETY_STATE,
 }
 DEFAULT_TELEMETRY_CHANNELS: Tuple[TelemetryChannel, ...] = tuple(
     TELEMETRY_TOPICS.keys()
@@ -84,6 +97,7 @@ def make_telemetry_envelope(
             "imu": ImuData,
             "encoder": EncoderState,
             "odometry": Odometry2D,
+            "safety": SafetyState,
         }
         expected_type = expected_types[channel]
         if not isinstance(message, expected_type):

@@ -114,6 +114,15 @@ export interface LocalizationSensorsConfig {
   };
 }
 
+export interface LidarSafetyConfig {
+  enabled: boolean;
+  front_half_angle_deg: number;
+  stop_distance_m: number | null;
+  slow_distance_m: number | null;
+  scan_timeout_ms: number;
+  min_obstacle_points: number;
+}
+
 export type CalibrationData = Partial<ServoCalibrationData> &
   MotorsCalibrationData;
 
@@ -131,6 +140,7 @@ export interface Data extends ServoData, MotorsData {
   motion_control: MotionControlConfig;
   ackermann_odometry: AckermannOdometryConfig;
   localization_sensors: LocalizationSensorsConfig;
+  lidar_safety: LidarSafetyConfig;
   led: LEDConfig;
   batteries: Battery[];
 }
@@ -230,6 +240,14 @@ const defaultState: State = {
         frame_id: "encoder",
         sample_frequency_hz: 100,
       },
+    },
+    lidar_safety: {
+      enabled: false,
+      front_half_angle_deg: 35,
+      stop_distance_m: null,
+      slow_distance_m: null,
+      scan_timeout_ms: 500,
+      min_obstacle_points: 2,
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

@@ -47,8 +47,12 @@ async def stream_localization_telemetry(
     topic_bus: Annotated[TopicBus, Depends(robot_deps.get_robot_topic_bus)],
     channels: Annotated[
         str,
-        Query(description="Comma-separated lidar, imu, encoder, and odometry channels"),
-    ] = "lidar,imu,encoder,odometry",
+        Query(
+            description=(
+                "Comma-separated lidar, imu, encoder, odometry, and safety channels"
+            )
+        ),
+    ] = "lidar,imu,encoder,odometry,safety",
     rate_hz: Annotated[
         float,
         Query(ge=0.5, le=30, description="Maximum browser telemetry rate"),

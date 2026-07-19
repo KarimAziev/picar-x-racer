@@ -114,11 +114,25 @@ class Odometry2D(FrozenMessage):
         return frame_id
 
 
+class SafetyState(FrozenMessage):
+    """Current forward-sector safety decision exposed to operators."""
+
+    header: MessageHeader
+    forward_blocked: bool
+    max_forward_speed_mps: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    nearest_obstacle_m: Optional[Annotated[float, Field(ge=0, allow_inf_nan=False)]] = (
+        None
+    )
+    considered_points: Annotated[int, Field(ge=0)] = 0
+    reason: Optional[str] = None
+
+
 __all__ = [
     "EncoderState",
     "ImuData",
     "LaserScan",
     "MessageHeader",
     "Odometry2D",
+    "SafetyState",
     "SteeringState",
 ]

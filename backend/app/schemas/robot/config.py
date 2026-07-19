@@ -12,6 +12,7 @@ from app.schemas.robot.motors import (
 )
 from app.schemas.robot.motion_control import MotionControlConfig
 from app.schemas.robot.odometry import AckermannOdometryConfig
+from app.schemas.robot.safety import LidarSafetyConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.schemas.robot.servos import (
     cross_field_validators as servo_cross_field_validators,
@@ -62,6 +63,14 @@ class HardwareConfig(BaseModel):
             ),
         ),
     ] = LocalizationSensorsConfig()
+
+    lidar_safety: Annotated[
+        LidarSafetyConfig,
+        Field(
+            title="LiDAR forward safety",
+            description="Fail-safe front-sector speed limiting and stop behavior.",
+        ),
+    ] = LidarSafetyConfig()
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],
@@ -162,6 +171,13 @@ class HardwareConfig(BaseModel):
         names = [battery.name.strip().casefold() for battery in self.batteries]
         if len(names) != len(set(names)):
             raise ValueError("Battery names must be unique")
+        if self.lidar_safety.enabled:
+            if not self.motion_control.enabled:
+                raise ValueError("LiDAR safety requires motion control to be enabled")
+            if not self.localization_sensors.lidar.enabled:
+                raise ValueError(
+                    "LiDAR safety requires the LiDAR publisher to be enabled"
+                )
         return self
 
 

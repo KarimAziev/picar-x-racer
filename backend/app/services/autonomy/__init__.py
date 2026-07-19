@@ -31,6 +31,12 @@ from app.services.autonomy.motion_control_service import (
     ModeTransitionError,
     MotionControlService,
 )
+from app.services.autonomy.lidar_safety import (
+    LidarSafetyDecision,
+    LidarSafetyEvaluator,
+    LidarSafetyService,
+    LidarSafetyZone,
+)
 from app.services.autonomy.sensor_publishers import (
     EncoderPublisherService,
     IMUPublisherService,
@@ -71,6 +77,10 @@ __all__ = [
     "LinearActuatorTranslator",
     "LaserScanConverter",
     "LidarPublisherService",
+    "LidarSafetyDecision",
+    "LidarSafetyEvaluator",
+    "LidarSafetyService",
+    "LidarSafetyZone",
     "LocalizationSensorService",
     "MotionArbiter",
     "MotionControlService",
