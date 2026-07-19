@@ -62,6 +62,7 @@
       <span class="font-semibold">Forward safety:</span>
       {{ safetySummary }}
     </div>
+    <LidarScanPreview />
   </div>
 </template>
 
@@ -72,6 +73,7 @@ import {
   type SensorPublisherStatus,
   type SensorName,
 } from "@/features/autonomy";
+import LidarScanPreview from "@/features/settings/components/robot/LidarScanPreview.vue";
 
 const store = useAutonomyStore();
 let statusTimer: ReturnType<typeof setInterval> | null = null;
