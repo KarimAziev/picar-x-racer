@@ -241,6 +241,14 @@ export const useStore = defineStore("settings", {
         messager.handleError(error);
       }
     },
+    async stopSpeaking() {
+      const messager = useMessagerStore();
+      try {
+        await appApi.post("/api/tts/stop");
+      } catch (error) {
+        messager.handleError(error);
+      }
+    },
     cycleText(direction: number) {
       const messager = useMessagerStore();
       if (!this.text) {

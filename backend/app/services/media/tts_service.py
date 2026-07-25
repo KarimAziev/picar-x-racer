@@ -1,45 +1,76 @@
-from app.core.logger import Logger
-from typing import Dict, List
+"""Application service for interruptible text-to-speech playback."""
 
-from app.exceptions.tts import TextToSpeechException
-from google_speech_pyplay import LANGUAGES_OPTIONS, Speech
+from app.core.logger import Logger
+from app.exceptions.tts import TextToSpeechRequestError, TextToSpeechUnavailable
+from gspeech import (
+    GSpeechError,
+    LanguageOption,
+    SpeechHandle,
+    SpeechPlayer,
+    SpeechPolicy,
+    available_languages,
+)
 
 _log = Logger(__name__)
 
 
 class TTSService:
-    """
-    The TTSService class provides methods for text-to-speech functionality,
-    using Google Translate TTS (Text To Speech) API.
-    """
+    """Submit, interrupt, and stop Google Translate text-to-speech playback."""
 
-    def __init__(self) -> None:
-        """
-        Initializes the TTSService instance.
-        """
-        self.is_playing = False
+    def __init__(self, player: SpeechPlayer | None = None) -> None:
+        self._player = player if player is not None else SpeechPlayer()
 
     @staticmethod
-    def available_languages() -> List[Dict[str, str]]:
-        return LANGUAGES_OPTIONS
+    def available_languages() -> tuple[LanguageOption, ...]:
+        """Return supported languages in the format expected by the API."""
+        return available_languages()
 
-    def text_to_speech(self, words: str, lang="en") -> None:
-        """
-        Convert the given text to speech and play it.
+    @property
+    def is_playing(self) -> bool:
+        """Return whether the player is currently producing audio."""
+        return self._player.is_playing
 
-        Args:
-            words (str): The text to convert to speech.
-            lang (str): The language of the text. Default is "en".
+    def speak(self, text: str, lang: str = "en") -> SpeechHandle:
         """
-        _log.info(f"text-to-speech: {words} lang {lang}")
-        if self.is_playing:
-            raise TextToSpeechException("Already speaking")
+        Submit speech without blocking.
+
+        A new request replaces any active or queued speech. The returned handle
+        can be used by non-HTTP callers to observe or cancel this request.
+        """
         try:
-            speech = Speech(words, lang)
-            self.is_playing = True
-            speech.play()
-        except Exception:
-            _log.error("Unexpected text to speech error", exc_info=True)
-            raise
-        finally:
-            self.is_playing = False
+            handle = self._player.speak(
+                text,
+                lang,
+                policy=SpeechPolicy.REPLACE,
+            )
+        except ValueError as error:
+            raise TextToSpeechRequestError(str(error)) from error
+        except GSpeechError as error:
+            raise TextToSpeechUnavailable(str(error)) from error
+
+        _log.info(
+            "Text-to-speech request accepted: id=%s lang=%s chars=%d",
+            handle.id,
+            handle.lang,
+            len(handle.text),
+        )
+        return handle
+
+    def text_to_speech(self, text: str, lang: str = "en") -> SpeechHandle:
+        """Backward-compatible alias for :meth:`speak`."""
+        return self.speak(text, lang)
+
+    def stop(
+        self,
+        *,
+        wait: bool = False,
+        timeout: float | None = None,
+    ) -> bool:
+        """Interrupt active speech and discard any pending request."""
+        stopped = self._player.stop(wait=wait, timeout=timeout)
+        _log.info("Text-to-speech stop requested: interrupted=%s", stopped)
+        return stopped
+
+    def close(self, *, timeout: float | None = None) -> None:
+        """Release the player and its worker resources."""
+        self._player.close(timeout=timeout)
