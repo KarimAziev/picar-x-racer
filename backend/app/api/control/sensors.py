@@ -63,6 +63,33 @@ async def _wait_for_disconnect(websocket: WebSocket) -> None:
             return
 
 
+async def _close_telemetry_websocket(
+    websocket: WebSocket, *, peer_disconnected: bool
+) -> None:
+    """Close a telemetry socket when the ASGI connection is still open.
+
+    The receive and send tasks finish independently.  A browser disconnect can
+    therefore race with this handler's cleanup, and Uvicorn rejects a second
+    ``websocket.close`` ASGI message.  ``client_state`` covers the normal
+    disconnect path; the RuntimeError guard handles the small remaining race
+    between checking state and sending the close frame.
+    """
+    if peer_disconnected:
+        return
+    if (
+        websocket.application_state != WebSocketState.CONNECTED
+        or websocket.client_state != WebSocketState.CONNECTED
+    ):
+        return
+
+    try:
+        await websocket.close()
+    except RuntimeError as error:
+        if "Unexpected ASGI message 'websocket.close'" not in str(error):
+            raise
+        _log.debug("Telemetry websocket was already closed during cleanup")
+
+
 @router.websocket("/px/ws/telemetry")
 async def stream_localization_telemetry(
     websocket: WebSocket,
@@ -100,14 +127,17 @@ async def stream_localization_telemetry(
         _wait_for_disconnect(websocket),
         name="sensor-telemetry-disconnect",
     )
+    peer_disconnected = False
     try:
         done, _ = await asyncio.wait(
             (send_task, disconnect_task),
             return_when=asyncio.FIRST_COMPLETED,
         )
+        peer_disconnected = disconnect_task in done
         for task in done:
             task.result()
     except WebSocketDisconnect:
+        peer_disconnected = True
         pass
     except asyncio.CancelledError:
         raise
@@ -118,5 +148,7 @@ async def stream_localization_telemetry(
             if not task.done():
                 task.cancel()
         await asyncio.gather(send_task, disconnect_task, return_exceptions=True)
-        if websocket.application_state == WebSocketState.CONNECTED:
-            await websocket.close()
+        await _close_telemetry_websocket(
+            websocket,
+            peer_disconnected=peer_disconnected,
+        )
