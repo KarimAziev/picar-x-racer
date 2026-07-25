@@ -107,10 +107,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         try:
             if music_file_service:
-                await music_file_service.music_service.cleanup()
+                await music_file_service.music_service.close()
         except asyncio.CancelledError:
             _log.warning("Cancelled while cleaning up music_file_service.")
             raise
+        except Exception:
+            _log.error("Failed to clean up music_file_service.", exc_info=True)
 
         try:
             if detection_manager:

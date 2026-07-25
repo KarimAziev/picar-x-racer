@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from app.core.logger import Logger
 from app.util.video_utils import letterbox
-from google_speech_pyplay.speech import Generator
 
 logger = Logger(__name__)
 
@@ -205,7 +205,7 @@ class _DummyBoxes:
         self._detections = detections
         self.names = names
 
-    def __iter__(self) -> Generator[_DummyDetection, Any, None]:
+    def __iter__(self) -> Iterator[_DummyDetection]:
         for det in self._detections:
             yield _DummyDetection(det, self.names)
 

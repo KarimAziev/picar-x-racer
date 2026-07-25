@@ -1,435 +1,332 @@
+"""Playlist and player-state management for local music playback."""
+
+from __future__ import annotations
+
 import asyncio
-import os
-import sys
+import threading
 import time
 from os import path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from app.core.logger import Logger
-from app.exceptions.music import MusicInitError, MusicPlayerError
+from app.exceptions.music import MusicPlayerError
+from app.schemas.file_filter import FileDetail
 from app.schemas.music import MusicPlayerMode
-from app.services.media.music_file_service import FileDetail
+from app.services.media.music_playback import (
+    MiniaudioMusicPlayback,
+    MusicPlayback,
+    PlaybackEvent,
+)
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
-
-original_stdout = sys.stdout
-try:
-    sys.stdout = open(os.devnull, "w")
-    import pygame
-finally:
-    sys.stdout.close()
-    sys.stdout = original_stdout
-
 
 _log = Logger(__name__)
 
 
 class MusicService:
-    """
-    A service to manage music playback and playlists.
-
-    The `MusicService` handles functionalities such as:
-        - Loading and updating playlists.
-        - Controlling playback (play, pause, stop, next/prev track).
-        - Configuring playback modes (single track, loop, queue).
-        - Broadcasting the player state to connected clients.
-    """
+    """Manage a playlist and delegate audio output to an interruptible player."""
 
     def __init__(
         self,
-        connection_manager: "ConnectionService",
-        tracks: List[FileDetail],
+        connection_manager: ConnectionService,
+        tracks: list[FileDetail],
         mode: MusicPlayerMode,
         music_dir: str,
         default_music_dir: str,
+        playback: MusicPlayback | None = None,
     ) -> None:
-        """
-        Initializes the MusicService with required file and connection services.
-        """
-
         self.default_music_dir = default_music_dir
         self.music_dir = music_dir
         self.connection_manager = connection_manager
-        self.playlist: List[str] = [item.path for item in tracks]
+        self.playlist = [item.path for item in tracks]
         self.details = {item.path: item for item in tracks}
-        self.track = (
-            self.playlist[0] if len(self.playlist) > 0 else None
-        )  # current track
-        self.duration: float = (
+        self.track = self.playlist[0] if self.playlist else None
+        self.duration = (
             0.0 if self.track is None else self.get_track_duration(self.track)
-        )  # total duration of current track in seconds
-        self.mode: MusicPlayerMode = mode
-        self.position = 0  # position in seconds
+        )
+        self.mode = mode
+        self.position = 0.0
         self.is_playing = False
-        self.last_update_time = time.time()
+        self.last_update_time = time.monotonic()
         self.stop_event = asyncio.Event()
-        self.play_task: Optional[asyncio.Task] = None
-        self.pygame = pygame
+        self.play_task: asyncio.Task[None] | None = None
+        self._playback = playback if playback is not None else MiniaudioMusicPlayback()
+        self._state_lock = threading.RLock()
 
-    def get_current_position(self) -> Union[int, float]:
-        """
-        Calculates and returns the current playback position of the active track.
-
-        Returns:
-            float: The current playback position in seconds.
-        """
-
-        if self.is_playing:
-            self.position += time.time() - self.last_update_time
-        self.last_update_time = time.time()
-        return self.position
+    def get_current_position(self) -> float:
+        """Return the current playback position in seconds."""
+        with self._state_lock:
+            now = time.monotonic()
+            if self.is_playing:
+                self.position += max(0.0, now - self.last_update_time)
+                if self.duration > 0:
+                    self.position = min(self.position, self.duration)
+            self.last_update_time = now
+            return self.position
 
     def get_music_directory(self, filename: str) -> str:
-        """
-        Retrieves the directory of a specified music file.
-
-        Args:
-            filename: Name of the music file.
-
-        Raises:
-            FileNotFoundError: If the file doesn't exist.
-
-        Returns:
-            str: Directory path of the music file.
-        """
-
+        """Return the user or bundled directory containing a music file."""
         user_file = path.join(self.music_dir, filename)
         if path.exists(user_file):
             return self.music_dir
-        elif path.exists(path.join(self.default_music_dir, filename)):
+
+        default_file = path.join(self.default_music_dir, filename)
+        if path.exists(default_file):
             return self.default_music_dir
-        else:
-            _log.error("The file '%s' was not found", user_file)
-            raise FileNotFoundError("File not found")
+
+        _log.error("The music file '%s' was not found", user_file)
+        raise FileNotFoundError("File not found")
 
     def get_track_duration(self, track: str) -> float:
-        """
-        Retrieves the duration of a specified music track.
-
-        Args:
-            track (str): The name of the track.
-
-        Returns:
-            float: The duration of the track in seconds.
-        """
-
+        """Return cached duration metadata for a track."""
         file_detail = self.details.get(track)
-        duration = file_detail.duration if file_detail else None
-
-        return duration or 0.0
+        return file_detail.duration or 0.0 if file_detail else 0.0
 
     def music_track_to_absolute(self, track: str) -> str:
-        """
-        Converts a music track's name to its absolute file path.
-
-        Args:
-            track (str): The name of the music track.
-
-        Returns:
-            str: The absolute file path of the track.
-        """
-
-        dir = self.get_music_directory(track)
-        return path.join(dir, track)
+        """Resolve a playlist track to an absolute file path."""
+        directory = self.get_music_directory(track)
+        return path.join(directory, track)
 
     async def cancel_broadcast_task(self) -> None:
-        """
-        Cancels the currently running broadcast task, if active.
+        """Cancel the periodic state broadcaster if it is running."""
+        task = self.play_task
+        if task is None:
+            _log.info("Skipping cancellation of the music player task")
+            return
 
-        This method unsets the stop event and ensures proper cleanup after
-        the task cancellation.
-        """
-
-        if self.play_task:
-            _log.info("Cancelling music player task")
-            try:
-                self.stop_event.set()
-                self.play_task.cancel()
-                await self.play_task
-            except asyncio.CancelledError:
-                _log.info("Music player task was cancelled")
-                self.play_task = None
-            finally:
-                self.stop_event.clear()
-        else:
-            _log.info("Skipping cancelling music player task")
+        _log.info("Cancelling music player task")
+        self.stop_event.set()
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            _log.info("Music player task was cancelled")
+        except Exception:
+            _log.error("Music player task failed during cleanup", exc_info=True)
+        finally:
+            self.play_task = None
+            self.stop_event.clear()
 
     @property
-    def current_state(self) -> Dict[str, Any]:
-        """
-        Returns key metrics of the current state as a dictionary.
-
-        The state includes details such as the currently playing track, playback position,
-        playback mode, and whether or not music is playing.
-        """
-        return {
-            "track": self.track,
-            "position": round(self.get_current_position()),
-            "is_playing": self.is_playing,
-            "duration": self.duration,
-            "mode": self.mode,
-        }
+    def current_state(self) -> dict[str, Any]:
+        """Return the state serialized by the music API and WebSocket."""
+        with self._state_lock:
+            return {
+                "track": self.track,
+                "position": round(self.get_current_position()),
+                "is_playing": self.is_playing,
+                "duration": self.duration,
+                "mode": self.mode,
+            }
 
     async def broadcast_state(self) -> None:
-        """
-        Broadcasts the current player state to all connected clients.
-
-        The state includes details such as the currently playing track, playback position,
-        playback mode, and whether or not music is playing.
-        """
+        """Broadcast the current player state to all connected clients."""
         await self.connection_manager.broadcast_json(
             {"type": "player", "payload": self.current_state}
         )
 
-    def update_tracks(self, files_details: List[FileDetail]) -> None:
-        """
-        Updates the playlist with a new track order.
+    def update_tracks(self, files_details: list[FileDetail]) -> None:
+        """Replace playlist metadata while preserving a valid current track."""
+        with self._state_lock:
+            new_tracks = [item.path for item in files_details]
+            self.playlist = new_tracks
+            self.details = {item.path: item for item in files_details}
+            _log.debug("Updated music playlist: tracks=%d", len(new_tracks))
 
-        Args:
-            files_details: The new list of tracks.
+            if self.track not in new_tracks:
+                was_playing = self.is_playing
+                self._playback.stop()
+                self.is_playing = False
+                self.track = new_tracks[0] if new_tracks else None
+                self.position = 0.0
+                self.duration = (
+                    self.get_track_duration(self.track) if self.track else 0.0
+                )
+                if was_playing and self.track is not None:
+                    self._start_playing_current_track()
+            elif self.track is not None:
+                self.duration = self.get_track_duration(self.track)
 
-        Behavior:
-            If the currently playing track is removed from the playlist,
-            playback will stop or advance to the next available track.
-        """
-        new_tracks = [item.path for item in files_details]
-        details = {item.path: item for item in files_details}
-        _log.debug("new_tracks=%s", new_tracks)
-
-        track = self.track
-        if track is not None and not track in new_tracks:
-            self.next_track()
-            if self.track == track and self.is_playing:
-                self.stop_playing()
-                self.track = new_tracks[0] if len(new_tracks) > 0 else None
-        elif not self.is_playing:
-            self.track = new_tracks[0] if len(new_tracks) > 0 else None
-            self.position = 0
-
-        self.playlist = new_tracks
-        self.details = details
-        if self.track:
-            self.duration = self.get_track_duration(self.track)
+            self.last_update_time = time.monotonic()
 
     def start_broadcast_task(self) -> None:
-        """
-        Starts a background task to periodically broadcast the player state.
-        """
+        """Start periodic player-state broadcasts once."""
+        if self.play_task is not None and not self.play_task.done():
+            return
         self.play_task = asyncio.create_task(self.broadcast_loop())
 
-    def pygame_mixer_ensure(self) -> None:
-        """
-        Ensures the pygame mixer is initialized properly.
-
-        This method reinitializes the mixer in case it is not already initialized,
-        to avoid errors during playback operations.
-        """
-
-        try:
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
-        except pygame.error as err:
-            _log.error("Failed to initialize pygame mixer: %s", err)
-            raise MusicInitError(str(err))
-
     def toggle_playing(self) -> None:
-        """
-        Toggles playback (play or pause) for the current track.
+        """Pause active playback or resume/start the selected track."""
+        with self._state_lock:
+            if self.is_playing:
+                self.get_current_position()
+                self._playback.pause()
+                self.is_playing = False
+                return
 
-        Raises:
-            If no music track is loaded.
-        """
-        self.pygame_mixer_ensure()
-        if self.is_playing:
-            self.pygame.mixer.music.pause()
-        else:
-            if not self.pygame.mixer.music.get_busy():
-                if self.track is None:
-                    raise MusicPlayerError("No music track.")
-                file_path = self.music_track_to_absolute(self.track)
-                try:
-                    self.pygame.mixer.music.load(file_path)
-                    self.pygame.mixer.music.play(start=self.position)
-                except (ValueError, RuntimeError, SystemError) as e:
-                    raise MusicPlayerError(f"{e}")
+            if self.track is None:
+                raise MusicPlayerError("No music track.")
+
+            if self._playback.can_resume:
+                self._playback.resume()
             else:
-                self.pygame.mixer.music.unpause()
+                file_path = self.music_track_to_absolute(self.track)
+                self._playback.play(file_path, self.position)
 
-        self.is_playing = not self.is_playing
+            self.last_update_time = time.monotonic()
+            self.is_playing = True
 
     def stop_playing(self) -> None:
-        """
-        Stops playback and resets the playback position to the beginning.
-
-        This method halts playback of the current track, resets the position to 0,
-        and updates the playback state to indicate that no music is currently playing.
-        """
-        if self.is_playing:
-            self.pygame_mixer_ensure()
-            self.pygame.mixer.music.stop()
+        """Stop playback and reset the selected track to its beginning."""
+        with self._state_lock:
+            self._playback.stop()
             self.is_playing = False
-        self.position = 0
+            self.position = 0.0
+            self.last_update_time = time.monotonic()
 
     def update_position(self, position: float) -> None:
-        """
-        Updates the current playback position of the currently playing track.
+        """Seek active playback or set the next resume/start position."""
+        with self._state_lock:
+            next_position = max(0.0, position)
+            if self.duration > 0:
+                next_position = min(next_position, self.duration)
+            self.position = next_position
 
-        Args:
-            position (float): The position in seconds to set for the playback.
+            if self.is_playing and self.track is not None:
+                file_path = self.music_track_to_absolute(self.track)
+                self.is_playing = False
+                self._playback.play(file_path, self.position)
+                self.is_playing = True
+            elif self._playback.can_resume:
+                self._playback.stop()
 
-        Behavior:
-            If a track is playing, the playback will seek to the specified position.
-            Otherwise, the position is simply updated.
-        """
-        self.position = position
-        if self.is_playing and self.track:
-            self.pygame_mixer_ensure()
-            self.pygame.mixer.music.set_pos(self.position)
+            self.last_update_time = time.monotonic()
 
     def update_mode(self, mode: MusicPlayerMode) -> None:
-        """
-        Updates the playback mode of the music player.
-
-        Args:
-            mode (MusicPlayerMode): The desired playback mode (e.g., LOOP, SINGLE, QUEUE).
-        """
-        self.mode = mode
+        """Set the playlist completion policy."""
+        with self._state_lock:
+            self.mode = mode
 
     def play_track(self, track: str) -> None:
-        """
-        Plays a specified track from the playlist.
-
-        Args:
-            track (str): The name of the track to be played.
-
-        Behavior:
-            The current playback is stopped, the specified track is loaded,
-            and playback starts from the beginning of the track.
-        """
-        self.stop_playing()
-
-        self.track = track
-        self.position = 0
-        self.duration = self.get_track_duration(self.track)
-        self.start_playing_current_track()
+        """Select and immediately play a track from its beginning."""
+        with self._state_lock:
+            self._playback.stop()
+            self.is_playing = False
+            self.track = track
+            self.position = 0.0
+            self.duration = self.get_track_duration(track)
+            self._start_playing_current_track()
 
     def next_track(self) -> None:
-        """
-        Switches to the next track in the playlist.
-
-        Behavior:
-            If the current track is the last one in the playlist, the playback will loop
-            back to the first track (if the mode allows). If the mode is QUEUE and
-            the end of the queue is reached, playback will stop.
-        """
-        if not self.playlist:
-            return
-        current_index = (
-            self.playlist.index(self.track) if self.track in self.playlist else -1
-        )
-        next_index = (current_index + 1) % len(self.playlist)
-        self.track = self.playlist[next_index]
-        self.position = 0
-        self.duration = self.get_track_duration(self.track)
-
-        if self.is_playing:
-            self.start_playing_current_track()
+        """Select the next track, preserving the current play/pause state."""
+        with self._state_lock:
+            if not self.playlist:
+                return
+            was_playing = self.is_playing
+            current_index = (
+                self.playlist.index(self.track) if self.track in self.playlist else -1
+            )
+            self._select_track((current_index + 1) % len(self.playlist))
+            if was_playing:
+                self._start_playing_current_track()
+            else:
+                self._playback.stop()
 
     def prev_track(self) -> None:
-        """
-        Switches to the previous track in the playlist.
-
-        Behavior:
-            If the current track is the first one in the playlist, the playback will loop
-            back to the last track (if the mode allows).
-        """
-        if not self.playlist:
-            return
-        current_index = (
-            self.playlist.index(self.track) if self.track in self.playlist else -1
-        )
-        prev_index = (current_index - 1) % len(self.playlist)
-        self.track = self.playlist[prev_index]
-        self.position = 0
-        self.duration = self.get_track_duration(self.track)
-
-        if self.is_playing:
-            self.start_playing_current_track()
+        """Select the previous track, preserving the current play/pause state."""
+        with self._state_lock:
+            if not self.playlist:
+                return
+            was_playing = self.is_playing
+            current_index = (
+                self.playlist.index(self.track) if self.track in self.playlist else -1
+            )
+            self._select_track((current_index - 1) % len(self.playlist))
+            if was_playing:
+                self._start_playing_current_track()
+            else:
+                self._playback.stop()
 
     def start_playing_current_track(self) -> None:
-        """
-        Starts playback of the current track from the beginning.
+        """Start the selected track from its beginning."""
+        with self._state_lock:
+            self._start_playing_current_track()
 
-        Behavior:
-            If no track is loaded, a `MusicPlayerError` is raised. The current track is loaded
-            and playback starts from the very beginning of the track.
-
-        Raises:
-            MusicPlayerError: If no music track is currently selected.
-        """
+    def _start_playing_current_track(self) -> None:
         if self.track is None:
             raise MusicPlayerError("No music track.")
 
         file_path = self.music_track_to_absolute(self.track)
-        self.pygame_mixer_ensure()
-        try:
-            self.pygame.mixer.music.load(file_path)
-        except ValueError as e:
-            raise MusicPlayerError(f"{e}")
-        self.pygame.mixer.music.play()
-        self.position = 0
+        self.is_playing = False
+        self._playback.play(file_path)
+        self.position = 0.0
+        self.last_update_time = time.monotonic()
         self.is_playing = True
 
+    def _select_track(self, index: int) -> None:
+        self.track = self.playlist[index]
+        self.position = 0.0
+        self.duration = self.get_track_duration(self.track)
+        self.last_update_time = time.monotonic()
+
+    def _process_playback_event(self, event: PlaybackEvent) -> None:
+        with self._state_lock:
+            if not self.is_playing:
+                return
+
+            if event.error is not None:
+                _log.error(
+                    "Music stream failed: track=%s error=%s",
+                    self.track,
+                    type(event.error).__name__,
+                )
+                self._playback.stop()
+                self.is_playing = False
+                self.position = 0.0
+                return
+
+            if self.mode == MusicPlayerMode.LOOP_ONE:
+                self._start_playing_current_track()
+                return
+
+            if self.mode == MusicPlayerMode.SINGLE:
+                self.stop_playing()
+                return
+
+            if not self.playlist or self.track not in self.playlist:
+                self.stop_playing()
+                return
+
+            current_index = self.playlist.index(self.track)
+            if (
+                self.mode == MusicPlayerMode.QUEUE
+                and current_index == len(self.playlist) - 1
+            ):
+                self.stop_playing()
+                return
+
+            self._select_track((current_index + 1) % len(self.playlist))
+            self._start_playing_current_track()
+
     async def broadcast_loop(self) -> None:
-        """
-        Asynchronous loop to handle continuous broadcasting of the player state.
-
-        Behavior:
-            This loop periodically sends the player state (track, position, playback mode,
-            etc.) to all connected clients. It also monitors the playback state and takes
-            actions such as advancing to the next track if the current one ends.
-
-        Loop Behavior:
-            - If a loop mode is enabled, the playback mode dictates whether the
-              same track restarts, the playlist advances, or playback stops.
-            - The loop terminates if a `stop_event` is triggered.
-
-        Raises:
-            asyncio.CancelledError: If the loop is canceled while running.
-        """
+        """Broadcast state and apply playlist policy after stream completion."""
         while not self.stop_event.is_set():
-            if self.is_playing:
-                curr_pos = self.get_current_position()
-                is_the_end = curr_pos + 0.100 >= self.duration
-                if is_the_end:
-                    if self.mode == MusicPlayerMode.LOOP_ONE:
-                        self.start_playing_current_track()
-                    elif self.mode == MusicPlayerMode.SINGLE:
-                        self.is_playing = False
-                        self.position = 0
-                    elif self.mode in (MusicPlayerMode.LOOP, MusicPlayerMode.QUEUE):
-                        self.next_track()
-                        if (
-                            self.mode == MusicPlayerMode.QUEUE
-                            and self.track == self.playlist[0]
-                            and not self.is_playing
-                        ):
-                            self.is_playing = False
-                            break
-
+            event = self._playback.take_event()
+            if event is not None:
+                self._process_playback_event(event)
             await self.broadcast_state()
             await asyncio.sleep(0.5)
 
     async def cleanup(self) -> None:
-        """
-        Shuts down the music service and ensures proper cleanup of resources.
-        """
-        if self.is_playing:
-            try:
-                _log.info("Stopping playing music")
-                self.pygame.mixer.music.stop()
-            except Exception:
-                _log.error("Failed to stop music", exc_info=True)
-
+        """Stop music and the broadcaster while keeping the device reusable."""
+        try:
+            await asyncio.to_thread(self.stop_playing)
+        except Exception:
+            _log.error("Failed to stop music", exc_info=True)
         await self.cancel_broadcast_task()
+
+    async def close(self) -> None:
+        """Permanently stop the service and release its audio output."""
+        await self.cleanup()
+        await asyncio.to_thread(self._playback.close)

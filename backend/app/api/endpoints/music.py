@@ -63,7 +63,7 @@ async def toggle_play_music(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        _log.error(f"Failed to init the module mixer: {err}")
+        _log.error("Failed to initialize music audio output: %s", err)
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         _log.error(f"Failed to toggle music playing: {err}")
@@ -119,7 +119,7 @@ async def play_track(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        _log.error(f"Failed to initialize the module mixer: {err}")
+        _log.error("Failed to initialize music audio output: %s", err)
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         _log.error(f"Failed to play the track %s: %s", payload.track, err)
@@ -174,7 +174,7 @@ async def stop_playing(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        _log.error(f"Failed to initialize the module mixer: {err}")
+        _log.error("Failed to initialize music audio output: %s", err)
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         _log.error(f"Failed to stop the playing: %s", err)
@@ -226,7 +226,7 @@ async def update_position(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        _log.error(f"Failed to initialize the module mixer: {err}")
+        _log.error("Failed to initialize music audio output: %s", err)
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         _log.error("Failed to update the playback position: %s", err)
@@ -273,7 +273,7 @@ async def update_mode(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        _log.error(f"Failed to initialize the module mixer: {err}")
+        _log.error("Failed to initialize music audio output: %s", err)
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         _log.error("Failed to update the playback mode: %s", err)
@@ -322,7 +322,7 @@ async def next_track(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        _log.error(f"Failed to initialize the module mixer: {err}")
+        _log.error("Failed to initialize music audio output: %s", err)
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         _log.error("Failed to switch the track: %s", err)
@@ -371,7 +371,7 @@ async def prev_track(
         await music_player.broadcast_state()
         return music_player.current_state
     except MusicInitError as err:
-        _log.error(f"Failed to initialize the module mixer: {err}")
+        _log.error("Failed to initialize music audio output: %s", err)
         raise HTTPException(status_code=500, detail=str(err))
     except MusicPlayerError as err:
         _log.error("Failed to switch the track: %s", err)

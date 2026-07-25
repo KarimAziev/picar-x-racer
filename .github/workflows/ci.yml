@@ -56,9 +56,12 @@ jobs:
         run: |
           source .venv/bin/activate
           python - <<'PY'
-          import pygame
+          import gspeech
+          import miniaudio
           from app.managers.model_manager import _load_yolo_class
+          from app.services.media.music_service import MusicService
 
+          assert MusicService is not None
           assert _load_yolo_class() is not None
           PY
 
