@@ -34,6 +34,13 @@
         aria-label="Speak"
         v-tooltip="tooltipButtonText"
       />
+      <Button
+        @click="settingsStore.stopSpeaking"
+        icon="pi pi-stop-circle"
+        text
+        aria-label="Stop speaking"
+        v-tooltip="'Stop speaking'"
+      />
     </div>
   </div>
 </template>

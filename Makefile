@@ -94,7 +94,7 @@ clean-pyc:
 	find . -type d -name "__pycache__" -exec rm -r {} +
 
 clean-build:
-	cd $(FRONTEND_DIR) && npm run clean
+	cd $(FRONTEND_DIR) && rm -rf dist
 
 # Help target
 help:

@@ -11,6 +11,6 @@ class ActiveMusicTrackRemovalError(Exception):
 
 
 class MusicInitError(Exception):
-    """Exception raised for initializing the mixer module for sound loading and playback."""
+    """Exception raised when the music audio output cannot be initialized."""
 
     pass

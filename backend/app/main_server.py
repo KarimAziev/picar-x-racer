@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
     from app.services.detection.detection_service import DetectionService
     from app.services.media.music_file_service import MusicFileService
+    from app.services.media.tts_service import TTSService
 
 
 Logger.setup_from_env()
@@ -44,6 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     connection_manager: Optional["ConnectionService"] = None
     detection_manager: Optional["DetectionService"] = None
     music_file_service: Optional["MusicFileService"] = None
+    tts_service: Optional["TTSService"] = None
 
     def cancel_server(*_) -> None:
         _log.info(f"🛑 Received signal to stop {app.title}")
@@ -62,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             connection_manager = deps.get("connection_manager")
             detection_manager = deps.get("detection_manager")
             music_file_service = deps.get("music_file_service")
+            tts_service = deps.get("tts_service")
 
         app.state.template_folder = settings.TEMPLATE_DIR
         app.state.app_manager = connection_manager
@@ -94,11 +97,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         _log.info(f"Stopping {app.title}")
         try:
+            if tts_service:
+                await asyncio.to_thread(tts_service.close)
+        except asyncio.CancelledError:
+            _log.warning("Cancelled while cleaning up tts_service.")
+            raise
+        except Exception:
+            _log.error("Failed to clean up tts_service.", exc_info=True)
+
+        try:
             if music_file_service:
-                await music_file_service.music_service.cleanup()
+                await music_file_service.music_service.close()
         except asyncio.CancelledError:
             _log.warning("Cancelled while cleaning up music_file_service.")
             raise
+        except Exception:
+            _log.error("Failed to clean up music_file_service.", exc_info=True)
 
         try:
             if detection_manager:

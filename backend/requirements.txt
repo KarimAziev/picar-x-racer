@@ -1,13 +1,13 @@
 numpy==1.26.4
 robot-hat>=2.6.0
-google_speech_pyplay>=1.1.0
 pandas
 colorlog
 platformdirs>=4.3.6,<5.0.0
 pydantic~=2.12.5
 pydantic-settings~=2.12.0
 pydub~=0.25.1
-pygame-ce
+miniaudio>=1.61,<2.0.0
+g-speech~=0.1.0
 fastapi[standard]~=0.128.0
 starlette~=0.50.0
 uvicorn[standard]~=0.40.0
