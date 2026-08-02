@@ -250,3 +250,8 @@ const clearValues = () => {
 const isCustomSuggestion = (value: string) =>
   !normalizedSuggestions.value.has(normalizeValue(value));
 </script>
+<style scoped lang="scss">
+.p-inputtext::placeholder {
+  color: var(--p-inputtext-color);
+}
+</style>

@@ -65,8 +65,7 @@
       @update:model-value="updateDebounced"
     />
     <NumberField
-      fieldClassName="w-24"
-      inputClassName="w-24!"
+      inputClassName="w-24"
       @keydown.stop="doNothing"
       @keyup.stop="doNothing"
       @keypress.stop="doNothing"
@@ -82,11 +81,12 @@
       @update:model-value="updateDebounced"
     />
     <NumberField
-      fieldClassName="w-24"
+      inputClassName="w-24"
       @keydown.stop="doNothing"
       @keyup.stop="doNothing"
       @keypress.stop="doNothing"
       :normalizeValue="roundToTwoDecimalPlaces"
+      :editable="!isMobile"
       v-tooltip="'Minimum confidence required to draw a pose keypoint.'"
       field="keypoint_confidence_threshold"
       label="Pose conf."
@@ -94,11 +94,11 @@
       :disabled="detectionStore.loading"
       :min="0"
       :max="1"
-      :step="0.01"
+      :step="0.0001"
       @update:model-value="updateDebounced"
     />
     <NumberField
-      fieldClassName="w-24"
+      inputClassName="w-24"
       @keydown.stop="doNothing"
       :normalizeValue="roundToOneDecimalPlace"
       @keyup.stop="doNothing"
@@ -109,6 +109,7 @@
       field="overlay_draw_threshold"
       label="Threshold"
       v-model="fields.overlay_draw_threshold"
+      :editable="!isMobile"
       :disabled="detectionStore.loading"
       :min="0.1"
       :max="10.0"
