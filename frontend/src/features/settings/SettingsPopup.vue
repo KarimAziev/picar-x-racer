@@ -1,6 +1,6 @@
 <template>
   <Dialog
-    class="settings-popup"
+    class="settings-popup w-[92vw] max-w-[640px] xl:max-w-[740px]"
     content-class="min-h-[35vh]"
     v-model:visible="popupStore.isOpen"
     header="Settings"

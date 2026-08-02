@@ -8,7 +8,7 @@
     :idPrefix="idPrefix"
     :description="resolvedSchema.description"
   >
-    <Grid :inhibit-grid="level > 1">
+    <Grid :inhibit-grid="inhibitGrid">
       <JsonSchema
         :origModel="origModel"
         v-for="(propSchema, propName) in resolvedSchema.properties"
@@ -205,6 +205,7 @@ import {
   mapEnumOptions,
   getComponentWithProps,
   resolveNewListItem,
+  shouldInhibitGrid,
 } from "@/ui/JsonSchema/util";
 import JsonSchema from "./JsonSchema.vue";
 import Footer from "@/ui/JsonSchema/Footer.vue";
@@ -315,6 +316,9 @@ const selectedSchema = computed(() =>
 );
 
 const isRootLevel = computed(() => props.level === 0);
+const inhibitGrid = computed(() =>
+  shouldInhibitGrid(props.level, props.inhibitFieldset),
+);
 
 const disabled = computed(() => {
   if (!isRootLevel.value) {

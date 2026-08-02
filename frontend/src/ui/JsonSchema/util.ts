@@ -55,6 +55,19 @@ export const isAnyOfPred = (resolvedSchema: JSONSchema | null) =>
   !!(resolvedSchema?.anyOf && Array.isArray(resolvedSchema?.anyOf)) ||
   !!(resolvedSchema?.oneOf && Array.isArray(resolvedSchema?.oneOf));
 
+/**
+ * Stack fields inside nested object panels, but keep the compact grid when an
+ * object is rendered transparently inside a panel supplied by an anyOf or an
+ * array item wrapper.
+ *
+ * `level` alone cannot express that distinction because transparent schema
+ * wrappers still increment it.
+ */
+export const shouldInhibitGrid = (
+  level: number,
+  inhibitFieldset: boolean | undefined,
+) => level > 0 && !inhibitFieldset;
+
 export const mapEffectiveAnyOf = (
   resolvedSchema: JSONSchema | null,
   defs: Record<string, JSONSchema> | undefined,
