@@ -51,6 +51,10 @@ from app.services.autonomy.sensor_publishers import (
     LocalizationSensorService,
     UnavailableEncoderPublisher,
 )
+from app.services.autonomy.steering_feedback import (
+    SteeringAngleCalibration,
+    SteeringCalibrationPoint,
+)
 from app.services.autonomy.telemetry import (
     SensorTelemetryStreamer,
     make_telemetry_envelope,
@@ -104,6 +108,8 @@ __all__ = [
     "ModeTransitionError",
     "SubscriptionClosed",
     "StaticTransform2D",
+    "SteeringAngleCalibration",
+    "SteeringCalibrationPoint",
     "Topic",
     "TopicBus",
     "TopicDefinitionError",

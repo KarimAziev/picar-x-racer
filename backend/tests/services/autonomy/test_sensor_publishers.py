@@ -15,6 +15,7 @@ from app.services.autonomy import (
 from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN
 from robot_hat import (
     EncoderABC,
+    EncoderHealth,
     EncoderSample,
     IMUABC,
     IMUSample,
@@ -59,6 +60,9 @@ class FakeEncoder(EncoderABC):
 
     def read_sample(self) -> EncoderSample:
         return next(self.samples)
+
+    def read_health(self) -> EncoderHealth:
+        return EncoderHealth(available=self.initialized and not self.closed)
 
     def reset(self, ticks: int = 0) -> None:
         return None
