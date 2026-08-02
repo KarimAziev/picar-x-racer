@@ -49,13 +49,14 @@
       @update:model-value="updateDebounced"
     />
     <NumberField
-      fieldClassName="w-24"
+      inputClassName="w-24"
       @keydown.stop="doNothing"
       @keyup.stop="doNothing"
       @keypress.stop="doNothing"
       :normalizeValue="roundToTwoDecimalPlaces"
       field="iou_threshold"
       label="IoU"
+      :editable="!isMobile"
       v-model="fields.iou_threshold"
       :disabled="detectionStore.loading"
       :min="0"

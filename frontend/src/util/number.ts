@@ -49,3 +49,22 @@ export const parseTrailingNumber = (value: string) => {
   const match = value.match(re);
   return match ? +match[1] : null;
 };
+
+export function getMaxFractionDigits(step: number) {
+  const s = step.toString().toLowerCase();
+
+  if (s.includes("e")) {
+    const [base, expStr] = s.split("e");
+    const exp = Number(expStr);
+
+    const decimalsInBase = (base.split(".")[1] || "").length;
+
+    if (exp < 0) {
+      return decimalsInBase + Math.abs(exp);
+    }
+
+    return Math.max(0, decimalsInBase - exp);
+  }
+
+  return (s.split(".")[1] || "").length;
+}
