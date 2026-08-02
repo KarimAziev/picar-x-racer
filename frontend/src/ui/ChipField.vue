@@ -135,6 +135,7 @@ export interface Props extends FieldProps {
   tooltip?: string;
   suggestions?: string[];
   fluid?: boolean;
+  limit?: number;
 }
 
 const popoverRef = ref<PopoverMethods>();
@@ -150,19 +151,22 @@ const currentValue = ref(props.modelValue);
 const selectedValues = computed(() => currentValue.value || []);
 const msg = ref<string | null>(null);
 const inputValue = ref("");
+
 const filteredSuggestions = computed(() =>
   filterChipSuggestions(
     props.suggestions || [],
     selectedValues.value,
     inputValue.value,
+    props.limit || (props.suggestions || []).length,
   ),
 );
-const normalizedSuggestions = computed(
-  () =>
-    new Set(
-      (props.suggestions || []).map((value) => value.toLocaleLowerCase()),
-    ),
-);
+const normalizedSuggestions = computed(() => {
+  const items = (props.suggestions || []).map((value) =>
+    value.toLocaleLowerCase(),
+  );
+
+  return new Set(items);
+});
 
 const handleFocus = (ev: Event) => {
   if (!props.disabled && !props.readonly) {
