@@ -9,6 +9,7 @@
     :messageClass="messageClass"
   >
     <TextInput
+      ref="inputRef"
       :invalid="!!msg"
       :id="field"
       :pt="{ input: { id: field } }"
@@ -17,7 +18,6 @@
       :class="inputClass"
       :placeholder="placeholder"
       v-model="inputValue"
-      @keydown.enter.prevent.stop="handleKeyEnter"
       v-bind="omit(['modelValue', 'suggestions'], { ...props, ...otherAttrs })"
       @update:model-value="handleResetMsg"
       v-tooltip="tooltip"
@@ -40,11 +40,12 @@
             {{ filteredSuggestions.length }}
           </span>
         </div>
-        <div class="max-h-64 overflow-y-auto">
+        <div ref="suggestionListRef" class="max-h-64 overflow-y-auto">
           <button
-            v-for="value in filteredSuggestions"
+            v-for="(value, index) in filteredSuggestions"
             :key="value"
             type="button"
+            :data-suggestion-index="index"
             class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-button-text-primary-hover-background focus:outline-none focus:ring-2 focus:ring-current"
             :aria-label="`Add ${value}`"
             @mousedown.prevent
@@ -111,7 +112,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, useAttrs, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onUnmounted,
+  ref,
+  useAttrs,
+  useTemplateRef,
+  watch,
+} from "vue";
 import TextInput from "primevue/inputtext";
 import type { InputTextProps } from "primevue/inputtext";
 import type { PopoverMethods } from "primevue/popover";
@@ -120,6 +129,8 @@ import type { Props as FieldProps } from "@/ui/Field.vue";
 import { omit } from "@/util/obj";
 import { usePopupStore } from "@/features/settings/stores";
 import { filterChipSuggestions } from "@/ui/chipFieldSuggestions";
+import { formatKeyEventItem } from "@/util/keyboard-util";
+import { isNumber } from "@/util/guards";
 
 defineOptions({ inheritAttrs: false });
 
@@ -138,6 +149,10 @@ export interface Props extends FieldProps {
 }
 
 const popoverRef = ref<PopoverMethods>();
+const inputRef = useTemplateRef<
+  InstanceType<typeof TextInput> & { $el: HTMLInputElement }
+>("inputRef");
+const suggestionListRef = useTemplateRef("suggestionListRef");
 const props = defineProps<Props>();
 const otherAttrs: InputTextProps = useAttrs();
 const placeholder = computed(() => {
@@ -152,6 +167,7 @@ const currentValue = ref(props.modelValue);
 const selectedValues = computed(() => currentValue.value || []);
 const msg = ref<string | null>(null);
 const inputValue = ref("");
+const suppressNextFocus = ref(false);
 
 const filteredSuggestions = computed(() =>
   filterChipSuggestions(
@@ -170,7 +186,13 @@ const normalizedSuggestions = computed(() => {
 });
 
 const handleFocus = (ev: Event) => {
+  if (suppressNextFocus.value) {
+    suppressNextFocus.value = false;
+    return;
+  }
+
   if (!props.disabled && !props.readonly) {
+    handleSelectBeforeShow();
     popoverRef.value?.show(ev);
   }
 };
@@ -178,9 +200,11 @@ const handleFocus = (ev: Event) => {
 const popupStore = usePopupStore();
 const handleSelectBeforeShow = () => {
   popupStore.isEscapable = false;
+  addKeyEventListeners();
 };
 
 const handleSelectBeforeHide = () => {
+  removeKeyEventListeners();
   popupStore.isEscapable = true;
 };
 onUnmounted(handleSelectBeforeHide);
@@ -224,15 +248,159 @@ const addValue = (value: string) => {
   emit("update:modelValue", nextValue);
 };
 
-const handleKeyEnter = (ev: Event) => {
+const handleKeyEnter = () => {
   const trimmedValue = inputValue.value.trim();
   const exactSuggestion = (props.suggestions || []).find(
     (suggestion) => normalizeValue(suggestion) === normalizeValue(trimmedValue),
   );
 
   addValue(exactSuggestion || trimmedValue);
-  popoverRef.value?.show(ev);
 };
+
+const getCurrentSuggestionIndex = () => {
+  const attrValue = document.activeElement?.getAttribute(
+    "data-suggestion-index",
+  );
+
+  if (attrValue !== null && attrValue !== undefined) {
+    return Number(attrValue);
+  }
+};
+
+const moveFocus = (newIndex: number) => {
+  nextTick(() => {
+    const suggestion = suggestionListRef.value?.querySelector<HTMLElement>(
+      `[data-suggestion-index="${newIndex}"]`,
+    );
+
+    if (suggestion) {
+      suggestion.focus();
+      suggestion.scrollIntoView?.({ block: "nearest" });
+    }
+  });
+};
+
+const moveToNextSuggestion = () => {
+  const lastIndex = filteredSuggestions.value.length - 1;
+  if (lastIndex < 0) {
+    return;
+  }
+
+  const currentIndex = getCurrentSuggestionIndex();
+  moveFocus(isNumber(currentIndex) ? Math.min(currentIndex + 1, lastIndex) : 0);
+};
+
+const moveToPrevSuggestion = () => {
+  if (filteredSuggestions.value.length === 0) {
+    return;
+  }
+
+  const currentIndex = getCurrentSuggestionIndex();
+  moveFocus(isNumber(currentIndex) ? Math.max(currentIndex - 1, 0) : 0);
+};
+
+const getSuggestionPageSize = () => {
+  const list = suggestionListRef.value;
+  const firstSuggestion = list?.querySelector<HTMLElement>(
+    "[data-suggestion-index]",
+  );
+
+  if (!list || !firstSuggestion || firstSuggestion.offsetHeight === 0) {
+    return filteredSuggestions.value.length;
+  }
+
+  return Math.max(
+    1,
+    Math.floor(list.clientHeight / firstSuggestion.offsetHeight),
+  );
+};
+
+const scrollSuggestionsDown = () => {
+  const lastIndex = filteredSuggestions.value.length - 1;
+  if (lastIndex < 0) {
+    return;
+  }
+
+  const currentIndex = getCurrentSuggestionIndex();
+  const nextIndex = isNumber(currentIndex)
+    ? Math.min(currentIndex + getSuggestionPageSize(), lastIndex)
+    : Math.min(getSuggestionPageSize() - 1, lastIndex);
+  moveFocus(nextIndex);
+};
+
+const scrollSuggestionsUp = () => {
+  if (filteredSuggestions.value.length === 0) {
+    return;
+  }
+
+  const currentIndex = getCurrentSuggestionIndex();
+  const nextIndex = isNumber(currentIndex)
+    ? Math.max(currentIndex - getSuggestionPageSize(), 0)
+    : 0;
+  moveFocus(nextIndex);
+};
+
+const selectFocusedSuggestion = () => {
+  const currentIndex = getCurrentSuggestionIndex();
+  if (isNumber(currentIndex)) {
+    const suggestion = filteredSuggestions.value[currentIndex];
+    if (suggestion !== undefined) {
+      addValue(suggestion);
+      nextTick(() => inputRef.value?.$el.focus());
+      return true;
+    }
+  }
+
+  if (document.activeElement === inputRef.value?.$el) {
+    handleKeyEnter();
+    return true;
+  }
+
+  return false;
+};
+
+const handleClose = () => {
+  const input = inputRef.value?.$el;
+  suppressNextFocus.value = document.activeElement !== input;
+  handleSelectBeforeHide();
+  popoverRef.value?.hide();
+  nextTick(() => input?.focus());
+};
+
+const keymap: Record<string, (event: KeyboardEvent) => boolean | void> = {
+  "Ctrl-n": moveToNextSuggestion,
+  ArrowDown: moveToNextSuggestion,
+  "Ctrl-p": moveToPrevSuggestion,
+  ArrowUp: moveToPrevSuggestion,
+  Enter: selectFocusedSuggestion,
+  "Ctrl-v": scrollSuggestionsDown,
+  "Alt-v": scrollSuggestionsUp,
+  Escape: handleClose,
+  "Ctrl-g": handleClose,
+};
+
+const handleListKeydown = (event: KeyboardEvent) => {
+  const handler = keymap[formatKeyEventItem(event)];
+  if (!handler) {
+    return;
+  }
+
+  const handled = handler(event);
+  if (handled === false) {
+    return;
+  }
+
+  event.stopPropagation();
+  event.preventDefault();
+};
+
+function addKeyEventListeners() {
+  window.addEventListener("keydown", handleListKeydown);
+}
+
+function removeKeyEventListeners() {
+  window.removeEventListener("keydown", handleListKeydown);
+}
 
 const removeValue = (removedValue: string) => {
   const nextValue = selectedValues.value.filter(
