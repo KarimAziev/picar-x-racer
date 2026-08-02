@@ -88,7 +88,7 @@
       @keypress.stop="doNothing"
       :normalizeValue="roundToTwoDecimalPlaces"
       :editable="!isMobile"
-      v-tooltip="'Minimum confidence required to draw a pose keypoint.'"
+      tooltipHelp="'Minimum confidence required to draw a pose keypoint.'"
       field="keypoint_confidence_threshold"
       label="Pose conf."
       v-model="fields.keypoint_confidence_threshold"
@@ -104,7 +104,7 @@
       :normalizeValue="roundToOneDecimalPlace"
       @keyup.stop="doNothing"
       @keypress.stop="doNothing"
-      v-tooltip="
+      tooltipHelp="
         'The maximum allowable time difference (in seconds) between the frame timestamp and the detection timestamp for overlay drawing to occur.'
       "
       field="overlay_draw_threshold"
