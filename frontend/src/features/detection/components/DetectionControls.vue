@@ -95,7 +95,7 @@
       :disabled="detectionStore.loading"
       :min="0"
       :max="1"
-      :step="0.0001"
+      :step="0.001"
       @update:model-value="updateDebounced"
     />
     <NumberField

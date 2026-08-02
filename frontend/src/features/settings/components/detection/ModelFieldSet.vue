@@ -92,7 +92,7 @@
         :loading="loading"
         :min="0"
         :max="1"
-        :step="0.0001"
+        :step="0.001"
       />
       <SelectField
         :filter="false"
