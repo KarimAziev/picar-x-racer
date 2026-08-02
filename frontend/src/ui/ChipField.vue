@@ -50,7 +50,6 @@
             @mousedown.prevent
             @click="addValue(value)"
           >
-            <i class="pi pi-plus shrink-0 text-xs" aria-hidden="true" />
             <span class="min-w-0 truncate">{{ value }}</span>
             <span
               v-if="isCustomSuggestion(value)"
