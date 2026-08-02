@@ -20,6 +20,7 @@
       :max="max"
       :readonly="readonly || loading"
       :disabled="disabled"
+      :maxFractionDigits="getMaxFractionDigits(step)"
       showButtons
       v-tooltip="tooltip"
       @update:model-value="handleInputUpdate"
@@ -64,6 +65,7 @@ import { ref, watch } from "vue";
 import Field from "@/ui/Field.vue";
 import type { Props as FieldProps } from "@/ui/Field.vue";
 import { isNumber } from "@/util/guards";
+import { getMaxFractionDigits } from "@/util/number";
 
 export interface Props extends FieldProps {
   step: number;

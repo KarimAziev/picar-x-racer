@@ -132,7 +132,7 @@ li {
 .bold {
   font-weight: bold;
 }
-input {
+input:not(.p-inputnumber-input) {
   width: 80px;
   height: 30px;
 
