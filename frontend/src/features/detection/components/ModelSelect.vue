@@ -40,7 +40,7 @@
         <ModelUpload />
       </template>
       <template #nodeLabel="{ name, type, is_dir, path }">
-        <div class="min-w-0 flex items-center gap-2">
+        <div class="min-w-0 flex items-center gap-2 justify-between">
           <span class="block truncate">{{ name }}</span>
           <i
             v-if="isSelectableModel(path, is_dir)"

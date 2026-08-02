@@ -140,11 +140,13 @@ export interface Props extends FieldProps {
 const popoverRef = ref<PopoverMethods>();
 const props = defineProps<Props>();
 const otherAttrs: InputTextProps = useAttrs();
-const placeholder = computed(() =>
-  currentValue.value && currentValue.value.length > 0
-    ? `${currentValue.value.join(", ")}`
-    : "All",
-);
+const placeholder = computed(() => {
+  if (!currentValue.value || !currentValue.value.length) {
+    return "All";
+  }
+  const valLen = currentValue.value.length;
+  return valLen === 1 ? `${currentValue.value.join(", ")}` : `${valLen} labels`;
+});
 
 const currentValue = ref(props.modelValue);
 const selectedValues = computed(() => currentValue.value || []);
