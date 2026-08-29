@@ -521,6 +521,12 @@ To start both the backend and frontend servers in watch mode (automatically relo
 make dev
 ```
 
+On macOS and other non-Raspberry-Pi hosts, the startup path automatically uses
+GPIO, SMBus, and AS5048A SPI mocks. The Linux-only `spidev` dependency is not
+installed on macOS and is not imported during normal mocked startup. This lets
+the application and control UI run locally, but mocked motor and sensor values
+are simulations rather than hardware validation.
+
 ### Running Tests
 
 Run the following command to execute the tests:

@@ -198,6 +198,16 @@ class AppConfig(BaseSettings):
         ),
     ] = None
 
+    ROBOT_HAT_MOCK_SPI: Annotated[
+        Optional[Literal["1"]],
+        Field(
+            None,
+            description="If set, AS5048A SPI access uses the protocol-aware "
+            "robot-hat mock. This is enabled automatically on non-Raspberry "
+            "development systems.",
+        ),
+    ] = None
+
     ROBOT_HAT_DISCHARGE_RATE: Annotated[
         Optional[int],
         Field(

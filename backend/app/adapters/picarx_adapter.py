@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from app.core.px_logger import Logger
 from app.exceptions.robot import (
@@ -13,6 +13,7 @@ from app.schemas.robot.motors import (
     I2CDCMotorConfig,
     PhaseMotorConfig,
 )
+from app.schemas.robot.pwm import PWMDriverConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.types.car import PicarState
 from robot_hat import (
@@ -22,6 +23,7 @@ from robot_hat import (
     MotorService,
     MotorServiceDirection,
     PWMFactory,
+    PWMDriverABC,
     Servo,
     ServoService,
     SingleMotorService,
@@ -42,6 +44,8 @@ class PicarxAdapter:
         self.config_manager = config_manager
         self.smbus_manager = smbus_manager
         self._motor_addresses: List[int] = []
+        self._pwm_drivers: Dict[Tuple[int, int], PWMDriverABC] = {}
+        self._pwm_driver_configs: Dict[Tuple[int, int], PWMDriverConfig] = {}
         self.cam_pan_servo: Optional[ServoService] = None
         self.cam_tilt_servo: Optional[ServoService] = None
         self.steering_servo: Optional[ServoService] = None
@@ -330,6 +334,14 @@ class PicarxAdapter:
                 except Exception as e:
                     logger.error("Error closing servo %s", e)
 
+        for driver in self._pwm_drivers.values():
+            try:
+                driver.close()
+            except Exception as e:
+                logger.error("Error closing shared PWM driver %s", e)
+        self._pwm_drivers.clear()
+        self._pwm_driver_configs.clear()
+
     def _init_pan_servo(self) -> None:
         try:
             self.cam_pan_servo = (
@@ -414,16 +426,42 @@ class PicarxAdapter:
         self, motor_config: Union[I2CDCMotorConfig, GPIODCMotorConfig, PhaseMotorConfig]
     ) -> Optional[MotorABC]:
         data_class = motor_config.to_dataclass()
+        if isinstance(motor_config, I2CDCMotorConfig):
+            return MotorFactory.create_motor(
+                data_class,
+                driver=self._get_pwm_driver(motor_config.driver),
+            )
         return MotorFactory.create_motor(data_class)
+
+    def _get_pwm_driver(self, config: PWMDriverConfig) -> PWMDriverABC:
+        key = (config.bus, config.addr_int)
+        existing = self._pwm_drivers.get(key)
+        if existing is not None:
+            if self._pwm_driver_configs[key] != config:
+                raise ValueError(
+                    "Conflicting PWM driver configurations for "
+                    f"bus {config.bus}, address {config.address}"
+                )
+            return existing
+
+        driver = PWMFactory.create_pwm_driver(
+            bus=self.smbus_manager.get_bus(config.bus),
+            config=config.to_dataclass(),
+        )
+        try:
+            driver.set_pwm_freq(config.freq)
+        except Exception:
+            driver.close()
+            raise
+        self._pwm_drivers[key] = driver
+        self._pwm_driver_configs[key] = config.model_copy(deep=True)
+        return driver
 
     def _make_servo(
         self, servo_config: Union[GPIOAngularServoConfig, AngularServoConfig]
     ) -> ServoService:
         if isinstance(servo_config, AngularServoConfig):
-            driver = PWMFactory.create_pwm_driver(
-                bus=self.smbus_manager.get_bus(servo_config.driver.bus),
-                config=servo_config.driver.to_dataclass(),
-            )
+            driver = self._get_pwm_driver(servo_config.driver)
 
             servo = Servo(
                 channel=servo_config.channel,
@@ -432,9 +470,8 @@ class PicarxAdapter:
                 max_angle=servo_config.max_angle,
                 min_pulse=servo_config.min_pulse,
                 max_pulse=servo_config.max_pulse,
+                owns_driver=False,
             )
-            if servo_config.driver.freq:
-                driver.set_pwm_freq(servo_config.driver.freq)
         else:
             servo = GPIOAngularServo(
                 servo_config.pin,

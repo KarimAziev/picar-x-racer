@@ -32,6 +32,7 @@ def setup_env_vars() -> bool:
     if not is_real_raspberry:
         for key, value in [
             ("ROBOT_HAT_MOCK_SMBUS", "1"),
+            ("ROBOT_HAT_MOCK_SPI", "1"),
             ("ROBOT_HAT_DISCHARGE_RATE", "10"),
         ]:
             os.environ.setdefault(key, value)
