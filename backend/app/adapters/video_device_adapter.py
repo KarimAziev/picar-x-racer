@@ -50,7 +50,9 @@ class VideoDeviceAdapter:
                 else (
                     "avfoundation"
                     if is_macos()
-                    else "v4l2" if not is_raspberry_pi() else "picamera2"
+                    else "v4l2"
+                    if not is_raspberry_pi()
+                    else "picamera2"
                 )
             )
 
@@ -124,7 +126,7 @@ class VideoDeviceAdapter:
             ):
                 results.append(item)
 
-        devices = []
+        devices: List[DeviceType] = []
 
         for item in v4l2_devices:
             if item.device not in gstreamer_devices_paths:

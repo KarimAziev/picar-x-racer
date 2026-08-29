@@ -170,7 +170,7 @@ class ConnectionService(AsyncEventEmitter):
             Sends JSON data to all currently connected clients.
             Removes clients that disconnect during the broadcast.
         """
-        disconnected_clients = []
+        disconnected_clients: list[WebSocket] = []
         for connection in self.active_connections:
             try:
                 await connection.send_json(data, mode)
@@ -195,7 +195,7 @@ class ConnectionService(AsyncEventEmitter):
             Sends binary data to all currently connected clients.
             Removes clients that disconnect during the broadcast.
         """
-        disconnected_clients = []
+        disconnected_clients: list[WebSocket] = []
         for connection in self.active_connections:
             try:
                 await connection.send_bytes(data)
@@ -217,7 +217,7 @@ class ConnectionService(AsyncEventEmitter):
             Sends text messages to all currently connected clients.
             Removes clients that disconnect during the broadcast.
         """
-        disconnected_clients = []
+        disconnected_clients: list[WebSocket] = []
         for connection in self.active_connections:
             try:
                 await connection.send_text(data)

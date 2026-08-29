@@ -32,10 +32,10 @@ class FakeWebSocket:
     def __init__(self, *, cancelled=False):
         self.application_state = WebSocketState.CONNECTED
         self.app: FakeApp = FakeApp(cancelled)
-        self.sent_bytes = []
-        self.closed = False
-        self.close_code = None
-        self.close_reason = None
+        self.sent_bytes: list[bytes] = []
+        self.closed: bool = False
+        self.close_code: Optional[int] = None
+        self.close_reason: Optional[str] = None
 
     async def send_bytes(self, data: bytes):
         """Send bytes and simulate disconnection after first send."""

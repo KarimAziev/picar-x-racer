@@ -158,7 +158,7 @@ class YOLOHailoAdapter:
     def _detect_task(
         self, raw_results, original_w: int, original_h: int, conf: float
     ) -> List["_DummyResult"]:
-        detections = []
+        detections: List[Dict[str, Any]] = []
         for class_id, class_results in enumerate(raw_results):
             for detection in class_results:
                 score = detection[4]

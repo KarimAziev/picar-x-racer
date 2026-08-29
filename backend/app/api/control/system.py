@@ -43,10 +43,9 @@ async def shutdown(
     """
     Initiates a graceful shutdown of the robot application's core services.
     """
-    errors = []
+    errors: list[str] = []
     battery_service: "BatteryService" = request.app.state.battery_service
     try:
-
         _log.debug("Gracefully stopping battery service")
         await battery_service.cleanup_connection_manager()
     except Exception as e:

@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.migrations.json_data import JsonDataMigrationError, JsonObject
 
 
@@ -13,7 +15,7 @@ def migrate_to_v2(data: JsonObject) -> JsonObject:
         raise JsonDataMigrationError("Legacy 'battery' must be an object or null")
 
     if "batteries" not in data:
-        batteries = []
+        batteries: list[dict[str, Any]] = []
         if legacy_battery is not None:
             legacy_battery.setdefault("name", "Main battery")
             batteries.append(legacy_battery)
