@@ -261,7 +261,7 @@ export const useStore = defineStore("camera", {
     async capturePhoto() {
       const messager = useMessagerStore();
       try {
-        const data = await appApi.get<PhotoCaptureResponse>(
+        const data = await appApi.post<PhotoCaptureResponse>(
           "/api/camera/capture-photo",
         );
 

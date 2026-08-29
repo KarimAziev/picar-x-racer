@@ -141,7 +141,7 @@ def get_camera_devices(
         raise HTTPException(status_code=500, detail="Failed to list camera devices")
 
 
-@router.get(
+@router.post(
     "/camera/capture-photo",
     response_model=PhotoResponse,
     summary="Capture a photo",

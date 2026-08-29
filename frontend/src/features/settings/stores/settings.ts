@@ -289,7 +289,7 @@ export const useStore = defineStore("settings", {
     async shutdown() {
       const messager = useMessagerStore();
       try {
-        await appApi.get("/api/system/shutdown");
+        await appApi.post("/api/system/shutdown");
       } catch (error) {
         messager.handleError(error);
       }
@@ -297,7 +297,7 @@ export const useStore = defineStore("settings", {
     async restart() {
       const messager = useMessagerStore();
       try {
-        await appApi.get("/api/system/restart");
+        await appApi.post("/api/system/restart");
       } catch (error) {
         messager.handleError(error);
       }

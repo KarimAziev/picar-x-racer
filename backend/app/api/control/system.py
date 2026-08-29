@@ -23,7 +23,7 @@ router = APIRouter()
 _log = Logger(name=__name__)
 
 
-@router.get(
+@router.post(
     "/px/api/system/shutdown",
     response_model=ShutdownResponse,
     summary="Gracefully shut down robot services",
