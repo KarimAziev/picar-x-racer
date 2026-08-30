@@ -18,6 +18,7 @@ export type {
   MappingSessionState,
   MappingSessionStatus,
   OccupancyGrid,
+  RelativeActionType,
   RelativeMotionStatus,
   SensorName,
   SensorPublisherStatus,

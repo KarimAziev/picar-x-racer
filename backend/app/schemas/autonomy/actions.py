@@ -15,6 +15,11 @@ class ActionState(str, Enum):
     CANCELED = "canceled"
 
 
+class RelativeActionType(str, Enum):
+    DISTANCE = "distance"
+    ARC = "arc"
+
+
 class RelativeDistanceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -29,16 +34,31 @@ class RelativeDistanceRequest(BaseModel):
         return self
 
 
+class RelativeArcRequest(RelativeDistanceRequest):
+    steering_angle_deg: float = Field(ge=-60.0, le=60.0)
+
+    @model_validator(mode="after")
+    def validate_nonzero_steering(self) -> "RelativeArcRequest":
+        if abs(self.steering_angle_deg) < 1.0:
+            raise ValueError("steering_angle_deg magnitude must be at least 1 degree")
+        return self
+
+
 class RelativeMotionStatus(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     available: bool
     state: ActionState = ActionState.IDLE
     action_id: Optional[str] = None
+    action_type: Optional[RelativeActionType] = None
     distance_m: Optional[float] = None
     requested_speed_mps: Optional[float] = None
     progress_m: float = 0.0
     remaining_m: Optional[float] = None
+    steering_angle_deg: Optional[float] = None
+    max_abs_steering_angle_deg: Optional[float] = None
+    target_yaw_rad: Optional[float] = None
+    yaw_progress_rad: Optional[float] = None
     reason: Optional[str] = None
 
     @classmethod
@@ -48,6 +68,8 @@ class RelativeMotionStatus(BaseModel):
 
 __all__ = [
     "ActionState",
+    "RelativeActionType",
+    "RelativeArcRequest",
     "RelativeDistanceRequest",
     "RelativeMotionStatus",
 ]

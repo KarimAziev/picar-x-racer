@@ -606,7 +606,19 @@ def get_relative_motion_service(
     config = HardwareConfig.model_validate(config_manager.load_data())
     if motion_control_service is None or not config.ackermann_odometry.enabled:
         return None
-    return RelativeMotionService(topic_bus, motion_control_service)
+    wheelbase_m = config.ackermann_odometry.wheelbase_m
+    if wheelbase_m is None:
+        raise ValueError("Relative motion requires a calibrated wheelbase")
+    max_steering_degrees = min(
+        abs(config.steering_servo.min_angle),
+        abs(config.steering_servo.max_angle),
+    )
+    return RelativeMotionService(
+        topic_bus,
+        motion_control_service,
+        wheelbase_m=wheelbase_m,
+        max_abs_steering_angle_rad=math.radians(max_steering_degrees),
+    )
 
 
 @lru_cache(maxsize=1)

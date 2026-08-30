@@ -117,14 +117,21 @@ export type MappingSessionAction =
 export type AutonomousActionState =
   "idle" | "running" | "succeeded" | "blocked" | "failed" | "canceled";
 
+export type RelativeActionType = "distance" | "arc";
+
 export interface RelativeMotionStatus {
   available: boolean;
   state: AutonomousActionState;
   action_id: string | null;
+  action_type: RelativeActionType | null;
   distance_m: number | null;
   requested_speed_mps: number | null;
   progress_m: number;
   remaining_m: number | null;
+  steering_angle_deg: number | null;
+  max_abs_steering_angle_deg: number | null;
+  target_yaw_rad: number | null;
+  yaw_progress_rad: number | null;
   reason: string | null;
 }
 
@@ -261,6 +268,29 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.relativeMotion = await robotApi.post<RelativeMotionStatus>(
           "/px/api/autonomy/relative-motion/distance",
           { distance_m: distanceM, speed_mps: speedMps },
+        );
+        this.relativeMotionError = null;
+      } catch (error) {
+        this.relativeMotionError = retrieveError(error).text;
+      } finally {
+        this.relativeMotionLoading = false;
+      }
+    },
+
+    async startRelativeArc(
+      distanceM: number,
+      speedMps: number,
+      steeringAngleDeg: number,
+    ) {
+      try {
+        this.relativeMotionLoading = true;
+        this.relativeMotion = await robotApi.post<RelativeMotionStatus>(
+          "/px/api/autonomy/relative-motion/arc",
+          {
+            distance_m: distanceM,
+            speed_mps: speedMps,
+            steering_angle_deg: steeringAngleDeg,
+          },
         );
         this.relativeMotionError = null;
       } catch (error) {

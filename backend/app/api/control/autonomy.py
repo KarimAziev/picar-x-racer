@@ -3,7 +3,11 @@
 from typing import Annotated, Optional
 
 from app.api import robot_deps
-from app.schemas.autonomy import RelativeDistanceRequest, RelativeMotionStatus
+from app.schemas.autonomy import (
+    RelativeArcRequest,
+    RelativeDistanceRequest,
+    RelativeMotionStatus,
+)
 from app.services.autonomy import ActionConflictError, RelativeMotionService
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -42,6 +46,20 @@ async def start_relative_distance(
 ) -> RelativeMotionStatus:
     try:
         return await _require_service(service).start_distance(request)
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/relative-motion/arc",
+    response_model=RelativeMotionStatus,
+)
+async def start_relative_arc(
+    request: RelativeArcRequest,
+    service: RelativeMotionDependency,
+) -> RelativeMotionStatus:
+    try:
+        return await _require_service(service).start_arc(request)
     except ActionConflictError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
 

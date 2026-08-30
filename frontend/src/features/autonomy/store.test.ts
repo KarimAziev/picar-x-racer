@@ -187,6 +187,36 @@ describe("autonomy telemetry store", () => {
     expect(store.relativeMotion?.state).toBe("running");
   });
 
+  it("starts a relative steering arc with SI distance and speed", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockResolvedValue({
+      available: true,
+      state: "running",
+      action_id: "arc-1",
+      action_type: "arc",
+      distance_m: 0.3,
+      requested_speed_mps: 0.12,
+      progress_m: 0,
+      remaining_m: 0.3,
+      steering_angle_deg: -15,
+      target_yaw_rad: -0.32,
+      yaw_progress_rad: 0,
+      reason: null,
+    });
+
+    await store.startRelativeArc(0.3, 0.12, -15);
+
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/relative-motion/arc",
+      {
+        distance_m: 0.3,
+        speed_mps: 0.12,
+        steering_angle_deg: -15,
+      },
+    );
+    expect(store.relativeMotion?.action_type).toBe("arc");
+  });
+
   it("keeps a shared telemetry connection until its last consumer leaves", () => {
     const store = useAutonomyStore();
 

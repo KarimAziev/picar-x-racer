@@ -9,6 +9,8 @@ from typing import Optional
 from app.schemas.autonomy import (
     ActionState,
     Odometry2D,
+    RelativeActionType,
+    RelativeArcRequest,
     RelativeDistanceRequest,
     RelativeMotionStatus,
 )
@@ -23,7 +25,7 @@ class ActionConflictError(RuntimeError):
 
 
 class RelativeMotionService:
-    """Execute one straight relative-distance action at a time."""
+    """Execute one bounded straight-distance or fixed steering-arc action."""
 
     def __init__(
         self,
@@ -34,6 +36,9 @@ class RelativeMotionService:
         odometry_timeout_seconds: float = 0.5,
         intent_timeout_seconds: float = 0.25,
         completion_tolerance_m: float = 0.01,
+        wheelbase_m: Optional[float] = None,
+        max_abs_steering_angle_rad: Optional[float] = None,
+        yaw_tolerance_rad: float = math.radians(5),
     ) -> None:
         self._bus = bus
         self._motion = motion
@@ -41,8 +46,18 @@ class RelativeMotionService:
         self._odometry_timeout_ns = int(odometry_timeout_seconds * 1e9)
         self._intent_timeout_ns = int(intent_timeout_seconds * 1e9)
         self._completion_tolerance_m = completion_tolerance_m
+        self._wheelbase_m = wheelbase_m
+        self._max_abs_steering_angle_rad = max_abs_steering_angle_rad
+        self._yaw_tolerance_rad = yaw_tolerance_rad
         self._task: Optional[asyncio.Task[None]] = None
-        self._status = RelativeMotionStatus(available=True)
+        self._status = RelativeMotionStatus(
+            available=True,
+            max_abs_steering_angle_deg=(
+                math.degrees(max_abs_steering_angle_rad)
+                if max_abs_steering_angle_rad is not None
+                else None
+            ),
+        )
         self._sequence = 0
 
     @property
@@ -55,6 +70,41 @@ class RelativeMotionService:
 
     async def start_distance(
         self, request: RelativeDistanceRequest
+    ) -> RelativeMotionStatus:
+        return await self._start(
+            request,
+            action_type=RelativeActionType.DISTANCE,
+            steering_angle_rad=0.0,
+            target_yaw_rad=None,
+        )
+
+    async def start_arc(self, request: RelativeArcRequest) -> RelativeMotionStatus:
+        if self._wheelbase_m is None or self._max_abs_steering_angle_rad is None:
+            raise ActionConflictError(
+                "arc motion requires calibrated steering geometry"
+            )
+        steering_angle_rad = math.radians(request.steering_angle_deg)
+        if abs(steering_angle_rad) > self._max_abs_steering_angle_rad:
+            raise ActionConflictError("requested steering exceeds the configured limit")
+        target_yaw_rad = (
+            request.distance_m / self._wheelbase_m * math.tan(steering_angle_rad)
+        )
+        if abs(target_yaw_rad) > math.pi:
+            raise ActionConflictError("predicted arc yaw must not exceed 180 degrees")
+        return await self._start(
+            request,
+            action_type=RelativeActionType.ARC,
+            steering_angle_rad=steering_angle_rad,
+            target_yaw_rad=target_yaw_rad,
+        )
+
+    async def _start(
+        self,
+        request: RelativeDistanceRequest,
+        *,
+        action_type: RelativeActionType,
+        steering_angle_rad: float,
+        target_yaw_rad: Optional[float],
     ) -> RelativeMotionStatus:
         if self.running:
             raise ActionConflictError("an autonomous action is already running")
@@ -72,14 +122,30 @@ class RelativeMotionService:
             available=True,
             state=ActionState.RUNNING,
             action_id=action_id,
+            action_type=action_type,
             distance_m=request.distance_m,
             requested_speed_mps=request.speed_mps,
             progress_m=0.0,
             remaining_m=abs(request.distance_m),
+            steering_angle_deg=math.degrees(steering_angle_rad),
+            max_abs_steering_angle_deg=(
+                math.degrees(self._max_abs_steering_angle_rad)
+                if self._max_abs_steering_angle_rad is not None
+                else None
+            ),
+            target_yaw_rad=target_yaw_rad,
+            yaw_progress_rad=0.0 if target_yaw_rad is not None else None,
         )
         self._task = asyncio.create_task(
-            self._run(request, odometry, timeout),
-            name=f"relative-distance-{action_id}",
+            self._run(
+                request,
+                odometry,
+                timeout,
+                action_type=action_type,
+                steering_angle_rad=steering_angle_rad,
+                target_yaw_rad=target_yaw_rad,
+            ),
+            name=f"relative-{action_type.value}-{action_id}",
         )
         return self._status
 
@@ -110,10 +176,16 @@ class RelativeMotionService:
         request: RelativeDistanceRequest,
         start: Odometry2D,
         timeout_seconds: float,
+        *,
+        action_type: RelativeActionType,
+        steering_angle_rad: float,
+        target_yaw_rad: Optional[float],
     ) -> None:
         started_ns = time.monotonic_ns()
         direction = 1.0 if request.distance_m > 0 else -1.0
         target = abs(request.distance_m)
+        previous_odometry = start
+        path_progress = 0.0
         try:
             while True:
                 if self._motion.mode != RobotMode.AUTONOMOUS:
@@ -133,17 +205,53 @@ class RelativeMotionService:
                     return
                 dx = odometry.x_m - start.x_m
                 dy = odometry.y_m - start.y_m
-                progress = max(
-                    0.0,
-                    direction
-                    * (dx * math.cos(start.yaw_rad) + dy * math.sin(start.yaw_rad)),
-                )
+                if action_type == RelativeActionType.ARC:
+                    if odometry.header.sequence != previous_odometry.header.sequence:
+                        path_progress += math.hypot(
+                            odometry.x_m - previous_odometry.x_m,
+                            odometry.y_m - previous_odometry.y_m,
+                        )
+                        previous_odometry = odometry
+                    progress = path_progress
+                else:
+                    progress = max(
+                        0.0,
+                        direction
+                        * (dx * math.cos(start.yaw_rad) + dy * math.sin(start.yaw_rad)),
+                    )
                 remaining = max(0.0, target - progress)
+                yaw_progress = (
+                    self._normalize_angle(odometry.yaw_rad - start.yaw_rad)
+                    if target_yaw_rad is not None
+                    else None
+                )
                 self._status = self._status.model_copy(
-                    update={"progress_m": progress, "remaining_m": remaining}
+                    update={
+                        "progress_m": progress,
+                        "remaining_m": remaining,
+                        "yaw_progress_rad": yaw_progress,
+                    }
                 )
                 if remaining <= self._completion_tolerance_m:
-                    await self._finish(ActionState.SUCCEEDED, "target distance reached")
+                    if (
+                        target_yaw_rad is not None
+                        and yaw_progress is not None
+                        and abs(self._normalize_angle(target_yaw_rad - yaw_progress))
+                        > self._yaw_tolerance_rad
+                    ):
+                        await self._finish(
+                            ActionState.FAILED,
+                            "measured yaw did not match predicted arc curvature",
+                        )
+                        return
+                    await self._finish(
+                        ActionState.SUCCEEDED,
+                        (
+                            "target arc reached"
+                            if action_type == RelativeActionType.ARC
+                            else "target distance reached"
+                        ),
+                    )
                     return
                 result = self._motion.last_result
                 if (
@@ -163,7 +271,7 @@ class RelativeMotionService:
                     sequence=self._sequence,
                     mode_generation=self._motion.mode_generation,
                     linear_speed_mps=direction * speed,
-                    steering_angle_rad=0.0,
+                    steering_angle_rad=steering_angle_rad,
                     created_monotonic_ns=now,
                     expires_monotonic_ns=now + self._intent_timeout_ns,
                 )
@@ -179,6 +287,10 @@ class RelativeMotionService:
             raise
         except Exception as error:
             await self._finish(ActionState.FAILED, str(error))
+
+    @staticmethod
+    def _normalize_angle(angle: float) -> float:
+        return (angle + math.pi) % (2 * math.pi) - math.pi
 
     async def _finish(
         self,

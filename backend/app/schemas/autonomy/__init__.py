@@ -2,6 +2,8 @@
 
 from app.schemas.autonomy.actions import (
     ActionState,
+    RelativeActionType,
+    RelativeArcRequest,
     RelativeDistanceRequest,
     RelativeMotionStatus,
 )
@@ -34,6 +36,8 @@ from app.schemas.autonomy.telemetry import (
 
 __all__ = [
     "ActionState",
+    "RelativeActionType",
+    "RelativeArcRequest",
     "EncoderReading",
     "EncoderState",
     "ImuData",
