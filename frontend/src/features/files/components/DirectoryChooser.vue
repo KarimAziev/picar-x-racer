@@ -179,11 +179,6 @@ const submitDisabled = computed(
 );
 
 const handleShow = () => {
-  console.log(
-    "%c<handleShow DirectoryChooser.vue 182>     visible: %o :\n",
-    "background-color: #4b0082; color: white",
-    visible.value,
-  );
   initialDir.value = props.dir;
   currentDir.value = props.dir;
   fetchData();

@@ -130,6 +130,7 @@ export const useStore = defineStore("messager", {
 
     handleError<Err>(error: Err, title?: string) {
       const data = retrieveError(error);
+
       this.error(data.text, title ? { title } : data);
     },
   },

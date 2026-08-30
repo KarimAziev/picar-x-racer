@@ -315,6 +315,7 @@
   />
   <GlobalDirChooser
     :scope="store.mediaType"
+    :dir="currentDir"
     v-model:visible="isDirChooseOpen"
     :header="movePopupHeader"
     @dir:submit="handleMoveMarked"
