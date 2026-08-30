@@ -9,6 +9,10 @@ from typing_extensions import Annotated, Self
 
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 Vector3 = Tuple[FiniteFloat, FiniteFloat, FiniteFloat]
+GPIOPin = Union[
+    Annotated[int, Field(ge=0)],
+    Annotated[str, Field(min_length=1)],
+]
 
 
 def _validate_frame_id(value: str) -> str:
@@ -16,6 +20,19 @@ def _validate_frame_id(value: str) -> str:
     if not frame_id or frame_id.startswith("/"):
         raise ValueError("frame_id must be non-empty and relative")
     return frame_id
+
+
+def _gpio_pin_key(value: int | str) -> str:
+    if isinstance(value, int):
+        return f"gpio{value}"
+    normalized = value.strip().casefold()
+    for prefix in ("gpio", "bcm"):
+        suffix = normalized.removeprefix(prefix)
+        if suffix.isdigit():
+            return f"gpio{int(suffix)}"
+    if normalized.isdigit():
+        return f"gpio{int(normalized)}"
+    return normalized
 
 
 class StaticTransformConfig(BaseModel):
@@ -169,6 +186,49 @@ class AS5048AEncoderConfig(DriveEncoderConfigBase):
         return self.max_sample_gap_ms * 1_000_000
 
 
+class AS5600LEncoderConfig(DriveEncoderConfigBase):
+    driver: Literal["as5600l"] = "as5600l"
+    bus: IC2Bus = 1
+    address: AddressField = "0x40"
+    max_sample_gap_ms: Annotated[Optional[int], Field(gt=0, le=10_000)] = 100
+    max_abs_speed_rps: Annotated[Optional[float], Field(gt=0, allow_inf_nan=False)] = (
+        5.0
+    )
+
+    @field_validator("address", mode="before")
+    @classmethod
+    def validate_address(cls, value: AddressField) -> AddressField:
+        parsed = int(value, 16) if isinstance(value, str) else value
+        if parsed < 0 or parsed > 0x7F:
+            raise ValueError("AS5600L address must be in the range 0x00 through 0x7F")
+        return value
+
+    @property
+    def address_int(self) -> int:
+        return self.address if isinstance(self.address, int) else int(self.address, 16)
+
+    @property
+    def max_sample_gap_ns(self) -> Optional[int]:
+        if self.max_sample_gap_ms is None:
+            return None
+        return self.max_sample_gap_ms * 1_000_000
+
+
+class GPIOQuadratureEncoderConfig(DriveEncoderConfigBase):
+    driver: Literal["gpio_quadrature"] = "gpio_quadrature"
+    a_pin: GPIOPin
+    b_pin: GPIOPin
+    decode_mode: Literal["x1", "x2", "x4"] = "x4"
+    pull_up: bool = False
+    active_state: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_distinct_pins(self) -> Self:
+        if _gpio_pin_key(self.a_pin) == _gpio_pin_key(self.b_pin):
+            raise ValueError("quadrature A and B pins must be different")
+        return self
+
+
 class MockEncoderConfig(DriveEncoderConfigBase):
     driver: Literal["mock"] = "mock"
     initial_ticks: int = 0
@@ -176,7 +236,12 @@ class MockEncoderConfig(DriveEncoderConfigBase):
 
 
 DriveEncoderDeviceConfig = Annotated[
-    Union[AS5048AEncoderConfig, MockEncoderConfig],
+    Union[
+        AS5048AEncoderConfig,
+        AS5600LEncoderConfig,
+        GPIOQuadratureEncoderConfig,
+        MockEncoderConfig,
+    ],
     Field(discriminator="driver"),
 ]
 
@@ -219,6 +284,24 @@ class AS5048ASteeringPositionConfig(SteeringPositionConfigBase):
     max_speed_hz: Annotated[int, Field(gt=0, le=10_000_000)] = 1_000_000
 
 
+class AS5600LSteeringPositionConfig(SteeringPositionConfigBase):
+    driver: Literal["as5600l"] = "as5600l"
+    bus: IC2Bus = 1
+    address: AddressField = "0x40"
+
+    @field_validator("address", mode="before")
+    @classmethod
+    def validate_address(cls, value: AddressField) -> AddressField:
+        parsed = int(value, 16) if isinstance(value, str) else value
+        if parsed < 0 or parsed > 0x7F:
+            raise ValueError("AS5600L address must be in the range 0x00 through 0x7F")
+        return value
+
+    @property
+    def address_int(self) -> int:
+        return self.address if isinstance(self.address, int) else int(self.address, 16)
+
+
 class MockSteeringPositionConfig(SteeringPositionConfigBase):
     driver: Literal["mock"] = "mock"
     initial_angle_degrees: FiniteFloat = 0.0
@@ -226,7 +309,11 @@ class MockSteeringPositionConfig(SteeringPositionConfigBase):
 
 
 SteeringPositionConfig = Annotated[
-    Union[AS5048ASteeringPositionConfig, MockSteeringPositionConfig],
+    Union[
+        AS5048ASteeringPositionConfig,
+        AS5600LSteeringPositionConfig,
+        MockSteeringPositionConfig,
+    ],
     Field(discriminator="driver"),
 ]
 
@@ -272,6 +359,21 @@ class EncoderSensorConfig(BaseModel):
         ]
         if len(spi_devices) != len(set(spi_devices)):
             raise ValueError("AS5048A encoders must use unique SPI bus/device pairs")
+        i2c_devices = [
+            (sensor.bus, sensor.address_int)
+            for sensor in self.sensors
+            if isinstance(sensor, AS5600LEncoderConfig)
+        ]
+        if len(i2c_devices) != len(set(i2c_devices)):
+            raise ValueError("AS5600L encoders must use unique I2C bus/address pairs")
+        gpio_pins = [
+            _gpio_pin_key(pin)
+            for sensor in self.sensors
+            if isinstance(sensor, GPIOQuadratureEncoderConfig)
+            for pin in (sensor.a_pin, sensor.b_pin)
+        ]
+        if len(gpio_pins) != len(set(gpio_pins)):
+            raise ValueError("GPIO quadrature encoders must use unique A/B pins")
         return self
 
 
@@ -284,7 +386,7 @@ class LocalizationSensorsConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_spi_ownership(self) -> Self:
+    def validate_hardware_resources(self) -> Self:
         devices = (
             [
                 (sensor.bus, sensor.device, f"rear {sensor.side}")
@@ -306,14 +408,37 @@ class LocalizationSensorsConfig(BaseModel):
             raise ValueError(
                 "enabled AS5048A sensors must use unique SPI bus/device pairs"
             )
+        i2c_devices = []
+        if self.imu.enabled and isinstance(self.imu, SH3001SensorConfig):
+            i2c_devices.append((self.imu.bus, self.imu.address_int, "imu"))
+        if self.encoder.enabled:
+            i2c_devices.extend(
+                (sensor.bus, sensor.address_int, f"rear {sensor.side}")
+                for sensor in self.encoder.sensors
+                if isinstance(sensor, AS5600LEncoderConfig)
+            )
+        if self.steering.enabled and isinstance(
+            self.steering, AS5600LSteeringPositionConfig
+        ):
+            i2c_devices.append(
+                (self.steering.bus, self.steering.address_int, "steering")
+            )
+        i2c_keys = [(bus, address) for bus, address, _name in i2c_devices]
+        if len(i2c_keys) != len(set(i2c_keys)):
+            raise ValueError(
+                "enabled I2C localization sensors must use unique bus/address pairs"
+            )
         return self
 
 
 __all__ = [
     "AS5048AEncoderConfig",
     "AS5048ASteeringPositionConfig",
+    "AS5600LEncoderConfig",
+    "AS5600LSteeringPositionConfig",
     "DriveEncoderDeviceConfig",
     "EncoderSensorConfig",
+    "GPIOQuadratureEncoderConfig",
     "IMUSensorConfig",
     "LidarSensorConfig",
     "LocalizationSensorsConfig",

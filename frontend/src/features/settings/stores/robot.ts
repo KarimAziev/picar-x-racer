@@ -129,6 +129,25 @@ export interface LocalizationSensorsConfig {
         }
       | {
           side: "left" | "right";
+          driver: "as5600l";
+          bus: number;
+          address: number | string;
+          invert_direction: boolean;
+          max_sample_gap_ms: number | null;
+          max_abs_speed_rps: number | null;
+        }
+      | {
+          side: "left" | "right";
+          driver: "gpio_quadrature";
+          a_pin: number | string;
+          b_pin: number | string;
+          decode_mode: "x1" | "x2" | "x4";
+          pull_up: boolean;
+          active_state: boolean | null;
+          invert_direction: boolean;
+        }
+      | {
+          side: "left" | "right";
           driver: "mock";
           initial_ticks: number;
           ticks_per_sample: number;
@@ -151,6 +170,20 @@ export interface LocalizationSensorsConfig {
         bus: number;
         device: number;
         max_speed_hz: number;
+      }
+    | {
+        enabled: boolean;
+        driver: "as5600l";
+        sample_frequency_hz: number;
+        center_angle_deg: number;
+        invert_direction: boolean;
+        wheel_degrees_per_sensor_degree: number;
+        calibration_points: Array<{
+          sensor_offset_deg: number;
+          wheel_angle_rad: number;
+        }>;
+        bus: number;
+        address: number | string;
       }
     | {
         enabled: boolean;

@@ -257,9 +257,13 @@ local mapping are startup-scoped services. Their settings are validated and
 saved without interrupting the active motor/servo adapter, but the backend must
 be restarted before changes to those sections take effect. The UI displays a
 restart reminder after such a save. Rear-axle acquisition supports one or two
-independent AS5048A encoders. Each side retains its raw cumulative and delta
-ticks; Ackermann odometry uses their mean, while telemetry preserves the
-left/right difference for drivetrain and slip diagnostics.
+independent encoders using every current high-level robot-hat implementation:
+AS5048A over SPI, AS5600L over managed I²C, GPIO A/B quadrature, or an explicit
+mock. Each side retains its raw cumulative and delta ticks; Ackermann odometry
+uses their mean, while telemetry preserves the left/right difference for
+drivetrain and slip diagnostics. Python GPIO edge capture is intended for
+low-rate bring-up; high-rate quadrature should use a hardware counter or
+coprocessor backend when robot-hat gains one.
 
 LiDAR, IMU, and each wheel encoder can instead select an explicit `mock` driver
 in Robot settings. Explicit mocks use the normal publishers, topics, telemetry,
@@ -267,12 +271,12 @@ safety evaluator, mapping, and odometry code, including when the app runs on a
 Raspberry Pi. The mock LiDAR represents a configurable uniform circular wall;
 mock encoders advance by configurable ticks per sample.
 
-Optional steering feedback can use another AS5048A mounted after the servo gear
-train, or a mock absolute-position sensor. Center offset, direction, mechanical
+Optional steering feedback can use an AS5048A, AS5600L, or mock absolute-position
+sensor mounted after the servo gear train. Center offset, direction, mechanical
 ratio, and optional piecewise linkage calibration convert its absolute bearing
-to physical road-wheel radians. The motion loop never waits for SPI: it embeds
-only a fresh cached measurement in `/steering/state`, and odometry falls back to
-the commanded angle when feedback is disabled or stale.
+to physical road-wheel radians. The motion loop never waits for sensor I/O: it
+embeds only a fresh cached measurement in `/steering/state`, and odometry falls
+back to the commanded angle when feedback is disabled or stale.
 
 ### General
 

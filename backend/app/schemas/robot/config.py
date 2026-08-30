@@ -4,7 +4,11 @@ from app.schemas.robot.avoid_obstacles import AvoidParams
 from app.schemas.robot.battery import BatteryConfig
 from app.schemas.robot.distance import UltrasonicConfig
 from app.schemas.robot.led import LedConfig
-from app.schemas.robot.localization_sensors import LocalizationSensorsConfig
+from app.schemas.robot.localization_sensors import (
+    AS5048AEncoderConfig,
+    AS5600LEncoderConfig,
+    LocalizationSensorsConfig,
+)
 from app.schemas.robot.mapping import LocalMappingConfig
 from app.schemas.robot.motors import (
     GPIODCMotorConfig,
@@ -219,6 +223,26 @@ class HardwareConfig(BaseModel):
                 raise ValueError(
                     "Ackermann odometry requires motion control steering state"
                 )
+            known_resolutions = {
+                16_384 if isinstance(sensor, AS5048AEncoderConfig) else 4_096
+                for sensor in self.localization_sensors.encoder.sensors
+                if isinstance(sensor, (AS5048AEncoderConfig, AS5600LEncoderConfig))
+            }
+            if len(known_resolutions) > 1:
+                raise ValueError(
+                    "Ackermann odometry cannot combine rear encoders with different "
+                    "native tick resolutions"
+                )
+            if known_resolutions:
+                expected_ticks = next(iter(known_resolutions))
+                if (
+                    self.ackermann_odometry.encoder_ticks_per_revolution
+                    != expected_ticks
+                ):
+                    raise ValueError(
+                        "Ackermann odometry encoder_ticks_per_revolution must be "
+                        f"{expected_ticks} for the configured magnetic encoder"
+                    )
         return self
 
 

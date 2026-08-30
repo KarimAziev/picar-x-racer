@@ -21,6 +21,9 @@ from app.schemas.robot.config import HardwareConfig
 from app.schemas.robot.localization_sensors import (
     AS5048AEncoderConfig,
     AS5048ASteeringPositionConfig,
+    AS5600LEncoderConfig,
+    AS5600LSteeringPositionConfig,
+    GPIOQuadratureEncoderConfig,
     MockEncoderConfig,
     MockIMUSensorConfig,
     MockLidarSensorConfig,
@@ -68,6 +71,8 @@ from robot_hat.i2c.smbus_manager import SMBusManager
 from robot_hat import (
     AS5048AAngularPosition,
     AS5048AEncoder,
+    AS5600LAngularPosition,
+    AS5600LEncoder,
     AngularPositionABC,
     EncoderABC,
     IMUABC,
@@ -76,6 +81,10 @@ from robot_hat import (
     MockAngularPosition,
     MockIMU,
     MockLidar2D,
+    GPIOQuadratureCounterBackend,
+    GPIOZeroDigitalEdgeInput,
+    QuadratureDecodeMode,
+    QuadratureEncoder,
     RPLidarC1,
     RPLidarC1Config,
     SH3001,
@@ -168,6 +177,7 @@ def get_picarx_adapter(
 @lru_cache(maxsize=1)
 def get_steering_feedback_service(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
 ) -> Optional[SteeringFeedbackService]:
     """Build optional physical steering feedback without opening SPI yet."""
 
@@ -182,6 +192,11 @@ def get_steering_feedback_service(
             bus=steering.bus,
             device=steering.device,
             max_speed_hz=steering.max_speed_hz,
+        )
+    elif isinstance(steering, AS5600LSteeringPositionConfig):
+        sensor_factory = lambda: AS5600LAngularPosition(
+            bus=smbus_manager.get_bus(steering.bus),
+            address=steering.address_int,
         )
     elif isinstance(steering, MockSteeringPositionConfig):
         sensor_factory = lambda: MockAngularPosition(
@@ -390,6 +405,52 @@ def get_localization_sensor_service(
                     )
 
                 encoder_factories[encoder_sensor_config.side] = create_as5048a_encoder
+            elif isinstance(encoder_sensor_config, AS5600LEncoderConfig):
+
+                def create_as5600l_encoder(
+                    sensor_config: AS5600LEncoderConfig = encoder_sensor_config,
+                ) -> AS5600LEncoder:
+                    return AS5600LEncoder(
+                        bus=smbus_manager.get_bus(sensor_config.bus),
+                        address=sensor_config.address_int,
+                        invert_direction=sensor_config.invert_direction,
+                        max_sample_gap_ns=sensor_config.max_sample_gap_ns,
+                        max_abs_speed_rps=sensor_config.max_abs_speed_rps,
+                    )
+
+                encoder_factories[encoder_sensor_config.side] = create_as5600l_encoder
+            elif isinstance(encoder_sensor_config, GPIOQuadratureEncoderConfig):
+
+                def create_gpio_quadrature_encoder(
+                    sensor_config: GPIOQuadratureEncoderConfig = (
+                        encoder_sensor_config
+                    ),
+                ) -> QuadratureEncoder:
+                    decode_mode = {
+                        "x1": QuadratureDecodeMode.X1,
+                        "x2": QuadratureDecodeMode.X2,
+                        "x4": QuadratureDecodeMode.X4,
+                    }[sensor_config.decode_mode]
+                    return QuadratureEncoder(
+                        backend=GPIOQuadratureCounterBackend(
+                            a_input=GPIOZeroDigitalEdgeInput(
+                                sensor_config.a_pin,
+                                pull_up=sensor_config.pull_up,
+                                active_state=sensor_config.active_state,
+                            ),
+                            b_input=GPIOZeroDigitalEdgeInput(
+                                sensor_config.b_pin,
+                                pull_up=sensor_config.pull_up,
+                                active_state=sensor_config.active_state,
+                            ),
+                            decode_mode=decode_mode,
+                        ),
+                        invert_direction=sensor_config.invert_direction,
+                    )
+
+                encoder_factories[encoder_sensor_config.side] = (
+                    create_gpio_quadrature_encoder
+                )
             elif isinstance(encoder_sensor_config, MockEncoderConfig):
 
                 def create_mock_encoder(

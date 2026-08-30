@@ -5,6 +5,7 @@ from pathlib import Path
 from app.schemas.robot.config import HardwareConfig
 from app.schemas.robot.localization_sensors import (
     EncoderSensorConfig,
+    LocalizationSensorsConfig,
     MockIMUSensorConfig,
     MockLidarSensorConfig,
     MockSteeringPositionConfig,
@@ -68,6 +69,16 @@ class TestLocalizationSensorConfig(unittest.TestCase):
                     ],
                 }
             )
+        with self.assertRaisesRegex(ValidationError, "SPI bus/device"):
+            EncoderSensorConfig.model_validate(
+                {
+                    "enabled": True,
+                    "sensors": [
+                        {"side": "left", "driver": "as5048a"},
+                        {"side": "right", "driver": "as5048a"},
+                    ],
+                }
+            )
 
     def test_enabled_as5048a_sensors_cannot_share_chip_select(self) -> None:
         root_config = Path(__file__).parents[4] / "config.json"
@@ -98,16 +109,69 @@ class TestLocalizationSensorConfig(unittest.TestCase):
                     },
                 }
             )
-        with self.assertRaisesRegex(ValidationError, "SPI bus/device"):
+
+    def test_as5600l_and_gpio_quadrature_resources_must_be_unique(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "AS5600L"):
             EncoderSensorConfig.model_validate(
                 {
                     "enabled": True,
                     "sensors": [
-                        {"side": "left", "driver": "as5048a"},
-                        {"side": "right", "driver": "as5048a"},
+                        {"side": "left", "driver": "as5600l"},
+                        {"side": "right", "driver": "as5600l"},
                     ],
                 }
             )
+
+        with self.assertRaisesRegex(ValidationError, "unique A/B"):
+            EncoderSensorConfig.model_validate(
+                {
+                    "enabled": True,
+                    "sensors": [
+                        {
+                            "side": "left",
+                            "driver": "gpio_quadrature",
+                            "a_pin": 17,
+                            "b_pin": 27,
+                        },
+                        {
+                            "side": "right",
+                            "driver": "gpio_quadrature",
+                            "a_pin": 22,
+                            "b_pin": 27,
+                        },
+                    ],
+                }
+            )
+
+        with self.assertRaisesRegex(ValidationError, "unique bus/address"):
+            LocalizationSensorsConfig.model_validate(
+                {
+                    "imu": {"enabled": False, "driver": "sh3001"},
+                    "encoder": {
+                        "enabled": True,
+                        "sensors": [
+                            {
+                                "side": "left",
+                                "driver": "as5600l",
+                                "bus": 1,
+                                "address": "0x40",
+                            }
+                        ],
+                    },
+                    "steering": {
+                        "enabled": True,
+                        "driver": "as5600l",
+                        "bus": 1,
+                        "address": "0x40",
+                    },
+                }
+            )
+
+    def test_schema_exposes_every_robot_hat_encoder_and_position_driver(self) -> None:
+        schema = json.dumps(LocalizationSensorsConfig.model_json_schema())
+
+        for driver in ("as5048a", "as5600l", "gpio_quadrature", "mock"):
+            self.assertIn(f'"{driver}"', schema)
 
     def test_transform_rejects_non_finite_measurements(self) -> None:
         with self.assertRaises(ValidationError):
@@ -187,6 +251,32 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         )
         config = HardwareConfig.model_validate(data)
         self.assertTrue(config.local_mapping.enabled)
+
+    def test_odometry_validates_known_magnetic_encoder_resolution(self) -> None:
+        root_config = Path(__file__).parents[4] / "config.json"
+        data = json.loads(root_config.read_text())
+        data["motion_control"].update(
+            enabled=True,
+            max_forward_speed_mps=1.0,
+            max_reverse_speed_mps=0.5,
+        )
+        data["ackermann_odometry"].update(
+            enabled=True,
+            wheelbase_m=0.2,
+            wheel_radius_m=0.03,
+            encoder_ticks_per_revolution=16_384,
+        )
+        data["localization_sensors"]["encoder"] = {
+            "enabled": True,
+            "sensors": [{"side": "left", "driver": "as5600l"}],
+        }
+
+        with self.assertRaisesRegex(ValidationError, "must be 4096"):
+            HardwareConfig.model_validate(data)
+
+        data["ackermann_odometry"]["encoder_ticks_per_revolution"] = 4_096
+        config = HardwareConfig.model_validate(data)
+        self.assertTrue(config.ackermann_odometry.enabled)
 
 
 if __name__ == "__main__":
