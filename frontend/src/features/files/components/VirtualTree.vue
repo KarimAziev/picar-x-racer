@@ -63,7 +63,9 @@ export interface Props extends Omit<VirtualScrollerProps, "items"> {
 
 const props = withDefaults(defineProps<Props>(), {});
 
-const emit = defineEmits(["toggle:expand"]);
+const emit = defineEmits<{
+  "toggle:expand": [node: TreeNode & { level: number }];
+}>();
 
 const expandedNodes = inject<Ref<Set<string>>>("expandedNodes");
 

@@ -54,12 +54,12 @@ if (!expandedNodes || !markedNodes || !markedFilenames) {
 }
 
 const popupStore = usePopupStore();
-const emit = defineEmits([
-  "download:file",
-  "download-batch:archive",
-  "remove:batch",
-  "show:directory-chooser",
-]);
+const emit = defineEmits<{
+  "download:file": [path: string];
+  "download-batch:archive": [paths: string[]];
+  "remove:batch": [paths: string[]];
+  "show:directory-chooser": [];
+}>();
 
 const batchButtonsDisabled = computed(
   () =>

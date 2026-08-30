@@ -155,7 +155,11 @@ const props = withDefaults(
 );
 
 const visible = defineModel<boolean>("visible", { required: true });
-const emit = defineEmits(["show", "after-hide", "dir:submit"]);
+const emit = defineEmits<{
+  show: [];
+  "after-hide": [];
+  "dir:submit": [path: string];
+}>();
 const selectedItem = ref<Nullable<string>>(null);
 const initialDir = ref<Nullable<string>>(null);
 

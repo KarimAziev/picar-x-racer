@@ -93,7 +93,9 @@ const handleBlur = () => {
 const inputRef = ref<
   (ComponentPublicInstance<{}, any> & { $el: HTMLInputElement }) | null
 >(null);
-const emit = defineEmits(["rename"]);
+const emit = defineEmits<{
+  rename: [path: string, newName: string];
+}>();
 
 const handleDiscardRename = () => {
   renaming.value = false;

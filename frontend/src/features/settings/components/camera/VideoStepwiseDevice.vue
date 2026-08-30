@@ -50,12 +50,13 @@ const camStore = useCameraStore();
 
 const props = defineProps<StepwiseDeviceProps>();
 
-const emit = defineEmits(["update:modelValue"]);
-const value = defineModel<{
+type VideoSettings = {
   width: Nullable<number>;
   height: Nullable<number>;
   fps: Nullable<number>;
-}>({ required: true });
+};
+
+const value = defineModel<VideoSettings>({ required: true });
 
 const invalidData = computed(() => {
   return Object.entries(value.value).reduce(
@@ -83,6 +84,6 @@ const onUpdate = () => {
   if (disabled.value) {
     return;
   }
-  emit("update:modelValue", value.value);
+  value.value = { ...value.value };
 };
 </script>

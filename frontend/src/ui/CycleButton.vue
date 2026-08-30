@@ -73,7 +73,9 @@ const buttonProps = computed(() =>
   ),
 );
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: Value];
+}>();
 
 const props = withDefaults(defineProps<Props>(), {
   direction: 1,

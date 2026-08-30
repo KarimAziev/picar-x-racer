@@ -26,10 +26,7 @@
 import { ref, watch, useAttrs, computed } from "vue";
 
 import NumberInputField from "@/ui/NumberInputField.vue";
-import {
-  InputNumberEmitsOptions,
-  InputNumberProps,
-} from "primevue/inputnumber";
+import { InputNumberProps } from "primevue/inputnumber";
 import { Props as FieldProps } from "@/ui/Field.vue";
 import { isNumber } from "@/util/guards";
 import { ServoConfig } from "@/features/settings/stores/robot";
@@ -64,9 +61,11 @@ const message = computed(() =>
   isNumber(currentValue.value) ? null : "Required",
 );
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: number];
+}>();
 
-const onUpdate: InputNumberEmitsOptions["update:modelValue"] = (newValue) => {
+const onUpdate = (newValue: number | undefined) => {
   if (isNumber(newValue)) {
     emit("update:modelValue", newValue);
   }

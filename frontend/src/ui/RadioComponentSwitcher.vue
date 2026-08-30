@@ -82,7 +82,10 @@ watch(
   },
 );
 
-const emit = defineEmits(["update:modelValue", "value-change"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: string | number | undefined];
+  "value-change": [value: string | number | undefined];
+}>();
 
 const onUpdate = (newValue?: string | number) => {
   emit("update:modelValue", newValue);

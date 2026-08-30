@@ -42,8 +42,8 @@ import NumberInputField from "@/ui/NumberInputField.vue";
 const store = useSettingsStore();
 const controllerStore = useControllerStore();
 
-const handleUpdateMaxSpeed = (value: number) => {
-  if (controllerStore.model?.connected) {
+const handleUpdateMaxSpeed = (value: number | null) => {
+  if (value !== null && controllerStore.model?.connected) {
     controllerStore.setMaxSpeed(value);
   }
 };

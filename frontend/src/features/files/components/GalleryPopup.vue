@@ -35,15 +35,16 @@ import { takePercentage } from "@/util/number";
 import { isNumber } from "@/util/guards";
 import { useWindowSize } from "@/composables/useWindowSize";
 
-export interface Props
-  extends Pick<
-    GalleryProps,
-    "images" | "getItemURL" | "altProp" | "titleProp"
-  > {}
+export interface Props extends Pick<
+  GalleryProps,
+  "images" | "getItemURL" | "altProp" | "titleProp"
+> {}
 
 const props = defineProps<Props>();
 
-const emit = defineEmits(["after-hide"]);
+const emit = defineEmits<{
+  "after-hide": [];
+}>();
 
 const selectedImageIdx = defineModel<number>("selectedImageIdx", {
   required: true,

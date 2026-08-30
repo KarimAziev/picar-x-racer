@@ -38,7 +38,8 @@ const modelValue = defineModel<Nullable<string>>("modelValue", {
 });
 
 export interface Props
-  extends FieldProps,
+  extends
+    FieldProps,
     Pick<
       DatePickerProps,
       | "showIcon"
@@ -72,8 +73,6 @@ const props = withDefaults(defineProps<Props>(), {
   showButtonBar: true,
 });
 
-const emit = defineEmits(["update:modelValue"]);
-
 const getValue = (newVal: any) =>
   isString(newVal) && newVal.length > 0 ? isoStringToDateTime(newVal) : null;
 
@@ -94,7 +93,5 @@ const handleUpdateModelValue: DatePickerEmitsOptions["update:modelValue"] = (
 ) => {
   const dateStr = isDate(newValue) ? formatDateTimeToIsoString(newValue) : null;
   modelValue.value = dateStr;
-
-  emit("update:modelValue", dateStr);
 };
 </script>

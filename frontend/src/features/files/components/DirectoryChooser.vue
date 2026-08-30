@@ -166,7 +166,11 @@ const props = withDefaults(
 );
 
 const visible = defineModel<boolean>("visible", { required: true });
-const emit = defineEmits(["show", "after-hide", "dir:submit"]);
+const emit = defineEmits<{
+  show: [];
+  "after-hide": [];
+  "dir:submit": [path: string];
+}>();
 const selectedItem = ref<Nullable<string>>(null);
 const initialDir = ref<Nullable<string>>(null);
 
@@ -175,6 +179,11 @@ const submitDisabled = computed(
 );
 
 const handleShow = () => {
+  console.log(
+    "%c<handleShow DirectoryChooser.vue 182>     visible: %o :\n",
+    "background-color: #4b0082; color: white",
+    visible.value,
+  );
   initialDir.value = props.dir;
   currentDir.value = props.dir;
   fetchData();

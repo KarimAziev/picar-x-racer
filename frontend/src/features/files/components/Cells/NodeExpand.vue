@@ -17,7 +17,9 @@ export interface Props extends Pick<UploadingFileDetail, "path" | "children"> {}
 
 defineProps<Props>();
 
-const emit = defineEmits(["toggle:expand"]);
+const emit = defineEmits<{
+  "toggle:expand": [path: string];
+}>();
 
 const expandedNodes = inject<Ref<Set<string>>>("expandedNodes");
 if (!expandedNodes) {

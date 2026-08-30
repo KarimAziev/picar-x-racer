@@ -41,7 +41,10 @@ export interface Props extends Pick<UploadingFileDetail, "path" | "children"> {
   draggable?: boolean;
   tabindex?: number;
 }
-const emit = defineEmits(["move", "toggle:expand"]);
+const emit = defineEmits<{
+  move: [targetPath: string, paths: string[]];
+  "toggle:expand": [path: string];
+}>();
 
 const activeEl = useActiveElement();
 

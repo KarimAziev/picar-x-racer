@@ -58,7 +58,10 @@ const props = defineProps<{
 
 const visible = defineModel<boolean>("visible", { required: true });
 const selectedItem = defineModel<GroupedFile>("selectedItem");
-const emit = defineEmits(["show", "after-hide"]);
+const emit = defineEmits<{
+  show: [];
+  "after-hide": [];
+}>();
 
 const videoRef = useTemplateRef("videoRef");
 

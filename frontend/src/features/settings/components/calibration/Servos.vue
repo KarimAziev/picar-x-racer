@@ -11,7 +11,11 @@
         :max="20"
         :label="startCase(`${groupName.replace(/_servo$/gm, '')}`)"
         v-model="robotStore.data[groupName].calibration_offset"
-        @update:model-value="obj.calibration_offset"
+        @update:model-value="
+          (value) => {
+            if (isNumber(value)) obj.calibration_offset(value);
+          }
+        "
         :useGrouping="false"
         :minFractionDigits="1"
         :maxFractionDigits="1"
@@ -30,6 +34,7 @@
 import { useControllerStore } from "@/features/controller/store";
 import { useRobotStore } from "@/features/settings/stores";
 import { startCase } from "@/util/str";
+import { isNumber } from "@/util/guards";
 import type {
   ServoCalibrationData,
   ServoData,

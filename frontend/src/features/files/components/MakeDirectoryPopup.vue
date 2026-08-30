@@ -45,7 +45,10 @@ import InputText from "primevue/inputtext";
 import { usePopupStore } from "@/features/settings/stores";
 
 const popupStore = usePopupStore();
-const emit = defineEmits(["after-hide", "submit:dir"]);
+const emit = defineEmits<{
+  "after-hide": [];
+  "submit:dir": [path: string];
+}>();
 
 const newDirectoryPopupVisible = defineModel<boolean>("visible", {
   required: true,

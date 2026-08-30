@@ -24,7 +24,6 @@
           ).value
         "
         v-model:ordering="ordering"
-        @update:ordering="handleSort"
         @update:filter="handleUpdateFilter"
       />
       <Column
@@ -34,7 +33,6 @@
         :field="field as string"
         v-else
         v-model:ordering="ordering"
-        @update:ordering="handleSort"
         @update:filter="handleUpdateFilter"
       />
     </template>
@@ -67,18 +65,12 @@ const ordering = defineModel<OrderingModel>("ordering", { required: true });
 
 const filters = defineModel<FileFilterModel>("filters");
 const checkedAll = defineModel<boolean>("checkedAll");
-const emit = defineEmits([
-  "update:ordering",
-  "toggle:checkAll",
-  "update:filters",
-]);
+const emit = defineEmits<{
+  "toggle:checkAll": [value: boolean];
+}>();
 
 const toggleCheckAll = (value: boolean) => {
   emit("toggle:checkAll", value);
-};
-
-const handleSort = () => {
-  emit("update:ordering", ordering.value);
 };
 
 const groups = computed(() =>
@@ -103,6 +95,8 @@ const groups = computed(() =>
 );
 
 const handleUpdateFilter = () => {
-  emit("update:filters", filters.value);
+  if (filters.value) {
+    filters.value = { ...filters.value };
+  }
 };
 </script>

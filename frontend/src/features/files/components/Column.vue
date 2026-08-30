@@ -46,9 +46,8 @@ export type Props = {
 const props = defineProps<Props>();
 
 const ordering = defineModel<OrderingModel>("ordering", { required: true });
-const filter = defineModel<any>("filter");
-
-const emit = defineEmits(["update:ordering", "update:filter"]);
+type FilterValue = string[] | null | undefined;
+const filter = defineModel<FilterValue>("filter");
 
 const options = computed(() => {
   if (!props.filterOptions) {
@@ -72,10 +71,10 @@ const onSort = () => {
     ordering.value.field = props.field;
   }
 
-  emit("update:ordering", ordering.value);
+  ordering.value = { ...ordering.value };
 };
 
-const onFilter = (value: any) => {
+const onFilter = (value: string | FilterValue) => {
   if (props.match_mode === FilterMatchMode.IN) {
     const nextVal = Array.isArray(value)
       ? value.filter(Boolean)
@@ -83,8 +82,6 @@ const onFilter = (value: any) => {
         ? [value]
         : value;
     filter.value = nextVal;
-
-    emit("update:filter", nextVal);
   }
 };
 

@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { ref, watch, useAttrs, computed } from "vue";
 import InputNumber, {
+  InputNumberBlurEvent,
   InputNumberEmitsOptions,
   InputNumberProps,
   InputNumberInputEvent,
@@ -90,7 +91,10 @@ const extraProps = computed(() => {
   };
 });
 
-const emit = defineEmits(["update:modelValue", "blur"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: number | undefined];
+  blur: [event: InputNumberBlurEvent];
+}>();
 
 const handleInput = (event: InputNumberInputEvent) => {
   const value = event.value;

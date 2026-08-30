@@ -31,7 +31,9 @@ defineProps<{
   removeDisabled?: boolean;
 }>();
 
-const emit = defineEmits(["remove:click"]);
+const emit = defineEmits<{
+  "remove:click": [];
+}>();
 
 const handleRemove = () => {
   emit("remove:click");

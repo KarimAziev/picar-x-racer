@@ -2,7 +2,9 @@ import type { Component } from "vue";
 
 export type GetComponentProps<T> = T extends { new (): { $props: infer P } }
   ? P
-  : never;
+  : T extends (props: infer P, ...args: any[]) => any
+    ? P
+    : never;
 
 export type Option<T = Component> = {
   label: string;
