@@ -26,7 +26,7 @@ AddressInt = Annotated[
         examples=[0x40, 64],
         le=127,
         ge=0,
-        json_schema_extra={"type": "hex"},
+        json_schema_extra={"x-ui-type": "hex"},
     ),
 ]
 
@@ -37,7 +37,7 @@ AddressHexStr = Annotated[
         title="I2C address",
         description="I2C address of the device",
         examples=["0x40"],
-        json_schema_extra={"type": "hex"},
+        json_schema_extra={"x-ui-type": "hex"},
     ),
 ]
 
@@ -48,7 +48,7 @@ AddressField = Annotated[
         title="I2C address",
         description="I2C address of the device",
         examples=[0x40, "0x40", 64],
-        json_schema_extra={"type": "hex"},
+        json_schema_extra={"x-ui-type": "hex"},
     ),
 ]
 

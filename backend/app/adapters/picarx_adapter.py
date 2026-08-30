@@ -53,8 +53,16 @@ class PicarxAdapter:
         self.motor_controller: Optional[BaseMotorService] = None
         self.init_hardware()
 
-    def init_hardware(self) -> None:
-        self.config = HardwareConfig(**self.config_manager.load_data())
+    def init_hardware(
+        self,
+        config: Optional[HardwareConfig] = None,
+        strict: bool = False,
+    ) -> None:
+        self.config = (
+            config.model_copy(deep=True)
+            if config is not None
+            else HardwareConfig(**self.config_manager.load_data())
+        )
 
         logger.debug("Initializing config %s", self.config)
 
@@ -65,7 +73,7 @@ class PicarxAdapter:
             self._init_motors,
             self._init_motor_controller,
         ]:
-            fn()
+            fn(strict=strict)
 
     @property
     def motor_addresses(self) -> List[int]:
@@ -334,6 +342,10 @@ class PicarxAdapter:
                 except Exception as e:
                     logger.error("Error closing servo %s", e)
 
+        self.steering_servo = None
+        self.cam_tilt_servo = None
+        self.cam_pan_servo = None
+
         for driver in self._pwm_drivers.values():
             try:
                 driver.close()
@@ -342,7 +354,7 @@ class PicarxAdapter:
         self._pwm_drivers.clear()
         self._pwm_driver_configs.clear()
 
-    def _init_pan_servo(self) -> None:
+    def _init_pan_servo(self, strict: bool = False) -> None:
         try:
             self.cam_pan_servo = (
                 self._make_servo(self.config.cam_pan_servo)
@@ -351,10 +363,14 @@ class PicarxAdapter:
             )
         except (TimeoutError, OSError) as e:
             logger.error("Failed to initialize pan servo: %s", e)
+            if strict:
+                raise
         except Exception:
             logger.error("Unexpected error while initializing pan servo", exc_info=True)
+            if strict:
+                raise
 
-    def _init_tilt_servo(self) -> None:
+    def _init_tilt_servo(self, strict: bool = False) -> None:
         try:
             self.cam_tilt_servo = (
                 self._make_servo(self.config.cam_tilt_servo)
@@ -363,12 +379,16 @@ class PicarxAdapter:
             )
         except (TimeoutError, OSError) as e:
             logger.error("Failed to initialize tilt servo: %s", e)
+            if strict:
+                raise
         except Exception:
             logger.error(
                 "Unexpected error while initializing tilt servo", exc_info=True
             )
+            if strict:
+                raise
 
-    def _init_steering_servo(self) -> None:
+    def _init_steering_servo(self, strict: bool = False) -> None:
         try:
             self.steering_servo = (
                 self._make_servo(self.config.steering_servo)
@@ -378,12 +398,16 @@ class PicarxAdapter:
 
         except (TimeoutError, OSError) as e:
             logger.error("Failed to initialize steering servo: %s", e)
+            if strict:
+                raise
         except Exception:
             logger.error(
                 "Unexpected error while initializing steering servo", exc_info=True
             )
+            if strict:
+                raise
 
-    def _init_motor_controller(self) -> None:
+    def _init_motor_controller(self, strict: bool = False) -> None:
         try:
             configured_count = len(self.config.motors)
             if configured_count == 1 and len(self.motors) == 1:
@@ -397,12 +421,16 @@ class PicarxAdapter:
 
         except (TimeoutError, OSError) as e:
             logger.error("Failed to initialize motors controller: %s", e)
+            if strict:
+                raise
         except Exception:
             logger.error(
                 "Unexpected error initializing motors controller", exc_info=True
             )
+            if strict:
+                raise
 
-    def _init_motors(self) -> None:
+    def _init_motors(self, strict: bool = False) -> None:
         self.motors = []
         for index, motor_config in enumerate(self.config.motors):
             if not motor_config.enabled:
@@ -415,12 +443,16 @@ class PicarxAdapter:
                         self._motor_addresses.append(motor_config.driver.addr_int)
             except (TimeoutError, OSError) as e:
                 logger.error("Failed to initialize motor %s: %s", index + 1, e)
+                if strict:
+                    raise
             except Exception:
                 logger.error(
                     "Unexpected error while initializing motor %s",
                     index + 1,
                     exc_info=True,
                 )
+                if strict:
+                    raise
 
     def _make_motor(
         self, motor_config: Union[I2CDCMotorConfig, GPIODCMotorConfig, PhaseMotorConfig]
@@ -437,7 +469,10 @@ class PicarxAdapter:
         key = (config.bus, config.addr_int)
         existing = self._pwm_drivers.get(key)
         if existing is not None:
-            if self._pwm_driver_configs[key] != config:
+            if (
+                self._pwm_driver_configs[key].hardware_signature
+                != config.hardware_signature
+            ):
                 raise ValueError(
                     "Conflicting PWM driver configurations for "
                     f"bus {config.bus}, address {config.address}"

@@ -127,6 +127,11 @@ class HardwareConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_unique_battery_names(self) -> "HardwareConfig":
+        if "batteries" not in self.model_fields_set:
+            return self
+        if self.batteries is None:
+            raise ValueError("Batteries must be a list")
+
         names = [battery.name.strip().casefold() for battery in self.batteries]
         if len(names) != len(set(names)):
             raise ValueError("Battery names must be unique")

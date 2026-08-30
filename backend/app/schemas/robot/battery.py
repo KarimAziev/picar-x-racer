@@ -42,7 +42,8 @@ class INA219Config(BaseModel):
                 "title": "Bus Voltage Range",
                 "description": "Defines the maximum voltage range measurable by the sensor. "
                 "Options must match your circuit design to avoid over-range measurements (e.g., 16V or 32V).",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {
                     "options": [
                         {"value": INA219BusVoltageRange.RANGE_16V, "label": "16V"},
@@ -66,7 +67,8 @@ class INA219Config(BaseModel):
                     "Gain setting for the shunt voltage measurement, "
                     "affecting the sensor's sensitivity to small voltage drops."
                 ),
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {
                     "options": [
                         {
@@ -97,7 +99,8 @@ class INA219Config(BaseModel):
         WithJsonSchema(
             {
                 "title": "Bus ADC Resolution",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {
                     "options": [
                         {
@@ -161,7 +164,8 @@ class INA219Config(BaseModel):
                 "description": "The ADC resolution and averaging for shunt voltage measurements. "
                 "Higher resolution settings result in more precise current conversion.",
                 "examples": [INA219ADCResolution.ADCRES_12BIT_32S],
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {
                     "options": [
                         {
@@ -223,7 +227,8 @@ class INA219Config(BaseModel):
                 "both bus and shunt voltages) to balance between immediate responsiveness and "
                 "power efficiency.",
                 "examples": [INA219Mode.SHUNT_AND_BUS_CONTINUOUS],
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {
                     "options": [
                         {"value": INA219Mode.POWERDOWN, "label": "POWERDOWN"},
@@ -392,7 +397,8 @@ class INA260Config(BaseModel):
             {
                 "title": "Averaging count",
                 "description": "Number of samples included in the rolling conversion average.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA260_AVERAGING_OPTIONS},
                 "examples": [DEFAULT_INA260_CONFIG.averaging_count],
             }
@@ -405,7 +411,8 @@ class INA260Config(BaseModel):
             {
                 "title": "Bus conversion time",
                 "description": "Conversion interval for bus voltage measurements. Longer windows improve noise rejection.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA260_CONVERSION_TIME_OPTIONS},
                 "examples": [DEFAULT_INA260_CONFIG.voltage_conversion_time],
             }
@@ -418,7 +425,8 @@ class INA260Config(BaseModel):
             {
                 "title": "Current conversion time",
                 "description": "Conversion interval for shunt current measurements. Longer windows improve precision at the cost of speed.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA260_CONVERSION_TIME_OPTIONS},
                 "examples": [DEFAULT_INA260_CONFIG.current_conversion_time],
             }
@@ -431,7 +439,8 @@ class INA260Config(BaseModel):
             {
                 "title": "Operating mode",
                 "description": "Measurement mode controlling how the shunt and bus channels are sampled.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA260_MODE_OPTIONS},
                 "examples": [DEFAULT_INA260_CONFIG.mode],
             }
@@ -583,7 +592,8 @@ class INA226Config(BaseModel):
             {
                 "title": "Averaging Mode",
                 "description": "Number of samples averaged per measurement to balance noise and responsiveness.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA226_AVG_MODE_OPTIONS},
                 "examples": [INA226AvgMode.AVG_16],
             }
@@ -596,7 +606,8 @@ class INA226Config(BaseModel):
             {
                 "title": "Bus Conversion Time",
                 "description": "Conversion time for the bus voltage measurement. Longer times improve accuracy.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA226_CONVERSION_TIME_OPTIONS},
                 "examples": [INA226ConversionTime.CT_8244US],
             }
@@ -609,7 +620,8 @@ class INA226Config(BaseModel):
             {
                 "title": "Shunt Conversion Time",
                 "description": "Conversion time for the shunt voltage measurement. Increase to improve precision.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA226_CONVERSION_TIME_OPTIONS},
                 "examples": [INA226ConversionTime.CT_8244US],
             }
@@ -622,7 +634,8 @@ class INA226Config(BaseModel):
             {
                 "title": "Operating Mode",
                 "description": "Sensor operating mode controlling shunt/bus measurement behaviour and power draw.",
-                "type": "select",
+                "type": "integer",
+                "x-ui-type": "select",
                 "props": {"options": INA226_MODE_OPTIONS},
                 "examples": [INA226Mode.SHUNT_AND_BUS_CONT],
             }
@@ -760,7 +773,7 @@ class SunfounderBatteryConfig(AddressModel):
         Union[str, int],
         Field(
             ...,
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"x-ui-type": "string_or_number"},
             description="ADC channel number or name.",
             examples=["A4", 1, 3, 4],
         ),

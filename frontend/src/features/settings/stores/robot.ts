@@ -181,7 +181,7 @@ export const useStore = defineStore("robot", {
 
         this.data = response;
       } catch (error) {
-        messager.handleError(error, `Error fetching robot config`);
+        messager.handleError(error, `Error saving robot config`);
       } finally {
         this.loading = false;
       }
@@ -193,7 +193,7 @@ export const useStore = defineStore("robot", {
         this.loading = true;
         await robotApi.patch<Partial<Data>>("px/api/settings/config", data);
       } catch (error) {
-        messager.handleError(error, `Error fetching robot config`);
+        messager.handleError(error, `Error saving robot config`);
       } finally {
         this.loading = false;
       }

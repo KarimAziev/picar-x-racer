@@ -68,7 +68,10 @@ class ServoConfig(BaseModel):
             0.0,
             description="A calibration offset for fine-tuning servo angles.",
             examples=[0.0, 0.4, -4.2],
-            json_schema_extra={"type": "calibration_offset", "shared": True},
+            json_schema_extra={
+                "x-ui-type": "calibration_offset",
+                "shared": True,
+            },
         ),
     ] = 0
     saved_calibration_offset: Annotated[
@@ -192,7 +195,7 @@ class AngularServoConfig(ServoConfig):
         Field(
             ...,
             title="PWM channel",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"x-ui-type": "string_or_number"},
             description="PWM channel number or name.",
             examples=["P0", "P1", "P2", 0, 1, 2],
         ),
@@ -216,7 +219,7 @@ class GPIOAngularServoConfig(ServoConfig):
         Union[str, int],
         Field(
             ...,
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             title="GPIO PIN",
             description="Broadcom (BCM) pin number for the GPIO pins, as opposed to physical (BOARD) numbering.",
             examples=["GPIO17", "GPIO27", 1, 2],

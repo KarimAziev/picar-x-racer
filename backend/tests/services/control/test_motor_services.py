@@ -195,6 +195,27 @@ class TestSharedPWMDriverOwnership(unittest.TestCase):
         driver.set_pwm_freq.assert_called_once_with(50)
 
     @patch("app.adapters.picarx_adapter.PWMFactory.create_pwm_driver")
+    def test_reuses_driver_for_equivalent_address_notation(
+        self, create_driver: MagicMock
+    ) -> None:
+        driver = MagicMock()
+        create_driver.return_value = driver
+
+        first = self.adapter._get_pwm_driver(self.config)
+        second = self.adapter._get_pwm_driver(
+            PWMDriverConfig(
+                name="PCA9685",
+                bus=1,
+                address=0x40,
+                frame_width=20000,
+                freq=50,
+            )
+        )
+
+        self.assertIs(first, second)
+        create_driver.assert_called_once()
+
+    @patch("app.adapters.picarx_adapter.PWMFactory.create_pwm_driver")
     def test_rejects_conflicting_config_for_same_device(
         self, _create_driver: MagicMock
     ) -> None:

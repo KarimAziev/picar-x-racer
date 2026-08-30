@@ -25,7 +25,7 @@ MotorDirectionField = Annotated[
         ge=-1,
         le=1,
         description="Initial motor direction calibration (+1/-1)",
-        json_schema_extra={"type": "motor_direction", "shared": True},
+        json_schema_extra={"x-ui-type": "motor_direction", "shared": True},
         examples=[1, -1],
     ),
 ]
@@ -97,7 +97,7 @@ class I2CDCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="PWM channel",
-            json_schema_extra={"type": "string_or_number"},
+            json_schema_extra={"x-ui-type": "string_or_number"},
             description="PWM channel number or name.",
             examples=["P0", "P1", "P2", 0, 1, 2],
         ),
@@ -108,7 +108,7 @@ class I2CDCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Direction (phase) pin",
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin that the phase (direction) input of the motor driver chip is connected to.",
             examples=["D4", "D5", 23, 24],
         ),
@@ -148,7 +148,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Forward PIN",
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin that the forward input of the motor driver chip "
             "is connected to.",
         ),
@@ -157,7 +157,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Union[int, str],
         Field(
             ...,
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             title="Backward PIN",
             description="The GPIO pin that the backward input of the motor driver chip "
             "is connected to.",
@@ -168,7 +168,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Enable PIN",
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin that enables the motor. "
             "Required for **some** motor controller boards.",
         ),
@@ -206,7 +206,7 @@ class PhaseMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Phase PIN",
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             description="GPIO pin for the phase/direction. ",
         ),
     ]
@@ -226,7 +226,7 @@ class PhaseMotorConfig(MotorBaseConfig):
         Field(
             ...,
             title="Enable PIN",
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin that the enable (speed) input of the motor driver chip is connected to.",
         ),
     ]

@@ -10,6 +10,7 @@ import { FieldType } from "@/ui/JsonSchema/interface";
 import PinChooserDialog from "@/features/pinout/components/PinChooserDialog.vue";
 
 export const simpleTypes: Partial<Record<FieldType, boolean>> = {
+  integer: true,
   string: true,
   boolean: true,
   number: true,

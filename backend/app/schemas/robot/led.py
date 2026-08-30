@@ -42,7 +42,7 @@ class LedConfig(BaseModel):
         Union[str, int],
         Field(
             default=26,
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin number for the LED.",
             examples=[26],
         ),

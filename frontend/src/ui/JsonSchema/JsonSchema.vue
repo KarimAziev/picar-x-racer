@@ -204,6 +204,7 @@ import {
   getSelectedSchema,
   mapEnumOptions,
   getComponentWithProps,
+  hasDirectSchemaType,
   resolveNewListItem,
 } from "@/ui/JsonSchema/util";
 import JsonSchema from "./JsonSchema.vue";
@@ -450,9 +451,13 @@ const handleNewOption = () => {
 
   if (prevData) {
     localValue.value = prevData;
-  } else if (selectedSchema.value?.type === "null") {
+  } else if (hasDirectSchemaType(selectedSchema.value, "null")) {
     localValue.value = null;
-  } else if (selectedSchema.value?.type === "object" && !branchModel) {
+  } else if (
+    selectedSchema.value &&
+    hasDirectSchemaType(selectedSchema.value, "object") &&
+    !branchModel
+  ) {
     const prevOptions = Object.values(oldData.value).reduce(
       (acc, item) => ({ ...acc, ...item }),
       {},

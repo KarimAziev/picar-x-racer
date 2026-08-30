@@ -244,6 +244,14 @@ Here are the key sections of the **Settings** menu:
 
 Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
 
+Enabled motors and servos configured with the same I2C bus and address share one
+physical PWM driver. Their driver type, frequency, and frame width must match;
+`Sunfounder` and `PCA9685` select different register protocols and are not
+interchangeable. To change a shared driver, update every consumer of that
+bus/address in one full Robot settings save. Conflicting or hardware-invalid
+updates are rejected before the configuration file is written and are reported
+in the UI.
+
 ### General
 
 ![Settings](./demo/general-settings.gif)

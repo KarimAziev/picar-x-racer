@@ -85,7 +85,16 @@ async def update_settings(
     Update robot settings.
     """
     _log.info("Saving robot hardware settings")
-    data = await asyncio.to_thread(settings_service.save_settings, settings)
+    try:
+        data = await asyncio.to_thread(settings_service.save_settings, settings)
+    except (UnchangedSettings, InvalidSettings) as err:
+        err_msg = str(err)
+        _log.error(err_msg)
+        raise HTTPException(status_code=409, detail=err_msg)
+    except Exception:
+        _log.error("Unhandled error while saving settings", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
     await connection_manager.broadcast_json(
         {"payload": data.model_dump(mode="json"), "type": "robot_settings"}
     )
