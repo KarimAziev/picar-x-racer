@@ -12,6 +12,7 @@ class TestSetupEnvVars(unittest.TestCase):
             "GPIOZERO_PIN_FACTORY",
             "PYGAME_HIDE_SUPPORT_PROMPT",
             "ROBOT_HAT_MOCK_SMBUS",
+            "ROBOT_HAT_MOCK_SPI",
             "ROBOT_HAT_DISCHARGE_RATE",
         ]
         for key in keys:
@@ -27,6 +28,7 @@ class TestSetupEnvVars(unittest.TestCase):
         self.assertEqual(os.environ.get("GPIOZERO_PIN_FACTORY"), "mock")
         self.assertEqual(os.environ.get("PYGAME_HIDE_SUPPORT_PROMPT"), "1")
         self.assertEqual(os.environ.get("ROBOT_HAT_MOCK_SMBUS"), "1")
+        self.assertEqual(os.environ.get("ROBOT_HAT_MOCK_SPI"), "1")
         self.assertEqual(os.environ.get("ROBOT_HAT_DISCHARGE_RATE"), "10")
         self.assertFalse(is_real)
 
@@ -40,6 +42,7 @@ class TestSetupEnvVars(unittest.TestCase):
         self.assertEqual(os.environ.get("PYGAME_HIDE_SUPPORT_PROMPT"), "1")
 
         self.assertIsNone(os.environ.get("ROBOT_HAT_MOCK_SMBUS"))
+        self.assertIsNone(os.environ.get("ROBOT_HAT_MOCK_SPI"))
         self.assertIsNone(os.environ.get("ROBOT_HAT_DISCHARGE_RATE"))
         self.assertTrue(is_real)
 
@@ -53,6 +56,7 @@ class TestSetupEnvVars(unittest.TestCase):
         self.assertTrue(is_real)
         self.assertEqual(os.environ.get("PYGAME_HIDE_SUPPORT_PROMPT"), "1")
         self.assertIsNone(os.environ.get("ROBOT_HAT_MOCK_SMBUS"))
+        self.assertIsNone(os.environ.get("ROBOT_HAT_MOCK_SPI"))
         self.assertIsNone(os.environ.get("ROBOT_HAT_DISCHARGE_RATE"))
 
     @patch("app.util.setup_env.is_raspberry_pi", return_value=False)
@@ -62,6 +66,7 @@ class TestSetupEnvVars(unittest.TestCase):
         self.assertFalse(is_real)
         self.assertEqual(os.environ.get("PYGAME_HIDE_SUPPORT_PROMPT"), "1")
         self.assertEqual(os.environ.get("ROBOT_HAT_MOCK_SMBUS"), "1")
+        self.assertEqual(os.environ.get("ROBOT_HAT_MOCK_SPI"), "1")
         self.assertEqual(os.environ.get("ROBOT_HAT_DISCHARGE_RATE"), "10")
 
 

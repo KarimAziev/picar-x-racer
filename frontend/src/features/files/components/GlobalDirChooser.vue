@@ -52,7 +52,8 @@
           <ProgressSpinner />
         </div>
         <div v-else-if="!loading && !rows.length" class="text-center">
-          {{ emptyMessage }}
+          <p class="font-bold">{{ emptyMessage }}</p>
+          <p v-if="errorDetail" class="text-red-500">{{ errorDetail }}</p>
         </div>
         <VirtualTree
           rowClass="h-[50px] hover:bg-mask"
@@ -141,6 +142,8 @@ import Size from "@/features/files/components/Cells/Size.vue";
 import FileType from "@/features/files/components/Cells/FileType.vue";
 import ModifiedTime from "@/features/files/components/Cells/ModifiedTime.vue";
 import { appApi } from "@/api";
+import { retrieveError } from "@/util/error";
+import { isNonEmptyString } from "@/util/guards";
 
 const props = withDefaults(
   defineProps<{
@@ -155,7 +158,11 @@ const props = withDefaults(
 );
 
 const visible = defineModel<boolean>("visible", { required: true });
-const emit = defineEmits(["show", "after-hide", "dir:submit"]);
+const emit = defineEmits<{
+  show: [];
+  "after-hide": [];
+  "dir:submit": [path: string];
+}>();
 const selectedItem = ref<Nullable<string>>(null);
 const initialDir = ref<Nullable<string>>(null);
 
@@ -216,6 +223,7 @@ const breadcrumbItems = computed(() => toBreadcrumbs(currentDir.value || "/"));
 
 const expandedNodes = ref<Set<string>>(new Set());
 
+const errorDetail = ref<string | null>(null);
 const emptyMessage = ref("No data");
 
 const handleSearch = useAsyncDebounce(async () => {
@@ -230,6 +238,8 @@ async function fetchData() {
   const messager = useMessagerStore();
   try {
     loading.value = true;
+    errorDetail.value = null;
+
     const response = await appApi.post<FileResponseModel>("/api/files/list", {
       root_dir: currentDir.value,
       search: search.value,
@@ -245,8 +255,15 @@ async function fetchData() {
     rows.value = response.data;
     currentDir.value = response.root_dir;
   } catch (error) {
-    messager.handleError(error, "Error fetching data");
-    emptyMessage.value = "Failed to fetch data";
+    const errData = retrieveError(error);
+    messager.error(errData.text, "Error fetching data: ");
+    emptyMessage.value = [
+      "Failed to fetch data",
+      isNonEmptyString(errData.text) && ":",
+    ]
+      .filter(Boolean)
+      .join("");
+    errorDetail.value = errData.text;
   } finally {
     loading.value = false;
   }

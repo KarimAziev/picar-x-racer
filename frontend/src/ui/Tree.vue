@@ -58,7 +58,9 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: TreeNode | null];
+}>();
 
 const expandedNodes = ref<Set<string>>(new Set());
 

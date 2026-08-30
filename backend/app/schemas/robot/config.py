@@ -176,21 +176,38 @@ class HardwareConfig(BaseModel):
     ] = AvoidParams()
 
     @model_validator(mode="after")
-    def validate_unique_battery_names(self) -> "HardwareConfig":
-        names = [battery.name.strip().casefold() for battery in self.batteries]
-        if len(names) != len(set(names)):
-            raise ValueError("Battery names must be unique")
-        if self.lidar_safety.enabled:
-            if not self.motion_control.enabled:
+    def validate_hardware_relationships(self) -> "HardwareConfig":
+        if "batteries" in self.model_fields_set:
+            if self.batteries is None:
+                raise ValueError("Batteries must be a list")
+
+            names = [battery.name.strip().casefold() for battery in self.batteries]
+            if len(names) != len(set(names)):
+                raise ValueError("Battery names must be unique")
+
+        # PartialHardwareConfig inherits this validator, so only validate a
+        # relationship here when both sides were supplied. SettingsService
+        # validates the merged, complete HardwareConfig before activation.
+        if self.lidar_safety is not None and self.lidar_safety.enabled:
+            if self.motion_control is not None and not self.motion_control.enabled:
                 raise ValueError("LiDAR safety requires motion control to be enabled")
-            if not self.localization_sensors.lidar.enabled:
+            if (
+                self.localization_sensors is not None
+                and not self.localization_sensors.lidar.enabled
+            ):
                 raise ValueError(
                     "LiDAR safety requires the LiDAR publisher to be enabled"
                 )
-        if self.local_mapping.enabled:
-            if not self.ackermann_odometry.enabled:
+        if self.local_mapping is not None and self.local_mapping.enabled:
+            if (
+                self.ackermann_odometry is not None
+                and not self.ackermann_odometry.enabled
+            ):
                 raise ValueError("local mapping requires Ackermann odometry")
-            if not self.localization_sensors.lidar.enabled:
+            if (
+                self.localization_sensors is not None
+                and not self.localization_sensors.lidar.enabled
+            ):
                 raise ValueError("local mapping requires the LiDAR publisher")
         return self
 

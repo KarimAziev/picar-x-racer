@@ -93,7 +93,6 @@ const props = defineProps<{
 }>();
 
 const color = defineModel<string>("color");
-const emit = defineEmits(["update:color"]);
 
 const extraOptions = ref<ValueLabelOption[]>([]);
 
@@ -127,11 +126,11 @@ const colorPickerValue = ref(findColorPickerValue());
 
 const handleUpdateColorPickerValue = (newColor?: string) => {
   const normalized = newColor ? ensurePrefix("#", newColor) : newColor;
-  emit("update:color", normalized);
+  color.value = normalized;
 };
 
 const handleUpdateColor = (newColor: string) => {
-  emit("update:color", newColor);
+  color.value = newColor;
 };
 
 watch(

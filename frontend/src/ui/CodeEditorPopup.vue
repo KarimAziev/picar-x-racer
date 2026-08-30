@@ -100,7 +100,14 @@
   </Dialog>
 </template>
 
-<script setup lang="ts">
+<script
+  setup
+  lang="ts"
+  generic="
+    SavePayload extends object,
+    SaveResponse extends object = SavePayload
+  "
+>
 import { ref, computed, watch, nextTick, defineAsyncComponent } from "vue";
 import { isAxiosError } from "axios";
 import type { DialogProps } from "primevue/dialog";
@@ -124,12 +131,16 @@ import { appApi } from "@/api";
 
 const popupStore = usePopupStore();
 
-const emit = defineEmits(["after-hide", "submit:save"]);
+const emit = defineEmits<{
+  "submit:save": [response: SaveResponse];
+  "after-hide": [];
+}>();
+
 const loading = ref(false);
 const saving = ref(false);
 const emptyMessage = ref<Nullable<string>>(null);
 
-type NormalizePayload = (content: string, filename: string) => any;
+type NormalizePayload = (content: string, filename: string) => SavePayload;
 
 const CodeMirror = defineAsyncComponent({
   loader: () => import("@/ui/CodeMirror.vue"),
@@ -138,20 +149,19 @@ const CodeMirror = defineAsyncComponent({
   delay: 0,
 });
 
-export interface Props
-  extends Omit<
-    DialogProps,
-    "visible" | "header" | "contentClass" | "closeOnEscape" | "closable"
-  > {
+interface Props extends Omit<
+  DialogProps,
+  "visible" | "header" | "contentClass" | "closeOnEscape" | "closable"
+> {
   path?: string;
   url?: string;
   saveUrl?: string;
   normalizePayload: NormalizePayload;
-  responseContentProp?: string;
+  responseContentProp?: keyof SaveResponse & string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  responseContentProp: "content",
+  responseContentProp: "content" as keyof SaveResponse & string,
   maximizable: true,
   modal: true,
   dismissableMask: true,
@@ -303,13 +313,16 @@ const handleSave = async () => {
     saving.value = true;
     const payload = props.normalizePayload(content.value, filename);
 
-    const response = await appApi.put(props.saveUrl, payload);
+    const response = await appApi.put<SaveResponse, SavePayload>(
+      props.saveUrl,
+      payload,
+    );
+
     const savedContent =
       props.responseContentProp && response[props.responseContentProp];
-
-    if (savedContent) {
+    if (isString(savedContent)) {
       origContent.value = savedContent;
-      emit("submit:save", response.data);
+      emit("submit:save", response);
     }
   } catch (error) {
     const errData = retrieveError(error);

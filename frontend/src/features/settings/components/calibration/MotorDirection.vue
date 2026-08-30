@@ -65,14 +65,18 @@ const buttonProps = computed(() => ({
   ),
 }));
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: number];
+}>();
 
 const props = withDefaults(defineProps<Props>(), {
   options: () => [1, -1],
   buttonLabel: "Reverse",
 });
 
-const onUpdate = (newValue: number) => {
-  emit("update:modelValue", newValue);
+const onUpdate = (newValue: number | null) => {
+  if (newValue !== null) {
+    emit("update:modelValue", newValue);
+  }
 };
 </script>

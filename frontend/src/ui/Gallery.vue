@@ -60,7 +60,10 @@ export interface ImageItem {
 }
 
 const activeIndex = defineModel<number>("activeIndex", { required: true });
-const emit = defineEmits(["update:activeIndex"]);
+
+const emit = defineEmits<{
+  (e: "update:activeIndex", index: number): void;
+}>();
 
 export interface Props {
   images: ImageItem[];

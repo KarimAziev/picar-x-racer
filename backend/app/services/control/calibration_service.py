@@ -37,6 +37,7 @@ class CalibrationService:
             if servo:
                 servo.reset_calibration()
         if self.px.motor_controller:
+            self.px.motor_controller.stop_all()
             self.px.motor_controller.reset_calibration()
         return self.current_calibration_settings()
 
@@ -113,6 +114,7 @@ class CalibrationService:
         _log.info(
             "Updating motor direction from %s to %s", motor.direction, -motor.direction
         )
+        motor.stop()
         motor.update_calibration_direction(-motor.direction)
         _log.info("Updated motor direction %s", motor.direction)
 
@@ -122,6 +124,7 @@ class CalibrationService:
         self, motor: Optional[MotorABC], value: MotorDirection
     ) -> Dict[str, Any]:
         if motor:
+            motor.stop()
             motor.update_calibration_direction(value)
         return self.current_calibration_settings()
 

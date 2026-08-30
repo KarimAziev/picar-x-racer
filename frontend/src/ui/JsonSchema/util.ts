@@ -1,5 +1,10 @@
 import { renameKeys } from "rename-obj-map";
-import type { JSONSchema, TypeOption } from "@/ui/JsonSchema/interface";
+import type {
+  FieldType,
+  JSONSchema,
+  JSONSchemaType,
+  TypeOption,
+} from "@/ui/JsonSchema/interface";
 import { pick } from "@/util/obj";
 import {
   isNil,
@@ -45,11 +50,89 @@ export const getNestedValue = <Obj extends Record<string | number, any> | null>(
   keys: (string | number)[],
 ) => keys.reduce((acc, key) => (acc ? acc[key] : undefined), obj);
 
+const normalizeSchemaTypes = (type: JSONSchema["type"]): JSONSchemaType[] =>
+  !type ? [] : Array.isArray(type) ? type : [type];
+
+/**
+ * Return the types declared by this exact schema node. Object and array
+ * keywords are accepted as structural type hints because JSON Schema does not
+ * require the `type` keyword when those constraints are present.
+ */
+export const getDirectSchemaTypes = (
+  schema: JSONSchema | TypeOption | null | undefined,
+): JSONSchemaType[] => {
+  if (!schema) {
+    return [];
+  }
+
+  const types = normalizeSchemaTypes(schema.type);
+  if ("properties" in schema && schema.properties) {
+    types.push("object");
+  }
+  if ("items" in schema && schema.items) {
+    types.push("array");
+  }
+  return [...new Set(types)];
+};
+
+/** Return every value type accepted by this node and its union branches. */
+export const getSchemaTypes = (
+  schema: JSONSchema | TypeOption | null | undefined,
+): JSONSchemaType[] => {
+  if (!schema) {
+    return [];
+  }
+
+  const types = getDirectSchemaTypes(schema);
+  const options = [schema.anyOf, "oneOf" in schema ? schema.oneOf : undefined];
+  options.forEach((branches) => {
+    branches?.forEach((branch) => types.push(...getSchemaTypes(branch)));
+  });
+  return [...new Set(types)];
+};
+
+export const hasDirectSchemaType = (
+  schema: JSONSchema | TypeOption | null | undefined,
+  type: JSONSchemaType,
+) => getDirectSchemaTypes(schema).includes(type);
+
+export const schemaAllowsType = (
+  schema: JSONSchema | TypeOption | null | undefined,
+  type: JSONSchemaType,
+) => getSchemaTypes(schema).includes(type);
+
+const getScalarSchemaType = (
+  schema: JSONSchema | TypeOption | null | undefined,
+): JSONSchemaType | undefined => {
+  const scalarTypes = getDirectSchemaTypes(schema).filter(
+    (type) => type !== "object" && type !== "array" && type !== "null",
+  );
+  return scalarTypes.length === 1 ? scalarTypes[0] : undefined;
+};
+
+/**
+ * Resolve the component kind independently from the schema's value types.
+ * `x-ui-type` always wins, including on union schemas without a top-level
+ * `type`; otherwise only an unambiguous direct scalar type is renderable.
+ */
+export const getFieldType = (
+  schema: JSONSchema | null | undefined,
+): FieldType | undefined => {
+  if (!schema) {
+    return;
+  }
+  if (schema["x-ui-type"]) {
+    return schema["x-ui-type"];
+  }
+
+  return getScalarSchemaType(schema);
+};
+
 export const isObjectSchemaPred = (resolvedSchema: JSONSchema | null) =>
-  resolvedSchema?.type === "object" && !!resolvedSchema.properties;
+  hasDirectSchemaType(resolvedSchema, "object") && !!resolvedSchema?.properties;
 
 export const isArraySchemaPred = (resolvedSchema: JSONSchema | null) =>
-  resolvedSchema?.type === "array" && resolvedSchema.items;
+  hasDirectSchemaType(resolvedSchema, "array") && resolvedSchema?.items;
 
 export const isAnyOfPred = (resolvedSchema: JSONSchema | null) =>
   !!(resolvedSchema?.anyOf && Array.isArray(resolvedSchema?.anyOf)) ||
@@ -83,12 +166,13 @@ export const mapEffectiveAnyOf = (
 export const mapAnyOfOptions = (effectiveAnyOf: JSONSchema[]) =>
   effectiveAnyOf.map((sch, i) => {
     let label = "";
+    const schemaTypes = getDirectSchemaTypes(sch);
     if (sch.title) {
       label = sch.title;
     } else if (sch.$ref) {
       label = sch.$ref.split("/").pop() || `Option ${i + 1}`;
-    } else if (sch.type) {
-      label = sch.type;
+    } else if (schemaTypes.length > 0) {
+      label = schemaTypes.join(" or ");
     } else {
       label = `Option ${i + 1}`;
     }
@@ -116,7 +200,9 @@ export const detectCandidateIndex = (
   }
 
   if (isNull(data)) {
-    return effectiveAnyOf.findIndex((item) => item.type === "null");
+    return effectiveAnyOf.findIndex((item) =>
+      hasDirectSchemaType(item, "null"),
+    );
   }
 
   if (
@@ -196,11 +282,11 @@ export const detectCandidateIndex = (
       });
     }
 
-    if (schema.type === "integer" && Number.isInteger(data)) {
+    if (hasDirectSchemaType(schema, "integer") && Number.isInteger(data)) {
       score++;
-    } else if (schema.type === "number" && isNumber(data)) {
+    } else if (hasDirectSchemaType(schema, "number") && isNumber(data)) {
       score++;
-    } else if (schema.type === "string" && isString(data)) {
+    } else if (hasDirectSchemaType(schema, "string") && isString(data)) {
       score++;
     }
 
@@ -221,7 +307,7 @@ export const fillDefaults = (
     return;
   }
 
-  if (schema.type === "object" && schema.properties) {
+  if (hasDirectSchemaType(schema, "object") && schema.properties) {
     for (const [key, propSchema] of Object.entries(schema.properties)) {
       if (!isUndefined(propSchema?.const)) {
         target[key] = propSchema.const;
@@ -235,7 +321,7 @@ export const fillDefaults = (
       }
       if (
         propSchema &&
-        propSchema.type === "object" &&
+        hasDirectSchemaType(propSchema, "object") &&
         typeof target[key] === "object"
       ) {
         fillDefaults(target[key], propSchema);
@@ -269,7 +355,7 @@ export const makeDefaults = (
           ? obj
           : !isUndefined(defaultVal)
             ? defaultVal
-            : propSchema?.type === "object"
+            : hasDirectSchemaType(propSchema, "object")
               ? makeDefaults(propSchema, obj)
               : undefined;
       acc[key] = value;
@@ -282,12 +368,18 @@ export const makeDefaults = (
 export const resolveRef = (
   schema: JSONSchema | TypeOption,
   defs: Record<string, JSONSchema> | undefined,
-) => {
+): JSONSchema | undefined => {
   if (schema?.$ref && defs) {
     const refMatch = schema.$ref.match(/^#\/\$defs\/(.+)$/);
     if (refMatch) {
       const defKey = refMatch[1];
-      return defs[defKey] || schema;
+      const resolved = defs[defKey];
+      if (resolved) {
+        const merged = { ...resolved, ...schema } as JSONSchema;
+        delete merged.$ref;
+        return merged;
+      }
+      return schema as JSONSchema;
     }
   }
 };
@@ -325,17 +417,21 @@ export const getTooltipHelp = (resolvedSchema: JSONSchema | null) => {
 };
 
 export const getComponentWithProps = (resolvedSchema: JSONSchema | null) => {
-  if (!resolvedSchema?.type) {
+  if (!resolvedSchema) {
     return;
   }
 
   const enumOptions = mapEnumOptions(resolvedSchema);
+  const fieldType = getFieldType(resolvedSchema);
+  if (!fieldType) {
+    return;
+  }
+  const componentType =
+    simpleTypes[fieldType] && enumOptions ? "select" : fieldType;
 
   const compSpec =
     componentsWithDefaults[
-      simpleTypes[resolvedSchema.type] && enumOptions
-        ? "select"
-        : (resolvedSchema?.type as keyof typeof componentsWithDefaults)
+      componentType as keyof typeof componentsWithDefaults
     ];
 
   if (!compSpec) {
@@ -351,7 +447,7 @@ export const getComponentWithProps = (resolvedSchema: JSONSchema | null) => {
   );
 
   const overridenProps =
-    simpleTypes[resolvedSchema.type] &&
+    simpleTypes[fieldType] &&
     enumOptions &&
     !extraProps.options &&
     !resolvedSchema?.props?.options
@@ -382,10 +478,13 @@ export const resolveNewListItem = (
       resolvedSchema.items.anyOf[selectedOptionIdx] &&
       resolveRef(resolvedSchema.items.anyOf[selectedOptionIdx], defs);
 
-    if (selectedBranch?.type === "object") {
+    if (selectedBranch && hasDirectSchemaType(selectedBranch, "object")) {
       return makeDefaults(selectedBranch);
     }
-  } else if (resolvedSchema?.items && resolvedSchema.items.type === "object") {
+  } else if (
+    resolvedSchema?.items &&
+    hasDirectSchemaType(resolvedSchema.items, "object")
+  ) {
     return makeDefaults(resolvedSchema.items);
   } else if (resolvedSchema?.items && resolvedSchema.items.enum) {
     return resolvedSchema.items.enum[0];
@@ -507,8 +606,7 @@ export const resolveRefRecursive = <Schema extends JSONSchema | TypeOption>(
 
   mixedTypes.forEach((arrKey) => {
     const val = (schema as Schema)[arrKey as keyof typeof schema] as
-      | JSONSchema
-      | JSONSchema[];
+      JSONSchema | JSONSchema[];
     if (!val) {
       return;
     }
@@ -554,27 +652,28 @@ export const validateSimpleType = (
 ) => {
   let errorMsg: string = "";
 
-  const isNotRequired = (
-    rawSchema?.anyOf ||
-    rawSchema?.oneOf ||
-    rawSchema?.items?.oneOf ||
-    rawSchema?.items?.anyOf ||
-    []
-  ).find((item) => item.type === "null");
-
   const isModelNull = isNull(model);
-  const isModelValidNull = isNotRequired && isModelNull;
+  const isModelValidNull = schemaAllowsType(rawSchema, "null") && isModelNull;
 
-  if (effectiveSchema.type && !isModelValidNull) {
+  const customValidationType =
+    rawSchema?.["x-ui-type"] || effectiveSchema["x-ui-type"];
+  const validationType =
+    customValidationType === "string_or_number" ||
+    customValidationType === "pin" ||
+    customValidationType === "hex"
+      ? customValidationType
+      : getScalarSchemaType(effectiveSchema);
+
+  if (validationType && !isModelValidNull) {
     let validType = true;
-    switch (effectiveSchema.type) {
+    switch (validationType) {
       case "string":
         validType = isString(model) && !isEmptyString(model.trim());
         break;
       case "number":
       case "integer":
         validType = isNumber(model);
-        if (effectiveSchema.type === "integer" && !Number.isInteger(model)) {
+        if (validationType === "integer" && !Number.isInteger(model)) {
           validType = false;
         }
         break;
@@ -614,7 +713,11 @@ export const validateSimpleType = (
       errorMsg =
         isNil(model) || (isString(model) && isEmptyString(model.trim()))
           ? "Required"
-          : `Invalid type: expected ${(rawSchema?.type || effectiveSchema.type).replace("_", " ")}`;
+          : `Invalid type: expected ${(
+              rawSchema?.["x-ui-type"] ||
+              getSchemaTypes(rawSchema).join(" or ") ||
+              validationType
+            ).replace("_", " ")}`;
 
       return errorMsg;
     }
@@ -705,7 +808,7 @@ export const validateAll = (
   }
 
   if (
-    (effectiveSchema.type === "object" || effectiveSchema.properties) &&
+    hasDirectSchemaType(effectiveSchema, "object") &&
     effectiveSchema.properties
   ) {
     if (Array.isArray(effectiveSchema.required)) {
@@ -727,7 +830,7 @@ export const validateAll = (
       }
     });
   } else if (
-    (effectiveSchema.type === "array" || effectiveSchema.items) &&
+    hasDirectSchemaType(effectiveSchema, "array") &&
     effectiveSchema.items
   ) {
     if (!Array.isArray(model)) {

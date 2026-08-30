@@ -183,6 +183,33 @@ const ledDefaults = {
   pin: null,
   interval: null,
 };
+
+const startupScopedConfigKeys = [
+  "motion_control",
+  "ackermann_odometry",
+  "localization_sensors",
+  "lidar_safety",
+  "local_mapping",
+] as const satisfies readonly (keyof Data)[];
+
+const changesStartupScopedConfig = (data: Partial<Data>, current: Data) =>
+  startupScopedConfigKeys.some(
+    (key) =>
+      key in data && JSON.stringify(data[key]) !== JSON.stringify(current[key]),
+  );
+
+const showSavedMessages = (
+  messager: ReturnType<typeof useMessagerStore>,
+  restartRequired: boolean,
+) => {
+  messager.success("Robot configuration saved");
+  if (restartRequired) {
+    messager.warning(
+      "Restart the backend to apply autonomy runtime configuration changes.",
+    );
+  }
+};
+
 const defaultState: State = {
   loading: false,
   loaded: false,
@@ -328,6 +355,7 @@ export const useStore = defineStore("robot", {
     },
     async saveData(data: Data) {
       const messager = useMessagerStore();
+      const restartRequired = changesStartupScopedConfig(data, this.data);
 
       try {
         this.loading = true;
@@ -337,20 +365,23 @@ export const useStore = defineStore("robot", {
         );
 
         this.data = response;
+        showSavedMessages(messager, restartRequired);
       } catch (error) {
-        messager.handleError(error, `Error fetching robot config`);
+        messager.handleError(error, `Error saving robot config`);
       } finally {
         this.loading = false;
       }
     },
     async updatePartialData(data: Partial<Data>) {
       const messager = useMessagerStore();
+      const restartRequired = changesStartupScopedConfig(data, this.data);
 
       try {
         this.loading = true;
         await robotApi.patch<Partial<Data>>("px/api/settings/config", data);
+        showSavedMessages(messager, restartRequired);
       } catch (error) {
-        messager.handleError(error, `Error fetching robot config`);
+        messager.handleError(error, `Error saving robot config`);
       } finally {
         this.loading = false;
       }

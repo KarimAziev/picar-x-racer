@@ -62,12 +62,9 @@ const props = defineProps<{
   isResetDisabled?: boolean;
 }>();
 
-const emit = defineEmits([
-  "update:color",
-  "update:size",
-  "update:renderFiber",
-  "reset",
-]);
+const emit = defineEmits<{
+  reset: [];
+}>();
 
 const resetDisabled = computed(
   () =>
@@ -78,17 +75,17 @@ const resetDisabled = computed(
 );
 
 const handleUpdateColor = (newColor?: string) => {
-  emit("update:color", newColor);
+  color.value = newColor;
 };
 
 const handleUpdateSize = (newSize?: number | number[]) => {
-  if (newSize !== undefined) {
-    emit("update:size", newSize as number);
+  if (typeof newSize === "number") {
+    size.value = newSize;
   }
 };
 
 const handleUpdateFiber = (newValue?: boolean) => {
-  emit("update:renderFiber", newValue);
+  renderFiber.value = newValue;
 };
 
 const handleReset = () => {

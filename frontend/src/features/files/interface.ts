@@ -90,3 +90,11 @@ export interface BatchFileStatus {
   filename: string;
   error: string | null;
 }
+
+export interface SaveFilePayload {
+  path: string;
+  content: string;
+  dir: Nullable<string>;
+}
+
+export type SaveFileResponse = SaveFilePayload;

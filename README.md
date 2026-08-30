@@ -244,6 +244,22 @@ Here are the key sections of the **Settings** menu:
 
 Robot Configuration includes control settings, calibration, hardware config, pin mapping, etc.
 
+Enabled motors and servos configured with the same I2C bus and address share one
+physical PWM driver. Their driver type, frequency, and frame width must match;
+`Sunfounder` and `PCA9685` select different register protocols and are not
+interchangeable. To change a shared driver, update every consumer of that
+bus/address in one full Robot settings save. Conflicting or hardware-invalid
+updates are rejected before the configuration file is written and are reported
+in the UI.
+
+Motion control, Ackermann odometry, localization publishers, LiDAR safety, and
+local mapping are startup-scoped services. Their settings are validated and
+saved without interrupting the active motor/servo adapter, but the backend must
+be restarted before changes to those sections take effect. The UI displays a
+restart reminder after such a save. The encoder publisher currently accepts an
+external `EncoderABC` source only; enabling it without a concrete integration
+reports the publisher as unavailable rather than attempting hardware access.
+
 ### General
 
 ![Settings](./demo/general-settings.gif)
@@ -520,6 +536,12 @@ To start both the backend and frontend servers in watch mode (automatically relo
 ```bash
 make dev
 ```
+
+On macOS and other non-Raspberry-Pi hosts, the startup path automatically uses
+GPIO, SMBus, and AS5048A SPI mocks. The Linux-only `spidev` dependency is not
+installed on macOS and is not imported during normal mocked startup. This lets
+the application and control UI run locally, but mocked motor and sensor values
+are simulations rather than hardware validation.
 
 ### Running Tests
 

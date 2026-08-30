@@ -1,11 +1,10 @@
-import { isString, isPlainObject } from "@/util/guards";
+import { isString, isPlainObject, isNonEmptyString } from "@/util/guards";
 import type {
   BatchFileStatus,
   FilterFieldStringArray,
   FilterFieldDatetime,
 } from "@/features/files/interface";
 import { Nullable } from "@/util/ts-helpers";
-import { allPass } from "@/util/func";
 
 export function bytesToSize(bytes: number, decimals = 1) {
   const sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "YB"];
@@ -104,7 +103,7 @@ export const expandFileName = (
   file: string,
   ...dirs: (string | null | undefined)[]
 ) => {
-  const filteredDirs = dirs.filter(allPass([isString, (v) => v.length > 0]));
+  const filteredDirs = dirs.filter(isNonEmptyString);
   return [...filteredDirs, file].join("/");
 };
 

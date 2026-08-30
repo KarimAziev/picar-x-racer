@@ -56,7 +56,10 @@ watch(
   },
 );
 
-const emit = defineEmits(["update:modelValue", "value-change"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: string | undefined];
+  "value-change": [value: string | undefined];
+}>();
 
 const onUpdate: InputTextEmitsOptions["update:modelValue"] = (newValue) => {
   emit("update:modelValue", newValue);

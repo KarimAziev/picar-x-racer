@@ -15,7 +15,7 @@ class RobotCommunicationService:
         robot_shutdown_url = f"{self.base_url}/px/api/system/shutdown"
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(robot_shutdown_url)
+                response = await client.post(robot_shutdown_url)
                 if response.status_code != 200:
                     logger.error(
                         "Robot shutdown call failed. Status: %s, Response: %s",

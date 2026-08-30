@@ -30,7 +30,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const isCollapsed = useLocalStorage(props.id, props.collapsed);
 
-const emit = defineEmits(["update:collapsed"]);
+const emit = defineEmits<{
+  "update:collapsed": [value: boolean];
+}>();
 
 const handleUpdateCollapsed = (value: boolean) => {
   isCollapsed.value = value;

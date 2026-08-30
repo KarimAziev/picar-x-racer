@@ -1,7 +1,7 @@
 import re
 import subprocess
 from functools import lru_cache
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.core.logger import Logger
 
@@ -44,8 +44,8 @@ class LibcameraParser:
         Returns:
             A list of dictionaries representing libcamera-supported devices and modes.
         """
-        cameras = []
-        current_camera = None
+        cameras: list[Dict[str, Any]] = []
+        current_camera: Optional[Dict[str, Any]] = None
         current_pixel_format = None
 
         for line in output.splitlines():

@@ -64,7 +64,7 @@ def get_files_with_extension(
     """
     Recursively scans the provided directory and returns all files with the specified extension.
     """
-    result = []
+    result: List[str] = []
 
     for root, _, files in os.walk(directory):
         for file in files:
@@ -296,7 +296,7 @@ def exclude_nested_files(filenames: List[str]) -> List[Path]:
 
     directories = {p for p in paths if p.is_dir()}
 
-    result = []
+    result: List[Path] = []
     for p in paths:
         if p.is_file() and any(parent in directories for parent in p.parents):
             continue

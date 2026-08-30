@@ -1,11 +1,15 @@
 import unittest
 
-from app.migrations.json_data import JsonDataMigrationError, JsonDataMigrator
+from app.migrations.json_data import (
+    JsonDataMigrationError,
+    JsonDataMigrator,
+    JsonObject,
+)
 
 
 class TestJsonDataMigrator(unittest.TestCase):
     def test_applies_migrations_in_version_order(self):
-        applied = []
+        applied: list[int] = []
 
         def migrate_v1(data):
             applied.append(1)
@@ -49,7 +53,7 @@ class TestJsonDataMigrator(unittest.TestCase):
             migrator.migrate({})
 
     def test_validates_after_migration(self):
-        validated = []
+        validated: list[JsonObject] = []
         migrator = JsonDataMigrator(
             {1: lambda data: data}, validator=lambda data: validated.append(data)
         )

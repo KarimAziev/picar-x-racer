@@ -78,6 +78,7 @@ import shutil
 import signal
 import sys
 from pathlib import Path
+from types import FrameType
 from typing import List, Optional, Tuple, Union
 
 import cv2
@@ -175,7 +176,7 @@ class ImageAnnotator:
         :param file_path: path to the YOLO label file.
         :return: list of tuples where each tuple is (class_id, center_x, center_y, width, height)
         """
-        labels = []
+        labels: List[Tuple[int, float, float, float, float]] = []
 
         with open(file_path, "r") as f:
             for line in f:
@@ -324,7 +325,7 @@ def main() -> None:
         sys.exit(1)
 
 
-def signal_handler(sig, frame) -> None:
+def signal_handler(sig: int, frame: FrameType | None) -> None:
     logger.info("You pressed Ctrl+C! Exiting gracefully...")
     sys.exit(0)
 

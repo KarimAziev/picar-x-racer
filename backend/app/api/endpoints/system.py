@@ -28,7 +28,7 @@ logger = Logger(__name__)
 router = APIRouter()
 
 
-@router.get(
+@router.post(
     "/system/shutdown",
     response_model=Message,
     responses={
@@ -96,7 +96,7 @@ async def shutdown(
         )
 
 
-@router.get(
+@router.post(
     "/system/restart",
     response_model=Message,
     responses={

@@ -24,6 +24,8 @@ class TestRobotConfigMigration(unittest.TestCase):
         data.pop("motion_control")
         data.pop("ackermann_odometry")
         data.pop("localization_sensors")
+        data.pop("lidar_safety")
+        data.pop("local_mapping")
         battery = data.pop("batteries")[0]
         battery.pop("name")
         data["battery"] = battery
@@ -61,6 +63,8 @@ class TestRobotConfigMigration(unittest.TestCase):
                 "encoder": {"enabled": False},
             },
         )
+        self.assertEqual(result.data["lidar_safety"], {"enabled": False})
+        self.assertEqual(result.data["local_mapping"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
     def test_migrates_v1_battery_to_named_collection(self):
@@ -154,6 +158,8 @@ class TestRobotConfigMigration(unittest.TestCase):
         data = deepcopy(self.current_config)
         data["schema_version"] = 4
         data.pop("localization_sensors")
+        data.pop("lidar_safety")
+        data.pop("local_mapping")
 
         result = create_robot_config_migrator().migrate(data)
 
@@ -167,6 +173,8 @@ class TestRobotConfigMigration(unittest.TestCase):
                 "encoder": {"enabled": False},
             },
         )
+        self.assertEqual(result.data["lidar_safety"], {"enabled": False})
+        self.assertEqual(result.data["local_mapping"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
     def test_v5_preserves_prerelease_localization_sensor_values(self):
@@ -196,6 +204,19 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         with self.assertRaisesRegex(JsonDataMigrationError, "must be an object"):
             create_robot_config_migrator().migrate(data)
+
+    def test_v5_rejects_invalid_lidar_feature_shape(self):
+        for field_name in ("lidar_safety", "local_mapping"):
+            with self.subTest(field_name=field_name):
+                data = deepcopy(self.current_config)
+                data["schema_version"] = 4
+                data[field_name] = "enabled"
+
+                with self.assertRaisesRegex(
+                    JsonDataMigrationError,
+                    f"'{field_name}' must be an object or null",
+                ):
+                    create_robot_config_migrator().migrate(data)
 
     def test_rejects_ambiguous_battery_shapes(self):
         data = deepcopy(self.current_config)

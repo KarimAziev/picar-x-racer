@@ -36,7 +36,7 @@ class UltrasonicConfig(BaseModel):
         Union[str, int],
         Field(
             ...,
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             title="Trig pin",
             description="The name or the number of the pin connected to the TRIG pin of the ultrasonic sensor.",
             examples=["D2"],
@@ -46,7 +46,7 @@ class UltrasonicConfig(BaseModel):
         Union[str, int],
         Field(
             ...,
-            json_schema_extra={"type": "pin"},
+            json_schema_extra={"x-ui-type": "pin"},
             title="Echo pin",
             description="The name or the number of the pin connected to the ECHO pin of the ultrasonic sensor.",
             examples=["D3"],

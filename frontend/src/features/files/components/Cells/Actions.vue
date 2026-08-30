@@ -51,7 +51,12 @@ const props = defineProps<Props>();
 
 const isUploadingRow = computed(() => isNumber(props.progress));
 
-const emit = defineEmits(["download", "remove", "rename", "upload:cancel"]);
+const emit = defineEmits<{
+  download: [path: string];
+  remove: [path: string];
+  rename: [path: string, newName: string];
+  "upload:cancel": [path: string];
+}>();
 
 const handleDownloadFile = () => {
   emit("download", props.path);

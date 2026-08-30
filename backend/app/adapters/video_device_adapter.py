@@ -124,7 +124,7 @@ class VideoDeviceAdapter:
             ):
                 results.append(item)
 
-        devices = []
+        devices: List[DeviceType] = []
 
         for item in v4l2_devices:
             if item.device not in gstreamer_devices_paths:

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Tuple
 
 from app.schemas.robot.common import AddressField, AddressModel, IC2Bus
 from pydantic import Field
@@ -18,7 +18,7 @@ class PWMDriverConfig(AddressModel):
             description="Model of the PWM driver chip",
             examples=["Sunfounder", "PCA9685"],
             json_schema_extra={
-                "type": "select",
+                "x-ui-type": "select",
                 "props": {
                     "options": [
                         {"value": "PCA9685", "label": "PCA9685"},
@@ -58,6 +58,22 @@ class PWMDriverConfig(AddressModel):
     ] = 50
 
     address: AddressField = "0x40"
+
+    @property
+    def hardware_key(self) -> Tuple[int, int]:
+        """Identify the physical I2C device independently of address notation."""
+        return self.bus, self.addr_int
+
+    @property
+    def hardware_signature(self) -> Tuple[str, int, int, int, int]:
+        """Return settings that must agree for consumers sharing one device."""
+        return (
+            self.name,
+            self.bus,
+            self.addr_int,
+            self.frame_width,
+            self.freq,
+        )
 
     def to_dataclass(self) -> PWMDriverConfigDataclass:
         return PWMDriverConfigDataclass(

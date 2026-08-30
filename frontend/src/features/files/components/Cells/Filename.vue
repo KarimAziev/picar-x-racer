@@ -72,8 +72,10 @@ import Cell from "@/features/files/components/Cell.vue";
 const wrapperElement = useTemplateRef<HTMLButtonElement>("wrapperElement");
 const isHovered = useElementHover(wrapperElement);
 
-export interface Props
-  extends Pick<UploadingFileDetail, "path" | "name" | "progress"> {
+export interface Props extends Pick<
+  UploadingFileDetail,
+  "path" | "name" | "progress"
+> {
   disabled?: boolean;
 }
 const props = defineProps<Props>();
@@ -91,7 +93,9 @@ const handleBlur = () => {
 const inputRef = ref<
   (ComponentPublicInstance<{}, any> & { $el: HTMLInputElement }) | null
 >(null);
-const emit = defineEmits(["rename"]);
+const emit = defineEmits<{
+  rename: [path: string, newName: string];
+}>();
 
 const handleDiscardRename = () => {
   renaming.value = false;

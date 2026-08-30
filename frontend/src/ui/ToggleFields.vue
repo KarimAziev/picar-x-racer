@@ -17,7 +17,9 @@
 <script setup lang="ts">
 import ToggleSwitchField from "@/ui/ToggleSwitchField.vue";
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [fieldName: string, value: boolean];
+}>();
 
 type ToggleableConfig = {
   [key: string]: { label?: string; description?: string };

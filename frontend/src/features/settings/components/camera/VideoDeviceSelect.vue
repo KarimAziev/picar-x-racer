@@ -15,7 +15,7 @@
           key-prop="key"
           label-prop="label"
           placeholder="Camera"
-          @update:model-value="updateDevice"
+          @update:model-value="(node) => updateDevice(node as Device)"
           :nodes="devices as TreeNode[]"
           v-model:model-value="selectedDevice as unknown as TreeNode"
         >
@@ -278,7 +278,9 @@ const label = computed(() => {
 });
 
 const selectedDeviceApi = computed(
-  () => extractDeviceAPI(selectedDevice.value?.device || camStore.data.device) || null,
+  () =>
+    extractDeviceAPI(selectedDevice.value?.device || camStore.data.device) ||
+    null,
 );
 
 const gstreamerSupported = computed(() =>

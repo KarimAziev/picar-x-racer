@@ -1,19 +1,20 @@
 import { ValueLabelOption } from "@/types/common";
 
+export type JSONSchemaType =
+  "integer" | "string" | "number" | "boolean" | "object" | "null" | "array";
+
 export type FieldType =
-  | "integer"
-  | "string"
-  | "number"
-  | "boolean"
-  | "object"
+  | JSONSchemaType
   | "hex"
-  | "null"
-  | "array"
   | "string_or_number"
-  | "pin";
+  | "pin"
+  | "motor_direction"
+  | "select"
+  | "calibration_offset";
 
 export type TypeOption = {
-  type?: FieldType;
+  type?: JSONSchemaType | JSONSchemaType[];
+  "x-ui-type"?: FieldType;
   minimum?: number;
   $ref?: string;
   anyOf?: Options;
@@ -27,14 +28,7 @@ export interface Props extends Record<string, any> {
 }
 
 export type Operator =
-  | "gt"
-  | "lt"
-  | "ge"
-  | "le"
-  | "eq"
-  | "not_eq"
-  | "in"
-  | "not_in";
+  "gt" | "lt" | "ge" | "le" | "eq" | "not_eq" | "in" | "not_in";
 
 // simple DSL condition for validation
 export interface Condition {
@@ -62,7 +56,8 @@ export interface Discriminator {
 
 export interface JSONSchemaBase {
   title?: string;
-  type?: FieldType;
+  type?: JSONSchemaType | JSONSchemaType[];
+  "x-ui-type"?: FieldType;
   description?: string;
   enum?: (number | string)[];
   anyOf?: JSONSchema[];

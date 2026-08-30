@@ -31,10 +31,7 @@
 <script setup lang="ts">
 import { ref, watch, useAttrs, computed } from "vue";
 import NumberInputField from "@/ui/NumberInputField.vue";
-import {
-  InputNumberEmitsOptions,
-  InputNumberProps,
-} from "primevue/inputnumber";
+import { InputNumberBlurEvent, InputNumberProps } from "primevue/inputnumber";
 import type { Props as FieldProps } from "@/ui/Field.vue";
 import { isNumber } from "@/util/guards";
 import { useControllerStore } from "@/features/controller/store";
@@ -116,9 +113,12 @@ const handleServoMove = (value: number) => {
   commandAction.value(value);
 };
 
-const emit = defineEmits(["update:modelValue", "blur"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: number | undefined];
+  blur: [event: InputNumberBlurEvent];
+}>();
 
-const onUpdate: InputNumberEmitsOptions["update:modelValue"] = (newValue) => {
+const onUpdate = (newValue: number | undefined) => {
   if (isNumber(newValue)) {
     calibrationAction.value(newValue);
   }

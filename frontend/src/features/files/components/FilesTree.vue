@@ -371,13 +371,7 @@
     :url="selectedTextFile?.url"
     :saveUrl="makeSaveURL(store.mediaType)"
     @submit:save="handleSubmitNewTextFile"
-    :normalizePayload="
-      (content, filename) => ({
-        path: filename,
-        content: content,
-        dir: store.dir,
-      })
-    "
+    :normalizePayload="normalizeSavePayload"
     v-model:visible="textFilePopupVisible"
     @after-hide="
       () => {
@@ -398,7 +392,11 @@ import {
   defineAsyncComponent,
 } from "vue";
 import type { FileStore } from "@/features/files/store-fabric";
-import type { GroupedFile } from "@/features/files/interface";
+import type {
+  GroupedFile,
+  SaveFilePayload,
+  SaveFileResponse,
+} from "@/features/files/interface";
 import InputText from "primevue/inputtext";
 import HeaderRow from "@/features/files/components/HeaderRow.vue";
 import { usePopupStore } from "@/features/settings/stores";
@@ -542,7 +540,16 @@ const movePopupHeader = computed(() =>
     : `Move ${markedLen.value} files to:`,
 );
 
-const handleSubmitNewTextFile = ({ path }: { path: string }) => {
+const normalizeSavePayload = (
+  content: string,
+  filename: string,
+): SaveFilePayload => ({
+  path: filename,
+  content,
+  dir: props.store.dir,
+});
+
+const handleSubmitNewTextFile = ({ path }: SaveFileResponse) => {
   selectedTextFile.value.path = path;
   props.store.fetchData();
 };

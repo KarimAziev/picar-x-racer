@@ -23,7 +23,10 @@ import type { ButtonProps } from "primevue/button";
 import { omit } from "@/util/obj";
 import ButtonText from "@/ui/ButtonText.vue";
 
-const emit = defineEmits(["show", "hide"]);
+const emit = defineEmits<{
+  show: [];
+  hide: [];
+}>();
 
 const onShow = () => {
   emit("show");

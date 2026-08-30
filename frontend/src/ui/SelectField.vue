@@ -30,15 +30,15 @@
   </Field>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="ModelValue">
 import { ref, watch, useAttrs, computed } from "vue";
 import type { SelectEmitsOptions, SelectProps } from "primevue/select";
 import type { Props as FieldProps } from "@/ui/Field.vue";
 import Select from "primevue/select";
 import Field from "@/ui/Field.vue";
 
-export interface Props extends FieldProps {
-  modelValue?: any;
+export interface Props<ModelValue = any> extends FieldProps {
+  modelValue?: ModelValue;
   invalid?: boolean;
   field?: string | number;
   fieldClassName?: string;
@@ -53,7 +53,7 @@ export interface Props extends FieldProps {
   tooltip?: string;
   tooltipHelp?: string;
 }
-const props = defineProps<Props>();
+const props = defineProps<Props<ModelValue>>();
 
 const otherAttrs = useAttrs();
 
@@ -95,7 +95,9 @@ watch(
   },
 );
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: ModelValue];
+}>();
 
 const onUpdate: SelectEmitsOptions["update:modelValue"] = (newValue) => {
   emit("update:modelValue", newValue);

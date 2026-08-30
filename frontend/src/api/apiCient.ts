@@ -60,12 +60,12 @@ class APIClient {
     return `${this.baseUrl}/${path}`;
   }
 
-  public async get<T = any>(
+  public async get<T = unknown>(
     path: string,
     config?: AxiosRequestConfig,
   ): Promise<T>;
 
-  public async get<T = any>(
+  public async get<T = unknown>(
     path: string,
     config: AxiosRequestConfig | undefined,
     fullResponse: true,
@@ -84,20 +84,20 @@ class APIClient {
     return response.data;
   }
 
-  public async post<T = any, D = any>(
+  public async post<T = unknown, D = unknown>(
     path: string,
     data?: D,
     config?: AxiosRequestConfig,
   ): Promise<T>;
 
-  public async post<T = any, D = any>(
+  public async post<T = unknown, D = unknown>(
     path: string,
     data: D | undefined,
     config: AxiosRequestConfig | undefined,
     fullResponse: true,
   ): Promise<AxiosResponse<T>>;
 
-  public async post<T = any, D = any>(
+  public async post<T = unknown, D = unknown>(
     path: string,
     data?: D,
     config?: AxiosRequestConfig,
@@ -112,20 +112,20 @@ class APIClient {
     return response.data;
   }
 
-  public async put<T = any, D = any>(
+  public async put<T = unknown, D = unknown>(
     path: string,
     data?: D,
     config?: AxiosRequestConfig,
   ): Promise<T>;
 
-  public async put<T = any, D = any>(
+  public async put<T = unknown, D = unknown>(
     path: string,
     data: D | undefined,
     config: AxiosRequestConfig | undefined,
     fullResponse: true,
   ): Promise<AxiosResponse<T>>;
 
-  public async put<T = any, D = any>(
+  public async put<T = unknown, D = unknown>(
     path: string,
     data?: D,
     config?: AxiosRequestConfig,
@@ -139,20 +139,20 @@ class APIClient {
     return response.data;
   }
 
-  public async patch<T = any, D = any>(
+  public async patch<T = unknown, D = unknown>(
     path: string,
     data?: D,
     config?: AxiosRequestConfig,
   ): Promise<T>;
 
-  public async patch<T = any, D = any>(
+  public async patch<T = unknown, D = unknown>(
     path: string,
     data: D | undefined,
     config: AxiosRequestConfig | undefined,
     fullResponse: true,
   ): Promise<AxiosResponse<T>>;
 
-  public async patch<T = any, D = any>(
+  public async patch<T = unknown, D = unknown>(
     path: string,
     data?: D,
     config?: AxiosRequestConfig,
@@ -166,12 +166,12 @@ class APIClient {
     return response.data;
   }
 
-  public async delete<T = any>(
+  public async delete<T = unknown>(
     path: string,
     config?: AxiosRequestConfig,
   ): Promise<T>;
 
-  public async delete<T = any>(
+  public async delete<T = unknown>(
     path: string,
     config: AxiosRequestConfig | undefined,
     fullResponse: true,

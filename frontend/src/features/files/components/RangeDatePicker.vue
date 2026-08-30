@@ -21,7 +21,9 @@ const dateRangeFilter = defineModel<FilterField[]>("dateRangeFilter", {
   required: true,
 });
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: FilterField[]];
+}>();
 
 const getDateRangeFilterValue = () =>
   dateRangeFilter.value.flatMap((filter) =>
@@ -59,20 +61,19 @@ const handleUpdateModelValue: DatePickerEmitsOptions["update:modelValue"] = (
   }
 };
 
-export interface Props
-  extends Pick<
-    DatePickerProps,
-    | "showIcon"
-    | "showTime"
-    | "name"
-    | "minDate"
-    | "maxDate"
-    | "disabled"
-    | "readonly"
-    | "placeholder"
-    | "id"
-    | "inputId"
-  > {}
+export interface Props extends Pick<
+  DatePickerProps,
+  | "showIcon"
+  | "showTime"
+  | "name"
+  | "minDate"
+  | "maxDate"
+  | "disabled"
+  | "readonly"
+  | "placeholder"
+  | "id"
+  | "inputId"
+> {}
 
 const props = withDefaults(defineProps<Props>(), {
   showTime: true,

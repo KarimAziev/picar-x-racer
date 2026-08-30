@@ -121,7 +121,11 @@ import { formatKeyEventItem } from "@/util/keyboard-util";
 import { isNumber } from "@/util/guards";
 import { omit } from "@/util/obj";
 
-const emit = defineEmits(["update:modelValue", "hide", "show"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: TreeNode];
+  hide: [];
+  show: [];
+}>();
 
 const listContainer = ref<HTMLElement | null>(null);
 

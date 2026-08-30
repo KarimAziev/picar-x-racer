@@ -48,7 +48,7 @@ class JsonDataMigrator:
                 f"version {self.latest_version}"
             )
 
-        applied_versions = []
+        applied_versions: list[int] = []
         for target_version in range(from_version + 1, self.latest_version + 1):
             migration = self._migrations.get(target_version)
             if migration is None:

@@ -105,7 +105,7 @@ class FileFilterService:
         dir_map = {f.path: f for f in files if f.is_dir}
 
         def get_parent_paths(path: str) -> List[str]:
-            parents = []
+            parents: List[str] = []
             parts = path.split("/")
             for i in range(1, len(parts)):
                 parent_path = "/".join(parts[:i])

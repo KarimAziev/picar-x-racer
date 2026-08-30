@@ -253,7 +253,7 @@ def non_max_suppression(
 
     # max_wh = 7680  # (pixels) maximum box width and height
     ki = 4 + nc  # keypoints start index
-    output = []
+    output: list[DetectionResult] = []
     for xi, x in enumerate(prediction):  # image index, image inference
         x = x[xc[xi]]
         # If none remain process next image

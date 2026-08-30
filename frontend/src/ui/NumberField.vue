@@ -95,7 +95,9 @@ watch(
   },
 );
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: number | null];
+}>();
 
 const handleUpdate = (val: number) => {
   if (isNumber(props.max) && val > props.max) {

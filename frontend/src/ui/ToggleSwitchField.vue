@@ -58,7 +58,9 @@ watch(
   },
 );
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean];
+}>();
 
 const onUpdate: ToggleSwitchEmitsOptions["update:modelValue"] = (newValue) => {
   emit("update:modelValue", newValue);

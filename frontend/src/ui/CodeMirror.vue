@@ -49,7 +49,11 @@ const addKeymapCommands = Prec.highest(
 );
 
 const searchPanelOpen = ref(false);
-const emit = defineEmits(["update:modelValue", "search:open", "search:close"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: string];
+  "search:open": [];
+  "search:close": [];
+}>();
 
 const editorContainer = ref<Element | null>(null);
 const themeCompartment = new Compartment();

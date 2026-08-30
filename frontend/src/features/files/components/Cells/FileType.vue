@@ -66,23 +66,25 @@ import { secondsToReadableString } from "@/util/time";
 import type { Ref } from "vue";
 import { inject } from "vue";
 
-export interface Props
-  extends Pick<UploadingFileDetail, "type" | "path" | "duration"> {
+export interface Props extends Pick<
+  UploadingFileDetail,
+  "type" | "path" | "duration"
+> {
   makeImagePreviewURL?: (path: GroupedFile["path"]) => string;
   makeVideoPreviewURL?: (path: GroupedFile["path"]) => string;
   makeAudioURL?: (path: GroupedFile["path"]) => string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const expandedNodes = inject<Ref<Set<string>>>("expandedNodes");
 
-const emit = defineEmits([
-  "update:dir",
-  "trigger:image",
-  "trigger:video",
-  "trigger:text",
-]);
+const emit = defineEmits<{
+  (e: "update:dir", path: string): void;
+  (e: "trigger:image", path: string): void;
+  (e: "trigger:video", path: string): void;
+  (e: "trigger:text", path: string): void;
+}>();
 
 const handleUpdateDir = (path: string) => {
   emit("update:dir", path);
