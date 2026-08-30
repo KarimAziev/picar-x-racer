@@ -11,6 +11,10 @@ from app.schemas.autonomy.messages import (
     SafetyState,
     SteeringState,
 )
+from app.schemas.autonomy.mapping_status import (
+    MappingSessionState,
+    MappingSessionStatus,
+)
 from app.schemas.autonomy.sensor_status import (
     LocalizationSensorStatus,
     SensorName,
@@ -30,6 +34,8 @@ __all__ = [
     "LaserScanTelemetry",
     "LocalizationSensorStatus",
     "MessageHeader",
+    "MappingSessionState",
+    "MappingSessionStatus",
     "OccupancyGrid",
     "Odometry2D",
     "SensorName",

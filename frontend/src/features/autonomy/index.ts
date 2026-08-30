@@ -7,6 +7,9 @@ export {
 export type { AutonomyOperatorView } from "@/features/autonomy/operatorView";
 export type {
   LocalizationSensorStatus,
+  MappingSessionAction,
+  MappingSessionState,
+  MappingSessionStatus,
   OccupancyGrid,
   SensorName,
   SensorPublisherStatus,

@@ -29,6 +29,11 @@
         "
       />
       <Tag :severity="sensorSeverity" :value="sensorLabel" />
+      <Tag
+        v-if="telemetry.mappingSession"
+        :severity="mappingSeverity"
+        :value="`Map: ${telemetry.mappingSession.state}`"
+      />
       <Tag severity="info" :value="commandLabel" />
       <Tag v-if="poseLabel" severity="secondary" :value="poseLabel" />
       <Tag
@@ -151,6 +156,11 @@ const sensorLabel = computed(() => {
   if (telemetry.sensors.some((sensor) => sensor.error)) return "Sensor error";
   if (!enabledSensors.value.length) return "Sensors disabled";
   return sensorsReady.value ? "Sensors ready" : "Sensors waiting";
+});
+const mappingSeverity = computed(() => {
+  if (telemetry.mappingSession?.state === "active") return "success";
+  if (telemetry.mappingSession?.state === "paused") return "warning";
+  return "secondary";
 });
 
 const commandLabel = computed(() => {

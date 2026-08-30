@@ -95,6 +95,25 @@ export interface OccupancyGrid {
   data: number[];
 }
 
+export type MappingSessionState = "disabled" | "idle" | "active" | "paused";
+
+export interface MappingSessionStatus {
+  enabled: boolean;
+  state: MappingSessionState;
+  session_id: number;
+  map_sequence: number;
+  scans_received: number;
+  scans_inserted: number;
+  returns_inserted: number;
+  ignored_inactive_scans: number;
+  rejected_missing_odometry: number;
+  rejected_stale_odometry: number;
+  has_map: boolean;
+}
+
+export type MappingSessionAction =
+  "start" | "pause" | "finish" | "clear" | "reset";
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
@@ -106,8 +125,11 @@ export interface State {
   loading: boolean;
   error: string | null;
   mapError: string | null;
+  mappingActionLoading: boolean;
+  mappingActionError: string | null;
   sensors: SensorPublisherStatus[];
   localMap: OccupancyGrid | null;
+  mappingSession: MappingSessionStatus | null;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
   consumers: number;
@@ -117,8 +139,11 @@ const defaultState: State = {
   loading: false,
   error: null,
   mapError: null,
+  mappingActionLoading: false,
+  mappingActionError: null,
   sensors: [],
   localMap: null,
+  mappingSession: null,
   latest: {},
   connection: null,
   consumers: 0,
@@ -165,6 +190,34 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         } else {
           this.mapError = retrieveError(error).text;
         }
+      }
+    },
+
+    async refreshMappingSession() {
+      try {
+        this.mappingSession = await robotApi.get<MappingSessionStatus>(
+          "/px/api/map/session",
+        );
+        this.mappingActionError = null;
+      } catch (error) {
+        this.mappingActionError = retrieveError(error).text;
+      }
+    },
+
+    async runMappingAction(action: MappingSessionAction) {
+      try {
+        this.mappingActionLoading = true;
+        this.mappingSession = await robotApi.post<MappingSessionStatus>(
+          `/px/api/map/session/${action}`,
+        );
+        this.mappingActionError = null;
+        if (action === "clear" || action === "reset") {
+          await this.refreshLocalMap();
+        }
+      } catch (error) {
+        this.mappingActionError = retrieveError(error).text;
+      } finally {
+        this.mappingActionLoading = false;
       }
     },
 

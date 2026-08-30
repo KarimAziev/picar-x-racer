@@ -4,13 +4,14 @@ import { ref } from "vue";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
+  post: vi.fn(),
   initWS: vi.fn(),
   cleanup: vi.fn(),
   options: null as null | { onMessage?: (message: unknown) => void },
 }));
 
 vi.mock("@/api", () => ({
-  robotApi: { get: mocks.get },
+  robotApi: { get: mocks.get, post: mocks.post },
 }));
 
 vi.mock("@/composables/useWebsocket", () => ({
@@ -38,17 +39,34 @@ describe("autonomy telemetry store", () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     mocks.options = null;
-    mocks.get.mockResolvedValue({
-      sensors: [
-        {
-          sensor: "imu",
+    mocks.get.mockImplementation((path: string) => {
+      if (path === "/px/api/map/session") {
+        return Promise.resolve({
           enabled: true,
-          running: true,
-          published_messages: 12,
-          last_timestamp_monotonic_ns: 100,
-          error: null,
-        },
-      ],
+          state: "idle",
+          session_id: 0,
+          map_sequence: 0,
+          scans_received: 0,
+          scans_inserted: 0,
+          returns_inserted: 0,
+          ignored_inactive_scans: 0,
+          rejected_missing_odometry: 0,
+          rejected_stale_odometry: 0,
+          has_map: false,
+        });
+      }
+      return Promise.resolve({
+        sensors: [
+          {
+            sensor: "imu",
+            enabled: true,
+            running: true,
+            published_messages: 12,
+            last_timestamp_monotonic_ns: 100,
+            error: null,
+          },
+        ],
+      });
     });
   });
 
@@ -88,6 +106,31 @@ describe("autonomy telemetry store", () => {
 
     store.cleanup();
     expect(mocks.cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("retrieves and operates the explicit mapping session", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockResolvedValue({
+      enabled: true,
+      state: "active",
+      session_id: 1,
+      map_sequence: 0,
+      scans_received: 0,
+      scans_inserted: 0,
+      returns_inserted: 0,
+      ignored_inactive_scans: 0,
+      rejected_missing_odometry: 0,
+      rejected_stale_odometry: 0,
+      has_map: false,
+    });
+
+    await store.refreshMappingSession();
+    await store.runMappingAction("start");
+
+    expect(mocks.get).toHaveBeenCalledWith("/px/api/map/session");
+    expect(mocks.post).toHaveBeenCalledWith("/px/api/map/session/start");
+    expect(store.mappingSession?.state).toBe("active");
+    expect(store.mappingSession?.session_id).toBe(1);
   });
 
   it("reports the reactive websocket connection state", () => {

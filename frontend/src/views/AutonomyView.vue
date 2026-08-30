@@ -96,6 +96,8 @@
       </section>
 
       <aside class="flex min-w-0 flex-col gap-3">
+        <MappingSessionControls />
+
         <section
           class="rounded-xl border border-surface-200 bg-surface-0 p-3 shadow-sm dark:border-surface-700 dark:bg-surface-900"
         >
@@ -165,6 +167,7 @@ import {
 import { useRobotStore } from "@/features/settings/stores";
 import AutonomyStatusBar from "@/features/autonomy/components/AutonomyStatusBar.vue";
 import EmptyOperationalView from "@/features/autonomy/components/EmptyOperationalView.vue";
+import MappingSessionControls from "@/features/autonomy/components/MappingSessionControls.vue";
 import SensorDiagnostics from "@/features/settings/components/robot/SensorDiagnostics.vue";
 import OccupancyGridPreview from "@/features/settings/components/robot/OccupancyGridPreview.vue";
 

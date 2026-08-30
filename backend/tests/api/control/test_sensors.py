@@ -1,8 +1,21 @@
 import unittest
 from typing import cast
 
-from app.api.control.sensors import _close_telemetry_websocket
-from fastapi import WebSocket
+from app.api import robot_deps
+from app.api.control.sensors import (
+    _close_telemetry_websocket,
+    _require_mapping_service,
+    get_mapping_session_status,
+)
+from app.control_server import app as control_app
+from app.services.autonomy import (
+    LocalMappingService,
+    LocalOccupancyGrid,
+    LocalOccupancyGridConfig,
+    TopicBus,
+)
+from fastapi import HTTPException, WebSocket
+from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketState
 
 
@@ -74,6 +87,63 @@ class TelemetryWebSocketCleanupTests(unittest.IsolatedAsyncioTestCase):
             await _close_telemetry_websocket(
                 cast(WebSocket, websocket), peer_disconnected=False
             )
+
+
+class MappingSessionEndpointTests(unittest.IsolatedAsyncioTestCase):
+    async def test_reports_disabled_state_without_a_mapping_service(self) -> None:
+        status = await get_mapping_session_status(None)
+
+        self.assertFalse(status.enabled)
+        self.assertEqual(status.state.value, "disabled")
+
+    async def test_rejects_actions_when_mapping_is_disabled(self) -> None:
+        with self.assertRaises(HTTPException) as context:
+            _require_mapping_service(None)
+
+        self.assertEqual(context.exception.status_code, 409)
+
+
+class MappingSessionRouteTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.service = LocalMappingService(
+            TopicBus(),
+            LocalOccupancyGrid(
+                LocalOccupancyGridConfig(width_m=4, height_m=4, resolution_m=1)
+            ),
+            max_odometry_age_seconds=0.1,
+        )
+        control_app.dependency_overrides[robot_deps.get_local_mapping_service] = (
+            lambda: self.service
+        )
+        self.client = TestClient(control_app)
+
+    def tearDown(self) -> None:
+        control_app.dependency_overrides.clear()
+
+    def test_operates_mapping_session_over_http(self) -> None:
+        initial = self.client.get("/px/api/map/session")
+        started = self.client.post("/px/api/map/session/start")
+        paused = self.client.post("/px/api/map/session/pause")
+        finished = self.client.post("/px/api/map/session/finish")
+        reset = self.client.post("/px/api/map/session/reset")
+
+        self.assertEqual(initial.status_code, 200, initial.text)
+        self.assertEqual(initial.json()["state"], "idle")
+        self.assertEqual(started.json()["state"], "active")
+        self.assertEqual(started.json()["session_id"], 1)
+        self.assertEqual(paused.json()["state"], "paused")
+        self.assertEqual(finished.json()["state"], "idle")
+        self.assertEqual(reset.json()["state"], "idle")
+
+    def test_rejects_action_when_mapping_is_disabled(self) -> None:
+        control_app.dependency_overrides[robot_deps.get_local_mapping_service] = (
+            lambda: None
+        )
+
+        response = self.client.post("/px/api/map/session/start")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"], "Local mapping is disabled")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@
       v-else-if="!map"
       class="rounded-lg border border-dashed border-surface-300 p-4 text-center text-xs text-surface-500 dark:border-surface-700"
     >
-      Waiting for synchronized LiDAR and odometry…
+      {{ emptyMapMessage }}
     </div>
     <canvas
       v-else
@@ -43,6 +43,15 @@ let animationFrame: number | null = null;
 
 const mappingEnabled = computed(() => robotStore.data.local_mapping.enabled);
 const map = computed(() => store.localMap);
+const emptyMapMessage = computed(() => {
+  if (store.mappingSession?.state === "idle") {
+    return "Mapping session is idle. Start it from the autonomy workspace when ready.";
+  }
+  if (store.mappingSession?.state === "paused") {
+    return "Mapping session is paused. The existing map is being retained.";
+  }
+  return "Waiting for synchronized LiDAR and odometry…";
+});
 
 const scheduleDraw = () => {
   if (animationFrame !== null) cancelAnimationFrame(animationFrame);

@@ -1,6 +1,6 @@
 # Autonomy Operator Workflow Specification
 
-Status: proposed implementation specification
+Status: active implementation specification
 
 Related architecture: [AUTONOMY_ARCHITECTURE_PLAN.md](./AUTONOMY_ARCHITECTURE_PLAN.md)
 
@@ -35,21 +35,26 @@ The application currently has:
 - LiDAR-derived forward speed constraints;
 - browser telemetry, LiDAR preview, and map preview;
 - manual keyboard and joystick control;
+- a dedicated `/autonomy` operator workspace with camera, map, split, and 3D
+  telemetry views;
+- explicit local mapping sessions with start/resume, pause, finish, clear, and
+  reset operations;
+- persistent robot mode, command source/reason, pose, speed, sensor, mapping,
+  and safety status in the operator workspace;
+- disarmed motion-control startup with explicit manual arming;
 - an older reactive ultrasonic obstacle-avoidance behavior;
-- a `/virtual` route containing a Three.js vehicle and gauges.
+- a `/virtual` compatibility redirect to the workspace's Three.js view.
 
 Important current limitations:
 
 - the localization and mapping features do not produce autonomous motion;
-- local mapping runs continuously when enabled rather than as a user-owned
-  session;
 - the current occupancy grid is a fixed local odometry grid, not SLAM;
-- maps cannot yet be cleared, paused, saved, loaded, or localized against;
+- maps cannot yet be saved, loaded, or localized against;
+- the map canvas does not yet overlay robot pose, odometry trail, bounds, or
+  scan insertion/rejection locations;
 - there is no navigation goal, path follower, exploration behavior, or
   autonomy supervisor;
-- motion control currently starts in manual mode rather than disarmed;
-- large runtime diagnostics live inside Settings, where keyboard control is
-  intentionally inhibited;
+- high-risk settings and calibration flows do not yet disarm automatically;
 - the current mock sensors are independent signal generators, not one coherent
   simulated vehicle and world;
 - the Three.js vehicle visualizes commanded gauges and is not an odometry or

@@ -1,13 +1,18 @@
 """Diagnostics and bounded telemetry for localization sensors."""
 
 import asyncio
-from typing import Annotated
+from typing import Annotated, Optional
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
-from app.schemas.autonomy import LocalizationSensorStatus, OccupancyGrid
+from app.schemas.autonomy import (
+    LocalizationSensorStatus,
+    MappingSessionStatus,
+    OccupancyGrid,
+)
 from app.services.autonomy import (
     LocalizationSensorService,
+    LocalMappingService,
     SensorTelemetryStreamer,
     TopicBus,
     parse_telemetry_channels,
@@ -54,6 +59,86 @@ def get_current_local_map(
     if current_map is None:
         raise HTTPException(status_code=404, detail="No local map has been published")
     return current_map
+
+
+MappingServiceDependency = Annotated[
+    Optional[LocalMappingService],
+    Depends(robot_deps.get_local_mapping_service),
+]
+
+
+def _require_mapping_service(
+    service: Optional[LocalMappingService],
+) -> LocalMappingService:
+    if service is None:
+        raise HTTPException(status_code=409, detail="Local mapping is disabled")
+    return service
+
+
+@router.get(
+    "/px/api/map/session",
+    response_model=MappingSessionStatus,
+    summary="Retrieve local mapping session state and diagnostics",
+)
+async def get_mapping_session_status(
+    service: MappingServiceDependency,
+) -> MappingSessionStatus:
+    return service.status if service is not None else MappingSessionStatus.disabled()
+
+
+@router.post(
+    "/px/api/map/session/start",
+    response_model=MappingSessionStatus,
+    summary="Start or resume local map insertion without starting vehicle motion",
+)
+async def start_mapping_session(
+    service: MappingServiceDependency,
+) -> MappingSessionStatus:
+    return _require_mapping_service(service).start_session()
+
+
+@router.post(
+    "/px/api/map/session/pause",
+    response_model=MappingSessionStatus,
+    summary="Pause local map insertion while retaining the map",
+)
+async def pause_mapping_session(
+    service: MappingServiceDependency,
+) -> MappingSessionStatus:
+    return _require_mapping_service(service).pause_session()
+
+
+@router.post(
+    "/px/api/map/session/finish",
+    response_model=MappingSessionStatus,
+    summary="Finish the current local mapping session and retain its map",
+)
+async def finish_mapping_session(
+    service: MappingServiceDependency,
+) -> MappingSessionStatus:
+    return _require_mapping_service(service).finish_session()
+
+
+@router.post(
+    "/px/api/map/session/clear",
+    response_model=MappingSessionStatus,
+    summary="Clear local map cells without changing robot motion or session state",
+)
+async def clear_mapping_session(
+    service: MappingServiceDependency,
+) -> MappingSessionStatus:
+    return _require_mapping_service(service).clear_map()
+
+
+@router.post(
+    "/px/api/map/session/reset",
+    response_model=MappingSessionStatus,
+    summary="Clear the local map and reset its session to idle",
+)
+async def reset_mapping_session(
+    service: MappingServiceDependency,
+) -> MappingSessionStatus:
+    return _require_mapping_service(service).reset_session()
 
 
 async def _wait_for_disconnect(websocket: WebSocket) -> None:

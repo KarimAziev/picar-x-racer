@@ -92,6 +92,7 @@ class TestLocalMappingService(unittest.IsolatedAsyncioTestCase):
             max_odometry_age_seconds=0.1,
         )
         service.start()
+        service.start_session()
         bus.publish(ODOMETRY, odometry(timestamp=100))
         await asyncio.sleep(0)
         bus.publish(LIDAR_SCAN, scan(1, timestamp=110))
@@ -113,6 +114,7 @@ class TestLocalMappingService(unittest.IsolatedAsyncioTestCase):
             max_odometry_age_seconds=0.00000001,
         )
         service.start()
+        service.start_session()
         bus.publish(ODOMETRY, odometry(timestamp=100))
         await asyncio.sleep(0)
         bus.publish(LIDAR_SCAN, scan(1, timestamp=1_000))
@@ -120,6 +122,70 @@ class TestLocalMappingService(unittest.IsolatedAsyncioTestCase):
         await service.stop()
 
         self.assertEqual(maps.pending_messages, 0)
+        self.assertEqual(service.status.rejected_stale_odometry, 1)
+
+    async def test_ignores_scans_until_session_is_started(self) -> None:
+        bus = TopicBus()
+        maps = bus.subscribe(LOCAL_MAP, replay_latest=False)
+        service = LocalMappingService(
+            bus,
+            LocalOccupancyGrid(
+                LocalOccupancyGridConfig(width_m=4, height_m=4, resolution_m=1)
+            ),
+            max_odometry_age_seconds=0.1,
+        )
+        service.start()
+        bus.publish(ODOMETRY, odometry(timestamp=100))
+        await asyncio.sleep(0)
+        bus.publish(LIDAR_SCAN, scan(1, timestamp=110))
+        await asyncio.sleep(0.02)
+        await service.stop()
+
+        self.assertEqual(maps.pending_messages, 0)
+        self.assertEqual(service.status.state.value, "idle")
+        self.assertEqual(service.status.ignored_inactive_scans, 1)
+
+    async def test_pause_clear_and_reset_have_explicit_semantics(self) -> None:
+        bus = TopicBus()
+        maps = bus.subscribe(LOCAL_MAP, replay_latest=False)
+        service = LocalMappingService(
+            bus,
+            LocalOccupancyGrid(
+                LocalOccupancyGridConfig(width_m=4, height_m=4, resolution_m=1)
+            ),
+            max_odometry_age_seconds=0.1,
+        )
+        service.start()
+        started = service.start_session()
+        self.assertEqual(started.session_id, 1)
+        bus.publish(ODOMETRY, odometry(timestamp=100))
+        await asyncio.sleep(0)
+        bus.publish(LIDAR_SCAN, scan(1, timestamp=110))
+        await asyncio.wait_for(maps.get(), timeout=1)
+
+        paused = service.pause_session()
+        self.assertEqual(paused.state.value, "paused")
+        bus.publish(LIDAR_SCAN, scan(1, timestamp=120))
+        await asyncio.sleep(0.02)
+        self.assertEqual(service.status.ignored_inactive_scans, 1)
+
+        cleared = service.clear_map()
+        cleared_map = await asyncio.wait_for(maps.get(), timeout=1)
+        self.assertEqual(cleared.state.value, "paused")
+        self.assertFalse(cleared.has_map)
+        self.assertTrue(all(value == -1 for value in cleared_map.data))
+
+        resumed = service.start_session()
+        self.assertEqual(resumed.state.value, "active")
+        self.assertEqual(resumed.session_id, 1)
+        reset = service.reset_session()
+        reset_map = await asyncio.wait_for(maps.get(), timeout=1)
+        await service.stop()
+
+        self.assertEqual(reset.state.value, "idle")
+        self.assertEqual(reset.scans_received, 0)
+        self.assertEqual(reset.session_id, 1)
+        self.assertTrue(all(value == -1 for value in reset_map.data))
 
 
 if __name__ == "__main__":

@@ -2,10 +2,18 @@
 
 import asyncio
 import math
+import time
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from app.schemas.autonomy import LaserScan, MessageHeader, OccupancyGrid, Odometry2D
+from app.schemas.autonomy import (
+    LaserScan,
+    MappingSessionState,
+    MappingSessionStatus,
+    MessageHeader,
+    OccupancyGrid,
+    Odometry2D,
+)
 from app.services.autonomy.topic_bus import (
     SubscriptionClosed,
     TopicBus,
@@ -78,6 +86,12 @@ class LocalOccupancyGrid:
             self._add_evidence(cells[-1], 3)
             inserted += 1
         return inserted
+
+    def clear(self) -> None:
+        """Forget all accumulated evidence without changing map geometry."""
+
+        self._evidence = [0] * (self.width * self.height)
+        self._observed = [False] * (self.width * self.height)
 
     def message(self, *, header: MessageHeader) -> OccupancyGrid:
         data = []
@@ -188,10 +202,82 @@ class LocalMappingService:
         self._tasks: Tuple[asyncio.Task[None], ...] = ()
         self._latest_odometry: Optional[Odometry2D] = None
         self._sequence = 0
+        self._state = MappingSessionState.IDLE
+        self._session_id = 0
+        self._scans_received = 0
+        self._scans_inserted = 0
+        self._returns_inserted = 0
+        self._ignored_inactive_scans = 0
+        self._rejected_missing_odometry = 0
+        self._rejected_stale_odometry = 0
+        self._has_map = False
 
     @property
     def running(self) -> bool:
         return bool(self._tasks) and any(not task.done() for task in self._tasks)
+
+    @property
+    def status(self) -> MappingSessionStatus:
+        return MappingSessionStatus(
+            enabled=True,
+            state=self._state,
+            session_id=self._session_id,
+            map_sequence=self._sequence,
+            scans_received=self._scans_received,
+            scans_inserted=self._scans_inserted,
+            returns_inserted=self._returns_inserted,
+            ignored_inactive_scans=self._ignored_inactive_scans,
+            rejected_missing_odometry=self._rejected_missing_odometry,
+            rejected_stale_odometry=self._rejected_stale_odometry,
+            has_map=self._has_map,
+        )
+
+    def start_session(self) -> MappingSessionStatus:
+        """Start a new session or resume the currently paused session."""
+
+        if self._state == MappingSessionState.IDLE:
+            self._session_id += 1
+            self._reset_session_counters()
+        self._state = MappingSessionState.ACTIVE
+        return self.status
+
+    def pause_session(self) -> MappingSessionStatus:
+        if self._state == MappingSessionState.ACTIVE:
+            self._state = MappingSessionState.PAUSED
+        return self.status
+
+    def finish_session(self) -> MappingSessionStatus:
+        """Stop inserting scans while retaining the completed map."""
+
+        self._state = MappingSessionState.IDLE
+        return self.status
+
+    def clear_map(self) -> MappingSessionStatus:
+        """Clear cells while preserving the session state and latest odometry."""
+
+        self._grid.clear()
+        self._has_map = False
+        self._publish_snapshot(timestamp_monotonic_ns=time.monotonic_ns())
+        return self.status
+
+    def reset_session(self) -> MappingSessionStatus:
+        """Clear the map and return to an unarmed mapping session."""
+
+        self._state = MappingSessionState.IDLE
+        self._latest_odometry = None
+        self._grid.clear()
+        self._has_map = False
+        self._reset_session_counters()
+        self._publish_snapshot(timestamp_monotonic_ns=time.monotonic_ns())
+        return self.status
+
+    def _reset_session_counters(self) -> None:
+        self._scans_received = 0
+        self._scans_inserted = 0
+        self._returns_inserted = 0
+        self._ignored_inactive_scans = 0
+        self._rejected_missing_odometry = 0
+        self._rejected_stale_odometry = 0
 
     def start(self) -> None:
         if self.running:
@@ -223,7 +309,10 @@ class LocalMappingService:
         self._grid = replacement._grid
         self._max_odometry_age_ns = replacement._max_odometry_age_ns
         self._latest_odometry = None
-        self._sequence = 0
+        self._state = MappingSessionState.IDLE
+        self._reset_session_counters()
+        self._has_map = False
+        self._publish_snapshot(timestamp_monotonic_ns=time.monotonic_ns())
         if was_running:
             self.start()
 
@@ -243,30 +332,50 @@ class LocalMappingService:
             return
         try:
             async for scan in subscription:
+                self._scans_received += 1
+                if self._state != MappingSessionState.ACTIVE:
+                    self._ignored_inactive_scans += 1
+                    continue
                 odometry = self._latest_odometry
                 if odometry is None:
+                    self._rejected_missing_odometry += 1
                     continue
                 age_ns = abs(
                     scan.header.timestamp_monotonic_ns
                     - odometry.header.timestamp_monotonic_ns
                 )
                 if age_ns > self._max_odometry_age_ns:
+                    self._rejected_stale_odometry += 1
                     continue
-                self._grid.insert(scan, odometry)
-                self._sequence += 1
-                self._bus.publish(
-                    LOCAL_MAP,
-                    self._grid.message(
-                        header=MessageHeader(
-                            sequence=self._sequence,
-                            frame_id="odom",
-                            timestamp_monotonic_ns=scan.header.timestamp_monotonic_ns,
-                            source_timestamp_ns=scan.header.source_timestamp_ns,
-                        )
-                    ),
+                inserted = self._grid.insert(scan, odometry)
+                self._scans_inserted += 1
+                self._returns_inserted += inserted
+                self._has_map = self._has_map or inserted > 0
+                self._publish_snapshot(
+                    timestamp_monotonic_ns=scan.header.timestamp_monotonic_ns,
+                    source_timestamp_ns=scan.header.source_timestamp_ns,
                 )
         except SubscriptionClosed:
             return
+
+    def _publish_snapshot(
+        self,
+        *,
+        timestamp_monotonic_ns: int,
+        source_timestamp_ns: Optional[int] = None,
+    ) -> None:
+        self._sequence += 1
+        self._bus.publish(
+            LOCAL_MAP,
+            self._grid.message(
+                header=MessageHeader(
+                    sequence=self._sequence,
+                    frame_id="odom",
+                    timestamp_monotonic_ns=timestamp_monotonic_ns,
+                    source_timestamp_ns=source_timestamp_ns,
+                )
+            ),
+        )
 
 
 __all__ = [
