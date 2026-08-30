@@ -62,8 +62,10 @@
       <span class="font-semibold">Forward safety:</span>
       {{ safetySummary }}
     </div>
-    <LidarScanPreview />
-    <OccupancyGridPreview />
+    <template v-if="showPreviews">
+      <LidarScanPreview />
+      <OccupancyGridPreview />
+    </template>
   </div>
 </template>
 
@@ -76,6 +78,13 @@ import {
 } from "@/features/autonomy";
 import LidarScanPreview from "@/features/settings/components/robot/LidarScanPreview.vue";
 import OccupancyGridPreview from "@/features/settings/components/robot/OccupancyGridPreview.vue";
+
+withDefaults(
+  defineProps<{
+    showPreviews?: boolean;
+  }>(),
+  { showPreviews: true },
+);
 
 const store = useAutonomyStore();
 let statusTimer: ReturnType<typeof setInterval> | null = null;

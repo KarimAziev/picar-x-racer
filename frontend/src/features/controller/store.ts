@@ -44,6 +44,7 @@ export interface UpdatePayloadResponse {
   robotMode: RobotMode;
   motionGeneration: number;
   motionReason: string | null;
+  motionSource: string | null;
   emergencyStop: boolean;
   motionFault: string | null;
 }
@@ -110,6 +111,7 @@ export interface StoreState extends Gauges, Modes {
   robotMode: RobotMode;
   motionGeneration: number;
   motionReason: string | null;
+  motionSource: string | null;
   emergencyStopActive: boolean;
   motionFault: string | null;
 }
@@ -140,6 +142,7 @@ const defaultState: StoreState = {
   robotMode: "legacy",
   motionGeneration: 0,
   motionReason: null,
+  motionSource: null,
   emergencyStopActive: false,
   motionFault: null,
 } as const;
@@ -193,6 +196,7 @@ export const useControllerStore = defineStore("controller", {
             this.robotMode = typedPayload.robotMode;
             this.motionGeneration = typedPayload.motionGeneration;
             this.motionReason = typedPayload.motionReason;
+            this.motionSource = typedPayload.motionSource ?? null;
             this.emergencyStopActive = typedPayload.emergencyStop;
             this.motionFault = typedPayload.motionFault;
             settingsStore.data.robot.auto_measure_distance_mode =

@@ -8,7 +8,15 @@
     collapsed
     :id="`${popupStore.tab}-localization-sensors`"
   >
-    <SensorDiagnostics />
+    <SensorDiagnostics :show-previews="false" />
+    <Button
+      class="mt-3"
+      label="Open autonomy workspace"
+      icon="pi pi-map"
+      size="small"
+      outlined
+      @click="openAutonomyWorkspace"
+    />
   </Fieldset>
   <Fieldset legend="General" toggleable collapsed :id="popupStore.tab">
     <RobotSettings />
@@ -37,9 +45,16 @@ import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
 import RobotConfigLoader from "@/features/settings/components/robot/Loader.vue";
 import FieldsetSkeleton from "@/ui/FieldsetSkeleton.vue";
 import Fieldset from "@/ui/Fieldset.vue";
+import { useRouter } from "vue-router";
 
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
+const router = useRouter();
+
+const openAutonomyWorkspace = () => {
+  popupStore.isOpen = false;
+  void router.push({ name: "autonomy" });
+};
 
 const RobotConfig = defineAsyncComponent({
   loader: () => import("@/features/settings/components/robot/RobotConfig.vue"),

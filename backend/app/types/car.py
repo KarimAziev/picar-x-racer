@@ -27,6 +27,7 @@ class CarServiceState(PicarBaseState):
     robotMode: str
     motionGeneration: int
     motionReason: Union[str, None]
+    motionSource: Union[str, None]
     emergencyStop: bool
     motionFault: Union[str, None]
 

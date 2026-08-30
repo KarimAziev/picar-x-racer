@@ -97,4 +97,19 @@ describe("autonomy telemetry store", () => {
 
     expect(store.connected).toBe(true);
   });
+
+  it("keeps a shared telemetry connection until its last consumer leaves", () => {
+    const store = useAutonomyStore();
+
+    store.initialize();
+    store.initialize();
+    store.cleanup();
+
+    expect(store.consumers).toBe(1);
+    expect(mocks.cleanup).not.toHaveBeenCalled();
+
+    store.cleanup();
+    expect(store.consumers).toBe(0);
+    expect(mocks.cleanup).toHaveBeenCalledOnce();
+  });
 });

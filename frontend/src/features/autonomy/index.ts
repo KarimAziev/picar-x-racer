@@ -1,4 +1,10 @@
 export { useAutonomyStore } from "@/features/autonomy/store";
+export {
+  autonomyOperatorViewOptions,
+  autonomyOperatorViews,
+  normalizeAutonomyOperatorView,
+} from "@/features/autonomy/operatorView";
+export type { AutonomyOperatorView } from "@/features/autonomy/operatorView";
 export type {
   LocalizationSensorStatus,
   OccupancyGrid,

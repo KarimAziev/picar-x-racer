@@ -114,11 +114,11 @@ class CarService:
         return self.motion_control_service is not None
 
     async def start_motion_control(self) -> None:
-        """Arm the opt-in runtime in manual mode and start its watchdog."""
+        """Start the opt-in runtime disarmed and begin its watchdog."""
 
         if not self.motion_control_service:
             return
-        await self.motion_control_service.set_mode(RobotMode.MANUAL)
+        await self.motion_control_service.set_mode(RobotMode.DISARMED)
         self.motion_control_service.start()
 
     def refresh_config(self, data: Dict[str, Any]) -> None:
@@ -175,6 +175,11 @@ class CarService:
             ),
             "motionReason": (
                 motion_result.command.reason if motion_result is not None else None
+            ),
+            "motionSource": (
+                motion_result.command.source.value
+                if motion_result is not None
+                else None
             ),
             "emergencyStop": (
                 motion_service.mode == RobotMode.ESTOP if motion_service else False

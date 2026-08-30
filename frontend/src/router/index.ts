@@ -9,9 +9,14 @@ const router = createRouter({
       component: () => import("@/views/HomeView.vue"),
     },
     {
+      path: "/autonomy",
+      name: "autonomy",
+      component: () => import("@/views/AutonomyView.vue"),
+    },
+    {
       path: "/virtual",
       name: "virtual_mode",
-      component: () => import("@/views/VirtualView.vue"),
+      redirect: { name: "autonomy", query: { view: "model" } },
     },
   ],
 });

@@ -106,6 +106,21 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.command.source, MotionSource.MANUAL)
         self.assertEqual(result.command.linear_speed_mps, 0.5)
 
+    async def test_motion_runtime_starts_disarmed(self) -> None:
+        await self.car.start_motion_control()
+        try:
+            self.assertEqual(self.motion.mode, RobotMode.DISARMED)
+            self.assertTrue(self.motion.running)
+            self.assertIsNotNone(self.motion.last_result)
+            assert self.motion.last_result is not None
+            self.assertTrue(self.motion.last_result.command.is_stop)
+            self.assertEqual(
+                self.motion.last_result.command.reason,
+                "robot is disarmed",
+            )
+        finally:
+            await self.motion.stop()
+
     async def test_repeated_command_refreshes_intent_without_rewriting_hardware(
         self,
     ) -> None:

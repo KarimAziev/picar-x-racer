@@ -110,6 +110,7 @@ export interface State {
   localMap: OccupancyGrid | null;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
+  consumers: number;
 }
 
 const defaultState: State = {
@@ -120,6 +121,7 @@ const defaultState: State = {
   localMap: null,
   latest: {},
   connection: null,
+  consumers: 0,
 };
 
 export const useAutonomyStore = defineStore("autonomy-telemetry", {
@@ -167,6 +169,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     initialize() {
+      this.consumers += 1;
       void this.refreshStatus();
       if (this.connection) {
         return;
@@ -185,6 +188,10 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     cleanup() {
+      this.consumers = Math.max(0, this.consumers - 1);
+      if (this.consumers > 0) {
+        return;
+      }
       this.connection?.cleanup();
       this.connection = null;
     },

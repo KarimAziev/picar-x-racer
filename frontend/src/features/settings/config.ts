@@ -48,8 +48,8 @@ export const generalSwitchSettings: {
     description: "Toggle the automatic download of recorded videos.",
   },
   virtual_mode: {
-    label: "Virtual 3D Mode",
-    description: "Toggle replacing the camera view with a 3D model.",
+    label: "3D Operator View",
+    description: "Open the autonomy workspace with the 3D telemetry model.",
   },
   show_battery_indicator: {
     label: "Battery Level",
