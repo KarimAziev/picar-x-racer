@@ -68,3 +68,13 @@ export function getMaxFractionDigits(step: number) {
 
   return (s.split(".")[1] || "").length;
 }
+
+export const formatDisplayNumber = (value: number): string => {
+  const rounded = Math.round(value * 10) / 10;
+
+  if (Number.isInteger(rounded)) {
+    return rounded.toString().padStart(2, "0");
+  }
+
+  return rounded.toFixed(1);
+};

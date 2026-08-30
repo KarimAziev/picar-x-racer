@@ -24,14 +24,14 @@ import ToggleableView from "@/ui/ToggleableView.vue";
 import Distance from "@/features/controller/components/Distance.vue";
 import AvoidObstacles from "@/features/controller/components/AvoidObstacles.vue";
 import MaxSpeed from "@/features/controller/components/MaxSpeed.vue";
+import { formatDisplayNumber } from "@/util/number";
 
 const store = useControllerStore();
 
-const camPan = computed(() => store.camPan.toString().padStart(2, "0"));
-const camTilt = computed(() => store.camTilt.toString().padStart(2, "0"));
-const servoAngle = computed(() => store.servoAngle.toString().padStart(2, "0"));
-
+const camPan = computed(() => formatDisplayNumber(store.camPan));
+const camTilt = computed(() => formatDisplayNumber(store.camTilt));
+const servoAngle = computed(() => formatDisplayNumber(store.servoAngle));
 const speed = computed(() =>
-  (store.direction * store.speed).toString().padStart(2, "0"),
+  formatDisplayNumber(store.direction * store.speed),
 );
 </script>
