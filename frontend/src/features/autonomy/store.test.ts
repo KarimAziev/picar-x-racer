@@ -55,6 +55,23 @@ describe("autonomy telemetry store", () => {
           has_map: false,
         });
       }
+      if (path === "/px/api/map/current") {
+        return Promise.resolve({
+          header: {
+            sequence: 1,
+            frame_id: "odom",
+            timestamp_monotonic_ns: 1,
+            source_timestamp_ns: null,
+          },
+          width: 1,
+          height: 1,
+          resolution_m: 0.1,
+          origin_x_m: 0,
+          origin_y_m: 0,
+          origin_yaw_rad: 0,
+          data: [-1],
+        });
+      }
       return Promise.resolve({
         sensors: [
           {
@@ -126,11 +143,14 @@ describe("autonomy telemetry store", () => {
 
     await store.refreshMappingSession();
     await store.runMappingAction("start");
+    await store.runMappingAction("clear");
 
     expect(mocks.get).toHaveBeenCalledWith("/px/api/map/session");
     expect(mocks.post).toHaveBeenCalledWith("/px/api/map/session/start");
+    expect(mocks.post).toHaveBeenCalledWith("/px/api/map/session/clear");
     expect(store.mappingSession?.state).toBe("active");
     expect(store.mappingSession?.session_id).toBe(1);
+    expect(store.mapClearGeneration).toBe(1);
   });
 
   it("reports the reactive websocket connection state", () => {

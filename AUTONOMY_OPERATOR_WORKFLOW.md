@@ -50,8 +50,8 @@ Important current limitations:
 - the localization and mapping features do not produce autonomous motion;
 - the current occupancy grid is a fixed local odometry grid, not SLAM;
 - maps cannot yet be saved, loaded, or localized against;
-- the map canvas does not yet overlay robot pose, odometry trail, bounds, or
-  scan insertion/rejection locations;
+- the map canvas does not yet visualize bounds warnings or individual scan
+  insertion/rejection locations;
 - there is no navigation goal, path follower, exploration behavior, or
   autonomy supervisor;
 - high-risk settings and calibration flows do not yet disarm automatically;

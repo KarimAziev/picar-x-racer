@@ -25,13 +25,25 @@
       <span><i class="mr-1 inline-block h-2 w-2 bg-slate-700" />unknown</span>
       <span><i class="mr-1 inline-block h-2 w-2 bg-slate-100" />free</span>
       <span><i class="mr-1 inline-block h-2 w-2 bg-red-500" />occupied</span>
+      <span><i class="mr-1 inline-block h-2 w-2 bg-cyan-400" />odom trail</span>
+      <span
+        ><i
+          class="mr-1 inline-block h-2 w-2 rounded-full bg-blue-500"
+        />robot</span
+      >
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useAutonomyStore } from "@/features/autonomy";
+import {
+  gridToCanvas,
+  useAutonomyStore,
+  worldToGrid,
+  worldYawToCanvas,
+  type Point2D,
+} from "@/features/autonomy";
 import { useRobotStore } from "@/features/settings/stores";
 
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -40,6 +52,7 @@ const robotStore = useRobotStore();
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let animationFrame: number | null = null;
+const odometryTrail = ref<Point2D[]>([]);
 
 const mappingEnabled = computed(() => robotStore.data.local_mapping.enabled);
 const map = computed(() => store.localMap);
@@ -102,6 +115,64 @@ const draw = () => {
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   context.clearRect(0, 0, cssWidth, cssHeight);
   context.drawImage(bitmap, 0, 0, cssWidth, cssHeight);
+  drawOdometryOverlay(context, grid, cssWidth, cssHeight);
+};
+
+const canvasPoint = (
+  grid: NonNullable<typeof map.value>,
+  point: Point2D,
+  width: number,
+  height: number,
+) => {
+  const gridPoint = worldToGrid(grid, point.x, point.y);
+  return gridPoint ? gridToCanvas(grid, gridPoint, width, height) : null;
+};
+
+const drawOdometryOverlay = (
+  context: CanvasRenderingContext2D,
+  grid: NonNullable<typeof map.value>,
+  width: number,
+  height: number,
+) => {
+  const visibleTrail = odometryTrail.value
+    .map((point) => canvasPoint(grid, point, width, height))
+    .filter((point): point is Point2D => point !== null);
+  if (visibleTrail.length > 1) {
+    context.save();
+    context.strokeStyle = "#22d3ee";
+    context.lineWidth = 2;
+    context.globalAlpha = 0.9;
+    context.beginPath();
+    context.moveTo(visibleTrail[0].x, visibleTrail[0].y);
+    for (const point of visibleTrail.slice(1)) context.lineTo(point.x, point.y);
+    context.stroke();
+    context.restore();
+  }
+
+  const envelope = store.latest.odometry;
+  if (!envelope || envelope.channel !== "odometry") return;
+  const pose = canvasPoint(
+    grid,
+    { x: envelope.payload.x_m, y: envelope.payload.y_m },
+    width,
+    height,
+  );
+  if (!pose) return;
+  const markerSize = Math.max(7, Math.min(13, width / 35));
+  context.save();
+  context.translate(pose.x, pose.y);
+  context.rotate(worldYawToCanvas(grid, envelope.payload.yaw_rad));
+  context.fillStyle = "#3b82f6";
+  context.strokeStyle = "#dbeafe";
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.moveTo(markerSize, 0);
+  context.lineTo(-markerSize * 0.7, markerSize * 0.65);
+  context.lineTo(-markerSize * 0.7, -markerSize * 0.65);
+  context.closePath();
+  context.fill();
+  context.stroke();
+  context.restore();
 };
 
 const stopPolling = () => {
@@ -123,6 +194,38 @@ watch(
 watch(
   () => map.value?.header.sequence,
   () => void nextTick(scheduleDraw),
+);
+
+watch(
+  () => store.latest.odometry?.payload.header.sequence,
+  () => {
+    const envelope = store.latest.odometry;
+    if (
+      envelope?.channel === "odometry" &&
+      store.mappingSession?.state === "active"
+    ) {
+      const point = { x: envelope.payload.x_m, y: envelope.payload.y_m };
+      const previous = odometryTrail.value.at(-1);
+      const minimumDistance = (map.value?.resolution_m ?? 0.05) / 2;
+      if (
+        !previous ||
+        Math.hypot(point.x - previous.x, point.y - previous.y) >=
+          minimumDistance
+      ) {
+        odometryTrail.value.push(point);
+        if (odometryTrail.value.length > 1000) odometryTrail.value.shift();
+      }
+    }
+    scheduleDraw();
+  },
+);
+
+watch(
+  [() => store.mappingSession?.session_id, () => store.mapClearGeneration],
+  () => {
+    odometryTrail.value = [];
+    scheduleDraw();
+  },
 );
 
 watch(canvas, (element, previous) => {

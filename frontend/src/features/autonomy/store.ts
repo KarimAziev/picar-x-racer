@@ -130,6 +130,7 @@ export interface State {
   sensors: SensorPublisherStatus[];
   localMap: OccupancyGrid | null;
   mappingSession: MappingSessionStatus | null;
+  mapClearGeneration: number;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
   consumers: number;
@@ -144,6 +145,7 @@ const defaultState: State = {
   sensors: [],
   localMap: null,
   mappingSession: null,
+  mapClearGeneration: 0,
   latest: {},
   connection: null,
   consumers: 0,
@@ -212,6 +214,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         );
         this.mappingActionError = null;
         if (action === "clear" || action === "reset") {
+          this.mapClearGeneration += 1;
           await this.refreshLocalMap();
         }
       } catch (error) {
