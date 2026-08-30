@@ -26,7 +26,9 @@ const markedNodes = inject<Ref<Record<string, boolean>>>(
 );
 const isUploadingRow = computed(() => isNumber(props.progress));
 
-const emit = defineEmits(["toggle:checked"]);
+const emit = defineEmits<{
+  (e: "toggle:checked", path: string): void;
+}>();
 
 const toggleMarked = () => {
   emit("toggle:checked", props.path);
