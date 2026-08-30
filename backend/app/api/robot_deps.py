@@ -174,14 +174,12 @@ def get_picarx_adapter(
     return PicarxAdapter(config_manager=config_manager, smbus_manager=smbus_manager)
 
 
-@lru_cache(maxsize=1)
-def get_steering_feedback_service(
-    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
-    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+def build_steering_feedback_service(
+    config: HardwareConfig,
+    smbus_manager: SMBusManager,
 ) -> Optional[SteeringFeedbackService]:
-    """Build optional physical steering feedback without opening SPI yet."""
+    """Build optional steering feedback without opening its hardware yet."""
 
-    config = HardwareConfig.model_validate(config_manager.load_data())
     steering = config.localization_sensors.steering
     if not steering.enabled:
         return None
@@ -222,6 +220,15 @@ def get_steering_feedback_service(
         ),
         sample_frequency_hz=steering.sample_frequency_hz,
     )
+
+
+@lru_cache(maxsize=1)
+def get_steering_feedback_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+) -> Optional[SteeringFeedbackService]:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return build_steering_feedback_service(config, smbus_manager)
 
 
 @lru_cache(maxsize=1)
@@ -297,29 +304,38 @@ def get_odometry_service(
         )
     if odometry.encoder_ticks_per_revolution is None:
         raise ValueError("Ackermann odometry is enabled without encoder calibration")
-    return AckermannOdometryService(
-        topic_bus,
-        AckermannOdometryEstimator(
-            AckermannOdometryConfig(
-                wheelbase_m=odometry.wheelbase_m,
-                wheel_radius_m=odometry.wheel_radius_m,
-                encoder_ticks_per_revolution=(odometry.encoder_ticks_per_revolution),
-                gear_ratio=odometry.gear_ratio,
-                max_steering_age_seconds=odometry.max_steering_age_ms / 1000,
-            )
-        ),
+    return AckermannOdometryService(topic_bus, build_odometry_estimator(config))
+
+
+def build_odometry_estimator(config: HardwareConfig) -> AckermannOdometryEstimator:
+    """Create a fresh estimator from complete, enabled odometry settings."""
+
+    odometry = config.ackermann_odometry
+    if (
+        not odometry.enabled
+        or odometry.wheelbase_m is None
+        or odometry.wheel_radius_m is None
+        or odometry.encoder_ticks_per_revolution is None
+    ):
+        raise ValueError("Ackermann odometry configuration is not enabled and complete")
+    return AckermannOdometryEstimator(
+        AckermannOdometryConfig(
+            wheelbase_m=odometry.wheelbase_m,
+            wheel_radius_m=odometry.wheel_radius_m,
+            encoder_ticks_per_revolution=odometry.encoder_ticks_per_revolution,
+            gear_ratio=odometry.gear_ratio,
+            max_steering_age_seconds=odometry.max_steering_age_ms / 1000,
+        )
     )
 
 
-@lru_cache(maxsize=1)
-def get_localization_sensor_service(
-    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
-    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
-    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+def build_localization_sensor_service(
+    config: HardwareConfig,
+    topic_bus: TopicBus,
+    smbus_manager: SMBusManager,
 ) -> LocalizationSensorService:
-    """Build lazy, opt-in hardware publishers from the persisted configuration."""
+    """Build lazy, opt-in hardware publishers from validated configuration."""
 
-    config = HardwareConfig.model_validate(config_manager.load_data())
     sensors = config.localization_sensors
     publishers: Dict[SensorName, SensorPublisher] = {}
     enabled_sensors = []
@@ -481,16 +497,24 @@ def get_localization_sensor_service(
 
 
 @lru_cache(maxsize=1)
-def get_lidar_safety_service(
+def get_localization_sensor_service(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
-    motion_control_service: Annotated[
-        Optional[MotionControlService], Depends(get_motion_control_service)
-    ],
+    smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+) -> LocalizationSensorService:
+    """Build the stable supervisor used by lifespan and diagnostics endpoints."""
+
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return build_localization_sensor_service(config, topic_bus, smbus_manager)
+
+
+def build_lidar_safety_service(
+    config: HardwareConfig,
+    topic_bus: TopicBus,
+    motion_control_service: Optional[MotionControlService],
 ) -> Optional[LidarSafetyService]:
     """Build fail-safe front-sector limiting only from explicit calibration."""
 
-    config = HardwareConfig.model_validate(config_manager.load_data())
     safety = config.lidar_safety
     if not safety.enabled:
         return None
@@ -522,13 +546,23 @@ def get_lidar_safety_service(
 
 
 @lru_cache(maxsize=1)
-def get_local_mapping_service(
+def get_lidar_safety_service(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    motion_control_service: Annotated[
+        Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
+) -> Optional[LidarSafetyService]:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return build_lidar_safety_service(config, topic_bus, motion_control_service)
+
+
+def build_local_mapping_service(
+    config: HardwareConfig,
+    topic_bus: TopicBus,
 ) -> Optional[LocalMappingService]:
     """Build the opt-in local map only when its sensor prerequisites validate."""
 
-    config = HardwareConfig.model_validate(config_manager.load_data())
     mapping = config.local_mapping
     if not mapping.enabled:
         return None
@@ -549,6 +583,15 @@ def get_local_mapping_service(
         ),
         max_odometry_age_seconds=mapping.max_odometry_age_ms / 1000,
     )
+
+
+@lru_cache(maxsize=1)
+def get_local_mapping_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> Optional[LocalMappingService]:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return build_local_mapping_service(config, topic_bus)
 
 
 @lru_cache(maxsize=1)

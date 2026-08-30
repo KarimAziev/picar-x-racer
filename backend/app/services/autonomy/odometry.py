@@ -213,6 +213,13 @@ class AckermannOdometryService:
         self._encoder_task = None
         self._steering_task = None
 
+    def reconfigure(self, config: AckermannOdometryConfig) -> None:
+        """Apply new geometry atomically and start a fresh odometry origin."""
+
+        self._estimator = AckermannOdometryEstimator(config)
+        self._latest_steering = self._bus.latest(STEERING_STATE)
+        self.last_error = None
+
     async def _consume_steering(self) -> None:
         subscription = self._steering_subscription
         if subscription is None:

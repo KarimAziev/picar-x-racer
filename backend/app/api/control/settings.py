@@ -3,7 +3,7 @@ Endpoints with robot-specific settings and calibration.
 """
 
 import asyncio
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any, Dict, Optional
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
@@ -12,13 +12,139 @@ from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.robot.calibration import CalibrationConfig
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.services.connection_service import ConnectionService
+from app.services.autonomy import (
+    AckermannOdometryService,
+    LidarSafetyService,
+    LocalizationSensorService,
+    LocalMappingService,
+    MotionControlService,
+    SteeringFeedbackService,
+    TopicBus,
+)
 from app.services.control.settings_service import SettingsService
 from app.util.doc_util import build_response_description
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from robot_hat.i2c.smbus_manager import SMBusManager
 
 router = APIRouter()
 
 _log = Logger(name=__name__)
+
+
+async def _reload_autonomy_runtime(
+    previous: HardwareConfig,
+    current: HardwareConfig,
+    sensor_service: LocalizationSensorService,
+    topic_bus: TopicBus,
+    smbus_manager: SMBusManager,
+    steering_feedback_service: Optional[SteeringFeedbackService],
+    odometry_service: Optional[AckermannOdometryService],
+    motion_control_service: Optional[MotionControlService],
+    lidar_safety_service: Optional[LidarSafetyService],
+    local_mapping_service: Optional[LocalMappingService],
+) -> None:
+    encoder_changed = (
+        previous.localization_sensors.encoder != current.localization_sensors.encoder
+    )
+    lidar_geometry_changed = (
+        previous.localization_sensors.lidar.transform
+        != current.localization_sensors.lidar.transform
+    )
+    if previous.localization_sensors != current.localization_sensors:
+        replacement = robot_deps.build_localization_sensor_service(
+            current,
+            topic_bus,
+            smbus_manager,
+        )
+        await sensor_service.reconfigure_from(replacement)
+
+    previous_steering = previous.localization_sensors.steering
+    current_steering = current.localization_sensors.steering
+    if (
+        previous_steering != current_steering
+        and previous_steering.enabled
+        and current_steering.enabled
+        and steering_feedback_service is not None
+    ):
+        replacement_steering = robot_deps.build_steering_feedback_service(
+            current,
+            smbus_manager,
+        )
+        if replacement_steering is not None:
+            await steering_feedback_service.reconfigure_from(replacement_steering)
+
+    if (
+        (previous.ackermann_odometry != current.ackermann_odometry or encoder_changed)
+        and previous.ackermann_odometry.enabled
+        and current.ackermann_odometry.enabled
+        and odometry_service is not None
+    ):
+        estimator = robot_deps.build_odometry_estimator(current)
+        odometry_service.reconfigure(estimator.config)
+
+    if (
+        (previous.lidar_safety != current.lidar_safety or lidar_geometry_changed)
+        and previous.lidar_safety.enabled
+        and current.lidar_safety.enabled
+        and lidar_safety_service is not None
+    ):
+        replacement_safety = robot_deps.build_lidar_safety_service(
+            current,
+            topic_bus,
+            motion_control_service,
+        )
+        if replacement_safety is not None:
+            lidar_safety_service.reconfigure_from(replacement_safety)
+
+    if (
+        (
+            previous.local_mapping != current.local_mapping
+            or previous.ackermann_odometry != current.ackermann_odometry
+            or encoder_changed
+            or lidar_geometry_changed
+            or previous_steering != current_steering
+        )
+        and previous.local_mapping.enabled
+        and current.local_mapping.enabled
+        and local_mapping_service is not None
+    ):
+        replacement_mapping = robot_deps.build_local_mapping_service(
+            current,
+            topic_bus,
+        )
+        if replacement_mapping is not None:
+            await local_mapping_service.reconfigure_from(replacement_mapping)
+
+
+async def _reload_running_autonomy_from_app(
+    request: Request,
+    previous: HardwareConfig,
+    current: HardwareConfig,
+) -> None:
+    """Apply settings to the exact service instances owned by app lifespan."""
+
+    state = request.app.state
+    sensor_service = getattr(state, "localization_sensor_service", None)
+    topic_bus = getattr(state, "robot_topic_bus", None)
+    smbus_manager = getattr(state, "robot_smbus_manager", None)
+    if (
+        not isinstance(sensor_service, LocalizationSensorService)
+        or not isinstance(topic_bus, TopicBus)
+        or not isinstance(smbus_manager, SMBusManager)
+    ):
+        return
+    await _reload_autonomy_runtime(
+        previous,
+        current,
+        sensor_service,
+        topic_bus,
+        smbus_manager,
+        getattr(state, "steering_feedback_service", None),
+        getattr(state, "odometry_service", None),
+        getattr(state, "motion_control_service", None),
+        getattr(state, "lidar_safety_service", None),
+        getattr(state, "local_mapping_service", None),
+    )
 
 
 @router.get(
@@ -73,6 +199,7 @@ def get_config_settings(
     ),
 )
 async def update_settings(
+    request: Request,
     settings: HardwareConfig,
     settings_service: Annotated[
         "SettingsService", Depends(robot_deps.get_robot_settings_service)
@@ -85,8 +212,13 @@ async def update_settings(
     Update robot settings.
     """
     _log.info("Saving robot hardware settings")
+    previous = getattr(settings_service, "saved_settings", None)
+    if isinstance(previous, HardwareConfig):
+        previous = previous.model_copy(deep=True)
     try:
         data = await asyncio.to_thread(settings_service.save_settings, settings)
+        if isinstance(previous, HardwareConfig):
+            await _reload_running_autonomy_from_app(request, previous, data)
     except (UnchangedSettings, InvalidSettings) as err:
         err_msg = str(err)
         _log.error(err_msg)
@@ -111,6 +243,7 @@ async def update_settings(
     ),
 )
 async def merge_partial_settings(
+    request: Request,
     settings: PartialHardwareConfig,
     settings_service: Annotated[
         "SettingsService", Depends(robot_deps.get_robot_settings_service)
@@ -123,11 +256,17 @@ async def merge_partial_settings(
     Merge partial robot settings with saved configuration.
     """
     _log.info("Saving partial robot hardware settings")
+    previous = getattr(settings_service, "saved_settings", None)
+    if isinstance(previous, HardwareConfig):
+        previous = previous.model_copy(deep=True)
 
     try:
         partial_settings = await asyncio.to_thread(
             settings_service.merge_settings, settings
         )
+        current = getattr(settings_service, "saved_settings", None)
+        if isinstance(previous, HardwareConfig) and isinstance(current, HardwareConfig):
+            await _reload_running_autonomy_from_app(request, previous, current)
     except (UnchangedSettings, InvalidSettings) as err:
         err_msg = str(err)
         _log.error(err_msg)

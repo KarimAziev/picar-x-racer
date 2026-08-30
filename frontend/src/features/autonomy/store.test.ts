@@ -89,4 +89,12 @@ describe("autonomy telemetry store", () => {
     store.cleanup();
     expect(mocks.cleanup).toHaveBeenCalledOnce();
   });
+
+  it("reports the reactive websocket connection state", () => {
+    const store = useAutonomyStore();
+
+    store.initialize();
+
+    expect(store.connected).toBe(true);
+  });
 });

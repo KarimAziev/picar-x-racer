@@ -1,3 +1,4 @@
+import { unref } from "vue";
 import type { ShallowRef } from "vue";
 import { defineStore } from "pinia";
 import { robotApi } from "@/api";
@@ -125,7 +126,10 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
   state: (): State => ({ ...defaultState, latest: {} }),
   getters: {
     connected({ connection }) {
-      return connection?.connected.value ?? false;
+      // Pinia/Vue unwrap nested refs when the websocket model is stored in
+      // reactive state. `unref` handles both that runtime boolean and the Ref
+      // shape used by the websocket composable itself.
+      return unref(connection?.connected) ?? false;
     },
   },
   actions: {

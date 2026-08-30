@@ -299,6 +299,40 @@ class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(statuses["encoder"].enabled)
         self.assertIn("not installed", statuses["encoder"].error or "")
 
+    async def test_suite_reconfigures_running_publishers_in_place(self) -> None:
+        first = FakeIMU()
+        second = FakeIMU()
+        suite = LocalizationSensorService(
+            {
+                "imu": IMUPublisherService(
+                    TopicBus(),
+                    lambda: first,
+                    frame_id="imu",
+                    sample_frequency_hz=100,
+                )
+            },
+            enabled_sensors=("imu",),
+        )
+
+        await suite.start()
+        await suite.reconfigure(
+            {
+                "imu": IMUPublisherService(
+                    TopicBus(),
+                    lambda: second,
+                    frame_id="imu_reconfigured",
+                    sample_frequency_hz=100,
+                )
+            },
+            enabled_sensors=("imu",),
+        )
+        await asyncio.sleep(0)
+        await suite.stop()
+
+        self.assertEqual(first.close_calls, 1)
+        self.assertTrue(second.initialized)
+        self.assertEqual(second.close_calls, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -105,7 +105,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             local_mapping_service.start()
         if localization_sensor_service:
             await localization_sensor_service.start()
-            app.state.localization_sensor_service = localization_sensor_service
+        app.state.localization_sensor_service = localization_sensor_service
+        app.state.robot_topic_bus = topic_bus
+        app.state.robot_smbus_manager = smbus_manager
+        app.state.motion_control_service = motion_control_service
+        app.state.steering_feedback_service = steering_feedback_service
+        app.state.odometry_service = odometry_service
+        app.state.lidar_safety_service = lidar_safety_service
+        app.state.local_mapping_service = local_mapping_service
 
         async def broadcast_distance(distance: float) -> None:
             rel_speed = (

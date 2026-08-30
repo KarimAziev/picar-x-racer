@@ -532,6 +532,8 @@ class LocalizationSensorService:
     ) -> None:
         self._publishers: Dict[SensorName, SensorPublisher] = dict(publishers)
         self._enabled_sensors = set(enabled_sensors)
+        self._started = False
+        self._reconfigure_lock = asyncio.Lock()
 
     @property
     def status(self) -> LocalizationSensorStatus:
@@ -551,8 +553,52 @@ class LocalizationSensorService:
         return LocalizationSensorStatus(sensors=tuple(statuses))
 
     async def start(self) -> None:
+        async with self._reconfigure_lock:
+            self._started = True
+            await self._start_publishers(self._publishers)
+
+    async def stop(self) -> None:
+        async with self._reconfigure_lock:
+            self._started = False
+            await self._stop_publishers(self._publishers)
+
+    async def reconfigure(
+        self,
+        publishers: Mapping[SensorName, SensorPublisher],
+        *,
+        enabled_sensors: Sequence[SensorName],
+    ) -> None:
+        """Replace configured publishers while keeping this supervisor stable.
+
+        TopicBus and API consumers retain this service instance, so a settings
+        update can replace mock or physical devices without disconnecting
+        telemetry clients. Each publisher still starts independently: an
+        unavailable device is exposed through diagnostics rather than blocking
+        the healthy publishers.
+        """
+
+        replacements = dict(publishers)
+        async with self._reconfigure_lock:
+            was_started = self._started
+            await self._stop_publishers(self._publishers)
+            self._publishers = replacements
+            self._enabled_sensors = set(enabled_sensors)
+            if was_started:
+                await self._start_publishers(self._publishers)
+
+    async def reconfigure_from(self, replacement: "LocalizationSensorService") -> None:
+        """Adopt publishers prepared by the application configuration factory."""
+
+        await self.reconfigure(
+            replacement._publishers,
+            enabled_sensors=tuple(replacement._enabled_sensors),
+        )
+
+    async def _start_publishers(
+        self, publishers: Mapping[SensorName, SensorPublisher]
+    ) -> None:
         for sensor_name in self._SENSOR_ORDER:
-            publisher = self._publishers.get(sensor_name)
+            publisher = publishers.get(sensor_name)
             if publisher is None:
                 continue
             try:
@@ -560,9 +606,11 @@ class LocalizationSensorService:
             except Exception as error:
                 _log.error("Failed to start %s publisher: %s", sensor_name, error)
 
-    async def stop(self) -> None:
+    async def _stop_publishers(
+        self, publishers: Mapping[SensorName, SensorPublisher]
+    ) -> None:
         for sensor_name in reversed(self._SENSOR_ORDER):
-            publisher = self._publishers.get(sensor_name)
+            publisher = publishers.get(sensor_name)
             if publisher is None:
                 continue
             try:

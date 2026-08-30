@@ -273,17 +273,33 @@ const ledDefaults = {
 
 const startupScopedConfigKeys = [
   "motion_control",
-  "ackermann_odometry",
-  "localization_sensors",
-  "lidar_safety",
-  "local_mapping",
 ] as const satisfies readonly (keyof Data)[];
 
-const changesStartupScopedConfig = (data: Partial<Data>, current: Data) =>
-  startupScopedConfigKeys.some(
+const runtimeOptionalConfigKeys = [
+  "ackermann_odometry",
+  "lidar_safety",
+  "local_mapping",
+] as const;
+
+const changesStartupScopedConfig = (data: Partial<Data>, current: Data) => {
+  const startupSectionChanged = startupScopedConfigKeys.some(
     (key) =>
       key in data && JSON.stringify(data[key]) !== JSON.stringify(current[key]),
   );
+  const steeringChanged =
+    data.localization_sensors !== undefined &&
+    data.localization_sensors.steering.enabled !==
+      current.localization_sensors.steering.enabled;
+  const optionalServiceTopologyChanged = runtimeOptionalConfigKeys.some(
+    (key) =>
+      data[key] !== undefined && data[key].enabled !== current[key].enabled,
+  );
+  return (
+    startupSectionChanged ||
+    steeringChanged ||
+    optionalServiceTopologyChanged
+  );
+};
 
 const showSavedMessages = (
   messager: ReturnType<typeof useMessagerStore>,

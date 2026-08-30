@@ -183,6 +183,19 @@ class SteeringFeedbackService:
         with self._lock:
             self._latest = None
 
+    async def reconfigure_from(self, replacement: "SteeringFeedbackService") -> None:
+        """Restart acquisition with a newly validated sensor configuration."""
+
+        was_running = self.running
+        await self.stop()
+        self._sensor_factory = replacement._sensor_factory
+        self._calibration = replacement._calibration
+        self._period_s = replacement._period_s
+        self._max_sample_age_ns = replacement._max_sample_age_ns
+        self._last_error = None
+        if was_running:
+            await self.start()
+
     async def _sample_loop(self) -> None:
         sensor = self._sensor
         if sensor is None:

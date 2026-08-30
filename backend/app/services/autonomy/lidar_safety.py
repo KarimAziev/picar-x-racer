@@ -196,6 +196,26 @@ class LidarSafetyService:
             self._subscription = None
         self._apply_block("LiDAR safety service is stopped")
 
+    def reconfigure(
+        self,
+        evaluator: LidarSafetyEvaluator,
+        *,
+        scan_timeout_seconds: float,
+    ) -> None:
+        """Apply validated safety geometry without replacing topic consumers."""
+
+        if scan_timeout_seconds <= 0:
+            raise ValueError("scan_timeout_seconds must be greater than zero")
+        self._evaluator = evaluator
+        self._scan_timeout_seconds = scan_timeout_seconds
+        self._apply_block("waiting for a fresh LiDAR scan after reconfiguration")
+
+    def reconfigure_from(self, replacement: "LidarSafetyService") -> None:
+        self.reconfigure(
+            replacement._evaluator,
+            scan_timeout_seconds=replacement._scan_timeout_seconds,
+        )
+
     async def _run(self) -> None:
         subscription = self._subscription
         if subscription is None:

@@ -52,4 +52,39 @@ describe("robot configuration save feedback", () => {
       "Restart the backend to apply autonomy runtime configuration changes.",
     );
   });
+
+  it("reports localization publisher changes as hot reloaded", async () => {
+    const robot = useRobotStore();
+    const messager = useMessagerStore();
+    const warning = vi.spyOn(messager, "warning");
+
+    await robot.updatePartialData({
+      localization_sensors: {
+        ...robot.data.localization_sensors,
+        lidar: {
+          ...robot.data.localization_sensors.lidar,
+          distance_m: 1.5,
+        },
+      },
+    });
+
+    expect(warning).not.toHaveBeenCalled();
+  });
+
+  it("reports enabled odometry geometry tuning as hot reloaded", async () => {
+    const robot = useRobotStore();
+    const messager = useMessagerStore();
+    const warning = vi.spyOn(messager, "warning");
+    robot.data.ackermann_odometry.enabled = true;
+    robot.data.ackermann_odometry.wheelbase_m = 0.18;
+
+    await robot.updatePartialData({
+      ackermann_odometry: {
+        ...robot.data.ackermann_odometry,
+        wheelbase_m: 0.19,
+      },
+    });
+
+    expect(warning).not.toHaveBeenCalled();
+  });
 });

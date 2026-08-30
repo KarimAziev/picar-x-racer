@@ -215,6 +215,18 @@ class LocalMappingService:
         self._odom_subscription = None
         self._scan_subscription = None
 
+    async def reconfigure_from(self, replacement: "LocalMappingService") -> None:
+        """Reset the bounded grid while preserving this service identity."""
+
+        was_running = self.running
+        await self.stop()
+        self._grid = replacement._grid
+        self._max_odometry_age_ns = replacement._max_odometry_age_ns
+        self._latest_odometry = None
+        self._sequence = 0
+        if was_running:
+            self.start()
+
     async def _read_odometry(self) -> None:
         subscription = self._odom_subscription
         if subscription is None:
