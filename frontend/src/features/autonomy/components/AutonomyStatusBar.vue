@@ -67,17 +67,6 @@
         @click="disarm"
       />
       <Button
-        label="Autonomy not installed"
-        icon="pi pi-compass"
-        severity="secondary"
-        size="small"
-        outlined
-        disabled
-        v-tooltip.bottom="
-          'Mapping and safety are active, but no navigation mission controller exists yet.'
-        "
-      />
-      <Button
         v-if="controller.emergencyStopActive"
         label="Clear E-stop"
         icon="pi pi-unlock"

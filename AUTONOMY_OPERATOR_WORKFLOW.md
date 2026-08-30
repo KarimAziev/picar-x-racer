@@ -42,6 +42,7 @@ The application currently has:
 - persistent robot mode, command source/reason, pose, speed, sensor, mapping,
   and safety status in the operator workspace;
 - disarmed motion-control startup with explicit manual arming;
+- a cancelable, odometry-bounded straight relative-distance action;
 - an older reactive ultrasonic obstacle-avoidance behavior;
 - a `/virtual` compatibility redirect to the workspace's Three.js view.
 
@@ -54,6 +55,7 @@ Important current limitations:
   insertion/rejection locations;
 - there is no navigation goal, path follower, exploration behavior, or
   autonomy supervisor;
+- steering-arc relative actions are not implemented yet;
 - high-risk settings and calibration flows do not yet disarm automatically;
 - the current mock sensors are independent signal generators, not one coherent
   simulated vehicle and world;

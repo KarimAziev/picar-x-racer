@@ -114,6 +114,20 @@ export interface MappingSessionStatus {
 export type MappingSessionAction =
   "start" | "pause" | "finish" | "clear" | "reset";
 
+export type AutonomousActionState =
+  "idle" | "running" | "succeeded" | "blocked" | "failed" | "canceled";
+
+export interface RelativeMotionStatus {
+  available: boolean;
+  state: AutonomousActionState;
+  action_id: string | null;
+  distance_m: number | null;
+  requested_speed_mps: number | null;
+  progress_m: number;
+  remaining_m: number | null;
+  reason: string | null;
+}
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
@@ -131,6 +145,9 @@ export interface State {
   localMap: OccupancyGrid | null;
   mappingSession: MappingSessionStatus | null;
   mapClearGeneration: number;
+  relativeMotion: RelativeMotionStatus | null;
+  relativeMotionLoading: boolean;
+  relativeMotionError: string | null;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
   consumers: number;
@@ -146,6 +163,9 @@ const defaultState: State = {
   localMap: null,
   mappingSession: null,
   mapClearGeneration: 0,
+  relativeMotion: null,
+  relativeMotionLoading: false,
+  relativeMotionError: null,
   latest: {},
   connection: null,
   consumers: 0,
@@ -221,6 +241,46 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.mappingActionError = retrieveError(error).text;
       } finally {
         this.mappingActionLoading = false;
+      }
+    },
+
+    async refreshRelativeMotion() {
+      try {
+        this.relativeMotion = await robotApi.get<RelativeMotionStatus>(
+          "/px/api/autonomy/relative-motion",
+        );
+        this.relativeMotionError = null;
+      } catch (error) {
+        this.relativeMotionError = retrieveError(error).text;
+      }
+    },
+
+    async startRelativeDistance(distanceM: number, speedMps: number) {
+      try {
+        this.relativeMotionLoading = true;
+        this.relativeMotion = await robotApi.post<RelativeMotionStatus>(
+          "/px/api/autonomy/relative-motion/distance",
+          { distance_m: distanceM, speed_mps: speedMps },
+        );
+        this.relativeMotionError = null;
+      } catch (error) {
+        this.relativeMotionError = retrieveError(error).text;
+      } finally {
+        this.relativeMotionLoading = false;
+      }
+    },
+
+    async cancelRelativeMotion() {
+      try {
+        this.relativeMotionLoading = true;
+        this.relativeMotion = await robotApi.post<RelativeMotionStatus>(
+          "/px/api/autonomy/relative-motion/cancel",
+        );
+        this.relativeMotionError = null;
+      } catch (error) {
+        this.relativeMotionError = retrieveError(error).text;
+      } finally {
+        this.relativeMotionLoading = false;
       }
     },
 

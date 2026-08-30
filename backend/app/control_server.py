@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from app.services.autonomy.sensor_publishers import LocalizationSensorService
     from app.services.autonomy.lidar_safety import LidarSafetyService
     from app.services.autonomy.local_mapping import LocalMappingService
+    from app.services.autonomy.relative_motion import RelativeMotionService
     from app.services.control.car_service import CarService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
@@ -59,6 +60,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     localization_sensor_service: Optional["LocalizationSensorService"] = None
     lidar_safety_service: Optional["LidarSafetyService"] = None
     local_mapping_service: Optional["LocalMappingService"] = None
+    relative_motion_service: Optional["RelativeMotionService"] = None
     try:
 
         from app.api import robot_deps
@@ -81,6 +83,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             localization_sensor_service = deps.get("localization_sensor_service")
             lidar_safety_service = deps.get("lidar_safety_service")
             local_mapping_service = deps.get("local_mapping_service")
+            relative_motion_service = deps.get("relative_motion_service")
 
         app_loop = asyncio.get_running_loop()
 
@@ -113,6 +116,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.odometry_service = odometry_service
         app.state.lidar_safety_service = lidar_safety_service
         app.state.local_mapping_service = local_mapping_service
+        app.state.relative_motion_service = relative_motion_service
 
         async def broadcast_distance(distance: float) -> None:
             rel_speed = (
@@ -164,6 +168,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except asyncio.CancelledError:
             logger.warning("Cancelled while cleaning up battery_service.")
             raise
+
+    if relative_motion_service:
+        try:
+            await relative_motion_service.stop()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up relative motion.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup relative motion service: %s", e)
 
     if robot_service:
         try:

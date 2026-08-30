@@ -54,6 +54,7 @@ from app.services.autonomy import (
     MotionLimits,
     TopicBus,
     StaticTransform2D,
+    RelativeMotionService,
     SteeringAngleCalibration,
     SteeringCalibrationPoint,
     SteeringFeedbackService,
@@ -595,6 +596,20 @@ def get_local_mapping_service(
 
 
 @lru_cache(maxsize=1)
+def get_relative_motion_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    motion_control_service: Annotated[
+        Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
+) -> Optional[RelativeMotionService]:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    if motion_control_service is None or not config.ackermann_odometry.enabled:
+        return None
+    return RelativeMotionService(topic_bus, motion_control_service)
+
+
+@lru_cache(maxsize=1)
 def get_robot_settings_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
@@ -659,6 +674,7 @@ class LifespanAppDeps(TypedDict):
     localization_sensor_service: LocalizationSensorService
     lidar_safety_service: Optional[LidarSafetyService]
     local_mapping_service: Optional[LocalMappingService]
+    relative_motion_service: Optional[RelativeMotionService]
 
 
 async def get_lifespan_dependencies(
@@ -689,6 +705,9 @@ async def get_lifespan_dependencies(
     local_mapping_service: Annotated[
         Optional[LocalMappingService], Depends(get_local_mapping_service)
     ],
+    relative_motion_service: Annotated[
+        Optional[RelativeMotionService], Depends(get_relative_motion_service)
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -706,5 +725,6 @@ async def get_lifespan_dependencies(
         "localization_sensor_service": localization_sensor_service,
         "lidar_safety_service": lidar_safety_service,
         "local_mapping_service": local_mapping_service,
+        "relative_motion_service": relative_motion_service,
     }
     yield deps

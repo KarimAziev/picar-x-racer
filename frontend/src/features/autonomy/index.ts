@@ -12,11 +12,13 @@ export {
 } from "@/features/autonomy/operatorView";
 export type { AutonomyOperatorView } from "@/features/autonomy/operatorView";
 export type {
+  AutonomousActionState,
   LocalizationSensorStatus,
   MappingSessionAction,
   MappingSessionState,
   MappingSessionStatus,
   OccupancyGrid,
+  RelativeMotionStatus,
   SensorName,
   SensorPublisherStatus,
   TelemetryChannel,

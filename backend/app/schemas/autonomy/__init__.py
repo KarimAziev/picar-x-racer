@@ -1,5 +1,11 @@
 """Hardware-neutral messages exchanged by autonomy services."""
 
+from app.schemas.autonomy.actions import (
+    ActionState,
+    RelativeDistanceRequest,
+    RelativeMotionStatus,
+)
+
 from app.schemas.autonomy.messages import (
     EncoderReading,
     EncoderState,
@@ -27,6 +33,7 @@ from app.schemas.autonomy.telemetry import (
 )
 
 __all__ = [
+    "ActionState",
     "EncoderReading",
     "EncoderState",
     "ImuData",
@@ -37,6 +44,8 @@ __all__ = [
     "MappingSessionState",
     "MappingSessionStatus",
     "OccupancyGrid",
+    "RelativeDistanceRequest",
+    "RelativeMotionStatus",
     "Odometry2D",
     "SensorName",
     "SensorPublisherStatus",

@@ -72,6 +72,9 @@ describe("autonomy telemetry store", () => {
           data: [-1],
         });
       }
+      if (path === "/px/api/autonomy/relative-motion") {
+        return Promise.resolve({ available: true, state: "idle" });
+      }
       return Promise.resolve({
         sensors: [
           {
@@ -159,6 +162,29 @@ describe("autonomy telemetry store", () => {
     store.initialize();
 
     expect(store.connected).toBe(true);
+  });
+
+  it("starts a relative-distance action with SI values", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockResolvedValue({
+      available: true,
+      state: "running",
+      action_id: "action-1",
+      distance_m: 0.5,
+      requested_speed_mps: 0.15,
+      progress_m: 0,
+      remaining_m: 0.5,
+      reason: null,
+    });
+
+    await store.refreshRelativeMotion();
+    await store.startRelativeDistance(0.5, 0.15);
+
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/relative-motion/distance",
+      { distance_m: 0.5, speed_mps: 0.15 },
+    );
+    expect(store.relativeMotion?.state).toBe("running");
   });
 
   it("keeps a shared telemetry connection until its last consumer leaves", () => {

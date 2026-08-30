@@ -43,6 +43,10 @@ from app.services.autonomy.local_mapping import (
     LocalOccupancyGridConfig,
     StaticTransform2D,
 )
+from app.services.autonomy.relative_motion import (
+    ActionConflictError,
+    RelativeMotionService,
+)
 from app.services.autonomy.sensor_publishers import (
     EncoderPublisherService,
     IMUPublisherService,
@@ -73,6 +77,7 @@ from app.services.autonomy.topic_bus import (
 
 __all__ = [
     "ActuationCalibration",
+    "ActionConflictError",
     "AckermannOdometryConfig",
     "AckermannOdometryEstimator",
     "AckermannOdometryService",
@@ -105,6 +110,7 @@ __all__ = [
     "MotionSource",
     "OdometryInputError",
     "RobotMode",
+    "RelativeMotionService",
     "SafetyConstraint",
     "SafetySeverity",
     "ModeTransitionError",
