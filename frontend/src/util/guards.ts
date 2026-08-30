@@ -157,6 +157,7 @@ export function anyPass<T>(
 export function allPass<T, S extends readonly any[]>(
   ...predicates: { [K in keyof S]: (value: T) => value is S[K] }
 ): (value: T) => value is S[number];
+
 export function allPass<T, S extends T>(
   predicates: ReadonlyArray<Guard<T, S>>,
 ): Guard<T, S>;
@@ -193,3 +194,7 @@ export function not<A extends readonly unknown[]>(
 export function not(fn: (...args: any[]) => boolean) {
   return (...args: any[]) => !fn(...args);
 }
+
+export const isNonEmptyString = asGuard<unknown, Exclude<string, "">>(
+  allPass(isString, notGuard(isEmptyString)),
+);

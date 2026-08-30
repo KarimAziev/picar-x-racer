@@ -81,20 +81,6 @@ export function isShallowEq<A, B extends A>(valueA: A, valueB?: B) {
     : valueA === valueB!;
 }
 
-export function allPass(
-  fns: ((...args: any) => boolean)[],
-): <T>(value: T) => boolean;
-
-export function allPass<T>(
-  fns: ((...args: any) => boolean)[],
-  value: T,
-): boolean;
-export function allPass<T>(fns: ((...args: any) => boolean)[], value?: T) {
-  return arguments.length === 1
-    ? <T>(value: T) => fns.every((fn) => fn(value))
-    : fns.every((fn) => fn(value));
-}
-
 export const compareByLength = <T extends { length?: number }>(
   a?: T,
   b?: T,
