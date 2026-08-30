@@ -2,6 +2,7 @@ import math
 import unittest
 
 from app.schemas.autonomy import (
+    EncoderReading,
     EncoderState,
     ImuData,
     LaserScan,
@@ -72,8 +73,8 @@ class TestRobotMessages(unittest.TestCase):
         )
         encoder = EncoderState(
             header=self.header(),
-            ticks=100,
-            delta_ticks=5,
+            left=EncoderReading(ticks=100, delta_ticks=5),
+            right=EncoderReading(ticks=102, delta_ticks=7),
         )
         steering = SteeringState(
             header=self.header(),
@@ -89,7 +90,7 @@ class TestRobotMessages(unittest.TestCase):
         )
 
         self.assertEqual(imu.acceleration_z_mps2, 9.81)
-        self.assertEqual(encoder.delta_ticks, 5)
+        self.assertEqual(encoder.mean_delta_ticks, 6)
         self.assertIsNone(steering.measured_angle_rad)
         self.assertEqual(odometry.child_frame_id, "base_link")
 

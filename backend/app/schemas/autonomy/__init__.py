@@ -1,6 +1,7 @@
 """Hardware-neutral messages exchanged by autonomy services."""
 
 from app.schemas.autonomy.messages import (
+    EncoderReading,
     EncoderState,
     ImuData,
     LaserScan,
@@ -22,6 +23,7 @@ from app.schemas.autonomy.telemetry import (
 )
 
 __all__ = [
+    "EncoderReading",
     "EncoderState",
     "ImuData",
     "LaserScan",

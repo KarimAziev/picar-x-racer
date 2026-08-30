@@ -99,7 +99,7 @@ class AckermannOdometryEstimator:
 
         dt_seconds = (timestamp - previous_timestamp) / 1_000_000_000
         wheel_revolutions = (
-            encoder.delta_ticks
+            encoder.mean_delta_ticks
             / self.config.encoder_ticks_per_revolution
             / self.config.gear_ratio
         )

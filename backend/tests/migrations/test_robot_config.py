@@ -41,8 +41,8 @@ class TestRobotConfigMigration(unittest.TestCase):
     def test_migrates_legacy_motor_fields(self):
         result = create_robot_config_migrator().migrate(self.make_legacy_config())
 
-        self.assertEqual(result.applied_versions, (1, 2, 3, 4, 5))
-        self.assertEqual(result.data["schema_version"], 5)
+        self.assertEqual(result.applied_versions, (1, 2, 3, 4, 5, 6))
+        self.assertEqual(result.data["schema_version"], 6)
         self.assertNotIn("left_motor", result.data)
         self.assertNotIn("right_motor", result.data)
         self.assertEqual(
@@ -58,9 +58,10 @@ class TestRobotConfigMigration(unittest.TestCase):
         self.assertEqual(
             result.data["localization_sensors"],
             {
-                "lidar": {"enabled": False},
-                "imu": {"enabled": False},
-                "encoder": {"enabled": False},
+                "lidar": {"enabled": False, "driver": "rplidar_c1"},
+                "imu": {"enabled": False, "driver": "sh3001"},
+                "encoder": {"enabled": False, "sensors": []},
+                "steering": {"enabled": False, "driver": "as5048a"},
             },
         )
         self.assertEqual(result.data["lidar_safety"], {"enabled": False})
@@ -76,8 +77,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (2, 3, 4, 5))
-        self.assertEqual(result.data["schema_version"], 5)
+        self.assertEqual(result.applied_versions, (2, 3, 4, 5, 6))
+        self.assertEqual(result.data["schema_version"], 6)
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
 
     def test_migrates_v2_with_disabled_motion_control(self):
@@ -87,8 +88,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (3, 4, 5))
-        self.assertEqual(result.data["schema_version"], 5)
+        self.assertEqual(result.applied_versions, (3, 4, 5, 6))
+        self.assertEqual(result.data["schema_version"], 6)
         self.assertEqual(result.data["motion_control"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
@@ -122,8 +123,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (4, 5))
-        self.assertEqual(result.data["schema_version"], 5)
+        self.assertEqual(result.applied_versions, (4, 5, 6))
+        self.assertEqual(result.data["schema_version"], 6)
         self.assertEqual(result.data["ackermann_odometry"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
@@ -137,6 +138,17 @@ class TestRobotConfigMigration(unittest.TestCase):
             "encoder_ticks_per_revolution": 20,
             "gear_ratio": 2.0,
             "max_steering_age_ms": 200,
+        }
+        data["motion_control"] = {
+            "enabled": True,
+            "control_frequency_hz": 20,
+            "command_timeout_ms": 250,
+            "max_forward_speed_mps": 1.0,
+            "max_reverse_speed_mps": 0.5,
+        }
+        data["localization_sensors"]["encoder"] = {
+            "enabled": True,
+            "sensors": [{"side": "left", "driver": "mock"}],
         }
 
         result = create_robot_config_migrator().migrate(data)
@@ -163,14 +175,15 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (5,))
-        self.assertEqual(result.data["schema_version"], 5)
+        self.assertEqual(result.applied_versions, (5, 6))
+        self.assertEqual(result.data["schema_version"], 6)
         self.assertEqual(
             result.data["localization_sensors"],
             {
-                "lidar": {"enabled": False},
-                "imu": {"enabled": False},
-                "encoder": {"enabled": False},
+                "lidar": {"enabled": False, "driver": "rplidar_c1"},
+                "imu": {"enabled": False, "driver": "sh3001"},
+                "encoder": {"enabled": False, "sensors": []},
+                "steering": {"enabled": False, "driver": "as5048a"},
             },
         )
         self.assertEqual(result.data["lidar_safety"], {"enabled": False})
@@ -192,10 +205,46 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
+        expected = deepcopy(data["localization_sensors"])
+        expected["lidar"]["driver"] = "rplidar_c1"
+        expected["imu"]["driver"] = "sh3001"
+        expected["encoder"]["sensors"] = []
+        expected["steering"] = {"enabled": False, "driver": "as5048a"}
+        self.assertEqual(result.data["localization_sensors"], expected)
+
+    def test_v6_migrates_disabled_external_encoder_to_empty_pair(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 5
+        data["localization_sensors"]["encoder"] = {
+            "enabled": False,
+            "driver": "external",
+            "frame_id": "encoder",
+            "sample_frequency_hz": 50,
+        }
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(result.applied_versions, (6,))
         self.assertEqual(
-            result.data["localization_sensors"],
-            data["localization_sensors"],
+            result.data["localization_sensors"]["encoder"],
+            {
+                "enabled": False,
+                "frame_id": "encoder",
+                "sample_frequency_hz": 50,
+                "sensors": [],
+            },
         )
+
+    def test_v6_rejects_enabled_ambiguous_external_encoder(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 5
+        data["localization_sensors"]["encoder"] = {
+            "enabled": True,
+            "driver": "external",
+        }
+
+        with self.assertRaisesRegex(JsonDataMigrationError, "cannot be mapped"):
+            create_robot_config_migrator().migrate(data)
 
     def test_v5_rejects_invalid_localization_sensor_shape(self):
         data = deepcopy(self.current_config)
@@ -266,7 +315,7 @@ class TestRobotConfigMigration(unittest.TestCase):
 
             persisted = json.loads(target.read_text())
             self.assertEqual(manager.load_data(), persisted)
-            self.assertEqual(persisted["schema_version"], 5)
+            self.assertEqual(persisted["schema_version"], 6)
             self.assertIn("motors", persisted)
             self.assertNotIn("left_motor", persisted)
 
@@ -282,7 +331,7 @@ class TestRobotConfigMigration(unittest.TestCase):
                 migrator=create_robot_config_migrator(),
             )
 
-            self.assertEqual(manager.load_data()["schema_version"], 5)
+            self.assertEqual(manager.load_data()["schema_version"], 6)
             self.assertFalse(target.exists())
 
     def test_manager_does_not_overwrite_invalid_migration(self):

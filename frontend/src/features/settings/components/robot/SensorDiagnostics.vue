@@ -111,8 +111,15 @@ const latestSummary = (sensor: SensorName) => {
     }
     case "imu":
       return `yaw rate ${formatNumber(envelope.payload.angular_velocity_z_radps)} rad/s`;
-    case "encoder":
-      return `${envelope.payload.ticks} ticks · Δ ${envelope.payload.delta_ticks}`;
+    case "encoder": {
+      const readings = [
+        envelope.payload.left &&
+          `L ${envelope.payload.left.ticks} · Δ ${envelope.payload.left.delta_ticks}`,
+        envelope.payload.right &&
+          `R ${envelope.payload.right.ticks} · Δ ${envelope.payload.right.delta_ticks}`,
+      ].filter(Boolean);
+      return readings.join(" · ");
+    }
   }
   return null;
 };

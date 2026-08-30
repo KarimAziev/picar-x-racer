@@ -15,6 +15,7 @@ from app.services.autonomy.messages import (
     SafetyConstraint,
 )
 from app.services.autonomy.motion_arbiter import MotionArbiter
+from app.services.autonomy.steering_feedback import SteeringFeedbackService
 from app.services.autonomy.topic_bus import TopicBus
 from app.services.autonomy.topics import MOTION_COMMANDED, STEERING_STATE
 
@@ -36,6 +37,7 @@ class MotionControlService:
         *,
         control_period_seconds: float = 0.05,
         topic_bus: Optional[TopicBus] = None,
+        steering_feedback: Optional[SteeringFeedbackService] = None,
     ) -> None:
         if control_period_seconds <= 0:
             raise ValueError("control_period_seconds must be greater than zero")
@@ -43,6 +45,7 @@ class MotionControlService:
         self._hardware_controller = hardware_controller
         self._control_period_seconds = control_period_seconds
         self._topic_bus = topic_bus
+        self._steering_feedback = steering_feedback
         self._mode = RobotMode.DISARMED
         self._mode_generation = 0
         self._constraints: Dict[str, SafetyConstraint] = {}
@@ -167,6 +170,11 @@ class MotionControlService:
                 try:
                     self._topic_bus.publish(MOTION_COMMANDED, result.command)
                     self._steering_state_sequence += 1
+                    feedback = (
+                        self._steering_feedback.latest
+                        if self._steering_feedback is not None
+                        else None
+                    )
                     self._topic_bus.publish(
                         STEERING_STATE,
                         SteeringState(
@@ -176,8 +184,18 @@ class MotionControlService:
                                 timestamp_monotonic_ns=(
                                     result.command.selected_monotonic_ns
                                 ),
+                                source_timestamp_ns=(
+                                    feedback.timestamp_monotonic_ns
+                                    if feedback is not None
+                                    else None
+                                ),
                             ),
                             commanded_angle_rad=result.command.steering_angle_rad,
+                            measured_angle_rad=(
+                                feedback.wheel_angle_rad
+                                if feedback is not None
+                                else None
+                            ),
                         ),
                     )
                 except Exception:

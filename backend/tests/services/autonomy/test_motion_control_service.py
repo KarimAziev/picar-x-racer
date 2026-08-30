@@ -16,9 +16,12 @@ from app.services.autonomy import (
     RobotMode,
     SafetyConstraint,
     SafetySeverity,
+    SteeringAngleCalibration,
+    SteeringFeedbackService,
     TopicBus,
 )
 from app.services.autonomy.topics import MOTION_COMMANDED, STEERING_STATE
+from robot_hat import MockAngularPosition
 
 
 class FakeClock:
@@ -179,6 +182,37 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
             result.command.steering_angle_rad,
         )
         self.assertEqual(steering.header.frame_id, "base_link")
+
+    async def test_publishes_cached_physical_steering_feedback(self) -> None:
+        feedback = SteeringFeedbackService(
+            lambda: MockAngularPosition(initial_angle_degrees=190.0),
+            SteeringAngleCalibration(center_angle_deg=180.0),
+            sample_frequency_hz=100,
+        )
+        service = MotionControlService(
+            self.arbiter,
+            self.controller,
+            control_period_seconds=0.001,
+            topic_bus=self.topic_bus,
+            steering_feedback=feedback,
+        )
+        subscription = self.topic_bus.subscribe(
+            STEERING_STATE,
+            replay_latest=False,
+        )
+        await feedback.start()
+        try:
+            for _attempt in range(20):
+                if feedback.latest is not None:
+                    break
+                await asyncio.sleep(0.005)
+            await service.step()
+            steering = await subscription.get()
+        finally:
+            await feedback.stop()
+
+        self.assertAlmostEqual(steering.measured_angle_rad or 0.0, math.radians(10))
+        self.assertIsNotNone(steering.header.source_timestamp_ns)
 
     async def test_hardware_failure_transitions_to_fault_and_invalidates_intents(
         self,

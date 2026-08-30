@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
     from app.services.connection_service import ConnectionService
     from app.services.autonomy.motion_control_service import MotionControlService
+    from app.services.autonomy.steering_feedback import SteeringFeedbackService
     from app.services.autonomy.odometry import AckermannOdometryService
     from app.services.autonomy.topic_bus import TopicBus
     from app.services.autonomy.sensor_publishers import LocalizationSensorService
@@ -52,6 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     smbus_manager: Optional["SMBusManager"] = None
     battery_service: Optional["BatteryService"] = None
     motion_control_service: Optional["MotionControlService"] = None
+    steering_feedback_service: Optional["SteeringFeedbackService"] = None
     topic_bus: Optional["TopicBus"] = None
     odometry_service: Optional["AckermannOdometryService"] = None
     localization_sensor_service: Optional["LocalizationSensorService"] = None
@@ -73,6 +75,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             config_manager = deps.get("config_manager")
             smbus_manager = deps.get("smbus_manager")
             motion_control_service = deps.get("motion_control_service")
+            steering_feedback_service = deps.get("steering_feedback_service")
             topic_bus = deps.get("topic_bus")
             odometry_service = deps.get("odometry_service")
             localization_sensor_service = deps.get("localization_sensor_service")
@@ -90,6 +93,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         app.state.battery_service = battery_service
 
+        if steering_feedback_service:
+            await steering_feedback_service.start()
         if robot_service and motion_control_service:
             await robot_service.start_motion_control()
         if odometry_service:
@@ -188,6 +193,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise
         except Exception as e:
             logger.error("Failed to cleanup odometry service: %s", e)
+
+    if steering_feedback_service:
+        try:
+            await steering_feedback_service.stop()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up steering feedback.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup steering feedback service: %s", e)
 
     if localization_sensor_service:
         try:

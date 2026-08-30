@@ -84,10 +84,14 @@ export interface StaticTransformConfig {
 export interface LocalizationSensorsConfig {
   lidar: {
     enabled: boolean;
-    driver: "rplidar_c1";
-    port: string;
-    baudrate: number;
-    timeout_s: number;
+    driver: "rplidar_c1" | "mock";
+    port?: string;
+    baudrate?: number;
+    timeout_s?: number;
+    points_per_scan?: number;
+    distance_m?: number;
+    quality?: number;
+    scan_frequency_hz?: number;
     frame_id: string;
     transform: StaticTransformConfig;
     range_min_m: number | null;
@@ -97,21 +101,71 @@ export interface LocalizationSensorsConfig {
   };
   imu: {
     enabled: boolean;
-    driver: "sh3001";
-    bus: number;
-    address: number | string;
+    driver: "sh3001" | "mock";
+    bus?: number;
+    address?: number | string;
     frame_id: string;
     transform: StaticTransformConfig;
     sample_frequency_hz: number;
-    accelerometer_range_g: 2 | 4 | 8 | 16;
-    gyroscope_range_dps: 125 | 250 | 500 | 1000 | 2000;
+    accelerometer_range_g?: 2 | 4 | 8 | 16;
+    gyroscope_range_dps?: 125 | 250 | 500 | 1000 | 2000;
+    acceleration_mps2?: [number, number, number];
+    angular_velocity_radps?: [number, number, number];
   };
   encoder: {
     enabled: boolean;
-    driver: "external";
     frame_id: string;
     sample_frequency_hz: number;
+    sensors: Array<
+      | {
+          side: "left" | "right";
+          driver: "as5048a";
+          bus: number;
+          device: number;
+          max_speed_hz: number;
+          invert_direction: boolean;
+          max_sample_gap_ms: number | null;
+          max_abs_speed_rps: number | null;
+        }
+      | {
+          side: "left" | "right";
+          driver: "mock";
+          initial_ticks: number;
+          ticks_per_sample: number;
+          invert_direction: boolean;
+        }
+    >;
   };
+  steering:
+    | {
+        enabled: boolean;
+        driver: "as5048a";
+        sample_frequency_hz: number;
+        center_angle_deg: number;
+        invert_direction: boolean;
+        wheel_degrees_per_sensor_degree: number;
+        calibration_points: Array<{
+          sensor_offset_deg: number;
+          wheel_angle_rad: number;
+        }>;
+        bus: number;
+        device: number;
+        max_speed_hz: number;
+      }
+    | {
+        enabled: boolean;
+        driver: "mock";
+        sample_frequency_hz: number;
+        center_angle_deg: number;
+        invert_direction: boolean;
+        wheel_degrees_per_sensor_degree: number;
+        calibration_points: Array<{
+          sensor_offset_deg: number;
+          wheel_angle_rad: number;
+        }>;
+        initial_angle_degrees: number;
+        degrees_per_sample: number;
+      };
 }
 
 export interface LidarSafetyConfig {
@@ -215,7 +269,7 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
-    schema_version: 5,
+    schema_version: 6,
     motion_control: {
       enabled: false,
       control_frequency_hz: 20,
@@ -272,9 +326,21 @@ const defaultState: State = {
       },
       encoder: {
         enabled: false,
-        driver: "external",
-        frame_id: "encoder",
+        frame_id: "rear_axle",
         sample_frequency_hz: 100,
+        sensors: [],
+      },
+      steering: {
+        enabled: false,
+        driver: "as5048a",
+        sample_frequency_hz: 100,
+        center_angle_deg: 0,
+        invert_direction: false,
+        wheel_degrees_per_sensor_degree: 1,
+        calibration_points: [],
+        bus: 0,
+        device: 0,
+        max_speed_hz: 1000000,
       },
     },
     lidar_safety: {

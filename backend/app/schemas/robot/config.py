@@ -29,12 +29,12 @@ class HardwareConfig(BaseModel):
     """
 
     schema_version: Annotated[
-        Literal[5],
+        Literal[6],
         Field(
             title="Schema version",
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
-    ] = 5
+    ] = 6
 
     motion_control: Annotated[
         MotionControlConfig,
@@ -209,6 +209,16 @@ class HardwareConfig(BaseModel):
                 and not self.localization_sensors.lidar.enabled
             ):
                 raise ValueError("local mapping requires the LiDAR publisher")
+        if self.ackermann_odometry is not None and self.ackermann_odometry.enabled:
+            if (
+                self.localization_sensors is not None
+                and not self.localization_sensors.encoder.enabled
+            ):
+                raise ValueError("Ackermann odometry requires drive encoders")
+            if self.motion_control is not None and not self.motion_control.enabled:
+                raise ValueError(
+                    "Ackermann odometry requires motion control steering state"
+                )
         return self
 
 

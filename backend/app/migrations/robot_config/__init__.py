@@ -4,6 +4,7 @@ from app.migrations.robot_config.v2_battery_list import migrate_to_v2
 from app.migrations.robot_config.v3_motion_control import migrate_to_v3
 from app.migrations.robot_config.v4_ackermann_odometry import migrate_to_v4
 from app.migrations.robot_config.v5_localization_sensors import migrate_to_v5
+from app.migrations.robot_config.v6_drive_encoder_pair import migrate_to_v6
 from app.schemas.robot.config import HardwareConfig
 
 
@@ -19,6 +20,7 @@ def create_robot_config_migrator() -> JsonDataMigrator:
             3: migrate_to_v3,
             4: migrate_to_v4,
             5: migrate_to_v5,
+            6: migrate_to_v6,
         },
         validator=_validate_hardware_config,
     )

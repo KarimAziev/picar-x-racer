@@ -1,6 +1,14 @@
 import math
 from functools import lru_cache
-from typing import Annotated, AsyncGenerator, Dict, Optional, TypedDict
+from typing import (
+    Annotated,
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Literal,
+    Optional,
+    TypedDict,
+)
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.config.config import settings as app_config
@@ -10,6 +18,14 @@ from app.managers.async_task_manager import AsyncTaskManager
 from app.managers.file_management.json_data_manager import JsonDataManager
 from app.migrations.robot_config import create_robot_config_migrator
 from app.schemas.robot.config import HardwareConfig
+from app.schemas.robot.localization_sensors import (
+    AS5048AEncoderConfig,
+    AS5048ASteeringPositionConfig,
+    MockEncoderConfig,
+    MockIMUSensorConfig,
+    MockLidarSensorConfig,
+    MockSteeringPositionConfig,
+)
 from app.schemas.autonomy import SensorName
 from app.services.connection_service import ConnectionService
 from app.services.autonomy import (
@@ -17,6 +33,7 @@ from app.services.autonomy import (
     AckermannOdometryEstimator,
     AckermannOdometryService,
     ActuationCalibration,
+    EncoderPublisherService,
     HardwareController,
     LinearActuatorTranslator,
     LaserScanConverter,
@@ -33,8 +50,10 @@ from app.services.autonomy import (
     MotionControlService,
     MotionLimits,
     TopicBus,
-    UnavailableEncoderPublisher,
     StaticTransform2D,
+    SteeringAngleCalibration,
+    SteeringCalibrationPoint,
+    SteeringFeedbackService,
 )
 from app.services.autonomy.sensor_publishers import SensorPublisher
 from app.services.control.calibration_service import CalibrationService
@@ -46,7 +65,22 @@ from app.services.sensors.pinout_service import PinoutService
 from app.services.sensors.speed_estimator import SpeedEstimator
 from fastapi import Depends
 from robot_hat.i2c.smbus_manager import SMBusManager
-from robot_hat import RPLidarC1, RPLidarC1Config, SH3001, SH3001Config
+from robot_hat import (
+    AS5048AAngularPosition,
+    AS5048AEncoder,
+    AngularPositionABC,
+    EncoderABC,
+    IMUABC,
+    Lidar2DABC,
+    MockEncoder,
+    MockAngularPosition,
+    MockIMU,
+    MockLidar2D,
+    RPLidarC1,
+    RPLidarC1Config,
+    SH3001,
+    SH3001Config,
+)
 
 logger = Logger(__name__)
 
@@ -132,10 +166,57 @@ def get_picarx_adapter(
 
 
 @lru_cache(maxsize=1)
+def get_steering_feedback_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+) -> Optional[SteeringFeedbackService]:
+    """Build optional physical steering feedback without opening SPI yet."""
+
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    steering = config.localization_sensors.steering
+    if not steering.enabled:
+        return None
+
+    sensor_factory: Callable[[], AngularPositionABC]
+    if isinstance(steering, AS5048ASteeringPositionConfig):
+        sensor_factory = lambda: AS5048AAngularPosition(
+            bus=steering.bus,
+            device=steering.device,
+            max_speed_hz=steering.max_speed_hz,
+        )
+    elif isinstance(steering, MockSteeringPositionConfig):
+        sensor_factory = lambda: MockAngularPosition(
+            initial_angle_degrees=steering.initial_angle_degrees,
+            degrees_per_sample=steering.degrees_per_sample,
+        )
+    else:
+        raise TypeError(f"unsupported steering position config: {type(steering)!r}")
+
+    return SteeringFeedbackService(
+        sensor_factory,
+        SteeringAngleCalibration(
+            center_angle_deg=steering.center_angle_deg,
+            invert_direction=steering.invert_direction,
+            wheel_degrees_per_sensor_degree=(steering.wheel_degrees_per_sensor_degree),
+            points=tuple(
+                SteeringCalibrationPoint(
+                    sensor_offset_deg=point.sensor_offset_deg,
+                    wheel_angle_rad=point.wheel_angle_rad,
+                )
+                for point in steering.calibration_points
+            ),
+        ),
+        sample_frequency_hz=steering.sample_frequency_hz,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_motion_control_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    steering_feedback_service: Annotated[
+        Optional[SteeringFeedbackService], Depends(get_steering_feedback_service)
+    ],
 ) -> Optional[MotionControlService]:
     """Build the opt-in single-writer motion runtime from calibrated config."""
 
@@ -178,6 +259,7 @@ def get_motion_control_service(
         ),
         control_period_seconds=1.0 / motion.control_frequency_hz,
         topic_bus=topic_bus,
+        steering_feedback=steering_feedback_service,
     )
 
 
@@ -229,36 +311,53 @@ def get_localization_sensor_service(
 
     if sensors.lidar.enabled:
         enabled_sensors.append("lidar")
-        range_min_m = sensors.lidar.range_min_m
-        range_max_m = sensors.lidar.range_max_m
+        lidar_sensor_config = sensors.lidar
+        range_min_m = lidar_sensor_config.range_min_m
+        range_max_m = lidar_sensor_config.range_max_m
         if range_min_m is None or range_max_m is None:
             raise ValueError("enabled lidar requires calibrated range limits")
-        lidar_config = RPLidarC1Config(
-            port=sensors.lidar.port,
-            baudrate=sensors.lidar.baudrate,
-            timeout=sensors.lidar.timeout_s,
-        )
+        lidar_factory: Callable[[], Lidar2DABC]
+        if isinstance(lidar_sensor_config, MockLidarSensorConfig):
+            lidar_factory = lambda: MockLidar2D(
+                points_per_scan=lidar_sensor_config.points_per_scan,
+                distance_m=lidar_sensor_config.distance_m,
+                quality=lidar_sensor_config.quality,
+                scan_frequency_hz=lidar_sensor_config.scan_frequency_hz,
+            )
+        else:
+            lidar_config = RPLidarC1Config(
+                port=lidar_sensor_config.port,
+                baudrate=lidar_sensor_config.baudrate,
+                timeout=lidar_sensor_config.timeout_s,
+            )
+            lidar_factory = lambda: RPLidarC1(lidar_config)
+
         publishers["lidar"] = LidarPublisherService(
             topic_bus,
-            lambda: RPLidarC1(lidar_config),
+            lidar_factory,
             LaserScanConverter(
-                frame_id=sensors.lidar.frame_id,
+                frame_id=lidar_sensor_config.frame_id,
                 range_min_m=range_min_m,
                 range_max_m=range_max_m,
-                angular_resolution_deg=sensors.lidar.angular_resolution_deg,
+                angular_resolution_deg=lidar_sensor_config.angular_resolution_deg,
             ),
-            min_measurements_per_scan=(sensors.lidar.min_measurements_per_scan),
+            min_measurements_per_scan=(lidar_sensor_config.min_measurements_per_scan),
         )
 
     if sensors.imu.enabled:
         enabled_sensors.append("imu")
         imu_sensor_config = sensors.imu
+        imu_factory: Callable[[], IMUABC]
 
-        def create_imu() -> SH3001:
-            bus = smbus_manager.get_bus(imu_sensor_config.bus)
-            return SH3001(
+        if isinstance(imu_sensor_config, MockIMUSensorConfig):
+            imu_factory = lambda: MockIMU(
+                acceleration_mps2=imu_sensor_config.acceleration_mps2,
+                angular_velocity_radps=(imu_sensor_config.angular_velocity_radps),
+            )
+        else:
+            imu_factory = lambda: SH3001(
                 address=imu_sensor_config.address_int,
-                bus=bus,
+                bus=smbus_manager.get_bus(imu_sensor_config.bus),
                 config=SH3001Config(
                     accelerometer_range_g=(imu_sensor_config.accelerometer_range_g),
                     gyroscope_range_dps=imu_sensor_config.gyroscope_range_dps,
@@ -267,16 +366,51 @@ def get_localization_sensor_service(
 
         publishers["imu"] = IMUPublisherService(
             topic_bus,
-            create_imu,
+            imu_factory,
             frame_id=imu_sensor_config.frame_id,
             sample_frequency_hz=imu_sensor_config.sample_frequency_hz,
         )
 
     if sensors.encoder.enabled:
         enabled_sensors.append("encoder")
-        publishers["encoder"] = UnavailableEncoderPublisher(
-            "EncoderABC is configured, but no concrete robot-hat encoder driver "
-            "has been installed"
+        encoder_factories: Dict[Literal["left", "right"], Callable[[], EncoderABC]] = {}
+        for encoder_sensor_config in sensors.encoder.sensors:
+            if isinstance(encoder_sensor_config, AS5048AEncoderConfig):
+
+                def create_as5048a_encoder(
+                    sensor_config: AS5048AEncoderConfig = encoder_sensor_config,
+                ) -> AS5048AEncoder:
+                    return AS5048AEncoder(
+                        bus=sensor_config.bus,
+                        device=sensor_config.device,
+                        max_speed_hz=sensor_config.max_speed_hz,
+                        invert_direction=sensor_config.invert_direction,
+                        max_sample_gap_ns=sensor_config.max_sample_gap_ns,
+                        max_abs_speed_rps=sensor_config.max_abs_speed_rps,
+                    )
+
+                encoder_factories[encoder_sensor_config.side] = create_as5048a_encoder
+            elif isinstance(encoder_sensor_config, MockEncoderConfig):
+
+                def create_mock_encoder(
+                    sensor_config: MockEncoderConfig = encoder_sensor_config,
+                ) -> MockEncoder:
+                    return MockEncoder(
+                        initial_ticks=sensor_config.initial_ticks,
+                        ticks_per_sample=(
+                            -sensor_config.ticks_per_sample
+                            if sensor_config.invert_direction
+                            else sensor_config.ticks_per_sample
+                        ),
+                    )
+
+                encoder_factories[encoder_sensor_config.side] = create_mock_encoder
+
+        publishers["encoder"] = EncoderPublisherService(
+            topic_bus,
+            encoder_factories,
+            frame_id=sensors.encoder.frame_id,
+            sample_frequency_hz=sensors.encoder.sample_frequency_hz,
         )
 
     return LocalizationSensorService(
@@ -415,6 +549,7 @@ class LifespanAppDeps(TypedDict):
     config_manager: JsonDataManager
     smbus_manager: SMBusManager
     motion_control_service: Optional[MotionControlService]
+    steering_feedback_service: Optional[SteeringFeedbackService]
     topic_bus: TopicBus
     odometry_service: Optional[AckermannOdometryService]
     localization_sensor_service: LocalizationSensorService
@@ -433,6 +568,9 @@ async def get_lifespan_dependencies(
     smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
     motion_control_service: Annotated[
         Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
+    steering_feedback_service: Annotated[
+        Optional[SteeringFeedbackService], Depends(get_steering_feedback_service)
     ],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
     odometry_service: Annotated[
@@ -458,6 +596,7 @@ async def get_lifespan_dependencies(
         "config_manager": config_manager,
         "smbus_manager": smbus_manager,
         "motion_control_service": motion_control_service,
+        "steering_feedback_service": steering_feedback_service,
         "topic_bus": topic_bus,
         "odometry_service": odometry_service,
         "localization_sensor_service": localization_sensor_service,

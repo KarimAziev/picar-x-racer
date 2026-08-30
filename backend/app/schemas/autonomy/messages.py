@@ -78,12 +78,34 @@ class ImuData(FrozenMessage):
     yaw_rad: Optional[FiniteFloat] = None
 
 
-class EncoderState(FrozenMessage):
-    """Signed cumulative and incremental drive-encoder state."""
+class EncoderReading(FrozenMessage):
+    """Signed cumulative and incremental state for one rear wheel encoder."""
 
-    header: MessageHeader
     ticks: int
     delta_ticks: int
+
+
+class EncoderState(FrozenMessage):
+    """Synchronized readings from one or both rear wheel encoders."""
+
+    header: MessageHeader
+    left: Optional[EncoderReading] = None
+    right: Optional[EncoderReading] = None
+
+    @model_validator(mode="after")
+    def require_at_least_one_wheel(self) -> Self:
+        if self.left is None and self.right is None:
+            raise ValueError("encoder state requires a left or right reading")
+        return self
+
+    @property
+    def mean_delta_ticks(self) -> float:
+        """Return mean rear-wheel motion, or the available side for one sensor."""
+
+        readings = tuple(
+            reading for reading in (self.left, self.right) if reading is not None
+        )
+        return sum(reading.delta_ticks for reading in readings) / len(readings)
 
 
 class SteeringState(FrozenMessage):
@@ -147,6 +169,7 @@ class OccupancyGrid(FrozenMessage):
 
 
 __all__ = [
+    "EncoderReading",
     "EncoderState",
     "ImuData",
     "LaserScan",

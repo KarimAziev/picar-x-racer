@@ -54,6 +54,8 @@ from app.services.autonomy.sensor_publishers import (
 from app.services.autonomy.steering_feedback import (
     SteeringAngleCalibration,
     SteeringCalibrationPoint,
+    SteeringFeedbackSample,
+    SteeringFeedbackService,
 )
 from app.services.autonomy.telemetry import (
     SensorTelemetryStreamer,
@@ -110,6 +112,8 @@ __all__ = [
     "StaticTransform2D",
     "SteeringAngleCalibration",
     "SteeringCalibrationPoint",
+    "SteeringFeedbackSample",
+    "SteeringFeedbackService",
     "Topic",
     "TopicBus",
     "TopicDefinitionError",

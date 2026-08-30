@@ -55,6 +55,11 @@ export interface ImuTelemetry {
 
 export interface EncoderTelemetry {
   header: MessageHeader;
+  left: EncoderReadingTelemetry | null;
+  right: EncoderReadingTelemetry | null;
+}
+
+export interface EncoderReadingTelemetry {
   ticks: number;
   delta_ticks: number;
 }

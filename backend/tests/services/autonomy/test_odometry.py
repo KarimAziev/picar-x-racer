@@ -2,7 +2,12 @@ import asyncio
 import math
 import unittest
 
-from app.schemas.autonomy import EncoderState, MessageHeader, SteeringState
+from app.schemas.autonomy import (
+    EncoderReading,
+    EncoderState,
+    MessageHeader,
+    SteeringState,
+)
 from app.schemas.robot.odometry import (
     AckermannOdometryConfig as AckermannOdometrySchema,
 )
@@ -34,15 +39,17 @@ class OdometryTestCase(unittest.TestCase):
         timestamp_ns: int,
         *,
         delta_ticks: int = 0,
+        right_delta_ticks: int | None = None,
     ) -> EncoderState:
+        right_delta = delta_ticks if right_delta_ticks is None else right_delta_ticks
         return EncoderState(
             header=MessageHeader(
                 sequence=sequence,
                 frame_id="base_link",
                 timestamp_monotonic_ns=timestamp_ns,
             ),
-            ticks=delta_ticks,
-            delta_ticks=delta_ticks,
+            left=EncoderReading(ticks=delta_ticks, delta_ticks=delta_ticks),
+            right=EncoderReading(ticks=right_delta, delta_ticks=right_delta),
         )
 
     @staticmethod
@@ -181,6 +188,24 @@ class TestAckermannOdometryEstimator(OdometryTestCase):
         )
 
         self.assertAlmostEqual(result.x_m, math.pi * 0.1)
+
+    def test_averages_left_and_right_wheel_motion(self) -> None:
+        self.estimator.update(
+            self.encoder(1, 1_000_000_000),
+            self.steering(1_000_000_000),
+        )
+
+        result = self.estimator.update(
+            self.encoder(
+                2,
+                2_000_000_000,
+                delta_ticks=10,
+                right_delta_ticks=20,
+            ),
+            self.steering(2_000_000_000),
+        )
+
+        self.assertAlmostEqual(result.x_m, 1.5 * math.pi * 0.1)
 
 
 class TestAckermannOdometryService(unittest.IsolatedAsyncioTestCase):

@@ -1,5 +1,5 @@
 numpy==1.26.4
-robot-hat>=3.0.0,<4
+robot-hat[spi]>=3.0.0,<4
 pandas
 colorlog
 platformdirs>=4.3.6,<5.0.0

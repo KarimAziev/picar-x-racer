@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "motion_control": {
     "enabled": false,
     "control_frequency_hz": 20,
@@ -17,13 +17,20 @@
   },
   "localization_sensors": {
     "lidar": {
-      "enabled": false
+      "enabled": false,
+      "driver": "rplidar_c1"
     },
     "imu": {
-      "enabled": false
+      "enabled": false,
+      "driver": "sh3001"
     },
     "encoder": {
-      "enabled": false
+      "enabled": false,
+      "sensors": []
+    },
+    "steering": {
+      "enabled": false,
+      "driver": "as5048a"
     }
   },
   "lidar_safety": {

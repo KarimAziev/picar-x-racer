@@ -51,7 +51,8 @@ class FakeIMU(IMUABC):
 
 class FakeEncoder(EncoderABC):
     def __init__(self, samples: List[EncoderSample]) -> None:
-        self.samples = iter(samples)
+        self.samples = list(samples)
+        self.read_index = 0
         self.initialized = False
         self.closed = False
 
@@ -59,7 +60,19 @@ class FakeEncoder(EncoderABC):
         self.initialized = True
 
     def read_sample(self) -> EncoderSample:
-        return next(self.samples)
+        if self.read_index < len(self.samples):
+            sample = self.samples[self.read_index]
+            self.read_index += 1
+            return sample
+        last = self.samples[-1]
+        self.read_index += 1
+        return EncoderSample(
+            ticks=last.ticks,
+            timestamp_monotonic_ns=(
+                last.timestamp_monotonic_ns
+                + 100 * (self.read_index - len(self.samples))
+            ),
+        )
 
     def read_health(self) -> EncoderHealth:
         return EncoderHealth(available=self.initialized and not self.closed)
@@ -198,15 +211,21 @@ class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
     ) -> None:
         bus = TopicBus()
         output = bus.subscribe(ENCODER_STATE, max_queue_size=2, replay_latest=False)
-        encoder = FakeEncoder(
+        left_encoder = FakeEncoder(
             [
                 EncoderSample(ticks=10, timestamp_monotonic_ns=100),
                 EncoderSample(ticks=14, timestamp_monotonic_ns=200),
             ]
         )
+        right_encoder = FakeEncoder(
+            [
+                EncoderSample(ticks=20, timestamp_monotonic_ns=110),
+                EncoderSample(ticks=26, timestamp_monotonic_ns=210),
+            ]
+        )
         service = EncoderPublisherService(
             bus,
-            lambda: encoder,
+            {"left": lambda: left_encoder, "right": lambda: right_encoder},
             frame_id="encoder",
             sample_frequency_hz=1000,
             monotonic_ns=lambda: 1_000,
@@ -217,9 +236,21 @@ class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
         second = await asyncio.wait_for(output.get(), timeout=1)
         await service.stop()
 
-        self.assertEqual((first.ticks, first.delta_ticks), (10, 0))
-        self.assertEqual((second.ticks, second.delta_ticks), (14, 4))
-        self.assertTrue(encoder.closed)
+        self.assertIsNotNone(first.left)
+        self.assertIsNotNone(first.right)
+        self.assertIsNotNone(second.left)
+        self.assertIsNotNone(second.right)
+        assert first.left is not None
+        assert first.right is not None
+        assert second.left is not None
+        assert second.right is not None
+        self.assertEqual((first.left.ticks, first.left.delta_ticks), (10, 0))
+        self.assertEqual((first.right.ticks, first.right.delta_ticks), (20, 0))
+        self.assertEqual((second.left.ticks, second.left.delta_ticks), (14, 4))
+        self.assertEqual((second.right.ticks, second.right.delta_ticks), (26, 6))
+        self.assertEqual(second.mean_delta_ticks, 5)
+        self.assertTrue(left_encoder.closed)
+        self.assertTrue(right_encoder.closed)
 
     async def test_lidar_publisher_connects_validates_and_publishes(self) -> None:
         bus = TopicBus()

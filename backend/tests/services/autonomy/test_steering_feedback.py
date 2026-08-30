@@ -1,10 +1,13 @@
+import asyncio
 import math
 import unittest
 
 from app.services.autonomy.steering_feedback import (
     SteeringAngleCalibration,
     SteeringCalibrationPoint,
+    SteeringFeedbackService,
 )
+from robot_hat import MockAngularPosition
 
 
 class TestSteeringAngleCalibration(unittest.TestCase):
@@ -63,6 +66,33 @@ class TestSteeringAngleCalibration(unittest.TestCase):
                     SteeringCalibrationPoint(1.0, 0.2),
                 ),
             )
+
+
+class TestSteeringFeedbackService(unittest.IsolatedAsyncioTestCase):
+    async def test_samples_and_calibrates_mock_position(self) -> None:
+        sensor = MockAngularPosition(initial_angle_degrees=190.0)
+        service = SteeringFeedbackService(
+            lambda: sensor,
+            SteeringAngleCalibration(center_angle_deg=180.0),
+            sample_frequency_hz=100,
+        )
+
+        await service.start()
+        try:
+            for _attempt in range(20):
+                if service.latest is not None:
+                    break
+                await asyncio.sleep(0.005)
+            sample = service.latest
+            self.assertIsNotNone(sample)
+            assert sample is not None
+            self.assertAlmostEqual(sample.wheel_angle_rad, math.radians(10.0))
+            self.assertIsNone(service.last_error)
+        finally:
+            await service.stop()
+
+        self.assertFalse(sensor.read_health().available)
+        self.assertIsNone(service.latest)
 
 
 if __name__ == "__main__":

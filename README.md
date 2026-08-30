@@ -256,9 +256,23 @@ Motion control, Ackermann odometry, localization publishers, LiDAR safety, and
 local mapping are startup-scoped services. Their settings are validated and
 saved without interrupting the active motor/servo adapter, but the backend must
 be restarted before changes to those sections take effect. The UI displays a
-restart reminder after such a save. The encoder publisher currently accepts an
-external `EncoderABC` source only; enabling it without a concrete integration
-reports the publisher as unavailable rather than attempting hardware access.
+restart reminder after such a save. Rear-axle acquisition supports one or two
+independent AS5048A encoders. Each side retains its raw cumulative and delta
+ticks; Ackermann odometry uses their mean, while telemetry preserves the
+left/right difference for drivetrain and slip diagnostics.
+
+LiDAR, IMU, and each wheel encoder can instead select an explicit `mock` driver
+in Robot settings. Explicit mocks use the normal publishers, topics, telemetry,
+safety evaluator, mapping, and odometry code, including when the app runs on a
+Raspberry Pi. The mock LiDAR represents a configurable uniform circular wall;
+mock encoders advance by configurable ticks per sample.
+
+Optional steering feedback can use another AS5048A mounted after the servo gear
+train, or a mock absolute-position sensor. Center offset, direction, mechanical
+ratio, and optional piecewise linkage calibration convert its absolute bearing
+to physical road-wheel radians. The motion loop never waits for SPI: it embeds
+only a fresh cached measurement in `/steering/state`, and odometry falls back to
+the commanded angle when feedback is disabled or stale.
 
 ### General
 
@@ -538,10 +552,11 @@ make dev
 ```
 
 On macOS and other non-Raspberry-Pi hosts, the startup path automatically uses
-GPIO, SMBus, and AS5048A SPI mocks. The Linux-only `spidev` dependency is not
-installed on macOS and is not imported during normal mocked startup. This lets
-the application and control UI run locally, but mocked motor and sensor values
-are simulations rather than hardware validation.
+GPIO, SMBus, and AS5048A SPI protocol mocks. The Linux-only `spidev` dependency
+is not installed on macOS and is not imported during normal mocked startup.
+Localization sensors additionally have explicit persisted mock drivers, which
+are preferable when a repeatable scenario must not depend on host detection.
+Mocked motor and sensor values are simulations rather than hardware validation.
 
 ### Running Tests
 

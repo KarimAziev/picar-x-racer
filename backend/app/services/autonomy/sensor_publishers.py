@@ -4,10 +4,20 @@ import asyncio
 import math
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterator, Mapping, Optional, Protocol, Sequence
+from typing import (
+    Callable,
+    Dict,
+    Iterator,
+    Literal,
+    Mapping,
+    Optional,
+    Protocol,
+    Sequence,
+)
 
 from app.core.px_logger import Logger
 from app.schemas.autonomy import (
+    EncoderReading,
     EncoderState,
     ImuData,
     LaserScan,
@@ -323,27 +333,31 @@ class IMUPublisherService:
 
 
 class EncoderPublisherService:
+    """Publish one synchronized rear-axle state from one or two encoders."""
+
     sensor_name: SensorName = "encoder"
 
     def __init__(
         self,
         bus: TopicBus,
-        encoder_factory: Callable[[], EncoderABC],
+        encoder_factories: Mapping[Literal["left", "right"], Callable[[], EncoderABC]],
         *,
         frame_id: str,
         sample_frequency_hz: float,
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
     ) -> None:
+        if not encoder_factories:
+            raise ValueError("at least one encoder factory is required")
         self._bus = bus
-        self._encoder_factory = encoder_factory
+        self._encoder_factories = dict(encoder_factories)
         self._frame_id = frame_id
         self._period_s = 1.0 / sample_frequency_hz
         self._monotonic_ns = monotonic_ns
-        self._encoder: Optional[EncoderABC] = None
+        self._encoders: Dict[Literal["left", "right"], EncoderABC] = {}
         self._task: Optional[asyncio.Task[None]] = None
         self._stop_requested = False
-        self._previous_ticks: Optional[int] = None
-        self._previous_source_timestamp_ns: Optional[int] = None
+        self._previous_ticks: Dict[Literal["left", "right"], int] = {}
+        self._previous_source_timestamps_ns: Dict[Literal["left", "right"], int] = {}
         self._metrics = _PublisherMetrics()
 
     @property
@@ -366,15 +380,24 @@ class EncoderPublisherService:
             return
         self._metrics.error = None
         self._stop_requested = False
-        self._previous_ticks = None
-        self._previous_source_timestamp_ns = None
+        self._previous_ticks.clear()
+        self._previous_source_timestamps_ns.clear()
         try:
-            encoder = await asyncio.to_thread(self._encoder_factory)
-            self._encoder = encoder
-            await asyncio.to_thread(encoder.initialize)
+            for side in ("left", "right"):
+                factory = self._encoder_factories.get(side)
+                if factory is None:
+                    continue
+                encoder = await asyncio.to_thread(factory)
+                self._encoders[side] = encoder
+                await asyncio.to_thread(encoder.initialize)
+                health = await asyncio.to_thread(encoder.read_health)
+                if not health.available:
+                    raise RuntimeError(
+                        f"{side} encoder is unavailable after initialization"
+                    )
             self._task = asyncio.create_task(
                 self._publish_loop(),
-                name="encoder-state-publisher",
+                name="rear-encoder-state-publisher",
             )
         except Exception as error:
             self._metrics.error = str(error)
@@ -394,38 +417,55 @@ class EncoderPublisherService:
         await self._close_encoder()
 
     async def _publish_loop(self) -> None:
-        encoder = self._encoder
-        if encoder is None:
+        if not self._encoders:
             return
         loop = asyncio.get_running_loop()
         next_read = loop.time()
         try:
             while not self._stop_requested:
-                sample = await asyncio.to_thread(encoder.read_sample)
-                if (
-                    self._previous_source_timestamp_ns is not None
-                    and sample.timestamp_monotonic_ns
-                    <= self._previous_source_timestamp_ns
-                ):
-                    raise ValueError("encoder timestamps must increase monotonically")
-                previous_ticks = self._previous_ticks
-                delta_ticks = (
-                    0 if previous_ticks is None else sample.ticks - previous_ticks
-                )
+                readings: Dict[Literal["left", "right"], EncoderReading] = {}
+                source_timestamps_ns = []
+                for side in ("left", "right"):
+                    encoder = self._encoders.get(side)
+                    if encoder is None:
+                        continue
+                    sample = await asyncio.to_thread(encoder.read_sample)
+                    previous_timestamp_ns = self._previous_source_timestamps_ns.get(
+                        side
+                    )
+                    if (
+                        previous_timestamp_ns is not None
+                        and sample.timestamp_monotonic_ns <= previous_timestamp_ns
+                    ):
+                        raise ValueError(
+                            f"{side} encoder timestamps must increase monotonically"
+                        )
+                    previous_ticks = self._previous_ticks.get(side)
+                    readings[side] = EncoderReading(
+                        ticks=sample.ticks,
+                        delta_ticks=(
+                            0
+                            if previous_ticks is None
+                            else sample.ticks - previous_ticks
+                        ),
+                    )
+                    self._previous_ticks[side] = sample.ticks
+                    self._previous_source_timestamps_ns[side] = (
+                        sample.timestamp_monotonic_ns
+                    )
+                    source_timestamps_ns.append(sample.timestamp_monotonic_ns)
                 sequence = self._metrics.published_messages + 1
                 message = EncoderState(
                     header=MessageHeader(
                         sequence=sequence,
                         frame_id=self._frame_id,
                         timestamp_monotonic_ns=self._monotonic_ns(),
-                        source_timestamp_ns=sample.timestamp_monotonic_ns,
+                        source_timestamp_ns=max(source_timestamps_ns),
                     ),
-                    ticks=sample.ticks,
-                    delta_ticks=delta_ticks,
+                    left=readings.get("left"),
+                    right=readings.get("right"),
                 )
                 self._bus.publish(ENCODER_STATE, message)
-                self._previous_ticks = sample.ticks
-                self._previous_source_timestamp_ns = sample.timestamp_monotonic_ns
                 self._metrics.published_messages = sequence
                 self._metrics.last_timestamp_monotonic_ns = (
                     message.header.timestamp_monotonic_ns
@@ -440,10 +480,15 @@ class EncoderPublisherService:
             _log.error("Encoder publisher stopped after an error: %s", error)
 
     async def _close_encoder(self) -> None:
-        encoder = self._encoder
-        self._encoder = None
-        if encoder is not None:
-            await asyncio.to_thread(encoder.close)
+        encoders = tuple(self._encoders.values())
+        self._encoders.clear()
+        results = await asyncio.gather(
+            *(asyncio.to_thread(encoder.close) for encoder in encoders),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
 
 
 class UnavailableEncoderPublisher:

@@ -4,6 +4,10 @@ from pathlib import Path
 
 from app.schemas.robot.config import HardwareConfig
 from app.schemas.robot.localization_sensors import (
+    EncoderSensorConfig,
+    MockIMUSensorConfig,
+    MockLidarSensorConfig,
+    MockSteeringPositionConfig,
     RPLidarC1SensorConfig,
     SH3001SensorConfig,
     StaticTransformConfig,
@@ -31,6 +35,79 @@ class TestLocalizationSensorConfig(unittest.TestCase):
 
         with self.assertRaisesRegex(ValidationError, "relative"):
             SH3001SensorConfig(frame_id="/imu")
+
+    def test_mock_sensors_have_useful_hardware_free_defaults(self) -> None:
+        lidar = MockLidarSensorConfig(enabled=True)
+        imu = MockIMUSensorConfig(enabled=True)
+        steering = MockSteeringPositionConfig(enabled=True)
+
+        self.assertEqual(lidar.distance_m, 2.0)
+        self.assertEqual(lidar.range_max_m, 12.0)
+        self.assertEqual(imu.acceleration_mps2, (0.0, 0.0, 9.80665))
+        self.assertEqual(steering.initial_angle_degrees, 0.0)
+
+    def test_drive_encoders_require_unique_sides_and_spi_devices(self) -> None:
+        valid = EncoderSensorConfig.model_validate(
+            {
+                "enabled": True,
+                "sensors": [
+                    {"side": "left", "driver": "as5048a", "device": 0},
+                    {"side": "right", "driver": "as5048a", "device": 1},
+                ],
+            }
+        )
+        self.assertEqual(len(valid.sensors), 2)
+
+        with self.assertRaisesRegex(ValidationError, "sides must be unique"):
+            EncoderSensorConfig.model_validate(
+                {
+                    "enabled": True,
+                    "sensors": [
+                        {"side": "left", "driver": "mock"},
+                        {"side": "left", "driver": "mock"},
+                    ],
+                }
+            )
+
+    def test_enabled_as5048a_sensors_cannot_share_chip_select(self) -> None:
+        root_config = Path(__file__).parents[4] / "config.json"
+        with self.assertRaisesRegex(ValidationError, "unique SPI"):
+            HardwareConfig.model_validate(
+                {
+                    **json.loads(root_config.read_text()),
+                    "localization_sensors": {
+                        "lidar": {"driver": "rplidar_c1"},
+                        "imu": {"driver": "sh3001"},
+                        "encoder": {
+                            "enabled": True,
+                            "sensors": [
+                                {
+                                    "side": "left",
+                                    "driver": "as5048a",
+                                    "bus": 0,
+                                    "device": 0,
+                                }
+                            ],
+                        },
+                        "steering": {
+                            "enabled": True,
+                            "driver": "as5048a",
+                            "bus": 0,
+                            "device": 0,
+                        },
+                    },
+                }
+            )
+        with self.assertRaisesRegex(ValidationError, "SPI bus/device"):
+            EncoderSensorConfig.model_validate(
+                {
+                    "enabled": True,
+                    "sensors": [
+                        {"side": "left", "driver": "as5048a"},
+                        {"side": "right", "driver": "as5048a"},
+                    ],
+                }
+            )
 
     def test_transform_rejects_non_finite_measurements(self) -> None:
         with self.assertRaises(ValidationError):
@@ -91,6 +168,15 @@ class TestLocalizationSensorConfig(unittest.TestCase):
             wheel_radius_m=0.03,
             encoder_ticks_per_revolution=20,
         )
+        data["motion_control"].update(
+            enabled=True,
+            max_forward_speed_mps=1.0,
+            max_reverse_speed_mps=0.5,
+        )
+        data["localization_sensors"]["encoder"] = {
+            "enabled": True,
+            "sensors": [{"side": "left", "driver": "mock"}],
+        }
         with self.assertRaisesRegex(ValidationError, "LiDAR publisher"):
             HardwareConfig.model_validate(data)
 

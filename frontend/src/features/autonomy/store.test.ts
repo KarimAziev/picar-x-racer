@@ -75,15 +75,15 @@ describe("autonomy telemetry store", () => {
           timestamp_monotonic_ns: 200,
           source_timestamp_ns: 190,
         },
-        ticks: 42,
-        delta_ticks: 3,
+        left: { ticks: 42, delta_ticks: 3 },
+        right: { ticks: 44, delta_ticks: 5 },
       },
     });
 
     expect(mocks.initWS).toHaveBeenCalledOnce();
     expect(store.latest.encoder?.payload).toMatchObject({
-      ticks: 42,
-      delta_ticks: 3,
+      left: { ticks: 42, delta_ticks: 3 },
+      right: { ticks: 44, delta_ticks: 5 },
     });
 
     store.cleanup();
