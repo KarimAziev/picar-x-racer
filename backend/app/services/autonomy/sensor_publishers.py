@@ -5,6 +5,7 @@ import math
 import time
 from dataclasses import dataclass
 from typing import (
+    Any,
     Callable,
     Dict,
     Iterator,
@@ -27,6 +28,7 @@ from app.schemas.autonomy import (
     SensorPublisherStatus,
 )
 from app.services.autonomy.topic_bus import TopicBus
+from app.services.autonomy.topic_bus import Topic, TopicSubscription
 from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN
 from robot_hat import EncoderABC, IMUABC, Lidar2DABC, LidarScan
 
@@ -53,6 +55,82 @@ class SensorPublisher(Protocol):
     async def start(self) -> None: ...
 
     async def stop(self) -> None: ...
+
+
+class TopicSensorMonitor:
+    """Expose diagnostics for sensor frames published by another service."""
+
+    def __init__(
+        self,
+        sensor_name: SensorName,
+        bus: TopicBus,
+        topic: Topic[Any],
+    ) -> None:
+        self.sensor_name: SensorName = sensor_name
+        self._bus = bus
+        self._topic = topic
+        self._subscription: Optional[TopicSubscription[Any]] = None
+        self._task: Optional[asyncio.Task[None]] = None
+        self._metrics = _PublisherMetrics()
+
+    @property
+    def running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
+    @property
+    def status(self) -> SensorPublisherStatus:
+        return SensorPublisherStatus(
+            sensor=self.sensor_name,
+            enabled=True,
+            running=self.running,
+            published_messages=self._metrics.published_messages,
+            last_timestamp_monotonic_ns=self._metrics.last_timestamp_monotonic_ns,
+            error=self._metrics.error,
+        )
+
+    async def start(self) -> None:
+        if self.running:
+            return
+        self._metrics.error = None
+        self._subscription = self._bus.subscribe(
+            self._topic,
+            max_queue_size=1,
+            replay_latest=True,
+        )
+        self._task = asyncio.create_task(
+            self._monitor(),
+            name=f"{self.sensor_name}-topic-monitor",
+        )
+
+    async def stop(self) -> None:
+        subscription = self._subscription
+        self._subscription = None
+        if subscription is not None:
+            subscription.close()
+        task = self._task
+        self._task = None
+        if task is not None:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    async def _monitor(self) -> None:
+        subscription = self._subscription
+        if subscription is None:
+            return
+        try:
+            async for message in subscription:
+                header = getattr(message, "header", None)
+                self._metrics.published_messages += 1
+                self._metrics.last_timestamp_monotonic_ns = getattr(
+                    header,
+                    "timestamp_monotonic_ns",
+                    None,
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            self._metrics.error = str(error)
+            _log.error("Failed to monitor %s topic: %s", self.sensor_name, error)
 
 
 class LaserScanConverter:
@@ -625,5 +703,6 @@ __all__ = [
     "LaserScanConverter",
     "LidarPublisherService",
     "LocalizationSensorService",
+    "TopicSensorMonitor",
     "UnavailableEncoderPublisher",
 ]

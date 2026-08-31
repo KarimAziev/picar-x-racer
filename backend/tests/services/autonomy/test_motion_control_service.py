@@ -1,6 +1,7 @@
 import asyncio
 import math
 import unittest
+from dataclasses import replace
 from typing import List, Tuple, Union
 
 from app.services.autonomy import (
@@ -16,6 +17,7 @@ from app.services.autonomy import (
     RobotMode,
     SafetyConstraint,
     SafetySeverity,
+    SelectableDriveHardware,
     SteeringAngleCalibration,
     SteeringFeedbackService,
     TopicBus,
@@ -295,6 +297,76 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
 
         self.assertIs(self.service._task, first_task)
         await self.service.stop()
+
+    async def test_switching_to_simulation_disarms_and_isolates_physical_drive(
+        self,
+    ) -> None:
+        virtual = FakeDriveHardware()
+        selector = SelectableDriveHardware(self.hardware, virtual)
+        service = MotionControlService(
+            self.arbiter,
+            HardwareController(selector, self.controller._translator),
+            topic_bus=self.topic_bus,
+            drive_hardware=selector,
+        )
+        await service.set_mode(RobotMode.MANUAL)
+        intent = MotionIntent(
+            command_id="physical-motion",
+            source=MotionSource.MANUAL,
+            sequence=1,
+            mode_generation=service.mode_generation,
+            linear_speed_mps=0.5,
+            steering_angle_rad=0.1,
+            created_monotonic_ns=self.clock.now_ns,
+            expires_monotonic_ns=self.clock.now_ns + 1_000,
+        )
+        self.assertTrue(service.submit(intent).accepted)
+        await service.step()
+        generation = service.mode_generation
+
+        switched = await service.set_simulation_enabled(True)
+
+        self.assertTrue(selector.simulation_enabled)
+        self.assertEqual(service.mode, RobotMode.DISARMED)
+        self.assertEqual(service.mode_generation, generation + 1)
+        self.assertTrue(switched.command.is_stop)
+        self.assertIn(("stop", None), self.hardware.calls)
+        physical_calls = tuple(self.hardware.calls)
+
+        await service.set_mode(RobotMode.MANUAL)
+        simulated_intent = replace(
+            intent,
+            command_id="simulated-motion",
+            sequence=2,
+            mode_generation=service.mode_generation,
+        )
+        self.assertTrue(service.submit(simulated_intent).accepted)
+        await service.step()
+
+        self.assertEqual(tuple(self.hardware.calls), physical_calls)
+        self.assertIn(("forward", 40), virtual.calls)
+
+    async def test_simulation_publishes_command_but_defers_steering_to_plant(
+        self,
+    ) -> None:
+        virtual = FakeDriveHardware()
+        selector = SelectableDriveHardware(
+            self.hardware,
+            virtual,
+            simulation_enabled=True,
+        )
+        service = MotionControlService(
+            self.arbiter,
+            HardwareController(selector, self.controller._translator),
+            topic_bus=self.topic_bus,
+            drive_hardware=selector,
+        )
+
+        result = await service.step()
+
+        self.assertEqual(self.topic_bus.latest(MOTION_COMMANDED), result.command)
+        self.assertIsNone(self.topic_bus.latest(STEERING_STATE))
+        self.assertEqual(self.hardware.calls, [])
 
 
 if __name__ == "__main__":

@@ -171,10 +171,19 @@ class CoherentSimulationService:
         plant: AckermannSimulationPlant,
         *,
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
+        initial_x_m: float = 0.0,
+        initial_y_m: float = 0.0,
+        initial_yaw_rad: float = 0.0,
     ) -> None:
         self._bus = bus
         self._plant = plant
         self._monotonic_ns = monotonic_ns
+        self._initial_pose = (initial_x_m, initial_y_m, initial_yaw_rad)
+        plant.reset(
+            x_m=initial_x_m,
+            y_m=initial_y_m,
+            yaw_rad=initial_yaw_rad,
+        )
         self._task: Optional[asyncio.Task[None]] = None
         self._sequence = 0
         self._last_timestamp_ns: Optional[int] = None
@@ -211,13 +220,18 @@ class CoherentSimulationService:
     def reset(
         self,
         *,
-        x_m: float = 0.0,
-        y_m: float = 0.0,
-        yaw_rad: float = 0.0,
+        x_m: Optional[float] = None,
+        y_m: Optional[float] = None,
+        yaw_rad: Optional[float] = None,
     ) -> SimulationState:
         if self.running:
             raise RuntimeError("stop the simulation before resetting it")
-        state = self._plant.reset(x_m=x_m, y_m=y_m, yaw_rad=yaw_rad)
+        initial_x, initial_y, initial_yaw = self._initial_pose
+        state = self._plant.reset(
+            x_m=initial_x if x_m is None else x_m,
+            y_m=initial_y if y_m is None else y_m,
+            yaw_rad=initial_yaw if yaw_rad is None else yaw_rad,
+        )
         self._sequence = 0
         self._last_timestamp_ns = None
         self._last_encoder_ticks = state.encoder_ticks
@@ -355,9 +369,72 @@ class CoherentSimulationService:
             _log.error("Coherent simulation stopped after an error: %s", error)
 
 
+class CoherentSimulationSupervisor:
+    """Keep one hot-reconfigurable simulation lifecycle handle in app state."""
+
+    def __init__(self, service: Optional[CoherentSimulationService] = None) -> None:
+        self._service = service
+        self._started = False
+        self._lock = asyncio.Lock()
+
+    @property
+    def enabled(self) -> bool:
+        return self._service is not None
+
+    @property
+    def running(self) -> bool:
+        return self._service is not None and self._service.running
+
+    @property
+    def service(self) -> Optional[CoherentSimulationService]:
+        return self._service
+
+    async def start(self) -> None:
+        async with self._lock:
+            self._started = True
+            if self._service is not None:
+                self._service.start()
+
+    async def stop(self) -> None:
+        async with self._lock:
+            self._started = False
+            if self._service is not None:
+                await self._service.stop()
+
+    async def reconfigure(
+        self,
+        service: Optional[CoherentSimulationService],
+    ) -> None:
+        async with self._lock:
+            if self._service is not None:
+                await self._service.stop()
+            self._service = service
+            if self._started and self._service is not None:
+                self._service.start()
+
+    async def reconfigure_from(
+        self,
+        replacement: "CoherentSimulationSupervisor",
+    ) -> None:
+        await self.reconfigure(replacement._service)
+
+    async def reset(self) -> SimulationState:
+        async with self._lock:
+            service = self._service
+            if service is None:
+                raise RuntimeError("coherent simulation is disabled")
+            if service.running:
+                await service.stop()
+            state = service.reset()
+            if self._started:
+                service.start()
+            return state
+
+
 __all__ = [
     "AckermannPlantState",
     "AckermannSimulationConfig",
     "AckermannSimulationPlant",
     "CoherentSimulationService",
+    "CoherentSimulationSupervisor",
 ]

@@ -29,6 +29,81 @@ class DriveHardware(Protocol):
     def set_dir_servo_angle(self, value: float) -> None: ...
 
 
+class VirtualDriveHardware:
+    """In-memory drive sink used while coherent simulation owns motion."""
+
+    def __init__(self) -> None:
+        self.direction = DriveDirection.STOPPED
+        self.speed = 0
+        self.steering_angle_deg = 0.0
+
+    def forward(self, speed: int) -> None:
+        self.direction = DriveDirection.FORWARD
+        self.speed = speed
+
+    def backward(self, speed: int) -> None:
+        self.direction = DriveDirection.REVERSE
+        self.speed = speed
+
+    def stop(self) -> None:
+        self.direction = DriveDirection.STOPPED
+        self.speed = 0
+
+    def set_dir_servo_angle(self, value: float) -> None:
+        self.steering_angle_deg = value
+
+
+class SelectableDriveHardware:
+    """Atomically route drive writes to physical hardware or a virtual sink."""
+
+    def __init__(
+        self,
+        physical: DriveHardware,
+        virtual: DriveHardware,
+        *,
+        simulation_enabled: bool = False,
+    ) -> None:
+        self._physical = physical
+        self._virtual = virtual
+        self._simulation_enabled = simulation_enabled
+        self._lock = threading.RLock()
+
+    @property
+    def simulation_enabled(self) -> bool:
+        with self._lock:
+            return self._simulation_enabled
+
+    def set_simulation_enabled(self, enabled: bool) -> None:
+        """Stop both sides around a route change; never transfer motion state."""
+
+        with self._lock:
+            if enabled == self._simulation_enabled:
+                return
+            self._active.stop()
+            self._simulation_enabled = enabled
+            self._active.stop()
+
+    def forward(self, speed: int) -> None:
+        with self._lock:
+            self._active.forward(speed)
+
+    def backward(self, speed: int) -> None:
+        with self._lock:
+            self._active.backward(speed)
+
+    def stop(self) -> None:
+        with self._lock:
+            self._active.stop()
+
+    def set_dir_servo_angle(self, value: float) -> None:
+        with self._lock:
+            self._active.set_dir_servo_angle(value)
+
+    @property
+    def _active(self) -> DriveHardware:
+        return self._virtual if self._simulation_enabled else self._physical
+
+
 @dataclass(frozen=True)
 class ActuationCalibration:
     """Explicit mapping between SI motion and existing hardware units."""
@@ -221,4 +296,6 @@ __all__ = [
     "HardwareController",
     "HardwareMotionCommand",
     "LinearActuatorTranslator",
+    "SelectableDriveHardware",
+    "VirtualDriveHardware",
 ]

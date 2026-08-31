@@ -43,6 +43,9 @@ The application currently has:
   and safety status in the operator workspace;
 - disarmed motion-control startup with explicit manual arming;
 - cancelable, odometry-bounded straight-distance and fixed steering-arc actions;
+- a hot-reconfigurable coherent Ackermann simulation environment with physical
+  drive isolation, synchronized steering/encoder/IMU topics, runtime status,
+  and pose reset;
 - an older reactive ultrasonic obstacle-avoidance behavior;
 - a `/virtual` compatibility redirect to the workspace's Three.js view.
 
@@ -58,8 +61,8 @@ Important current limitations:
 - steering-arc execution currently uses a fixed steering command and validates
   final measured yaw; it is not yet a closed-loop curvature controller;
 - high-risk settings and calibration flows do not yet disarm automatically;
-- the current mock sensors are independent signal generators, not one coherent
-  simulated vehicle and world;
+- coherent simulation does not yet include a fixed world, collision response,
+  or world-aware LiDAR ray casting;
 - the Three.js vehicle visualizes commanded gauges and is not an odometry or
   simulation source.
 
@@ -471,10 +474,19 @@ Implementation status:
 - cumulative encoder rounding preserves sub-tick movement across updates;
 - stale final commands stop the simulated vehicle through an independent
   simulation watchdog;
-- runtime selection, physical-actuator isolation, world collision geometry,
-  and LiDAR ray casting remain intentionally separate follow-up work. The
-  service is not started by application lifespan yet, so it cannot conflict
-  with configured physical or per-device mock publishers.
+- the runtime can be enabled or disabled by hot settings reload without
+  replacing the stable application service handles;
+- a selectable drive boundary stops both sides during transitions, invalidates
+  prior intents, returns the robot to `DISARMED`, and routes subsequent writes
+  exclusively to physical hardware or an in-memory virtual sink;
+- simulated encoder and IMU publishers replace their configured physical or
+  per-device mock publishers, while passive topic monitors preserve sensor
+  diagnostics and message counts;
+- the operator workspace shows simulator lifecycle, physical isolation,
+  ground-truth pose, speed, steering, encoder ticks, errors, freshness, and a
+  safe reset action;
+- world collision geometry and LiDAR ray casting remain follow-up work. LiDAR
+  continues to use its independently configured hardware or mock source.
 
 Required properties:
 
@@ -487,9 +499,10 @@ Required properties:
 - scenario reset and reproducible seeds;
 - a visible distinction between ground truth and estimated odometry.
 
-The Autonomy workspace can select simulation as a runtime source, but view mode
+Simulation is selected as a hardware runtime setting, while operator view mode
 remains independent. A user may view simulated data as a 2D map, camera-like
-scene, split view, or 3D model.
+scene, split view, or 3D model. Enabling or resetting simulation never arms
+motion; manual arming or an explicit autonomous action is still required.
 
 ## Safety Invariants
 
@@ -576,15 +589,19 @@ Acceptance:
 
 ### Slice 5: Coherent simulator
 
-- add an Ackermann plant and simple world model;
-- derive mock encoders, steering, IMU, and LiDAR from plant state;
-- visualize estimated pose versus ground truth;
+- add an Ackermann plant and hot-reconfigurable lifecycle;
+- derive encoders, steering, and IMU from plant state;
+- isolate physical drive output and expose lifecycle/ground-truth status;
+- add a simple world model and derive LiDAR from fixed world geometry;
+- visualize estimated pose versus ground truth on the map;
 - add deterministic scenarios for mapping and safety regression tests.
 
 Acceptance:
 
 - all simulated sensors agree on motion direction and timing;
 - a stationary plant produces stationary encoders and odometry;
+- enabling, disabling, and resetting simulation leave motion disarmed and
+  physical drive isolated whenever the plant is active;
 - obstacles remain fixed in world coordinates while the robot moves;
 - map and safety tests are repeatable.
 
@@ -650,8 +667,8 @@ The first operator-workflow milestone is complete when:
 - mapping has explicit start, pause, clear, and reset semantics;
 - the existing virtual model is a selectable telemetry visualization;
 - no map or sensor toggle starts vehicle motion;
-- the workflow works with component mocks and is ready for a future coherent
-  simulator and navigation actions.
+- the workflow works with component mocks and the coherent motion simulator,
+  and is ready for a world-aware LiDAR simulator and navigation actions.
 
 ## Open Decisions
 

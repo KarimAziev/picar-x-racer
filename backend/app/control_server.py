@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from app.services.autonomy.lidar_safety import LidarSafetyService
     from app.services.autonomy.local_mapping import LocalMappingService
     from app.services.autonomy.relative_motion import RelativeMotionService
+    from app.services.autonomy.simulation import CoherentSimulationSupervisor
     from app.services.control.car_service import CarService
     from app.services.sensors.distance_service import DistanceService
     from app.services.sensors.led_service import LEDService
@@ -61,6 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     lidar_safety_service: Optional["LidarSafetyService"] = None
     local_mapping_service: Optional["LocalMappingService"] = None
     relative_motion_service: Optional["RelativeMotionService"] = None
+    coherent_simulation_supervisor: Optional["CoherentSimulationSupervisor"] = None
     try:
 
         from app.api import robot_deps
@@ -84,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             lidar_safety_service = deps.get("lidar_safety_service")
             local_mapping_service = deps.get("local_mapping_service")
             relative_motion_service = deps.get("relative_motion_service")
+            coherent_simulation_supervisor = deps.get("coherent_simulation_supervisor")
 
         app_loop = asyncio.get_running_loop()
 
@@ -96,10 +99,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         app.state.battery_service = battery_service
 
-        if steering_feedback_service:
+        if steering_feedback_service and not (
+            coherent_simulation_supervisor and coherent_simulation_supervisor.enabled
+        ):
             await steering_feedback_service.start()
         if robot_service and motion_control_service:
             await robot_service.start_motion_control()
+        if coherent_simulation_supervisor:
+            await coherent_simulation_supervisor.start()
         if odometry_service:
             odometry_service.start()
         if lidar_safety_service:
@@ -117,6 +124,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.lidar_safety_service = lidar_safety_service
         app.state.local_mapping_service = local_mapping_service
         app.state.relative_motion_service = relative_motion_service
+        app.state.coherent_simulation_supervisor = coherent_simulation_supervisor
 
         async def broadcast_distance(distance: float) -> None:
             rel_speed = (
@@ -186,6 +194,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise
         except Exception as e:
             logger.error("Failed to cleanup robot service: %s", e)
+
+    if coherent_simulation_supervisor:
+        try:
+            await coherent_simulation_supervisor.stop()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up coherent simulation.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup coherent simulation: %s", e)
 
     if distance_service:
         try:

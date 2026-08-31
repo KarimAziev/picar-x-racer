@@ -55,16 +55,7 @@ class SettingsService:
         if not updated_keys:
             raise UnchangedSettings("No data to update")
 
-        try:
-            candidate = HardwareConfig(
-                **self._merge_nested_dicts(
-                    self._model_json_dump(self.saved_settings),
-                    data_dict,
-                )
-            )
-        except ValidationError as err:
-            raise InvalidSettings(f"Unable to merge hardware settings: {err}") from err
-        self._validate_shared_pwm_drivers(candidate)
+        candidate = self.build_merged_settings(data)
 
         _log.info("Applying data: %s", data_dict)
 
@@ -76,6 +67,22 @@ class SettingsService:
         _log.info("Partially saved settings: %s", partial_saved_dict)
 
         return PartialHardwareConfig(**cast(Dict, partial_saved_dict))
+
+    def build_merged_settings(self, data: PartialHardwareConfig) -> HardwareConfig:
+        """Validate a partial update without activating hardware or persisting it."""
+
+        data_dict = self._model_json_dump(data, exclude_unset=True)
+        try:
+            candidate = HardwareConfig(
+                **self._merge_nested_dicts(
+                    self._model_json_dump(self.saved_settings),
+                    data_dict,
+                )
+            )
+        except ValidationError as err:
+            raise InvalidSettings(f"Unable to merge hardware settings: {err}") from err
+        self._validate_shared_pwm_drivers(candidate)
+        return candidate
 
     def save_settings(self, data: HardwareConfig) -> HardwareConfig:
         self._validate_shared_pwm_drivers(data)

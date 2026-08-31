@@ -10,8 +10,10 @@ from app.services.autonomy import (
     LidarPublisherService,
     LocalizationSensorService,
     TopicBus,
+    TopicSensorMonitor,
     UnavailableEncoderPublisher,
 )
+from app.schemas.autonomy import EncoderReading, EncoderState, MessageHeader
 from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN
 from robot_hat import (
     EncoderABC,
@@ -183,6 +185,34 @@ class TestLaserScanConverter(unittest.TestCase):
 
 
 class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
+    async def test_topic_monitor_reports_externally_published_simulated_frames(
+        self,
+    ) -> None:
+        bus = TopicBus()
+        monitor = TopicSensorMonitor("encoder", bus, ENCODER_STATE)
+        await monitor.start()
+
+        bus.publish(
+            ENCODER_STATE,
+            EncoderState(
+                header=MessageHeader(
+                    sequence=1,
+                    frame_id="rear_axle",
+                    timestamp_monotonic_ns=123,
+                ),
+                left=EncoderReading(ticks=4, delta_ticks=4),
+            ),
+        )
+        await asyncio.sleep(0)
+
+        self.assertTrue(monitor.status.running)
+        self.assertEqual(monitor.status.published_messages, 1)
+        self.assertEqual(monitor.status.last_timestamp_monotonic_ns, 123)
+
+        await monitor.stop()
+
+        self.assertFalse(monitor.status.running)
+
     async def test_imu_publisher_maps_si_sample_to_topic(self) -> None:
         bus = TopicBus()
         output = bus.subscribe(IMU_DATA, replay_latest=False)

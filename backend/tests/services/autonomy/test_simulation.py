@@ -10,6 +10,7 @@ from app.services.autonomy import (
     AckermannSimulationPlant,
     ActuatorCommand,
     CoherentSimulationService,
+    CoherentSimulationSupervisor,
     MotionSource,
     TopicBus,
 )
@@ -264,6 +265,60 @@ class CoherentSimulationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(second.yaw_rad, expected_step_yaw, places=3)
         self.assertAlmostEqual(truth.yaw_rad, expected_step_yaw * 2)
         self.assertAlmostEqual(second.linear_speed_mps, 0.5, places=2)
+
+
+class CoherentSimulationSupervisorTests(unittest.IsolatedAsyncioTestCase):
+    def make_service(self, bus: TopicBus) -> CoherentSimulationService:
+        return CoherentSimulationService(
+            bus,
+            AckermannSimulationPlant(
+                AckermannSimulationConfig(
+                    wheelbase_m=0.25,
+                    wheel_radius_m=0.03,
+                    encoder_ticks_per_revolution=4096,
+                    update_frequency_hz=100,
+                )
+            ),
+            initial_x_m=2.0,
+            initial_y_m=-1.0,
+            initial_yaw_rad=0.25,
+        )
+
+    async def test_hot_reconfigure_replaces_running_service(self) -> None:
+        bus = TopicBus()
+        first = self.make_service(bus)
+        second = self.make_service(bus)
+        supervisor = CoherentSimulationSupervisor(first)
+
+        await supervisor.start()
+        await asyncio.sleep(0.02)
+        await supervisor.reconfigure(second)
+
+        self.assertFalse(first.running)
+        self.assertTrue(second.running)
+        self.assertIs(supervisor.service, second)
+
+        await supervisor.reconfigure(None)
+
+        self.assertFalse(second.running)
+        self.assertFalse(supervisor.enabled)
+        await supervisor.stop()
+
+    async def test_reset_restores_configured_initial_pose_and_restarts(self) -> None:
+        bus = TopicBus()
+        service = self.make_service(bus)
+        supervisor = CoherentSimulationSupervisor(service)
+        await supervisor.start()
+        await asyncio.sleep(0.02)
+
+        reset_state = await supervisor.reset()
+
+        self.assertEqual(reset_state.x_m, 2.0)
+        self.assertEqual(reset_state.y_m, -1.0)
+        self.assertEqual(reset_state.yaw_rad, 0.25)
+        self.assertTrue(supervisor.running)
+        self.assertEqual(service.published_updates, 0)
+        await supervisor.stop()
 
 
 if __name__ == "__main__":

@@ -151,6 +151,17 @@ class SimulationState(FrozenMessage):
     encoder_ticks: int
 
 
+class SimulationRuntimeStatus(FrozenMessage):
+    """Lifecycle and isolation status for coherent simulation mode."""
+
+    enabled: bool
+    running: bool
+    physical_drive_isolated: bool
+    published_updates: Annotated[int, Field(ge=0)] = 0
+    latest_state: Optional[SimulationState] = None
+    error: Optional[str] = None
+
+
 class SafetyState(FrozenMessage):
     """Current forward-sector safety decision exposed to operators."""
 
@@ -193,5 +204,6 @@ __all__ = [
     "Odometry2D",
     "SafetyState",
     "SimulationState",
+    "SimulationRuntimeStatus",
     "SteeringState",
 ]

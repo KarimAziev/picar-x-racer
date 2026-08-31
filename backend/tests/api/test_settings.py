@@ -1,12 +1,28 @@
+import asyncio
 import json
+import math
 import unittest
+from copy import deepcopy
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 from app.api import robot_deps
+from app.api.control.settings import _reload_autonomy_runtime
 from app.control_server import app as control_app
 from app.exceptions.settings import InvalidSettings
-from app.schemas.robot.config import PartialHardwareConfig
+from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
+from app.services.autonomy import (
+    ActuationCalibration,
+    AckermannOdometryService,
+    HardwareController,
+    LinearActuatorTranslator,
+    MotionArbiter,
+    MotionControlService,
+    MotionLimits,
+    SelectableDriveHardware,
+    TopicBus,
+    VirtualDriveHardware,
+)
 from app.services.connection_service import ConnectionService
 from app.services.control.settings_service import SettingsService
 from fastapi.testclient import TestClient
@@ -85,6 +101,153 @@ class TestPartialRobotSettings(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertIn("device offline", response.json()["detail"])
         self.connection_service.broadcast_json.assert_not_awaited()
+
+
+class FakeDriveHardware:
+    def __init__(self) -> None:
+        self.stops = 0
+
+    def forward(self, speed: int) -> None:
+        return None
+
+    def backward(self, speed: int) -> None:
+        return None
+
+    def stop(self) -> None:
+        self.stops += 1
+
+    def set_dir_servo_angle(self, value: float) -> None:
+        return None
+
+
+class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        config_path = Path(__file__).resolve().parents[3] / "config.json"
+        cls.root_config = json.loads(config_path.read_text())
+
+    def make_configs(self) -> tuple[HardwareConfig, HardwareConfig]:
+        physical_data = deepcopy(self.root_config)
+        physical_data["motion_control"] = {
+            "enabled": True,
+            "control_frequency_hz": 20,
+            "command_timeout_ms": 250,
+            "max_forward_speed_mps": 1.0,
+            "max_reverse_speed_mps": 0.5,
+        }
+        physical_data["ackermann_odometry"] = {
+            "enabled": True,
+            "wheelbase_m": 0.25,
+            "wheel_radius_m": 0.03,
+            "encoder_ticks_per_revolution": 4096,
+            "gear_ratio": 1.0,
+            "max_steering_age_ms": 250,
+        }
+        physical_data["localization_sensors"]["encoder"] = {
+            "enabled": True,
+            "sample_frequency_hz": 100,
+            "sensors": [
+                {
+                    "side": "left",
+                    "driver": "mock",
+                    "ticks_per_sample": 2,
+                }
+            ],
+        }
+        simulated_data = deepcopy(physical_data)
+        simulated_data["coherent_simulation"]["enabled"] = True
+        return (
+            HardwareConfig.model_validate(physical_data),
+            HardwareConfig.model_validate(simulated_data),
+        )
+
+    async def test_switches_publishers_and_drive_route_without_restart(self) -> None:
+        physical_config, simulated_config = self.make_configs()
+        bus = TopicBus()
+        smbus_manager = Mock()
+        sensors = robot_deps.build_localization_sensor_service(
+            physical_config,
+            bus,
+            smbus_manager,
+        )
+        simulation = robot_deps.build_coherent_simulation_supervisor(
+            physical_config,
+            bus,
+        )
+        odometry = AckermannOdometryService(
+            bus,
+            robot_deps.build_odometry_estimator(physical_config),
+        )
+        physical_drive = FakeDriveHardware()
+        selector = SelectableDriveHardware(physical_drive, VirtualDriveHardware())
+        controller = HardwareController(
+            selector,
+            LinearActuatorTranslator(
+                ActuationCalibration(
+                    max_forward_speed_mps=1.0,
+                    max_reverse_speed_mps=0.5,
+                    max_abs_steering_angle_rad=math.radians(30),
+                )
+            ),
+        )
+        motion = MotionControlService(
+            MotionArbiter(
+                MotionLimits(
+                    max_forward_speed_mps=1.0,
+                    max_reverse_speed_mps=0.5,
+                    max_abs_steering_angle_rad=math.radians(30),
+                )
+            ),
+            controller,
+            topic_bus=bus,
+            drive_hardware=selector,
+        )
+        await sensors.start()
+        await simulation.start()
+        odometry.start()
+        try:
+            await _reload_autonomy_runtime(
+                physical_config,
+                simulated_config,
+                sensors,
+                bus,
+                smbus_manager,
+                None,
+                odometry,
+                motion,
+                None,
+                None,
+                simulation,
+            )
+            await asyncio.sleep(0.02)
+
+            self.assertTrue(selector.simulation_enabled)
+            self.assertTrue(simulation.running)
+            simulated_status = {item.sensor: item for item in sensors.status.sensors}
+            self.assertGreater(simulated_status["encoder"].published_messages, 0)
+
+            await _reload_autonomy_runtime(
+                simulated_config,
+                physical_config,
+                sensors,
+                bus,
+                smbus_manager,
+                None,
+                odometry,
+                motion,
+                None,
+                None,
+                simulation,
+            )
+
+            self.assertFalse(selector.simulation_enabled)
+            self.assertFalse(simulation.enabled)
+            physical_status = {item.sensor: item for item in sensors.status.sensors}
+            self.assertTrue(physical_status["encoder"].running)
+        finally:
+            await simulation.stop()
+            await odometry.stop()
+            await sensors.stop()
 
 
 if __name__ == "__main__":

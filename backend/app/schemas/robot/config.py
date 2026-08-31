@@ -18,6 +18,7 @@ from app.schemas.robot.motors import (
 from app.schemas.robot.motion_control import MotionControlConfig
 from app.schemas.robot.odometry import AckermannOdometryConfig
 from app.schemas.robot.safety import LidarSafetyConfig
+from app.schemas.robot.simulation import CoherentSimulationConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.schemas.robot.servos import (
     cross_field_validators as servo_cross_field_validators,
@@ -84,6 +85,16 @@ class HardwareConfig(BaseModel):
             description="LiDAR ray integration in the odom frame.",
         ),
     ] = LocalMappingConfig()
+
+    coherent_simulation: Annotated[
+        CoherentSimulationConfig,
+        Field(
+            title="Coherent simulation",
+            description=(
+                "Whole-vehicle Ackermann simulation driven by final motion commands."
+            ),
+        ),
+    ] = CoherentSimulationConfig()
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],
@@ -181,6 +192,9 @@ class HardwareConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_hardware_relationships(self) -> "HardwareConfig":
+        simulation_enabled = bool(
+            self.coherent_simulation is not None and self.coherent_simulation.enabled
+        )
         if "batteries" in self.model_fields_set:
             if self.batteries is None:
                 raise ValueError("Batteries must be a list")
@@ -217,17 +231,24 @@ class HardwareConfig(BaseModel):
             if (
                 self.localization_sensors is not None
                 and not self.localization_sensors.encoder.enabled
+                and not simulation_enabled
             ):
-                raise ValueError("Ackermann odometry requires drive encoders")
+                raise ValueError(
+                    "Ackermann odometry requires drive encoders or coherent simulation"
+                )
             if self.motion_control is not None and not self.motion_control.enabled:
                 raise ValueError(
                     "Ackermann odometry requires motion control steering state"
                 )
-            known_resolutions = {
-                16_384 if isinstance(sensor, AS5048AEncoderConfig) else 4_096
-                for sensor in self.localization_sensors.encoder.sensors
-                if isinstance(sensor, (AS5048AEncoderConfig, AS5600LEncoderConfig))
-            }
+            known_resolutions = (
+                {
+                    16_384 if isinstance(sensor, AS5048AEncoderConfig) else 4_096
+                    for sensor in self.localization_sensors.encoder.sensors
+                    if isinstance(sensor, (AS5048AEncoderConfig, AS5600LEncoderConfig))
+                }
+                if not simulation_enabled and self.localization_sensors is not None
+                else set()
+            )
             if len(known_resolutions) > 1:
                 raise ValueError(
                     "Ackermann odometry cannot combine rear encoders with different "
@@ -243,6 +264,14 @@ class HardwareConfig(BaseModel):
                         "Ackermann odometry encoder_ticks_per_revolution must be "
                         f"{expected_ticks} for the configured magnetic encoder"
                     )
+        if simulation_enabled:
+            if self.motion_control is not None and not self.motion_control.enabled:
+                raise ValueError("coherent simulation requires motion control")
+            if (
+                self.ackermann_odometry is not None
+                and not self.ackermann_odometry.enabled
+            ):
+                raise ValueError("coherent simulation requires Ackermann odometry")
         return self
 
 

@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 from app.core.logger import Logger
 from app.schemas.autonomy import MessageHeader, SteeringState
-from app.services.autonomy.actuation import HardwareController
+from app.services.autonomy.actuation import HardwareController, SelectableDriveHardware
 from app.services.autonomy.messages import (
     ArbitrationResult,
     IntentSubmissionResult,
@@ -38,6 +38,7 @@ class MotionControlService:
         control_period_seconds: float = 0.05,
         topic_bus: Optional[TopicBus] = None,
         steering_feedback: Optional[SteeringFeedbackService] = None,
+        drive_hardware: Optional[SelectableDriveHardware] = None,
     ) -> None:
         if control_period_seconds <= 0:
             raise ValueError("control_period_seconds must be greater than zero")
@@ -46,6 +47,7 @@ class MotionControlService:
         self._control_period_seconds = control_period_seconds
         self._topic_bus = topic_bus
         self._steering_feedback = steering_feedback
+        self._drive_hardware = drive_hardware
         self._mode = RobotMode.DISARMED
         self._mode_generation = 0
         self._constraints: Dict[str, SafetyConstraint] = {}
@@ -83,6 +85,12 @@ class MotionControlService:
     @property
     def estop_reason(self) -> Optional[str]:
         return self._estop_reason
+
+    @property
+    def simulation_enabled(self) -> bool:
+        return bool(
+            self._drive_hardware is not None and self._drive_hardware.simulation_enabled
+        )
 
     def submit(self, intent: MotionIntent) -> IntentSubmissionResult:
         """Submit against the current mode and its anti-replay generation."""
@@ -141,6 +149,27 @@ class MotionControlService:
         self._last_error = None
         return await self._set_mode_unchecked(RobotMode.DISARMED)
 
+    async def set_simulation_enabled(self, enabled: bool) -> ArbitrationResult:
+        """Safely switch drive output after invalidating every prior intent."""
+
+        selector = self._drive_hardware
+        if selector is None:
+            raise RuntimeError("motion control has no selectable drive hardware")
+        if selector.simulation_enabled == enabled:
+            return await self.step()
+        async with self._apply_lock:
+            if self._mode not in {RobotMode.ESTOP, RobotMode.FAULT}:
+                self._mode = RobotMode.DISARMED
+            self._mode_generation += 1
+            self._arbiter.clear()
+            try:
+                await asyncio.to_thread(self._hardware_controller.force_stop)
+                await asyncio.to_thread(selector.set_simulation_enabled, enabled)
+            except Exception as error:
+                self._transition_to_fault(error)
+                raise
+        return await self.step()
+
     async def _set_mode_unchecked(self, mode: RobotMode) -> ArbitrationResult:
         if mode != self._mode:
             self._mode = mode
@@ -169,6 +198,8 @@ class MotionControlService:
             if self._topic_bus:
                 try:
                     self._topic_bus.publish(MOTION_COMMANDED, result.command)
+                    if self.simulation_enabled:
+                        return result
                     self._steering_state_sequence += 1
                     feedback = (
                         self._steering_feedback.latest

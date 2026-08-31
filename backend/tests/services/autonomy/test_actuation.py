@@ -9,6 +9,8 @@ from app.services.autonomy import (
     HardwareController,
     LinearActuatorTranslator,
     MotionSource,
+    SelectableDriveHardware,
+    VirtualDriveHardware,
 )
 from app.schemas.robot.motion_control import MotionControlConfig
 from pydantic import ValidationError
@@ -187,6 +189,45 @@ class TestHardwareController(ActuationTestCase):
         self.controller.force_stop()
 
         self.assertEqual(self.hardware.calls, [("stop", None)])
+
+
+class TestSelectableDriveHardware(unittest.TestCase):
+    def test_switch_stops_both_boundaries_and_routes_only_to_selected_side(
+        self,
+    ) -> None:
+        physical = FakeDriveHardware()
+        virtual = FakeDriveHardware()
+        selector = SelectableDriveHardware(physical, virtual)
+
+        selector.forward(20)
+        selector.set_simulation_enabled(True)
+        selector.forward(30)
+        selector.set_dir_servo_angle(12.0)
+
+        self.assertEqual(
+            physical.calls,
+            [("forward", 20), ("stop", None)],
+        )
+        self.assertEqual(
+            virtual.calls,
+            [("stop", None), ("forward", 30), ("steer", 12.0)],
+        )
+        self.assertTrue(selector.simulation_enabled)
+
+    def test_virtual_drive_retains_operator_visible_state(self) -> None:
+        virtual = VirtualDriveHardware()
+
+        virtual.backward(42)
+        virtual.set_dir_servo_angle(-7.5)
+
+        self.assertEqual(virtual.direction, DriveDirection.REVERSE)
+        self.assertEqual(virtual.speed, 42)
+        self.assertEqual(virtual.steering_angle_deg, -7.5)
+
+        virtual.stop()
+
+        self.assertEqual(virtual.direction, DriveDirection.STOPPED)
+        self.assertEqual(virtual.speed, 0)
 
 
 if __name__ == "__main__":

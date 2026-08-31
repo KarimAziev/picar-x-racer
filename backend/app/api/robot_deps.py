@@ -36,6 +36,10 @@ from app.services.autonomy import (
     AckermannOdometryEstimator,
     AckermannOdometryService,
     ActuationCalibration,
+    AckermannSimulationConfig,
+    AckermannSimulationPlant,
+    CoherentSimulationService,
+    CoherentSimulationSupervisor,
     EncoderPublisherService,
     HardwareController,
     LinearActuatorTranslator,
@@ -53,13 +57,17 @@ from app.services.autonomy import (
     MotionControlService,
     MotionLimits,
     TopicBus,
+    TopicSensorMonitor,
     StaticTransform2D,
     RelativeMotionService,
+    SelectableDriveHardware,
     SteeringAngleCalibration,
     SteeringCalibrationPoint,
     SteeringFeedbackService,
+    VirtualDriveHardware,
 )
 from app.services.autonomy.sensor_publishers import SensorPublisher
+from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
 from app.services.control.settings_service import SettingsService
@@ -175,6 +183,19 @@ def get_picarx_adapter(
     return PicarxAdapter(config_manager=config_manager, smbus_manager=smbus_manager)
 
 
+@lru_cache(maxsize=1)
+def get_selectable_drive_hardware(
+    picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+) -> SelectableDriveHardware:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return SelectableDriveHardware(
+        picarx_adapter,
+        VirtualDriveHardware(),
+        simulation_enabled=config.coherent_simulation.enabled,
+    )
+
+
 def build_steering_feedback_service(
     config: HardwareConfig,
     smbus_manager: SMBusManager,
@@ -234,7 +255,9 @@ def get_steering_feedback_service(
 
 @lru_cache(maxsize=1)
 def get_motion_control_service(
-    picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
+    drive_hardware: Annotated[
+        SelectableDriveHardware, Depends(get_selectable_drive_hardware)
+    ],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
     steering_feedback_service: Annotated[
@@ -277,12 +300,13 @@ def get_motion_control_service(
     return MotionControlService(
         arbiter=MotionArbiter(limits),
         hardware_controller=HardwareController(
-            picarx_adapter,
+            drive_hardware,
             LinearActuatorTranslator(calibration),
         ),
         control_period_seconds=1.0 / motion.control_frequency_hz,
         topic_bus=topic_bus,
         steering_feedback=steering_feedback_service,
+        drive_hardware=drive_hardware,
     )
 
 
@@ -338,6 +362,7 @@ def build_localization_sensor_service(
     """Build lazy, opt-in hardware publishers from validated configuration."""
 
     sensors = config.localization_sensors
+    coherent_simulation = config.coherent_simulation.enabled
     publishers: Dict[SensorName, SensorPublisher] = {}
     enabled_sensors = []
 
@@ -376,7 +401,16 @@ def build_localization_sensor_service(
             min_measurements_per_scan=(lidar_sensor_config.min_measurements_per_scan),
         )
 
-    if sensors.imu.enabled:
+    if coherent_simulation:
+        enabled_sensors.extend(("imu", "encoder"))
+        publishers["imu"] = TopicSensorMonitor("imu", topic_bus, IMU_DATA)
+        publishers["encoder"] = TopicSensorMonitor(
+            "encoder",
+            topic_bus,
+            ENCODER_STATE,
+        )
+
+    if sensors.imu.enabled and not coherent_simulation:
         enabled_sensors.append("imu")
         imu_sensor_config = sensors.imu
         imu_factory: Callable[[], IMUABC]
@@ -403,7 +437,7 @@ def build_localization_sensor_service(
             sample_frequency_hz=imu_sensor_config.sample_frequency_hz,
         )
 
-    if sensors.encoder.enabled:
+    if sensors.encoder.enabled and not coherent_simulation:
         enabled_sensors.append("encoder")
         encoder_factories: Dict[Literal["left", "right"], Callable[[], EncoderABC]] = {}
         for encoder_sensor_config in sensors.encoder.sensors:
@@ -495,6 +529,50 @@ def build_localization_sensor_service(
         publishers,
         enabled_sensors=enabled_sensors,
     )
+
+
+def build_coherent_simulation_supervisor(
+    config: HardwareConfig,
+    topic_bus: TopicBus,
+) -> CoherentSimulationSupervisor:
+    """Build an enabled simulator or a stable disabled lifecycle handle."""
+
+    simulation = config.coherent_simulation
+    if not simulation.enabled:
+        return CoherentSimulationSupervisor()
+    odometry = config.ackermann_odometry
+    if (
+        odometry.wheelbase_m is None
+        or odometry.wheel_radius_m is None
+        or odometry.encoder_ticks_per_revolution is None
+    ):
+        raise ValueError("coherent simulation requires complete Ackermann geometry")
+    service = CoherentSimulationService(
+        topic_bus,
+        AckermannSimulationPlant(
+            AckermannSimulationConfig(
+                wheelbase_m=odometry.wheelbase_m,
+                wheel_radius_m=odometry.wheel_radius_m,
+                encoder_ticks_per_revolution=(odometry.encoder_ticks_per_revolution),
+                gear_ratio=odometry.gear_ratio,
+                update_frequency_hz=simulation.update_frequency_hz,
+                command_timeout_seconds=simulation.command_timeout_ms / 1000,
+            )
+        ),
+        initial_x_m=simulation.initial_x_m,
+        initial_y_m=simulation.initial_y_m,
+        initial_yaw_rad=simulation.initial_yaw_rad,
+    )
+    return CoherentSimulationSupervisor(service)
+
+
+@lru_cache(maxsize=1)
+def get_coherent_simulation_supervisor(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> CoherentSimulationSupervisor:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return build_coherent_simulation_supervisor(config, topic_bus)
 
 
 @lru_cache(maxsize=1)
@@ -687,6 +765,7 @@ class LifespanAppDeps(TypedDict):
     lidar_safety_service: Optional[LidarSafetyService]
     local_mapping_service: Optional[LocalMappingService]
     relative_motion_service: Optional[RelativeMotionService]
+    coherent_simulation_supervisor: CoherentSimulationSupervisor
 
 
 async def get_lifespan_dependencies(
@@ -720,6 +799,10 @@ async def get_lifespan_dependencies(
     relative_motion_service: Annotated[
         Optional[RelativeMotionService], Depends(get_relative_motion_service)
     ],
+    coherent_simulation_supervisor: Annotated[
+        CoherentSimulationSupervisor,
+        Depends(get_coherent_simulation_supervisor),
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -738,5 +821,6 @@ async def get_lifespan_dependencies(
         "lidar_safety_service": lidar_safety_service,
         "local_mapping_service": local_mapping_service,
         "relative_motion_service": relative_motion_service,
+        "coherent_simulation_supervisor": coherent_simulation_supervisor,
     }
     yield deps

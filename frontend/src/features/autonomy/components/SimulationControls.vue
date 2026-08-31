@@ -1,0 +1,190 @@
+<template>
+  <section
+    class="rounded-xl border border-surface-200 bg-surface-0 p-3 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+  >
+    <ConfirmPopup group="simulation-reset" />
+    <div class="flex flex-wrap items-start justify-between gap-2">
+      <div>
+        <h2 class="text-sm font-semibold">Simulation environment</h2>
+        <p class="text-[0.68rem] text-surface-500 dark:text-surface-400">
+          One Ackermann plant for motion, steering, encoders, and IMU
+        </p>
+      </div>
+      <Tag :severity="statusSeverity" :value="statusLabel" />
+    </div>
+
+    <div
+      v-if="store.simulationLoading"
+      class="mt-3 flex items-center gap-2 text-xs text-surface-500"
+    >
+      <ProgressSpinner class="h-4 w-4" stroke-width="5" />
+      Checking simulation runtime…
+    </div>
+
+    <template v-else-if="status?.enabled">
+      <div
+        class="mt-3 rounded-lg border px-3 py-2 text-xs"
+        :class="isolationClasses"
+        role="status"
+      >
+        <div class="font-semibold">{{ isolationTitle }}</div>
+        <div class="mt-0.5 opacity-80">{{ isolationDetail }}</div>
+      </div>
+
+      <dl
+        v-if="status.latest_state"
+        class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-3 xl:grid-cols-2"
+      >
+        <div>
+          <dt class="text-surface-500">Ground truth</dt>
+          <dd>
+            {{ format(status.latest_state.x_m) }},
+            {{ format(status.latest_state.y_m) }} m
+          </dd>
+        </div>
+        <div>
+          <dt class="text-surface-500">Heading</dt>
+          <dd>{{ degrees(status.latest_state.yaw_rad) }}°</dd>
+        </div>
+        <div>
+          <dt class="text-surface-500">Speed</dt>
+          <dd>{{ format(status.latest_state.linear_speed_mps) }} m/s</dd>
+        </div>
+        <div>
+          <dt class="text-surface-500">Steering</dt>
+          <dd>{{ degrees(status.latest_state.steering_angle_rad) }}°</dd>
+        </div>
+        <div>
+          <dt class="text-surface-500">Encoder</dt>
+          <dd>
+            {{ status.latest_state.encoder_ticks.toLocaleString() }} ticks
+          </dd>
+        </div>
+        <div>
+          <dt class="text-surface-500">Plant frames</dt>
+          <dd>{{ status.published_updates.toLocaleString() }}</dd>
+        </div>
+      </dl>
+      <div v-else class="mt-3 text-xs text-surface-500">
+        Waiting for the first synchronized plant frame.
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-[0.68rem] text-surface-500">{{ updatedLabel }}</span>
+        <Button
+          label="Reset pose"
+          icon="pi pi-refresh"
+          severity="secondary"
+          size="small"
+          outlined
+          :disabled="!status.physical_drive_isolated"
+          :loading="store.simulationResetting"
+          @click="confirmReset"
+        />
+      </div>
+    </template>
+
+    <div
+      v-else
+      class="mt-3 rounded-lg bg-surface-100 p-3 text-xs leading-relaxed dark:bg-surface-800"
+    >
+      Enable <span class="font-semibold">Coherent simulation</span> in Robot
+      Settings after supplying motion limits and Ackermann geometry. Physical
+      output remains selected while this environment is disabled.
+    </div>
+
+    <div
+      v-if="store.simulationError || status?.error"
+      class="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-200"
+      role="alert"
+    >
+      {{ store.simulationError || status?.error }}
+      <span v-if="status" class="block opacity-80">
+        Last known state remains visible above.
+      </span>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import ConfirmPopup from "primevue/confirmpopup";
+import { useConfirm } from "primevue/useconfirm";
+import { useAutonomyStore } from "@/features/autonomy";
+
+const store = useAutonomyStore();
+const confirm = useConfirm();
+const now = ref(Date.now());
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+const status = computed(() => store.simulation);
+
+const statusSeverity = computed(() => {
+  if (store.simulationError || status.value?.error) return "danger";
+  if (!status.value?.enabled) return "secondary";
+  if (!status.value.physical_drive_isolated) return "danger";
+  return status.value.running ? "success" : "warn";
+});
+const statusLabel = computed(() => {
+  if (!status.value) return "Checking…";
+  if (!status.value.enabled) return "Disabled";
+  if (!status.value.physical_drive_isolated) return "Isolation fault";
+  return status.value.running ? "Live · isolated" : "Stopped · isolated";
+});
+const isolationTitle = computed(() =>
+  status.value?.physical_drive_isolated
+    ? "Physical drive isolated"
+    : "Physical drive is still selectable",
+);
+const isolationDetail = computed(() =>
+  status.value?.physical_drive_isolated
+    ? "Resolved commands go only to the virtual drive sink. Mode changes still disarm and invalidate older commands."
+    : "Do not arm motion until the backend confirms isolation.",
+);
+const isolationClasses = computed(() =>
+  status.value?.physical_drive_isolated
+    ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100"
+    : "border-red-300 bg-red-50 text-red-900 dark:border-red-700 dark:bg-red-950 dark:text-red-100",
+);
+const updatedLabel = computed(() => {
+  if (store.simulationLastUpdatedAt === null) return "No runtime response yet";
+  const seconds = Math.max(
+    0,
+    Math.floor((now.value - store.simulationLastUpdatedAt) / 1000),
+  );
+  if (store.simulationError)
+    return `Status offline · last update ${seconds}s ago`;
+  return seconds < 2 ? "Runtime status live" : `Updated ${seconds}s ago`;
+});
+
+const format = (value: number) => value.toFixed(2);
+const degrees = (radians: number) => ((radians * 180) / Math.PI).toFixed(1);
+const confirmReset = (event: MouseEvent) =>
+  confirm.require({
+    group: "simulation-reset",
+    target: event.currentTarget as HTMLElement,
+    icon: "pi pi-refresh",
+    message:
+      "Disarm motion, discard the simulated trajectory, and restore the configured initial pose?",
+    rejectProps: {
+      label: "Cancel",
+      severity: "secondary",
+      outlined: true,
+    },
+    acceptProps: { label: "Reset simulation", severity: "danger" },
+    accept: () => void store.resetSimulation(),
+  });
+
+onMounted(() => {
+  void store.refreshSimulation();
+  refreshTimer = setInterval(() => {
+    now.value = Date.now();
+    if (!store.simulationLoading && !store.simulationResetting) {
+      void store.refreshSimulation();
+    }
+  }, 1000);
+});
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer);
+});
+</script>

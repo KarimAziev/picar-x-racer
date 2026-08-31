@@ -5,10 +5,13 @@ from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 from app.api.robot_deps import (
+    build_coherent_simulation_supervisor,
+    build_localization_sensor_service,
     get_localization_sensor_service,
     get_steering_feedback_service,
 )
 from app.managers.file_management.json_data_manager import JsonDataManager
+from app.schemas.robot.config import HardwareConfig
 from app.services.autonomy import TopicBus
 from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN
 from robot_hat import MockAngularPosition, MockEncoder, QuadratureDecodeMode
@@ -112,6 +115,50 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
             {status.sensor: status.enabled for status in service.status.sensors},
             {"lidar": True, "imu": True, "encoder": True},
         )
+        smbus_manager.get_bus.assert_not_called()
+
+    async def test_coherent_simulation_replaces_imu_and_encoder_drivers(self) -> None:
+        root_config = Path(__file__).parents[4] / "config.json"
+        data = json.loads(root_config.read_text())
+        data["motion_control"] = {
+            "enabled": True,
+            "control_frequency_hz": 20,
+            "command_timeout_ms": 250,
+            "max_forward_speed_mps": 1.0,
+            "max_reverse_speed_mps": 0.5,
+        }
+        data["ackermann_odometry"] = {
+            "enabled": True,
+            "wheelbase_m": 0.25,
+            "wheel_radius_m": 0.03,
+            "encoder_ticks_per_revolution": 4096,
+            "gear_ratio": 1.0,
+            "max_steering_age_ms": 250,
+        }
+        data["coherent_simulation"]["enabled"] = True
+        config = HardwareConfig.model_validate(data)
+        bus = TopicBus()
+        smbus_manager = MagicMock()
+        sensors = build_localization_sensor_service(config, bus, smbus_manager)
+        simulation = build_coherent_simulation_supervisor(config, bus)
+        statuses = {item.sensor: item for item in sensors.status.sensors}
+
+        await sensors.start()
+        await simulation.start()
+        try:
+            for _attempt in range(20):
+                statuses = {item.sensor: item for item in sensors.status.sensors}
+                if statuses["imu"].published_messages > 0:
+                    break
+                await asyncio.sleep(0.005)
+        finally:
+            await simulation.stop()
+            await sensors.stop()
+
+        self.assertTrue(statuses["imu"].enabled)
+        self.assertTrue(statuses["encoder"].enabled)
+        self.assertGreater(statuses["imu"].published_messages, 0)
+        self.assertGreater(statuses["encoder"].published_messages, 0)
         smbus_manager.get_bus.assert_not_called()
 
     async def test_as5600l_factories_share_managed_i2c_bus(self) -> None:

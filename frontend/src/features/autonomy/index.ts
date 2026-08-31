@@ -22,6 +22,8 @@ export type {
   RelativeMotionStatus,
   SensorName,
   SensorPublisherStatus,
+  SimulationRuntimeStatus,
+  SimulationState,
   TelemetryChannel,
   TelemetryEnvelope,
 } from "@/features/autonomy/store";

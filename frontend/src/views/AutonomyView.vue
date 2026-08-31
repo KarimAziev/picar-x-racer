@@ -96,6 +96,7 @@
       </section>
 
       <aside class="flex min-w-0 flex-col gap-3">
+        <SimulationControls />
         <RelativeMotionControls />
         <MappingSessionControls />
 
@@ -127,11 +128,9 @@
           <div
             class="mt-2 rounded-lg bg-blue-50 p-3 text-blue-900 dark:bg-blue-950 dark:text-blue-100"
           >
-            <div class="font-semibold">Manual mapping prototype</div>
+            <div class="font-semibold">{{ workflowTitle }}</div>
             <p class="mt-1 leading-relaxed">
-              Drive manually to create new observations. Mapping and telemetry
-              do not move the vehicle, and no map-based navigation controller is
-              installed yet.
+              {{ workflowDescription }}
             </p>
           </div>
           <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
@@ -147,9 +146,7 @@
           <div
             class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
           >
-            Independent mock encoders can report motion while the physical robot
-            is stationary. Treat the resulting map as a pipeline demonstration,
-            not a physically coherent simulation.
+            {{ workflowCaveat }}
           </div>
         </section>
       </aside>
@@ -164,23 +161,46 @@ import {
   autonomyOperatorViewOptions,
   normalizeAutonomyOperatorView,
   type AutonomyOperatorView,
+  useAutonomyStore,
 } from "@/features/autonomy";
 import { useRobotStore } from "@/features/settings/stores";
 import AutonomyStatusBar from "@/features/autonomy/components/AutonomyStatusBar.vue";
 import EmptyOperationalView from "@/features/autonomy/components/EmptyOperationalView.vue";
 import MappingSessionControls from "@/features/autonomy/components/MappingSessionControls.vue";
 import RelativeMotionControls from "@/features/autonomy/components/RelativeMotionControls.vue";
+import SimulationControls from "@/features/autonomy/components/SimulationControls.vue";
 import SensorDiagnostics from "@/features/settings/components/robot/SensorDiagnostics.vue";
 import OccupancyGridPreview from "@/features/settings/components/robot/OccupancyGridPreview.vue";
 
 const route = useRoute();
 const router = useRouter();
 const robotStore = useRobotStore();
+const autonomyStore = useAutonomyStore();
 
 const currentView = computed(() =>
   normalizeAutonomyOperatorView(route.query.view),
 );
 const mappingEnabled = computed(() => robotStore.data.local_mapping.enabled);
+const simulationEnabled = computed(
+  () =>
+    autonomyStore.simulation?.enabled ??
+    robotStore.data.coherent_simulation.enabled,
+);
+const workflowTitle = computed(() =>
+  simulationEnabled.value
+    ? "Coherent virtual driving"
+    : "Manual mapping prototype",
+);
+const workflowDescription = computed(() =>
+  simulationEnabled.value
+    ? "Arm manual control or start a bounded relative-motion action. The same arbiter drives a virtual Ackermann vehicle while physical motors remain isolated."
+    : "Drive manually to create new observations. Mapping and telemetry do not move the vehicle, and no map-based navigation controller is installed yet.",
+);
+const workflowCaveat = computed(() =>
+  simulationEnabled.value
+    ? "The coherent plant currently supplies steering, rear encoders, and IMU. LiDAR remains a separately configured source; mock LiDAR is useful for pipeline testing but is not yet a world-aware range simulation."
+    : "Independent mock encoders can report motion while the physical robot is stationary. Treat the resulting map as a pipeline demonstration, not a physically coherent simulation.",
+);
 
 const selectView = (view: AutonomyOperatorView) => {
   void router.replace({

@@ -14,6 +14,7 @@ from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.services.connection_service import ConnectionService
 from app.services.autonomy import (
     AckermannOdometryService,
+    CoherentSimulationSupervisor,
     LidarSafetyService,
     LocalizationSensorService,
     LocalMappingService,
@@ -42,7 +43,14 @@ async def _reload_autonomy_runtime(
     motion_control_service: Optional[MotionControlService],
     lidar_safety_service: Optional[LidarSafetyService],
     local_mapping_service: Optional[LocalMappingService],
+    simulation_supervisor: CoherentSimulationSupervisor,
 ) -> None:
+    previous_simulation = previous.coherent_simulation.enabled
+    current_simulation = current.coherent_simulation.enabled
+    simulation_changed = (
+        previous.coherent_simulation != current.coherent_simulation
+        or previous.ackermann_odometry != current.ackermann_odometry
+    )
     encoder_changed = (
         previous.localization_sensors.encoder != current.localization_sensors.encoder
     )
@@ -50,7 +58,18 @@ async def _reload_autonomy_runtime(
         previous.localization_sensors.lidar.transform
         != current.localization_sensors.lidar.transform
     )
-    if previous.localization_sensors != current.localization_sensors:
+    if previous_simulation and simulation_changed:
+        await simulation_supervisor.reconfigure(None)
+
+    if current_simulation and not previous_simulation:
+        if motion_control_service is None:
+            raise RuntimeError("coherent simulation requires running motion control")
+        await motion_control_service.set_simulation_enabled(True)
+
+    if (
+        previous.localization_sensors != current.localization_sensors
+        or previous_simulation != current_simulation
+    ):
         replacement = robot_deps.build_localization_sensor_service(
             current,
             topic_bus,
@@ -60,22 +79,21 @@ async def _reload_autonomy_runtime(
 
     previous_steering = previous.localization_sensors.steering
     current_steering = current.localization_sensors.steering
-    if (
-        previous_steering != current_steering
-        and previous_steering.enabled
-        and current_steering.enabled
-        and steering_feedback_service is not None
-    ):
-        replacement_steering = robot_deps.build_steering_feedback_service(
-            current,
-            smbus_manager,
-        )
-        if replacement_steering is not None:
-            await steering_feedback_service.reconfigure_from(replacement_steering)
+    if steering_feedback_service is not None:
+        if current_simulation or not current_steering.enabled:
+            await steering_feedback_service.stop()
+        elif previous_steering != current_steering or previous_simulation:
+            replacement_steering = robot_deps.build_steering_feedback_service(
+                current,
+                smbus_manager,
+            )
+            if replacement_steering is not None:
+                await steering_feedback_service.reconfigure_from(replacement_steering)
+                if not steering_feedback_service.running:
+                    await steering_feedback_service.start()
 
     if (
         (previous.ackermann_odometry != current.ackermann_odometry or encoder_changed)
-        and previous.ackermann_odometry.enabled
         and current.ackermann_odometry.enabled
         and odometry_service is not None
     ):
@@ -115,6 +133,45 @@ async def _reload_autonomy_runtime(
         if replacement_mapping is not None:
             await local_mapping_service.reconfigure_from(replacement_mapping)
 
+    if simulation_changed and current_simulation:
+        replacement_simulation = robot_deps.build_coherent_simulation_supervisor(
+            current,
+            topic_bus,
+        )
+        await simulation_supervisor.reconfigure_from(replacement_simulation)
+
+    if previous_simulation and not current_simulation:
+        if motion_control_service is None:
+            raise RuntimeError("coherent simulation requires running motion control")
+        await motion_control_service.set_simulation_enabled(False)
+
+
+def _preflight_simulation_transition(
+    request: Request,
+    previous: HardwareConfig,
+    current: HardwareConfig,
+) -> None:
+    """Reject a hot enable before persistence when prerequisites were not started."""
+
+    if previous.coherent_simulation.enabled or not current.coherent_simulation.enabled:
+        return
+    state = request.app.state
+    if not isinstance(
+        getattr(state, "motion_control_service", None), MotionControlService
+    ) or not isinstance(
+        getattr(state, "odometry_service", None), AckermannOdometryService
+    ):
+        raise InvalidSettings(
+            "Enable motion control and Ackermann odometry, restart the backend once, "
+            "and then enable coherent simulation. Their stable runtime services were "
+            "not created by this process."
+        )
+    if not isinstance(
+        getattr(state, "coherent_simulation_supervisor", None),
+        CoherentSimulationSupervisor,
+    ):
+        raise InvalidSettings("coherent simulation runtime is unavailable")
+
 
 async def _reload_running_autonomy_from_app(
     request: Request,
@@ -127,10 +184,19 @@ async def _reload_running_autonomy_from_app(
     sensor_service = getattr(state, "localization_sensor_service", None)
     topic_bus = getattr(state, "robot_topic_bus", None)
     smbus_manager = getattr(state, "robot_smbus_manager", None)
+    simulation_supervisor = getattr(
+        state,
+        "coherent_simulation_supervisor",
+        None,
+    )
     if (
         not isinstance(sensor_service, LocalizationSensorService)
         or not isinstance(topic_bus, TopicBus)
         or not isinstance(smbus_manager, SMBusManager)
+        or not isinstance(
+            simulation_supervisor,
+            CoherentSimulationSupervisor,
+        )
     ):
         return
     await _reload_autonomy_runtime(
@@ -144,6 +210,7 @@ async def _reload_running_autonomy_from_app(
         getattr(state, "motion_control_service", None),
         getattr(state, "lidar_safety_service", None),
         getattr(state, "local_mapping_service", None),
+        simulation_supervisor,
     )
 
 
@@ -216,6 +283,8 @@ async def update_settings(
     if isinstance(previous, HardwareConfig):
         previous = previous.model_copy(deep=True)
     try:
+        if isinstance(previous, HardwareConfig):
+            _preflight_simulation_transition(request, previous, settings)
         data = await asyncio.to_thread(settings_service.save_settings, settings)
         if isinstance(previous, HardwareConfig):
             await _reload_running_autonomy_from_app(request, previous, data)
@@ -261,6 +330,9 @@ async def merge_partial_settings(
         previous = previous.model_copy(deep=True)
 
     try:
+        candidate = settings_service.build_merged_settings(settings)
+        if isinstance(previous, HardwareConfig):
+            _preflight_simulation_transition(request, previous, candidate)
         partial_settings = await asyncio.to_thread(
             settings_service.merge_settings, settings
         )

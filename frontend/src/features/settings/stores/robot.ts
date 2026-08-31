@@ -218,6 +218,15 @@ export interface LocalMappingConfig {
   max_odometry_age_ms: number;
 }
 
+export interface CoherentSimulationConfig {
+  enabled: boolean;
+  update_frequency_hz: number;
+  command_timeout_ms: number;
+  initial_x_m: number;
+  initial_y_m: number;
+  initial_yaw_rad: number;
+}
+
 export type CalibrationData = Partial<ServoCalibrationData> &
   MotorsCalibrationData;
 
@@ -237,6 +246,7 @@ export interface Data extends ServoData, MotorsData {
   localization_sensors: LocalizationSensorsConfig;
   lidar_safety: LidarSafetyConfig;
   local_mapping: LocalMappingConfig;
+  coherent_simulation: CoherentSimulationConfig;
   led: LEDConfig;
   batteries: Battery[];
 }
@@ -295,9 +305,7 @@ const changesStartupScopedConfig = (data: Partial<Data>, current: Data) => {
       data[key] !== undefined && data[key].enabled !== current[key].enabled,
   );
   return (
-    startupSectionChanged ||
-    steeringChanged ||
-    optionalServiceTopologyChanged
+    startupSectionChanged || steeringChanged || optionalServiceTopologyChanged
   );
 };
 
@@ -406,6 +414,14 @@ const defaultState: State = {
       height_m: 10,
       resolution_m: 0.05,
       max_odometry_age_ms: 250,
+    },
+    coherent_simulation: {
+      enabled: false,
+      update_frequency_hz: 100,
+      command_timeout_ms: 250,
+      initial_x_m: 0,
+      initial_y_m: 0,
+      initial_yaw_rad: 0,
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

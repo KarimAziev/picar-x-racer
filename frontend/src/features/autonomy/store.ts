@@ -84,6 +84,28 @@ export interface SafetyTelemetry {
   reason: string | null;
 }
 
+export interface SimulationState {
+  header: MessageHeader;
+  x_m: number;
+  y_m: number;
+  yaw_rad: number;
+  linear_speed_mps: number;
+  steering_angle_rad: number;
+  yaw_rate_radps: number;
+  longitudinal_acceleration_mps2: number;
+  lateral_acceleration_mps2: number;
+  encoder_ticks: number;
+}
+
+export interface SimulationRuntimeStatus {
+  enabled: boolean;
+  running: boolean;
+  physical_drive_isolated: boolean;
+  published_updates: number;
+  latest_state: SimulationState | null;
+  error: string | null;
+}
+
 export interface OccupancyGrid {
   header: MessageHeader;
   width: number;
@@ -155,6 +177,11 @@ export interface State {
   relativeMotion: RelativeMotionStatus | null;
   relativeMotionLoading: boolean;
   relativeMotionError: string | null;
+  simulation: SimulationRuntimeStatus | null;
+  simulationLoading: boolean;
+  simulationResetting: boolean;
+  simulationError: string | null;
+  simulationLastUpdatedAt: number | null;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
   consumers: number;
@@ -173,6 +200,11 @@ const defaultState: State = {
   relativeMotion: null,
   relativeMotionLoading: false,
   relativeMotionError: null,
+  simulation: null,
+  simulationLoading: false,
+  simulationResetting: false,
+  simulationError: null,
+  simulationLastUpdatedAt: null,
   latest: {},
   connection: null,
   consumers: 0,
@@ -311,6 +343,36 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.relativeMotionError = retrieveError(error).text;
       } finally {
         this.relativeMotionLoading = false;
+      }
+    },
+
+    async refreshSimulation() {
+      try {
+        this.simulationLoading = this.simulation === null;
+        this.simulation = await robotApi.get<SimulationRuntimeStatus>(
+          "/px/api/autonomy/simulation",
+        );
+        this.simulationError = null;
+        this.simulationLastUpdatedAt = Date.now();
+      } catch (error) {
+        this.simulationError = retrieveError(error).text;
+      } finally {
+        this.simulationLoading = false;
+      }
+    },
+
+    async resetSimulation() {
+      try {
+        this.simulationResetting = true;
+        this.simulation = await robotApi.post<SimulationRuntimeStatus>(
+          "/px/api/autonomy/simulation/reset",
+        );
+        this.simulationError = null;
+        this.simulationLastUpdatedAt = Date.now();
+      } catch (error) {
+        this.simulationError = retrieveError(error).text;
+      } finally {
+        this.simulationResetting = false;
       }
     },
 

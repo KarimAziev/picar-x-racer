@@ -75,6 +75,32 @@ describe("autonomy telemetry store", () => {
       if (path === "/px/api/autonomy/relative-motion") {
         return Promise.resolve({ available: true, state: "idle" });
       }
+      if (path === "/px/api/autonomy/simulation") {
+        return Promise.resolve({
+          enabled: true,
+          running: true,
+          physical_drive_isolated: true,
+          published_updates: 42,
+          latest_state: {
+            header: {
+              sequence: 42,
+              frame_id: "world",
+              timestamp_monotonic_ns: 420,
+              source_timestamp_ns: 410,
+            },
+            x_m: 1.2,
+            y_m: -0.5,
+            yaw_rad: 0.25,
+            linear_speed_mps: 0.2,
+            steering_angle_rad: 0.1,
+            yaw_rate_radps: 0.08,
+            longitudinal_acceleration_mps2: 0,
+            lateral_acceleration_mps2: 0.016,
+            encoder_ticks: 1200,
+          },
+          error: null,
+        });
+      }
       return Promise.resolve({
         sensors: [
           {
@@ -215,6 +241,39 @@ describe("autonomy telemetry store", () => {
       },
     );
     expect(store.relativeMotion?.action_type).toBe("arc");
+  });
+
+  it("keeps simulation status and safely resets through the runtime endpoint", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockResolvedValue({
+      enabled: true,
+      running: true,
+      physical_drive_isolated: true,
+      published_updates: 0,
+      latest_state: {
+        x_m: 0,
+        y_m: 0,
+        yaw_rad: 0,
+        linear_speed_mps: 0,
+        steering_angle_rad: 0,
+        yaw_rate_radps: 0,
+        longitudinal_acceleration_mps2: 0,
+        lateral_acceleration_mps2: 0,
+        encoder_ticks: 0,
+      },
+      error: null,
+    });
+
+    await store.refreshSimulation();
+    await store.resetSimulation();
+
+    expect(mocks.get).toHaveBeenCalledWith("/px/api/autonomy/simulation");
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/simulation/reset",
+    );
+    expect(store.simulation?.published_updates).toBe(0);
+    expect(store.simulation?.physical_drive_isolated).toBe(true);
+    expect(store.simulationLastUpdatedAt).not.toBeNull();
   });
 
   it("keeps a shared telemetry connection until its last consumer leaves", () => {

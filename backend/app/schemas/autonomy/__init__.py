@@ -18,6 +18,7 @@ from app.schemas.autonomy.messages import (
     Odometry2D,
     SafetyState,
     SimulationState,
+    SimulationRuntimeStatus,
     SteeringState,
 )
 from app.schemas.autonomy.mapping_status import (
@@ -56,6 +57,7 @@ __all__ = [
     "SensorPublisherStatus",
     "SafetyState",
     "SimulationState",
+    "SimulationRuntimeStatus",
     "SteeringState",
     "TelemetryChannel",
     "TelemetryEnvelope",

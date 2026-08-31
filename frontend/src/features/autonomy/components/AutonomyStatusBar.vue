@@ -30,6 +30,11 @@
       />
       <Tag :severity="sensorSeverity" :value="sensorLabel" />
       <Tag
+        v-if="telemetry.simulation"
+        :severity="simulationSeverity"
+        :value="simulationLabel"
+      />
+      <Tag
         v-if="telemetry.mappingSession"
         :severity="mappingSeverity"
         :value="`Map: ${telemetry.mappingSession.state}`"
@@ -150,6 +155,20 @@ const mappingSeverity = computed(() => {
   if (telemetry.mappingSession?.state === "active") return "success";
   if (telemetry.mappingSession?.state === "paused") return "warning";
   return "secondary";
+});
+const simulationSeverity = computed(() => {
+  const simulation = telemetry.simulation;
+  if (!simulation?.enabled) return "secondary";
+  if (!simulation.physical_drive_isolated || simulation.error) return "danger";
+  return simulation.running ? "success" : "warning";
+});
+const simulationLabel = computed(() => {
+  const simulation = telemetry.simulation;
+  if (!simulation?.enabled) return "Simulation disabled";
+  if (!simulation.physical_drive_isolated) return "Simulation isolation fault";
+  return simulation.running
+    ? "Simulation live · isolated"
+    : "Simulation stopped";
 });
 
 const commandLabel = computed(() => {

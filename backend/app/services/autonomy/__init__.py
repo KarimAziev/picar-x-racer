@@ -7,6 +7,8 @@ from app.services.autonomy.actuation import (
     HardwareController,
     HardwareMotionCommand,
     LinearActuatorTranslator,
+    SelectableDriveHardware,
+    VirtualDriveHardware,
 )
 from app.services.autonomy.messages import (
     ActuatorCommand,
@@ -53,6 +55,7 @@ from app.services.autonomy.sensor_publishers import (
     LaserScanConverter,
     LidarPublisherService,
     LocalizationSensorService,
+    TopicSensorMonitor,
     UnavailableEncoderPublisher,
 )
 from app.services.autonomy.simulation import (
@@ -60,6 +63,7 @@ from app.services.autonomy.simulation import (
     AckermannSimulationConfig,
     AckermannSimulationPlant,
     CoherentSimulationService,
+    CoherentSimulationSupervisor,
 )
 from app.services.autonomy.steering_feedback import (
     SteeringAngleCalibration,
@@ -95,6 +99,7 @@ __all__ = [
     "DriveDirection",
     "DriveHardware",
     "CoherentSimulationService",
+    "CoherentSimulationSupervisor",
     "EncoderPublisherService",
     "HardwareController",
     "HardwareMotionCommand",
@@ -123,6 +128,7 @@ __all__ = [
     "RelativeMotionService",
     "SafetyConstraint",
     "SafetySeverity",
+    "SelectableDriveHardware",
     "ModeTransitionError",
     "SubscriptionClosed",
     "StaticTransform2D",
@@ -131,11 +137,13 @@ __all__ = [
     "SteeringFeedbackSample",
     "SteeringFeedbackService",
     "Topic",
+    "TopicSensorMonitor",
     "TopicBus",
     "TopicDefinitionError",
     "TopicStats",
     "TopicSubscription",
     "UnavailableEncoderPublisher",
+    "VirtualDriveHardware",
     "make_telemetry_envelope",
     "parse_telemetry_channels",
 ]
