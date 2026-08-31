@@ -17,6 +17,7 @@ from app.schemas.autonomy.messages import (
     OccupancyGrid,
     Odometry2D,
     SafetyState,
+    SimulationState,
     SteeringState,
 )
 from app.schemas.autonomy.mapping_status import (
@@ -54,6 +55,7 @@ __all__ = [
     "SensorName",
     "SensorPublisherStatus",
     "SafetyState",
+    "SimulationState",
     "SteeringState",
     "TelemetryChannel",
     "TelemetryEnvelope",

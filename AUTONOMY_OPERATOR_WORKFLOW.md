@@ -462,6 +462,20 @@ Ackermann kinematic vehicle in a simulated world
         +--> LiDAR ray casts against world geometry
 ```
 
+Implementation status:
+
+- `AckermannSimulationPlant` provides deterministic fixed-step, no-slip planar
+  motion driven by the arbiter's final SI-unit actuator command;
+- `CoherentSimulationService` publishes synchronized ground-truth, steering,
+  rear-encoder, and IMU messages through the native TopicBus contracts;
+- cumulative encoder rounding preserves sub-tick movement across updates;
+- stale final commands stop the simulated vehicle through an independent
+  simulation watchdog;
+- runtime selection, physical-actuator isolation, world collision geometry,
+  and LiDAR ray casting remain intentionally separate follow-up work. The
+  service is not started by application lifespan yet, so it cannot conflict
+  with configured physical or per-device mock publishers.
+
 Required properties:
 
 - deterministic clock or controllable time scale;

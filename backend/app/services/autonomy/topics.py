@@ -7,6 +7,7 @@ from app.schemas.autonomy import (
     OccupancyGrid,
     Odometry2D,
     SafetyState,
+    SimulationState,
     SteeringState,
 )
 from app.services.autonomy.messages import ActuatorCommand
@@ -19,6 +20,7 @@ ENCODER_STATE = Topic("/encoder/state", EncoderState)
 STEERING_STATE = Topic("/steering/state", SteeringState)
 ODOMETRY = Topic("/odom", Odometry2D)
 MOTION_COMMANDED = Topic("/motion/commanded", ActuatorCommand)
+SIMULATION_STATE = Topic("/simulation/state", SimulationState)
 SAFETY_STATE = Topic("/safety/state", SafetyState)
 LOCAL_MAP = Topic("/map", OccupancyGrid)
 
@@ -31,5 +33,6 @@ __all__ = [
     "MOTION_COMMANDED",
     "ODOMETRY",
     "SAFETY_STATE",
+    "SIMULATION_STATE",
     "STEERING_STATE",
 ]

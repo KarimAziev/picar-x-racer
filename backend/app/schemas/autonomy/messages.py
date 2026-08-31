@@ -136,6 +136,21 @@ class Odometry2D(FrozenMessage):
         return frame_id
 
 
+class SimulationState(FrozenMessage):
+    """Ground-truth planar state emitted by the coherent simulator."""
+
+    header: MessageHeader
+    x_m: FiniteFloat
+    y_m: FiniteFloat
+    yaw_rad: FiniteFloat
+    linear_speed_mps: FiniteFloat
+    steering_angle_rad: FiniteFloat
+    yaw_rate_radps: FiniteFloat
+    longitudinal_acceleration_mps2: FiniteFloat
+    lateral_acceleration_mps2: FiniteFloat
+    encoder_ticks: int
+
+
 class SafetyState(FrozenMessage):
     """Current forward-sector safety decision exposed to operators."""
 
@@ -177,5 +192,6 @@ __all__ = [
     "OccupancyGrid",
     "Odometry2D",
     "SafetyState",
+    "SimulationState",
     "SteeringState",
 ]

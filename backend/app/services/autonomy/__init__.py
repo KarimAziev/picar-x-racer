@@ -55,6 +55,12 @@ from app.services.autonomy.sensor_publishers import (
     LocalizationSensorService,
     UnavailableEncoderPublisher,
 )
+from app.services.autonomy.simulation import (
+    AckermannPlantState,
+    AckermannSimulationConfig,
+    AckermannSimulationPlant,
+    CoherentSimulationService,
+)
 from app.services.autonomy.steering_feedback import (
     SteeringAngleCalibration,
     SteeringCalibrationPoint,
@@ -81,10 +87,14 @@ __all__ = [
     "AckermannOdometryConfig",
     "AckermannOdometryEstimator",
     "AckermannOdometryService",
+    "AckermannPlantState",
+    "AckermannSimulationConfig",
+    "AckermannSimulationPlant",
     "ActuatorCommand",
     "ArbitrationResult",
     "DriveDirection",
     "DriveHardware",
+    "CoherentSimulationService",
     "EncoderPublisherService",
     "HardwareController",
     "HardwareMotionCommand",
