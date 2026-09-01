@@ -840,7 +840,13 @@ class CarService:
                 sequence=sequence,
                 mode_generation=service.mode_generation,
                 linear_speed_mps=linear_speed_mps,
-                steering_angle_rad=math.radians(steering_degrees),
+                # Controller payloads use servo hardware coordinates. Motion
+                # estimation uses vehicle coordinates, where positive steering
+                # means left/counter-clockwise. ActuationCalibration applies
+                # the inverse conversion before writing to physical hardware.
+                steering_angle_rad=math.radians(
+                    steering_degrees * (1 if self.config.steering_servo.reverse else -1)
+                ),
                 created_monotonic_ns=now,
                 expires_monotonic_ns=(
                     now + motion_config.command_timeout_ms * 1_000_000

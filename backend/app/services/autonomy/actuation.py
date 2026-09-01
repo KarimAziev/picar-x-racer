@@ -113,6 +113,7 @@ class ActuationCalibration:
     max_abs_steering_angle_rad: float
     max_forward_command: int = 100
     max_reverse_command: int = 100
+    steering_angle_sign: int = 1
 
     def __post_init__(self) -> None:
         for name, value in [
@@ -128,6 +129,8 @@ class ActuationCalibration:
         ]:
             if not 1 <= value <= 100:
                 raise ValueError(f"{name} must be between 1 and 100")
+        if self.steering_angle_sign not in (-1, 1):
+            raise ValueError("steering_angle_sign must be -1 or 1")
 
 
 @dataclass(frozen=True)
@@ -163,7 +166,7 @@ class LinearActuatorTranslator:
             -self.calibration.max_abs_steering_angle_rad,
             self.calibration.max_abs_steering_angle_rad,
         )
-        steering_degrees = math.degrees(steering)
+        steering_degrees = math.degrees(steering) * self.calibration.steering_angle_sign
 
         if command.linear_speed_mps == 0:
             return HardwareMotionCommand(

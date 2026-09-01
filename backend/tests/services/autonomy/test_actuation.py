@@ -123,6 +123,20 @@ class TestLinearActuatorTranslator(ActuationTestCase):
         self.assertEqual(translated.speed, 80)
         self.assertAlmostEqual(translated.steering_angle_deg, 45.0)
 
+    def test_maps_vehicle_steering_sign_to_servo_coordinates(self) -> None:
+        translator = LinearActuatorTranslator(
+            ActuationCalibration(
+                max_forward_speed_mps=1.0,
+                max_reverse_speed_mps=0.5,
+                max_abs_steering_angle_rad=math.pi / 4,
+                steering_angle_sign=-1,
+            )
+        )
+
+        translated = translator.translate(self.command(0.5, math.radians(20)))
+
+        self.assertAlmostEqual(translated.steering_angle_deg, -20.0)
+
     def test_zero_and_sub_resolution_speed_translate_to_stop(self) -> None:
         zero = self.translator.translate(self.command(0.0, 0.1))
         sub_resolution = self.translator.translate(self.command(0.001))

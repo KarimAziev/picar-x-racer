@@ -16,8 +16,10 @@ from app.services.autonomy import (
     MotionSource,
     RobotMode,
     SelectableDriveHardware,
+    TopicBus,
     VirtualDriveHardware,
 )
+from app.services.autonomy.topics import MOTION_COMMANDED
 from app.services.control.car_service import CarService
 from app.types.car import PicarState
 
@@ -86,12 +88,17 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
                     max_abs_steering_angle_rad=steering_radians,
                     max_forward_command=100,
                     max_reverse_command=100,
+                    steering_angle_sign=(
+                        1 if self.config.steering_servo.reverse else -1
+                    ),
                 )
             ),
         )
+        self.topic_bus = TopicBus()
         self.motion = MotionControlService(
             MotionArbiter(limits),
             controller,
+            topic_bus=self.topic_bus,
             drive_hardware=self.selectable_hardware,
         )
         self.car = CarService.__new__(CarService)
@@ -190,6 +197,10 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.car.current_state["speed"], 40)
         self.assertEqual(self.car.current_state["direction"], 1)
         self.assertAlmostEqual(self.car.current_state["servoAngle"], -15)
+        commanded = self.topic_bus.latest(MOTION_COMMANDED)
+        self.assertIsNotNone(commanded)
+        assert commanded is not None
+        self.assertAlmostEqual(commanded.steering_angle_rad, math.radians(15))
 
         await self.car.handle_stop()
 

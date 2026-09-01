@@ -296,6 +296,11 @@ def get_motion_control_service(
         max_abs_steering_angle_rad=max_steering_radians,
         max_forward_command=max_motor_command,
         max_reverse_command=max_motor_command,
+        # Vehicle coordinates use positive steering for a left turn. The
+        # established controller/servo convention uses a negative logical
+        # angle for left and applies ``reverse`` before sending the adapter
+        # angle, so this sign maps vehicle angles back to hardware coordinates.
+        steering_angle_sign=1 if config.steering_servo.reverse else -1,
     )
     return MotionControlService(
         arbiter=MotionArbiter(limits),

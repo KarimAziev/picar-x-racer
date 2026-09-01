@@ -524,6 +524,12 @@ front-wheel angle but does not rotate a stationary Ackermann vehicle; heading
 changes only while non-zero distance is traveled. Releasing throttle publishes
 stationary encoder/odometry frames, so the marker remains fixed.
 
+Motion estimation uses the conventional vehicle coordinate sign: positive
+steering and positive yaw turn left/counter-clockwise. The controller's legacy
+servo coordinate and its `reverse` setting are converted at the actuation
+boundary, so changing coordinate systems does not swap or otherwise alter the
+angle written to physical steering hardware.
+
 ## Safety Invariants
 
 - No UI component, mission, mapper, planner, or sensor service writes directly
