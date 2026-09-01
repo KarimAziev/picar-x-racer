@@ -17,7 +17,9 @@ const route = useRoute();
 
 const isHome = computed(() => route.name === "home");
 
-const buttonIcon = computed(() => (isHome.value ? "pi pi-map" : "pi pi-home"));
+const buttonIcon = computed(() =>
+  isHome.value ? "pi pi-map-marker" : "pi pi-home",
+);
 
 const buttonLabel = computed(() =>
   isHome.value ? "Go to autonomy workspace" : "Go to home",
