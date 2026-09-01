@@ -1,4 +1,4 @@
-import { APIClient } from "@/api/apiCient";
+import { APIClient } from "@/api/apiClient";
 import { makeUrl } from "@/util/url";
 import { isString } from "@/util/guards";
 
