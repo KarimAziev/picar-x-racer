@@ -24,7 +24,7 @@
         :key="sensor.sensor"
         class="rounded-lg border border-surface-200 p-3 dark:border-surface-700"
       >
-        <div class="flex items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <span class="font-semibold uppercase">{{ sensor.sensor }}</span>
           <Tag
             :severity="sensorSeverity(sensor)"
