@@ -117,7 +117,9 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
         )
         smbus_manager.get_bus.assert_not_called()
 
-    async def test_coherent_simulation_replaces_imu_and_encoder_drivers(self) -> None:
+    async def test_coherent_simulation_replaces_lidar_imu_and_encoder_drivers(
+        self,
+    ) -> None:
         root_config = Path(__file__).parents[4] / "config.json"
         data = json.loads(root_config.read_text())
         data["motion_control"] = {
@@ -136,27 +138,42 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
             "max_steering_age_ms": 250,
         }
         data["coherent_simulation"]["enabled"] = True
+        data["localization_sensors"]["lidar"] = {
+            "enabled": True,
+            "driver": "mock",
+            "points_per_scan": 36,
+            "angular_resolution_deg": 10,
+            "min_measurements_per_scan": 8,
+        }
         config = HardwareConfig.model_validate(data)
         bus = TopicBus()
         smbus_manager = MagicMock()
-        sensors = build_localization_sensor_service(config, bus, smbus_manager)
-        simulation = build_coherent_simulation_supervisor(config, bus)
-        statuses = {item.sensor: item for item in sensors.status.sensors}
+        with patch("app.api.robot_deps.MockLidar2D") as mock_lidar:
+            sensors = build_localization_sensor_service(config, bus, smbus_manager)
+            simulation = build_coherent_simulation_supervisor(config, bus)
+            statuses = {item.sensor: item for item in sensors.status.sensors}
 
-        await sensors.start()
-        await simulation.start()
-        try:
-            for _attempt in range(20):
-                statuses = {item.sensor: item for item in sensors.status.sensors}
-                if statuses["imu"].published_messages > 0:
-                    break
-                await asyncio.sleep(0.005)
-        finally:
-            await simulation.stop()
-            await sensors.stop()
+            await sensors.start()
+            await simulation.start()
+            try:
+                for _attempt in range(20):
+                    statuses = {item.sensor: item for item in sensors.status.sensors}
+                    if all(
+                        statuses[name].published_messages > 0
+                        for name in ("lidar", "imu", "encoder")
+                    ):
+                        break
+                    await asyncio.sleep(0.005)
+            finally:
+                await simulation.stop()
+                await sensors.stop()
 
+            mock_lidar.assert_not_called()
+
+        self.assertTrue(statuses["lidar"].enabled)
         self.assertTrue(statuses["imu"].enabled)
         self.assertTrue(statuses["encoder"].enabled)
+        self.assertGreater(statuses["lidar"].published_messages, 0)
         self.assertGreater(statuses["imu"].published_messages, 0)
         self.assertGreater(statuses["encoder"].published_messages, 0)
         smbus_manager.get_bus.assert_not_called()

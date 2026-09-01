@@ -237,10 +237,33 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             self.assertIsNot(odometry._estimator, initial_estimator)
             local_mapping.reconfigure_from.assert_awaited_once()
             simulated_status = {item.sensor: item for item in sensors.status.sensors}
+            self.assertGreater(simulated_status["lidar"].published_messages, 0)
             self.assertGreater(simulated_status["encoder"].published_messages, 0)
+            first_simulation_service = simulation.service
 
+            changed_data = simulated_config.model_dump(mode="json")
+            changed_data["coherent_simulation"]["world_scenario"] = "corridor"
+            changed_simulated_config = HardwareConfig.model_validate(changed_data)
             await _reload_autonomy_runtime(
                 simulated_config,
+                changed_simulated_config,
+                sensors,
+                bus,
+                smbus_manager,
+                None,
+                odometry,
+                motion,
+                None,
+                local_mapping,
+                simulation,
+            )
+
+            self.assertIsNot(simulation.service, first_simulation_service)
+            self.assertEqual(simulation.service.world.scenario, "corridor")  # type: ignore[union-attr]
+            self.assertEqual(local_mapping.reconfigure_from.await_count, 2)
+
+            await _reload_autonomy_runtime(
+                changed_simulated_config,
                 physical_config,
                 sensors,
                 bus,
@@ -255,7 +278,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
 
             self.assertFalse(selector.simulation_enabled)
             self.assertFalse(simulation.enabled)
-            self.assertEqual(local_mapping.reconfigure_from.await_count, 2)
+            self.assertEqual(local_mapping.reconfigure_from.await_count, 3)
             physical_status = {item.sensor: item for item in sensors.status.sensors}
             self.assertTrue(physical_status["encoder"].running)
         finally:

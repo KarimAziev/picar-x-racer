@@ -6,7 +6,8 @@ import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import { retrieveError } from "@/util/error";
 
 export type SensorName = "lidar" | "imu" | "encoder";
-export type TelemetryChannel = SensorName | "odometry" | "safety";
+export type TelemetryChannel =
+  SensorName | "odometry" | "safety" | "simulation";
 
 export interface SensorPublisherStatus {
   sensor: SensorName;
@@ -95,6 +96,26 @@ export interface SimulationState {
   longitudinal_acceleration_mps2: number;
   lateral_acceleration_mps2: number;
   encoder_ticks: number;
+  collision: boolean;
+}
+
+export interface SimulationPose2D {
+  x_m: number;
+  y_m: number;
+  yaw_rad: number;
+}
+
+export interface SimulationWorldSegment {
+  start_x_m: number;
+  start_y_m: number;
+  end_x_m: number;
+  end_y_m: number;
+}
+
+export interface SimulationWorldGeometry {
+  scenario: string;
+  frame_id: string;
+  segments: SimulationWorldSegment[];
 }
 
 export interface SimulationRuntimeStatus {
@@ -102,6 +123,9 @@ export interface SimulationRuntimeStatus {
   running: boolean;
   physical_drive_isolated: boolean;
   published_updates: number;
+  lidar_published_updates: number;
+  world: SimulationWorldGeometry | null;
+  odom_origin_in_world: SimulationPose2D | null;
   latest_state: SimulationState | null;
   error: string | null;
 }
@@ -162,7 +186,8 @@ export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
   | BaseTelemetryEnvelope<"encoder", EncoderTelemetry>
   | BaseTelemetryEnvelope<"odometry", OdometryTelemetry>
-  | BaseTelemetryEnvelope<"safety", SafetyTelemetry>;
+  | BaseTelemetryEnvelope<"safety", SafetyTelemetry>
+  | BaseTelemetryEnvelope<"simulation", SimulationState>;
 
 export interface State {
   loading: boolean;

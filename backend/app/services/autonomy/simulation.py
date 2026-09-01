@@ -4,7 +4,7 @@ import asyncio
 import math
 import time
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 from app.core.logger import Logger
 from app.schemas.autonomy import (
@@ -16,10 +16,15 @@ from app.schemas.autonomy import (
     SteeringState,
 )
 from app.services.autonomy.messages import ActuatorCommand, MotionSource
+from app.services.autonomy.simulation_world import (
+    SimulationWorld,
+    WorldLidarRaycaster,
+)
 from app.services.autonomy.topic_bus import TopicBus
 from app.services.autonomy.topics import (
     ENCODER_STATE,
     IMU_DATA,
+    LIDAR_SCAN,
     MOTION_COMMANDED,
     SIMULATION_STATE,
     STEERING_STATE,
@@ -77,13 +82,20 @@ class AckermannPlantState:
     longitudinal_acceleration_mps2: float
     lateral_acceleration_mps2: float
     encoder_ticks: int
+    collision: bool
 
 
 class AckermannSimulationPlant:
     """Ideal no-slip bicycle-model plant driven in SI units."""
 
-    def __init__(self, config: AckermannSimulationConfig) -> None:
+    def __init__(
+        self,
+        config: AckermannSimulationConfig,
+        *,
+        collision_checker: Optional[Callable[[float, float], bool]] = None,
+    ) -> None:
         self.config = config
+        self._collision_checker = collision_checker
         self.reset()
 
     @property
@@ -98,6 +110,7 @@ class AckermannSimulationPlant:
             longitudinal_acceleration_mps2=self._longitudinal_acceleration_mps2,
             lateral_acceleration_mps2=self._lateral_acceleration_mps2,
             encoder_ticks=int(round(self._encoder_ticks)),
+            collision=self._collision,
         )
 
     def reset(
@@ -120,6 +133,7 @@ class AckermannSimulationPlant:
         self._longitudinal_acceleration_mps2 = 0.0
         self._lateral_acceleration_mps2 = 0.0
         self._encoder_ticks = float(encoder_ticks)
+        self._collision = False
         return self.state
 
     def advance(
@@ -144,14 +158,28 @@ class AckermannSimulationPlant:
         delta_yaw = yaw_rate * dt_seconds
         midpoint_yaw = self._yaw_rad + delta_yaw / 2
 
-        self._x_m += distance_m * math.cos(midpoint_yaw)
-        self._y_m += distance_m * math.sin(midpoint_yaw)
-        self._yaw_rad = self._normalize_angle(self._yaw_rad + delta_yaw)
+        candidate_x = self._x_m + distance_m * math.cos(midpoint_yaw)
+        candidate_y = self._y_m + distance_m * math.sin(midpoint_yaw)
+        collision = bool(
+            distance_m
+            and self._collision_checker is not None
+            and self._collision_checker(candidate_x, candidate_y)
+        )
+        if collision:
+            speed = 0.0
+            yaw_rate = 0.0
+            distance_m = 0.0
+            delta_yaw = 0.0
+        else:
+            self._x_m = candidate_x
+            self._y_m = candidate_y
+            self._yaw_rad = self._normalize_angle(self._yaw_rad + delta_yaw)
         self._linear_speed_mps = speed
         self._steering_angle_rad = steering
         self._yaw_rate_radps = yaw_rate
         self._longitudinal_acceleration_mps2 = (speed - previous_speed) / dt_seconds
         self._lateral_acceleration_mps2 = speed * yaw_rate
+        self._collision = collision
         wheel_revolutions = distance_m / (2 * math.pi * self.config.wheel_radius_m)
         self._encoder_ticks += (
             wheel_revolutions
@@ -177,11 +205,15 @@ class CoherentSimulationService:
         initial_x_m: float = 0.0,
         initial_y_m: float = 0.0,
         initial_yaw_rad: float = 0.0,
+        world: Optional[SimulationWorld] = None,
+        lidar_raycaster: Optional[WorldLidarRaycaster] = None,
     ) -> None:
         self._bus = bus
         self._plant = plant
         self._monotonic_ns = monotonic_ns
         self._initial_pose = (initial_x_m, initial_y_m, initial_yaw_rad)
+        self._world = world
+        self._lidar_raycaster = lidar_raycaster
         plant.reset(
             x_m=initial_x_m,
             y_m=initial_y_m,
@@ -191,9 +223,12 @@ class CoherentSimulationService:
         self._sequence = 0
         self._last_timestamp_ns: Optional[int] = None
         self._last_encoder_ticks = plant.state.encoder_ticks
+        self._last_lidar_timestamp_ns: Optional[int] = None
+        self._lidar_sequence = 0
         self.latest: Optional[SimulationState] = None
         self.last_error: Optional[Exception] = None
         self.published_updates = 0
+        self.lidar_published_updates = 0
 
     @property
     def config(self) -> AckermannSimulationConfig:
@@ -202,6 +237,14 @@ class CoherentSimulationService:
     @property
     def running(self) -> bool:
         return self._task is not None and not self._task.done()
+
+    @property
+    def world(self) -> Optional[SimulationWorld]:
+        return self._world
+
+    @property
+    def initial_pose(self) -> Tuple[float, float, float]:
+        return self._initial_pose
 
     def start(self) -> None:
         if self.running:
@@ -238,9 +281,12 @@ class CoherentSimulationService:
         self._sequence = 0
         self._last_timestamp_ns = None
         self._last_encoder_ticks = state.encoder_ticks
+        self._last_lidar_timestamp_ns = None
+        self._lidar_sequence = 0
         self.latest = None
         self.last_error = None
         self.published_updates = 0
+        self.lidar_published_updates = 0
         return self._simulation_message(
             state,
             timestamp_ns=self._monotonic_ns(),
@@ -306,12 +352,39 @@ class CoherentSimulationService:
         self._bus.publish(STEERING_STATE, steering)
         self._bus.publish(ENCODER_STATE, encoder)
         self._bus.publish(IMU_DATA, imu)
+        self._publish_lidar_if_due(state, timestamp)
         self._bus.publish(SIMULATION_STATE, simulation)
         self._last_encoder_ticks = state.encoder_ticks
         self.latest = simulation
         self.published_updates = self._sequence
         self.last_error = None
         return simulation
+
+    def _publish_lidar_if_due(
+        self,
+        state: AckermannPlantState,
+        timestamp_ns: int,
+    ) -> None:
+        raycaster = self._lidar_raycaster
+        if raycaster is None:
+            return
+        if (
+            self._last_lidar_timestamp_ns is not None
+            and timestamp_ns - self._last_lidar_timestamp_ns
+            < raycaster.config.scan_period_ns
+        ):
+            return
+        self._lidar_sequence += 1
+        scan = raycaster.scan(
+            base_x_m=state.x_m,
+            base_y_m=state.y_m,
+            base_yaw_rad=state.yaw_rad,
+            timestamp_ns=timestamp_ns,
+            sequence=self._lidar_sequence,
+        )
+        self._bus.publish(LIDAR_SCAN, scan)
+        self._last_lidar_timestamp_ns = timestamp_ns
+        self.lidar_published_updates = self._lidar_sequence
 
     def _fresh_command(self, timestamp_ns: int) -> ActuatorCommand:
         command = self._bus.latest(MOTION_COMMANDED)
@@ -351,6 +424,7 @@ class CoherentSimulationService:
             longitudinal_acceleration_mps2=(state.longitudinal_acceleration_mps2),
             lateral_acceleration_mps2=state.lateral_acceleration_mps2,
             encoder_ticks=state.encoder_ticks,
+            collision=state.collision,
         )
 
     async def _run(self) -> None:

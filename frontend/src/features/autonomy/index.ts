@@ -1,10 +1,13 @@
 export { useAutonomyStore } from "@/features/autonomy/store";
 export {
   gridToCanvas,
+  worldPointToOdom,
   worldToGrid,
+  worldToGridUnbounded,
   worldYawToCanvas,
+  worldYawToOdom,
 } from "@/features/autonomy/mapGeometry";
-export type { Point2D } from "@/features/autonomy/mapGeometry";
+export type { Point2D, Pose2D } from "@/features/autonomy/mapGeometry";
 export {
   autonomyOperatorViewOptions,
   autonomyOperatorViews,
@@ -23,7 +26,10 @@ export type {
   SensorName,
   SensorPublisherStatus,
   SimulationRuntimeStatus,
+  SimulationPose2D,
   SimulationState,
+  SimulationWorldGeometry,
+  SimulationWorldSegment,
   TelemetryChannel,
   TelemetryEnvelope,
 } from "@/features/autonomy/store";

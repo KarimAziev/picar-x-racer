@@ -206,7 +206,7 @@ const workflowDescription = computed(() =>
 );
 const workflowCaveat = computed(() =>
   simulationEnabled.value
-    ? "The coherent plant currently supplies steering, rear encoders, and IMU. LiDAR remains a separately configured source; mock LiDAR is useful for pipeline testing but is not yet a world-aware range simulation."
+    ? "The coherent plant supplies steering, rear encoders, IMU, and world-aware LiDAR. The known-world outline and simulated truth are diagnostic references; the occupancy grid and blue pose still come through the real mapping and odometry pipeline."
     : "Independent mock encoders can report motion while the physical robot is stationary. Treat the resulting map as a pipeline demonstration, not a physically coherent simulation.",
 );
 

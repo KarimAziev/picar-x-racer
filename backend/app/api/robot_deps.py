@@ -44,6 +44,7 @@ from app.services.autonomy import (
     HardwareController,
     LinearActuatorTranslator,
     LaserScanConverter,
+    RaycastLidarConfig,
     LidarSafetyEvaluator,
     LidarSafetyService,
     LidarSafetyZone,
@@ -65,9 +66,11 @@ from app.services.autonomy import (
     SteeringCalibrationPoint,
     SteeringFeedbackService,
     VirtualDriveHardware,
+    WorldLidarRaycaster,
+    build_simulation_world,
 )
 from app.services.autonomy.sensor_publishers import SensorPublisher
-from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA
+from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN
 from app.services.control.calibration_service import CalibrationService
 from app.services.control.car_service import CarService
 from app.services.control.settings_service import SettingsService
@@ -369,37 +372,46 @@ def build_localization_sensor_service(
     if sensors.lidar.enabled:
         enabled_sensors.append("lidar")
         lidar_sensor_config = sensors.lidar
-        range_min_m = lidar_sensor_config.range_min_m
-        range_max_m = lidar_sensor_config.range_max_m
-        if range_min_m is None or range_max_m is None:
-            raise ValueError("enabled lidar requires calibrated range limits")
-        lidar_factory: Callable[[], Lidar2DABC]
-        if isinstance(lidar_sensor_config, MockLidarSensorConfig):
-            lidar_factory = lambda: MockLidar2D(
-                points_per_scan=lidar_sensor_config.points_per_scan,
-                distance_m=lidar_sensor_config.distance_m,
-                quality=lidar_sensor_config.quality,
-                scan_frequency_hz=lidar_sensor_config.scan_frequency_hz,
+        if coherent_simulation:
+            publishers["lidar"] = TopicSensorMonitor(
+                "lidar",
+                topic_bus,
+                LIDAR_SCAN,
             )
         else:
-            lidar_config = RPLidarC1Config(
-                port=lidar_sensor_config.port,
-                baudrate=lidar_sensor_config.baudrate,
-                timeout=lidar_sensor_config.timeout_s,
-            )
-            lidar_factory = lambda: RPLidarC1(lidar_config)
+            range_min_m = lidar_sensor_config.range_min_m
+            range_max_m = lidar_sensor_config.range_max_m
+            if range_min_m is None or range_max_m is None:
+                raise ValueError("enabled lidar requires calibrated range limits")
+            lidar_factory: Callable[[], Lidar2DABC]
+            if isinstance(lidar_sensor_config, MockLidarSensorConfig):
+                lidar_factory = lambda: MockLidar2D(
+                    points_per_scan=lidar_sensor_config.points_per_scan,
+                    distance_m=lidar_sensor_config.distance_m,
+                    quality=lidar_sensor_config.quality,
+                    scan_frequency_hz=lidar_sensor_config.scan_frequency_hz,
+                )
+            else:
+                lidar_config = RPLidarC1Config(
+                    port=lidar_sensor_config.port,
+                    baudrate=lidar_sensor_config.baudrate,
+                    timeout=lidar_sensor_config.timeout_s,
+                )
+                lidar_factory = lambda: RPLidarC1(lidar_config)
 
-        publishers["lidar"] = LidarPublisherService(
-            topic_bus,
-            lidar_factory,
-            LaserScanConverter(
-                frame_id=lidar_sensor_config.frame_id,
-                range_min_m=range_min_m,
-                range_max_m=range_max_m,
-                angular_resolution_deg=lidar_sensor_config.angular_resolution_deg,
-            ),
-            min_measurements_per_scan=(lidar_sensor_config.min_measurements_per_scan),
-        )
+            publishers["lidar"] = LidarPublisherService(
+                topic_bus,
+                lidar_factory,
+                LaserScanConverter(
+                    frame_id=lidar_sensor_config.frame_id,
+                    range_min_m=range_min_m,
+                    range_max_m=range_max_m,
+                    angular_resolution_deg=(lidar_sensor_config.angular_resolution_deg),
+                ),
+                min_measurements_per_scan=(
+                    lidar_sensor_config.min_measurements_per_scan
+                ),
+            )
 
     if coherent_simulation:
         enabled_sensors.extend(("imu", "encoder"))
@@ -547,6 +559,36 @@ def build_coherent_simulation_supervisor(
         or odometry.encoder_ticks_per_revolution is None
     ):
         raise ValueError("coherent simulation requires complete Ackermann geometry")
+    world = build_simulation_world(
+        simulation.world_scenario,
+        width_m=simulation.world_width_m,
+        height_m=simulation.world_height_m,
+    )
+    if world.collides_circle(
+        simulation.initial_x_m,
+        simulation.initial_y_m,
+        simulation.vehicle_radius_m,
+    ):
+        raise ValueError("coherent simulation initial pose collides with the world")
+    lidar = config.localization_sensors.lidar
+    lidar_raycaster = None
+    if lidar.enabled:
+        if lidar.range_min_m is None or lidar.range_max_m is None:
+            raise ValueError("coherent simulation requires calibrated LiDAR ranges")
+        lidar_raycaster = WorldLidarRaycaster(
+            world,
+            RaycastLidarConfig(
+                frame_id=lidar.frame_id,
+                sensor_x_m=lidar.transform.x_m,
+                sensor_y_m=lidar.transform.y_m,
+                sensor_yaw_rad=lidar.transform.yaw_rad,
+                range_min_m=lidar.range_min_m,
+                range_max_m=lidar.range_max_m,
+                angular_resolution_deg=lidar.angular_resolution_deg,
+                scan_frequency_hz=simulation.lidar_scan_frequency_hz,
+                quality=simulation.lidar_quality,
+            ),
+        )
     service = CoherentSimulationService(
         topic_bus,
         AckermannSimulationPlant(
@@ -557,11 +599,18 @@ def build_coherent_simulation_supervisor(
                 gear_ratio=odometry.gear_ratio,
                 update_frequency_hz=simulation.update_frequency_hz,
                 command_timeout_seconds=simulation.command_timeout_ms / 1000,
-            )
+            ),
+            collision_checker=lambda x_m, y_m: world.collides_circle(
+                x_m,
+                y_m,
+                simulation.vehicle_radius_m,
+            ),
         ),
         initial_x_m=simulation.initial_x_m,
         initial_y_m=simulation.initial_y_m,
         initial_yaw_rad=simulation.initial_yaw_rad,
+        world=world,
+        lidar_raycaster=lidar_raycaster,
     )
     return CoherentSimulationSupervisor(service)
 

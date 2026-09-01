@@ -50,6 +50,11 @@ async def _reload_autonomy_runtime(
     simulation_changed = (
         previous.coherent_simulation != current.coherent_simulation
         or previous.ackermann_odometry != current.ackermann_odometry
+        or (
+            (previous_simulation or current_simulation)
+            and previous.localization_sensors.lidar
+            != current.localization_sensors.lidar
+        )
     )
     encoder_changed = (
         previous.localization_sensors.encoder != current.localization_sensors.encoder
@@ -97,6 +102,7 @@ async def _reload_autonomy_runtime(
             previous.ackermann_odometry != current.ackermann_odometry
             or encoder_changed
             or previous_simulation != current_simulation
+            or simulation_changed
         )
         and current.ackermann_odometry.enabled
         and odometry_service is not None
@@ -126,6 +132,7 @@ async def _reload_autonomy_runtime(
             or lidar_geometry_changed
             or previous_steering != current_steering
             or previous_simulation != current_simulation
+            or simulation_changed
         )
         and previous.local_mapping.enabled
         and current.local_mapping.enabled

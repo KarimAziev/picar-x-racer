@@ -7,7 +7,10 @@ from app.schemas.autonomy import (
     RelativeArcRequest,
     RelativeDistanceRequest,
     RelativeMotionStatus,
+    SimulationPose2D,
     SimulationRuntimeStatus,
+    SimulationWorldGeometry,
+    SimulationWorldSegment,
 )
 from app.services.autonomy import (
     AckermannOdometryService,
@@ -47,6 +50,8 @@ def _simulation_status(
 ) -> SimulationRuntimeStatus:
     service = simulation.service
     error = service.last_error if service is not None else None
+    world = service.world if service is not None else None
+    initial_pose = service.initial_pose if service is not None else None
     return SimulationRuntimeStatus(
         enabled=simulation.enabled,
         running=simulation.running,
@@ -54,6 +59,34 @@ def _simulation_status(
             motion_control is not None and motion_control.simulation_enabled
         ),
         published_updates=service.published_updates if service is not None else 0,
+        lidar_published_updates=(
+            service.lidar_published_updates if service is not None else 0
+        ),
+        world=(
+            SimulationWorldGeometry(
+                scenario=world.scenario,
+                segments=tuple(
+                    SimulationWorldSegment(
+                        start_x_m=segment.start_x_m,
+                        start_y_m=segment.start_y_m,
+                        end_x_m=segment.end_x_m,
+                        end_y_m=segment.end_y_m,
+                    )
+                    for segment in world.segments
+                ),
+            )
+            if world is not None
+            else None
+        ),
+        odom_origin_in_world=(
+            SimulationPose2D(
+                x_m=initial_pose[0],
+                y_m=initial_pose[1],
+                yaw_rad=initial_pose[2],
+            )
+            if initial_pose is not None
+            else None
+        ),
         latest_state=service.latest if service is not None else None,
         error=str(error) if error is not None else None,
     )

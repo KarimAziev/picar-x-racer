@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   gridToCanvas,
+  worldPointToOdom,
   worldToGrid,
   worldYawToCanvas,
+  worldYawToOdom,
 } from "@/features/autonomy/mapGeometry";
 import type { OccupancyGrid } from "@/features/autonomy";
 
@@ -42,5 +44,16 @@ describe("occupancy map geometry", () => {
 
   it("rejects positions outside the bounded grid", () => {
     expect(worldToGrid(grid(), 6, 0)).toBeNull();
+  });
+
+  it("expresses simulator world geometry relative to the configured odom origin", () => {
+    const odomPoint = worldPointToOdom(
+      { x: 2, y: 4 },
+      { x: 2, y: 3, yaw: Math.PI / 2 },
+    );
+
+    expect(odomPoint.x).toBeCloseTo(1);
+    expect(odomPoint.y).toBeCloseTo(0);
+    expect(worldYawToOdom(Math.PI, Math.PI / 2)).toBeCloseTo(Math.PI / 2);
   });
 });

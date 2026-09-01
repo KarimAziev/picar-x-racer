@@ -101,6 +101,28 @@ class TestCoherentSimulationConfig(unittest.TestCase):
                 command_timeout_ms=100,
             )
 
+    def test_world_defaults_keep_old_configuration_compatible(self) -> None:
+        config = HardwareConfig.model_validate(self.simulation_ready_data())
+
+        self.assertEqual(config.coherent_simulation.world_scenario, "single_obstacle")
+        self.assertEqual(config.coherent_simulation.world_width_m, 6)
+        self.assertEqual(config.coherent_simulation.lidar_scan_frequency_hz, 10)
+
+    def test_initial_pose_and_vehicle_must_fit_inside_world(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "inside the world"):
+            CoherentSimulationConfig(
+                initial_x_m=2.95,
+                world_width_m=6,
+                vehicle_radius_m=0.12,
+            )
+
+    def test_lidar_rate_must_not_exceed_plant_rate(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "must not exceed"):
+            CoherentSimulationConfig(
+                update_frequency_hz=20,
+                lidar_scan_frequency_hz=30,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

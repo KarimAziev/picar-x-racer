@@ -17,8 +17,11 @@ from app.schemas.autonomy.messages import (
     OccupancyGrid,
     Odometry2D,
     SafetyState,
+    SimulationPose2D,
     SimulationState,
     SimulationRuntimeStatus,
+    SimulationWorldGeometry,
+    SimulationWorldSegment,
     SteeringState,
 )
 from app.schemas.autonomy.mapping_status import (
@@ -56,8 +59,11 @@ __all__ = [
     "SensorName",
     "SensorPublisherStatus",
     "SafetyState",
+    "SimulationPose2D",
     "SimulationState",
     "SimulationRuntimeStatus",
+    "SimulationWorldGeometry",
+    "SimulationWorldSegment",
     "SteeringState",
     "TelemetryChannel",
     "TelemetryEnvelope",

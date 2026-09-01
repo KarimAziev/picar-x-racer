@@ -4,7 +4,7 @@ import math
 import unittest
 from typing import Any, Dict, List
 
-from app.schemas.autonomy import ImuData, LaserScan, MessageHeader
+from app.schemas.autonomy import ImuData, LaserScan, MessageHeader, SimulationState
 from app.services.autonomy import (
     SensorTelemetryStreamer,
     TopicBus,
@@ -48,6 +48,26 @@ class TestTelemetryContract(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "unknown telemetry channel"):
             parse_telemetry_channels("camera")
+
+    def test_simulation_truth_uses_the_existing_telemetry_contract(self) -> None:
+        state = SimulationState(
+            header=header(),
+            x_m=1,
+            y_m=2,
+            yaw_rad=0.3,
+            linear_speed_mps=0.2,
+            steering_angle_rad=-0.1,
+            yaw_rate_radps=0.05,
+            longitudinal_acceleration_mps2=0,
+            lateral_acceleration_mps2=0.01,
+            encoder_ticks=42,
+            collision=False,
+        )
+
+        envelope = make_telemetry_envelope("simulation", state)
+
+        self.assertEqual(envelope.topic, "/simulation/state")
+        self.assertEqual(envelope.payload, state)
 
 
 class TestTelemetryStreamer(unittest.IsolatedAsyncioTestCase):

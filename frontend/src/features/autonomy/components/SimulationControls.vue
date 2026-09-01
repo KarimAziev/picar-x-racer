@@ -7,7 +7,7 @@
       <div>
         <h2 class="text-sm font-semibold">Simulation environment</h2>
         <p class="text-[0.68rem] text-surface-500 dark:text-surface-400">
-          One Ackermann plant for motion, steering, encoders, and IMU
+          One Ackermann plant for motion, steering, encoders, IMU, and LiDAR
         </p>
       </div>
       <Tag :severity="statusSeverity" :value="statusLabel" />
@@ -72,9 +72,26 @@
           <dt class="text-surface-500">Plant frames</dt>
           <dd>{{ status.published_updates.toLocaleString() }}</dd>
         </div>
+        <div>
+          <dt class="text-surface-500">LiDAR frames</dt>
+          <dd>{{ status.lidar_published_updates.toLocaleString() }}</dd>
+        </div>
+        <div>
+          <dt class="text-surface-500">World</dt>
+          <dd>{{ formatScenario(status.world?.scenario) }}</dd>
+        </div>
       </dl>
       <div v-else class="mt-3 text-xs text-surface-500">
         Waiting for the first synchronized plant frame.
+      </div>
+
+      <div
+        v-if="status.latest_state?.collision"
+        class="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+        role="status"
+      >
+        Collision envelope reached an obstacle. The plant rejected forward
+        translation; steer away or reverse.
       </div>
 
       <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -99,8 +116,8 @@
       <p>
         Enable <span class="font-semibold">Coherent simulation</span> to make
         keyboard commands drive one synchronized steering, encoder, IMU, and
-        odometry source. Physical output remains selected while this environment
-        is disabled.
+        world-aware LiDAR source. Physical output remains selected while this
+        environment is disabled.
       </p>
       <p
         v-if="simulationPrerequisiteError"
@@ -211,6 +228,8 @@ const updatedLabel = computed(() => {
 
 const format = (value: number) => value.toFixed(2);
 const degrees = (radians: number) => ((radians * 180) / Math.PI).toFixed(1);
+const formatScenario = (scenario?: string) =>
+  scenario ? scenario.replaceAll("_", " ") : "No LiDAR world";
 const enableSynchronizedDrive = async () => {
   if (simulationPrerequisiteError.value) return;
   simulationToggleLoading.value = true;

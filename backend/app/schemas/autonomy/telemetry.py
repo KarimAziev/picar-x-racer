@@ -9,12 +9,20 @@ from app.schemas.autonomy.messages import (
     MessageHeader,
     Odometry2D,
     SafetyState,
+    SimulationState,
 )
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Annotated
 
 
-TelemetryChannel = Literal["lidar", "imu", "encoder", "odometry", "safety"]
+TelemetryChannel = Literal[
+    "lidar",
+    "imu",
+    "encoder",
+    "odometry",
+    "safety",
+    "simulation",
+]
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 PositiveFiniteFloat = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 
@@ -40,6 +48,7 @@ TelemetryPayload = Union[
     EncoderState,
     Odometry2D,
     SafetyState,
+    SimulationState,
 ]
 
 

@@ -20,6 +20,7 @@ from app.schemas.autonomy import (
     LaserScan,
     Odometry2D,
     SafetyState,
+    SimulationState,
 )
 from app.schemas.autonomy.telemetry import (
     LaserScanTelemetry,
@@ -34,6 +35,7 @@ from app.services.autonomy.topics import (
     LIDAR_SCAN,
     ODOMETRY,
     SAFETY_STATE,
+    SIMULATION_STATE,
 )
 
 
@@ -45,6 +47,7 @@ TELEMETRY_TOPICS: Mapping[TelemetryChannel, Topic[Any]] = {
     "encoder": ENCODER_STATE,
     "odometry": ODOMETRY,
     "safety": SAFETY_STATE,
+    "simulation": SIMULATION_STATE,
 }
 DEFAULT_TELEMETRY_CHANNELS: Tuple[TelemetryChannel, ...] = tuple(
     TELEMETRY_TOPICS.keys()
@@ -98,6 +101,7 @@ def make_telemetry_envelope(
             "encoder": EncoderState,
             "odometry": Odometry2D,
             "safety": SafetyState,
+            "simulation": SimulationState,
         }
         expected_type = expected_types[channel]
         if not isinstance(message, expected_type):

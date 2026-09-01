@@ -149,6 +149,40 @@ class SimulationState(FrozenMessage):
     longitudinal_acceleration_mps2: FiniteFloat
     lateral_acceleration_mps2: FiniteFloat
     encoder_ticks: int
+    collision: bool = False
+
+
+class SimulationPose2D(FrozenMessage):
+    """One pose expressed in the simulator's world frame."""
+
+    x_m: FiniteFloat
+    y_m: FiniteFloat
+    yaw_rad: FiniteFloat
+
+
+class SimulationWorldSegment(FrozenMessage):
+    """One immutable obstacle edge in the simulator's world frame."""
+
+    start_x_m: FiniteFloat
+    start_y_m: FiniteFloat
+    end_x_m: FiniteFloat
+    end_y_m: FiniteFloat
+
+
+class SimulationWorldGeometry(FrozenMessage):
+    """Known world geometry exposed for simulation diagnostics."""
+
+    scenario: str
+    frame_id: str = "world"
+    segments: Tuple[SimulationWorldSegment, ...]
+
+    @field_validator("frame_id")
+    @classmethod
+    def validate_world_frame_id(cls, value: str) -> str:
+        frame_id = value.strip()
+        if not frame_id or frame_id.startswith("/"):
+            raise ValueError("frame_id must be non-empty and relative")
+        return frame_id
 
 
 class SimulationRuntimeStatus(FrozenMessage):
@@ -158,6 +192,9 @@ class SimulationRuntimeStatus(FrozenMessage):
     running: bool
     physical_drive_isolated: bool
     published_updates: Annotated[int, Field(ge=0)] = 0
+    lidar_published_updates: Annotated[int, Field(ge=0)] = 0
+    world: Optional[SimulationWorldGeometry] = None
+    odom_origin_in_world: Optional[SimulationPose2D] = None
     latest_state: Optional[SimulationState] = None
     error: Optional[str] = None
 
@@ -204,6 +241,9 @@ __all__ = [
     "Odometry2D",
     "SafetyState",
     "SimulationState",
+    "SimulationPose2D",
     "SimulationRuntimeStatus",
+    "SimulationWorldGeometry",
+    "SimulationWorldSegment",
     "SteeringState",
 ]

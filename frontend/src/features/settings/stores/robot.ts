@@ -225,6 +225,12 @@ export interface CoherentSimulationConfig {
   initial_x_m: number;
   initial_y_m: number;
   initial_yaw_rad: number;
+  world_scenario: "empty_room" | "single_obstacle" | "corridor";
+  world_width_m: number;
+  world_height_m: number;
+  vehicle_radius_m: number;
+  lidar_scan_frequency_hz: number;
+  lidar_quality: number;
 }
 
 export type CalibrationData = Partial<ServoCalibrationData> &
@@ -422,6 +428,12 @@ const defaultState: State = {
       initial_x_m: 0,
       initial_y_m: 0,
       initial_yaw_rad: 0,
+      world_scenario: "single_obstacle",
+      world_width_m: 6,
+      world_height_m: 6,
+      vehicle_radius_m: 0.12,
+      lidar_scan_frequency_hz: 10,
+      lidar_quality: 100,
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

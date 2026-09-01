@@ -65,6 +65,13 @@ from app.services.autonomy.simulation import (
     CoherentSimulationService,
     CoherentSimulationSupervisor,
 )
+from app.services.autonomy.simulation_world import (
+    LineSegment2D,
+    RaycastLidarConfig,
+    SimulationWorld,
+    WorldLidarRaycaster,
+    build_simulation_world,
+)
 from app.services.autonomy.steering_feedback import (
     SteeringAngleCalibration,
     SteeringCalibrationPoint,
@@ -113,6 +120,7 @@ __all__ = [
     "LidarSafetyEvaluator",
     "LidarSafetyService",
     "LidarSafetyZone",
+    "LineSegment2D",
     "LocalizationSensorService",
     "LocalMappingService",
     "LocalOccupancyGrid",
@@ -126,6 +134,7 @@ __all__ = [
     "OdometryInputError",
     "RobotMode",
     "RelativeMotionService",
+    "RaycastLidarConfig",
     "SafetyConstraint",
     "SafetySeverity",
     "SelectableDriveHardware",
@@ -136,6 +145,7 @@ __all__ = [
     "SteeringCalibrationPoint",
     "SteeringFeedbackSample",
     "SteeringFeedbackService",
+    "SimulationWorld",
     "Topic",
     "TopicSensorMonitor",
     "TopicBus",
@@ -144,6 +154,8 @@ __all__ = [
     "TopicSubscription",
     "UnavailableEncoderPublisher",
     "VirtualDriveHardware",
+    "WorldLidarRaycaster",
+    "build_simulation_world",
     "make_telemetry_envelope",
     "parse_telemetry_channels",
 ]

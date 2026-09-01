@@ -12,11 +12,15 @@ from app.services.autonomy import (
     CoherentSimulationService,
     CoherentSimulationSupervisor,
     MotionSource,
+    RaycastLidarConfig,
+    WorldLidarRaycaster,
+    build_simulation_world,
     TopicBus,
 )
 from app.services.autonomy.topics import (
     ENCODER_STATE,
     IMU_DATA,
+    LIDAR_SCAN,
     MOTION_COMMANDED,
     ODOMETRY,
     SIMULATION_STATE,
@@ -97,6 +101,23 @@ class AckermannSimulationPlantTests(unittest.TestCase):
         self.assertAlmostEqual(state.yaw_rad, -math.pi)
         self.assertEqual(state.linear_speed_mps, 0)
         self.assertEqual(state.encoder_ticks, 0)
+
+    def test_collision_rejects_translation_but_allows_escape(self) -> None:
+        plant = AckermannSimulationPlant(
+            self.config,
+            collision_checker=lambda x_m, _y_m: x_m >= 0.1,
+        )
+
+        blocked = plant.advance(command(speed_mps=1), dt_seconds=0.1)
+        escaped = plant.advance(command(speed_mps=-1), dt_seconds=0.1)
+
+        self.assertTrue(blocked.collision)
+        self.assertEqual(blocked.x_m, 0)
+        self.assertEqual(blocked.linear_speed_mps, 0)
+        self.assertEqual(blocked.encoder_ticks, 0)
+        self.assertFalse(escaped.collision)
+        self.assertAlmostEqual(escaped.x_m, -0.1)
+        self.assertLess(escaped.encoder_ticks, 0)
 
 
 class CoherentSimulationServiceTests(unittest.IsolatedAsyncioTestCase):
@@ -209,6 +230,42 @@ class CoherentSimulationServiceTests(unittest.IsolatedAsyncioTestCase):
         assert truth is not None
         self.assertEqual(sum(deltas), truth.encoder_ticks)
         self.assertGreater(truth.encoder_ticks, 0)
+
+    async def test_world_lidar_is_published_at_its_own_bounded_rate(self) -> None:
+        world = build_simulation_world("empty_room", width_m=6, height_m=4)
+        service = CoherentSimulationService(
+            self.bus,
+            AckermannSimulationPlant(self.config),
+            world=world,
+            lidar_raycaster=WorldLidarRaycaster(
+                world,
+                RaycastLidarConfig(
+                    frame_id="laser",
+                    sensor_x_m=0,
+                    sensor_y_m=0,
+                    sensor_yaw_rad=0,
+                    range_min_m=0.05,
+                    range_max_m=10,
+                    angular_resolution_deg=45,
+                    scan_frequency_hz=10,
+                ),
+            ),
+        )
+        timestamp = 1_000_000_000
+        self.bus.publish(
+            MOTION_COMMANDED,
+            command(speed_mps=0.5, timestamp_ns=timestamp),
+        )
+
+        for step in range(1, 12):
+            service.step_once(timestamp_ns=timestamp + step * 10_000_000)
+
+        scan = self.bus.latest(LIDAR_SCAN)
+        self.assertIsNotNone(scan)
+        assert scan is not None
+        self.assertEqual(scan.header.sequence, 2)
+        self.assertEqual(service.lidar_published_updates, 2)
+        self.assertLess(scan.ranges_m[0], 3)
 
     async def test_async_lifecycle_publishes_and_stops_cleanly(self) -> None:
         output = self.bus.subscribe(SIMULATION_STATE, replay_latest=False)

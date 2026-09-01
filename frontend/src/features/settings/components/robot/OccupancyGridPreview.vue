@@ -21,7 +21,10 @@
       class="max-h-[420px] w-full rounded-lg border border-surface-200 bg-surface-900 [image-rendering:pixelated] dark:border-surface-700"
       aria-label="Local occupancy grid in the odom frame"
     />
-    <div v-if="map" class="flex gap-4 text-[0.7rem] text-surface-500">
+    <div
+      v-if="map"
+      class="flex flex-wrap gap-x-4 gap-y-1 text-[0.7rem] text-surface-500"
+    >
       <span><i class="mr-1 inline-block h-2 w-2 bg-slate-700" />unknown</span>
       <span><i class="mr-1 inline-block h-2 w-2 bg-slate-100" />free</span>
       <span><i class="mr-1 inline-block h-2 w-2 bg-red-500" />occupied</span>
@@ -29,7 +32,17 @@
       <span
         ><i
           class="mr-1 inline-block h-2 w-2 rounded-full bg-blue-500"
-        />robot</span
+        />estimated pose</span
+      >
+      <span v-if="simulationWorld"
+        ><i
+          class="mr-1 inline-block h-2 w-2 border border-dashed border-slate-300"
+        />known world</span
+      >
+      <span v-if="simulationWorld"
+        ><i
+          class="mr-1 inline-block h-2 w-2 rounded-full border border-purple-400"
+        />simulated truth</span
       >
     </div>
   </div>
@@ -40,8 +53,11 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   gridToCanvas,
   useAutonomyStore,
+  worldPointToOdom,
   worldToGrid,
+  worldToGridUnbounded,
   worldYawToCanvas,
+  worldYawToOdom,
   type Point2D,
 } from "@/features/autonomy";
 import { useRobotStore } from "@/features/settings/stores";
@@ -56,6 +72,11 @@ const odometryTrail = ref<Point2D[]>([]);
 
 const mappingEnabled = computed(() => robotStore.data.local_mapping.enabled);
 const map = computed(() => store.localMap);
+const simulationWorld = computed(() => store.simulation?.world ?? null);
+const odomOriginInWorld = computed(() => {
+  const origin = store.simulation?.odom_origin_in_world;
+  return origin ? { x: origin.x_m, y: origin.y_m, yaw: origin.yaw_rad } : null;
+});
 const emptyMapMessage = computed(() => {
   if (store.mappingSession?.state === "idle") {
     return "Mapping session is idle. Start it from the autonomy workspace when ready.";
@@ -115,6 +136,7 @@ const draw = () => {
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   context.clearRect(0, 0, cssWidth, cssHeight);
   context.drawImage(bitmap, 0, 0, cssWidth, cssHeight);
+  drawKnownWorldOverlay(context, grid, cssWidth, cssHeight);
   drawOdometryOverlay(context, grid, cssWidth, cssHeight);
 };
 
@@ -126,6 +148,78 @@ const canvasPoint = (
 ) => {
   const gridPoint = worldToGrid(grid, point.x, point.y);
   return gridPoint ? gridToCanvas(grid, gridPoint, width, height) : null;
+};
+
+const unboundedCanvasPoint = (
+  grid: NonNullable<typeof map.value>,
+  point: Point2D,
+  width: number,
+  height: number,
+) =>
+  gridToCanvas(
+    grid,
+    worldToGridUnbounded(grid, point.x, point.y),
+    width,
+    height,
+  );
+
+const drawKnownWorldOverlay = (
+  context: CanvasRenderingContext2D,
+  grid: NonNullable<typeof map.value>,
+  width: number,
+  height: number,
+) => {
+  const world = simulationWorld.value;
+  const origin = odomOriginInWorld.value;
+  if (!world || !origin) return;
+  context.save();
+  context.strokeStyle = "#cbd5e1";
+  context.lineWidth = 1.25;
+  context.globalAlpha = 0.8;
+  context.setLineDash([5, 4]);
+  context.beginPath();
+  for (const segment of world.segments) {
+    const start = unboundedCanvasPoint(
+      grid,
+      worldPointToOdom({ x: segment.start_x_m, y: segment.start_y_m }, origin),
+      width,
+      height,
+    );
+    const end = unboundedCanvasPoint(
+      grid,
+      worldPointToOdom({ x: segment.end_x_m, y: segment.end_y_m }, origin),
+      width,
+      height,
+    );
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+  }
+  context.stroke();
+  context.restore();
+};
+
+const drawPoseMarker = (
+  context: CanvasRenderingContext2D,
+  pose: Point2D,
+  yaw: number,
+  markerSize: number,
+  grid: NonNullable<typeof map.value>,
+  options: { fill?: string; stroke: string; lineWidth: number },
+) => {
+  context.save();
+  context.translate(pose.x, pose.y);
+  context.rotate(worldYawToCanvas(grid, yaw));
+  if (options.fill) context.fillStyle = options.fill;
+  context.strokeStyle = options.stroke;
+  context.lineWidth = options.lineWidth;
+  context.beginPath();
+  context.moveTo(markerSize, 0);
+  context.lineTo(-markerSize * 0.7, markerSize * 0.65);
+  context.lineTo(-markerSize * 0.7, -markerSize * 0.65);
+  context.closePath();
+  if (options.fill) context.fill();
+  context.stroke();
+  context.restore();
 };
 
 const drawOdometryOverlay = (
@@ -150,29 +244,44 @@ const drawOdometryOverlay = (
   }
 
   const envelope = store.latest.odometry;
-  if (!envelope || envelope.channel !== "odometry") return;
-  const pose = canvasPoint(
-    grid,
-    { x: envelope.payload.x_m, y: envelope.payload.y_m },
-    width,
-    height,
-  );
-  if (!pose) return;
   const markerSize = Math.max(7, Math.min(13, width / 35));
-  context.save();
-  context.translate(pose.x, pose.y);
-  context.rotate(worldYawToCanvas(grid, envelope.payload.yaw_rad));
-  context.fillStyle = "#3b82f6";
-  context.strokeStyle = "#dbeafe";
-  context.lineWidth = 1.5;
-  context.beginPath();
-  context.moveTo(markerSize, 0);
-  context.lineTo(-markerSize * 0.7, markerSize * 0.65);
-  context.lineTo(-markerSize * 0.7, -markerSize * 0.65);
-  context.closePath();
-  context.fill();
-  context.stroke();
-  context.restore();
+  if (envelope?.channel === "odometry") {
+    const pose = canvasPoint(
+      grid,
+      { x: envelope.payload.x_m, y: envelope.payload.y_m },
+      width,
+      height,
+    );
+    if (pose) {
+      drawPoseMarker(
+        context,
+        pose,
+        envelope.payload.yaw_rad,
+        markerSize,
+        grid,
+        { fill: "#3b82f6", stroke: "#dbeafe", lineWidth: 1.5 },
+      );
+    }
+  }
+
+  const truthEnvelope = store.latest.simulation;
+  const truth =
+    truthEnvelope?.channel === "simulation"
+      ? truthEnvelope.payload
+      : store.simulation?.latest_state;
+  const origin = odomOriginInWorld.value;
+  if (!truth || !origin) return;
+  const truthInOdom = worldPointToOdom({ x: truth.x_m, y: truth.y_m }, origin);
+  const truthPose = canvasPoint(grid, truthInOdom, width, height);
+  if (!truthPose) return;
+  drawPoseMarker(
+    context,
+    truthPose,
+    worldYawToOdom(truth.yaw_rad, origin.yaw),
+    markerSize + 2,
+    grid,
+    { stroke: truth.collision ? "#f59e0b" : "#c084fc", lineWidth: 2 },
+  );
 };
 
 const stopPolling = () => {
@@ -219,6 +328,10 @@ watch(
     scheduleDraw();
   },
 );
+
+watch(() => store.latest.simulation?.payload.header.sequence, scheduleDraw);
+
+watch([simulationWorld, odomOriginInWorld], scheduleDraw);
 
 watch(
   [() => store.mappingSession?.session_id, () => store.mapClearGeneration],
