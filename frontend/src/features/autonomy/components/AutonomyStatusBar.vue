@@ -4,11 +4,12 @@
   >
     <div class="flex min-w-0 flex-wrap items-center gap-2">
       <Button
-        aria-label="Return to camera driving view"
+        label="Home"
+        aria-label="Return to default camera driving view"
         icon="pi pi-home"
+        size="small"
         severity="secondary"
-        text
-        rounded
+        outlined
         @click="router.push('/')"
       />
       <div class="mr-1 min-w-0">
