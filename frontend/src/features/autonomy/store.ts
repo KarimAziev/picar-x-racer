@@ -367,6 +367,11 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.simulation = await robotApi.post<SimulationRuntimeStatus>(
           "/px/api/autonomy/simulation/reset",
         );
+        this.mapClearGeneration += 1;
+        await Promise.all([
+          this.refreshMappingSession(),
+          this.refreshLocalMap(),
+        ]);
         this.simulationError = null;
         this.simulationLastUpdatedAt = Date.now();
       } catch (error) {

@@ -5,7 +5,11 @@ from typing import Dict, Optional
 
 from app.core.logger import Logger
 from app.schemas.autonomy import MessageHeader, SteeringState
-from app.services.autonomy.actuation import HardwareController, SelectableDriveHardware
+from app.services.autonomy.actuation import (
+    HardwareController,
+    HardwareMotionCommand,
+    SelectableDriveHardware,
+)
 from app.services.autonomy.messages import (
     ArbitrationResult,
     IntentSubmissionResult,
@@ -73,6 +77,12 @@ class MotionControlService:
     @property
     def last_result(self) -> Optional[ArbitrationResult]:
         return self._last_result
+
+    @property
+    def applied_command(self) -> Optional[HardwareMotionCommand]:
+        """Return the command most recently accepted by the hardware boundary."""
+
+        return self._hardware_controller.last_command
 
     @property
     def last_error(self) -> Optional[Exception]:

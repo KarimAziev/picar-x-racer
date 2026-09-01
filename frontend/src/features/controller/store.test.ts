@@ -80,6 +80,40 @@ describe("controller motion heartbeat", () => {
     expect(websocket.send).toHaveBeenCalledTimes(callsAfterEstop);
   });
 
+  it("accumulates held-key speed requests without waiting for an echo", () => {
+    const store = useControllerStore();
+    store.initializeWebSocket();
+
+    store.accelerate();
+    store.accelerate();
+
+    expect(websocket.send).toHaveBeenNthCalledWith(1, {
+      action: "move",
+      payload: { direction: 1, speed: 10 },
+    });
+    expect(websocket.send).toHaveBeenNthCalledWith(2, {
+      action: "move",
+      payload: { direction: 1, speed: 20 },
+    });
+  });
+
+  it("accumulates steering steps without waiting for an echo", () => {
+    const store = useControllerStore();
+    store.initializeWebSocket();
+
+    store.left();
+    store.left();
+
+    expect(websocket.send).toHaveBeenNthCalledWith(1, {
+      action: "setServoDirAngle",
+      payload: -5,
+    });
+    expect(websocket.send).toHaveBeenNthCalledWith(2, {
+      action: "setServoDirAngle",
+      payload: -10,
+    });
+  });
+
   it("accepts controller updates while application settings are incomplete", () => {
     const settingsStore = useSettingsStore();
     Reflect.deleteProperty(settingsStore.data, "robot");

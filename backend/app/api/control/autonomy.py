@@ -10,8 +10,10 @@ from app.schemas.autonomy import (
     SimulationRuntimeStatus,
 )
 from app.services.autonomy import (
+    AckermannOdometryService,
     ActionConflictError,
     CoherentSimulationSupervisor,
+    LocalMappingService,
     MotionControlService,
     RelativeMotionService,
     RobotMode,
@@ -30,6 +32,12 @@ SimulationDependency = Annotated[
 MotionControlDependency = Annotated[
     Optional[MotionControlService],
     Depends(robot_deps.get_motion_control_service),
+]
+OdometryDependency = Annotated[
+    Optional[AckermannOdometryService], Depends(robot_deps.get_odometry_service)
+]
+MappingDependency = Annotated[
+    Optional[LocalMappingService], Depends(robot_deps.get_local_mapping_service)
 ]
 
 
@@ -127,6 +135,8 @@ async def get_simulation_status(
 async def reset_simulation(
     simulation: SimulationDependency,
     motion_control: MotionControlDependency,
+    odometry: OdometryDependency,
+    mapping: MappingDependency,
 ) -> SimulationRuntimeStatus:
     if not simulation.enabled:
         raise HTTPException(status_code=409, detail="coherent simulation is disabled")
@@ -140,4 +150,8 @@ async def reset_simulation(
     else:
         await motion_control.step()
     await simulation.reset()
+    if odometry is not None:
+        odometry.reset()
+    if mapping is not None:
+        mapping.reset_session()
     return _simulation_status(simulation, motion_control)

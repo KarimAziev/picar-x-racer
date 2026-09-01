@@ -271,6 +271,9 @@ describe("autonomy telemetry store", () => {
     expect(mocks.post).toHaveBeenCalledWith(
       "/px/api/autonomy/simulation/reset",
     );
+    expect(mocks.get).toHaveBeenCalledWith("/px/api/map/session");
+    expect(mocks.get).toHaveBeenCalledWith("/px/api/map/current");
+    expect(store.mapClearGeneration).toBe(1);
     expect(store.simulation?.published_updates).toBe(0);
     expect(store.simulation?.physical_drive_isolated).toBe(true);
     expect(store.simulationLastUpdatedAt).not.toBeNull();

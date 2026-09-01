@@ -107,6 +107,7 @@ export interface StoreState extends Gauges, Modes {
   motionHeartbeat: ReturnType<typeof setInterval> | null;
   requestedSpeed: number;
   requestedDirection: number;
+  requestedServoAngle: number | null;
   motionControlEnabled: boolean;
   robotMode: RobotMode;
   motionGeneration: number;
@@ -138,6 +139,7 @@ const defaultState: StoreState = {
   motionHeartbeat: null,
   requestedSpeed: 0,
   requestedDirection: 0,
+  requestedServoAngle: null,
   motionControlEnabled: false,
   robotMode: "legacy",
   motionGeneration: 0,
@@ -183,6 +185,12 @@ export const useControllerStore = defineStore("controller", {
             this.servoAngle = shouldSteeringReverse
               ? -typedPayload.servoAngle
               : typedPayload.servoAngle;
+            if (
+              this.requestedServoAngle !== null &&
+              Math.abs(this.servoAngle - this.requestedServoAngle) < 0.001
+            ) {
+              this.requestedServoAngle = null;
+            }
             this.camTilt = shouldTiltReverse
               ? -typedPayload.camTilt
               : typedPayload.camTilt;
@@ -331,6 +339,7 @@ export const useControllerStore = defineStore("controller", {
           this.clearMotionHeartbeat();
           this.requestedSpeed = 0;
           this.requestedDirection = 0;
+          this.requestedServoAngle = null;
         },
         queueMessages: false,
       });
@@ -402,6 +411,7 @@ export const useControllerStore = defineStore("controller", {
         robotStore.data.steering_servo.max_angle,
         shouldReverse ? -servoAngle : servoAngle,
       );
+      this.requestedServoAngle = shouldReverse ? -nextAngle : nextAngle;
       this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
     },
 
@@ -481,11 +491,25 @@ export const useControllerStore = defineStore("controller", {
 
     // commands
     accelerate() {
-      this.forward(Math.min(this.speed + ACCELERATION, this.maxSpeed));
+      const appliedSpeed = this.direction === 1 ? this.speed : 0;
+      const requestedSpeed =
+        this.requestedDirection === 1 ? this.requestedSpeed : 0;
+      this.forward(
+        Math.min(
+          Math.max(appliedSpeed, requestedSpeed) + ACCELERATION,
+          this.maxSpeed,
+        ),
+      );
     },
 
     decelerate() {
-      const nextSpeed = Math.min(this.speed + ACCELERATION, this.maxSpeed);
+      const appliedSpeed = this.direction === -1 ? this.speed : 0;
+      const requestedSpeed =
+        this.requestedDirection === -1 ? this.requestedSpeed : 0;
+      const nextSpeed = Math.min(
+        Math.max(appliedSpeed, requestedSpeed) + ACCELERATION,
+        this.maxSpeed,
+      );
       this.backward(nextSpeed);
     },
 
@@ -634,16 +658,20 @@ export const useControllerStore = defineStore("controller", {
     },
     left() {
       const robotStore = useRobotStore();
+      const currentAngle = this.requestedServoAngle ?? this.servoAngle;
       this.setDirServoAngle(
-        robotStore.data.steering_servo.dec_step ||
-          robotStore.data.steering_servo.min_angle,
+        currentAngle +
+          (robotStore.data.steering_servo.dec_step ||
+            robotStore.data.steering_servo.min_angle),
       );
     },
     right() {
       const robotStore = useRobotStore();
+      const currentAngle = this.requestedServoAngle ?? this.servoAngle;
       this.setDirServoAngle(
-        robotStore.data.steering_servo.inc_step ||
-          robotStore.data.steering_servo.max_angle,
+        currentAngle +
+          (robotStore.data.steering_servo.inc_step ||
+            robotStore.data.steering_servo.max_angle),
       );
     },
 

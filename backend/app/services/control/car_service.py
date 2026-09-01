@@ -10,6 +10,7 @@ from app.exceptions.robot import RobotI2CBusError, RobotI2CTimeout, ServoNotFoun
 from app.schemas.robot.avoid_obstacles import AvoidState
 from app.schemas.robot.config import HardwareConfig
 from app.schemas.settings import Settings
+from app.services.autonomy.actuation import DriveDirection
 from app.services.autonomy.messages import MotionIntent, MotionSource, RobotMode
 from app.types.car import CarServiceBroadcastPayload, CarServiceState
 from fastapi import WebSocket
@@ -113,6 +114,28 @@ class CarService:
     def motion_control_enabled(self) -> bool:
         return self.motion_control_service is not None
 
+    def _current_drive_state(self) -> tuple[MotorServiceDirection, int, float]:
+        """Return the authoritative applied drive state for control continuity."""
+
+        motion_service = self.motion_control_service
+        applied = motion_service.applied_command if motion_service else None
+        if applied is None:
+            return (
+                cast(MotorServiceDirection, self.px.state["direction"]),
+                int(self.px.state["speed"]),
+                float(self.px.state["steering_servo_angle"]),
+            )
+        direction_by_drive_state = {
+            DriveDirection.STOPPED: 0,
+            DriveDirection.FORWARD: 1,
+            DriveDirection.REVERSE: -1,
+        }
+        return (
+            cast(MotorServiceDirection, direction_by_drive_state[applied.direction]),
+            applied.speed,
+            applied.steering_angle_deg,
+        )
+
     async def start_motion_control(self) -> None:
         """Start the opt-in runtime disarmed and begin its watchdog."""
 
@@ -157,10 +180,11 @@ class CarService:
         """
         motion_service = self.motion_control_service
         motion_result = motion_service.last_result if motion_service else None
+        direction, speed, steering_angle = self._current_drive_state()
         return {
-            "speed": self.px.state["speed"],
-            "direction": self.px.state["direction"],
-            "servoAngle": self.px.state["steering_servo_angle"],
+            "speed": speed,
+            "direction": direction,
+            "servoAngle": steering_angle,
             "camPan": self.px.state["cam_pan_angle"],
             "camTilt": self.px.state["cam_tilt_angle"],
             "maxSpeed": self.max_speed,
@@ -386,9 +410,10 @@ class CarService:
         angle = payload or 0
         self._desired_steering_degrees = float(angle)
         if self.motion_control_service:
+            direction, speed, _ = self._current_drive_state()
             await self._submit_motion(
-                cast(MotorServiceDirection, self.px.state["direction"]),
-                cast(int, self.px.state["speed"]),
+                direction,
+                speed,
                 self._desired_steering_degrees,
             )
             return
@@ -621,8 +646,7 @@ class CarService:
                         self._transition(AvoidState.CRUISE)
                     _log.debug("target_steer=%s, dval=%s", target_steer, dval)
 
-                current_speed = self.px.state["speed"]
-                current_dir = self.px.state["direction"]
+                current_dir, current_speed, _ = self._current_drive_state()
                 desired_dir = target_dir
                 ramp_target_speed = target_speed
 
@@ -695,8 +719,9 @@ class CarService:
 
     async def handle_max_speed(self, payload: int) -> None:
         self.max_speed = payload
-        if self.px.state["speed"] > self.max_speed:
-            await self.move(self.px.state["direction"], self.max_speed)
+        direction, speed, _ = self._current_drive_state()
+        if speed > self.max_speed:
+            await self.move(direction, self.max_speed)
 
     async def handle_update(self, payload: Dict[str, Any]) -> None:
         current_state = self.current_state

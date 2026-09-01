@@ -31,6 +31,14 @@
         <div class="mt-0.5 opacity-80">{{ isolationDetail }}</div>
       </div>
 
+      <div
+        class="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-[0.7rem] leading-relaxed text-blue-900 dark:bg-blue-950 dark:text-blue-100"
+      >
+        The map marker follows command-driven odometry. Throttle moves it;
+        steering changes its curvature once the Ackermann vehicle is moving.
+        Releasing throttle keeps the pose stationary.
+      </div>
+
       <dl
         v-if="status.latest_state"
         class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-3 xl:grid-cols-2"
@@ -88,9 +96,27 @@
       v-else
       class="mt-3 rounded-lg bg-surface-100 p-3 text-xs leading-relaxed dark:bg-surface-800"
     >
-      Enable <span class="font-semibold">Coherent simulation</span> in Robot
-      Settings after supplying motion limits and Ackermann geometry. Physical
-      output remains selected while this environment is disabled.
+      <p>
+        Enable <span class="font-semibold">Coherent simulation</span> to make
+        keyboard commands drive one synchronized steering, encoder, IMU, and
+        odometry source. Physical output remains selected while this environment
+        is disabled.
+      </p>
+      <p
+        v-if="simulationPrerequisiteError"
+        class="mt-2 text-amber-700 dark:text-amber-300"
+      >
+        {{ simulationPrerequisiteError }}
+      </p>
+      <Button
+        class="mt-3"
+        label="Enable synchronized drive"
+        icon="pi pi-desktop"
+        size="small"
+        :disabled="Boolean(simulationPrerequisiteError)"
+        :loading="simulationToggleLoading"
+        @click="enableSynchronizedDrive"
+      />
     </div>
 
     <div
@@ -111,12 +137,39 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import ConfirmPopup from "primevue/confirmpopup";
 import { useConfirm } from "primevue/useconfirm";
 import { useAutonomyStore } from "@/features/autonomy";
+import { useRobotStore } from "@/features/settings/stores";
 
 const store = useAutonomyStore();
+const robotStore = useRobotStore();
 const confirm = useConfirm();
 const now = ref(Date.now());
+const simulationToggleLoading = ref(false);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 const status = computed(() => store.simulation);
+
+const simulationPrerequisiteError = computed(() => {
+  const { motion_control: motion, ackermann_odometry: odometry } =
+    robotStore.data;
+  if (!motion.enabled)
+    return "Enable motion control and restart the backend once.";
+  if (
+    motion.max_forward_speed_mps === null ||
+    motion.max_reverse_speed_mps === null
+  ) {
+    return "Configure forward and reverse speed calibration first.";
+  }
+  if (!odometry.enabled) {
+    return "Enable Ackermann odometry and restart the backend once.";
+  }
+  if (
+    odometry.wheelbase_m === null ||
+    odometry.wheel_radius_m === null ||
+    odometry.encoder_ticks_per_revolution === null
+  ) {
+    return "Configure wheelbase, wheel radius, and encoder resolution first.";
+  }
+  return null;
+});
 
 const statusSeverity = computed(() => {
   if (store.simulationError || status.value?.error) return "danger";
@@ -158,6 +211,24 @@ const updatedLabel = computed(() => {
 
 const format = (value: number) => value.toFixed(2);
 const degrees = (radians: number) => ((radians * 180) / Math.PI).toFixed(1);
+const enableSynchronizedDrive = async () => {
+  if (simulationPrerequisiteError.value) return;
+  simulationToggleLoading.value = true;
+  try {
+    await robotStore.updatePartialData({
+      coherent_simulation: {
+        ...robotStore.data.coherent_simulation,
+        enabled: true,
+      },
+    });
+    await Promise.all([
+      store.refreshSimulation(),
+      store.refreshMappingSession(),
+    ]);
+  } finally {
+    simulationToggleLoading.value = false;
+  }
+};
 const confirmReset = (event: MouseEvent) =>
   confirm.require({
     group: "simulation-reset",

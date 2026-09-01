@@ -2,6 +2,7 @@ import json
 import math
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, List, Tuple, Union, cast
 
 from app.schemas.robot.config import HardwareConfig
@@ -14,6 +15,8 @@ from app.services.autonomy import (
     MotionLimits,
     MotionSource,
     RobotMode,
+    SelectableDriveHardware,
+    VirtualDriveHardware,
 )
 from app.services.control.car_service import CarService
 from app.types.car import PicarState
@@ -67,10 +70,15 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
         }
         self.config = HardwareConfig.model_validate(config_data)
         self.hardware = FakePicarxAdapter()
+        self.virtual_hardware = VirtualDriveHardware()
+        self.selectable_hardware = SelectableDriveHardware(
+            self.hardware,
+            self.virtual_hardware,
+        )
         steering_radians = math.radians(30)
         limits = MotionLimits(1.0, 0.5, steering_radians)
         controller = HardwareController(
-            self.hardware,
+            self.selectable_hardware,
             LinearActuatorTranslator(
                 ActuationCalibration(
                     max_forward_speed_mps=1.0,
@@ -81,7 +89,11 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
                 )
             ),
         )
-        self.motion = MotionControlService(MotionArbiter(limits), controller)
+        self.motion = MotionControlService(
+            MotionArbiter(limits),
+            controller,
+            drive_hardware=self.selectable_hardware,
+        )
         self.car = CarService.__new__(CarService)
         self.car.px = cast(Any, self.hardware)
         self.car.config = self.config
@@ -89,6 +101,10 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
         self.car._motion_sequences = {}
         self.car._desired_steering_degrees = 0.0
         self.car.max_speed = 80
+        self.car.avoid_obstacles_mode = False
+        self.car.distance_service = cast(Any, SimpleNamespace(distance=None))
+        self.car.auto_measure_distance_mode = False
+        self.car.led_blinking = False
 
     async def asyncSetUp(self) -> None:
         await self.motion.set_mode(RobotMode.MANUAL)
@@ -154,6 +170,33 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.hardware.calls[0][0], "steer")
         self.assertAlmostEqual(cast(float, self.hardware.calls[0][1]), 15.0)
         self.assertEqual(self.hardware.calls[-1], ("stop", None))
+
+    async def test_simulated_steering_preserves_virtual_motion_and_ui_state(
+        self,
+    ) -> None:
+        await self.motion.set_simulation_enabled(True)
+        await self.motion.set_mode(RobotMode.MANUAL)
+
+        await self.car.handle_move({"direction": 1, "speed": 40})
+        await self.car.handle_set_servo_dir_angle(-15)
+
+        self.assertEqual(self.hardware.state["speed"], 0)
+        self.assertEqual(self.virtual_hardware.speed, 40)
+        self.assertEqual(
+            self.virtual_hardware.direction.value,
+            "forward",
+        )
+        self.assertAlmostEqual(self.virtual_hardware.steering_angle_deg, -15)
+        self.assertEqual(self.car.current_state["speed"], 40)
+        self.assertEqual(self.car.current_state["direction"], 1)
+        self.assertAlmostEqual(self.car.current_state["servoAngle"], -15)
+
+        await self.car.handle_stop()
+
+        self.assertEqual(self.virtual_hardware.speed, 0)
+        self.assertEqual(self.car.current_state["speed"], 0)
+        self.assertEqual(self.car.current_state["direction"], 0)
+        self.assertAlmostEqual(self.car.current_state["servoAngle"], -15)
 
     async def test_emergency_stop_handler_latches_until_clear(self) -> None:
         await self.car.handle_move({"direction": 1, "speed": 40})

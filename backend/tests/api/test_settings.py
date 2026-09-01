@@ -16,6 +16,7 @@ from app.services.autonomy import (
     AckermannOdometryService,
     HardwareController,
     LinearActuatorTranslator,
+    LocalMappingService,
     MotionArbiter,
     MotionControlService,
     MotionLimits,
@@ -154,6 +155,14 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 }
             ],
         }
+        physical_data["localization_sensors"]["lidar"] = {
+            "enabled": True,
+            "driver": "mock",
+            "points_per_scan": 360,
+            "distance_m": 1.5,
+            "scan_frequency_hz": 10,
+        }
+        physical_data["local_mapping"] = {"enabled": True}
         simulated_data = deepcopy(physical_data)
         simulated_data["coherent_simulation"]["enabled"] = True
         return (
@@ -178,6 +187,8 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             bus,
             robot_deps.build_odometry_estimator(physical_config),
         )
+        initial_estimator = odometry._estimator
+        local_mapping = AsyncMock(spec=LocalMappingService)
         physical_drive = FakeDriveHardware()
         selector = SelectableDriveHardware(physical_drive, VirtualDriveHardware())
         controller = HardwareController(
@@ -216,13 +227,15 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 odometry,
                 motion,
                 None,
-                None,
+                local_mapping,
                 simulation,
             )
             await asyncio.sleep(0.02)
 
             self.assertTrue(selector.simulation_enabled)
             self.assertTrue(simulation.running)
+            self.assertIsNot(odometry._estimator, initial_estimator)
+            local_mapping.reconfigure_from.assert_awaited_once()
             simulated_status = {item.sensor: item for item in sensors.status.sensors}
             self.assertGreater(simulated_status["encoder"].published_messages, 0)
 
@@ -236,12 +249,13 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 odometry,
                 motion,
                 None,
-                None,
+                local_mapping,
                 simulation,
             )
 
             self.assertFalse(selector.simulation_enabled)
             self.assertFalse(simulation.enabled)
+            self.assertEqual(local_mapping.reconfigure_from.await_count, 2)
             physical_status = {item.sensor: item for item in sensors.status.sensors}
             self.assertTrue(physical_status["encoder"].running)
         finally:

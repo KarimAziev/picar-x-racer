@@ -93,7 +93,11 @@ async def _reload_autonomy_runtime(
                     await steering_feedback_service.start()
 
     if (
-        (previous.ackermann_odometry != current.ackermann_odometry or encoder_changed)
+        (
+            previous.ackermann_odometry != current.ackermann_odometry
+            or encoder_changed
+            or previous_simulation != current_simulation
+        )
         and current.ackermann_odometry.enabled
         and odometry_service is not None
     ):
@@ -121,6 +125,7 @@ async def _reload_autonomy_runtime(
             or encoder_changed
             or lidar_geometry_changed
             or previous_steering != current_steering
+            or previous_simulation != current_simulation
         )
         and previous.local_mapping.enabled
         and current.local_mapping.enabled

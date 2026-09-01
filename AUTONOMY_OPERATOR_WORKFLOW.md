@@ -45,7 +45,7 @@ The application currently has:
 - cancelable, odometry-bounded straight-distance and fixed steering-arc actions;
 - a hot-reconfigurable coherent Ackermann simulation environment with physical
   drive isolation, synchronized steering/encoder/IMU topics, runtime status,
-  and pose reset;
+  synchronized odometry/map reset, and pose reset;
 - an older reactive ultrasonic obstacle-avoidance behavior;
 - a `/virtual` compatibility redirect to the workspace's Three.js view.
 
@@ -476,6 +476,9 @@ Implementation status:
   simulation watchdog;
 - the runtime can be enabled or disabled by hot settings reload without
   replacing the stable application service handles;
+- switching between per-device inputs and coherent simulation starts a fresh
+  odometry frame and clears the incompatible local map instead of mixing
+  encoder sequence domains;
 - a selectable drive boundary stops both sides during transitions, invalidates
   prior intents, returns the robot to `DISARMED`, and routes subsequent writes
   exclusively to physical hardware or an in-memory virtual sink;
@@ -484,7 +487,11 @@ Implementation status:
   diagnostics and message counts;
 - the operator workspace shows simulator lifecycle, physical isolation,
   ground-truth pose, speed, steering, encoder ticks, errors, freshness, and a
-  safe reset action;
+  safe reset action, and can enable synchronized development driving directly
+  once the motion and Ackermann prerequisites are configured;
+- controller status and steering continuity use the final applied drive command
+  in both physical and virtual modes, rather than reading isolated physical
+  adapter state while simulation owns motion;
 - world collision geometry and LiDAR ray casting remain follow-up work. LiDAR
   continues to use its independently configured hardware or mock source.
 
@@ -503,6 +510,19 @@ Simulation is selected as a hardware runtime setting, while operator view mode
 remains independent. A user may view simulated data as a 2D map, camera-like
 scene, split view, or 3D model. Enabling or resetting simulation never arms
 motion; manual arming or an explicit autonomous action is still required.
+
+The local development flow is therefore:
+
+1. Configure motion limits and Ackermann geometry once.
+2. Select **Enable synchronized drive** in the simulation panel.
+3. Start a fresh mapping session.
+4. Arm manual mode.
+5. Drive with the normal keyboard controls.
+
+The map marker remains odometry-driven. A steering-only command changes the
+front-wheel angle but does not rotate a stationary Ackermann vehicle; heading
+changes only while non-zero distance is traveled. Releasing throttle publishes
+stationary encoder/odometry frames, so the marker remains fixed.
 
 ## Safety Invariants
 

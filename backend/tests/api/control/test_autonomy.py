@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock
 
 from app.api.control.autonomy import get_simulation_status, reset_simulation
 from app.services.autonomy import (
@@ -55,16 +56,23 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
 
     async def test_reset_requires_enabled_isolated_runtime(self) -> None:
         with self.assertRaises(HTTPException) as context:
-            await reset_simulation(CoherentSimulationSupervisor(), None)
+            await reset_simulation(CoherentSimulationSupervisor(), None, None, None)
 
         self.assertEqual(context.exception.status_code, 409)
 
     async def test_reset_disarms_and_restarts_from_initial_pose(self) -> None:
         supervisor = self.make_supervisor()
         motion = FakeMotionControl()
+        odometry = Mock()
+        mapping = Mock()
         await supervisor.start()
         try:
-            status = await reset_simulation(supervisor, motion)  # type: ignore[arg-type]
+            status = await reset_simulation(
+                supervisor,
+                motion,  # type: ignore[arg-type]
+                odometry,
+                mapping,
+            )
         finally:
             await supervisor.stop()
 
@@ -73,6 +81,8 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(status.running)
         self.assertTrue(status.physical_drive_isolated)
         self.assertEqual(status.published_updates, 0)
+        odometry.reset.assert_called_once_with()
+        mapping.reset_session.assert_called_once_with()
 
 
 if __name__ == "__main__":
