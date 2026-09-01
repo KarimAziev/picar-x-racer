@@ -50,9 +50,7 @@ class VideoDeviceAdapter:
                 else (
                     "avfoundation"
                     if is_macos()
-                    else "v4l2"
-                    if not is_raspberry_pi()
-                    else "picamera2"
+                    else "v4l2" if not is_raspberry_pi() else "picamera2"
                 )
             )
 

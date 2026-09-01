@@ -241,12 +241,12 @@ def non_max_suppression(
         - scores: np.ndarray  # Shape: (num_detections, 1)
         - num_detections: int
     """
-    assert 0 <= conf_thres <= 1, (
-        f"Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0"
-    )
-    assert 0 <= iou_thres <= 1, (
-        f"Invalid IoU threshold {iou_thres}, valid values are between 0.0 and 1.0"
-    )
+    assert (
+        0 <= conf_thres <= 1
+    ), f"Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0"
+    assert (
+        0 <= iou_thres <= 1
+    ), f"Invalid IoU threshold {iou_thres}, valid values are between 0.0 and 1.0"
 
     nc = prediction.shape[2] - n_kpts * 3 - 4  # number of classes
     xc = prediction[..., 4] > conf_thres  # candidates
