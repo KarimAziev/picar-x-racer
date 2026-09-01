@@ -14,6 +14,7 @@
       icon="pi pi-cog"
       @click="handleShow"
     />
+    <GoToAutonomyButton />
   </span>
 </template>
 
@@ -21,6 +22,7 @@
 import { defineAsyncComponent, inject } from "vue";
 import { usePopupStore } from "@/features/settings/stores";
 import type { Ref } from "vue";
+import GoToAutonomyButton from "@/features/autonomy/components/GoToAutonomyButton.vue";
 
 const isMobile = inject<Ref<boolean, boolean>>("isMobile");
 
