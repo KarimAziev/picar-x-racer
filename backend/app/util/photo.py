@@ -8,7 +8,7 @@ from app.core.logger import Logger
 from app.schemas.detection import DetectionSettings
 from app.schemas.stream import ImageRotation
 from app.types.detection import DetectionQueueData, DetectionResultData
-from app.util.overlay_detecton import overlay_detection
+from app.util.overlay_detection import overlay_detection
 
 logger = Logger(__name__)
 

@@ -91,7 +91,7 @@ from app.util.file_util import (
     get_files_with_extension,
     resolve_absolute_path,
 )
-from app.util.overlay_detecton import draw_overlay
+from app.util.overlay_detection import draw_overlay
 
 logger = Logger(__name__)
 
