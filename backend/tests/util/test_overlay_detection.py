@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 from app.schemas.detection import OverlayStyle
 from app.types.detection import DetectionKeypoint
-from app.util import overlay_detecton
+from app.util import overlay_detection
 
 
 class TestOverlayDetection(unittest.TestCase):
@@ -35,18 +35,20 @@ class TestOverlayDetection(unittest.TestCase):
     def test_box_draws_boxes_and_available_pose_data(self) -> None:
         with (
             patch.object(
-                overlay_detecton,
+                overlay_detection,
                 "draw_overlay",
                 side_effect=lambda frame, *_args: frame,
             ) as draw_box,
             patch.object(
-                overlay_detecton,
+                overlay_detection,
                 "draw_pose_overlay",
                 side_effect=lambda frame, *_args, **_kwargs: frame,
             ) as draw_pose,
-            patch.object(overlay_detecton, "draw_segmentation_overlay") as draw_segment,
+            patch.object(
+                overlay_detection, "draw_segmentation_overlay"
+            ) as draw_segment,
         ):
-            overlay_detecton.overlay_detection(
+            overlay_detection.overlay_detection(
                 self.frame, self.detections, OverlayStyle.BOX
             )
 
@@ -56,11 +58,11 @@ class TestOverlayDetection(unittest.TestCase):
 
     def test_aim_draws_full_crosshair_for_first_detection_only(self) -> None:
         with patch.object(
-            overlay_detecton,
+            overlay_detection,
             "draw_crosshair_overlay",
             side_effect=lambda frame, *_args, **_kwargs: frame,
         ) as draw_crosshair:
-            overlay_detecton.overlay_detection(
+            overlay_detection.overlay_detection(
                 self.frame, self.detections, OverlayStyle.AIM
             )
 
@@ -71,17 +73,17 @@ class TestOverlayDetection(unittest.TestCase):
     def test_mixed_draws_first_crosshair_then_boxes(self) -> None:
         with (
             patch.object(
-                overlay_detecton,
+                overlay_detection,
                 "draw_crosshair_overlay",
                 side_effect=lambda frame, *_args, **_kwargs: frame,
             ) as draw_crosshair,
             patch.object(
-                overlay_detecton,
+                overlay_detection,
                 "draw_overlay",
                 side_effect=lambda frame, *_args: frame,
             ) as draw_box,
         ):
-            overlay_detecton.overlay_detection(
+            overlay_detection.overlay_detection(
                 self.frame, self.detections, OverlayStyle.MIXED
             )
 
@@ -92,18 +94,18 @@ class TestOverlayDetection(unittest.TestCase):
     def test_pose_draws_labels_and_keypoints_without_boxes(self) -> None:
         with (
             patch.object(
-                overlay_detecton,
+                overlay_detection,
                 "draw_label",
                 side_effect=lambda frame, *_args: frame,
             ) as draw_label,
             patch.object(
-                overlay_detecton,
+                overlay_detection,
                 "draw_pose_overlay",
                 side_effect=lambda frame, *_args, **_kwargs: frame,
             ) as draw_pose,
-            patch.object(overlay_detecton, "draw_overlay") as draw_box,
+            patch.object(overlay_detection, "draw_overlay") as draw_box,
         ):
-            overlay_detecton.overlay_detection(
+            overlay_detection.overlay_detection(
                 self.frame, self.detections, OverlayStyle.POSE
             )
 
@@ -119,17 +121,17 @@ class TestOverlayDetection(unittest.TestCase):
             with self.subTest(style=style):
                 with (
                     patch.object(
-                        overlay_detecton,
+                        overlay_detection,
                         "draw_segmentation_overlay",
                         side_effect=lambda frame, *_args: frame,
                     ) as draw_segment,
                     patch.object(
-                        overlay_detecton,
+                        overlay_detection,
                         "draw_overlay",
                         side_effect=lambda frame, *_args: frame,
                     ) as draw_box,
                 ):
-                    overlay_detecton.overlay_detection(
+                    overlay_detection.overlay_detection(
                         self.frame, self.detections, style
                     )
 
@@ -145,13 +147,13 @@ class TestOverlayDetection(unittest.TestCase):
         }
         with (
             patch.object(
-                overlay_detecton,
+                overlay_detection,
                 "draw_semantic_segmentation_overlay",
                 return_value=self.frame,
             ) as draw_semantic,
-            patch.object(overlay_detecton, "draw_overlay") as draw_box,
+            patch.object(overlay_detection, "draw_overlay") as draw_box,
         ):
-            overlay_detecton.overlay_detection(
+            overlay_detection.overlay_detection(
                 self.frame,
                 self.detections,
                 OverlayStyle.SEMANTIC,
@@ -162,7 +164,7 @@ class TestOverlayDetection(unittest.TestCase):
         draw_box.assert_not_called()
 
     def test_crosshair_uses_nose_and_spans_frame_for_primary_target(self) -> None:
-        result = overlay_detecton.draw_crosshair_overlay(
+        result = overlay_detection.draw_crosshair_overlay(
             self.frame,
             20,
             30,
@@ -172,17 +174,17 @@ class TestOverlayDetection(unittest.TestCase):
             full_frame=True,
         )
 
-        self.assertEqual(tuple(result[45, 0]), overlay_detecton.OVERLAY_COLOR)
-        self.assertEqual(tuple(result[0, 35]), overlay_detecton.OVERLAY_COLOR)
+        self.assertEqual(tuple(result[45, 0]), overlay_detection.OVERLAY_COLOR)
+        self.assertEqual(tuple(result[0, 35]), overlay_detection.OVERLAY_COLOR)
 
     def test_pose_draws_skeleton_and_ignores_missing_keypoints(self) -> None:
         keypoints: list[DetectionKeypoint] = [{"x": 0, "y": 0} for _ in range(17)]
         keypoints[5] = {"x": 10, "y": 20}
         keypoints[7] = {"x": 30, "y": 20}
 
-        result = overlay_detecton.draw_pose_overlay(self.frame, keypoints)
+        result = overlay_detection.draw_pose_overlay(self.frame, keypoints)
 
-        self.assertEqual(tuple(result[20, 20]), overlay_detecton.OVERLAY_COLOR)
+        self.assertEqual(tuple(result[20, 20]), overlay_detection.OVERLAY_COLOR)
         self.assertTrue(np.array_equal(result[0, 0], np.zeros(3, dtype=np.uint8)))
 
     def test_pose_ignores_low_confidence_keypoints(self) -> None:
@@ -191,13 +193,13 @@ class TestOverlayDetection(unittest.TestCase):
             {"x": 30, "y": 20, "confidence": 0.9},
         ]
 
-        result = overlay_detecton.draw_pose_overlay(self.frame, keypoints)
+        result = overlay_detection.draw_pose_overlay(self.frame, keypoints)
 
         self.assertTrue(np.array_equal(result[20, 10], np.zeros(3, dtype=np.uint8)))
-        self.assertEqual(tuple(result[20, 30]), overlay_detecton.OVERLAY_COLOR)
+        self.assertEqual(tuple(result[20, 30]), overlay_detection.OVERLAY_COLOR)
 
     def test_crosshair_ignores_low_confidence_nose(self) -> None:
-        result = overlay_detecton.draw_crosshair_overlay(
+        result = overlay_detection.draw_crosshair_overlay(
             self.frame,
             20,
             30,
@@ -208,7 +210,7 @@ class TestOverlayDetection(unittest.TestCase):
             keypoint_confidence_threshold=0.5,
         )
 
-        self.assertEqual(tuple(result[50, 0]), overlay_detecton.OVERLAY_COLOR)
+        self.assertEqual(tuple(result[50, 0]), overlay_detection.OVERLAY_COLOR)
         self.assertTrue(np.array_equal(result[35, 0], np.zeros(3, dtype=np.uint8)))
 
 
