@@ -74,9 +74,9 @@
       /></label>
     </div>
     <p v-if="actionType === 'arc'" class="mt-2 text-[0.68rem] text-surface-500">
-      Steering is held at a fixed signed angle. The backend limits it to ±{{
-        maxSteeringAngle.toFixed(1)
-      }}° and verifies measured yaw before declaring success.
+      Steering is held at a fixed signed angle: negative turns left and positive
+      turns right. The backend limits it to ±{{ maxSteeringAngle.toFixed(1) }}°
+      and verifies measured yaw before declaring success.
     </p>
     <div
       v-if="distance < 0"

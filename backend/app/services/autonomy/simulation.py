@@ -136,7 +136,10 @@ class AckermannSimulationPlant:
         speed = command.linear_speed_mps
         steering = command.steering_angle_rad
         previous_speed = self._linear_speed_mps
-        yaw_rate = speed / self.config.wheelbase_m * math.tan(steering)
+        # The application-wide steering convention is negative for left. Pose
+        # coordinates retain the mathematical convention of positive yaw for a
+        # counter-clockwise/left turn, hence the sign inversion in curvature.
+        yaw_rate = -speed / self.config.wheelbase_m * math.tan(steering)
         distance_m = speed * dt_seconds
         delta_yaw = yaw_rate * dt_seconds
         midpoint_yaw = self._yaw_rad + delta_yaw / 2

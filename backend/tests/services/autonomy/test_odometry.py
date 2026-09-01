@@ -119,7 +119,7 @@ class TestAckermannOdometryEstimator(OdometryTestCase):
             self.encoder(1, 1_000_000_000),
             self.steering(1_000_000_000),
         )
-        steering_angle = math.atan(0.2)
+        steering_angle = -math.atan(0.2)
 
         result = self.estimator.update(
             self.encoder(2, 2_000_000_000, delta_ticks=20),

@@ -87,7 +87,7 @@ class RelativeMotionService:
         if abs(steering_angle_rad) > self._max_abs_steering_angle_rad:
             raise ActionConflictError("requested steering exceeds the configured limit")
         target_yaw_rad = (
-            request.distance_m / self._wheelbase_m * math.tan(steering_angle_rad)
+            -request.distance_m / self._wheelbase_m * math.tan(steering_angle_rad)
         )
         if abs(target_yaw_rad) > math.pi:
             raise ActionConflictError("predicted arc yaw must not exceed 180 degrees")

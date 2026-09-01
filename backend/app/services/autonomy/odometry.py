@@ -109,7 +109,10 @@ class AckermannOdometryEstimator:
             if steering.measured_angle_rad is not None
             else steering.commanded_angle_rad
         )
-        delta_yaw = distance_m / self.config.wheelbase_m * math.tan(steering_angle)
+        # Steering is negative for left, while pose yaw is positive
+        # counter-clockwise. Convert only at the kinematics boundary so
+        # telemetry and physical servo angles keep their established sign.
+        delta_yaw = -distance_m / self.config.wheelbase_m * math.tan(steering_angle)
         midpoint_yaw = self._yaw_rad + delta_yaw / 2
         self._x_m += distance_m * math.cos(midpoint_yaw)
         self._y_m += distance_m * math.sin(midpoint_yaw)

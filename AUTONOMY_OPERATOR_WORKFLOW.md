@@ -524,11 +524,11 @@ front-wheel angle but does not rotate a stationary Ackermann vehicle; heading
 changes only while non-zero distance is traveled. Releasing throttle publishes
 stationary encoder/odometry frames, so the marker remains fixed.
 
-Motion estimation uses the conventional vehicle coordinate sign: positive
-steering and positive yaw turn left/counter-clockwise. The controller's legacy
-servo coordinate and its `reverse` setting are converted at the actuation
-boundary, so changing coordinate systems does not swap or otherwise alter the
-angle written to physical steering hardware.
+Steering telemetry and commands retain the application's established sign:
+negative is left and positive is right. Pose yaw retains the mathematical sign:
+positive is counter-clockwise/left. The sign conversion therefore happens only
+inside Ackermann curvature calculations; the autonomy UI and physical steering
+hardware continue to receive the same signed angle as the default controller.
 
 ## Safety Invariants
 

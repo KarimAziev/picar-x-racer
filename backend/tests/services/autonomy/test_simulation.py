@@ -60,13 +60,13 @@ class AckermannSimulationPlantTests(unittest.TestCase):
         self.assertAlmostEqual(state.longitudinal_acceleration_mps2, 100)
 
     def test_arc_uses_midpoint_integration_and_ackermann_yaw_rate(self) -> None:
-        steering = math.radians(20)
+        steering = math.radians(-20)
         state = self.plant.advance(
             command(speed_mps=0.5, steering_rad=steering),
             dt_seconds=0.02,
         )
 
-        expected_yaw_rate = 0.5 / 0.25 * math.tan(steering)
+        expected_yaw_rate = -0.5 / 0.25 * math.tan(steering)
         expected_delta_yaw = expected_yaw_rate * 0.02
         self.assertAlmostEqual(state.yaw_rate_radps, expected_yaw_rate)
         self.assertAlmostEqual(state.yaw_rad, expected_delta_yaw)
@@ -79,7 +79,7 @@ class AckermannSimulationPlantTests(unittest.TestCase):
 
     def test_reverse_motion_decrements_ticks_and_reverses_yaw(self) -> None:
         state = self.plant.advance(
-            command(speed_mps=-0.5, steering_rad=math.radians(15)),
+            command(speed_mps=-0.5, steering_rad=math.radians(-15)),
             dt_seconds=0.02,
         )
 
@@ -236,7 +236,7 @@ class CoherentSimulationServiceTests(unittest.IsolatedAsyncioTestCase):
         )
         output = self.bus.subscribe(ODOMETRY, replay_latest=False)
         timestamp = 1_000_000_000
-        steering = math.radians(20)
+        steering = math.radians(-20)
         self.bus.publish(
             MOTION_COMMANDED,
             command(
@@ -255,7 +255,7 @@ class CoherentSimulationServiceTests(unittest.IsolatedAsyncioTestCase):
             await odometry_service.stop()
 
         expected_step_yaw = (
-            0.5
+            -0.5
             / self.config.wheelbase_m
             * math.tan(steering)
             * self.config.update_period_seconds

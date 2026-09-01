@@ -104,8 +104,8 @@ class RelativeMotionServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_completes_arc_with_measured_path_and_yaw(self) -> None:
         distance_m = 0.2
-        steering_angle_deg = 20.0
-        predicted_yaw = distance_m / 0.25 * math.tan(math.radians(steering_angle_deg))
+        steering_angle_deg = -20.0
+        predicted_yaw = -distance_m / 0.25 * math.tan(math.radians(steering_angle_deg))
         self.bus.publish(ODOMETRY, odometry(0))
 
         started = await self.service.start_arc(
@@ -148,7 +148,7 @@ class RelativeMotionServiceTests(unittest.IsolatedAsyncioTestCase):
             RelativeArcRequest(
                 distance_m=0.2,
                 speed_mps=0.1,
-                steering_angle_deg=20,
+                steering_angle_deg=-20,
             )
         )
         await asyncio.sleep(0.01)
@@ -162,8 +162,8 @@ class RelativeMotionServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_reverse_arc_reverses_speed_and_predicted_yaw(self) -> None:
         distance_m = -0.2
-        steering_angle_deg = 20.0
-        predicted_yaw = distance_m / 0.25 * math.tan(math.radians(steering_angle_deg))
+        steering_angle_deg = -20.0
+        predicted_yaw = -distance_m / 0.25 * math.tan(math.radians(steering_angle_deg))
         self.bus.publish(ODOMETRY, odometry(0))
         await self.service.start_arc(
             RelativeArcRequest(

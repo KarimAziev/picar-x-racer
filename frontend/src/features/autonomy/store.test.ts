@@ -225,7 +225,7 @@ describe("autonomy telemetry store", () => {
       progress_m: 0,
       remaining_m: 0.3,
       steering_angle_deg: -15,
-      target_yaw_rad: -0.32,
+      target_yaw_rad: 0.32,
       yaw_progress_rad: 0,
       reason: null,
     });

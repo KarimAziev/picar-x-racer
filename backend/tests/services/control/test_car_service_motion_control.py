@@ -88,9 +88,6 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
                     max_abs_steering_angle_rad=steering_radians,
                     max_forward_command=100,
                     max_reverse_command=100,
-                    steering_angle_sign=(
-                        1 if self.config.steering_servo.reverse else -1
-                    ),
                 )
             ),
         )
@@ -200,7 +197,7 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
         commanded = self.topic_bus.latest(MOTION_COMMANDED)
         self.assertIsNotNone(commanded)
         assert commanded is not None
-        self.assertAlmostEqual(commanded.steering_angle_rad, math.radians(15))
+        self.assertAlmostEqual(commanded.steering_angle_rad, math.radians(-15))
 
         await self.car.handle_stop()
 
