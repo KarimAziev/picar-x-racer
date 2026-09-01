@@ -1,4 +1,5 @@
 <template>
+  <PreloadMask :loading="true" />
   <main
     class="h-[var(--app-height)] overflow-y-auto bg-surface-50 p-2 pt-12 text-surface-900 dark:bg-surface-950 dark:text-surface-0 sm:p-3 sm:pt-12"
   >
@@ -155,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from "vue";
+import { computed, defineAsyncComponent, onBeforeMount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   autonomyOperatorViewOptions,
@@ -171,11 +172,18 @@ import RelativeMotionControls from "@/features/autonomy/components/RelativeMotio
 import SimulationControls from "@/features/autonomy/components/SimulationControls.vue";
 import SensorDiagnostics from "@/features/settings/components/robot/SensorDiagnostics.vue";
 import OccupancyGridPreview from "@/features/settings/components/robot/OccupancyGridPreview.vue";
+import PreloadMask from "@/ui/PreloadMask.vue";
 
 const route = useRoute();
 const router = useRouter();
 const robotStore = useRobotStore();
 const autonomyStore = useAutonomyStore();
+
+onBeforeMount(() => {
+  if (!robotStore.loaded) {
+    void robotStore.fetchData();
+  }
+});
 
 const currentView = computed(() =>
   normalizeAutonomyOperatorView(route.query.view),

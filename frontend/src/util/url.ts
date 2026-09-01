@@ -18,6 +18,8 @@ export const makeWebsocketUrl = (path: string, port?: number) => {
   const baseUrl = new URL(window.location.href);
   baseUrl.protocol = protocol;
   baseUrl.pathname = path;
+  baseUrl.search = "";
+  baseUrl.hash = "";
 
   if (port) {
     baseUrl.port = `${port}`;
@@ -46,6 +48,8 @@ export const makeUrl = (path: string, port?: number) => {
   const baseUrl = new URL(window.location.href);
   baseUrl.protocol = protocol;
   baseUrl.pathname = path;
+  baseUrl.search = "";
+  baseUrl.hash = "";
   if (port) {
     baseUrl.port = `${port}`;
   }

@@ -199,8 +199,11 @@ export const useControllerStore = defineStore("controller", {
             this.motionSource = typedPayload.motionSource ?? null;
             this.emergencyStopActive = typedPayload.emergencyStop;
             this.motionFault = typedPayload.motionFault;
-            settingsStore.data.robot.auto_measure_distance_mode =
-              typedPayload.autoMeasureDistanceMode;
+            const robotSettings = settingsStore.data?.robot;
+            if (robotSettings) {
+              robotSettings.auto_measure_distance_mode =
+                typedPayload.autoMeasureDistanceMode;
+            }
 
             break;
           }
@@ -300,7 +303,10 @@ export const useControllerStore = defineStore("controller", {
                     });
                   }
                 } else if (k === "autoMeasureDistanceMode") {
-                  settingsStore.data.robot.auto_measure_distance_mode = value;
+                  const robotSettings = settingsStore.data?.robot;
+                  if (robotSettings && typeof value === "boolean") {
+                    robotSettings.auto_measure_distance_mode = value;
+                  }
                 }
               });
             } else if (

@@ -5,12 +5,14 @@ import { createPinia, setActivePinia } from "pinia";
 import { useMessagerStore } from "@/features/messager";
 import { useStore as useRobotStore } from "@/features/settings/stores/robot";
 
-const { patchMock } = vi.hoisted(() => ({
+const { getMock, patchMock } = vi.hoisted(() => ({
+  getMock: vi.fn(),
   patchMock: vi.fn(),
 }));
 
 vi.mock("@/api", () => ({
   robotApi: {
+    get: getMock,
     patch: patchMock,
   },
 }));
@@ -19,7 +21,18 @@ describe("robot configuration save feedback", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    getMock.mockResolvedValue({});
     patchMock.mockResolvedValue({});
+  });
+
+  it("deduplicates concurrent robot configuration loads", async () => {
+    const robot = useRobotStore();
+    getMock.mockResolvedValue(robot.data);
+
+    await Promise.all([robot.fetchData(), robot.fetchData()]);
+
+    expect(getMock).toHaveBeenCalledTimes(1);
+    expect(getMock).toHaveBeenCalledWith("px/api/settings/config");
   });
 
   it("reports a successful hardware-only partial save", async () => {

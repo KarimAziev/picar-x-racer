@@ -470,6 +470,9 @@ export const useStore = defineStore("robot", {
       }
     },
     async fetchData() {
+      if (this.loading) {
+        return;
+      }
       const messager = useMessagerStore();
 
       try {

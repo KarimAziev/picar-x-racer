@@ -25,7 +25,9 @@ export const useKeyboardControls = (
   popupStore: ReturnType<typeof usePopupStore>,
   keyboardEventPred?: KeyboardEventPred,
 ) => {
-  const settingsKeybindings = computed(() => settingsStore.data.keybindings);
+  const settingsKeybindings = computed(
+    () => settingsStore.data?.keybindings ?? {},
+  );
 
   const keybindings = computed(() => {
     const data = controllerStore.calibrationMode
@@ -88,7 +90,7 @@ export const useKeyboardControls = (
   };
 
   const updateCarState = () => {
-    const leftKey = findKey(settingsKeybindings.value.left);
+    const leftKey = findKey(settingsKeybindings.value?.left);
     const rightKey = findKey(settingsKeybindings.value?.right);
     const stopKey = findKey(settingsKeybindings.value?.stop);
     const accelerateKey = findKey(settingsKeybindings.value?.accelerate);
