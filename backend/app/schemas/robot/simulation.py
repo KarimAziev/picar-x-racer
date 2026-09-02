@@ -7,6 +7,108 @@ from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Annotated, Self
 
 
+class SimulationSensorImperfectionsConfig(BaseModel):
+    """Optional repeatable sensor errors applied after the ideal plant update."""
+
+    enabled: EnabledField = Field(
+        default=False,
+        title="Simulate sensor imperfections",
+        description=(
+            "Apply repeatable encoder, steering, IMU, and LiDAR errors while "
+            "keeping the simulator ground truth exact."
+        ),
+    )
+    random_seed: Annotated[
+        int,
+        Field(
+            title="Sensor error random seed",
+            description="Reusing a seed reproduces the same sensor-error sequence.",
+            ge=0,
+            le=2_147_483_647,
+        ),
+    ] = 7
+    encoder_scale_error_percent: Annotated[
+        float,
+        Field(
+            title="Encoder scale error",
+            description="Systematic rear-wheel distance error in percent.",
+            ge=-20,
+            le=20,
+            allow_inf_nan=False,
+        ),
+    ] = 1.0
+    encoder_noise_stddev_ticks: Annotated[
+        float,
+        Field(
+            title="Encoder noise",
+            description="Per-moving-sample Gaussian encoder noise in ticks.",
+            ge=0,
+            le=100,
+            allow_inf_nan=False,
+        ),
+    ] = 0.35
+    steering_bias_deg: Annotated[
+        float,
+        Field(
+            title="Steering sensor bias",
+            description="Constant measured wheel-angle offset in degrees.",
+            ge=-10,
+            le=10,
+            allow_inf_nan=False,
+        ),
+    ] = 0.75
+    steering_noise_stddev_deg: Annotated[
+        float,
+        Field(
+            title="Steering sensor noise",
+            description="Gaussian measured wheel-angle noise in degrees.",
+            ge=0,
+            le=5,
+            allow_inf_nan=False,
+        ),
+    ] = 0.15
+    imu_yaw_rate_bias_radps: Annotated[
+        float,
+        Field(
+            title="IMU yaw-rate bias",
+            description="Constant simulated gyro Z-axis bias in radians per second.",
+            ge=-1,
+            le=1,
+            allow_inf_nan=False,
+        ),
+    ] = 0.01
+    imu_yaw_rate_noise_stddev_radps: Annotated[
+        float,
+        Field(
+            title="IMU yaw-rate noise",
+            description="Gaussian gyro Z-axis noise in radians per second.",
+            ge=0,
+            le=1,
+            allow_inf_nan=False,
+        ),
+    ] = 0.003
+    lidar_range_noise_stddev_m: Annotated[
+        float,
+        Field(
+            title="LiDAR range noise",
+            description="Gaussian range noise applied to valid returns in metres.",
+            ge=0,
+            le=1,
+            allow_inf_nan=False,
+        ),
+    ] = 0.015
+    lidar_dropout_probability: Annotated[
+        float,
+        Field(
+            title="LiDAR return dropout",
+            description="Independent probability that a valid simulated return is lost.",
+            ge=0,
+            le=1,
+            allow_inf_nan=False,
+        ),
+    ] = 0.01
+
+
 class CoherentSimulationConfig(BaseModel):
     enabled: EnabledField = False
     update_frequency_hz: Annotated[
@@ -85,6 +187,10 @@ class CoherentSimulationConfig(BaseModel):
             le=255,
         ),
     ] = 100
+    sensor_imperfections: SimulationSensorImperfectionsConfig = Field(
+        default_factory=SimulationSensorImperfectionsConfig,
+        title="Simulated sensor imperfections",
+    )
 
     @model_validator(mode="after")
     def validate_watchdog_rate(self) -> Self:
@@ -108,4 +214,4 @@ class CoherentSimulationConfig(BaseModel):
         return self
 
 
-__all__ = ["CoherentSimulationConfig"]
+__all__ = ["CoherentSimulationConfig", "SimulationSensorImperfectionsConfig"]

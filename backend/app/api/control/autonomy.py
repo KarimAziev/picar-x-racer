@@ -9,6 +9,7 @@ from app.schemas.autonomy import (
     RelativeMotionStatus,
     SimulationPose2D,
     SimulationRuntimeStatus,
+    SimulationSensorImperfectionStatus,
     SimulationWorldGeometry,
     SimulationWorldSegment,
 )
@@ -52,6 +53,7 @@ def _simulation_status(
     error = service.last_error if service is not None else None
     world = service.world if service is not None else None
     initial_pose = service.initial_pose if service is not None else None
+    sensor_model = service.sensor_imperfections if service is not None else None
     return SimulationRuntimeStatus(
         enabled=simulation.enabled,
         running=simulation.running,
@@ -85,6 +87,24 @@ def _simulation_status(
                 yaw_rad=initial_pose[2],
             )
             if initial_pose is not None
+            else None
+        ),
+        sensor_imperfections=(
+            SimulationSensorImperfectionStatus(
+                enabled=sensor_model.enabled,
+                random_seed=sensor_model.random_seed,
+                encoder_scale_error_percent=(sensor_model.encoder_scale_error_percent),
+                encoder_noise_stddev_ticks=(sensor_model.encoder_noise_stddev_ticks),
+                steering_bias_deg=sensor_model.steering_bias_deg,
+                steering_noise_stddev_deg=(sensor_model.steering_noise_stddev_deg),
+                imu_yaw_rate_bias_radps=sensor_model.imu_yaw_rate_bias_radps,
+                imu_yaw_rate_noise_stddev_radps=(
+                    sensor_model.imu_yaw_rate_noise_stddev_radps
+                ),
+                lidar_range_noise_stddev_m=(sensor_model.lidar_range_noise_stddev_m),
+                lidar_dropout_probability=(sensor_model.lidar_dropout_probability),
+            )
+            if sensor_model is not None
             else None
         ),
         latest_state=service.latest if service is not None else None,

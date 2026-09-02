@@ -118,6 +118,19 @@ export interface SimulationWorldGeometry {
   segments: SimulationWorldSegment[];
 }
 
+export interface SimulationSensorImperfectionStatus {
+  enabled: boolean;
+  random_seed: number;
+  encoder_scale_error_percent: number;
+  encoder_noise_stddev_ticks: number;
+  steering_bias_deg: number;
+  steering_noise_stddev_deg: number;
+  imu_yaw_rate_bias_radps: number;
+  imu_yaw_rate_noise_stddev_radps: number;
+  lidar_range_noise_stddev_m: number;
+  lidar_dropout_probability: number;
+}
+
 export interface SimulationRuntimeStatus {
   enabled: boolean;
   running: boolean;
@@ -126,6 +139,7 @@ export interface SimulationRuntimeStatus {
   lidar_published_updates: number;
   world: SimulationWorldGeometry | null;
   odom_origin_in_world: SimulationPose2D | null;
+  sensor_imperfections: SimulationSensorImperfectionStatus | null;
   latest_state: SimulationState | null;
   error: string | null;
 }

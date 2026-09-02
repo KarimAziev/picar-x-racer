@@ -1,5 +1,6 @@
 export { useAutonomyStore } from "@/features/autonomy/store";
 export {
+  calculatePoseError,
   gridToCanvas,
   worldPointToOdom,
   worldToGrid,
@@ -7,7 +8,11 @@ export {
   worldYawToCanvas,
   worldYawToOdom,
 } from "@/features/autonomy/mapGeometry";
-export type { Point2D, Pose2D } from "@/features/autonomy/mapGeometry";
+export type {
+  Point2D,
+  Pose2D,
+  PoseError,
+} from "@/features/autonomy/mapGeometry";
 export {
   autonomyOperatorViewOptions,
   autonomyOperatorViews,
@@ -26,6 +31,7 @@ export type {
   SensorName,
   SensorPublisherStatus,
   SimulationRuntimeStatus,
+  SimulationSensorImperfectionStatus,
   SimulationPose2D,
   SimulationState,
   SimulationWorldGeometry,

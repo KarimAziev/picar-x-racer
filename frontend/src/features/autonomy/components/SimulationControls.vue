@@ -80,9 +80,34 @@
           <dt class="text-surface-500">World</dt>
           <dd>{{ formatScenario(status.world?.scenario) }}</dd>
         </div>
+        <div>
+          <dt class="text-surface-500">Sensor model</dt>
+          <dd>{{ sensorModelLabel }}</dd>
+        </div>
       </dl>
       <div v-else class="mt-3 text-xs text-surface-500">
         Waiting for the first synchronized plant frame.
+      </div>
+
+      <div
+        v-if="estimationError"
+        class="mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-950 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100"
+        role="status"
+      >
+        <div class="font-semibold">Odometry versus ground truth</div>
+        <dl class="mt-1 grid grid-cols-2 gap-3">
+          <div>
+            <dt class="text-violet-700 dark:text-violet-300">Position error</dt>
+            <dd>{{ formatErrorDistance(estimationError.positionM) }}</dd>
+          </div>
+          <div>
+            <dt class="text-violet-700 dark:text-violet-300">Heading error</dt>
+            <dd>{{ degrees(estimationError.headingRad) }}°</dd>
+          </div>
+        </dl>
+        <p class="mt-1 opacity-75">
+          Blue is encoder odometry; purple is exact simulated truth.
+        </p>
       </div>
 
       <div
@@ -154,6 +179,11 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import ConfirmPopup from "primevue/confirmpopup";
 import { useConfirm } from "primevue/useconfirm";
 import { useAutonomyStore } from "@/features/autonomy";
+import {
+  calculatePoseError,
+  worldPointToOdom,
+  worldYawToOdom,
+} from "@/features/autonomy/mapGeometry";
 import { useRobotStore } from "@/features/settings/stores";
 
 const store = useAutonomyStore();
@@ -163,6 +193,31 @@ const now = ref(Date.now());
 const simulationToggleLoading = ref(false);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 const status = computed(() => store.simulation);
+const estimationError = computed(() => {
+  const odometry = store.latest.odometry;
+  const streamedTruth = store.latest.simulation;
+  const origin = status.value?.odom_origin_in_world;
+  const truth =
+    streamedTruth?.channel === "simulation"
+      ? streamedTruth.payload
+      : status.value?.latest_state;
+  if (odometry?.channel !== "odometry" || !origin || !truth) return null;
+  const truthInOdom = worldPointToOdom(
+    { x: truth.x_m, y: truth.y_m },
+    { x: origin.x_m, y: origin.y_m, yaw: origin.yaw_rad },
+  );
+  return calculatePoseError(
+    {
+      x: odometry.payload.x_m,
+      y: odometry.payload.y_m,
+      yaw: odometry.payload.yaw_rad,
+    },
+    {
+      ...truthInOdom,
+      yaw: worldYawToOdom(truth.yaw_rad, origin.yaw_rad),
+    },
+  );
+});
 
 const simulationPrerequisiteError = computed(() => {
   const { motion_control: motion, ackermann_odometry: odometry } =
@@ -225,8 +280,15 @@ const updatedLabel = computed(() => {
     return `Status offline · last update ${seconds}s ago`;
   return seconds < 2 ? "Runtime status live" : `Updated ${seconds}s ago`;
 });
+const sensorModelLabel = computed(() => {
+  const model = status.value?.sensor_imperfections;
+  if (!model?.enabled) return "Ideal";
+  return `Seeded imperfections · ${model.random_seed}`;
+});
 
 const format = (value: number) => value.toFixed(2);
+const formatErrorDistance = (value: number) =>
+  value < 0.01 ? `${(value * 1000).toFixed(1)} mm` : `${value.toFixed(3)} m`;
 const degrees = (radians: number) => ((radians * 180) / Math.PI).toFixed(1);
 const formatScenario = (scenario?: string) =>
   scenario ? scenario.replaceAll("_", " ") : "No LiDAR world";

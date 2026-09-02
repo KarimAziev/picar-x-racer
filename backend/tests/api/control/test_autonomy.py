@@ -9,6 +9,7 @@ from app.services.autonomy import (
     CoherentSimulationSupervisor,
     RobotMode,
     TopicBus,
+    SimulationSensorImperfections,
     build_simulation_world,
 )
 from fastapi import HTTPException
@@ -47,6 +48,10 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
                 initial_x_m=1,
                 initial_y_m=-0.5,
                 initial_yaw_rad=0.25,
+                sensor_imperfections=SimulationSensorImperfections(
+                    enabled=True,
+                    random_seed=99,
+                ),
             )
         )
 
@@ -90,6 +95,8 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(status.lidar_published_updates, 0)
         self.assertEqual(status.world.scenario, "empty_room")  # type: ignore[union-attr]
         self.assertEqual(status.odom_origin_in_world.x_m, 1)  # type: ignore[union-attr]
+        self.assertTrue(status.sensor_imperfections.enabled)  # type: ignore[union-attr]
+        self.assertEqual(status.sensor_imperfections.random_seed, 99)  # type: ignore[union-attr]
         odometry.reset.assert_called_once_with()
         mapping.reset_session.assert_called_once_with()
 

@@ -40,6 +40,7 @@ from app.services.autonomy import (
     AckermannSimulationPlant,
     CoherentSimulationService,
     CoherentSimulationSupervisor,
+    SimulationSensorImperfections,
     EncoderPublisherService,
     HardwareController,
     LinearActuatorTranslator,
@@ -611,6 +612,32 @@ def build_coherent_simulation_supervisor(
         initial_yaw_rad=simulation.initial_yaw_rad,
         world=world,
         lidar_raycaster=lidar_raycaster,
+        sensor_imperfections=SimulationSensorImperfections(
+            enabled=simulation.sensor_imperfections.enabled,
+            random_seed=simulation.sensor_imperfections.random_seed,
+            encoder_scale_error_percent=(
+                simulation.sensor_imperfections.encoder_scale_error_percent
+            ),
+            encoder_noise_stddev_ticks=(
+                simulation.sensor_imperfections.encoder_noise_stddev_ticks
+            ),
+            steering_bias_deg=simulation.sensor_imperfections.steering_bias_deg,
+            steering_noise_stddev_deg=(
+                simulation.sensor_imperfections.steering_noise_stddev_deg
+            ),
+            imu_yaw_rate_bias_radps=(
+                simulation.sensor_imperfections.imu_yaw_rate_bias_radps
+            ),
+            imu_yaw_rate_noise_stddev_radps=(
+                simulation.sensor_imperfections.imu_yaw_rate_noise_stddev_radps
+            ),
+            lidar_range_noise_stddev_m=(
+                simulation.sensor_imperfections.lidar_range_noise_stddev_m
+            ),
+            lidar_dropout_probability=(
+                simulation.sensor_imperfections.lidar_dropout_probability
+            ),
+        ),
     )
     return CoherentSimulationSupervisor(service)
 

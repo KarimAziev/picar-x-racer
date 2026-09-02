@@ -9,6 +9,19 @@ export interface Pose2D extends Point2D {
   yaw: number;
 }
 
+export interface PoseError {
+  positionM: number;
+  headingRad: number;
+}
+
+export const calculatePoseError = (
+  estimated: Pose2D,
+  reference: Pose2D,
+): PoseError => ({
+  positionM: Math.hypot(estimated.x - reference.x, estimated.y - reference.y),
+  headingRad: Math.abs(normalizeAngle(estimated.yaw - reference.yaw)),
+});
+
 export const worldPointToOdom = (
   point: Point2D,
   odomOriginInWorld: Pose2D,

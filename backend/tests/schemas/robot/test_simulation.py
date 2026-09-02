@@ -107,6 +107,21 @@ class TestCoherentSimulationConfig(unittest.TestCase):
         self.assertEqual(config.coherent_simulation.world_scenario, "single_obstacle")
         self.assertEqual(config.coherent_simulation.world_width_m, 6)
         self.assertEqual(config.coherent_simulation.lidar_scan_frequency_hz, 10)
+        self.assertFalse(config.coherent_simulation.sensor_imperfections.enabled)
+        self.assertEqual(
+            config.coherent_simulation.sensor_imperfections.random_seed,
+            7,
+        )
+
+    def test_sensor_imperfections_validate_probability_and_noise(self) -> None:
+        with self.assertRaises(ValidationError):
+            CoherentSimulationConfig.model_validate(
+                {"sensor_imperfections": {"lidar_dropout_probability": 1.1}}
+            )
+        with self.assertRaises(ValidationError):
+            CoherentSimulationConfig.model_validate(
+                {"sensor_imperfections": {"encoder_noise_stddev_ticks": -0.1}}
+            )
 
     def test_initial_pose_and_vehicle_must_fit_inside_world(self) -> None:
         with self.assertRaisesRegex(ValidationError, "inside the world"):

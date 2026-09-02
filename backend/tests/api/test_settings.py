@@ -243,6 +243,12 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
 
             changed_data = simulated_config.model_dump(mode="json")
             changed_data["coherent_simulation"]["world_scenario"] = "corridor"
+            changed_data["coherent_simulation"]["sensor_imperfections"][
+                "enabled"
+            ] = True
+            changed_data["coherent_simulation"]["sensor_imperfections"][
+                "random_seed"
+            ] = 2026
             changed_simulated_config = HardwareConfig.model_validate(changed_data)
             await _reload_autonomy_runtime(
                 simulated_config,
@@ -260,6 +266,13 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
 
             self.assertIsNot(simulation.service, first_simulation_service)
             self.assertEqual(simulation.service.world.scenario, "corridor")  # type: ignore[union-attr]
+            self.assertTrue(
+                simulation.service.sensor_imperfections.enabled  # type: ignore[union-attr]
+            )
+            self.assertEqual(
+                simulation.service.sensor_imperfections.random_seed,  # type: ignore[union-attr]
+                2026,
+            )
             self.assertEqual(local_mapping.reconfigure_from.await_count, 2)
 
             await _reload_autonomy_runtime(

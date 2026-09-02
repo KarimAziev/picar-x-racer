@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculatePoseError,
   gridToCanvas,
   worldPointToOdom,
   worldToGrid,
@@ -55,5 +56,15 @@ describe("occupancy map geometry", () => {
     expect(odomPoint.x).toBeCloseTo(1);
     expect(odomPoint.y).toBeCloseTo(0);
     expect(worldYawToOdom(Math.PI, Math.PI / 2)).toBeCloseTo(Math.PI / 2);
+  });
+
+  it("compares estimated and reference poses across the angle boundary", () => {
+    const error = calculatePoseError(
+      { x: 3, y: 4, yaw: Math.PI - 0.1 },
+      { x: 0, y: 0, yaw: -Math.PI + 0.1 },
+    );
+
+    expect(error.positionM).toBe(5);
+    expect(error.headingRad).toBeCloseTo(0.2);
   });
 });

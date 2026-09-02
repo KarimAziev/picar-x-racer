@@ -138,6 +138,10 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
             "max_steering_age_ms": 250,
         }
         data["coherent_simulation"]["enabled"] = True
+        data["coherent_simulation"]["sensor_imperfections"] = {
+            "enabled": True,
+            "random_seed": 42,
+        }
         data["localization_sensors"]["lidar"] = {
             "enabled": True,
             "driver": "mock",
@@ -151,6 +155,9 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
         with patch("app.api.robot_deps.MockLidar2D") as mock_lidar:
             sensors = build_localization_sensor_service(config, bus, smbus_manager)
             simulation = build_coherent_simulation_supervisor(config, bus)
+            assert simulation.service is not None
+            self.assertTrue(simulation.service.sensor_imperfections.enabled)
+            self.assertEqual(simulation.service.sensor_imperfections.random_seed, 42)
             statuses = {item.sensor: item for item in sensors.status.sensors}
 
             await sensors.start()

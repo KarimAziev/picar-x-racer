@@ -64,6 +64,7 @@ from app.services.autonomy.simulation import (
     AckermannSimulationPlant,
     CoherentSimulationService,
     CoherentSimulationSupervisor,
+    SimulationSensorImperfections,
 )
 from app.services.autonomy.simulation_world import (
     LineSegment2D,
@@ -146,6 +147,7 @@ __all__ = [
     "SteeringFeedbackSample",
     "SteeringFeedbackService",
     "SimulationWorld",
+    "SimulationSensorImperfections",
     "Topic",
     "TopicSensorMonitor",
     "TopicBus",

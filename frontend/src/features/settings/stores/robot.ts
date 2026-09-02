@@ -231,6 +231,18 @@ export interface CoherentSimulationConfig {
   vehicle_radius_m: number;
   lidar_scan_frequency_hz: number;
   lidar_quality: number;
+  sensor_imperfections: {
+    enabled: boolean;
+    random_seed: number;
+    encoder_scale_error_percent: number;
+    encoder_noise_stddev_ticks: number;
+    steering_bias_deg: number;
+    steering_noise_stddev_deg: number;
+    imu_yaw_rate_bias_radps: number;
+    imu_yaw_rate_noise_stddev_radps: number;
+    lidar_range_noise_stddev_m: number;
+    lidar_dropout_probability: number;
+  };
 }
 
 export type CalibrationData = Partial<ServoCalibrationData> &
@@ -434,6 +446,18 @@ const defaultState: State = {
       vehicle_radius_m: 0.12,
       lidar_scan_frequency_hz: 10,
       lidar_quality: 100,
+      sensor_imperfections: {
+        enabled: false,
+        random_seed: 7,
+        encoder_scale_error_percent: 1,
+        encoder_noise_stddev_ticks: 0.35,
+        steering_bias_deg: 0.75,
+        steering_noise_stddev_deg: 0.15,
+        imu_yaw_rate_bias_radps: 0.01,
+        imu_yaw_rate_noise_stddev_radps: 0.003,
+        lidar_range_noise_stddev_m: 0.015,
+        lidar_dropout_probability: 0.01,
+      },
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

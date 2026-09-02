@@ -14,6 +14,7 @@ from app.services.autonomy import (
     MotionSource,
     RaycastLidarConfig,
     WorldLidarRaycaster,
+    SimulationSensorImperfections,
     build_simulation_world,
     TopicBus,
 )
@@ -266,6 +267,130 @@ class CoherentSimulationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(scan.header.sequence, 2)
         self.assertEqual(service.lidar_published_updates, 2)
         self.assertLess(scan.ranges_m[0], 3)
+
+    async def test_seeded_imperfections_change_sensors_but_not_truth(self) -> None:
+        world = build_simulation_world("empty_room", width_m=6, height_m=4)
+        service = CoherentSimulationService(
+            self.bus,
+            AckermannSimulationPlant(self.config),
+            world=world,
+            lidar_raycaster=WorldLidarRaycaster(
+                world,
+                RaycastLidarConfig(
+                    frame_id="laser",
+                    sensor_x_m=0,
+                    sensor_y_m=0,
+                    sensor_yaw_rad=0,
+                    range_min_m=0.05,
+                    range_max_m=10,
+                    angular_resolution_deg=45,
+                ),
+            ),
+            sensor_imperfections=SimulationSensorImperfections(
+                enabled=True,
+                encoder_scale_error_percent=10,
+                encoder_noise_stddev_ticks=0,
+                steering_bias_deg=2,
+                steering_noise_stddev_deg=0,
+                imu_yaw_rate_bias_radps=0.1,
+                imu_yaw_rate_noise_stddev_radps=0,
+                lidar_range_noise_stddev_m=0,
+                lidar_dropout_probability=1,
+            ),
+        )
+        timestamp = 1_000_000_000
+        self.bus.publish(
+            MOTION_COMMANDED,
+            command(speed_mps=0.5, steering_rad=-0.2, timestamp_ns=timestamp),
+        )
+
+        truth = service.step_once(timestamp_ns=timestamp + 10_000_000)
+        encoder = self.bus.latest(ENCODER_STATE)
+        steering = self.bus.latest(STEERING_STATE)
+        imu = self.bus.latest(IMU_DATA)
+        scan = self.bus.latest(LIDAR_SCAN)
+
+        assert encoder is not None and encoder.left is not None
+        assert steering is not None and steering.measured_angle_rad is not None
+        assert imu is not None and scan is not None
+        self.assertEqual(encoder.left.ticks, round(truth.encoder_ticks * 1.1))
+        self.assertAlmostEqual(
+            steering.measured_angle_rad,
+            truth.steering_angle_rad + math.radians(2),
+        )
+        self.assertAlmostEqual(
+            imu.angular_velocity_z_radps,
+            truth.yaw_rate_radps + 0.1,
+        )
+        self.assertTrue(all(math.isinf(distance) for distance in scan.ranges_m))
+        self.assertNotEqual(encoder.left.ticks, truth.encoder_ticks)
+
+    async def test_encoder_noise_does_not_move_a_stationary_vehicle(self) -> None:
+        service = CoherentSimulationService(
+            self.bus,
+            AckermannSimulationPlant(self.config),
+            sensor_imperfections=SimulationSensorImperfections(
+                enabled=True,
+                encoder_noise_stddev_ticks=50,
+            ),
+        )
+
+        for step in range(1, 11):
+            service.step_once(timestamp_ns=1_000_000_000 + step * 10_000_000)
+
+        encoder = self.bus.latest(ENCODER_STATE)
+        assert encoder is not None and encoder.left is not None
+        self.assertEqual(encoder.left.ticks, 0)
+        self.assertEqual(encoder.left.delta_ticks, 0)
+
+    async def test_seed_and_reset_reproduce_the_sensor_sequence(self) -> None:
+        model = SimulationSensorImperfections(
+            enabled=True,
+            random_seed=1234,
+            lidar_dropout_probability=0.2,
+        )
+        world = build_simulation_world("empty_room", width_m=6, height_m=4)
+        service = CoherentSimulationService(
+            self.bus,
+            AckermannSimulationPlant(self.config),
+            world=world,
+            lidar_raycaster=WorldLidarRaycaster(
+                world,
+                RaycastLidarConfig(
+                    frame_id="laser",
+                    sensor_x_m=0,
+                    sensor_y_m=0,
+                    sensor_yaw_rad=0,
+                    range_min_m=0.05,
+                    range_max_m=10,
+                    angular_resolution_deg=45,
+                ),
+            ),
+            sensor_imperfections=model,
+        )
+        timestamp = 1_000_000_000
+        self.bus.publish(
+            MOTION_COMMANDED,
+            command(speed_mps=0.5, steering_rad=-0.2, timestamp_ns=timestamp),
+        )
+
+        service.step_once(timestamp_ns=timestamp + 10_000_000)
+        first = (
+            self.bus.latest(STEERING_STATE),
+            self.bus.latest(ENCODER_STATE),
+            self.bus.latest(IMU_DATA),
+            self.bus.latest(LIDAR_SCAN),
+        )
+        service.reset()
+        service.step_once(timestamp_ns=timestamp + 10_000_000)
+        repeated = (
+            self.bus.latest(STEERING_STATE),
+            self.bus.latest(ENCODER_STATE),
+            self.bus.latest(IMU_DATA),
+            self.bus.latest(LIDAR_SCAN),
+        )
+
+        self.assertEqual(repeated, first)
 
     async def test_async_lifecycle_publishes_and_stops_cleanly(self) -> None:
         output = self.bus.subscribe(SIMULATION_STATE, replay_latest=False)

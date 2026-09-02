@@ -2,6 +2,7 @@
 
 import asyncio
 import math
+import random
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
@@ -11,6 +12,7 @@ from app.schemas.autonomy import (
     EncoderReading,
     EncoderState,
     ImuData,
+    LaserScan,
     MessageHeader,
     SimulationState,
     SteeringState,
@@ -83,6 +85,55 @@ class AckermannPlantState:
     lateral_acceleration_mps2: float
     encoder_ticks: int
     collision: bool
+
+
+@dataclass(frozen=True)
+class SimulationSensorImperfections:
+    """Seeded errors applied only to simulated sensor observations."""
+
+    enabled: bool = False
+    random_seed: int = 7
+    encoder_scale_error_percent: float = 1.0
+    encoder_noise_stddev_ticks: float = 0.35
+    steering_bias_deg: float = 0.75
+    steering_noise_stddev_deg: float = 0.15
+    imu_yaw_rate_bias_radps: float = 0.01
+    imu_yaw_rate_noise_stddev_radps: float = 0.003
+    lidar_range_noise_stddev_m: float = 0.015
+    lidar_dropout_probability: float = 0.01
+
+    def __post_init__(self) -> None:
+        if self.random_seed < 0:
+            raise ValueError("random_seed must be non-negative")
+        finite_values = (
+            self.encoder_scale_error_percent,
+            self.encoder_noise_stddev_ticks,
+            self.steering_bias_deg,
+            self.steering_noise_stddev_deg,
+            self.imu_yaw_rate_bias_radps,
+            self.imu_yaw_rate_noise_stddev_radps,
+            self.lidar_range_noise_stddev_m,
+            self.lidar_dropout_probability,
+        )
+        if not all(math.isfinite(value) for value in finite_values):
+            raise ValueError("sensor imperfection values must be finite")
+        if self.encoder_scale_error_percent <= -100:
+            raise ValueError(
+                "encoder scale error must preserve the direction of travel"
+            )
+        for name, value in (
+            ("encoder_noise_stddev_ticks", self.encoder_noise_stddev_ticks),
+            ("steering_noise_stddev_deg", self.steering_noise_stddev_deg),
+            (
+                "imu_yaw_rate_noise_stddev_radps",
+                self.imu_yaw_rate_noise_stddev_radps,
+            ),
+            ("lidar_range_noise_stddev_m", self.lidar_range_noise_stddev_m),
+        ):
+            if value < 0:
+                raise ValueError(f"{name} must be non-negative")
+        if not 0 <= self.lidar_dropout_probability <= 1:
+            raise ValueError("lidar_dropout_probability must be between zero and one")
 
 
 class AckermannSimulationPlant:
@@ -207,6 +258,9 @@ class CoherentSimulationService:
         initial_yaw_rad: float = 0.0,
         world: Optional[SimulationWorld] = None,
         lidar_raycaster: Optional[WorldLidarRaycaster] = None,
+        sensor_imperfections: SimulationSensorImperfections = (
+            SimulationSensorImperfections()
+        ),
     ) -> None:
         self._bus = bus
         self._plant = plant
@@ -214,6 +268,7 @@ class CoherentSimulationService:
         self._initial_pose = (initial_x_m, initial_y_m, initial_yaw_rad)
         self._world = world
         self._lidar_raycaster = lidar_raycaster
+        self._sensor_imperfections = sensor_imperfections
         plant.reset(
             x_m=initial_x_m,
             y_m=initial_y_m,
@@ -222,13 +277,22 @@ class CoherentSimulationService:
         self._task: Optional[asyncio.Task[None]] = None
         self._sequence = 0
         self._last_timestamp_ns: Optional[int] = None
-        self._last_encoder_ticks = plant.state.encoder_ticks
+        self._last_truth_encoder_ticks = plant.state.encoder_ticks
+        self._measured_encoder_ticks = (
+            float(plant.state.encoder_ticks),
+            float(plant.state.encoder_ticks),
+        )
+        self._last_measured_encoder_ticks = (
+            plant.state.encoder_ticks,
+            plant.state.encoder_ticks,
+        )
         self._last_lidar_timestamp_ns: Optional[int] = None
         self._lidar_sequence = 0
         self.latest: Optional[SimulationState] = None
         self.last_error: Optional[Exception] = None
         self.published_updates = 0
         self.lidar_published_updates = 0
+        self._reset_random_streams()
 
     @property
     def config(self) -> AckermannSimulationConfig:
@@ -245,6 +309,10 @@ class CoherentSimulationService:
     @property
     def initial_pose(self) -> Tuple[float, float, float]:
         return self._initial_pose
+
+    @property
+    def sensor_imperfections(self) -> SimulationSensorImperfections:
+        return self._sensor_imperfections
 
     def start(self) -> None:
         if self.running:
@@ -280,13 +348,22 @@ class CoherentSimulationService:
         )
         self._sequence = 0
         self._last_timestamp_ns = None
-        self._last_encoder_ticks = state.encoder_ticks
+        self._last_truth_encoder_ticks = state.encoder_ticks
+        self._measured_encoder_ticks = (
+            float(state.encoder_ticks),
+            float(state.encoder_ticks),
+        )
+        self._last_measured_encoder_ticks = (
+            state.encoder_ticks,
+            state.encoder_ticks,
+        )
         self._last_lidar_timestamp_ns = None
         self._lidar_sequence = 0
         self.latest = None
         self.last_error = None
         self.published_updates = 0
         self.lidar_published_updates = 0
+        self._reset_random_streams()
         return self._simulation_message(
             state,
             timestamp_ns=self._monotonic_ns(),
@@ -320,23 +397,25 @@ class CoherentSimulationService:
         steering = SteeringState(
             header=header,
             commanded_angle_rad=command.steering_angle_rad,
-            measured_angle_rad=state.steering_angle_rad,
+            measured_angle_rad=self._measured_steering_angle(state),
         )
-        encoder_delta = state.encoder_ticks - self._last_encoder_ticks
+        left_ticks, right_ticks = self._measured_encoder_state(state)
+        left_delta = left_ticks - self._last_measured_encoder_ticks[0]
+        right_delta = right_ticks - self._last_measured_encoder_ticks[1]
         encoder = EncoderState(
             header=header.model_copy(update={"frame_id": "rear_axle"}),
             left=EncoderReading(
-                ticks=state.encoder_ticks,
-                delta_ticks=encoder_delta,
+                ticks=left_ticks,
+                delta_ticks=left_delta,
             ),
             right=EncoderReading(
-                ticks=state.encoder_ticks,
-                delta_ticks=encoder_delta,
+                ticks=right_ticks,
+                delta_ticks=right_delta,
             ),
         )
         imu = ImuData(
             header=header.model_copy(update={"frame_id": "imu"}),
-            angular_velocity_z_radps=state.yaw_rate_radps,
+            angular_velocity_z_radps=self._measured_yaw_rate(state),
             acceleration_x_mps2=state.longitudinal_acceleration_mps2,
             acceleration_y_mps2=state.lateral_acceleration_mps2,
             acceleration_z_mps2=self.config.gravity_mps2,
@@ -354,7 +433,8 @@ class CoherentSimulationService:
         self._bus.publish(IMU_DATA, imu)
         self._publish_lidar_if_due(state, timestamp)
         self._bus.publish(SIMULATION_STATE, simulation)
-        self._last_encoder_ticks = state.encoder_ticks
+        self._last_truth_encoder_ticks = state.encoder_ticks
+        self._last_measured_encoder_ticks = (left_ticks, right_ticks)
         self.latest = simulation
         self.published_updates = self._sequence
         self.last_error = None
@@ -382,9 +462,99 @@ class CoherentSimulationService:
             timestamp_ns=timestamp_ns,
             sequence=self._lidar_sequence,
         )
+        scan = self._measured_lidar_scan(scan)
         self._bus.publish(LIDAR_SCAN, scan)
         self._last_lidar_timestamp_ns = timestamp_ns
         self.lidar_published_updates = self._lidar_sequence
+
+    def _measured_encoder_state(
+        self,
+        state: AckermannPlantState,
+    ) -> Tuple[int, int]:
+        model = self._sensor_imperfections
+        if not model.enabled:
+            self._measured_encoder_ticks = (
+                float(state.encoder_ticks),
+                float(state.encoder_ticks),
+            )
+            return state.encoder_ticks, state.encoder_ticks
+
+        truth_delta = state.encoder_ticks - self._last_truth_encoder_ticks
+        scale = 1 + model.encoder_scale_error_percent / 100
+        measured = list(self._measured_encoder_ticks)
+        if truth_delta:
+            for index, generator in enumerate(self._encoder_random):
+                measured[index] += truth_delta * scale + generator.gauss(
+                    0,
+                    model.encoder_noise_stddev_ticks,
+                )
+        self._measured_encoder_ticks = (measured[0], measured[1])
+        return round(measured[0]), round(measured[1])
+
+    def _measured_steering_angle(self, state: AckermannPlantState) -> float:
+        model = self._sensor_imperfections
+        if not model.enabled:
+            return state.steering_angle_rad
+        return state.steering_angle_rad + math.radians(
+            model.steering_bias_deg
+            + self._steering_random.gauss(0, model.steering_noise_stddev_deg)
+        )
+
+    def _measured_yaw_rate(self, state: AckermannPlantState) -> float:
+        model = self._sensor_imperfections
+        if not model.enabled:
+            return state.yaw_rate_radps
+        return (
+            state.yaw_rate_radps
+            + model.imu_yaw_rate_bias_radps
+            + self._imu_random.gauss(0, model.imu_yaw_rate_noise_stddev_radps)
+        )
+
+    def _measured_lidar_scan(self, scan: LaserScan) -> LaserScan:
+        model = self._sensor_imperfections
+        if not model.enabled:
+            return scan
+        ranges = []
+        intensities = list(scan.intensities) if scan.intensities is not None else None
+        for index, distance in enumerate(scan.ranges_m):
+            if not math.isfinite(distance):
+                ranges.append(distance)
+                continue
+            if self._lidar_random.random() < model.lidar_dropout_probability:
+                ranges.append(math.inf)
+                if intensities is not None:
+                    intensities[index] = 0.0
+                continue
+            measured_distance = distance + self._lidar_random.gauss(
+                0,
+                model.lidar_range_noise_stddev_m,
+            )
+            if not scan.range_min_m <= measured_distance <= scan.range_max_m:
+                ranges.append(math.inf)
+                if intensities is not None:
+                    intensities[index] = 0.0
+            else:
+                ranges.append(measured_distance)
+        return scan.model_copy(
+            update={
+                "ranges_m": tuple(ranges),
+                "intensities": (
+                    tuple(intensities) if intensities is not None else None
+                ),
+            }
+        )
+
+    def _reset_random_streams(self) -> None:
+        seed = self._sensor_imperfections.random_seed
+        # Independent streams ensure that enabling or changing one sensor does
+        # not silently alter another sensor's repeatable error sequence.
+        self._encoder_random = (
+            random.Random(seed ^ 0x45A1),
+            random.Random(seed ^ 0x45A2),
+        )
+        self._steering_random = random.Random(seed ^ 0x57EE)
+        self._imu_random = random.Random(seed ^ 0x1A4D)
+        self._lidar_random = random.Random(seed ^ 0x11DA)
 
     def _fresh_command(self, timestamp_ns: int) -> ActuatorCommand:
         command = self._bus.latest(MOTION_COMMANDED)
@@ -514,4 +684,5 @@ __all__ = [
     "AckermannSimulationPlant",
     "CoherentSimulationService",
     "CoherentSimulationSupervisor",
+    "SimulationSensorImperfections",
 ]

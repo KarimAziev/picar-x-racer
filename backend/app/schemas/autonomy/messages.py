@@ -185,6 +185,21 @@ class SimulationWorldGeometry(FrozenMessage):
         return frame_id
 
 
+class SimulationSensorImperfectionStatus(FrozenMessage):
+    """Active seeded sensor-error model exposed for simulator diagnostics."""
+
+    enabled: bool
+    random_seed: Annotated[int, Field(ge=0)]
+    encoder_scale_error_percent: FiniteFloat
+    encoder_noise_stddev_ticks: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    steering_bias_deg: FiniteFloat
+    steering_noise_stddev_deg: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    imu_yaw_rate_bias_radps: FiniteFloat
+    imu_yaw_rate_noise_stddev_radps: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    lidar_range_noise_stddev_m: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    lidar_dropout_probability: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+
+
 class SimulationRuntimeStatus(FrozenMessage):
     """Lifecycle and isolation status for coherent simulation mode."""
 
@@ -195,6 +210,7 @@ class SimulationRuntimeStatus(FrozenMessage):
     lidar_published_updates: Annotated[int, Field(ge=0)] = 0
     world: Optional[SimulationWorldGeometry] = None
     odom_origin_in_world: Optional[SimulationPose2D] = None
+    sensor_imperfections: Optional[SimulationSensorImperfectionStatus] = None
     latest_state: Optional[SimulationState] = None
     error: Optional[str] = None
 
@@ -243,6 +259,7 @@ __all__ = [
     "SimulationState",
     "SimulationPose2D",
     "SimulationRuntimeStatus",
+    "SimulationSensorImperfectionStatus",
     "SimulationWorldGeometry",
     "SimulationWorldSegment",
     "SteeringState",
