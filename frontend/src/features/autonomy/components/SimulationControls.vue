@@ -90,23 +90,28 @@
       </div>
 
       <div
-        v-if="estimationError"
+        v-if="rawEstimationError || fusedEstimationError"
         class="mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-950 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100"
         role="status"
       >
-        <div class="font-semibold">Odometry versus ground truth</div>
-        <dl class="mt-1 grid grid-cols-2 gap-3">
-          <div>
-            <dt class="text-violet-700 dark:text-violet-300">Position error</dt>
-            <dd>{{ formatErrorDistance(estimationError.positionM) }}</dd>
-          </div>
-          <div>
-            <dt class="text-violet-700 dark:text-violet-300">Heading error</dt>
-            <dd>{{ degrees(estimationError.headingRad) }}°</dd>
-          </div>
+        <div class="font-semibold">Pose error versus ground truth</div>
+        <dl class="mt-1 grid grid-cols-[auto_1fr_1fr] gap-x-3 gap-y-1">
+          <dt class="text-violet-700 dark:text-violet-300">Source</dt>
+          <dt class="text-violet-700 dark:text-violet-300">Position</dt>
+          <dt class="text-violet-700 dark:text-violet-300">Heading</dt>
+          <template v-if="rawEstimationError">
+            <dd>Raw odometry</dd>
+            <dd>{{ formatErrorDistance(rawEstimationError.positionM) }}</dd>
+            <dd>{{ degrees(rawEstimationError.headingRad) }}°</dd>
+          </template>
+          <template v-if="fusedEstimationError">
+            <dd>Fused pose</dd>
+            <dd>{{ formatErrorDistance(fusedEstimationError.positionM) }}</dd>
+            <dd>{{ degrees(fusedEstimationError.headingRad) }}°</dd>
+          </template>
         </dl>
         <p class="mt-1 opacity-75">
-          Blue is encoder odometry; purple is exact simulated truth.
+          Blue is raw odometry, green is fused pose, and purple is exact truth.
         </p>
       </div>
 
@@ -193,29 +198,45 @@ const now = ref(Date.now());
 const simulationToggleLoading = ref(false);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 const status = computed(() => store.simulation);
-const estimationError = computed(() => {
-  const odometry = store.latest.odometry;
+const truthPoseInOdom = computed(() => {
   const streamedTruth = store.latest.simulation;
   const origin = status.value?.odom_origin_in_world;
   const truth =
     streamedTruth?.channel === "simulation"
       ? streamedTruth.payload
       : status.value?.latest_state;
-  if (odometry?.channel !== "odometry" || !origin || !truth) return null;
+  if (!origin || !truth) return null;
   const truthInOdom = worldPointToOdom(
     { x: truth.x_m, y: truth.y_m },
     { x: origin.x_m, y: origin.y_m, yaw: origin.yaw_rad },
   );
+  return {
+    ...truthInOdom,
+    yaw: worldYawToOdom(truth.yaw_rad, origin.yaw_rad),
+  };
+});
+const rawEstimationError = computed(() => {
+  const odometry = store.latest.odometry;
+  if (odometry?.channel !== "odometry" || !truthPoseInOdom.value) return null;
   return calculatePoseError(
     {
       x: odometry.payload.x_m,
       y: odometry.payload.y_m,
       yaw: odometry.payload.yaw_rad,
     },
-    {
-      ...truthInOdom,
-      yaw: worldYawToOdom(truth.yaw_rad, origin.yaw_rad),
-    },
+    truthPoseInOdom.value,
+  );
+});
+const fusedEstimationError = computed(() => {
+  const localization = store.latest.localization;
+  const pose =
+    store.localization?.enabled && localization?.channel === "localization"
+      ? localization.payload
+      : store.localization?.latest_pose;
+  if (!pose || !truthPoseInOdom.value) return null;
+  return calculatePoseError(
+    { x: pose.x_m, y: pose.y_m, yaw: pose.yaw_rad },
+    truthPoseInOdom.value,
   );
 });
 

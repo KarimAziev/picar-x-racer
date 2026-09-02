@@ -1,7 +1,7 @@
 """Framed, monotonic messages for sensors and robot state."""
 
 import math
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing_extensions import Annotated, Self
@@ -136,6 +136,70 @@ class Odometry2D(FrozenMessage):
         return frame_id
 
 
+class PoseObservation2D(FrozenMessage):
+    """External absolute pose observation for a named estimation frame."""
+
+    header: MessageHeader
+    x_m: FiniteFloat
+    y_m: FiniteFloat
+    yaw_rad: FiniteFloat
+    position_variance_m2: Annotated[float, Field(gt=0, allow_inf_nan=False)]
+    yaw_variance_rad2: Annotated[float, Field(gt=0, allow_inf_nan=False)]
+    source: str
+
+    @field_validator("source")
+    @classmethod
+    def validate_source(cls, value: str) -> str:
+        source = value.strip()
+        if not source:
+            raise ValueError("pose observation source must not be empty")
+        return source
+
+
+class LocalizationPose2D(FrozenMessage):
+    """Wheel/IMU pose estimate with compact diagonal uncertainty."""
+
+    header: MessageHeader
+    child_frame_id: str = "base_link"
+    x_m: FiniteFloat
+    y_m: FiniteFloat
+    yaw_rad: FiniteFloat
+    linear_speed_mps: FiniteFloat
+    yaw_rate_radps: FiniteFloat
+    position_variance_m2: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    yaw_variance_rad2: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    fusion_mode: Literal["wheel", "wheel_imu", "corrected"]
+    last_correction_source: Optional[str] = None
+
+    @field_validator("child_frame_id")
+    @classmethod
+    def validate_localization_child_frame_id(cls, value: str) -> str:
+        frame_id = value.strip()
+        if not frame_id or frame_id.startswith("/"):
+            raise ValueError("child_frame_id must be non-empty and relative")
+        return frame_id
+
+
+class LocalizationRuntimeStatus(FrozenMessage):
+    """Lifecycle and input-use counters for native pose fusion."""
+
+    enabled: bool
+    running: bool
+    published_updates: Annotated[int, Field(ge=0)] = 0
+    imu_updates_used: Annotated[int, Field(ge=0)] = 0
+    imu_updates_rejected: Annotated[int, Field(ge=0)] = 0
+    corrections_applied: Annotated[int, Field(ge=0)] = 0
+    corrections_rejected: Annotated[int, Field(ge=0)] = 0
+    last_position_innovation_m: Optional[
+        Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    ] = None
+    last_heading_innovation_rad: Optional[
+        Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    ] = None
+    latest_pose: Optional[LocalizationPose2D] = None
+    error: Optional[str] = None
+
+
 class SimulationState(FrozenMessage):
     """Ground-truth planar state emitted by the coherent simulator."""
 
@@ -252,9 +316,12 @@ __all__ = [
     "EncoderState",
     "ImuData",
     "LaserScan",
+    "LocalizationPose2D",
+    "LocalizationRuntimeStatus",
     "MessageHeader",
     "OccupancyGrid",
     "Odometry2D",
+    "PoseObservation2D",
     "SafetyState",
     "SimulationState",
     "SimulationPose2D",

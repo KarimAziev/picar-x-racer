@@ -17,6 +17,7 @@ from app.schemas.robot.motors import (
 )
 from app.schemas.robot.motion_control import MotionControlConfig
 from app.schemas.robot.odometry import AckermannOdometryConfig
+from app.schemas.robot.pose_estimation import PoseEstimationConfig
 from app.schemas.robot.safety import LidarSafetyConfig
 from app.schemas.robot.simulation import CoherentSimulationConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
@@ -95,6 +96,17 @@ class HardwareConfig(BaseModel):
             ),
         ),
     ] = CoherentSimulationConfig()
+
+    pose_estimation: Annotated[
+        PoseEstimationConfig,
+        Field(
+            title="Pose estimation",
+            description=(
+                "Fuse locally smooth wheel odometry with fresh IMU yaw rate and "
+                "optional external pose corrections."
+            ),
+        ),
+    ] = PoseEstimationConfig()
 
     steering_servo: Annotated[
         Union[GPIOAngularServoConfig, AngularServoConfig],
@@ -272,6 +284,12 @@ class HardwareConfig(BaseModel):
                 and not self.ackermann_odometry.enabled
             ):
                 raise ValueError("coherent simulation requires Ackermann odometry")
+        if self.pose_estimation is not None and self.pose_estimation.enabled:
+            if (
+                self.ackermann_odometry is not None
+                and not self.ackermann_odometry.enabled
+            ):
+                raise ValueError("pose estimation requires Ackermann odometry")
         return self
 
 

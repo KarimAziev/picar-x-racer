@@ -245,6 +245,19 @@ export interface CoherentSimulationConfig {
   };
 }
 
+export interface PoseEstimationConfig {
+  enabled: boolean;
+  imu_yaw_rate_weight: number;
+  max_imu_age_ms: number;
+  max_pose_observation_age_ms: number;
+  initial_position_stddev_m: number;
+  initial_heading_stddev_rad: number;
+  position_process_noise_m_per_meter: number;
+  heading_process_noise_rad_per_second: number;
+  odometry_heading_noise_fraction: number;
+  imu_yaw_rate_stddev_radps: number;
+}
+
 export type CalibrationData = Partial<ServoCalibrationData> &
   MotorsCalibrationData;
 
@@ -265,6 +278,7 @@ export interface Data extends ServoData, MotorsData {
   lidar_safety: LidarSafetyConfig;
   local_mapping: LocalMappingConfig;
   coherent_simulation: CoherentSimulationConfig;
+  pose_estimation: PoseEstimationConfig;
   led: LEDConfig;
   batteries: Battery[];
 }
@@ -458,6 +472,18 @@ const defaultState: State = {
         lidar_range_noise_stddev_m: 0.015,
         lidar_dropout_probability: 0.01,
       },
+    },
+    pose_estimation: {
+      enabled: false,
+      imu_yaw_rate_weight: 0.35,
+      max_imu_age_ms: 100,
+      max_pose_observation_age_ms: 250,
+      initial_position_stddev_m: 0.02,
+      initial_heading_stddev_rad: 0.035,
+      position_process_noise_m_per_meter: 0.02,
+      heading_process_noise_rad_per_second: 0.01,
+      odometry_heading_noise_fraction: 0.05,
+      imu_yaw_rate_stddev_radps: 0.03,
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

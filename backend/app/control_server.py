@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from app.services.autonomy.motion_control_service import MotionControlService
     from app.services.autonomy.steering_feedback import SteeringFeedbackService
     from app.services.autonomy.odometry import AckermannOdometryService
+    from app.services.autonomy.pose_estimation import PoseEstimatorSupervisor
     from app.services.autonomy.topic_bus import TopicBus
     from app.services.autonomy.sensor_publishers import LocalizationSensorService
     from app.services.autonomy.lidar_safety import LidarSafetyService
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     local_mapping_service: Optional["LocalMappingService"] = None
     relative_motion_service: Optional["RelativeMotionService"] = None
     coherent_simulation_supervisor: Optional["CoherentSimulationSupervisor"] = None
+    pose_estimator_supervisor: Optional["PoseEstimatorSupervisor"] = None
     try:
 
         from app.api import robot_deps
@@ -87,6 +89,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             local_mapping_service = deps.get("local_mapping_service")
             relative_motion_service = deps.get("relative_motion_service")
             coherent_simulation_supervisor = deps.get("coherent_simulation_supervisor")
+            pose_estimator_supervisor = deps.get("pose_estimator_supervisor")
 
         app_loop = asyncio.get_running_loop()
 
@@ -107,6 +110,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await robot_service.start_motion_control()
         if coherent_simulation_supervisor:
             await coherent_simulation_supervisor.start()
+        if pose_estimator_supervisor:
+            await pose_estimator_supervisor.start()
         if odometry_service:
             odometry_service.start()
         if lidar_safety_service:
@@ -125,6 +130,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.local_mapping_service = local_mapping_service
         app.state.relative_motion_service = relative_motion_service
         app.state.coherent_simulation_supervisor = coherent_simulation_supervisor
+        app.state.pose_estimator_supervisor = pose_estimator_supervisor
 
         async def broadcast_distance(distance: float) -> None:
             rel_speed = (
@@ -203,6 +209,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise
         except Exception as e:
             logger.error("Failed to cleanup coherent simulation: %s", e)
+
+    if pose_estimator_supervisor:
+        try:
+            await pose_estimator_supervisor.stop()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up pose estimator.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup pose estimator: %s", e)
 
     if distance_service:
         try:

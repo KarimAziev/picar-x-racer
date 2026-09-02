@@ -100,4 +100,19 @@ describe("robot configuration save feedback", () => {
 
     expect(warning).not.toHaveBeenCalled();
   });
+
+  it("reports pose-fusion tuning as hot reloaded", async () => {
+    const robot = useRobotStore();
+    const messager = useMessagerStore();
+    const warning = vi.spyOn(messager, "warning");
+
+    await robot.updatePartialData({
+      pose_estimation: {
+        ...robot.data.pose_estimation,
+        imu_yaw_rate_weight: 0.5,
+      },
+    });
+
+    expect(warning).not.toHaveBeenCalled();
+  });
 });

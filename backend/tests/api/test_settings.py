@@ -165,6 +165,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
         physical_data["local_mapping"] = {"enabled": True}
         simulated_data = deepcopy(physical_data)
         simulated_data["coherent_simulation"]["enabled"] = True
+        simulated_data["pose_estimation"]["enabled"] = True
         return (
             HardwareConfig.model_validate(physical_data),
             HardwareConfig.model_validate(simulated_data),
@@ -180,6 +181,10 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             smbus_manager,
         )
         simulation = robot_deps.build_coherent_simulation_supervisor(
+            physical_config,
+            bus,
+        )
+        pose_estimator = robot_deps.build_pose_estimator_supervisor(
             physical_config,
             bus,
         )
@@ -215,6 +220,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
         )
         await sensors.start()
         await simulation.start()
+        await pose_estimator.start()
         odometry.start()
         try:
             await _reload_autonomy_runtime(
@@ -229,11 +235,13 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 None,
                 local_mapping,
                 simulation,
+                pose_estimator,
             )
             await asyncio.sleep(0.02)
 
             self.assertTrue(selector.simulation_enabled)
             self.assertTrue(simulation.running)
+            self.assertTrue(pose_estimator.running)
             self.assertIsNot(odometry._estimator, initial_estimator)
             local_mapping.reconfigure_from.assert_awaited_once()
             simulated_status = {item.sensor: item for item in sensors.status.sensors}
@@ -262,6 +270,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 None,
                 local_mapping,
                 simulation,
+                pose_estimator,
             )
 
             self.assertIsNot(simulation.service, first_simulation_service)
@@ -287,14 +296,17 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 None,
                 local_mapping,
                 simulation,
+                pose_estimator,
             )
 
             self.assertFalse(selector.simulation_enabled)
             self.assertFalse(simulation.enabled)
+            self.assertFalse(pose_estimator.enabled)
             self.assertEqual(local_mapping.reconfigure_from.await_count, 3)
             physical_status = {item.sensor: item for item in sensors.status.sensors}
             self.assertTrue(physical_status["encoder"].running)
         finally:
+            await pose_estimator.stop()
             await simulation.stop()
             await odometry.stop()
             await sensors.stop()

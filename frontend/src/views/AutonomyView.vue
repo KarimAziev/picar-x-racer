@@ -108,7 +108,7 @@
             <div>
               <h2 class="text-sm font-semibold">Localization runtime</h2>
               <p class="text-[0.68rem] text-surface-500 dark:text-surface-400">
-                Acquisition, odometry, and forward safety
+                Acquisition, odometry, fusion, and forward safety
               </p>
             </div>
             <Button
@@ -206,7 +206,7 @@ const workflowDescription = computed(() =>
 );
 const workflowCaveat = computed(() =>
   simulationEnabled.value
-    ? "The coherent plant supplies steering, rear encoders, IMU, and world-aware LiDAR. The known-world outline and simulated truth are diagnostic references; the occupancy grid and blue pose still come through the real mapping and odometry pipeline."
+    ? "The coherent plant supplies steering, rear encoders, IMU, and world-aware LiDAR. Blue remains raw wheel odometry, green is wheel/gyro pose fusion when enabled, and purple is exact simulated truth. LiDAR pose correction remains inactive until scan matching is implemented."
     : "Independent mock encoders can report motion while the physical robot is stationary. Treat the resulting map as a pipeline demonstration, not a physically coherent simulation.",
 );
 

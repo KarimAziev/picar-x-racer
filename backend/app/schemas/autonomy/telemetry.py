@@ -6,6 +6,7 @@ from typing import Literal, Optional, Tuple, Union
 from app.schemas.autonomy.messages import (
     EncoderState,
     ImuData,
+    LocalizationPose2D,
     MessageHeader,
     Odometry2D,
     SafetyState,
@@ -20,6 +21,7 @@ TelemetryChannel = Literal[
     "imu",
     "encoder",
     "odometry",
+    "localization",
     "safety",
     "simulation",
 ]
@@ -47,6 +49,7 @@ TelemetryPayload = Union[
     ImuData,
     EncoderState,
     Odometry2D,
+    LocalizationPose2D,
     SafetyState,
     SimulationState,
 ]

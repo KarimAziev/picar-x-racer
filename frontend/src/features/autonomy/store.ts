@@ -7,7 +7,7 @@ import { retrieveError } from "@/util/error";
 
 export type SensorName = "lidar" | "imu" | "encoder";
 export type TelemetryChannel =
-  SensorName | "odometry" | "safety" | "simulation";
+  SensorName | "odometry" | "localization" | "safety" | "simulation";
 
 export interface SensorPublisherStatus {
   sensor: SensorName;
@@ -74,6 +74,29 @@ export interface OdometryTelemetry {
   yaw_rad: number;
   linear_speed_mps: number;
   yaw_rate_radps: number;
+}
+
+export type LocalizationFusionMode = "wheel" | "wheel_imu" | "corrected";
+
+export interface LocalizationPoseTelemetry extends OdometryTelemetry {
+  position_variance_m2: number;
+  yaw_variance_rad2: number;
+  fusion_mode: LocalizationFusionMode;
+  last_correction_source: string | null;
+}
+
+export interface LocalizationRuntimeStatus {
+  enabled: boolean;
+  running: boolean;
+  published_updates: number;
+  imu_updates_used: number;
+  imu_updates_rejected: number;
+  corrections_applied: number;
+  corrections_rejected: number;
+  last_position_innovation_m: number | null;
+  last_heading_innovation_rad: number | null;
+  latest_pose: LocalizationPoseTelemetry | null;
+  error: string | null;
 }
 
 export interface SafetyTelemetry {
@@ -200,6 +223,7 @@ export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
   | BaseTelemetryEnvelope<"encoder", EncoderTelemetry>
   | BaseTelemetryEnvelope<"odometry", OdometryTelemetry>
+  | BaseTelemetryEnvelope<"localization", LocalizationPoseTelemetry>
   | BaseTelemetryEnvelope<"safety", SafetyTelemetry>
   | BaseTelemetryEnvelope<"simulation", SimulationState>;
 
@@ -221,6 +245,8 @@ export interface State {
   simulationResetting: boolean;
   simulationError: string | null;
   simulationLastUpdatedAt: number | null;
+  localization: LocalizationRuntimeStatus | null;
+  localizationError: string | null;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
   consumers: number;
@@ -244,6 +270,8 @@ const defaultState: State = {
   simulationResetting: false,
   simulationError: null,
   simulationLastUpdatedAt: null,
+  localization: null,
+  localizationError: null,
   latest: {},
   connection: null,
   consumers: 0,
@@ -400,6 +428,19 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       }
     },
 
+    async refreshLocalization() {
+      try {
+        const status = await robotApi.get<LocalizationRuntimeStatus>(
+          "/px/api/autonomy/localization",
+        );
+        this.localization = status;
+        if (!status.enabled) delete this.latest.localization;
+        this.localizationError = null;
+      } catch (error) {
+        this.localizationError = retrieveError(error).text;
+      }
+    },
+
     async resetSimulation() {
       try {
         this.simulationResetting = true;
@@ -423,6 +464,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     initialize() {
       this.consumers += 1;
       void this.refreshStatus();
+      void this.refreshLocalization();
       if (this.connection) {
         return;
       }

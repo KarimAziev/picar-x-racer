@@ -7,7 +7,9 @@ from app.schemas.autonomy import (
     ImuData,
     LaserScan,
     MessageHeader,
+    LocalizationPose2D,
     Odometry2D,
+    PoseObservation2D,
     SteeringState,
 )
 from pydantic import ValidationError
@@ -99,6 +101,41 @@ class TestRobotMessages(unittest.TestCase):
 
         with self.assertRaises(ValidationError):
             setattr(header, "sequence", 2)
+
+    def test_localization_messages_validate_uncertainty_and_source(self) -> None:
+        pose = LocalizationPose2D(
+            header=self.header("odom"),
+            x_m=1,
+            y_m=2,
+            yaw_rad=0.3,
+            linear_speed_mps=0.2,
+            yaw_rate_radps=0.1,
+            position_variance_m2=0.01,
+            yaw_variance_rad2=0.02,
+            fusion_mode="wheel_imu",
+        )
+
+        self.assertEqual(pose.child_frame_id, "base_link")
+        with self.assertRaises(ValidationError):
+            PoseObservation2D(
+                header=self.header("odom"),
+                x_m=0,
+                y_m=0,
+                yaw_rad=0,
+                position_variance_m2=0,
+                yaw_variance_rad2=0.1,
+                source="scan_matcher",
+            )
+        with self.assertRaises(ValidationError):
+            PoseObservation2D(
+                header=self.header("odom"),
+                x_m=0,
+                y_m=0,
+                yaw_rad=0,
+                position_variance_m2=0.1,
+                yaw_variance_rad2=0.1,
+                source=" ",
+            )
 
 
 if __name__ == "__main__":

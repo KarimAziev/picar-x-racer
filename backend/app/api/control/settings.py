@@ -19,6 +19,7 @@ from app.services.autonomy import (
     LocalizationSensorService,
     LocalMappingService,
     MotionControlService,
+    PoseEstimatorSupervisor,
     SteeringFeedbackService,
     TopicBus,
 )
@@ -44,6 +45,7 @@ async def _reload_autonomy_runtime(
     lidar_safety_service: Optional[LidarSafetyService],
     local_mapping_service: Optional[LocalMappingService],
     simulation_supervisor: CoherentSimulationSupervisor,
+    pose_estimator_supervisor: Optional[PoseEstimatorSupervisor] = None,
 ) -> None:
     previous_simulation = previous.coherent_simulation.enabled
     current_simulation = current.coherent_simulation.enabled
@@ -109,6 +111,18 @@ async def _reload_autonomy_runtime(
     ):
         estimator = robot_deps.build_odometry_estimator(current)
         odometry_service.reconfigure(estimator.config)
+
+    pose_estimation_changed = (
+        previous.pose_estimation != current.pose_estimation
+        or previous.ackermann_odometry != current.ackermann_odometry
+        or previous_simulation != current_simulation
+    )
+    if pose_estimation_changed and pose_estimator_supervisor is not None:
+        replacement_pose_estimator = robot_deps.build_pose_estimator_supervisor(
+            current,
+            topic_bus,
+        )
+        await pose_estimator_supervisor.reconfigure_from(replacement_pose_estimator)
 
     if (
         (previous.lidar_safety != current.lidar_safety or lidar_geometry_changed)
@@ -185,6 +199,29 @@ def _preflight_simulation_transition(
         raise InvalidSettings("coherent simulation runtime is unavailable")
 
 
+def _preflight_pose_estimation_transition(
+    request: Request,
+    previous: HardwareConfig,
+    current: HardwareConfig,
+) -> None:
+    """Reject a hot enable when the process lacks its stable dependencies."""
+
+    if previous.pose_estimation.enabled or not current.pose_estimation.enabled:
+        return
+    state = request.app.state
+    if not isinstance(
+        getattr(state, "odometry_service", None), AckermannOdometryService
+    ):
+        raise InvalidSettings(
+            "Enable Ackermann odometry and restart the backend once before enabling "
+            "pose estimation. Its odometry runtime was not created by this process."
+        )
+    if not isinstance(
+        getattr(state, "pose_estimator_supervisor", None), PoseEstimatorSupervisor
+    ):
+        raise InvalidSettings("pose estimation runtime is unavailable")
+
+
 async def _reload_running_autonomy_from_app(
     request: Request,
     previous: HardwareConfig,
@@ -223,6 +260,7 @@ async def _reload_running_autonomy_from_app(
         getattr(state, "lidar_safety_service", None),
         getattr(state, "local_mapping_service", None),
         simulation_supervisor,
+        getattr(state, "pose_estimator_supervisor", None),
     )
 
 
@@ -297,6 +335,7 @@ async def update_settings(
     try:
         if isinstance(previous, HardwareConfig):
             _preflight_simulation_transition(request, previous, settings)
+            _preflight_pose_estimation_transition(request, previous, settings)
         data = await asyncio.to_thread(settings_service.save_settings, settings)
         if isinstance(previous, HardwareConfig):
             await _reload_running_autonomy_from_app(request, previous, data)
@@ -345,6 +384,7 @@ async def merge_partial_settings(
         candidate = settings_service.build_merged_settings(settings)
         if isinstance(previous, HardwareConfig):
             _preflight_simulation_transition(request, previous, candidate)
+            _preflight_pose_estimation_transition(request, previous, candidate)
         partial_settings = await asyncio.to_thread(
             settings_service.merge_settings, settings
         )

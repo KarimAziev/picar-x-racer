@@ -1,12 +1,20 @@
 import unittest
 from unittest.mock import Mock
 
-from app.api.control.autonomy import get_simulation_status, reset_simulation
+from app.api.control.autonomy import (
+    get_localization_status,
+    get_simulation_status,
+    reset_simulation,
+)
 from app.services.autonomy import (
     AckermannSimulationConfig,
     AckermannSimulationPlant,
     CoherentSimulationService,
     CoherentSimulationSupervisor,
+    PoseEstimator,
+    PoseEstimatorConfig,
+    PoseEstimatorService,
+    PoseEstimatorSupervisor,
     RobotMode,
     TopicBus,
     SimulationSensorImperfections,
@@ -67,7 +75,13 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
 
     async def test_reset_requires_enabled_isolated_runtime(self) -> None:
         with self.assertRaises(HTTPException) as context:
-            await reset_simulation(CoherentSimulationSupervisor(), None, None, None)
+            await reset_simulation(
+                CoherentSimulationSupervisor(),
+                None,
+                None,
+                None,
+                PoseEstimatorSupervisor(),
+            )
 
         self.assertEqual(context.exception.status_code, 409)
 
@@ -76,6 +90,7 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         motion = FakeMotionControl()
         odometry = Mock()
         mapping = Mock()
+        pose_estimator = PoseEstimatorSupervisor()
         await supervisor.start()
         try:
             status = await reset_simulation(
@@ -83,6 +98,7 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
                 motion,  # type: ignore[arg-type]
                 odometry,
                 mapping,
+                pose_estimator,
             )
         finally:
             await supervisor.stop()
@@ -99,6 +115,28 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(status.sensor_imperfections.random_seed, 99)  # type: ignore[union-attr]
         odometry.reset.assert_called_once_with()
         mapping.reset_session.assert_called_once_with()
+
+    async def test_localization_status_is_explicit_when_disabled(self) -> None:
+        status = await get_localization_status(PoseEstimatorSupervisor())
+
+        self.assertFalse(status.enabled)
+        self.assertFalse(status.running)
+        self.assertEqual(status.published_updates, 0)
+
+    async def test_localization_status_reports_service_counters(self) -> None:
+        service = PoseEstimatorService(
+            TopicBus(),
+            PoseEstimator(PoseEstimatorConfig()),
+        )
+        service.published_updates = 7
+        service.imu_updates_used = 5
+        supervisor = PoseEstimatorSupervisor(service)
+
+        status = await get_localization_status(supervisor)
+
+        self.assertTrue(status.enabled)
+        self.assertEqual(status.published_updates, 7)
+        self.assertEqual(status.imu_updates_used, 5)
 
 
 if __name__ == "__main__":

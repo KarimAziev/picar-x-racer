@@ -58,6 +58,10 @@ from app.services.autonomy import (
     MotionArbiter,
     MotionControlService,
     MotionLimits,
+    PoseEstimator,
+    PoseEstimatorConfig,
+    PoseEstimatorService,
+    PoseEstimatorSupervisor,
     TopicBus,
     TopicSensorMonitor,
     StaticTransform2D,
@@ -356,6 +360,48 @@ def build_odometry_estimator(config: HardwareConfig) -> AckermannOdometryEstimat
             max_steering_age_seconds=odometry.max_steering_age_ms / 1000,
         )
     )
+
+
+def build_pose_estimator_supervisor(
+    config: HardwareConfig,
+    topic_bus: TopicBus,
+) -> PoseEstimatorSupervisor:
+    """Build optional wheel/IMU fusion behind a stable lifecycle handle."""
+
+    settings = config.pose_estimation
+    if not settings.enabled:
+        return PoseEstimatorSupervisor()
+    if not config.ackermann_odometry.enabled:
+        raise ValueError("pose estimation requires Ackermann odometry")
+    estimator = PoseEstimator(
+        PoseEstimatorConfig(
+            imu_yaw_rate_weight=settings.imu_yaw_rate_weight,
+            max_imu_age_seconds=settings.max_imu_age_ms / 1000,
+            max_pose_observation_age_seconds=(
+                settings.max_pose_observation_age_ms / 1000
+            ),
+            initial_position_stddev_m=settings.initial_position_stddev_m,
+            initial_heading_stddev_rad=settings.initial_heading_stddev_rad,
+            position_process_noise_m_per_meter=(
+                settings.position_process_noise_m_per_meter
+            ),
+            heading_process_noise_rad_per_second=(
+                settings.heading_process_noise_rad_per_second
+            ),
+            odometry_heading_noise_fraction=(settings.odometry_heading_noise_fraction),
+            imu_yaw_rate_stddev_radps=settings.imu_yaw_rate_stddev_radps,
+        )
+    )
+    return PoseEstimatorSupervisor(PoseEstimatorService(topic_bus, estimator))
+
+
+@lru_cache(maxsize=1)
+def get_pose_estimator_supervisor(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> PoseEstimatorSupervisor:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return build_pose_estimator_supervisor(config, topic_bus)
 
 
 def build_localization_sensor_service(
@@ -842,6 +888,7 @@ class LifespanAppDeps(TypedDict):
     local_mapping_service: Optional[LocalMappingService]
     relative_motion_service: Optional[RelativeMotionService]
     coherent_simulation_supervisor: CoherentSimulationSupervisor
+    pose_estimator_supervisor: PoseEstimatorSupervisor
 
 
 async def get_lifespan_dependencies(
@@ -879,6 +926,10 @@ async def get_lifespan_dependencies(
         CoherentSimulationSupervisor,
         Depends(get_coherent_simulation_supervisor),
     ],
+    pose_estimator_supervisor: Annotated[
+        PoseEstimatorSupervisor,
+        Depends(get_pose_estimator_supervisor),
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -898,5 +949,6 @@ async def get_lifespan_dependencies(
         "local_mapping_service": local_mapping_service,
         "relative_motion_service": relative_motion_service,
         "coherent_simulation_supervisor": coherent_simulation_supervisor,
+        "pose_estimator_supervisor": pose_estimator_supervisor,
     }
     yield deps

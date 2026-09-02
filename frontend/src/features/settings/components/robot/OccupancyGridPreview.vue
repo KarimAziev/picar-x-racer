@@ -30,9 +30,13 @@
       <span><i class="mr-1 inline-block h-2 w-2 bg-red-500" />occupied</span>
       <span><i class="mr-1 inline-block h-2 w-2 bg-cyan-400" />odom trail</span>
       <span
+        ><i class="mr-1 inline-block h-2 w-2 rounded-full bg-blue-500" />raw
+        odometry</span
+      >
+      <span v-if="localizationEnabled"
         ><i
-          class="mr-1 inline-block h-2 w-2 rounded-full bg-blue-500"
-        />estimated pose</span
+          class="mr-1 inline-block h-2 w-2 rounded-full border-2 border-emerald-400"
+        />fused pose</span
       >
       <span v-if="simulationWorld"
         ><i
@@ -73,6 +77,9 @@ const odometryTrail = ref<Point2D[]>([]);
 const mappingEnabled = computed(() => robotStore.data.local_mapping.enabled);
 const map = computed(() => store.localMap);
 const simulationWorld = computed(() => store.simulation?.world ?? null);
+const localizationEnabled = computed(
+  () => store.localization?.enabled ?? robotStore.data.pose_estimation.enabled,
+);
 const odomOriginInWorld = computed(() => {
   const origin = store.simulation?.odom_origin_in_world;
   return origin ? { x: origin.x_m, y: origin.y_m, yaw: origin.yaw_rad } : null;
@@ -264,6 +271,30 @@ const drawOdometryOverlay = (
     }
   }
 
+  const localizationEnvelope = store.latest.localization;
+  const localization =
+    localizationEnvelope?.channel === "localization"
+      ? localizationEnvelope.payload
+      : store.localization?.latest_pose;
+  if (localization && localizationEnabled.value) {
+    const pose = canvasPoint(
+      grid,
+      { x: localization.x_m, y: localization.y_m },
+      width,
+      height,
+    );
+    if (pose) {
+      drawPoseMarker(
+        context,
+        pose,
+        localization.yaw_rad,
+        markerSize + 4,
+        grid,
+        { stroke: "#34d399", lineWidth: 2.25 },
+      );
+    }
+  }
+
   const truthEnvelope = store.latest.simulation;
   const truth =
     truthEnvelope?.channel === "simulation"
@@ -330,6 +361,8 @@ watch(
 );
 
 watch(() => store.latest.simulation?.payload.header.sequence, scheduleDraw);
+watch(() => store.latest.localization?.payload.header.sequence, scheduleDraw);
+watch(() => store.localization?.latest_pose?.header.sequence, scheduleDraw);
 
 watch([simulationWorld, odomOriginInWorld], scheduleDraw);
 

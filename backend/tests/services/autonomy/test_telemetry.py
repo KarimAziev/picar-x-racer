@@ -4,7 +4,13 @@ import math
 import unittest
 from typing import Any, Dict, List
 
-from app.schemas.autonomy import ImuData, LaserScan, MessageHeader, SimulationState
+from app.schemas.autonomy import (
+    ImuData,
+    LaserScan,
+    LocalizationPose2D,
+    MessageHeader,
+    SimulationState,
+)
 from app.services.autonomy import (
     SensorTelemetryStreamer,
     TopicBus,
@@ -68,6 +74,24 @@ class TestTelemetryContract(unittest.TestCase):
 
         self.assertEqual(envelope.topic, "/simulation/state")
         self.assertEqual(envelope.payload, state)
+
+    def test_localization_pose_uses_canonical_pose_topic(self) -> None:
+        pose = LocalizationPose2D(
+            header=header(),
+            x_m=1,
+            y_m=2,
+            yaw_rad=0.1,
+            linear_speed_mps=0.2,
+            yaw_rate_radps=0.03,
+            position_variance_m2=0.01,
+            yaw_variance_rad2=0.02,
+            fusion_mode="wheel_imu",
+        )
+
+        envelope = make_telemetry_envelope("localization", pose)
+
+        self.assertEqual(envelope.topic, "/pose")
+        self.assertEqual(envelope.payload, pose)
 
 
 class TestTelemetryStreamer(unittest.IsolatedAsyncioTestCase):

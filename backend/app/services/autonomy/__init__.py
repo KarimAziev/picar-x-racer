@@ -29,6 +29,14 @@ from app.services.autonomy.odometry import (
     AckermannOdometryService,
     OdometryInputError,
 )
+from app.services.autonomy.pose_estimation import (
+    PoseEstimationInputError,
+    PoseEstimator,
+    PoseEstimatorConfig,
+    PoseEstimatorResult,
+    PoseEstimatorService,
+    PoseEstimatorSupervisor,
+)
 from app.services.autonomy.motion_control_service import (
     ModeTransitionError,
     MotionControlService,
@@ -133,6 +141,12 @@ __all__ = [
     "SensorTelemetryStreamer",
     "MotionSource",
     "OdometryInputError",
+    "PoseEstimationInputError",
+    "PoseEstimator",
+    "PoseEstimatorConfig",
+    "PoseEstimatorResult",
+    "PoseEstimatorService",
+    "PoseEstimatorSupervisor",
     "RobotMode",
     "RelativeMotionService",
     "RaycastLidarConfig",

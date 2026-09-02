@@ -101,6 +101,21 @@ describe("autonomy telemetry store", () => {
           error: null,
         });
       }
+      if (path === "/px/api/autonomy/localization") {
+        return Promise.resolve({
+          enabled: true,
+          running: true,
+          published_updates: 40,
+          imu_updates_used: 38,
+          imu_updates_rejected: 1,
+          corrections_applied: 0,
+          corrections_rejected: 0,
+          last_position_innovation_m: null,
+          last_heading_innovation_rad: null,
+          latest_pose: null,
+          error: null,
+        });
+      }
       return Promise.resolve({
         sensors: [
           {
@@ -152,6 +167,45 @@ describe("autonomy telemetry store", () => {
 
     store.cleanup();
     expect(mocks.cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("keeps fused pose telemetry and localization runtime status", async () => {
+    const store = useAutonomyStore();
+    store.initialize();
+
+    mocks.options?.onMessage?.({
+      channel: "localization",
+      topic: "/pose",
+      payload: {
+        header: {
+          sequence: 3,
+          frame_id: "odom",
+          timestamp_monotonic_ns: 300,
+          source_timestamp_ns: null,
+        },
+        child_frame_id: "base_link",
+        x_m: 0.4,
+        y_m: -0.1,
+        yaw_rad: 0.2,
+        linear_speed_mps: 0.15,
+        yaw_rate_radps: 0.05,
+        position_variance_m2: 0.001,
+        yaw_variance_rad2: 0.002,
+        fusion_mode: "wheel_imu",
+        last_correction_source: null,
+      },
+    });
+    await store.refreshLocalization();
+
+    expect(mocks.get).toHaveBeenCalledWith("/px/api/autonomy/localization");
+    const localization = store.latest.localization;
+    expect(localization?.channel).toBe("localization");
+    expect(
+      localization?.channel === "localization"
+        ? localization.payload.x_m
+        : null,
+    ).toBe(0.4);
+    expect(store.localization?.imu_updates_used).toBe(38);
   });
 
   it("retrieves and operates the explicit mapping session", async () => {

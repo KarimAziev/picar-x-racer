@@ -51,6 +51,32 @@
       {{ odometrySummary }}
     </div>
     <div
+      v-if="store.localization"
+      class="rounded-lg border border-surface-200 px-3 py-2 text-xs dark:border-surface-700"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span class="font-semibold">Pose fusion</span>
+        <Tag :severity="localizationSeverity" :value="localizationState" />
+      </div>
+      <div v-if="localizationSummary" class="mt-1">
+        {{ localizationSummary }}
+      </div>
+      <div
+        v-if="store.localization.error || store.localizationError"
+        class="mt-1 break-words text-red-500"
+      >
+        {{ store.localization.error || store.localizationError }}
+      </div>
+      <div
+        v-else-if="store.localization.enabled"
+        class="mt-1 text-surface-500 dark:text-surface-400"
+      >
+        {{ store.localization.imu_updates_used.toLocaleString() }} gyro updates
+        · {{ store.localization.corrections_applied.toLocaleString() }} external
+        corrections
+      </div>
+    </div>
+    <div
       v-if="safetySummary"
       class="rounded-lg px-3 py-2 text-xs"
       :class="
@@ -140,6 +166,37 @@ const odometrySummary = computed(() => {
   return `x ${formatNumber(x_m)} m · y ${formatNumber(y_m)} m · yaw ${formatNumber(yaw_rad)} rad · ${formatNumber(linear_speed_mps)} m/s`;
 });
 
+const localizationSeverity = computed(() => {
+  const status = store.localization;
+  if (!status?.enabled) return "secondary";
+  if (status.error || store.localizationError) return "danger";
+  return status.running ? "success" : "warn";
+});
+
+const localizationState = computed(() => {
+  const status = store.localization;
+  if (!status?.enabled) return "Disabled";
+  if (status.error || store.localizationError) return "Error";
+  return status.running ? "Running" : "Waiting";
+});
+
+const localizationSummary = computed(() => {
+  const envelope = store.latest.localization;
+  const pose =
+    store.localization?.enabled && envelope?.channel === "localization"
+      ? envelope.payload
+      : store.localization?.latest_pose;
+  if (!pose) {
+    return store.localization?.enabled
+      ? "Waiting for the first odometry update…"
+      : "Enable pose estimation to fuse wheel odometry and fresh gyro yaw rate.";
+  }
+  const positionStddevM = Math.sqrt(pose.position_variance_m2);
+  const headingStddevDeg = (Math.sqrt(pose.yaw_variance_rad2) * 180) / Math.PI;
+  const mode = pose.fusion_mode.replace("_", " + ");
+  return `x ${formatNumber(pose.x_m)} m · y ${formatNumber(pose.y_m)} m · yaw ${formatNumber(pose.yaw_rad)} rad · ${mode} · uncertainty ±${formatNumber(positionStddevM, 3)} m / ±${formatNumber(headingStddevDeg, 1)}°`;
+});
+
 const safetyBlocked = computed(() => {
   const envelope = store.latest.safety;
   return envelope?.channel === "safety" && envelope.payload.forward_blocked;
@@ -154,7 +211,11 @@ const safetySummary = computed(() => {
 
 onMounted(() => {
   store.initialize();
-  statusTimer = setInterval(() => void store.refreshStatus(), 2500);
+  statusTimer = setInterval(
+    () =>
+      void Promise.all([store.refreshStatus(), store.refreshLocalization()]),
+    2500,
+  );
 });
 
 onUnmounted(() => {

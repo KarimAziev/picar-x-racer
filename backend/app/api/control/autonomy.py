@@ -7,6 +7,7 @@ from app.schemas.autonomy import (
     RelativeArcRequest,
     RelativeDistanceRequest,
     RelativeMotionStatus,
+    LocalizationRuntimeStatus,
     SimulationPose2D,
     SimulationRuntimeStatus,
     SimulationSensorImperfectionStatus,
@@ -19,6 +20,7 @@ from app.services.autonomy import (
     CoherentSimulationSupervisor,
     LocalMappingService,
     MotionControlService,
+    PoseEstimatorSupervisor,
     RelativeMotionService,
     RobotMode,
 )
@@ -42,6 +44,10 @@ OdometryDependency = Annotated[
 ]
 MappingDependency = Annotated[
     Optional[LocalMappingService], Depends(robot_deps.get_local_mapping_service)
+]
+PoseEstimatorDependency = Annotated[
+    PoseEstimatorSupervisor,
+    Depends(robot_deps.get_pose_estimator_supervisor),
 ]
 
 
@@ -108,6 +114,34 @@ def _simulation_status(
             else None
         ),
         latest_state=service.latest if service is not None else None,
+        error=str(error) if error is not None else None,
+    )
+
+
+def _localization_status(
+    supervisor: PoseEstimatorSupervisor,
+) -> LocalizationRuntimeStatus:
+    service = supervisor.service
+    error = service.last_error if service is not None else None
+    return LocalizationRuntimeStatus(
+        enabled=supervisor.enabled,
+        running=supervisor.running,
+        published_updates=service.published_updates if service is not None else 0,
+        imu_updates_used=service.imu_updates_used if service is not None else 0,
+        imu_updates_rejected=(
+            service.imu_updates_rejected if service is not None else 0
+        ),
+        corrections_applied=service.corrections_applied if service is not None else 0,
+        corrections_rejected=(
+            service.corrections_rejected if service is not None else 0
+        ),
+        last_position_innovation_m=(
+            service.last_position_innovation_m if service is not None else None
+        ),
+        last_heading_innovation_rad=(
+            service.last_heading_innovation_rad if service is not None else None
+        ),
+        latest_pose=service.latest if service is not None else None,
         error=str(error) if error is not None else None,
     )
 
@@ -180,6 +214,17 @@ async def get_simulation_status(
     return _simulation_status(simulation, motion_control)
 
 
+@router.get(
+    "/px/api/autonomy/localization",
+    response_model=LocalizationRuntimeStatus,
+    summary="Retrieve pose-fusion lifecycle, health, and uncertainty",
+)
+async def get_localization_status(
+    estimator: PoseEstimatorDependency,
+) -> LocalizationRuntimeStatus:
+    return _localization_status(estimator)
+
+
 @router.post(
     "/px/api/autonomy/simulation/reset",
     response_model=SimulationRuntimeStatus,
@@ -190,6 +235,7 @@ async def reset_simulation(
     motion_control: MotionControlDependency,
     odometry: OdometryDependency,
     mapping: MappingDependency,
+    estimator: PoseEstimatorDependency,
 ) -> SimulationRuntimeStatus:
     if not simulation.enabled:
         raise HTTPException(status_code=409, detail="coherent simulation is disabled")
@@ -207,4 +253,5 @@ async def reset_simulation(
         odometry.reset()
     if mapping is not None:
         mapping.reset_session()
+    await estimator.reset()
     return _simulation_status(simulation, motion_control)
