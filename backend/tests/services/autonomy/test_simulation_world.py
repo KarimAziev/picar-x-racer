@@ -4,6 +4,7 @@ import unittest
 from app.services.autonomy import (
     LineSegment2D,
     RaycastLidarConfig,
+    SegmentSpatialIndex,
     SimulationWorld,
     WorldLidarRaycaster,
     build_simulation_world,
@@ -102,6 +103,38 @@ class SimulationWorldTests(unittest.TestCase):
         self.assertFalse(world.collides_circle(0.8, 0, 0.11))
         self.assertFalse(world.collides_circle(1.2, 2, 0.11))
 
+    def test_spatial_index_matches_nearby_distance_and_caps_far_queries(self) -> None:
+        segments = (
+            LineSegment2D(1, -1, 1, 1),
+            LineSegment2D(-4, -2, -4, 2),
+        )
+        index = SegmentSpatialIndex(segments, max_distance=0.5)
+
+        self.assertAlmostEqual(index.distance_to_nearest(0.8, 0.25), 0.2)
+        self.assertEqual(index.distance_to_nearest(0, 0), 0.5)
+
+    def test_spatial_index_matches_brute_force_apartment_distances(self) -> None:
+        world = build_simulation_world("apartment", width_m=8.81, height_m=5.31)
+        index = SegmentSpatialIndex(world.segments, max_distance=0.5)
+
+        for x_m, y_m in (
+            (-4.2, -2.4),
+            (-1.3, -1.9),
+            (-0.8, 0.9),
+            (0.0, 0.0),
+            (1.36, 0.0),
+            (2.2, 1.4),
+            (4.1, 2.4),
+        ):
+            expected = min(
+                0.5,
+                world.distance_to_nearest_segment(x_m, y_m),
+            )
+            self.assertAlmostEqual(
+                index.distance_to_nearest(x_m, y_m),
+                expected,
+            )
+
     def test_scenarios_are_reproducible_and_add_expected_obstacles(self) -> None:
         first = build_simulation_world("single_obstacle", width_m=6, height_m=6)
         second = build_simulation_world("single_obstacle", width_m=6, height_m=6)
@@ -112,6 +145,51 @@ class SimulationWorldTests(unittest.TestCase):
         self.assertEqual(len(first.segments), 8)
         self.assertTrue(first.collides_circle(1.6, 0, 0.1))
         self.assertFalse(empty.collides_circle(1.6, 0, 0.1))
+
+    def test_apartment_contains_scaled_rooms_doorways_and_furniture(self) -> None:
+        world = build_simulation_world(
+            "apartment",
+            width_m=8.81,
+            height_m=5.31,
+        )
+
+        self.assertEqual(world.scenario, "apartment")
+        self.assertEqual(len(world.solid_rectangles), 15)
+        self.assertEqual(len(world.segments), 72)
+        # The supplied floor-plan robot position is clear, but nearby room
+        # partitions and the central bed remain collidable.
+        self.assertFalse(world.collides_circle(1.36, 0, 0.12))
+        self.assertTrue(world.collides_circle(-1.17, 0, 0.12))
+        self.assertTrue(world.collides_circle(-0.75, 1.0, 0.12))
+        # The lower doorway through the kitchen divider stays traversable.
+        self.assertFalse(world.collides_circle(-1.17, -2.0, 0.12))
+
+    def test_apartment_lidar_observes_interior_geometry(self) -> None:
+        raycaster = WorldLidarRaycaster(
+            build_simulation_world("apartment", width_m=8.81, height_m=5.31),
+            RaycastLidarConfig(
+                frame_id="laser",
+                sensor_x_m=0,
+                sensor_y_m=0,
+                sensor_yaw_rad=0,
+                range_min_m=0.05,
+                range_max_m=12,
+                angular_resolution_deg=1,
+            ),
+        )
+
+        scan = raycaster.scan(
+            base_x_m=1.36,
+            base_y_m=0,
+            base_yaw_rad=math.pi,
+            timestamp_ns=100,
+            sequence=1,
+        )
+
+        self.assertEqual(len(scan.ranges_m), 360)
+        self.assertTrue(all(math.isfinite(distance) for distance in scan.ranges_m))
+        self.assertLess(min(scan.ranges_m), 0.5)
+        self.assertGreater(max(scan.ranges_m), 2.0)
 
 
 if __name__ == "__main__":

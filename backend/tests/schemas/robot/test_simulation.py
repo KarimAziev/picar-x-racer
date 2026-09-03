@@ -1,4 +1,5 @@
 import json
+import math
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -112,6 +113,18 @@ class TestCoherentSimulationConfig(unittest.TestCase):
             config.coherent_simulation.sensor_imperfections.random_seed,
             7,
         )
+
+    def test_apartment_world_is_available(self) -> None:
+        config = CoherentSimulationConfig(
+            world_scenario="apartment",
+            world_width_m=8.81,
+            world_height_m=5.31,
+            initial_x_m=1.36,
+            initial_y_m=0,
+            initial_yaw_rad=math.pi,
+        )
+
+        self.assertEqual(config.world_scenario, "apartment")
 
     def test_sensor_imperfections_validate_probability_and_noise(self) -> None:
         with self.assertRaises(ValidationError):

@@ -84,6 +84,7 @@ from app.services.autonomy.simulation import (
 from app.services.autonomy.simulation_world import (
     LineSegment2D,
     RaycastLidarConfig,
+    SegmentSpatialIndex,
     SimulationWorld,
     WorldLidarRaycaster,
     build_simulation_world,
@@ -163,6 +164,7 @@ __all__ = [
     "RaycastLidarConfig",
     "SafetyConstraint",
     "SafetySeverity",
+    "SegmentSpatialIndex",
     "ScanMatchResult",
     "SelectableDriveHardware",
     "ModeTransitionError",

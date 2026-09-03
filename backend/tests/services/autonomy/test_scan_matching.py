@@ -241,6 +241,35 @@ class TestKnownWorldScanMatcherService(
         self.assertEqual(service.rejected_pose_timing, 1)
         self.assertEqual(service.matches_published, 0)
 
+    async def test_uses_historical_pose_not_newer_than_scan(self) -> None:
+        bus = TopicBus()
+        service = KnownWorldScanMatcherService(
+            bus, self.matcher, max_pose_age_seconds=0.2
+        )
+        output = bus.subscribe(POSE_OBSERVATION, replay_latest=False)
+        service.start()
+        try:
+            bus.publish(
+                LOCALIZATION_POSE,
+                pose(0.9, 0.23, 0.31, timestamp_ns=990_000_000),
+            )
+            await asyncio.sleep(0)
+            bus.publish(
+                LOCALIZATION_POSE,
+                pose(0.9, 0.23, 0.31, timestamp_ns=1_010_000_000),
+            )
+            await asyncio.sleep(0)
+            bus.publish(LIDAR_SCAN, self.scan())
+
+            observation = await asyncio.wait_for(output.get(), timeout=1)
+        finally:
+            output.close()
+            await service.stop()
+
+        self.assertEqual(observation.header.timestamp_monotonic_ns, 1_000_000_000)
+        self.assertEqual(service.matches_published, 1)
+        self.assertEqual(service.rejected_pose_timing, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

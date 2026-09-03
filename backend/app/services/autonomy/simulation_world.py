@@ -2,7 +2,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Iterable, Tuple
+from typing import Dict, Iterable, List, Tuple
 
 from app.schemas.autonomy import LaserScan, MessageHeader
 
@@ -71,6 +71,57 @@ class SimulationWorld:
                 for segment in self.segments
             )
         )
+
+
+class SegmentSpatialIndex:
+    """Bound nearest-segment work to geometry near a query point.
+
+    Each segment is registered in every grid cell touched by its bounding box
+    expanded by ``max_distance``.  A query can therefore safely return the
+    configured cap when its cell contains no segment candidates.
+    """
+
+    def __init__(
+        self,
+        segments: Iterable[LineSegment2D],
+        *,
+        max_distance: float,
+    ) -> None:
+        if not math.isfinite(max_distance) or max_distance <= 0:
+            raise ValueError("spatial-index maximum distance must be positive")
+        self.max_distance = max_distance
+        self._cell_size = max(max_distance, 0.25)
+        buckets: Dict[Tuple[int, int], List[LineSegment2D]] = {}
+        for segment in segments:
+            min_x = min(segment.start_x_m, segment.end_x_m) - max_distance
+            max_x = max(segment.start_x_m, segment.end_x_m) + max_distance
+            min_y = min(segment.start_y_m, segment.end_y_m) - max_distance
+            max_y = max(segment.start_y_m, segment.end_y_m) + max_distance
+            for cell_x in range(self._cell(min_x), self._cell(max_x) + 1):
+                for cell_y in range(self._cell(min_y), self._cell(max_y) + 1):
+                    buckets.setdefault((cell_x, cell_y), []).append(segment)
+        self._buckets = {
+            cell: tuple(cell_segments) for cell, cell_segments in buckets.items()
+        }
+
+    def distance_to_nearest(self, x_m: float, y_m: float) -> float:
+        if not math.isfinite(x_m) or not math.isfinite(y_m):
+            raise ValueError("spatial-index query coordinates must be finite")
+        candidates = self._buckets.get((self._cell(x_m), self._cell(y_m)), ())
+        if not candidates:
+            return self.max_distance
+        return min(
+            self.max_distance,
+            math.sqrt(
+                min(
+                    _point_segment_distance_squared(x_m, y_m, segment)
+                    for segment in candidates
+                )
+            ),
+        )
+
+    def _cell(self, coordinate: float) -> int:
+        return math.floor(coordinate / self._cell_size)
 
 
 @dataclass(frozen=True)
@@ -262,6 +313,15 @@ def build_simulation_world(
                 ),
             )
         )
+    elif scenario == "apartment":
+        apartment_segments, apartment_rectangles = _apartment_geometry(
+            -half_width,
+            -half_height,
+            half_width,
+            half_height,
+        )
+        segments.extend(apartment_segments)
+        solid_rectangles.extend(apartment_rectangles)
     else:
         raise ValueError(f"unsupported simulation world scenario: {scenario}")
     return SimulationWorld(
@@ -269,6 +329,78 @@ def build_simulation_world(
         segments=tuple(segments),
         solid_rectangles=tuple(solid_rectangles),
     )
+
+
+def _apartment_geometry(
+    left: float,
+    bottom: float,
+    right: float,
+    top: float,
+) -> Tuple[
+    Tuple[LineSegment2D, ...],
+    Tuple[Tuple[float, float, float, float], ...],
+]:
+    """Approximate the supplied 8.81 m by 5.31 m apartment floor plan.
+
+    Geometry is authored in measured floor-plan metres and scaled to the
+    configured world bounds.  Outer walls are provided by the common world
+    builder; this function adds interior walls, realistic door gaps, and the
+    large furniture that materially affects indoor LiDAR and navigation.
+    """
+
+    reference_width_m = 8.81
+    reference_height_m = 5.31
+    width = right - left
+    height = top - bottom
+
+    def x(value_m: float) -> float:
+        return left + value_m / reference_width_m * width
+
+    def y(value_m: float) -> float:
+        return bottom + value_m / reference_height_m * height
+
+    segments = [
+        # Kitchen / central-room divider with a one-metre lower doorway.
+        LineSegment2D(x(3.24), y(1.02), x(3.24), y(5.31)),
+        # Central-room / bedroom divider, also open beside the entrance hall.
+        LineSegment2D(x(6.18), y(1.02), x(6.18), y(5.31)),
+        # Bedroom / enclosed-balcony partition with a wide door at the right.
+        LineSegment2D(x(6.18), y(3.48), x(7.80), y(3.48)),
+        LineSegment2D(x(8.56), y(3.48), x(8.81), y(3.48)),
+        # Bathroom walls and its 0.8 m doorway.
+        LineSegment2D(x(0.00), y(2.72), x(2.55), y(2.72)),
+        LineSegment2D(x(2.55), y(1.26), x(2.55), y(2.72)),
+        LineSegment2D(x(0.00), y(1.26), x(1.30), y(1.26)),
+        LineSegment2D(x(2.10), y(1.26), x(2.55), y(1.26)),
+    ]
+    measured_rectangles = (
+        # Kitchen cabinets, island, and sofa.
+        (0.08, 3.35, 0.52, 5.18),
+        (1.42, 4.54, 2.30, 5.18),
+        (2.43, 4.43, 3.02, 5.16),
+        (1.12, 3.25, 2.47, 3.65),
+        # Bathroom fixtures.
+        (0.08, 1.48, 0.63, 2.64),
+        (1.27, 2.27, 1.78, 2.67),
+        # Central room: sofa/bed, desk, chair/plant, and low cabinets.
+        (3.28, 2.95, 4.08, 4.93),
+        (4.72, 4.24, 5.96, 4.93),
+        (5.08, 3.25, 5.66, 3.80),
+        (3.56, 1.98, 4.19, 2.62),
+        (5.73, 1.11, 6.08, 1.86),
+        (4.30, 0.08, 4.86, 0.48),
+        # Bedroom furniture.
+        (6.27, 1.46, 8.17, 3.10),
+        (6.28, 0.91, 6.76, 1.34),
+        (5.88, 3.02, 6.12, 3.90),
+    )
+    solid_rectangles = tuple(
+        (x(rect_left), y(rect_bottom), x(rect_right), y(rect_top))
+        for rect_left, rect_bottom, rect_right, rect_top in measured_rectangles
+    )
+    for rectangle in solid_rectangles:
+        segments.extend(_rectangle_segments(*rectangle))
+    return tuple(segments), solid_rectangles
 
 
 def _rectangle_segments(
@@ -325,6 +457,7 @@ def _cross(ax: float, ay: float, bx: float, by: float) -> float:
 __all__ = [
     "LineSegment2D",
     "RaycastLidarConfig",
+    "SegmentSpatialIndex",
     "SimulationWorld",
     "WorldLidarRaycaster",
     "build_simulation_world",

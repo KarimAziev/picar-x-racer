@@ -2,8 +2,9 @@
 
 import asyncio
 import math
+from collections import deque
 from dataclasses import dataclass
-from typing import Literal, Optional, Sequence, Tuple
+from typing import Deque, Literal, Optional, Sequence, Tuple
 
 from app.schemas.autonomy import (
     LaserScan,
@@ -12,7 +13,7 @@ from app.schemas.autonomy import (
     PoseObservation2D,
 )
 from app.services.autonomy.local_mapping import StaticTransform2D
-from app.services.autonomy.simulation_world import SimulationWorld
+from app.services.autonomy.simulation_world import SegmentSpatialIndex, SimulationWorld
 from app.services.autonomy.topic_bus import (
     SubscriptionClosed,
     TopicBus,
@@ -22,6 +23,7 @@ from app.services.autonomy.topics import LIDAR_SCAN, LOCALIZATION_POSE, POSE_OBS
 
 
 ScanMatchRejection = Literal["insufficient_points", "poor_quality"]
+_POSE_HISTORY_LIMIT = 4096
 
 
 @dataclass(frozen=True)
@@ -112,6 +114,10 @@ class KnownWorldScanMatcher:
     ) -> None:
         self.world = world
         self.config = config
+        self._distance_index = SegmentSpatialIndex(
+            world.segments,
+            max_distance=config.max_residual_m,
+        )
 
     def match(
         self,
@@ -236,10 +242,7 @@ class KnownWorldScanMatcher:
         for point_x, point_y in points_in_base:
             endpoint_x = world_x + cos_yaw * point_x - sin_yaw * point_y
             endpoint_y = world_y + sin_yaw * point_x + cos_yaw * point_y
-            total += min(
-                self.config.max_residual_m,
-                self.world.distance_to_nearest_segment(endpoint_x, endpoint_y),
-            )
+            total += self._distance_index.distance_to_nearest(endpoint_x, endpoint_y)
         return total / len(points_in_base)
 
     def _odom_pose_to_world(
@@ -304,7 +307,7 @@ class KnownWorldScanMatcher:
 
 
 class KnownWorldScanMatcherService:
-    """Match each fresh scan to the latest fused pose and publish corrections."""
+    """Match each fresh scan to its causal fused-pose prior."""
 
     def __init__(
         self,
@@ -318,28 +321,53 @@ class KnownWorldScanMatcherService:
         self._bus = bus
         self.matcher = matcher
         self._max_pose_age_ns = round(max_pose_age_seconds * 1_000_000_000)
-        self._subscription: Optional[TopicSubscription[LaserScan]] = None
-        self._task: Optional[asyncio.Task[None]] = None
+        self._scan_subscription: Optional[TopicSubscription[LaserScan]] = None
+        self._pose_subscription: Optional[TopicSubscription[LocalizationPose2D]] = None
+        self._scan_task: Optional[asyncio.Task[None]] = None
+        self._pose_task: Optional[asyncio.Task[None]] = None
+        self._pose_history: Deque[LocalizationPose2D] = deque(
+            maxlen=_POSE_HISTORY_LIMIT
+        )
         self.reset()
 
     @property
     def running(self) -> bool:
-        return self._task is not None and not self._task.done()
+        return bool(
+            self._scan_task is not None
+            and not self._scan_task.done()
+            and self._pose_task is not None
+            and not self._pose_task.done()
+        )
 
     def start(self) -> None:
         if self.running:
             return
-        self._subscription = self._bus.subscribe(LIDAR_SCAN, max_queue_size=1)
-        self._task = asyncio.create_task(self._run(), name="known-world-scan-matcher")
+        self._pose_subscription = self._bus.subscribe(
+            LOCALIZATION_POSE, max_queue_size=64
+        )
+        self._scan_subscription = self._bus.subscribe(LIDAR_SCAN, max_queue_size=1)
+        self._pose_task = asyncio.create_task(
+            self._read_poses(), name="known-world-scan-matcher-poses"
+        )
+        self._scan_task = asyncio.create_task(
+            self._run(), name="known-world-scan-matcher"
+        )
 
     async def stop(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            await asyncio.gather(self._task, return_exceptions=True)
-        self._task = None
-        if self._subscription is not None:
-            self._subscription.close()
-        self._subscription = None
+        for subscription in (self._pose_subscription, self._scan_subscription):
+            if subscription is not None:
+                subscription.close()
+        tasks = tuple(
+            task for task in (self._pose_task, self._scan_task) if task is not None
+        )
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._pose_task = None
+        self._scan_task = None
+        self._pose_subscription = None
+        self._scan_subscription = None
 
     def reset(self) -> None:
         self.scans_received = 0
@@ -356,30 +384,47 @@ class KnownWorldScanMatcherService:
         self.last_rejection: Optional[str] = None
         self.last_error: Optional[Exception] = None
         self._sequence = 0
+        self._pose_history.clear()
+
+    async def _read_poses(self) -> None:
+        subscription = self._pose_subscription
+        if subscription is None:
+            return
+        try:
+            async for pose in subscription:
+                self._pose_history.append(pose)
+        except SubscriptionClosed:
+            return
+
+    def _pose_at_scan(
+        self, scan: LaserScan
+    ) -> Tuple[Optional[LocalizationPose2D], Optional[str]]:
+        scan_timestamp_ns = scan.header.timestamp_monotonic_ns
+        for pose in reversed(self._pose_history):
+            age_ns = scan_timestamp_ns - pose.header.timestamp_monotonic_ns
+            if age_ns < 0:
+                continue
+            if age_ns > self._max_pose_age_ns:
+                return None, "localization pose is too old"
+            return pose, None
+        if self._pose_history:
+            return None, "localization pose is from the future"
+        return None, "no localization pose is available"
 
     async def _run(self) -> None:
-        subscription = self._subscription
+        subscription = self._scan_subscription
         if subscription is None:
             return
         try:
             async for scan in subscription:
                 self.scans_received += 1
-                prior = self._bus.latest(LOCALIZATION_POSE)
+                prior, timing_rejection = self._pose_at_scan(scan)
                 if prior is None:
-                    self.rejected_missing_pose += 1
-                    self.last_rejection = "no localization pose is available"
-                    continue
-                age_ns = (
-                    scan.header.timestamp_monotonic_ns
-                    - prior.header.timestamp_monotonic_ns
-                )
-                if age_ns < 0 or age_ns > self._max_pose_age_ns:
-                    self.rejected_pose_timing += 1
-                    self.last_rejection = (
-                        "localization pose is from the future"
-                        if age_ns < 0
-                        else "localization pose is too old"
-                    )
+                    if timing_rejection == "no localization pose is available":
+                        self.rejected_missing_pose += 1
+                    else:
+                        self.rejected_pose_timing += 1
+                    self.last_rejection = timing_rejection
                     continue
                 try:
                     result = await asyncio.to_thread(

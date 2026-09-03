@@ -133,7 +133,9 @@ class CoherentSimulationConfig(BaseModel):
     initial_x_m: Annotated[float, Field(allow_inf_nan=False)] = 0.0
     initial_y_m: Annotated[float, Field(allow_inf_nan=False)] = 0.0
     initial_yaw_rad: Annotated[float, Field(allow_inf_nan=False)] = 0.0
-    world_scenario: Literal["empty_room", "single_obstacle", "corridor"] = Field(
+    world_scenario: Literal[
+        "empty_room", "single_obstacle", "corridor", "apartment"
+    ] = Field(
         default="single_obstacle",
         title="Simulation world",
         description="Deterministic line-segment world used by collision and LiDAR.",

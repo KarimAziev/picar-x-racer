@@ -225,7 +225,7 @@ export interface CoherentSimulationConfig {
   initial_x_m: number;
   initial_y_m: number;
   initial_yaw_rad: number;
-  world_scenario: "empty_room" | "single_obstacle" | "corridor";
+  world_scenario: "empty_room" | "single_obstacle" | "corridor" | "apartment";
   world_width_m: number;
   world_height_m: number;
   vehicle_radius_m: number;
