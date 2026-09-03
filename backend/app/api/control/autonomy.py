@@ -5,6 +5,8 @@ from typing import Annotated, Optional
 from app.api import robot_deps
 from app.schemas.autonomy import (
     NavigationGoalRequest,
+    NavigationExecutionRequest,
+    NavigationExecutionStatus,
     NavigationPlanStatus,
     RelativeArcRequest,
     RelativeDistanceRequest,
@@ -24,6 +26,7 @@ from app.services.autonomy import (
     LocalMappingService,
     MotionControlService,
     NavigationPlanningService,
+    NavigationExecutionService,
     PoseEstimatorSupervisor,
     KnownWorldScanMatcherSupervisor,
     RelativeMotionService,
@@ -61,6 +64,10 @@ ScanMatcherDependency = Annotated[
 NavigationPlanningDependency = Annotated[
     NavigationPlanningService,
     Depends(robot_deps.get_navigation_planning_service),
+]
+NavigationExecutionDependency = Annotated[
+    Optional[NavigationExecutionService],
+    Depends(robot_deps.get_navigation_execution_service),
 ]
 
 
@@ -195,13 +202,27 @@ def _scan_matching_status(
     )
 
 
-def _require_service(
+def _require_relative_service(
     service: Optional[RelativeMotionService],
 ) -> RelativeMotionService:
     if service is None:
         raise HTTPException(
             status_code=409,
             detail="relative motion requires motion control and Ackermann odometry",
+        )
+    return service
+
+
+def _require_navigation_execution_service(
+    service: Optional[NavigationExecutionService],
+) -> NavigationExecutionService:
+    if service is None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "navigation requires motion control, fused localization, and "
+                "Ackermann geometry"
+            ),
         )
     return service
 
@@ -240,6 +261,68 @@ async def clear_navigation_plan(
     return await service.clear()
 
 
+@router.get(
+    "/px/api/autonomy/navigation/execution",
+    response_model=NavigationExecutionStatus,
+    summary="Retrieve the current navigation execution state",
+)
+async def get_navigation_execution(
+    service: NavigationExecutionDependency,
+) -> NavigationExecutionStatus:
+    return service.status if service else NavigationExecutionStatus.unavailable()
+
+
+@router.post(
+    "/px/api/autonomy/navigation/execution/start",
+    response_model=NavigationExecutionStatus,
+    summary="Start following the currently reviewed route",
+)
+async def start_navigation_execution(
+    request: NavigationExecutionRequest,
+    service: NavigationExecutionDependency,
+) -> NavigationExecutionStatus:
+    try:
+        return await _require_navigation_execution_service(service).start(request)
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/navigation/execution/pause",
+    response_model=NavigationExecutionStatus,
+)
+async def pause_navigation_execution(
+    service: NavigationExecutionDependency,
+) -> NavigationExecutionStatus:
+    try:
+        return await _require_navigation_execution_service(service).pause()
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/navigation/execution/resume",
+    response_model=NavigationExecutionStatus,
+)
+async def resume_navigation_execution(
+    service: NavigationExecutionDependency,
+) -> NavigationExecutionStatus:
+    try:
+        return await _require_navigation_execution_service(service).resume()
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/navigation/execution/cancel",
+    response_model=NavigationExecutionStatus,
+)
+async def cancel_navigation_execution(
+    service: NavigationExecutionDependency,
+) -> NavigationExecutionStatus:
+    return await _require_navigation_execution_service(service).cancel()
+
+
 @router.get("/px/api/autonomy/relative-motion", response_model=RelativeMotionStatus)
 async def get_relative_motion_status(
     service: RelativeMotionDependency,
@@ -256,7 +339,7 @@ async def start_relative_distance(
     service: RelativeMotionDependency,
 ) -> RelativeMotionStatus:
     try:
-        return await _require_service(service).start_distance(request)
+        return await _require_relative_service(service).start_distance(request)
     except ActionConflictError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
 
@@ -270,7 +353,7 @@ async def start_relative_arc(
     service: RelativeMotionDependency,
 ) -> RelativeMotionStatus:
     try:
-        return await _require_service(service).start_arc(request)
+        return await _require_relative_service(service).start_arc(request)
     except ActionConflictError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
 
@@ -282,7 +365,7 @@ async def start_relative_arc(
 async def cancel_relative_motion(
     service: RelativeMotionDependency,
 ) -> RelativeMotionStatus:
-    return await _require_service(service).cancel()
+    return await _require_relative_service(service).cancel()
 
 
 @router.get(

@@ -31,6 +31,7 @@ class FakeMotionControl:
         self.last_result = None
         self.intents: List[MotionIntent] = []
         self.revoked: List[MotionSource] = []
+        self.autonomy_owner: str | None = None
 
     async def set_mode(self, mode: RobotMode) -> None:
         if mode != self.mode:
@@ -43,6 +44,16 @@ class FakeMotionControl:
 
     def revoke(self, source: MotionSource) -> None:
         self.revoked.append(source)
+
+    def claim_autonomy(self, owner: str) -> bool:
+        if self.autonomy_owner not in {None, owner}:
+            return False
+        self.autonomy_owner = owner
+        return True
+
+    def release_autonomy(self, owner: str) -> None:
+        if self.autonomy_owner == owner:
+            self.autonomy_owner = None
 
 
 def odometry(
@@ -101,6 +112,7 @@ class RelativeMotionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(self.service.status.progress_m, 0.2)
         self.assertEqual(self.motion.mode, RobotMode.DISARMED)
         self.assertIn(MotionSource.AUTONOMY, self.motion.revoked)
+        self.assertIsNone(self.motion.autonomy_owner)
 
     async def test_completes_arc_with_measured_path_and_yaw(self) -> None:
         distance_m = 0.2
@@ -252,6 +264,15 @@ class RelativeMotionServiceTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with self.assertRaisesRegex(ActionConflictError, "fresh odometry"):
+            await self.service.start_distance(RelativeDistanceRequest(distance_m=1))
+
+    async def test_rejects_start_while_another_autonomous_action_owns_source(
+        self,
+    ) -> None:
+        self.bus.publish(ODOMETRY, odometry(0))
+        self.motion.autonomy_owner = "navigation:other"
+
+        with self.assertRaisesRegex(ActionConflictError, "another autonomous"):
             await self.service.start_distance(RelativeDistanceRequest(distance_m=1))
 
 

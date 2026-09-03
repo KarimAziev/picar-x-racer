@@ -61,6 +61,7 @@ class MotionControlService:
         self._last_error: Optional[Exception] = None
         self._estop_reason: Optional[str] = None
         self._steering_state_sequence = 0
+        self._autonomy_owner: Optional[str] = None
 
     @property
     def mode(self) -> RobotMode:
@@ -101,6 +102,29 @@ class MotionControlService:
         return bool(
             self._drive_hardware is not None and self._drive_hardware.simulation_enabled
         )
+
+    @property
+    def autonomy_owner(self) -> Optional[str]:
+        """Return the action that currently owns the autonomous command source."""
+
+        return self._autonomy_owner
+
+    def claim_autonomy(self, owner: str) -> bool:
+        """Atomically reserve the single autonomous intent source for one action."""
+
+        normalized = owner.strip()
+        if not normalized:
+            raise ValueError("autonomy owner must not be empty")
+        if self._autonomy_owner not in {None, normalized}:
+            return False
+        self._autonomy_owner = normalized
+        return True
+
+    def release_autonomy(self, owner: str) -> None:
+        """Release the autonomous source only when the caller owns its lease."""
+
+        if self._autonomy_owner == owner:
+            self._autonomy_owner = None
 
     def submit(self, intent: MotionIntent) -> IntentSubmissionResult:
         """Submit against the current mode and its anti-replay generation."""

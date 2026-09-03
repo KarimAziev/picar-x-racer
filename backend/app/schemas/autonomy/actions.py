@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class ActionState(str, Enum):
     IDLE = "idle"
     RUNNING = "running"
+    PAUSED = "paused"
     SUCCEEDED = "succeeded"
     BLOCKED = "blocked"
     FAILED = "failed"

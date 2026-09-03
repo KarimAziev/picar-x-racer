@@ -97,6 +97,25 @@ describe("autonomy telemetry store", () => {
           reason: "Click a free map location to preview a route",
         });
       }
+      if (path === "/px/api/autonomy/navigation/execution") {
+        return Promise.resolve({
+          available: true,
+          state: "idle",
+          action_id: null,
+          goal: null,
+          current_pose: null,
+          map_sequence: null,
+          path_length_m: 0,
+          progress_m: 0,
+          remaining_m: 0,
+          target_waypoint_index: null,
+          max_speed_mps: null,
+          commanded_speed_mps: 0,
+          steering_angle_deg: 0,
+          cross_track_error_m: 0,
+          reason: "Select and review a navigation goal",
+        });
+      }
       if (path === "/px/api/autonomy/simulation") {
         return Promise.resolve({
           enabled: true,
@@ -435,6 +454,52 @@ describe("autonomy telemetry store", () => {
       "/px/api/autonomy/navigation/plan/clear",
     );
     expect(store.navigationPlan?.state).toBe("idle");
+  });
+
+  it("starts and controls navigation execution explicitly", async () => {
+    const store = useAutonomyStore();
+    const execution = {
+      available: true,
+      state: "running",
+      action_id: "navigation-1",
+      goal: { x_m: 1, y_m: 0 },
+      current_pose: { x_m: 0, y_m: 0 },
+      map_sequence: 4,
+      path_length_m: 1,
+      progress_m: 0,
+      remaining_m: 1,
+      target_waypoint_index: 1,
+      max_speed_mps: 0.15,
+      commanded_speed_mps: 0.15,
+      steering_angle_deg: 0,
+      cross_track_error_m: 0,
+      reason: "Following the reviewed route",
+    };
+    mocks.post.mockResolvedValue(execution);
+
+    await store.startNavigation(0.15);
+    await store.runNavigationAction("pause");
+    await store.runNavigationAction("resume");
+    await store.runNavigationAction("cancel");
+
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/execution/start",
+      {
+        max_speed_mps: 0.15,
+        lookahead_m: 0.25,
+        goal_tolerance_m: 0.08,
+      },
+    );
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/execution/pause",
+    );
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/execution/resume",
+    );
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/execution/cancel",
+    );
+    expect(store.navigationExecution?.action_id).toBe("navigation-1");
   });
 
   it("starts a relative steering arc with SI distance and speed", async () => {

@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 from app.api.control.autonomy import (
     clear_navigation_plan,
+    get_navigation_execution,
     get_navigation_plan,
     get_localization_status,
     get_scan_matching_status,
@@ -207,6 +208,12 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(planned.state, NavigationPlanState.READY)
         self.assertGreater(planned.path_length_m, 0)
         self.assertEqual(cleared.state, NavigationPlanState.IDLE)
+
+    async def test_navigation_execution_reports_unavailable_prerequisites(self) -> None:
+        status = await get_navigation_execution(None)
+
+        self.assertFalse(status.available)
+        self.assertIn("localization", status.reason or "")
 
 
 if __name__ == "__main__":

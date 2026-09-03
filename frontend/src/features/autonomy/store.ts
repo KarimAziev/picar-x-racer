@@ -232,7 +232,13 @@ export type MappingSessionAction =
   "start" | "pause" | "finish" | "clear" | "reset";
 
 export type AutonomousActionState =
-  "idle" | "running" | "succeeded" | "blocked" | "failed" | "canceled";
+  | "idle"
+  | "running"
+  | "paused"
+  | "succeeded"
+  | "blocked"
+  | "failed"
+  | "canceled";
 
 export type RelativeActionType = "distance" | "arc";
 
@@ -275,6 +281,24 @@ export interface NavigationPlanStatus {
   reason: string | null;
 }
 
+export interface NavigationExecutionStatus {
+  available: boolean;
+  state: AutonomousActionState;
+  action_id: string | null;
+  goal: NavigationPoint | null;
+  current_pose: NavigationPoint | null;
+  map_sequence: number | null;
+  path_length_m: number;
+  progress_m: number;
+  remaining_m: number;
+  target_waypoint_index: number | null;
+  max_speed_mps: number | null;
+  commanded_speed_mps: number;
+  steering_angle_deg: number;
+  cross_track_error_m: number;
+  reason: string | null;
+}
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
@@ -300,6 +324,9 @@ export interface State {
   navigationPlan: NavigationPlanStatus | null;
   navigationPlanLoading: boolean;
   navigationPlanError: string | null;
+  navigationExecution: NavigationExecutionStatus | null;
+  navigationExecutionLoading: boolean;
+  navigationExecutionError: string | null;
   simulation: SimulationRuntimeStatus | null;
   simulationLoading: boolean;
   simulationResetting: boolean;
@@ -330,6 +357,9 @@ const defaultState: State = {
   navigationPlan: null,
   navigationPlanLoading: false,
   navigationPlanError: null,
+  navigationExecution: null,
+  navigationExecutionLoading: false,
+  navigationExecutionError: null,
   simulation: null,
   simulationLoading: false,
   simulationResetting: false,
@@ -479,6 +509,53 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       }
     },
 
+    async refreshNavigationExecution() {
+      try {
+        this.navigationExecution =
+          await robotApi.get<NavigationExecutionStatus>(
+            "/px/api/autonomy/navigation/execution",
+          );
+        this.navigationExecutionError = null;
+      } catch (error) {
+        this.navigationExecutionError = retrieveError(error).text;
+      }
+    },
+
+    async startNavigation(maxSpeedMps = 0.15) {
+      try {
+        this.navigationExecutionLoading = true;
+        this.navigationExecution =
+          await robotApi.post<NavigationExecutionStatus>(
+            "/px/api/autonomy/navigation/execution/start",
+            {
+              max_speed_mps: maxSpeedMps,
+              lookahead_m: 0.25,
+              goal_tolerance_m: 0.08,
+            },
+          );
+        this.navigationExecutionError = null;
+      } catch (error) {
+        this.navigationExecutionError = retrieveError(error).text;
+      } finally {
+        this.navigationExecutionLoading = false;
+      }
+    },
+
+    async runNavigationAction(action: "pause" | "resume" | "cancel") {
+      try {
+        this.navigationExecutionLoading = true;
+        this.navigationExecution =
+          await robotApi.post<NavigationExecutionStatus>(
+            `/px/api/autonomy/navigation/execution/${action}`,
+          );
+        this.navigationExecutionError = null;
+      } catch (error) {
+        this.navigationExecutionError = retrieveError(error).text;
+      } finally {
+        this.navigationExecutionLoading = false;
+      }
+    },
+
     async startRelativeDistance(distanceM: number, speedMps: number) {
       try {
         this.relativeMotionLoading = true;
@@ -600,6 +677,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       void this.refreshLocalization();
       void this.refreshScanMatching();
       void this.refreshNavigationPlan();
+      void this.refreshNavigationExecution();
       if (this.connection) {
         return;
       }

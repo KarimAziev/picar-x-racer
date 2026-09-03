@@ -113,8 +113,15 @@ class RelativeMotionService:
         odometry = self._fresh_odometry()
         if odometry is None:
             raise ActionConflictError("fresh odometry is required")
-        await self._motion.set_mode(RobotMode.AUTONOMOUS)
         action_id = uuid.uuid4().hex
+        owner = f"relative-motion:{action_id}"
+        if not self._motion.claim_autonomy(owner):
+            raise ActionConflictError("another autonomous action is already running")
+        try:
+            await self._motion.set_mode(RobotMode.AUTONOMOUS)
+        except Exception:
+            self._motion.release_autonomy(owner)
+            raise
         timeout = request.timeout_seconds or max(
             2.0, abs(request.distance_m) / request.speed_mps * 2.0 + 1.0
         )
@@ -302,6 +309,8 @@ class RelativeMotionService:
         self._motion.revoke(MotionSource.AUTONOMY)
         if change_mode and self._motion.mode == RobotMode.AUTONOMOUS:
             await self._motion.set_mode(RobotMode.DISARMED)
+        if self._status.action_id is not None:
+            self._motion.release_autonomy(f"relative-motion:{self._status.action_id}")
         self._status = self._status.model_copy(
             update={
                 "state": state,

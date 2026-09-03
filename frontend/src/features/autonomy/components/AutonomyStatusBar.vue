@@ -43,9 +43,9 @@
       <Tag severity="info" :value="commandLabel" />
       <Tag v-if="poseLabel" severity="secondary" :value="poseLabel" />
       <Tag
-        v-if="controller.motionReason"
-        :severity="controller.speed === 0 ? 'secondary' : 'warning'"
-        :value="`Reason: ${controller.motionReason}`"
+        v-if="motionReason"
+        :severity="commandActive ? 'warning' : 'secondary'"
+        :value="`Reason: ${motionReason}`"
       />
       <Tag
         v-if="safetyLabel"
@@ -56,7 +56,7 @@
 
     <div class="flex flex-wrap items-center justify-end gap-2">
       <Button
-        v-if="controller.robotMode !== 'manual'"
+        v-if="effectiveRobotMode !== 'manual'"
         label="Arm manual"
         icon="pi pi-play"
         size="small"
@@ -121,17 +121,33 @@ const canChangeNormalMode = computed(
     !controller.motionFault,
 );
 
+const navigationRunning = computed(
+  () => telemetry.navigationExecution?.state === "running",
+);
+const relativeMotionRunning = computed(
+  () => telemetry.relativeMotion?.state === "running",
+);
+const autonomousActionRunning = computed(
+  () => navigationRunning.value || relativeMotionRunning.value,
+);
+const effectiveRobotMode = computed(() =>
+  autonomousActionRunning.value ? "autonomous" : controller.robotMode,
+);
+
 const modeLabel = computed(() => {
   if (!controller.motionControlEnabled) return "Legacy control";
-  return `Mode: ${controller.robotMode}`;
+  return `Mode: ${effectiveRobotMode.value}`;
 });
 
 const modeSeverity = computed(() => {
-  if (controller.robotMode === "estop" || controller.robotMode === "fault") {
+  if (
+    effectiveRobotMode.value === "estop" ||
+    effectiveRobotMode.value === "fault"
+  ) {
     return "danger";
   }
-  if (controller.robotMode === "autonomous") return "info";
-  if (controller.robotMode === "manual") return "success";
+  if (effectiveRobotMode.value === "autonomous") return "info";
+  if (effectiveRobotMode.value === "manual") return "success";
   return "secondary";
 });
 
@@ -173,12 +189,30 @@ const simulationLabel = computed(() => {
 });
 
 const commandLabel = computed(() => {
+  const navigation = telemetry.navigationExecution;
+  if (navigationRunning.value && navigation) {
+    return `Source: autonomy · forward ${navigation.commanded_speed_mps.toFixed(2)} m/s`;
+  }
+  const relative = telemetry.relativeMotion;
+  if (relativeMotionRunning.value && relative) {
+    const direction = (relative.distance_m ?? 0) >= 0 ? "forward" : "reverse";
+    return `Source: autonomy · ${direction} ${(relative.requested_speed_mps ?? 0).toFixed(2)} m/s`;
+  }
   const source = controller.motionSource ?? "unknown";
   if (!controller.direction || controller.speed === 0) {
     return `Source: ${source} · stopped`;
   }
   const direction = controller.direction > 0 ? "forward" : "reverse";
   return `Source: ${source} · ${direction} ${controller.speed.toFixed(0)}%`;
+});
+
+const commandActive = computed(
+  () => autonomousActionRunning.value || controller.speed !== 0,
+);
+const motionReason = computed(() => {
+  if (navigationRunning.value) return telemetry.navigationExecution?.reason;
+  if (relativeMotionRunning.value) return telemetry.relativeMotion?.reason;
+  return controller.motionReason;
 });
 
 const poseLabel = computed(() => {

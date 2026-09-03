@@ -40,6 +40,10 @@ from app.schemas.autonomy.navigation import (
     NavigationPlanStatus,
     NavigationPoint,
 )
+from app.schemas.autonomy.navigation_execution import (
+    NavigationExecutionRequest,
+    NavigationExecutionStatus,
+)
 from app.schemas.autonomy.sensor_status import (
     LocalizationSensorStatus,
     SensorName,
@@ -69,6 +73,8 @@ __all__ = [
     "MappingSessionState",
     "MappingSessionStatus",
     "NavigationGoalRequest",
+    "NavigationExecutionRequest",
+    "NavigationExecutionStatus",
     "NavigationPlanState",
     "NavigationPlanStatus",
     "NavigationPoint",

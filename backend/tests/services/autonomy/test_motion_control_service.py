@@ -117,6 +117,16 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.command.is_stop)
         self.assertEqual(self.hardware.calls, [("steer", 0.0), ("stop", None)])
 
+    async def test_allows_exactly_one_autonomous_action_owner(self) -> None:
+        self.assertTrue(self.service.claim_autonomy("navigation:first"))
+        self.assertTrue(self.service.claim_autonomy("navigation:first"))
+        self.assertFalse(self.service.claim_autonomy("relative-motion:second"))
+
+        self.service.release_autonomy("relative-motion:second")
+        self.assertEqual(self.service.autonomy_owner, "navigation:first")
+        self.service.release_autonomy("navigation:first")
+        self.assertIsNone(self.service.autonomy_owner)
+
     async def test_mode_change_invalidates_old_generation_and_stops(self) -> None:
         await self.enter_manual_mode()
         self.assertTrue(self.service.submit(self.intent()).accepted)

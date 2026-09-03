@@ -58,6 +58,7 @@ from app.services.autonomy import (
     MotionArbiter,
     MotionControlService,
     MotionLimits,
+    NavigationExecutionService,
     NavigationPlanningService,
     KnownWorldScanMatcher,
     KnownWorldScanMatcherConfig,
@@ -875,6 +876,39 @@ def get_navigation_planning_service(
 
 
 @lru_cache(maxsize=1)
+def get_navigation_execution_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    motion_control_service: Annotated[
+        Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
+    planning_service: Annotated[
+        NavigationPlanningService, Depends(get_navigation_planning_service)
+    ],
+) -> Optional[NavigationExecutionService]:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    odometry = config.ackermann_odometry
+    if (
+        motion_control_service is None
+        or not odometry.enabled
+        or not config.pose_estimation.enabled
+        or odometry.wheelbase_m is None
+    ):
+        return None
+    max_steering_degrees = min(
+        abs(config.steering_servo.min_angle),
+        abs(config.steering_servo.max_angle),
+    )
+    return NavigationExecutionService(
+        topic_bus,
+        motion_control_service,
+        planning_service,
+        wheelbase_m=odometry.wheelbase_m,
+        max_abs_steering_angle_rad=math.radians(max_steering_degrees),
+    )
+
+
+@lru_cache(maxsize=1)
 def get_relative_motion_service(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
@@ -966,6 +1000,7 @@ class LifespanAppDeps(TypedDict):
     lidar_safety_service: Optional[LidarSafetyService]
     local_mapping_service: Optional[LocalMappingService]
     relative_motion_service: Optional[RelativeMotionService]
+    navigation_execution_service: Optional[NavigationExecutionService]
     coherent_simulation_supervisor: CoherentSimulationSupervisor
     pose_estimator_supervisor: PoseEstimatorSupervisor
     known_world_scan_matcher_supervisor: KnownWorldScanMatcherSupervisor
@@ -1002,6 +1037,10 @@ async def get_lifespan_dependencies(
     relative_motion_service: Annotated[
         Optional[RelativeMotionService], Depends(get_relative_motion_service)
     ],
+    navigation_execution_service: Annotated[
+        Optional[NavigationExecutionService],
+        Depends(get_navigation_execution_service),
+    ],
     coherent_simulation_supervisor: Annotated[
         CoherentSimulationSupervisor,
         Depends(get_coherent_simulation_supervisor),
@@ -1032,6 +1071,7 @@ async def get_lifespan_dependencies(
         "lidar_safety_service": lidar_safety_service,
         "local_mapping_service": local_mapping_service,
         "relative_motion_service": relative_motion_service,
+        "navigation_execution_service": navigation_execution_service,
         "coherent_simulation_supervisor": coherent_simulation_supervisor,
         "pose_estimator_supervisor": pose_estimator_supervisor,
         "known_world_scan_matcher_supervisor": (known_world_scan_matcher_supervisor),

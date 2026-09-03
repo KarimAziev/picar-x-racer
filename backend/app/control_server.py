@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from app.services.autonomy.lidar_safety import LidarSafetyService
     from app.services.autonomy.local_mapping import LocalMappingService
     from app.services.autonomy.relative_motion import RelativeMotionService
+    from app.services.autonomy.navigation_execution import NavigationExecutionService
     from app.services.autonomy.simulation import CoherentSimulationSupervisor
     from app.services.control.car_service import CarService
     from app.services.sensors.distance_service import DistanceService
@@ -64,6 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     lidar_safety_service: Optional["LidarSafetyService"] = None
     local_mapping_service: Optional["LocalMappingService"] = None
     relative_motion_service: Optional["RelativeMotionService"] = None
+    navigation_execution_service: Optional["NavigationExecutionService"] = None
     coherent_simulation_supervisor: Optional["CoherentSimulationSupervisor"] = None
     pose_estimator_supervisor: Optional["PoseEstimatorSupervisor"] = None
     known_world_scan_matcher_supervisor: Optional["KnownWorldScanMatcherSupervisor"] = (
@@ -92,6 +94,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             lidar_safety_service = deps.get("lidar_safety_service")
             local_mapping_service = deps.get("local_mapping_service")
             relative_motion_service = deps.get("relative_motion_service")
+            navigation_execution_service = deps.get("navigation_execution_service")
             coherent_simulation_supervisor = deps.get("coherent_simulation_supervisor")
             pose_estimator_supervisor = deps.get("pose_estimator_supervisor")
             known_world_scan_matcher_supervisor = deps.get(
@@ -140,6 +143,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.lidar_safety_service = lidar_safety_service
         app.state.local_mapping_service = local_mapping_service
         app.state.relative_motion_service = relative_motion_service
+        app.state.navigation_execution_service = navigation_execution_service
         app.state.coherent_simulation_supervisor = coherent_simulation_supervisor
         app.state.pose_estimator_supervisor = pose_estimator_supervisor
         app.state.known_world_scan_matcher_supervisor = (
@@ -205,6 +209,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise
         except Exception as e:
             logger.error("Failed to cleanup relative motion service: %s", e)
+
+    if navigation_execution_service:
+        try:
+            await navigation_execution_service.stop()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up navigation execution.")
+            raise
+        except Exception as e:
+            logger.error("Failed to cleanup navigation execution service: %s", e)
 
     if robot_service:
         try:

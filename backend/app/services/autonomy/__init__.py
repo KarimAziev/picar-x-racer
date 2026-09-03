@@ -59,6 +59,11 @@ from app.services.autonomy.navigation_planning import (
     NavigationPlanningService,
     OccupancyGridPlanner,
 )
+from app.services.autonomy.navigation_execution import (
+    NavigationExecutionService,
+    PurePursuitTracker,
+    TrackingSolution,
+)
 from app.services.autonomy.relative_motion import (
     ActionConflictError,
     RelativeMotionService,
@@ -161,6 +166,7 @@ __all__ = [
     "MotionSource",
     "NavigationPlanRejected",
     "NavigationPlanningService",
+    "NavigationExecutionService",
     "OdometryInputError",
     "OccupancyGridPlanner",
     "PoseEstimationInputError",
@@ -169,6 +175,7 @@ __all__ = [
     "PoseEstimatorResult",
     "PoseEstimatorService",
     "PoseEstimatorSupervisor",
+    "PurePursuitTracker",
     "RobotMode",
     "RelativeMotionService",
     "RaycastLidarConfig",
@@ -192,6 +199,7 @@ __all__ = [
     "TopicDefinitionError",
     "TopicStats",
     "TopicSubscription",
+    "TrackingSolution",
     "UnavailableEncoderPublisher",
     "VirtualDriveHardware",
     "WorldLidarRaycaster",

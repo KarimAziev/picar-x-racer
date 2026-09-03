@@ -205,7 +205,7 @@ const workflowTitle = computed(() =>
 );
 const workflowDescription = computed(() =>
   simulationEnabled.value
-    ? "Arm manual control or start a bounded relative-motion action. The same arbiter drives a virtual Ackermann vehicle while physical motors remain isolated."
+    ? "Arm manual control, start a bounded relative-motion action, or execute a reviewed map route. The same arbiter drives a virtual Ackermann vehicle while physical motors remain isolated."
     : "Drive manually to create new observations. Mapping and telemetry do not move the vehicle, and no map-based navigation controller is installed yet.",
 );
 const workflowCaveat = computed(() =>

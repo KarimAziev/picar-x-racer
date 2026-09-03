@@ -299,7 +299,17 @@ const drawNavigationPlanOverlay = (
 const selectNavigationGoal = (event: MouseEvent) => {
   const element = canvas.value;
   const grid = map.value;
-  if (!interactive || !element || !grid || store.navigationPlanLoading) return;
+  const navigationActive = ["running", "paused"].includes(
+    store.navigationExecution?.state ?? "",
+  );
+  if (
+    !interactive ||
+    !element ||
+    !grid ||
+    store.navigationPlanLoading ||
+    navigationActive
+  )
+    return;
   const bounds = element.getBoundingClientRect();
   const point = canvasToWorld(
     grid,

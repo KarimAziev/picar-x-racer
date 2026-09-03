@@ -29,6 +29,7 @@ export type {
   MappingSessionStatus,
   NavigationPlanState,
   NavigationPlanStatus,
+  NavigationExecutionStatus,
   NavigationPoint,
   OccupancyGrid,
   RelativeActionType,
