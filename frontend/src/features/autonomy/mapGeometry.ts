@@ -85,5 +85,37 @@ export const gridToCanvas = (
   y: canvasHeight - (point.y / grid.height) * canvasHeight,
 });
 
+export const canvasToWorld = (
+  grid: OccupancyGrid,
+  canvasX: number,
+  canvasY: number,
+  canvasWidth: number,
+  canvasHeight: number,
+): Point2D | null => {
+  if (
+    canvasWidth <= 0 ||
+    canvasHeight <= 0 ||
+    canvasX < 0 ||
+    canvasY < 0 ||
+    canvasX >= canvasWidth ||
+    canvasY >= canvasHeight
+  ) {
+    return null;
+  }
+  const gridX = (canvasX / canvasWidth) * grid.width;
+  const gridY = (1 - canvasY / canvasHeight) * grid.height;
+  if (gridX < 0 || gridY < 0 || gridX >= grid.width || gridY >= grid.height) {
+    return null;
+  }
+  const localX = gridX * grid.resolution_m;
+  const localY = gridY * grid.resolution_m;
+  const cos = Math.cos(grid.origin_yaw_rad);
+  const sin = Math.sin(grid.origin_yaw_rad);
+  return {
+    x: grid.origin_x_m + cos * localX - sin * localY,
+    y: grid.origin_y_m + sin * localX + cos * localY,
+  };
+};
+
 export const worldYawToCanvas = (grid: OccupancyGrid, yawRad: number) =>
   -(yawRad - grid.origin_yaw_rad);

@@ -252,6 +252,29 @@ export interface RelativeMotionStatus {
   reason: string | null;
 }
 
+export type NavigationPlanState = "idle" | "ready" | "rejected" | "failed";
+
+export interface NavigationPoint {
+  x_m: number;
+  y_m: number;
+}
+
+export interface NavigationPlanStatus {
+  available: boolean;
+  state: NavigationPlanState;
+  frame_id: string;
+  goal: NavigationPoint | null;
+  start: NavigationPoint | null;
+  path: NavigationPoint[];
+  path_length_m: number;
+  clearance_m: number;
+  allow_unknown: boolean;
+  map_sequence: number | null;
+  pose_source: "localization" | "odometry" | null;
+  expanded_nodes: number;
+  reason: string | null;
+}
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
@@ -274,6 +297,9 @@ export interface State {
   relativeMotion: RelativeMotionStatus | null;
   relativeMotionLoading: boolean;
   relativeMotionError: string | null;
+  navigationPlan: NavigationPlanStatus | null;
+  navigationPlanLoading: boolean;
+  navigationPlanError: string | null;
   simulation: SimulationRuntimeStatus | null;
   simulationLoading: boolean;
   simulationResetting: boolean;
@@ -301,6 +327,9 @@ const defaultState: State = {
   relativeMotion: null,
   relativeMotionLoading: false,
   relativeMotionError: null,
+  navigationPlan: null,
+  navigationPlanLoading: false,
+  navigationPlanError: null,
   simulation: null,
   simulationLoading: false,
   simulationResetting: false,
@@ -353,6 +382,9 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         if (status === 404) {
           this.localMap = null;
           this.mapError = null;
+          if (this.navigationPlan?.goal && !this.navigationPlanLoading) {
+            await this.clearNavigationPlan();
+          }
         } else {
           this.mapError = retrieveError(error).text;
         }
@@ -379,7 +411,10 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.mappingActionError = null;
         if (action === "clear" || action === "reset") {
           this.mapClearGeneration += 1;
-          await this.refreshLocalMap();
+          await Promise.all([
+            this.refreshLocalMap(),
+            this.clearNavigationPlan(),
+          ]);
         }
       } catch (error) {
         this.mappingActionError = retrieveError(error).text;
@@ -396,6 +431,51 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.relativeMotionError = null;
       } catch (error) {
         this.relativeMotionError = retrieveError(error).text;
+      }
+    },
+
+    async refreshNavigationPlan() {
+      try {
+        this.navigationPlan = await robotApi.get<NavigationPlanStatus>(
+          "/px/api/autonomy/navigation/plan",
+        );
+        this.navigationPlanError = null;
+      } catch (error) {
+        this.navigationPlanError = retrieveError(error).text;
+      }
+    },
+
+    async planNavigationGoal(xM: number, yM: number, clearanceM = 0.2) {
+      try {
+        this.navigationPlanLoading = true;
+        this.navigationPlan = await robotApi.post<NavigationPlanStatus>(
+          "/px/api/autonomy/navigation/plan",
+          {
+            x_m: xM,
+            y_m: yM,
+            clearance_m: clearanceM,
+            allow_unknown: false,
+          },
+        );
+        this.navigationPlanError = null;
+      } catch (error) {
+        this.navigationPlanError = retrieveError(error).text;
+      } finally {
+        this.navigationPlanLoading = false;
+      }
+    },
+
+    async clearNavigationPlan() {
+      try {
+        this.navigationPlanLoading = true;
+        this.navigationPlan = await robotApi.post<NavigationPlanStatus>(
+          "/px/api/autonomy/navigation/plan/clear",
+        );
+        this.navigationPlanError = null;
+      } catch (error) {
+        this.navigationPlanError = retrieveError(error).text;
+      } finally {
+        this.navigationPlanLoading = false;
       }
     },
 
@@ -503,6 +583,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
           this.refreshMappingSession(),
           this.refreshLocalMap(),
           this.refreshScanMatching(),
+          this.clearNavigationPlan(),
         ]);
         this.simulationError = null;
         this.simulationLastUpdatedAt = Date.now();
@@ -518,6 +599,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       void this.refreshStatus();
       void this.refreshLocalization();
       void this.refreshScanMatching();
+      void this.refreshNavigationPlan();
       if (this.connection) {
         return;
       }

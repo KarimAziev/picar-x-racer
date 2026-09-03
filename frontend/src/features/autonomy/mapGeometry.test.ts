@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculatePoseError,
+  canvasToWorld,
   gridToCanvas,
   worldPointToOdom,
   worldToGrid,
@@ -41,6 +42,21 @@ describe("occupancy map geometry", () => {
     expect(point?.x).toBeCloseTo(1);
     expect(point?.y).toBeCloseTo(2);
     expect(worldYawToCanvas(map, Math.PI / 2)).toBeCloseTo(0);
+  });
+
+  it("converts a canvas click back into map-frame metres", () => {
+    const map = grid();
+
+    expect(canvasToWorld(map, 150, 25, 200, 100)).toEqual({ x: 2.5, y: 2.5 });
+    expect(canvasToWorld(map, 200, 25, 200, 100)).toBeNull();
+  });
+
+  it("converts clicks through a rotated map origin", () => {
+    const map = grid(Math.PI / 2);
+    const point = canvasToWorld(map, 120, 70, 200, 100);
+
+    expect(point?.x).toBeCloseTo(-8);
+    expect(point?.y).toBeCloseTo(1);
   });
 
   it("rejects positions outside the bounded grid", () => {

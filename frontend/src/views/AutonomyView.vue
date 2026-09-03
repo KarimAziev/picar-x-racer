@@ -41,7 +41,7 @@
             v-if="currentView === 'map'"
             class="h-full min-h-[30rem] overflow-auto p-3"
           >
-            <OccupancyGridPreview v-if="mappingEnabled" />
+            <OccupancyGridPreview v-if="mappingEnabled" interactive />
             <EmptyOperationalView
               v-else
               icon="pi pi-map"
@@ -84,7 +84,7 @@
               <ImageFeed />
             </div>
             <div class="min-h-[20rem] overflow-auto bg-surface-950 p-3">
-              <OccupancyGridPreview v-if="mappingEnabled" />
+              <OccupancyGridPreview v-if="mappingEnabled" interactive />
               <EmptyOperationalView
                 v-else
                 icon="pi pi-map"
@@ -100,6 +100,7 @@
         class="flex min-w-0 flex-col gap-3 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1"
       >
         <SimulationControls />
+        <NavigationPlanControls />
         <RelativeMotionControls />
         <MappingSessionControls />
 
@@ -170,6 +171,7 @@ import { useRobotStore } from "@/features/settings/stores";
 import AutonomyStatusBar from "@/features/autonomy/components/AutonomyStatusBar.vue";
 import EmptyOperationalView from "@/features/autonomy/components/EmptyOperationalView.vue";
 import MappingSessionControls from "@/features/autonomy/components/MappingSessionControls.vue";
+import NavigationPlanControls from "@/features/autonomy/components/NavigationPlanControls.vue";
 import RelativeMotionControls from "@/features/autonomy/components/RelativeMotionControls.vue";
 import SimulationControls from "@/features/autonomy/components/SimulationControls.vue";
 import SensorDiagnostics from "@/features/settings/components/robot/SensorDiagnostics.vue";

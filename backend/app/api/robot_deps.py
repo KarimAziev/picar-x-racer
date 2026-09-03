@@ -58,6 +58,7 @@ from app.services.autonomy import (
     MotionArbiter,
     MotionControlService,
     MotionLimits,
+    NavigationPlanningService,
     KnownWorldScanMatcher,
     KnownWorldScanMatcherConfig,
     KnownWorldScanMatcherService,
@@ -862,6 +863,15 @@ def get_local_mapping_service(
 ) -> Optional[LocalMappingService]:
     config = HardwareConfig.model_validate(config_manager.load_data())
     return build_local_mapping_service(config, topic_bus)
+
+
+@lru_cache(maxsize=1)
+def get_navigation_planning_service(
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> NavigationPlanningService:
+    """Return the stable planning-only goal preview service."""
+
+    return NavigationPlanningService(topic_bus)
 
 
 @lru_cache(maxsize=1)

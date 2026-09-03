@@ -4,6 +4,8 @@ from typing import Annotated, Optional
 
 from app.api import robot_deps
 from app.schemas.autonomy import (
+    NavigationGoalRequest,
+    NavigationPlanStatus,
     RelativeArcRequest,
     RelativeDistanceRequest,
     RelativeMotionStatus,
@@ -21,6 +23,7 @@ from app.services.autonomy import (
     CoherentSimulationSupervisor,
     LocalMappingService,
     MotionControlService,
+    NavigationPlanningService,
     PoseEstimatorSupervisor,
     KnownWorldScanMatcherSupervisor,
     RelativeMotionService,
@@ -54,6 +57,10 @@ PoseEstimatorDependency = Annotated[
 ScanMatcherDependency = Annotated[
     KnownWorldScanMatcherSupervisor,
     Depends(robot_deps.get_known_world_scan_matcher_supervisor),
+]
+NavigationPlanningDependency = Annotated[
+    NavigationPlanningService,
+    Depends(robot_deps.get_navigation_planning_service),
 ]
 
 
@@ -197,6 +204,40 @@ def _require_service(
             detail="relative motion requires motion control and Ackermann odometry",
         )
     return service
+
+
+@router.get(
+    "/px/api/autonomy/navigation/plan",
+    response_model=NavigationPlanStatus,
+    summary="Retrieve the latest non-driving navigation route preview",
+)
+async def get_navigation_plan(
+    service: NavigationPlanningDependency,
+) -> NavigationPlanStatus:
+    return service.status
+
+
+@router.post(
+    "/px/api/autonomy/navigation/plan",
+    response_model=NavigationPlanStatus,
+    summary="Plan a collision-aware route without moving the vehicle",
+)
+async def plan_navigation_goal(
+    request: NavigationGoalRequest,
+    service: NavigationPlanningDependency,
+) -> NavigationPlanStatus:
+    return await service.plan(request)
+
+
+@router.post(
+    "/px/api/autonomy/navigation/plan/clear",
+    response_model=NavigationPlanStatus,
+    summary="Clear the current navigation route preview",
+)
+async def clear_navigation_plan(
+    service: NavigationPlanningDependency,
+) -> NavigationPlanStatus:
+    return await service.clear()
 
 
 @router.get("/px/api/autonomy/relative-motion", response_model=RelativeMotionStatus)

@@ -2,9 +2,12 @@ import unittest
 from unittest.mock import Mock
 
 from app.api.control.autonomy import (
+    clear_navigation_plan,
+    get_navigation_plan,
     get_localization_status,
     get_scan_matching_status,
     get_simulation_status,
+    plan_navigation_goal,
     reset_simulation,
 )
 from app.services.autonomy import (
@@ -13,6 +16,7 @@ from app.services.autonomy import (
     CoherentSimulationService,
     CoherentSimulationSupervisor,
     KnownWorldScanMatcherSupervisor,
+    NavigationPlanningService,
     PoseEstimator,
     PoseEstimatorConfig,
     PoseEstimatorService,
@@ -22,6 +26,14 @@ from app.services.autonomy import (
     SimulationSensorImperfections,
     build_simulation_world,
 )
+from app.schemas.autonomy import (
+    LocalizationPose2D,
+    MessageHeader,
+    NavigationGoalRequest,
+    NavigationPlanState,
+    OccupancyGrid,
+)
+from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP
 from fastapi import HTTPException
 
 
@@ -148,6 +160,53 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(status.enabled)
         self.assertFalse(status.running)
         self.assertEqual(status.matches_published, 0)
+
+    async def test_navigation_endpoints_only_plan_and_clear_a_preview(self) -> None:
+        bus = TopicBus()
+        message_header = MessageHeader(
+            sequence=1,
+            frame_id="odom",
+            timestamp_monotonic_ns=1,
+        )
+        bus.publish(
+            LOCAL_MAP,
+            OccupancyGrid(
+                header=message_header,
+                width=5,
+                height=5,
+                resolution_m=1,
+                origin_x_m=0,
+                origin_y_m=0,
+                data=tuple([0] * 25),
+            ),
+        )
+        bus.publish(
+            LOCALIZATION_POSE,
+            LocalizationPose2D(
+                header=message_header,
+                x_m=0.5,
+                y_m=0.5,
+                yaw_rad=0,
+                linear_speed_mps=0,
+                yaw_rate_radps=0,
+                position_variance_m2=0.001,
+                yaw_variance_rad2=0.001,
+                fusion_mode="corrected",
+            ),
+        )
+        service = NavigationPlanningService(bus)
+
+        initial = await get_navigation_plan(service)
+        planned = await plan_navigation_goal(
+            NavigationGoalRequest(x_m=4.5, y_m=4.5, clearance_m=0),
+            service,
+        )
+        cleared = await clear_navigation_plan(service)
+
+        self.assertEqual(initial.state, NavigationPlanState.IDLE)
+        self.assertEqual(planned.state, NavigationPlanState.READY)
+        self.assertGreater(planned.path_length_m, 0)
+        self.assertEqual(cleared.state, NavigationPlanState.IDLE)
 
 
 if __name__ == "__main__":

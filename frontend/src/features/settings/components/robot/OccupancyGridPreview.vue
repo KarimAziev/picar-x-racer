@@ -19,7 +19,9 @@
       v-else
       ref="canvas"
       class="max-h-[420px] w-full rounded-lg border border-surface-200 bg-surface-900 [image-rendering:pixelated] dark:border-surface-700"
-      aria-label="Local occupancy grid in the odom frame"
+      :class="{ 'cursor-crosshair': interactive }"
+      :aria-label="mapAriaLabel"
+      @click="selectNavigationGoal"
     />
     <div
       v-if="map"
@@ -48,6 +50,15 @@
           class="mr-1 inline-block h-2 w-2 rounded-full border border-purple-400"
         />simulated truth</span
       >
+      <span v-if="store.navigationPlan?.goal"
+        ><i
+          class="mr-1 inline-block h-2 w-2 rounded-full border-2 border-amber-400"
+        />navigation goal</span
+      >
+      <span v-if="store.navigationPlan?.state === 'ready'"
+        ><i class="mr-1 inline-block h-0.5 w-3 bg-amber-300" />planned
+        route</span
+      >
     </div>
   </div>
 </template>
@@ -55,6 +66,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
+  canvasToWorld,
   gridToCanvas,
   useAutonomyStore,
   worldPointToOdom,
@@ -66,6 +78,7 @@ import {
 } from "@/features/autonomy";
 import { useRobotStore } from "@/features/settings/stores";
 
+const { interactive = false } = defineProps<{ interactive?: boolean }>();
 const canvas = ref<HTMLCanvasElement | null>(null);
 const store = useAutonomyStore();
 const robotStore = useRobotStore();
@@ -79,6 +92,11 @@ const map = computed(() => store.localMap);
 const simulationWorld = computed(() => store.simulation?.world ?? null);
 const localizationEnabled = computed(
   () => store.localization?.enabled ?? robotStore.data.pose_estimation.enabled,
+);
+const mapAriaLabel = computed(() =>
+  interactive
+    ? "Local occupancy grid in the odom frame; click observed free space to preview a route"
+    : "Local occupancy grid in the odom frame",
 );
 const odomOriginInWorld = computed(() => {
   const origin = store.simulation?.odom_origin_in_world;
@@ -144,6 +162,7 @@ const draw = () => {
   context.clearRect(0, 0, cssWidth, cssHeight);
   context.drawImage(bitmap, 0, 0, cssWidth, cssHeight);
   drawKnownWorldOverlay(context, grid, cssWidth, cssHeight);
+  drawNavigationPlanOverlay(context, grid, cssWidth, cssHeight);
   drawOdometryOverlay(context, grid, cssWidth, cssHeight);
 };
 
@@ -227,6 +246,70 @@ const drawPoseMarker = (
   if (options.fill) context.fill();
   context.stroke();
   context.restore();
+};
+
+const drawNavigationPlanOverlay = (
+  context: CanvasRenderingContext2D,
+  grid: NonNullable<typeof map.value>,
+  width: number,
+  height: number,
+) => {
+  const plan = store.navigationPlan;
+  if (!plan || plan.frame_id !== grid.header.frame_id) return;
+  const path = plan.path
+    .map((point) =>
+      canvasPoint(grid, { x: point.x_m, y: point.y_m }, width, height),
+    )
+    .filter((point): point is Point2D => point !== null);
+  if (path.length > 1) {
+    context.save();
+    context.strokeStyle = "#fde047";
+    context.lineWidth = 3;
+    context.globalAlpha = 0.95;
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(path[0].x, path[0].y);
+    for (const point of path.slice(1)) context.lineTo(point.x, point.y);
+    context.stroke();
+    context.restore();
+  }
+
+  const goal = plan.goal
+    ? canvasPoint(grid, { x: plan.goal.x_m, y: plan.goal.y_m }, width, height)
+    : null;
+  if (!goal) return;
+  context.save();
+  context.strokeStyle = plan.state === "ready" ? "#facc15" : "#fb7185";
+  context.fillStyle = "rgba(15, 23, 42, 0.8)";
+  context.lineWidth = 2.5;
+  context.beginPath();
+  context.arc(goal.x, goal.y, 8, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.beginPath();
+  context.moveTo(goal.x - 12, goal.y);
+  context.lineTo(goal.x + 12, goal.y);
+  context.moveTo(goal.x, goal.y - 12);
+  context.lineTo(goal.x, goal.y + 12);
+  context.stroke();
+  context.restore();
+};
+
+const selectNavigationGoal = (event: MouseEvent) => {
+  const element = canvas.value;
+  const grid = map.value;
+  if (!interactive || !element || !grid || store.navigationPlanLoading) return;
+  const bounds = element.getBoundingClientRect();
+  const point = canvasToWorld(
+    grid,
+    event.clientX - bounds.left,
+    event.clientY - bounds.top,
+    bounds.width,
+    bounds.height,
+  );
+  if (!point) return;
+  void store.planNavigationGoal(point.x, point.y);
 };
 
 const drawOdometryOverlay = (
@@ -363,6 +446,10 @@ watch(
 watch(() => store.latest.simulation?.payload.header.sequence, scheduleDraw);
 watch(() => store.latest.localization?.payload.header.sequence, scheduleDraw);
 watch(() => store.localization?.latest_pose?.header.sequence, scheduleDraw);
+watch(
+  [() => store.navigationPlan, () => store.navigationPlanLoading],
+  scheduleDraw,
+);
 
 watch([simulationWorld, odomOriginInWorld], scheduleDraw);
 

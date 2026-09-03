@@ -80,6 +80,23 @@ describe("autonomy telemetry store", () => {
       if (path === "/px/api/autonomy/relative-motion") {
         return Promise.resolve({ available: true, state: "idle" });
       }
+      if (path === "/px/api/autonomy/navigation/plan") {
+        return Promise.resolve({
+          available: true,
+          state: "idle",
+          frame_id: "odom",
+          goal: null,
+          start: null,
+          path: [],
+          path_length_m: 0,
+          clearance_m: 0.2,
+          allow_unknown: false,
+          map_sequence: null,
+          pose_source: null,
+          expanded_nodes: 0,
+          reason: "Click a free map location to preview a route",
+        });
+      }
       if (path === "/px/api/autonomy/simulation") {
         return Promise.resolve({
           enabled: true,
@@ -272,9 +289,58 @@ describe("autonomy telemetry store", () => {
     expect(mocks.get).toHaveBeenCalledWith("/px/api/map/session");
     expect(mocks.post).toHaveBeenCalledWith("/px/api/map/session/start");
     expect(mocks.post).toHaveBeenCalledWith("/px/api/map/session/clear");
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/plan/clear",
+    );
     expect(store.mappingSession?.state).toBe("active");
     expect(store.mappingSession?.session_id).toBe(1);
     expect(store.mapClearGeneration).toBe(1);
+  });
+
+  it("clears a stale route preview when the map disappears", async () => {
+    const store = useAutonomyStore();
+    store.navigationPlan = {
+      available: true,
+      state: "ready",
+      frame_id: "odom",
+      goal: { x_m: 1, y_m: 1 },
+      start: { x_m: 0, y_m: 0 },
+      path: [
+        { x_m: 0, y_m: 0 },
+        { x_m: 1, y_m: 1 },
+      ],
+      path_length_m: 1.41,
+      clearance_m: 0.2,
+      allow_unknown: false,
+      map_sequence: 2,
+      pose_source: "localization",
+      expanded_nodes: 4,
+      reason: null,
+    };
+    mocks.get.mockRejectedValueOnce({ response: { status: 404 } });
+    mocks.post.mockResolvedValue({
+      available: true,
+      state: "idle",
+      frame_id: "odom",
+      goal: null,
+      start: null,
+      path: [],
+      path_length_m: 0,
+      clearance_m: 0.2,
+      allow_unknown: false,
+      map_sequence: null,
+      pose_source: null,
+      expanded_nodes: 0,
+      reason: "Click a free map location to preview a route",
+    });
+
+    await store.refreshLocalMap();
+
+    expect(store.localMap).toBeNull();
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/plan/clear",
+    );
+    expect(store.navigationPlan?.state).toBe("idle");
   });
 
   it("reports the reactive websocket connection state", () => {
@@ -306,6 +372,69 @@ describe("autonomy telemetry store", () => {
       { distance_m: 0.5, speed_mps: 0.15 },
     );
     expect(store.relativeMotion?.state).toBe("running");
+  });
+
+  it("plans and clears an arbitrary map goal without starting motion", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockImplementation((path: string) => {
+      if (path === "/px/api/autonomy/navigation/plan") {
+        return Promise.resolve({
+          available: true,
+          state: "ready",
+          frame_id: "odom",
+          goal: { x_m: 1.2, y_m: -0.4 },
+          start: { x_m: 0, y_m: 0 },
+          path: [
+            { x_m: 0, y_m: 0 },
+            { x_m: 1.2, y_m: -0.4 },
+          ],
+          path_length_m: 1.26,
+          clearance_m: 0.2,
+          allow_unknown: false,
+          map_sequence: 12,
+          pose_source: "localization",
+          expanded_nodes: 17,
+          reason: "Route preview is ready; no motion command has been issued",
+        });
+      }
+      return Promise.resolve({
+        available: true,
+        state: "idle",
+        frame_id: "odom",
+        goal: null,
+        start: null,
+        path: [],
+        path_length_m: 0,
+        clearance_m: 0.2,
+        allow_unknown: false,
+        map_sequence: null,
+        pose_source: null,
+        expanded_nodes: 0,
+        reason: "Click a free map location to preview a route",
+      });
+    });
+
+    await store.refreshNavigationPlan();
+    await store.planNavigationGoal(1.2, -0.4);
+
+    expect(mocks.get).toHaveBeenCalledWith("/px/api/autonomy/navigation/plan");
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/plan",
+      {
+        x_m: 1.2,
+        y_m: -0.4,
+        clearance_m: 0.2,
+        allow_unknown: false,
+      },
+    );
+    expect(store.navigationPlan?.state).toBe("ready");
+    expect(store.navigationPlan?.path).toHaveLength(2);
+
+    await store.clearNavigationPlan();
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/plan/clear",
+    );
+    expect(store.navigationPlan?.state).toBe("idle");
   });
 
   it("starts a relative steering arc with SI distance and speed", async () => {
@@ -365,6 +494,9 @@ describe("autonomy telemetry store", () => {
     expect(mocks.get).toHaveBeenCalledWith("/px/api/autonomy/simulation");
     expect(mocks.post).toHaveBeenCalledWith(
       "/px/api/autonomy/simulation/reset",
+    );
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/plan/clear",
     );
     expect(mocks.get).toHaveBeenCalledWith("/px/api/map/session");
     expect(mocks.get).toHaveBeenCalledWith("/px/api/map/current");

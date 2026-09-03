@@ -53,6 +53,12 @@ from app.services.autonomy.local_mapping import (
     LocalOccupancyGridConfig,
     StaticTransform2D,
 )
+from app.services.autonomy.navigation_planning import (
+    GridPlan,
+    NavigationPlanRejected,
+    NavigationPlanningService,
+    OccupancyGridPlanner,
+)
 from app.services.autonomy.relative_motion import (
     ActionConflictError,
     RelativeMotionService,
@@ -125,6 +131,7 @@ __all__ = [
     "CoherentSimulationService",
     "CoherentSimulationSupervisor",
     "EncoderPublisherService",
+    "GridPlan",
     "HardwareController",
     "HardwareMotionCommand",
     "IMUPublisherService",
@@ -152,7 +159,10 @@ __all__ = [
     "MotionLimits",
     "SensorTelemetryStreamer",
     "MotionSource",
+    "NavigationPlanRejected",
+    "NavigationPlanningService",
     "OdometryInputError",
+    "OccupancyGridPlanner",
     "PoseEstimationInputError",
     "PoseEstimator",
     "PoseEstimatorConfig",

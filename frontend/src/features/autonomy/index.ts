@@ -2,6 +2,7 @@ export { useAutonomyStore } from "@/features/autonomy/store";
 export {
   calculatePoseError,
   gridToCanvas,
+  canvasToWorld,
   worldPointToOdom,
   worldToGrid,
   worldToGridUnbounded,
@@ -26,6 +27,9 @@ export type {
   MappingPoseSource,
   MappingSessionState,
   MappingSessionStatus,
+  NavigationPlanState,
+  NavigationPlanStatus,
+  NavigationPoint,
   OccupancyGrid,
   RelativeActionType,
   RelativeMotionStatus,
