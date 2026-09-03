@@ -1,15 +1,15 @@
 <template>
   <PreloadMask :loading="true" />
   <main
-    class="h-[var(--app-height)] overflow-y-auto bg-surface-50 p-2 pt-12 text-surface-900 dark:bg-surface-950 dark:text-surface-0 sm:p-3 sm:pt-12"
+    class="h-[var(--app-height)] overflow-y-auto bg-surface-50 p-2 pt-12 text-surface-900 dark:bg-surface-950 dark:text-surface-0 sm:p-3 sm:pt-12 xl:flex xl:flex-col xl:overflow-hidden"
   >
     <AutonomyStatusBar />
 
     <div
-      class="mt-3 grid min-h-[calc(var(--app-height)-7.25rem)] gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]"
+      class="mt-3 grid min-h-[calc(var(--app-height)-7.25rem)] gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_22rem]"
     >
       <section
-        class="flex min-h-[34rem] min-w-0 flex-col rounded-xl border border-surface-200 bg-surface-0 p-3 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+        class="flex min-h-[34rem] min-w-0 flex-col rounded-xl border border-surface-200 bg-surface-0 p-3 shadow-sm dark:border-surface-700 dark:bg-surface-900 xl:min-h-0"
       >
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -96,7 +96,9 @@
         </div>
       </section>
 
-      <aside class="flex min-w-0 flex-col gap-3">
+      <aside
+        class="flex min-w-0 flex-col gap-3 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1"
+      >
         <SimulationControls />
         <RelativeMotionControls />
         <MappingSessionControls />
