@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 from app.api.control.autonomy import (
     get_localization_status,
+    get_scan_matching_status,
     get_simulation_status,
     reset_simulation,
 )
@@ -11,6 +12,7 @@ from app.services.autonomy import (
     AckermannSimulationPlant,
     CoherentSimulationService,
     CoherentSimulationSupervisor,
+    KnownWorldScanMatcherSupervisor,
     PoseEstimator,
     PoseEstimatorConfig,
     PoseEstimatorService,
@@ -81,6 +83,7 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
                 None,
                 None,
                 PoseEstimatorSupervisor(),
+                KnownWorldScanMatcherSupervisor(),
             )
 
         self.assertEqual(context.exception.status_code, 409)
@@ -99,6 +102,7 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
                 odometry,
                 mapping,
                 pose_estimator,
+                KnownWorldScanMatcherSupervisor(),
             )
         finally:
             await supervisor.stop()
@@ -137,6 +141,13 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(status.enabled)
         self.assertEqual(status.published_updates, 7)
         self.assertEqual(status.imu_updates_used, 5)
+
+    async def test_scan_matching_status_is_explicit_when_disabled(self) -> None:
+        status = await get_scan_matching_status(KnownWorldScanMatcherSupervisor())
+
+        self.assertFalse(status.enabled)
+        self.assertFalse(status.running)
+        self.assertEqual(status.matches_published, 0)
 
 
 if __name__ == "__main__":

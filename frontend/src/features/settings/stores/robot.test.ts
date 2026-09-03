@@ -115,4 +115,22 @@ describe("robot configuration save feedback", () => {
 
     expect(warning).not.toHaveBeenCalled();
   });
+
+  it("reports simulation scan-matching tuning as hot reloaded", async () => {
+    const robot = useRobotStore();
+    const messager = useMessagerStore();
+    const warning = vi.spyOn(messager, "warning");
+
+    await robot.updatePartialData({
+      pose_estimation: {
+        ...robot.data.pose_estimation,
+        simulation_scan_matching: {
+          ...robot.data.pose_estimation.simulation_scan_matching,
+          max_mean_error_m: 0.1,
+        },
+      },
+    });
+
+    expect(warning).not.toHaveBeenCalled();
+  });
 });

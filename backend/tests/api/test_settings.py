@@ -166,6 +166,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
         simulated_data = deepcopy(physical_data)
         simulated_data["coherent_simulation"]["enabled"] = True
         simulated_data["pose_estimation"]["enabled"] = True
+        simulated_data["pose_estimation"]["simulation_scan_matching"]["enabled"] = True
         return (
             HardwareConfig.model_validate(physical_data),
             HardwareConfig.model_validate(simulated_data),
@@ -185,6 +186,10 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             bus,
         )
         pose_estimator = robot_deps.build_pose_estimator_supervisor(
+            physical_config,
+            bus,
+        )
+        scan_matcher = robot_deps.build_known_world_scan_matcher_supervisor(
             physical_config,
             bus,
         )
@@ -221,6 +226,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
         await sensors.start()
         await simulation.start()
         await pose_estimator.start()
+        await scan_matcher.start()
         odometry.start()
         try:
             await _reload_autonomy_runtime(
@@ -236,12 +242,14 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 local_mapping,
                 simulation,
                 pose_estimator,
+                scan_matcher,
             )
             await asyncio.sleep(0.02)
 
             self.assertTrue(selector.simulation_enabled)
             self.assertTrue(simulation.running)
             self.assertTrue(pose_estimator.running)
+            self.assertTrue(scan_matcher.running)
             self.assertIsNot(odometry._estimator, initial_estimator)
             local_mapping.reconfigure_from.assert_awaited_once()
             simulated_status = {item.sensor: item for item in sensors.status.sensors}
@@ -271,6 +279,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 local_mapping,
                 simulation,
                 pose_estimator,
+                scan_matcher,
             )
 
             self.assertIsNot(simulation.service, first_simulation_service)
@@ -283,6 +292,10 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 2026,
             )
             self.assertEqual(local_mapping.reconfigure_from.await_count, 2)
+            self.assertEqual(
+                scan_matcher.service.matcher.world.scenario,  # type: ignore[union-attr]
+                "corridor",
+            )
 
             await _reload_autonomy_runtime(
                 changed_simulated_config,
@@ -297,15 +310,18 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
                 local_mapping,
                 simulation,
                 pose_estimator,
+                scan_matcher,
             )
 
             self.assertFalse(selector.simulation_enabled)
             self.assertFalse(simulation.enabled)
             self.assertFalse(pose_estimator.enabled)
+            self.assertFalse(scan_matcher.enabled)
             self.assertEqual(local_mapping.reconfigure_from.await_count, 3)
             physical_status = {item.sensor: item for item in sensors.status.sensors}
             self.assertTrue(physical_status["encoder"].running)
         finally:
+            await scan_matcher.stop()
             await pose_estimator.stop()
             await simulation.stop()
             await odometry.stop()

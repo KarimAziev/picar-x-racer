@@ -256,6 +256,22 @@ export interface PoseEstimationConfig {
   heading_process_noise_rad_per_second: number;
   odometry_heading_noise_fraction: number;
   imu_yaw_rate_stddev_radps: number;
+  simulation_scan_matching: {
+    enabled: boolean;
+    max_pose_age_ms: number;
+    search_translation_m: number;
+    search_heading_deg: number;
+    coarse_translation_step_m: number;
+    coarse_heading_step_deg: number;
+    refinement_translation_step_m: number;
+    refinement_heading_step_deg: number;
+    max_scan_points: number;
+    min_valid_points: number;
+    max_mean_error_m: number;
+    max_residual_m: number;
+    position_stddev_m: number;
+    heading_stddev_deg: number;
+  };
 }
 
 export type CalibrationData = Partial<ServoCalibrationData> &
@@ -484,6 +500,22 @@ const defaultState: State = {
       heading_process_noise_rad_per_second: 0.01,
       odometry_heading_noise_fraction: 0.05,
       imu_yaw_rate_stddev_radps: 0.03,
+      simulation_scan_matching: {
+        enabled: false,
+        max_pose_age_ms: 200,
+        search_translation_m: 0.15,
+        search_heading_deg: 8,
+        coarse_translation_step_m: 0.05,
+        coarse_heading_step_deg: 2,
+        refinement_translation_step_m: 0.01,
+        refinement_heading_step_deg: 0.5,
+        max_scan_points: 48,
+        min_valid_points: 16,
+        max_mean_error_m: 0.08,
+        max_residual_m: 0.5,
+        position_stddev_m: 0.03,
+        heading_stddev_deg: 1.5,
+      },
     },
     cam_pan_servo: defaultServo,
     cam_tilt_servo: defaultServo,

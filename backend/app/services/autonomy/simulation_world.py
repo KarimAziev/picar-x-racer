@@ -60,6 +60,18 @@ class SimulationWorld:
             for segment in self.segments
         )
 
+    def distance_to_nearest_segment(self, x_m: float, y_m: float) -> float:
+        """Return Euclidean distance to the closest known-world line segment."""
+
+        if not math.isfinite(x_m) or not math.isfinite(y_m):
+            raise ValueError("world query coordinates must be finite")
+        return math.sqrt(
+            min(
+                _point_segment_distance_squared(x_m, y_m, segment)
+                for segment in self.segments
+            )
+        )
+
 
 @dataclass(frozen=True)
 class RaycastLidarConfig:

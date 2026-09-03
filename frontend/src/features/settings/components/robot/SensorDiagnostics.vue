@@ -75,6 +75,39 @@
         · {{ store.localization.corrections_applied.toLocaleString() }} external
         corrections
       </div>
+      <div
+        v-if="store.scanMatching"
+        class="mt-2 rounded-md bg-surface-100 px-2.5 py-2 dark:bg-surface-800"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="font-semibold">Known-world scan correction</span>
+          <div class="flex items-center gap-1.5">
+            <Tag severity="info" value="Simulation only" />
+            <Tag
+              :severity="scanMatchingSeverity"
+              :value="scanMatchingState"
+            />
+          </div>
+        </div>
+        <div
+          v-if="store.scanMatching.enabled"
+          class="mt-1 text-surface-500 dark:text-surface-400"
+        >
+          {{ scanMatchingSummary }}
+        </div>
+        <div
+          v-if="store.scanMatching.error || store.scanMatchingError"
+          class="mt-1 break-words text-red-500"
+        >
+          {{ store.scanMatching.error || store.scanMatchingError }}
+        </div>
+        <div
+          v-else-if="store.scanMatching.last_rejection"
+          class="mt-1 break-words text-amber-600 dark:text-amber-400"
+        >
+          Latest rejection: {{ store.scanMatching.last_rejection }}
+        </div>
+      </div>
     </div>
     <div
       v-if="safetySummary"
@@ -197,6 +230,32 @@ const localizationSummary = computed(() => {
   return `x ${formatNumber(pose.x_m)} m · y ${formatNumber(pose.y_m)} m · yaw ${formatNumber(pose.yaw_rad)} rad · ${mode} · uncertainty ±${formatNumber(positionStddevM, 3)} m / ±${formatNumber(headingStddevDeg, 1)}°`;
 });
 
+const scanMatchingSeverity = computed(() => {
+  const status = store.scanMatching;
+  if (!status?.enabled) return "secondary";
+  if (status.error || store.scanMatchingError) return "danger";
+  return status.running ? "success" : "warn";
+});
+
+const scanMatchingState = computed(() => {
+  const status = store.scanMatching;
+  if (!status?.enabled) return "Disabled";
+  if (status.error || store.scanMatchingError) return "Error";
+  return status.running ? "Correcting" : "Waiting";
+});
+
+const scanMatchingSummary = computed(() => {
+  const status = store.scanMatching;
+  if (!status?.enabled) {
+    return "Enable this development localizer under pose-estimation settings.";
+  }
+  const residual =
+    status.last_mean_error_m === null
+      ? "no accepted alignment yet"
+      : `${formatNumber(status.last_mean_error_m * 1000, 1)} mm mean residual`;
+  return `${status.matches_published.toLocaleString()} / ${status.scans_received.toLocaleString()} scans corrected · ${residual} · ${status.last_valid_points.toLocaleString()} points`;
+});
+
 const safetyBlocked = computed(() => {
   const envelope = store.latest.safety;
   return envelope?.channel === "safety" && envelope.payload.forward_blocked;
@@ -213,7 +272,11 @@ onMounted(() => {
   store.initialize();
   statusTimer = setInterval(
     () =>
-      void Promise.all([store.refreshStatus(), store.refreshLocalization()]),
+      void Promise.all([
+        store.refreshStatus(),
+        store.refreshLocalization(),
+        store.refreshScanMatching(),
+      ]),
     2500,
   );
 });

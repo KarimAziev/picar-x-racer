@@ -19,6 +19,7 @@ from app.services.autonomy import (
     LocalizationSensorService,
     LocalMappingService,
     MotionControlService,
+    KnownWorldScanMatcherSupervisor,
     PoseEstimatorSupervisor,
     SteeringFeedbackService,
     TopicBus,
@@ -46,6 +47,7 @@ async def _reload_autonomy_runtime(
     local_mapping_service: Optional[LocalMappingService],
     simulation_supervisor: CoherentSimulationSupervisor,
     pose_estimator_supervisor: Optional[PoseEstimatorSupervisor] = None,
+    scan_matcher_supervisor: Optional[KnownWorldScanMatcherSupervisor] = None,
 ) -> None:
     previous_simulation = previous.coherent_simulation.enabled
     current_simulation = current.coherent_simulation.enabled
@@ -123,6 +125,18 @@ async def _reload_autonomy_runtime(
             topic_bus,
         )
         await pose_estimator_supervisor.reconfigure_from(replacement_pose_estimator)
+
+    scan_matching_changed = (
+        previous.pose_estimation.simulation_scan_matching
+        != current.pose_estimation.simulation_scan_matching
+        or previous.coherent_simulation != current.coherent_simulation
+        or previous.localization_sensors.lidar != current.localization_sensors.lidar
+    )
+    if scan_matching_changed and scan_matcher_supervisor is not None:
+        replacement_scan_matcher = robot_deps.build_known_world_scan_matcher_supervisor(
+            current, topic_bus
+        )
+        await scan_matcher_supervisor.reconfigure_from(replacement_scan_matcher)
 
     if (
         (previous.lidar_safety != current.lidar_safety or lidar_geometry_changed)
@@ -261,6 +275,7 @@ async def _reload_running_autonomy_from_app(
         getattr(state, "local_mapping_service", None),
         simulation_supervisor,
         getattr(state, "pose_estimator_supervisor", None),
+        getattr(state, "known_world_scan_matcher_supervisor", None),
     )
 
 

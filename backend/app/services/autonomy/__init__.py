@@ -57,6 +57,13 @@ from app.services.autonomy.relative_motion import (
     ActionConflictError,
     RelativeMotionService,
 )
+from app.services.autonomy.scan_matching import (
+    KnownWorldScanMatcher,
+    KnownWorldScanMatcherConfig,
+    KnownWorldScanMatcherService,
+    KnownWorldScanMatcherSupervisor,
+    ScanMatchResult,
+)
 from app.services.autonomy.sensor_publishers import (
     EncoderPublisherService,
     IMUPublisherService,
@@ -134,6 +141,10 @@ __all__ = [
     "LocalMappingService",
     "LocalOccupancyGrid",
     "LocalOccupancyGridConfig",
+    "KnownWorldScanMatcher",
+    "KnownWorldScanMatcherConfig",
+    "KnownWorldScanMatcherService",
+    "KnownWorldScanMatcherSupervisor",
     "MotionArbiter",
     "MotionControlService",
     "MotionIntent",
@@ -152,6 +163,7 @@ __all__ = [
     "RaycastLidarConfig",
     "SafetyConstraint",
     "SafetySeverity",
+    "ScanMatchResult",
     "SelectableDriveHardware",
     "ModeTransitionError",
     "SubscriptionClosed",

@@ -58,6 +58,10 @@ from app.services.autonomy import (
     MotionArbiter,
     MotionControlService,
     MotionLimits,
+    KnownWorldScanMatcher,
+    KnownWorldScanMatcherConfig,
+    KnownWorldScanMatcherService,
+    KnownWorldScanMatcherSupervisor,
     PoseEstimator,
     PoseEstimatorConfig,
     PoseEstimatorService,
@@ -402,6 +406,70 @@ def get_pose_estimator_supervisor(
 ) -> PoseEstimatorSupervisor:
     config = HardwareConfig.model_validate(config_manager.load_data())
     return build_pose_estimator_supervisor(config, topic_bus)
+
+
+def build_known_world_scan_matcher_supervisor(
+    config: HardwareConfig,
+    topic_bus: TopicBus,
+) -> KnownWorldScanMatcherSupervisor:
+    """Build the development scan matcher without exposing simulator truth."""
+
+    settings = config.pose_estimation.simulation_scan_matching
+    if not settings.enabled:
+        return KnownWorldScanMatcherSupervisor()
+    simulation = config.coherent_simulation
+    lidar = config.localization_sensors.lidar
+    world = build_simulation_world(
+        simulation.world_scenario,
+        width_m=simulation.world_width_m,
+        height_m=simulation.world_height_m,
+    )
+    matcher = KnownWorldScanMatcher(
+        world,
+        KnownWorldScanMatcherConfig(
+            odom_origin_in_world=(
+                simulation.initial_x_m,
+                simulation.initial_y_m,
+                simulation.initial_yaw_rad,
+            ),
+            sensor_transform=StaticTransform2D(
+                x_m=lidar.transform.x_m,
+                y_m=lidar.transform.y_m,
+                yaw_rad=lidar.transform.yaw_rad,
+            ),
+            expected_scan_frame_id=lidar.frame_id,
+            search_translation_m=settings.search_translation_m,
+            search_heading_rad=math.radians(settings.search_heading_deg),
+            coarse_translation_step_m=settings.coarse_translation_step_m,
+            coarse_heading_step_rad=math.radians(settings.coarse_heading_step_deg),
+            refinement_translation_step_m=(settings.refinement_translation_step_m),
+            refinement_heading_step_rad=math.radians(
+                settings.refinement_heading_step_deg
+            ),
+            max_scan_points=settings.max_scan_points,
+            min_valid_points=settings.min_valid_points,
+            max_mean_error_m=settings.max_mean_error_m,
+            max_residual_m=settings.max_residual_m,
+            position_stddev_m=settings.position_stddev_m,
+            heading_stddev_rad=math.radians(settings.heading_stddev_deg),
+        ),
+    )
+    return KnownWorldScanMatcherSupervisor(
+        KnownWorldScanMatcherService(
+            topic_bus,
+            matcher,
+            max_pose_age_seconds=settings.max_pose_age_ms / 1000,
+        )
+    )
+
+
+@lru_cache(maxsize=1)
+def get_known_world_scan_matcher_supervisor(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> KnownWorldScanMatcherSupervisor:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    return build_known_world_scan_matcher_supervisor(config, topic_bus)
 
 
 def build_localization_sensor_service(
@@ -889,6 +957,7 @@ class LifespanAppDeps(TypedDict):
     relative_motion_service: Optional[RelativeMotionService]
     coherent_simulation_supervisor: CoherentSimulationSupervisor
     pose_estimator_supervisor: PoseEstimatorSupervisor
+    known_world_scan_matcher_supervisor: KnownWorldScanMatcherSupervisor
 
 
 async def get_lifespan_dependencies(
@@ -930,6 +999,10 @@ async def get_lifespan_dependencies(
         PoseEstimatorSupervisor,
         Depends(get_pose_estimator_supervisor),
     ],
+    known_world_scan_matcher_supervisor: Annotated[
+        KnownWorldScanMatcherSupervisor,
+        Depends(get_known_world_scan_matcher_supervisor),
+    ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
         "connection_service": connection_service,
@@ -950,5 +1023,6 @@ async def get_lifespan_dependencies(
         "relative_motion_service": relative_motion_service,
         "coherent_simulation_supervisor": coherent_simulation_supervisor,
         "pose_estimator_supervisor": pose_estimator_supervisor,
+        "known_world_scan_matcher_supervisor": (known_world_scan_matcher_supervisor),
     }
     yield deps

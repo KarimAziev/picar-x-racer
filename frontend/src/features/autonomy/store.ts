@@ -99,6 +99,34 @@ export interface LocalizationRuntimeStatus {
   error: string | null;
 }
 
+export interface PoseObservationTelemetry {
+  header: MessageHeader;
+  x_m: number;
+  y_m: number;
+  yaw_rad: number;
+  position_variance_m2: number;
+  yaw_variance_rad2: number;
+  source: string;
+}
+
+export interface ScanMatchingRuntimeStatus {
+  enabled: boolean;
+  running: boolean;
+  scans_received: number;
+  matches_published: number;
+  rejected_missing_pose: number;
+  rejected_pose_timing: number;
+  rejected_insufficient_points: number;
+  rejected_quality: number;
+  last_mean_error_m: number | null;
+  last_prior_mean_error_m: number | null;
+  last_valid_points: number;
+  last_candidates_evaluated: number;
+  latest_observation: PoseObservationTelemetry | null;
+  last_rejection: string | null;
+  error: string | null;
+}
+
 export interface SafetyTelemetry {
   header: MessageHeader;
   forward_blocked: boolean;
@@ -247,6 +275,8 @@ export interface State {
   simulationLastUpdatedAt: number | null;
   localization: LocalizationRuntimeStatus | null;
   localizationError: string | null;
+  scanMatching: ScanMatchingRuntimeStatus | null;
+  scanMatchingError: string | null;
   latest: Partial<Record<TelemetryChannel, TelemetryEnvelope>>;
   connection: ShallowRef<WebSocketModel> | null;
   consumers: number;
@@ -272,6 +302,8 @@ const defaultState: State = {
   simulationLastUpdatedAt: null,
   localization: null,
   localizationError: null,
+  scanMatching: null,
+  scanMatchingError: null,
   latest: {},
   connection: null,
   consumers: 0,
@@ -441,6 +473,19 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       }
     },
 
+    async refreshScanMatching() {
+      try {
+        this.scanMatching = await robotApi.get<ScanMatchingRuntimeStatus>(
+          "/px/api/autonomy/localization/scan-matching",
+        );
+        this.scanMatchingError = null;
+      } catch (error) {
+        // Keep the last successful quality sample visible while reporting that
+        // its health snapshot is stale.
+        this.scanMatchingError = retrieveError(error).text;
+      }
+    },
+
     async resetSimulation() {
       try {
         this.simulationResetting = true;
@@ -451,6 +496,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         await Promise.all([
           this.refreshMappingSession(),
           this.refreshLocalMap(),
+          this.refreshScanMatching(),
         ]);
         this.simulationError = null;
         this.simulationLastUpdatedAt = Date.now();
@@ -465,6 +511,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       this.consumers += 1;
       void this.refreshStatus();
       void this.refreshLocalization();
+      void this.refreshScanMatching();
       if (this.connection) {
         return;
       }

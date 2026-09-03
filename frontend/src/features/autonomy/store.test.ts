@@ -116,6 +116,25 @@ describe("autonomy telemetry store", () => {
           error: null,
         });
       }
+      if (path === "/px/api/autonomy/localization/scan-matching") {
+        return Promise.resolve({
+          enabled: true,
+          running: true,
+          scans_received: 12,
+          matches_published: 10,
+          rejected_missing_pose: 1,
+          rejected_pose_timing: 0,
+          rejected_insufficient_points: 0,
+          rejected_quality: 1,
+          last_mean_error_m: 0.018,
+          last_prior_mean_error_m: 0.064,
+          last_valid_points: 48,
+          last_candidates_evaluated: 686,
+          latest_observation: null,
+          last_rejection: null,
+          error: null,
+        });
+      }
       return Promise.resolve({
         sensors: [
           {
@@ -206,6 +225,18 @@ describe("autonomy telemetry store", () => {
         : null,
     ).toBe(0.4);
     expect(store.localization?.imu_updates_used).toBe(38);
+  });
+
+  it("keeps scan-matching quality diagnostics", async () => {
+    const store = useAutonomyStore();
+
+    await store.refreshScanMatching();
+
+    expect(mocks.get).toHaveBeenCalledWith(
+      "/px/api/autonomy/localization/scan-matching",
+    );
+    expect(store.scanMatching?.matches_published).toBe(10);
+    expect(store.scanMatching?.last_mean_error_m).toBe(0.018);
   });
 
   it("retrieves and operates the explicit mapping session", async () => {

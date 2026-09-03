@@ -290,6 +290,23 @@ class HardwareConfig(BaseModel):
                 and not self.ackermann_odometry.enabled
             ):
                 raise ValueError("pose estimation requires Ackermann odometry")
+        if (
+            self.pose_estimation is not None
+            and self.pose_estimation.simulation_scan_matching.enabled
+        ):
+            if not self.pose_estimation.enabled:
+                raise ValueError("simulation scan matching requires pose estimation")
+            if self.coherent_simulation is not None and not simulation_enabled:
+                raise ValueError(
+                    "simulation scan matching requires coherent simulation"
+                )
+            if (
+                self.localization_sensors is not None
+                and not self.localization_sensors.lidar.enabled
+            ):
+                raise ValueError(
+                    "simulation scan matching requires the LiDAR publisher"
+                )
         return self
 
 

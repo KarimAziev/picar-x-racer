@@ -200,6 +200,30 @@ class LocalizationRuntimeStatus(FrozenMessage):
     error: Optional[str] = None
 
 
+class ScanMatchingRuntimeStatus(FrozenMessage):
+    """Lifecycle, quality, and rejection counters for scan matching."""
+
+    enabled: bool
+    running: bool
+    scans_received: Annotated[int, Field(ge=0)] = 0
+    matches_published: Annotated[int, Field(ge=0)] = 0
+    rejected_missing_pose: Annotated[int, Field(ge=0)] = 0
+    rejected_pose_timing: Annotated[int, Field(ge=0)] = 0
+    rejected_insufficient_points: Annotated[int, Field(ge=0)] = 0
+    rejected_quality: Annotated[int, Field(ge=0)] = 0
+    last_mean_error_m: Optional[Annotated[float, Field(ge=0, allow_inf_nan=False)]] = (
+        None
+    )
+    last_prior_mean_error_m: Optional[
+        Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    ] = None
+    last_valid_points: Annotated[int, Field(ge=0)] = 0
+    last_candidates_evaluated: Annotated[int, Field(ge=0)] = 0
+    latest_observation: Optional[PoseObservation2D] = None
+    last_rejection: Optional[str] = None
+    error: Optional[str] = None
+
+
 class SimulationState(FrozenMessage):
     """Ground-truth planar state emitted by the coherent simulator."""
 
@@ -318,6 +342,7 @@ __all__ = [
     "LaserScan",
     "LocalizationPose2D",
     "LocalizationRuntimeStatus",
+    "ScanMatchingRuntimeStatus",
     "MessageHeader",
     "OccupancyGrid",
     "Odometry2D",

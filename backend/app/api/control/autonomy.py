@@ -8,6 +8,7 @@ from app.schemas.autonomy import (
     RelativeDistanceRequest,
     RelativeMotionStatus,
     LocalizationRuntimeStatus,
+    ScanMatchingRuntimeStatus,
     SimulationPose2D,
     SimulationRuntimeStatus,
     SimulationSensorImperfectionStatus,
@@ -21,6 +22,7 @@ from app.services.autonomy import (
     LocalMappingService,
     MotionControlService,
     PoseEstimatorSupervisor,
+    KnownWorldScanMatcherSupervisor,
     RelativeMotionService,
     RobotMode,
 )
@@ -48,6 +50,10 @@ MappingDependency = Annotated[
 PoseEstimatorDependency = Annotated[
     PoseEstimatorSupervisor,
     Depends(robot_deps.get_pose_estimator_supervisor),
+]
+ScanMatcherDependency = Annotated[
+    KnownWorldScanMatcherSupervisor,
+    Depends(robot_deps.get_known_world_scan_matcher_supervisor),
 ]
 
 
@@ -146,6 +152,42 @@ def _localization_status(
     )
 
 
+def _scan_matching_status(
+    supervisor: KnownWorldScanMatcherSupervisor,
+) -> ScanMatchingRuntimeStatus:
+    service = supervisor.service
+    error = service.last_error if service is not None else None
+    return ScanMatchingRuntimeStatus(
+        enabled=supervisor.enabled,
+        running=supervisor.running,
+        scans_received=service.scans_received if service is not None else 0,
+        matches_published=service.matches_published if service is not None else 0,
+        rejected_missing_pose=(
+            service.rejected_missing_pose if service is not None else 0
+        ),
+        rejected_pose_timing=(
+            service.rejected_pose_timing if service is not None else 0
+        ),
+        rejected_insufficient_points=(
+            service.rejected_insufficient_points if service is not None else 0
+        ),
+        rejected_quality=service.rejected_quality if service is not None else 0,
+        last_mean_error_m=service.last_mean_error_m if service is not None else None,
+        last_prior_mean_error_m=(
+            service.last_prior_mean_error_m if service is not None else None
+        ),
+        last_valid_points=service.last_valid_points if service is not None else 0,
+        last_candidates_evaluated=(
+            service.last_candidates_evaluated if service is not None else 0
+        ),
+        latest_observation=(
+            service.latest_observation if service is not None else None
+        ),
+        last_rejection=service.last_rejection if service is not None else None,
+        error=str(error) if error is not None else None,
+    )
+
+
 def _require_service(
     service: Optional[RelativeMotionService],
 ) -> RelativeMotionService:
@@ -225,6 +267,17 @@ async def get_localization_status(
     return _localization_status(estimator)
 
 
+@router.get(
+    "/px/api/autonomy/localization/scan-matching",
+    response_model=ScanMatchingRuntimeStatus,
+    summary="Retrieve simulation known-world scan-matching quality and health",
+)
+async def get_scan_matching_status(
+    matcher: ScanMatcherDependency,
+) -> ScanMatchingRuntimeStatus:
+    return _scan_matching_status(matcher)
+
+
 @router.post(
     "/px/api/autonomy/simulation/reset",
     response_model=SimulationRuntimeStatus,
@@ -236,6 +289,7 @@ async def reset_simulation(
     odometry: OdometryDependency,
     mapping: MappingDependency,
     estimator: PoseEstimatorDependency,
+    matcher: ScanMatcherDependency,
 ) -> SimulationRuntimeStatus:
     if not simulation.enabled:
         raise HTTPException(status_code=409, detail="coherent simulation is disabled")
@@ -254,4 +308,5 @@ async def reset_simulation(
     if mapping is not None:
         mapping.reset_session()
     await estimator.reset()
+    await matcher.reset()
     return _simulation_status(simulation, motion_control)

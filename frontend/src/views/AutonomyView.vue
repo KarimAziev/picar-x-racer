@@ -206,7 +206,9 @@ const workflowDescription = computed(() =>
 );
 const workflowCaveat = computed(() =>
   simulationEnabled.value
-    ? "The coherent plant supplies steering, rear encoders, IMU, and world-aware LiDAR. Blue remains raw wheel odometry, green is wheel/gyro pose fusion when enabled, and purple is exact simulated truth. LiDAR pose correction remains inactive until scan matching is implemented."
+    ? autonomyStore.scanMatching?.enabled
+      ? "The known-world matcher now turns LiDAR scans into bounded pose corrections without reading simulator truth. Blue is raw wheel odometry, green is the corrected wheel/gyro estimate, and purple remains truth for evaluation only."
+      : "The coherent plant supplies steering, rear encoders, IMU, and world-aware LiDAR. Blue remains raw wheel odometry, green is wheel/gyro pose fusion, and purple is exact simulated truth. Enable simulation scan matching under pose estimation to correct accumulated drift."
     : "Independent mock encoders can report motion while the physical robot is stationary. Treat the resulting map as a pipeline demonstration, not a physically coherent simulation.",
 );
 
