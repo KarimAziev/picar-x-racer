@@ -161,6 +161,7 @@ async def _reload_autonomy_runtime(
             or previous_steering != current_steering
             or previous_simulation != current_simulation
             or simulation_changed
+            or pose_estimation_changed
         )
         and previous.local_mapping.enabled
         and current.local_mapping.enabled

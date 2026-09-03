@@ -52,6 +52,11 @@ describe("autonomy telemetry store", () => {
           ignored_inactive_scans: 0,
           rejected_missing_odometry: 0,
           rejected_stale_odometry: 0,
+          preferred_pose_source: "localization",
+          active_pose_source: null,
+          scans_inserted_with_odometry: 0,
+          scans_inserted_with_localization: 0,
+          localization_fallbacks: 0,
           has_map: false,
         });
       }
@@ -252,6 +257,11 @@ describe("autonomy telemetry store", () => {
       ignored_inactive_scans: 0,
       rejected_missing_odometry: 0,
       rejected_stale_odometry: 0,
+      preferred_pose_source: "localization",
+      active_pose_source: "localization",
+      scans_inserted_with_odometry: 0,
+      scans_inserted_with_localization: 1,
+      localization_fallbacks: 0,
       has_map: false,
     });
 

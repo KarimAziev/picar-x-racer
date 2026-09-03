@@ -30,6 +30,7 @@ from app.schemas.autonomy.messages import (
     SteeringState,
 )
 from app.schemas.autonomy.mapping_status import (
+    MappingPoseSource,
     MappingSessionState,
     MappingSessionStatus,
 )
@@ -58,6 +59,7 @@ __all__ = [
     "LocalizationRuntimeStatus",
     "ScanMatchingRuntimeStatus",
     "MessageHeader",
+    "MappingPoseSource",
     "MappingSessionState",
     "MappingSessionStatus",
     "OccupancyGrid",

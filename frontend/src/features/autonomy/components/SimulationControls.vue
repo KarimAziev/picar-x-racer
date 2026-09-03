@@ -94,7 +94,9 @@
         class="mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-950 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100"
         role="status"
       >
-        <div class="font-semibold">Pose error versus ground truth</div>
+        <div class="font-semibold">
+          Estimator accuracy · simulation reference
+        </div>
         <dl class="mt-1 grid grid-cols-[auto_1fr_1fr] gap-x-3 gap-y-1">
           <dt class="text-violet-700 dark:text-violet-300">Source</dt>
           <dt class="text-violet-700 dark:text-violet-300">Position</dt>
@@ -111,6 +113,7 @@
           </template>
         </dl>
         <p class="mt-1 opacity-75">
+          Distance from the simulator's exact pose—not an application fault.
           Blue is raw odometry, green is fused pose, and purple is exact truth.
         </p>
       </div>

@@ -13,6 +13,11 @@ class MappingSessionState(str, Enum):
     PAUSED = "paused"
 
 
+class MappingPoseSource(str, Enum):
+    ODOMETRY = "odometry"
+    LOCALIZATION = "localization"
+
+
 class MappingSessionStatus(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -26,6 +31,11 @@ class MappingSessionStatus(BaseModel):
     ignored_inactive_scans: Annotated[int, Field(ge=0)] = 0
     rejected_missing_odometry: Annotated[int, Field(ge=0)] = 0
     rejected_stale_odometry: Annotated[int, Field(ge=0)] = 0
+    preferred_pose_source: MappingPoseSource = MappingPoseSource.ODOMETRY
+    active_pose_source: MappingPoseSource | None = None
+    scans_inserted_with_odometry: Annotated[int, Field(ge=0)] = 0
+    scans_inserted_with_localization: Annotated[int, Field(ge=0)] = 0
+    localization_fallbacks: Annotated[int, Field(ge=0)] = 0
     has_map: bool = False
 
     @classmethod
@@ -33,4 +43,4 @@ class MappingSessionStatus(BaseModel):
         return cls(enabled=False, state=MappingSessionState.DISABLED)
 
 
-__all__ = ["MappingSessionState", "MappingSessionStatus"]
+__all__ = ["MappingPoseSource", "MappingSessionState", "MappingSessionStatus"]

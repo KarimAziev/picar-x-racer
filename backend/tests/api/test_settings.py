@@ -172,6 +172,26 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             HardwareConfig.model_validate(simulated_data),
         )
 
+    def test_mapping_builder_tracks_pose_estimation_preference(self) -> None:
+        physical_config, simulated_config = self.make_configs()
+
+        raw_mapping = robot_deps.build_local_mapping_service(
+            physical_config, TopicBus()
+        )
+        fused_mapping = robot_deps.build_local_mapping_service(
+            simulated_config, TopicBus()
+        )
+
+        self.assertIsNotNone(raw_mapping)
+        self.assertIsNotNone(fused_mapping)
+        assert raw_mapping is not None
+        assert fused_mapping is not None
+        self.assertEqual(raw_mapping.status.preferred_pose_source.value, "odometry")
+        self.assertEqual(
+            fused_mapping.status.preferred_pose_source.value,
+            "localization",
+        )
+
     async def test_switches_publishers_and_drive_route_without_restart(self) -> None:
         physical_config, simulated_config = self.make_configs()
         bus = TopicBus()

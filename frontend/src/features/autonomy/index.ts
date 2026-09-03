@@ -23,6 +23,7 @@ export type {
   AutonomousActionState,
   LocalizationSensorStatus,
   MappingSessionAction,
+  MappingPoseSource,
   MappingSessionState,
   MappingSessionStatus,
   OccupancyGrid,

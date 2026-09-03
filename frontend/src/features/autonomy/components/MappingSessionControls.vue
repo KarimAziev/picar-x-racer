@@ -91,12 +91,26 @@
         <dt class="text-surface-500">Returns inserted</dt>
         <dd>{{ session.returns_inserted.toLocaleString() }}</dd>
       </div>
+      <div>
+        <dt class="text-surface-500">Pose source</dt>
+        <dd>{{ poseSourceLabel }}</dd>
+      </div>
+      <div v-if="session.scans_inserted_with_localization">
+        <dt class="text-surface-500">Fused scans</dt>
+        <dd>
+          {{ session.scans_inserted_with_localization.toLocaleString() }}
+        </dd>
+      </div>
+      <div v-if="session.localization_fallbacks">
+        <dt class="text-amber-600">Raw fallbacks</dt>
+        <dd>{{ session.localization_fallbacks.toLocaleString() }}</dd>
+      </div>
       <div v-if="session.rejected_missing_odometry">
-        <dt class="text-amber-600">Missing odometry</dt>
+        <dt class="text-amber-600">Missing pose</dt>
         <dd>{{ session.rejected_missing_odometry.toLocaleString() }}</dd>
       </div>
       <div v-if="session.rejected_stale_odometry">
-        <dt class="text-amber-600">Stale odometry</dt>
+        <dt class="text-amber-600">Stale pose</dt>
         <dd>{{ session.rejected_stale_odometry.toLocaleString() }}</dd>
       </div>
     </dl>
@@ -133,6 +147,22 @@ const stateSeverity = computed(() => {
   if (session.value?.state === "active") return "success";
   if (session.value?.state === "paused") return "warning";
   return "secondary";
+});
+const poseSourceLabel = computed(() => {
+  if (!session.value) return "—";
+  if (session.value.active_pose_source === "localization") {
+    return "Fused localization";
+  }
+  if (
+    session.value.preferred_pose_source === "localization" &&
+    session.value.active_pose_source === "odometry"
+  ) {
+    return "Raw odometry fallback";
+  }
+  if (session.value.active_pose_source === "odometry") return "Raw odometry";
+  return session.value.preferred_pose_source === "localization"
+    ? "Awaiting fused localization"
+    : "Awaiting raw odometry";
 });
 
 const run = async (action: MappingSessionAction) => {

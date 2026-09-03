@@ -851,6 +851,7 @@ def build_local_mapping_service(
             )
         ),
         max_odometry_age_seconds=mapping.max_odometry_age_ms / 1000,
+        prefer_localization=config.pose_estimation.enabled,
     )
 
 

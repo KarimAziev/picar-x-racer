@@ -207,6 +207,7 @@ export interface OccupancyGrid {
 }
 
 export type MappingSessionState = "disabled" | "idle" | "active" | "paused";
+export type MappingPoseSource = "odometry" | "localization";
 
 export interface MappingSessionStatus {
   enabled: boolean;
@@ -219,6 +220,11 @@ export interface MappingSessionStatus {
   ignored_inactive_scans: number;
   rejected_missing_odometry: number;
   rejected_stale_odometry: number;
+  preferred_pose_source: MappingPoseSource;
+  active_pose_source: MappingPoseSource | null;
+  scans_inserted_with_odometry: number;
+  scans_inserted_with_localization: number;
+  localization_fallbacks: number;
   has_map: boolean;
 }
 

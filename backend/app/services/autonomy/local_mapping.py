@@ -1,13 +1,16 @@
-"""Fixed local occupancy grid built from LiDAR scans and Ackermann odometry."""
+"""Fixed local occupancy grid built from LiDAR scans and a planar pose stream."""
 
 import asyncio
 import math
 import time
+from collections import deque
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Deque, List, Optional, Tuple, TypeVar, Union
 
 from app.schemas.autonomy import (
     LaserScan,
+    LocalizationPose2D,
+    MappingPoseSource,
     MappingSessionState,
     MappingSessionStatus,
     MessageHeader,
@@ -19,7 +22,17 @@ from app.services.autonomy.topic_bus import (
     TopicBus,
     TopicSubscription,
 )
-from app.services.autonomy.topics import LIDAR_SCAN, LOCAL_MAP, ODOMETRY
+from app.services.autonomy.topics import (
+    LIDAR_SCAN,
+    LOCALIZATION_POSE,
+    LOCAL_MAP,
+    ODOMETRY,
+)
+
+
+MappingPose = Union[Odometry2D, LocalizationPose2D]
+MappingPoseT = TypeVar("MappingPoseT", Odometry2D, LocalizationPose2D)
+_POSE_HISTORY_LIMIT = 4096
 
 
 @dataclass(frozen=True)
@@ -63,7 +76,7 @@ class LocalOccupancyGrid:
         self._evidence = [0] * (self.width * self.height)
         self._observed = [False] * (self.width * self.height)
 
-    def insert(self, scan: LaserScan, pose: Odometry2D) -> int:
+    def insert(self, scan: LaserScan, pose: MappingPose) -> int:
         sensor_origin = self._sensor_origin_in_odom(pose)
         origin_cell = self._world_to_cell(*sensor_origin)
         if origin_cell is None:
@@ -114,7 +127,7 @@ class LocalOccupancyGrid:
             data=tuple(data),
         )
 
-    def _sensor_origin_in_odom(self, pose: Odometry2D) -> Tuple[float, float]:
+    def _sensor_origin_in_odom(self, pose: MappingPose) -> Tuple[float, float]:
         transform = self.config.sensor_transform
         cos_pose = math.cos(pose.yaw_rad)
         sin_pose = math.sin(pose.yaw_rad)
@@ -126,7 +139,7 @@ class LocalOccupancyGrid:
     def _endpoint_in_odom(
         self,
         scan: LaserScan,
-        pose: Odometry2D,
+        pose: MappingPose,
         index: int,
         distance: float,
     ) -> Tuple[float, float]:
@@ -183,7 +196,7 @@ class LocalOccupancyGrid:
 
 
 class LocalMappingService:
-    """Synchronize latest odometry with scans and publish map snapshots."""
+    """Synchronize scans with fused localization or raw odometry."""
 
     def __init__(
         self,
@@ -191,16 +204,24 @@ class LocalMappingService:
         grid: LocalOccupancyGrid,
         *,
         max_odometry_age_seconds: float,
+        prefer_localization: bool = False,
     ) -> None:
         if max_odometry_age_seconds <= 0:
             raise ValueError("max_odometry_age_seconds must be positive")
         self._bus = bus
         self._grid = grid
         self._max_odometry_age_ns = int(max_odometry_age_seconds * 1_000_000_000)
+        self._prefer_localization = prefer_localization
         self._odom_subscription: Optional[TopicSubscription[Odometry2D]] = None
+        self._localization_subscription: Optional[
+            TopicSubscription[LocalizationPose2D]
+        ] = None
         self._scan_subscription: Optional[TopicSubscription[LaserScan]] = None
         self._tasks: Tuple[asyncio.Task[None], ...] = ()
-        self._latest_odometry: Optional[Odometry2D] = None
+        self._odometry_history: Deque[Odometry2D] = deque(maxlen=_POSE_HISTORY_LIMIT)
+        self._localization_history: Deque[LocalizationPose2D] = deque(
+            maxlen=_POSE_HISTORY_LIMIT
+        )
         self._sequence = 0
         self._state = MappingSessionState.IDLE
         self._session_id = 0
@@ -210,6 +231,10 @@ class LocalMappingService:
         self._ignored_inactive_scans = 0
         self._rejected_missing_odometry = 0
         self._rejected_stale_odometry = 0
+        self._active_pose_source: Optional[MappingPoseSource] = None
+        self._scans_inserted_with_odometry = 0
+        self._scans_inserted_with_localization = 0
+        self._localization_fallbacks = 0
         self._has_map = False
 
     @property
@@ -229,6 +254,15 @@ class LocalMappingService:
             ignored_inactive_scans=self._ignored_inactive_scans,
             rejected_missing_odometry=self._rejected_missing_odometry,
             rejected_stale_odometry=self._rejected_stale_odometry,
+            preferred_pose_source=(
+                MappingPoseSource.LOCALIZATION
+                if self._prefer_localization
+                else MappingPoseSource.ODOMETRY
+            ),
+            active_pose_source=self._active_pose_source,
+            scans_inserted_with_odometry=self._scans_inserted_with_odometry,
+            scans_inserted_with_localization=(self._scans_inserted_with_localization),
+            localization_fallbacks=self._localization_fallbacks,
             has_map=self._has_map,
         )
 
@@ -264,7 +298,8 @@ class LocalMappingService:
         """Clear the map and return to an unarmed mapping session."""
 
         self._state = MappingSessionState.IDLE
-        self._latest_odometry = None
+        self._odometry_history.clear()
+        self._localization_history.clear()
         self._grid.clear()
         self._has_map = False
         self._reset_session_counters()
@@ -278,16 +313,29 @@ class LocalMappingService:
         self._ignored_inactive_scans = 0
         self._rejected_missing_odometry = 0
         self._rejected_stale_odometry = 0
+        self._active_pose_source = None
+        self._scans_inserted_with_odometry = 0
+        self._scans_inserted_with_localization = 0
+        self._localization_fallbacks = 0
 
     def start(self) -> None:
         if self.running:
             return
         self._odom_subscription = self._bus.subscribe(ODOMETRY, max_queue_size=1)
+        if self._prefer_localization:
+            self._localization_subscription = self._bus.subscribe(
+                LOCALIZATION_POSE, max_queue_size=1
+            )
         self._scan_subscription = self._bus.subscribe(LIDAR_SCAN, max_queue_size=1)
-        self._tasks = (
-            asyncio.create_task(self._read_odometry(), name="local-map-odometry"),
-            asyncio.create_task(self._read_scans(), name="local-map-scans"),
-        )
+        tasks = [asyncio.create_task(self._read_odometry(), name="local-map-odometry")]
+        if self._localization_subscription is not None:
+            tasks.append(
+                asyncio.create_task(
+                    self._read_localization(), name="local-map-localization"
+                )
+            )
+        tasks.append(asyncio.create_task(self._read_scans(), name="local-map-scans"))
+        self._tasks = tuple(tasks)
 
     async def stop(self) -> None:
         for task in self._tasks:
@@ -295,10 +343,15 @@ class LocalMappingService:
         if self._tasks:
             await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks = ()
-        for subscription in (self._odom_subscription, self._scan_subscription):
+        for subscription in (
+            self._odom_subscription,
+            self._localization_subscription,
+            self._scan_subscription,
+        ):
             if subscription is not None:
                 subscription.close()
         self._odom_subscription = None
+        self._localization_subscription = None
         self._scan_subscription = None
 
     async def reconfigure_from(self, replacement: "LocalMappingService") -> None:
@@ -308,7 +361,9 @@ class LocalMappingService:
         await self.stop()
         self._grid = replacement._grid
         self._max_odometry_age_ns = replacement._max_odometry_age_ns
-        self._latest_odometry = None
+        self._prefer_localization = replacement._prefer_localization
+        self._odometry_history.clear()
+        self._localization_history.clear()
         self._state = MappingSessionState.IDLE
         self._reset_session_counters()
         self._has_map = False
@@ -322,9 +377,44 @@ class LocalMappingService:
             return
         try:
             async for odometry in subscription:
-                self._latest_odometry = odometry
+                self._odometry_history.append(odometry)
         except SubscriptionClosed:
             return
+
+    async def _read_localization(self) -> None:
+        subscription = self._localization_subscription
+        if subscription is None:
+            return
+        try:
+            async for localization in subscription:
+                self._localization_history.append(localization)
+        except SubscriptionClosed:
+            return
+
+    def _fresh_pose_at_scan(
+        self, scan: LaserScan, history: Deque[MappingPoseT]
+    ) -> Optional[MappingPoseT]:
+        scan_timestamp_ns = scan.header.timestamp_monotonic_ns
+        for pose in reversed(history):
+            age_ns = scan_timestamp_ns - pose.header.timestamp_monotonic_ns
+            if age_ns < 0:
+                continue
+            return pose if age_ns <= self._max_odometry_age_ns else None
+        return None
+
+    def _select_pose(
+        self, scan: LaserScan
+    ) -> Tuple[Optional[MappingPose], Optional[MappingPoseSource]]:
+        localization = self._fresh_pose_at_scan(scan, self._localization_history)
+        if self._prefer_localization and localization is not None:
+            return localization, MappingPoseSource.LOCALIZATION
+
+        odometry = self._fresh_pose_at_scan(scan, self._odometry_history)
+        if odometry is not None:
+            if self._prefer_localization:
+                self._localization_fallbacks += 1
+            return odometry, MappingPoseSource.ODOMETRY
+        return None, None
 
     async def _read_scans(self) -> None:
         subscription = self._scan_subscription
@@ -336,18 +426,22 @@ class LocalMappingService:
                 if self._state != MappingSessionState.ACTIVE:
                     self._ignored_inactive_scans += 1
                     continue
-                odometry = self._latest_odometry
-                if odometry is None:
-                    self._rejected_missing_odometry += 1
+                pose, source = self._select_pose(scan)
+                if pose is None or source is None:
+                    all_histories_empty = not self._odometry_history and (
+                        not self._prefer_localization or not self._localization_history
+                    )
+                    if all_histories_empty:
+                        self._rejected_missing_odometry += 1
+                    else:
+                        self._rejected_stale_odometry += 1
                     continue
-                age_ns = abs(
-                    scan.header.timestamp_monotonic_ns
-                    - odometry.header.timestamp_monotonic_ns
-                )
-                if age_ns > self._max_odometry_age_ns:
-                    self._rejected_stale_odometry += 1
-                    continue
-                inserted = self._grid.insert(scan, odometry)
+                inserted = self._grid.insert(scan, pose)
+                self._active_pose_source = source
+                if source == MappingPoseSource.LOCALIZATION:
+                    self._scans_inserted_with_localization += 1
+                else:
+                    self._scans_inserted_with_odometry += 1
                 self._scans_inserted += 1
                 self._returns_inserted += inserted
                 self._has_map = self._has_map or inserted > 0
