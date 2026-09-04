@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.autonomy.actions import ActionState
-from app.schemas.autonomy.navigation import NavigationPoint
+from app.schemas.autonomy.navigation import NavigationDirection, NavigationPoint
 
 
 class NavigationExecutionRequest(BaseModel):
@@ -37,7 +37,10 @@ class NavigationExecutionStatus(BaseModel):
     remaining_m: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)
     target_waypoint_index: Optional[int] = Field(default=None, ge=0)
     max_speed_mps: Optional[float] = Field(default=None, gt=0, allow_inf_nan=False)
-    commanded_speed_mps: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)
+    commanded_speed_mps: float = Field(default=0.0, allow_inf_nan=False)
+    motion_direction: Optional[NavigationDirection] = None
+    gear_changes_completed: int = Field(default=0, ge=0)
+    gear_changes_total: int = Field(default=0, ge=0)
     steering_angle_deg: float = Field(default=0.0, allow_inf_nan=False)
     cross_track_error_m: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)
     reason: Optional[str] = None

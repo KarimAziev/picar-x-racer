@@ -64,6 +64,7 @@ class TestLidarSafetyEvaluator(unittest.TestCase):
                 stop_distance_m=0.3,
                 slow_distance_m=1.0,
                 max_forward_speed_mps=1.4,
+                max_reverse_speed_mps=0.8,
                 min_obstacle_points=2,
             )
         )
@@ -75,6 +76,7 @@ class TestLidarSafetyEvaluator(unittest.TestCase):
 
         self.assertTrue(decision.forward_blocked)
         self.assertEqual(decision.max_forward_speed_mps, 0)
+        self.assertEqual(decision.max_reverse_speed_mps, 0.8)
         self.assertAlmostEqual(decision.nearest_obstacle_m or 0, 0.25)
 
     def test_slow_zone_scales_speed_linearly(self) -> None:
@@ -94,6 +96,21 @@ class TestLidarSafetyEvaluator(unittest.TestCase):
         self.assertEqual(decision.max_forward_speed_mps, 1.4)
         self.assertIsNone(decision.nearest_obstacle_m)
 
+    def test_two_close_rear_returns_block_reverse_motion(self) -> None:
+        decision = self.evaluator.evaluate(
+            scan(
+                (0.2, 0.25),
+                angle_min_rad=-math.pi,
+                angle_increment_rad=math.radians(5),
+            )
+        )
+
+        self.assertFalse(decision.forward_blocked)
+        self.assertTrue(decision.reverse_blocked)
+        self.assertEqual(decision.max_forward_speed_mps, 1.4)
+        self.assertEqual(decision.max_reverse_speed_mps, 0)
+        self.assertAlmostEqual(decision.nearest_rear_obstacle_m or 0, 0.25)
+
     def test_sensor_transform_is_applied_before_sector_filter(self) -> None:
         evaluator = LidarSafetyEvaluator(
             LidarSafetyZone(
@@ -101,6 +118,7 @@ class TestLidarSafetyEvaluator(unittest.TestCase):
                 stop_distance_m=0.3,
                 slow_distance_m=1.0,
                 max_forward_speed_mps=1.0,
+                max_reverse_speed_mps=0.5,
                 sensor_yaw_rad=math.pi,
                 min_obstacle_points=1,
             )
@@ -111,6 +129,7 @@ class TestLidarSafetyEvaluator(unittest.TestCase):
         )
 
         self.assertEqual(decision.max_forward_speed_mps, 1.0)
+        self.assertTrue(decision.reverse_blocked)
 
 
 class TestLidarSafetyService(unittest.IsolatedAsyncioTestCase):
@@ -126,6 +145,7 @@ class TestLidarSafetyService(unittest.IsolatedAsyncioTestCase):
                     stop_distance_m=0.3,
                     slow_distance_m=1.0,
                     max_forward_speed_mps=1.0,
+                    max_reverse_speed_mps=0.5,
                     min_obstacle_points=1,
                 )
             ),
@@ -147,8 +167,27 @@ class TestLidarSafetyService(unittest.IsolatedAsyncioTestCase):
         clear = await asyncio.wait_for(states.get(), timeout=1)
 
         self.assertTrue(waiting.forward_blocked)
+        self.assertTrue(waiting.reverse_blocked)
         self.assertFalse(clear.forward_blocked)
-        self.assertNotIn("lidar-front-zone", self.constraints.constraints)
+        self.assertFalse(clear.reverse_blocked)
+        self.assertNotIn("lidar-directional-zone", self.constraints.constraints)
+
+    async def test_rear_obstacle_only_blocks_reverse_motion(self) -> None:
+        states = self.bus.subscribe(SAFETY_STATE, max_queue_size=2)
+        self.service.start()
+        await states.get()
+        self.bus.publish(
+            LIDAR_SCAN,
+            scan((0.2,), angle_min_rad=-math.pi, angle_increment_rad=1),
+        )
+
+        blocked = await asyncio.wait_for(states.get(), timeout=1)
+
+        constraint = self.constraints.constraints["lidar-directional-zone"]
+        self.assertEqual(constraint.max_forward_speed_mps, 1.0)
+        self.assertEqual(constraint.max_reverse_speed_mps, 0.0)
+        self.assertFalse(blocked.forward_blocked)
+        self.assertTrue(blocked.reverse_blocked)
 
     async def test_stale_scan_reinstates_forward_block(self) -> None:
         states = self.bus.subscribe(SAFETY_STATE, max_queue_size=3)
@@ -161,9 +200,11 @@ class TestLidarSafetyService(unittest.IsolatedAsyncioTestCase):
 
         stale = await asyncio.wait_for(states.get(), timeout=1)
 
-        constraint = self.constraints.constraints["lidar-front-zone"]
+        constraint = self.constraints.constraints["lidar-directional-zone"]
         self.assertEqual(constraint.max_forward_speed_mps, 0)
+        self.assertEqual(constraint.max_reverse_speed_mps, 0)
         self.assertTrue(stale.forward_blocked)
+        self.assertTrue(stale.reverse_blocked)
         self.assertIn("stale", stale.reason or "")
 
 

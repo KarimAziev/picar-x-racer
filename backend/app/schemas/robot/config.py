@@ -74,8 +74,8 @@ class HardwareConfig(BaseModel):
     lidar_safety: Annotated[
         LidarSafetyConfig,
         Field(
-            title="LiDAR forward safety",
-            description="Fail-safe front-sector speed limiting and stop behavior.",
+            title="LiDAR directional safety",
+            description="Fail-safe front/rear speed limiting and stop behavior.",
         ),
     ] = LidarSafetyConfig()
 

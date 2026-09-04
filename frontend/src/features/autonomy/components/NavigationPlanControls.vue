@@ -61,6 +61,14 @@
           <dt class="text-surface-500">Route length</dt>
           <dd>{{ plan.path_length_m.toFixed(2) }} m</dd>
         </div>
+        <div v-if="plan.state === 'ready' && plan.reverse_distance_m > 0">
+          <dt class="text-surface-500">Reverse distance</dt>
+          <dd>{{ plan.reverse_distance_m.toFixed(2) }} m</dd>
+        </div>
+        <div v-if="plan.state === 'ready' && plan.gear_changes > 0">
+          <dt class="text-surface-500">Direction changes</dt>
+          <dd>{{ plan.gear_changes }}</dd>
+        </div>
         <div v-if="plan.state === 'ready'">
           <dt class="text-surface-500">Waypoints</dt>
           <dd>
@@ -81,7 +89,7 @@
           <dd>
             {{
               plan.planning_method === "hybrid_astar"
-                ? "Hybrid A* recovery"
+                ? "Direction-aware Hybrid A*"
                 : "Grid A* + smoothing"
             }}
           </dd>
@@ -203,6 +211,16 @@
             <dd>
               {{ execution.commanded_speed_mps.toFixed(2) }} m/s ·
               {{ formatSigned(execution.steering_angle_deg) }}°
+            </dd>
+          </div>
+          <div v-if="execution.motion_direction">
+            <dt>Direction</dt>
+            <dd class="capitalize">
+              {{ execution.motion_direction }}
+              <span v-if="execution.gear_changes_total">
+                · {{ execution.gear_changes_completed }} /
+                {{ execution.gear_changes_total }} changes
+              </span>
             </dd>
           </div>
           <div>
@@ -328,7 +346,20 @@ const confirmStart = (event: MouseEvent) =>
     group: "navigation",
     target: event.currentTarget as HTMLElement,
     icon: "pi pi-compass",
-    message: `Enter autonomous mode and follow this reviewed route at up to ${maxSpeed.value.toFixed(2)} m/s? LiDAR safety, localization freshness, and the motion arbiter remain authoritative.`,
+    message:
+      "Enter autonomous mode and follow this reviewed route at up to " +
+      maxSpeed.value.toFixed(2) +
+      " m/s?" +
+      (plan.value?.reverse_distance_m
+        ? " It includes " +
+          plan.value.reverse_distance_m.toFixed(2) +
+          " m in reverse and " +
+          plan.value.gear_changes +
+          " stopped direction change" +
+          (plan.value.gear_changes === 1 ? "" : "s") +
+          "."
+        : "") +
+      " Front/rear LiDAR safety, localization freshness, and the motion arbiter remain authoritative.",
     rejectProps: { label: "Cancel", severity: "secondary", outlined: true },
     acceptProps: { label: "Start navigation", severity: "danger" },
     accept: () => void store.startNavigation(maxSpeed.value),

@@ -226,11 +226,15 @@ const safety = computed(() => {
   const envelope = telemetry.latest.safety;
   return envelope?.channel === "safety" ? envelope.payload : null;
 });
-const safetyBlocked = computed(() => safety.value?.forward_blocked ?? false);
+const safetyBlocked = computed(
+  () =>
+    (safety.value?.forward_blocked ?? false) ||
+    (safety.value?.reverse_blocked ?? false),
+);
 const safetyLabel = computed(() => {
   if (!safety.value) return null;
   if (safety.value.reason) return `Safety: ${safety.value.reason}`;
-  return `Safety clear · ${safety.value.max_forward_speed_mps.toFixed(2)} m/s`;
+  return `Safety clear · forward ${safety.value.max_forward_speed_mps.toFixed(2)} m/s · reverse ${safety.value.max_reverse_speed_mps.toFixed(2)} m/s`;
 });
 
 const disarm = () => {

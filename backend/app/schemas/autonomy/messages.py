@@ -304,15 +304,21 @@ class SimulationRuntimeStatus(FrozenMessage):
 
 
 class SafetyState(FrozenMessage):
-    """Current forward-sector safety decision exposed to operators."""
+    """Current directional LiDAR safety decision exposed to operators."""
 
     header: MessageHeader
     forward_blocked: bool
+    reverse_blocked: bool
     max_forward_speed_mps: Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    max_reverse_speed_mps: Annotated[float, Field(ge=0, allow_inf_nan=False)]
     nearest_obstacle_m: Optional[Annotated[float, Field(ge=0, allow_inf_nan=False)]] = (
         None
     )
+    nearest_rear_obstacle_m: Optional[
+        Annotated[float, Field(ge=0, allow_inf_nan=False)]
+    ] = None
     considered_points: Annotated[int, Field(ge=0)] = 0
+    considered_rear_points: Annotated[int, Field(ge=0)] = 0
     reason: Optional[str] = None
 
 

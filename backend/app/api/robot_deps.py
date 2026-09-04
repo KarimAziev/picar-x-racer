@@ -786,7 +786,7 @@ def build_lidar_safety_service(
     topic_bus: TopicBus,
     motion_control_service: Optional[MotionControlService],
 ) -> Optional[LidarSafetyService]:
-    """Build fail-safe front-sector limiting only from explicit calibration."""
+    """Build fail-safe front/rear limiting only from explicit calibration."""
 
     safety = config.lidar_safety
     if not safety.enabled:
@@ -796,8 +796,11 @@ def build_lidar_safety_service(
     if safety.stop_distance_m is None or safety.slow_distance_m is None:
         raise ValueError("LiDAR safety is enabled without measured distances")
     max_forward_speed_mps = config.motion_control.max_forward_speed_mps
-    if max_forward_speed_mps is None:
-        raise ValueError("LiDAR safety is enabled without forward speed calibration")
+    max_reverse_speed_mps = config.motion_control.max_reverse_speed_mps
+    if max_forward_speed_mps is None or max_reverse_speed_mps is None:
+        raise ValueError(
+            "LiDAR safety is enabled without directional speed calibration"
+        )
     lidar = config.localization_sensors.lidar
     return LidarSafetyService(
         topic_bus,
@@ -808,6 +811,7 @@ def build_lidar_safety_service(
                 stop_distance_m=safety.stop_distance_m,
                 slow_distance_m=safety.slow_distance_m,
                 max_forward_speed_mps=max_forward_speed_mps,
+                max_reverse_speed_mps=max_reverse_speed_mps,
                 sensor_x_m=lidar.transform.x_m,
                 sensor_y_m=lidar.transform.y_m,
                 sensor_yaw_rad=lidar.transform.yaw_rad,

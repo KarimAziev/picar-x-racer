@@ -12,8 +12,8 @@ class LidarSafetyConfig(BaseModel):
     front_half_angle_deg: Annotated[
         float,
         Field(
-            title="Front safety half-angle",
-            description="Angular half-width of the forward safety sector.",
+            title="Safety sector half-angle",
+            description="Angular half-width used for both front and rear safety sectors.",
             gt=0,
             le=90,
             allow_inf_nan=False,
@@ -22,8 +22,8 @@ class LidarSafetyConfig(BaseModel):
     stop_distance_m: Annotated[
         Optional[float],
         Field(
-            title="Forward stop distance",
-            description="Confirmed obstacles at or inside this distance block forward motion.",
+            title="Directional stop distance",
+            description="Confirmed obstacles at or inside this distance block motion toward them.",
             gt=0,
             allow_inf_nan=False,
         ),
@@ -31,8 +31,8 @@ class LidarSafetyConfig(BaseModel):
     slow_distance_m: Annotated[
         Optional[float],
         Field(
-            title="Forward slowdown distance",
-            description="Forward speed is reduced between stop and slowdown distance.",
+            title="Directional slowdown distance",
+            description="Speed is reduced between stop and slowdown distance in either direction.",
             gt=0,
             allow_inf_nan=False,
         ),
@@ -41,7 +41,7 @@ class LidarSafetyConfig(BaseModel):
         int,
         Field(
             title="LiDAR scan timeout",
-            description="Block forward motion when a fresh scan is not received in time.",
+            description="Block forward and reverse motion when a fresh scan is not received.",
             ge=100,
             le=5000,
         ),

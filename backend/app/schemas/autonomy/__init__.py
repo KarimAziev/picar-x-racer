@@ -35,6 +35,7 @@ from app.schemas.autonomy.mapping_status import (
     MappingSessionStatus,
 )
 from app.schemas.autonomy.navigation import (
+    NavigationDirection,
     NavigationGoalRequest,
     NavigationPlanState,
     NavigationPlanStatus,
@@ -73,6 +74,7 @@ __all__ = [
     "MappingSessionState",
     "MappingSessionStatus",
     "NavigationGoalRequest",
+    "NavigationDirection",
     "NavigationExecutionRequest",
     "NavigationExecutionStatus",
     "NavigationPlanState",

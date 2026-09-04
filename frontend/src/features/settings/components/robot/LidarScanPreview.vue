@@ -9,7 +9,7 @@
     <canvas
       ref="canvas"
       class="aspect-square max-h-[420px] w-full rounded-lg border border-surface-200 bg-surface-950 dark:border-surface-700"
-      aria-label="Polar LiDAR scan preview with forward safety zones"
+      aria-label="Polar LiDAR scan preview with front and rear safety zones"
     />
     <div class="flex flex-wrap gap-x-4 gap-y-1 text-[0.7rem] text-surface-500">
       <span
@@ -25,7 +25,7 @@
         ><i class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400" />slow
         zone</span
       >
-      <span>forward ↑</span>
+      <span>forward ↑ · reverse ↓</span>
     </div>
   </div>
 </template>
@@ -66,16 +66,6 @@ const scheduleDraw = () => {
   animationFrame = requestAnimationFrame(draw);
 };
 
-const polarCanvasPoint = (
-  center: number,
-  scale: number,
-  distance: number,
-  angle: number,
-) => ({
-  x: center - Math.sin(angle) * distance * scale,
-  y: center - Math.cos(angle) * distance * scale,
-});
-
 const drawSafetySector = (
   context: CanvasRenderingContext2D,
   center: number,
@@ -87,25 +77,34 @@ const drawSafetySector = (
   const slowDistance = safety.value.slow_distance_m;
   if (stopDistance === null || slowDistance === null) return;
 
-  const drawSector = (distance: number, color: string) => {
-    const start = polarCanvasPoint(center, scale, distance, halfAngle);
+  const drawSector = (
+    distance: number,
+    color: string,
+    canvasCenterAngle: number,
+  ) => {
+    const startAngle = canvasCenterAngle - halfAngle;
     context.beginPath();
     context.moveTo(center, center);
-    context.lineTo(start.x, start.y);
+    context.lineTo(
+      center + Math.cos(startAngle) * distance * scale,
+      center + Math.sin(startAngle) * distance * scale,
+    );
     context.arc(
       center,
       center,
       distance * scale,
-      -Math.PI / 2 - halfAngle,
-      -Math.PI / 2 + halfAngle,
+      startAngle,
+      canvasCenterAngle + halfAngle,
     );
     context.closePath();
     context.fillStyle = color;
     context.fill();
   };
 
-  drawSector(slowDistance, "rgba(251, 191, 36, 0.16)");
-  drawSector(stopDistance, "rgba(239, 68, 68, 0.28)");
+  for (const centerAngle of [-Math.PI / 2, Math.PI / 2]) {
+    drawSector(slowDistance, "rgba(251, 191, 36, 0.16)", centerAngle);
+    drawSector(stopDistance, "rgba(239, 68, 68, 0.28)", centerAngle);
+  }
 };
 
 const draw = () => {

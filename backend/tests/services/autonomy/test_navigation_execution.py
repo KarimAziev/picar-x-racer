@@ -8,9 +8,12 @@ from app.schemas.autonomy import (
     ActionState,
     LocalizationPose2D,
     MessageHeader,
+    NavigationDirection,
     NavigationExecutionRequest,
     NavigationGoalRequest,
     NavigationPoint,
+    NavigationPlanState,
+    NavigationPlanStatus,
     Odometry2D,
     OccupancyGrid,
 )
@@ -142,6 +145,29 @@ class PurePursuitTrackerTests(unittest.TestCase):
         self.assertEqual(first.progress_m, 1.0)
         self.assertEqual(second.progress_m, 1.0)
 
+    def test_reverse_tracking_uses_vehicle_steering_convention(self) -> None:
+        left_while_reversing = PurePursuitTracker(
+            (NavigationPoint(x_m=0, y_m=0), NavigationPoint(x_m=-1, y_m=1)),
+            wheelbase_m=0.25,
+            max_abs_steering_angle_rad=math.radians(30),
+            lookahead_m=0.25,
+            direction=NavigationDirection.REVERSE,
+        ).update(pose(0, 0))
+        right_while_reversing = PurePursuitTracker(
+            (NavigationPoint(x_m=0, y_m=0), NavigationPoint(x_m=-1, y_m=-1)),
+            wheelbase_m=0.25,
+            max_abs_steering_angle_rad=math.radians(30),
+            lookahead_m=0.25,
+            direction=NavigationDirection.REVERSE,
+        ).update(pose(0, 0))
+
+        self.assertLess(left_while_reversing.steering_angle_rad, 0)
+        self.assertGreater(right_while_reversing.steering_angle_rad, 0)
+        self.assertEqual(
+            left_while_reversing.direction,
+            NavigationDirection.REVERSE,
+        )
+
 
 class NavigationExecutionServiceTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
@@ -164,6 +190,7 @@ class NavigationExecutionServiceTests(unittest.IsolatedAsyncioTestCase):
             max_abs_steering_angle_rad=math.radians(30),
             update_period_seconds=0.005,
             localization_timeout_seconds=0.5,
+            direction_change_stop_seconds=0.01,
         )
 
     async def asyncTearDown(self) -> None:
@@ -201,6 +228,73 @@ class NavigationExecutionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.service.status.remaining_m, 0.0)
         self.assertEqual(self.motion.mode, RobotMode.DISARMED)
         self.assertIsNone(self.motion.autonomy_owner)
+
+    async def test_follows_a_reviewed_reverse_route(self) -> None:
+        self.bus.publish(LOCAL_MAP, occupancy_grid())
+        self.bus.publish(LOCALIZATION_POSE, pose(1.5, 0.5))
+        plan = await self.planning.plan(
+            NavigationGoalRequest(x_m=0.5, y_m=0.5, clearance_m=0)
+        )
+
+        self.assertEqual(set(plan.path_directions), {NavigationDirection.REVERSE})
+        started = await self.service.start(NavigationExecutionRequest())
+        await asyncio.sleep(0.015)
+
+        self.assertEqual(started.motion_direction, NavigationDirection.REVERSE)
+        self.assertLess(self.motion.intents[-1].linear_speed_mps, 0)
+        self.assertLess(self.service.status.commanded_speed_mps, 0)
+
+        self.bus.publish(LOCALIZATION_POSE, pose(0.5, 0.5, sequence=2))
+        await asyncio.sleep(0.02)
+
+        self.assertEqual(self.service.status.state, ActionState.SUCCEEDED)
+        self.assertEqual(self.motion.mode, RobotMode.DISARMED)
+
+    async def test_stops_before_switching_between_forward_and_reverse(self) -> None:
+        self.bus.publish(LOCAL_MAP, occupancy_grid())
+        self.bus.publish(LOCALIZATION_POSE, pose(0.5, 0.5))
+        self.planning._status = NavigationPlanStatus(
+            available=True,
+            state=NavigationPlanState.READY,
+            frame_id="odom",
+            goal=NavigationPoint(x_m=0.7, y_m=0.5),
+            start=NavigationPoint(x_m=0.5, y_m=0.5),
+            start_yaw_rad=0.0,
+            path=(
+                NavigationPoint(x_m=0.5, y_m=0.5),
+                NavigationPoint(x_m=1.0, y_m=0.5),
+                NavigationPoint(x_m=0.7, y_m=0.5),
+            ),
+            path_directions=(
+                NavigationDirection.FORWARD,
+                NavigationDirection.REVERSE,
+            ),
+            path_length_m=0.8,
+            reverse_distance_m=0.3,
+            gear_changes=1,
+            clearance_m=0.0,
+            map_sequence=7,
+            pose_source="localization",
+            geometry_validated=True,
+            planning_method="hybrid_astar",
+        )
+
+        await self.service.start(NavigationExecutionRequest())
+        await asyncio.sleep(0.01)
+        self.assertGreater(self.motion.intents[-1].linear_speed_mps, 0)
+        self.bus.publish(LOCALIZATION_POSE, pose(1.0, 0.5, sequence=2))
+        await asyncio.sleep(0.035)
+
+        speeds = [intent.linear_speed_mps for intent in self.motion.intents]
+        first_stop = next(index for index, speed in enumerate(speeds) if speed == 0)
+        first_reverse = next(index for index, speed in enumerate(speeds) if speed < 0)
+        self.assertLess(first_stop, first_reverse)
+        self.assertEqual(self.service.status.gear_changes_completed, 1)
+        self.assertEqual(self.service.status.gear_changes_total, 1)
+        self.assertEqual(
+            self.service.status.motion_direction,
+            NavigationDirection.REVERSE,
+        )
 
     async def test_pauses_resumes_and_cancels_safely(self) -> None:
         await self.prepare_route()

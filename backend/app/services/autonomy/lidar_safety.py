@@ -1,4 +1,4 @@
-"""Fail-safe front-sector LiDAR constraints for the motion arbiter."""
+"""Fail-safe front/rear LiDAR constraints for the motion arbiter."""
 
 import asyncio
 import math
@@ -18,7 +18,7 @@ from app.services.autonomy.topics import LIDAR_SCAN, SAFETY_STATE
 
 
 _log = Logger(__name__)
-_CONSTRAINT_ID = "lidar-front-zone"
+_CONSTRAINT_ID = "lidar-directional-zone"
 
 
 class SafetyConstraintSink(Protocol):
@@ -33,6 +33,7 @@ class LidarSafetyZone:
     stop_distance_m: float
     slow_distance_m: float
     max_forward_speed_mps: float
+    max_reverse_speed_mps: float
     sensor_x_m: float = 0.0
     sensor_y_m: float = 0.0
     sensor_yaw_rad: float = 0.0
@@ -44,6 +45,7 @@ class LidarSafetyZone:
             self.stop_distance_m,
             self.slow_distance_m,
             self.max_forward_speed_mps,
+            self.max_reverse_speed_mps,
             self.sensor_x_m,
             self.sensor_y_m,
             self.sensor_yaw_rad,
@@ -58,6 +60,8 @@ class LidarSafetyZone:
             raise ValueError("slow_distance_m must exceed stop_distance_m")
         if self.max_forward_speed_mps <= 0:
             raise ValueError("max_forward_speed_mps must be greater than zero")
+        if self.max_reverse_speed_mps <= 0:
+            raise ValueError("max_reverse_speed_mps must be greater than zero")
         if self.min_obstacle_points <= 0:
             raise ValueError("min_obstacle_points must be greater than zero")
 
@@ -65,13 +69,20 @@ class LidarSafetyZone:
 @dataclass(frozen=True)
 class LidarSafetyDecision:
     max_forward_speed_mps: float
+    max_reverse_speed_mps: float
     nearest_obstacle_m: Optional[float]
+    nearest_rear_obstacle_m: Optional[float]
     considered_points: int
+    considered_rear_points: int
     reason: Optional[str]
 
     @property
     def forward_blocked(self) -> bool:
         return self.max_forward_speed_mps == 0.0
+
+    @property
+    def reverse_blocked(self) -> bool:
+        return self.max_reverse_speed_mps == 0.0
 
 
 class LidarSafetyEvaluator:
@@ -79,43 +90,61 @@ class LidarSafetyEvaluator:
         self.zone = zone
 
     def evaluate(self, scan: LaserScan) -> LidarSafetyDecision:
-        distances = self._front_sector_distances(scan)
-        if len(distances) < self.zone.min_obstacle_points:
-            return LidarSafetyDecision(
-                max_forward_speed_mps=self.zone.max_forward_speed_mps,
-                nearest_obstacle_m=None,
-                considered_points=len(distances),
-                reason=None,
+        front_distances, rear_distances = self._sector_distances(scan)
+        forward_limit, nearest_front, front_reason = self._speed_limit(
+            front_distances,
+            maximum_speed_mps=self.zone.max_forward_speed_mps,
+            label="forward",
+        )
+        reverse_limit, nearest_rear, rear_reason = self._speed_limit(
+            rear_distances,
+            maximum_speed_mps=self.zone.max_reverse_speed_mps,
+            label="rear",
+        )
+        return LidarSafetyDecision(
+            max_forward_speed_mps=forward_limit,
+            max_reverse_speed_mps=reverse_limit,
+            nearest_obstacle_m=nearest_front,
+            nearest_rear_obstacle_m=nearest_rear,
+            considered_points=len(front_distances),
+            considered_rear_points=len(rear_distances),
+            reason="; ".join(
+                reason for reason in (front_reason, rear_reason) if reason is not None
             )
+            or None,
+        )
+
+    def _speed_limit(
+        self,
+        distances: list[float],
+        *,
+        maximum_speed_mps: float,
+        label: str,
+    ) -> tuple[float, Optional[float], Optional[str]]:
+        if len(distances) < self.zone.min_obstacle_points:
+            return maximum_speed_mps, None, None
 
         distances.sort()
         confirmed_distance = distances[self.zone.min_obstacle_points - 1]
         if confirmed_distance <= self.zone.stop_distance_m:
-            return LidarSafetyDecision(
-                max_forward_speed_mps=0.0,
-                nearest_obstacle_m=confirmed_distance,
-                considered_points=len(distances),
-                reason=f"forward obstacle at {confirmed_distance:.3f} m",
+            return (
+                0.0,
+                confirmed_distance,
+                f"{label} obstacle at {confirmed_distance:.3f} m",
             )
         if confirmed_distance < self.zone.slow_distance_m:
             span = self.zone.slow_distance_m - self.zone.stop_distance_m
             ratio = (confirmed_distance - self.zone.stop_distance_m) / span
-            speed = self.zone.max_forward_speed_mps * ratio
-            return LidarSafetyDecision(
-                max_forward_speed_mps=speed,
-                nearest_obstacle_m=confirmed_distance,
-                considered_points=len(distances),
-                reason=f"forward obstacle nearby at {confirmed_distance:.3f} m",
+            return (
+                maximum_speed_mps * ratio,
+                confirmed_distance,
+                f"{label} obstacle nearby at {confirmed_distance:.3f} m",
             )
-        return LidarSafetyDecision(
-            max_forward_speed_mps=self.zone.max_forward_speed_mps,
-            nearest_obstacle_m=confirmed_distance,
-            considered_points=len(distances),
-            reason=None,
-        )
+        return maximum_speed_mps, confirmed_distance, None
 
-    def _front_sector_distances(self, scan: LaserScan) -> list[float]:
-        distances = []
+    def _sector_distances(self, scan: LaserScan) -> tuple[list[float], list[float]]:
+        front_distances = []
+        rear_distances = []
         cos_yaw = math.cos(self.zone.sensor_yaw_rad)
         sin_yaw = math.sin(self.zone.sensor_yaw_rad)
         for index, distance in enumerate(scan.ranges_m):
@@ -130,12 +159,18 @@ class LidarSafetyEvaluator:
             sensor_y = distance * math.sin(sensor_angle)
             base_x = self.zone.sensor_x_m + cos_yaw * sensor_x - sin_yaw * sensor_y
             base_y = self.zone.sensor_y_m + sin_yaw * sensor_x + cos_yaw * sensor_y
-            if base_x <= 0:
-                continue
             base_angle = math.atan2(base_y, base_x)
-            if abs(base_angle) <= self.zone.front_half_angle_rad:
-                distances.append(math.hypot(base_x, base_y))
-        return distances
+            base_distance = math.hypot(base_x, base_y)
+            if base_x > 0 and abs(base_angle) <= self.zone.front_half_angle_rad:
+                front_distances.append(base_distance)
+            rear_angle = self._normalize_angle(base_angle - math.pi)
+            if base_x < 0 and abs(rear_angle) <= self.zone.front_half_angle_rad:
+                rear_distances.append(base_distance)
+        return front_distances, rear_distances
+
+    @staticmethod
+    def _normalize_angle(angle_rad: float) -> float:
+        return (angle_rad + math.pi) % (2.0 * math.pi) - math.pi
 
 
 class LidarSafetyService:
@@ -181,7 +216,7 @@ class LidarSafetyService:
         self._apply_block("waiting for a fresh LiDAR scan")
         self._task = asyncio.create_task(
             self._run(),
-            name="lidar-forward-safety",
+            name="lidar-directional-safety",
         )
 
     async def stop(self) -> None:
@@ -244,15 +279,20 @@ class LidarSafetyService:
         decision: LidarSafetyDecision,
     ) -> None:
         now = self._clock.monotonic_ns()
-        if decision.max_forward_speed_mps < self._evaluator.zone.max_forward_speed_mps:
+        if (
+            decision.max_forward_speed_mps < self._evaluator.zone.max_forward_speed_mps
+            or decision.max_reverse_speed_mps
+            < self._evaluator.zone.max_reverse_speed_mps
+        ):
             self._motion_control.put_constraint(
                 SafetyConstraint(
                     constraint_id=_CONSTRAINT_ID,
                     source="lidar-safety",
                     severity=SafetySeverity.LIMIT,
                     created_monotonic_ns=now,
-                    reason=decision.reason or "LiDAR forward speed limit",
+                    reason=decision.reason or "LiDAR directional speed limit",
                     max_forward_speed_mps=decision.max_forward_speed_mps,
+                    max_reverse_speed_mps=decision.max_reverse_speed_mps,
                 )
             )
         else:
@@ -274,6 +314,7 @@ class LidarSafetyService:
                 created_monotonic_ns=now,
                 reason=reason,
                 max_forward_speed_mps=0.0,
+                max_reverse_speed_mps=0.0,
             )
         )
         self._publish_state(
@@ -282,8 +323,11 @@ class LidarSafetyService:
             source_timestamp_ns=None,
             decision=LidarSafetyDecision(
                 max_forward_speed_mps=0.0,
+                max_reverse_speed_mps=0.0,
                 nearest_obstacle_m=None,
+                nearest_rear_obstacle_m=None,
                 considered_points=0,
+                considered_rear_points=0,
                 reason=reason,
             ),
         )
@@ -305,9 +349,13 @@ class LidarSafetyService:
                 source_timestamp_ns=source_timestamp_ns,
             ),
             forward_blocked=decision.forward_blocked,
+            reverse_blocked=decision.reverse_blocked,
             max_forward_speed_mps=decision.max_forward_speed_mps,
+            max_reverse_speed_mps=decision.max_reverse_speed_mps,
             nearest_obstacle_m=decision.nearest_obstacle_m,
+            nearest_rear_obstacle_m=decision.nearest_rear_obstacle_m,
             considered_points=decision.considered_points,
+            considered_rear_points=decision.considered_rear_points,
             reason=decision.reason,
         )
         self._last_state = state

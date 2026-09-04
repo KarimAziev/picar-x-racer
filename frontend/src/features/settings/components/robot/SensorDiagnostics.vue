@@ -83,10 +83,7 @@
           <span class="font-semibold">Known-world scan correction</span>
           <div class="flex items-center gap-1.5">
             <Tag severity="info" value="Simulation only" />
-            <Tag
-              :severity="scanMatchingSeverity"
-              :value="scanMatchingState"
-            />
+            <Tag :severity="scanMatchingSeverity" :value="scanMatchingState" />
           </div>
         </div>
         <div
@@ -118,7 +115,7 @@
           : 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200'
       "
     >
-      <span class="font-semibold">Forward safety:</span>
+      <span class="font-semibold">Directional safety:</span>
       {{ safetySummary }}
     </div>
     <template v-if="showPreviews">
@@ -258,14 +255,17 @@ const scanMatchingSummary = computed(() => {
 
 const safetyBlocked = computed(() => {
   const envelope = store.latest.safety;
-  return envelope?.channel === "safety" && envelope.payload.forward_blocked;
+  return (
+    envelope?.channel === "safety" &&
+    (envelope.payload.forward_blocked || envelope.payload.reverse_blocked)
+  );
 });
 
 const safetySummary = computed(() => {
   const envelope = store.latest.safety;
   if (!envelope || envelope.channel !== "safety") return null;
   if (envelope.payload.reason) return envelope.payload.reason;
-  return `clear · up to ${formatNumber(envelope.payload.max_forward_speed_mps)} m/s`;
+  return `clear · forward ${formatNumber(envelope.payload.max_forward_speed_mps)} m/s · reverse ${formatNumber(envelope.payload.max_reverse_speed_mps)} m/s`;
 });
 
 onMounted(() => {

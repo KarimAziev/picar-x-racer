@@ -9,6 +9,7 @@ from itertools import count
 from typing import Dict, Iterable, List, Literal, Optional, Sequence, Tuple
 
 from app.schemas.autonomy import (
+    NavigationDirection,
     NavigationGoalRequest,
     NavigationPlanState,
     NavigationPlanStatus,
@@ -40,7 +41,10 @@ class NavigationPlanRejected(ValueError):
 @dataclass(frozen=True)
 class GridPlan:
     path: Tuple[NavigationPoint, ...]
+    path_directions: Tuple[NavigationDirection, ...]
     path_length_m: float
+    reverse_distance_m: float
+    gear_changes: int
     expanded_nodes: int
     geometry_validated: bool = False
     smoothed: bool = False
@@ -135,6 +139,7 @@ class OccupancyGridPlanner:
             goal=NavigationPoint(x_m=goal.x_m, y_m=goal.y_m),
         )
         path = raw_path
+        path_directions = (NavigationDirection.FORWARD,) * (len(path) - 1)
         geometry_validated = False
         smoothed = False
         max_curvature_per_m = None
@@ -173,30 +178,50 @@ class OccupancyGridPlanner:
                         is_clear=clearance_check,
                         guide_path=raw_path,
                     )
-                    geometry = self.path_smoother.smooth(
-                        recovery.path,
-                        start_yaw_rad=start_yaw_rad,
-                        is_clear=clearance_check,
-                    )
-                except (HybridPathNotFound, PathGeometryRejected) as recovery_error:
+                except HybridPathNotFound as recovery_error:
                     raise NavigationPlanRejected(
                         "the grid route is not drivable and curvature-aware "
                         f"recovery failed: {recovery_error}"
                     ) from recovery_error
                 expanded_nodes += recovery.expanded_nodes
                 planning_method = "hybrid_astar"
-            path = geometry.path
-            geometry_validated = True
-            smoothed = geometry.smoothed
-            max_curvature_per_m = geometry.max_curvature_per_m
-            curvature_limit_per_m = geometry.curvature_limit_per_m
-            minimum_turning_radius_m = geometry.minimum_turning_radius_m
-            initial_heading_error_rad = geometry.initial_heading_error_rad
+                path = recovery.path
+                path_directions = recovery.path_directions
+                geometry_validated = True
+                smoothed = False
+                max_curvature_per_m = recovery.max_curvature_per_m
+                curvature_limit_per_m = self.path_smoother.curvature_limit_per_m
+                minimum_turning_radius_m = self.path_smoother.minimum_turning_radius_m
+                initial_heading_error_rad = self._initial_heading_error(
+                    path,
+                    path_directions,
+                    start_yaw_rad,
+                )
+            else:
+                path = geometry.path
+                path_directions = (NavigationDirection.FORWARD,) * (len(path) - 1)
+                geometry_validated = True
+                smoothed = geometry.smoothed
+                max_curvature_per_m = geometry.max_curvature_per_m
+                curvature_limit_per_m = geometry.curvature_limit_per_m
+                minimum_turning_radius_m = geometry.minimum_turning_radius_m
+                initial_heading_error_rad = geometry.initial_heading_error_rad
+        segment_lengths = tuple(
+            math.hypot(end.x_m - start.x_m, end.y_m - start.y_m)
+            for start, end in zip(path, path[1:])
+        )
         return GridPlan(
             path=path,
-            path_length_m=sum(
-                math.hypot(end.x_m - start.x_m, end.y_m - start.y_m)
-                for start, end in zip(path, path[1:])
+            path_directions=path_directions,
+            path_length_m=sum(segment_lengths),
+            reverse_distance_m=sum(
+                length
+                for length, direction in zip(segment_lengths, path_directions)
+                if direction == NavigationDirection.REVERSE
+            ),
+            gear_changes=sum(
+                before != after
+                for before, after in zip(path_directions, path_directions[1:])
             ),
             expanded_nodes=expanded_nodes,
             geometry_validated=geometry_validated,
@@ -208,6 +233,23 @@ class OccupancyGridPlanner:
             initial_heading_error_rad=initial_heading_error_rad,
             planning_method=planning_method,
         )
+
+    @staticmethod
+    def _initial_heading_error(
+        path: Sequence[NavigationPoint],
+        directions: Sequence[NavigationDirection],
+        start_yaw_rad: float,
+    ) -> float:
+        if len(path) < 2 or not directions:
+            return 0.0
+        travel_heading = math.atan2(
+            path[1].y_m - path[0].y_m,
+            path[1].x_m - path[0].x_m,
+        )
+        vehicle_heading = travel_heading + (
+            math.pi if directions[0] == NavigationDirection.REVERSE else 0.0
+        )
+        return (vehicle_heading - start_yaw_rad + math.pi) % (2 * math.pi) - math.pi
 
     def _metric_path_is_clear(
         self,
@@ -605,7 +647,10 @@ class NavigationPlanningService:
                 goal=goal,
                 start=start,
                 path=plan.path,
+                path_directions=plan.path_directions,
                 path_length_m=plan.path_length_m,
+                reverse_distance_m=plan.reverse_distance_m,
+                gear_changes=plan.gear_changes,
                 clearance_m=request.clearance_m,
                 allow_unknown=request.allow_unknown,
                 map_sequence=grid.header.sequence,
@@ -626,12 +671,12 @@ class NavigationPlanningService:
                 ),
                 reason=(
                     (
-                        "Route is collision-checked, smoothed, and validated for "
+                        "Route is collision-checked and validated for "
                         "the configured steering geometry"
                         + (
-                            " using curvature-aware recovery"
+                            " using direction-aware Hybrid A* recovery"
                             if plan.planning_method == "hybrid_astar"
-                            else ""
+                            else "; smoothing is applied"
                         )
                         + (
                             "; no motion command has been issued"

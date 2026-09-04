@@ -8,6 +8,7 @@ from unittest.mock import patch
 from app.schemas.autonomy import (
     LocalizationPose2D,
     MessageHeader,
+    NavigationDirection,
     NavigationGoalRequest,
     NavigationPoint,
     NavigationPlanState,
@@ -74,6 +75,12 @@ class OccupancyGridPlannerTests(unittest.TestCase):
         self.assertEqual(result.path[0].x_m, 1.25)
         self.assertEqual(result.path[-1].x_m, 8.25)
         self.assertAlmostEqual(result.path_length_m, 7.0)
+        self.assertEqual(
+            result.path_directions,
+            (NavigationDirection.FORWARD,),
+        )
+        self.assertEqual(result.reverse_distance_m, 0)
+        self.assertEqual(result.gear_changes, 0)
         self.assertGreater(result.expanded_nodes, 0)
 
     def test_routes_through_a_wall_opening(self) -> None:
@@ -265,6 +272,35 @@ class OccupancyGridPlannerTests(unittest.TestCase):
         self.assertGreater(result.path_length_m, 2.0)
         self.assertGreater(result.expanded_nodes, 0)
         self.assertEqual(result.path[-1], NavigationPoint(x_m=2.5, y_m=1.0))
+
+    def test_uses_reverse_hybrid_route_for_a_goal_directly_behind(self) -> None:
+        planner = OccupancyGridPlanner(
+            path_smoother=AckermannPathSmoother(
+                wheelbase_m=0.18,
+                max_abs_steering_angle_rad=math.radians(30),
+            )
+        )
+
+        result = planner.plan(
+            grid(30, 10, resolution_m=0.1),
+            start_x_m=1.5,
+            start_y_m=0.5,
+            start_yaw_rad=0,
+            goal=NavigationGoalRequest(
+                x_m=0.5,
+                y_m=0.5,
+                clearance_m=0,
+            ),
+        )
+
+        self.assertEqual(result.planning_method, "hybrid_astar")
+        self.assertEqual(
+            set(result.path_directions),
+            {NavigationDirection.REVERSE},
+        )
+        self.assertAlmostEqual(result.reverse_distance_m, 1.0)
+        self.assertEqual(result.gear_changes, 0)
+        self.assertTrue(result.geometry_validated)
 
 
 class NavigationPlanningServiceTests(unittest.IsolatedAsyncioTestCase):

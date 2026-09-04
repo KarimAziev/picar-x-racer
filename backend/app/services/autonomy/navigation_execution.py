@@ -10,6 +10,7 @@ from typing import Optional, Sequence, Tuple
 from app.schemas.autonomy import (
     ActionState,
     LocalizationPose2D,
+    NavigationDirection,
     NavigationExecutionRequest,
     NavigationExecutionStatus,
     NavigationPlanState,
@@ -31,10 +32,19 @@ class TrackingSolution:
     target: NavigationPoint
     target_waypoint_index: int
     steering_angle_rad: float
+    direction: NavigationDirection
+
+
+@dataclass(frozen=True)
+class DirectionalPathSection:
+    path: Tuple[NavigationPoint, ...]
+    direction: NavigationDirection
+    progress_offset_m: float
+    waypoint_offset: int
 
 
 class PurePursuitTracker:
-    """Project a pose onto a polyline and select a forward lookahead target."""
+    """Project a pose onto one constant-direction path section."""
 
     def __init__(
         self,
@@ -43,6 +53,7 @@ class PurePursuitTracker:
         wheelbase_m: float,
         max_abs_steering_angle_rad: float,
         lookahead_m: float,
+        direction: NavigationDirection = NavigationDirection.FORWARD,
     ) -> None:
         if len(path) < 2:
             raise ValueError("navigation path must contain at least two points")
@@ -52,6 +63,7 @@ class PurePursuitTracker:
         self.wheelbase_m = wheelbase_m
         self.max_abs_steering_angle_rad = max_abs_steering_angle_rad
         self.lookahead_m = lookahead_m
+        self.direction = direction
         cumulative = [0.0]
         for start, end in zip(self.path, self.path[1:]):
             length = math.hypot(end.x_m - start.x_m, end.y_m - start.y_m)
@@ -72,15 +84,14 @@ class PurePursuitTracker:
         delta_x = target.x_m - pose.x_m
         delta_y = target.y_m - pose.y_m
         target_distance = max(1e-6, math.hypot(delta_x, delta_y))
-        heading_error = self._normalize_angle(
-            math.atan2(delta_y, delta_x) - pose.yaw_rad
-        )
+        direction_sign = 1.0 if self.direction == NavigationDirection.FORWARD else -1.0
+        travel_yaw = pose.yaw_rad + (math.pi if direction_sign < 0 else 0.0)
+        heading_error = self._normalize_angle(math.atan2(delta_y, delta_x) - travel_yaw)
         # This project defines negative steering as left. The leading minus
         # converts conventional positive counter-clockwise heading error into
         # the actuator convention used by the Ackermann plant and hardware.
-        steering = -math.atan2(
-            2.0 * self.wheelbase_m * math.sin(heading_error),
-            target_distance,
+        steering = -direction_sign * math.atan2(
+            2.0 * self.wheelbase_m * math.sin(heading_error), target_distance
         )
         steering = max(
             -self.max_abs_steering_angle_rad,
@@ -93,6 +104,7 @@ class PurePursuitTracker:
             target=target,
             target_waypoint_index=target_index,
             steering_angle_rad=steering,
+            direction=self.direction,
         )
 
     def _project(self, x_m: float, y_m: float) -> Tuple[float, float]:
@@ -163,11 +175,17 @@ class NavigationExecutionService:
         max_cross_track_error_m: float = 0.35,
         max_start_position_error_m: float = 0.15,
         max_start_heading_error_rad: float = math.radians(15.0),
+        direction_change_stop_seconds: float = 0.25,
+        direction_change_speed_threshold_mps: float = 0.02,
     ) -> None:
         if max_start_position_error_m <= 0:
             raise ValueError("maximum start-position error must be positive")
         if not 0 < max_start_heading_error_rad < math.pi:
             raise ValueError("maximum start-heading error must be between zero and pi")
+        if direction_change_stop_seconds <= 0:
+            raise ValueError("direction-change stop duration must be positive")
+        if direction_change_speed_threshold_mps < 0:
+            raise ValueError("direction-change speed threshold must be non-negative")
         self._bus = bus
         self._motion = motion
         self._planning = planning
@@ -179,6 +197,10 @@ class NavigationExecutionService:
         self._max_cross_track_error_m = max_cross_track_error_m
         self._max_start_position_error_m = max_start_position_error_m
         self._max_start_heading_error_rad = max_start_heading_error_rad
+        self._direction_change_stop_ns = int(direction_change_stop_seconds * 1e9)
+        self._direction_change_speed_threshold_mps = (
+            direction_change_speed_threshold_mps
+        )
         self._task: Optional[asyncio.Task[None]] = None
         self._status = NavigationExecutionStatus.idle()
         self._sequence = 0
@@ -204,6 +226,11 @@ class NavigationExecutionService:
             raise ActionConflictError("a ready navigation route is required")
         if len(plan.path) < 2 or plan.map_sequence is None:
             raise ActionConflictError("the navigation route is incomplete")
+        directions = plan.path_directions or (
+            (NavigationDirection.FORWARD,) * (len(plan.path) - 1)
+        )
+        if len(directions) != len(plan.path) - 1:
+            raise ActionConflictError("the navigation route has invalid direction data")
         if not plan.geometry_validated:
             raise ActionConflictError(
                 "the navigation route was not validated for Ackermann geometry"
@@ -241,12 +268,7 @@ class NavigationExecutionService:
                 "review a new route"
             )
 
-        tracker = PurePursuitTracker(
-            plan.path,
-            wheelbase_m=self._wheelbase_m,
-            max_abs_steering_angle_rad=self._max_abs_steering_angle_rad,
-            lookahead_m=request.lookahead_m,
-        )
+        sections = self._directional_sections(plan.path, directions)
         action_id = uuid.uuid4().hex
         owner = f"navigation:{action_id}"
         if not self._motion.claim_autonomy(owner):
@@ -272,10 +294,12 @@ class NavigationExecutionService:
             path_length_m=plan.path_length_m,
             remaining_m=plan.path_length_m,
             max_speed_mps=request.max_speed_mps,
-            reason="Following the reviewed route",
+            motion_direction=sections[0].direction,
+            gear_changes_total=max(0, len(sections) - 1),
+            reason=self._following_reason(sections[0].direction),
         )
         self._task = asyncio.create_task(
-            self._run(request, tracker, timeout_seconds, plan.frame_id),
+            self._run(request, sections, timeout_seconds, plan.frame_id),
             name=f"navigation-{action_id}",
         )
         return self._status
@@ -345,12 +369,15 @@ class NavigationExecutionService:
     async def _run(
         self,
         request: NavigationExecutionRequest,
-        tracker: PurePursuitTracker,
+        sections: Tuple[DirectionalPathSection, ...],
         timeout_seconds: float,
         frame_id: str,
     ) -> None:
         active_elapsed_ns = 0
         previous_loop_ns = time.monotonic_ns()
+        section_index = 0
+        tracker = self._tracker_for(sections[section_index], request.lookahead_m)
+        direction_change_started_ns: Optional[int] = None
         try:
             while True:
                 now = time.monotonic_ns()
@@ -390,6 +417,7 @@ class NavigationExecutionService:
                 if pose is None:
                     await self._finish(ActionState.FAILED, "localization became stale")
                     return
+                section = sections[section_index]
                 solution = tracker.update(pose)
                 goal = self._status.goal
                 if goal is None:
@@ -397,17 +425,33 @@ class NavigationExecutionService:
                         ActionState.FAILED, "navigation goal disappeared"
                     )
                     return
-                distance_to_goal = math.hypot(goal.x_m - pose.x_m, goal.y_m - pose.y_m)
+                progress_m = min(
+                    self._status.path_length_m,
+                    section.progress_offset_m + solution.progress_m,
+                )
+                remaining_m = max(0.0, self._status.path_length_m - progress_m)
+                section_goal = section.path[-1]
+                distance_to_section_goal = math.hypot(
+                    section_goal.x_m - pose.x_m,
+                    section_goal.y_m - pose.y_m,
+                )
+                final_section = section_index == len(sections) - 1
                 self._status = self._status.model_copy(
                     update={
                         "current_pose": NavigationPoint(x_m=pose.x_m, y_m=pose.y_m),
-                        "progress_m": solution.progress_m,
-                        "remaining_m": solution.remaining_m,
-                        "target_waypoint_index": solution.target_waypoint_index,
+                        "progress_m": progress_m,
+                        "remaining_m": remaining_m,
+                        "target_waypoint_index": (
+                            section.waypoint_offset + solution.target_waypoint_index
+                        ),
                         "cross_track_error_m": solution.cross_track_error_m,
+                        "motion_direction": section.direction,
                     }
                 )
-                if distance_to_goal <= request.goal_tolerance_m:
+                if (
+                    final_section
+                    and distance_to_section_goal <= request.goal_tolerance_m
+                ):
                     await self._finish(ActionState.SUCCEEDED, "navigation goal reached")
                     return
                 if solution.cross_track_error_m > self._max_cross_track_error_m:
@@ -421,35 +465,77 @@ class NavigationExecutionService:
                     result is not None
                     and result.selected_intent is not None
                     and result.selected_intent.command_id == self._status.action_id
+                    and abs(result.selected_intent.linear_speed_mps) > 1e-9
                     and result.command.is_stop
                     and result.command.reason
                 ):
                     await self._finish(ActionState.BLOCKED, result.command.reason)
                     return
+
+                if not final_section and (
+                    distance_to_section_goal <= request.goal_tolerance_m
+                ):
+                    if direction_change_started_ns is None:
+                        direction_change_started_ns = now
+                    rejection = self._submit_motion(
+                        speed_mps=0.0,
+                        steering_angle_rad=0.0,
+                        now_ns=now,
+                    )
+                    if rejection is not None:
+                        await self._finish(ActionState.FAILED, rejection)
+                        return
+                    next_direction = sections[section_index + 1].direction
+                    self._status = self._status.model_copy(
+                        update={
+                            "commanded_speed_mps": 0.0,
+                            "steering_angle_deg": 0.0,
+                            "reason": (
+                                "Stopped before changing direction to "
+                                f"{next_direction.value}"
+                            ),
+                        }
+                    )
+                    stopped_long_enough = (
+                        now - direction_change_started_ns
+                        >= self._direction_change_stop_ns
+                    )
+                    measured_stopped = (
+                        abs(pose.linear_speed_mps)
+                        <= self._direction_change_speed_threshold_mps
+                    )
+                    if stopped_long_enough and measured_stopped:
+                        section_index += 1
+                        section = sections[section_index]
+                        tracker = self._tracker_for(section, request.lookahead_m)
+                        direction_change_started_ns = None
+                        self._status = self._status.model_copy(
+                            update={
+                                "motion_direction": section.direction,
+                                "gear_changes_completed": section_index,
+                                "reason": self._following_reason(section.direction),
+                            }
+                        )
+                    await asyncio.sleep(self._update_period_seconds)
+                    continue
+
                 speed = self._commanded_speed(request, solution)
-                self._sequence += 1
-                intent = MotionIntent(
-                    command_id=self._status.action_id or "navigation",
-                    source=MotionSource.AUTONOMY,
-                    sequence=self._sequence,
-                    mode_generation=self._motion.mode_generation,
-                    linear_speed_mps=speed,
+                rejection = self._submit_motion(
+                    speed_mps=speed,
                     steering_angle_rad=solution.steering_angle_rad,
-                    created_monotonic_ns=now,
-                    expires_monotonic_ns=now + self._intent_timeout_ns,
+                    now_ns=now,
                 )
-                submission = self._motion.submit(intent)
-                if not submission.accepted:
+                if rejection is not None:
                     await self._finish(
                         ActionState.FAILED,
-                        f"motion intent rejected: {submission.rejection_reason}",
+                        rejection,
                     )
                     return
                 self._status = self._status.model_copy(
                     update={
                         "commanded_speed_mps": speed,
                         "steering_angle_deg": math.degrees(solution.steering_angle_rad),
-                        "reason": "Following the reviewed route",
+                        "reason": self._following_reason(section.direction),
                     }
                 )
                 await asyncio.sleep(self._update_period_seconds)
@@ -478,6 +564,76 @@ class NavigationExecutionService:
         age = time.monotonic_ns() - pose.header.timestamp_monotonic_ns
         return pose if 0 <= age <= self._localization_timeout_ns else None
 
+    @staticmethod
+    def _directional_sections(
+        path: Sequence[NavigationPoint],
+        directions: Sequence[NavigationDirection],
+    ) -> Tuple[DirectionalPathSection, ...]:
+        if len(path) < 2 or len(directions) != len(path) - 1:
+            raise ValueError("path directions must describe every route segment")
+        segment_lengths = tuple(
+            math.hypot(end.x_m - start.x_m, end.y_m - start.y_m)
+            for start, end in zip(path, path[1:])
+        )
+        sections = []
+        first_edge = 0
+        progress_offset_m = 0.0
+        for edge_index in range(1, len(directions) + 1):
+            if (
+                edge_index < len(directions)
+                and directions[edge_index] == directions[first_edge]
+            ):
+                continue
+            sections.append(
+                DirectionalPathSection(
+                    path=tuple(path[first_edge : edge_index + 1]),
+                    direction=directions[first_edge],
+                    progress_offset_m=progress_offset_m,
+                    waypoint_offset=first_edge,
+                )
+            )
+            progress_offset_m += sum(segment_lengths[first_edge:edge_index])
+            first_edge = edge_index
+        return tuple(sections)
+
+    def _tracker_for(
+        self,
+        section: DirectionalPathSection,
+        lookahead_m: float,
+    ) -> PurePursuitTracker:
+        return PurePursuitTracker(
+            section.path,
+            wheelbase_m=self._wheelbase_m,
+            max_abs_steering_angle_rad=self._max_abs_steering_angle_rad,
+            lookahead_m=lookahead_m,
+            direction=section.direction,
+        )
+
+    def _submit_motion(
+        self,
+        *,
+        speed_mps: float,
+        steering_angle_rad: float,
+        now_ns: int,
+    ) -> Optional[str]:
+        self._sequence += 1
+        intent = MotionIntent(
+            command_id=self._status.action_id or "navigation",
+            source=MotionSource.AUTONOMY,
+            sequence=self._sequence,
+            mode_generation=self._motion.mode_generation,
+            linear_speed_mps=speed_mps,
+            steering_angle_rad=steering_angle_rad,
+            created_monotonic_ns=now_ns,
+            expires_monotonic_ns=now_ns + self._intent_timeout_ns,
+        )
+        submission = self._motion.submit(intent)
+        return (
+            None
+            if submission.accepted
+            else f"motion intent rejected: {submission.rejection_reason}"
+        )
+
     def _commanded_speed(
         self,
         request: NavigationExecutionRequest,
@@ -489,7 +645,16 @@ class NavigationExecutionService:
             abs(solution.steering_angle_rad) / self._max_abs_steering_angle_rad,
         )
         curvature_scale = max(0.35, 1.0 - 0.65 * steering_fraction)
-        return min(request.max_speed_mps, stopping_speed * curvature_scale)
+        magnitude = min(request.max_speed_mps, stopping_speed * curvature_scale)
+        return (
+            magnitude
+            if solution.direction == NavigationDirection.FORWARD
+            else -magnitude
+        )
+
+    @staticmethod
+    def _following_reason(direction: NavigationDirection) -> str:
+        return f"Following the reviewed route in {direction.value}"
 
     @staticmethod
     def _normalize_angle(angle: float) -> float:

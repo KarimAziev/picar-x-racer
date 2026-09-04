@@ -111,7 +111,7 @@
             <div>
               <h2 class="text-sm font-semibold">Localization runtime</h2>
               <p class="text-[0.68rem] text-surface-500 dark:text-surface-400">
-                Acquisition, odometry, fusion, and forward safety
+                Acquisition, odometry, fusion, and directional safety
               </p>
             </div>
             <Button

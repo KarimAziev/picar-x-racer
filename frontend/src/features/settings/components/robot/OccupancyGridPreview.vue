@@ -71,7 +71,11 @@
       >
       <span v-if="store.navigationPlan?.state === 'ready'"
         ><i class="mr-1 inline-block h-0.5 w-3 bg-amber-300" />planned
-        route</span
+        forward</span
+      >
+      <span v-if="(store.navigationPlan?.reverse_distance_m ?? 0) > 0"
+        ><i class="mr-1 inline-block h-0.5 w-3 bg-fuchsia-400" />planned
+        reverse</span
       >
     </div>
   </div>
@@ -287,22 +291,42 @@ const drawNavigationPlanOverlay = (
 ) => {
   const plan = store.navigationPlan;
   if (!plan || plan.frame_id !== grid.header.frame_id) return;
-  const path = plan.path
-    .map((point) =>
-      canvasPoint(grid, { x: point.x_m, y: point.y_m }, width, height),
-    )
-    .filter((point): point is Point2D => point !== null);
-  if (path.length > 1) {
+  if (plan.path.length > 1) {
     context.save();
-    context.strokeStyle = "#fde047";
     context.lineWidth = 3;
     context.globalAlpha = 0.95;
     context.lineJoin = "round";
     context.lineCap = "round";
-    context.beginPath();
-    context.moveTo(path[0].x, path[0].y);
-    for (const point of path.slice(1)) context.lineTo(point.x, point.y);
-    context.stroke();
+    for (let index = 0; index < plan.path.length - 1; index += 1) {
+      const start = canvasPoint(
+        grid,
+        { x: plan.path[index].x_m, y: plan.path[index].y_m },
+        width,
+        height,
+      );
+      const end = canvasPoint(
+        grid,
+        { x: plan.path[index + 1].x_m, y: plan.path[index + 1].y_m },
+        width,
+        height,
+      );
+      if (!start || !end) continue;
+      const direction = plan.path_directions[index] ?? "forward";
+      context.strokeStyle = direction === "reverse" ? "#e879f9" : "#fde047";
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.lineTo(end.x, end.y);
+      context.stroke();
+      if (
+        index > 0 &&
+        direction !== (plan.path_directions[index - 1] ?? "forward")
+      ) {
+        context.fillStyle = "#f8fafc";
+        context.beginPath();
+        context.arc(start.x, start.y, 4, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
     context.restore();
   }
 

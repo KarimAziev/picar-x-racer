@@ -27,6 +27,7 @@ export type {
   MappingPoseSource,
   MappingSessionState,
   MappingSessionStatus,
+  NavigationDirection,
   NavigationPlanState,
   NavigationPlanStatus,
   NavigationExecutionStatus,

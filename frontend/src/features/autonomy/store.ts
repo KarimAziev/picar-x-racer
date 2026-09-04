@@ -130,9 +130,13 @@ export interface ScanMatchingRuntimeStatus {
 export interface SafetyTelemetry {
   header: MessageHeader;
   forward_blocked: boolean;
+  reverse_blocked: boolean;
   max_forward_speed_mps: number;
+  max_reverse_speed_mps: number;
   nearest_obstacle_m: number | null;
+  nearest_rear_obstacle_m: number | null;
   considered_points: number;
+  considered_rear_points: number;
   reason: string | null;
 }
 
@@ -259,6 +263,7 @@ export interface RelativeMotionStatus {
 }
 
 export type NavigationPlanState = "idle" | "ready" | "rejected" | "failed";
+export type NavigationDirection = "forward" | "reverse";
 
 export interface NavigationPoint {
   x_m: number;
@@ -272,7 +277,10 @@ export interface NavigationPlanStatus {
   goal: NavigationPoint | null;
   start: NavigationPoint | null;
   path: NavigationPoint[];
+  path_directions: NavigationDirection[];
   path_length_m: number;
+  reverse_distance_m: number;
+  gear_changes: number;
   clearance_m: number;
   allow_unknown: boolean;
   map_sequence: number | null;
@@ -303,6 +311,9 @@ export interface NavigationExecutionStatus {
   target_waypoint_index: number | null;
   max_speed_mps: number | null;
   commanded_speed_mps: number;
+  motion_direction: NavigationDirection | null;
+  gear_changes_completed: number;
+  gear_changes_total: number;
   steering_angle_deg: number;
   cross_track_error_m: number;
   reason: string | null;

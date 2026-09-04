@@ -2,7 +2,7 @@ import math
 import unittest
 from typing import Sequence
 
-from app.schemas.autonomy import NavigationPoint
+from app.schemas.autonomy import NavigationDirection, NavigationPoint
 from app.services.autonomy import (
     HybridAStarPlanner,
     HybridPathNotFound,
@@ -40,10 +40,11 @@ class HybridAStarPlannerTests(unittest.TestCase):
         self.assertEqual(result.path[0], NavigationPoint(x_m=0, y_m=0))
         self.assertEqual(result.path[-1], NavigationPoint(x_m=2, y_m=0))
         self.assertGreater(result.expanded_nodes, 1)
+        self.assertEqual(len(result.path_directions), len(result.path) - 1)
         self.assertTrue(avoids_obstacle(result.path))
         self.assertTrue(any(abs(point.y_m) > 0.32 for point in result.path))
 
-    def test_can_reach_a_goal_behind_with_forward_only_turns(self) -> None:
+    def test_reverses_directly_to_a_goal_behind(self) -> None:
         result = self.planner.plan(
             start=HybridPose(x_m=0, y_m=0, yaw_rad=0),
             goal=NavigationPoint(x_m=-1, y_m=0),
@@ -54,7 +55,13 @@ class HybridAStarPlannerTests(unittest.TestCase):
         )
 
         self.assertEqual(result.path[-1], NavigationPoint(x_m=-1, y_m=0))
-        self.assertTrue(any(abs(point.y_m) > 0.25 for point in result.path))
+        self.assertTrue(result.path_directions)
+        self.assertEqual(
+            set(result.path_directions),
+            {NavigationDirection.REVERSE},
+        )
+        self.assertAlmostEqual(result.reverse_distance_m, 1.0)
+        self.assertEqual(result.gear_changes, 0)
 
     def test_honors_the_interactive_expansion_bound(self) -> None:
         planner = HybridAStarPlanner(

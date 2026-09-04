@@ -215,7 +215,7 @@ Pause or finish mapping session
 During the session:
 
 - manual controls submit short-lived `MANUAL` intents;
-- LiDAR safety may limit or stop forward speed;
+- LiDAR safety may independently limit or stop forward and reverse speed;
 - encoder distance and steering state update odometry;
 - synchronized LiDAR scans are inserted at the fused pose when localization is
   available, with raw odometry retained as an explicit fallback;
@@ -231,6 +231,13 @@ operator pauses or finishes mapping, clicks an observed free point, reviews the
 route preview, and explicitly confirms navigation. Planning and execution are
 rejected while mapping is active. A live LiDAR safety constraint continues to
 operate even though scan insertion is stopped.
+
+Reviewed routes annotate every segment as forward or reverse. Yellow map
+segments are forward and magenta segments are reverse; a white cusp marks a
+direction change. Execution comes to a commanded stop at every cusp, waits for
+the fused speed estimate to confirm that the chassis is stationary, and only
+then changes direction. Reverse motion uses the same localization, map snapshot,
+motion-arbiter, watchdog, and cancellation boundaries as forward motion.
 
 ### Autonomous mapping
 
@@ -550,8 +557,9 @@ hardware continue to receive the same signed angle as the default controller.
 - Emergency stop is latched and wins over every intent.
 - Fault clear and emergency-stop clear return to `DISARMED`.
 - A stale required safety stream fails safe.
-- Reverse behavior receives separate consideration; a front LiDAR must not be
-  treated as complete reverse protection.
+- LiDAR safety evaluates both front and rear sectors from the 360-degree scan,
+  limits the threatened direction independently, and blocks both directions
+  when the scan is stale. Physical mounting occlusion still requires validation.
 - Settings and destructive map operations cannot accidentally act as motion
   commands.
 - Starting mapping never starts motion.
@@ -619,7 +627,7 @@ Acceptance:
 Acceptance:
 
 - distance and arc commands are plausible with mocks and measured hardware;
-- LiDAR safety limits forward movement;
+- LiDAR safety limits movement toward front or rear obstacles;
 - cancellation stops promptly;
 - manual takeover invalidates the autonomy command generation.
 
@@ -648,13 +656,17 @@ Implemented:
 - one-goal planning and pure-pursuit path following in `odom`;
 - collision-preserving path smoothing and Ackermann curvature validation from
   the configured wheelbase and steering limits;
-- bounded forward-only Hybrid A* recovery when the shortest grid path cannot
-  be smoothed into a drivable route;
+- bounded direction-aware Hybrid A* recovery when the shortest grid path cannot
+  be smoothed into a drivable route, with a reverse-distance penalty and stopped
+  forward/reverse transitions;
 - path, goal, route-geometry, and execution-progress UI;
 - explicit review/start, pause/resume/cancel, map-snapshot invalidation,
   localization freshness and reviewed-start-pose checks, persistent command
   errors, and safety/arbiter blocked states;
-- separate raw and fused trajectory diagnostics on the occupancy-map canvas.
+- separate raw and fused trajectory diagnostics on the occupancy-map canvas;
+- direction-colored route review, current execution direction, and gear-change
+  progress in the operator UI;
+- reverse-aware pure pursuit and symmetric front/rear LiDAR safety constraints.
 
 ### Slice 7: Persistent localization and exploration
 
@@ -722,7 +734,8 @@ The first operator-workflow milestone is complete when:
   cell updates.
 - Whether the first fixed grid becomes rolling before persistent SLAM is added.
 - Whether persistent localization is implemented natively or through ROS 2.
-- How reverse safety is sensed on the physical RC chassis.
+- Whether physical chassis or LiDAR mounting occlusion requires distinct rear
+  safety distances or sector widths.
 - Which map and mission data should be recorded for replay.
 - Whether entering all settings disarms immediately or only opening robot
   hardware and calibration sections does so.

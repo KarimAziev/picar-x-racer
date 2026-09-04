@@ -3,7 +3,8 @@
 from enum import Enum
 from typing import Literal, Optional, Tuple
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Self
 
 
 class NavigationPlanState(str, Enum):
@@ -11,6 +12,11 @@ class NavigationPlanState(str, Enum):
     READY = "ready"
     REJECTED = "rejected"
     FAILED = "failed"
+
+
+class NavigationDirection(str, Enum):
+    FORWARD = "forward"
+    REVERSE = "reverse"
 
 
 class NavigationPoint(BaseModel):
@@ -38,7 +44,10 @@ class NavigationPlanStatus(BaseModel):
     goal: Optional[NavigationPoint] = None
     start: Optional[NavigationPoint] = None
     path: Tuple[NavigationPoint, ...] = ()
+    path_directions: Tuple[NavigationDirection, ...] = ()
     path_length_m: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)
+    reverse_distance_m: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)
+    gear_changes: int = Field(default=0, ge=0)
     clearance_m: float = Field(default=0.20, ge=0.0, allow_inf_nan=False)
     allow_unknown: bool = False
     map_sequence: Optional[int] = Field(default=None, ge=0)
@@ -63,6 +72,16 @@ class NavigationPlanStatus(BaseModel):
     )
     reason: Optional[str] = None
 
+    @model_validator(mode="after")
+    def validate_route_metadata(self) -> Self:
+        if self.path_directions and len(self.path_directions) != len(self.path) - 1:
+            raise ValueError("path_directions must describe every path segment")
+        if self.reverse_distance_m > self.path_length_m + 1e-9:
+            raise ValueError("reverse distance cannot exceed total path length")
+        if self.gear_changes > max(0, len(self.path) - 2):
+            raise ValueError("gear changes cannot exceed path junctions")
+        return self
+
     @classmethod
     def idle(cls) -> "NavigationPlanStatus":
         return cls(
@@ -72,6 +91,7 @@ class NavigationPlanStatus(BaseModel):
 
 
 __all__ = [
+    "NavigationDirection",
     "NavigationGoalRequest",
     "NavigationPlanState",
     "NavigationPlanStatus",
