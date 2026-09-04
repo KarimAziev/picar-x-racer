@@ -116,67 +116,69 @@
         This route is tied to map snapshot #{{ plan.map_sequence }}. Any map
         update stops execution and requires another review.
       </p>
-
-      <div class="mt-3 flex flex-wrap gap-2">
-        <label v-if="canOfferStart" class="w-32 text-xs"
-          >Maximum speed<InputNumber
-            v-model="maxSpeed"
-            class="mt-1"
-            suffix=" m/s"
-            :min="0.04"
-            :max="0.5"
-            :step="0.05"
-            :max-fraction-digits="2"
-            show-buttons
-            fluid
-        /></label>
-        <Button
-          v-if="canOfferStart"
-          label="Review and start"
-          icon="pi pi-compass"
-          severity="danger"
-          size="small"
-          class="self-end"
-          :disabled="!canStart"
-          :loading="store.navigationExecutionLoading"
-          @click="confirmStart"
-        />
-        <Button
-          v-if="execution?.state === 'running'"
-          label="Pause"
-          icon="pi pi-pause"
-          severity="warn"
-          size="small"
-          :loading="store.navigationExecutionLoading"
-          @click="store.runNavigationAction('pause')"
-        />
-        <Button
-          v-if="execution?.state === 'paused'"
-          label="Resume"
-          icon="pi pi-play"
-          size="small"
-          :loading="store.navigationExecutionLoading"
-          @click="store.runNavigationAction('resume')"
-        />
-        <Button
-          v-if="navigationActive"
-          label="Cancel navigation"
-          icon="pi pi-stop"
-          severity="danger"
-          size="small"
-          :loading="store.navigationExecutionLoading"
-          @click="store.runNavigationAction('cancel')"
-        />
-        <Button
-          v-if="!navigationActive"
-          label="Clear preview"
-          icon="pi pi-times"
-          severity="secondary"
-          size="small"
-          outlined
-          :loading="store.navigationPlanLoading"
-          @click="store.clearNavigationPlan()"
-        />
+      <div class="flex flex-col gap-2 mt-2">
+        <div class="flex flex-wrap gap-2">
+          <label v-if="canOfferStart" class="w-32 text-xs"
+            >Maximum speed<InputNumber
+              v-model="maxSpeed"
+              class="mt-1"
+              suffix=" m/s"
+              :min="0.04"
+              :max="0.5"
+              :step="0.05"
+              :max-fraction-digits="2"
+              show-buttons
+              fluid
+          /></label>
+        </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <Button
+            v-if="canOfferStart"
+            label="Review and start"
+            icon="pi pi-compass"
+            severity="danger"
+            size="small"
+            class="self-end"
+            :disabled="!canStart"
+            :loading="store.navigationExecutionLoading"
+            @click="confirmStart"
+          />
+          <Button
+            v-if="execution?.state === 'running'"
+            label="Pause"
+            icon="pi pi-pause"
+            severity="warn"
+            size="small"
+            :loading="store.navigationExecutionLoading"
+            @click="store.runNavigationAction('pause')"
+          />
+          <Button
+            v-if="execution?.state === 'paused'"
+            label="Resume"
+            icon="pi pi-play"
+            size="small"
+            :loading="store.navigationExecutionLoading"
+            @click="store.runNavigationAction('resume')"
+          />
+          <Button
+            v-if="navigationActive"
+            label="Cancel navigation"
+            icon="pi pi-stop"
+            severity="danger"
+            size="small"
+            :loading="store.navigationExecutionLoading"
+            @click="store.runNavigationAction('cancel')"
+          />
+          <Button
+            v-if="!navigationActive"
+            label="Clear preview"
+            icon="pi pi-times"
+            severity="secondary"
+            size="small"
+            :loading="store.navigationPlanLoading"
+            @click="store.clearNavigationPlan()"
+          />
+        </div>
       </div>
 
       <div v-if="execution?.action_id" class="mt-3 text-xs">
