@@ -31,4 +31,7 @@ export const pt = {
       class: "cascade-select",
     },
   },
+  confirmpopup: {
+    content: "w-lg",
+  },
 };
