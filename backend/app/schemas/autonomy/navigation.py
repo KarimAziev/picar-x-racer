@@ -44,6 +44,7 @@ class NavigationPlanStatus(BaseModel):
     map_sequence: Optional[int] = Field(default=None, ge=0)
     pose_source: Optional[Literal["localization", "odometry"]] = None
     expanded_nodes: int = Field(default=0, ge=0)
+    planning_method: Literal["grid_astar", "hybrid_astar"] = "grid_astar"
     geometry_validated: bool = False
     smoothed: bool = False
     raw_waypoint_count: int = Field(default=0, ge=0)

@@ -70,6 +70,16 @@
             {{ plan.geometry_validated ? "Validated" : "Not configured" }}
           </dd>
         </div>
+        <div v-if="plan.state === 'ready'">
+          <dt class="text-surface-500">Planner</dt>
+          <dd>
+            {{
+              plan.planning_method === "hybrid_astar"
+                ? "Hybrid A* recovery"
+                : "Grid A* + smoothing"
+            }}
+          </dd>
+        </div>
         <div v-if="plan.minimum_turning_radius_m !== null">
           <dt class="text-surface-500">Minimum turn radius</dt>
           <dd>{{ plan.minimum_turning_radius_m.toFixed(2) }} m</dd>

@@ -14,12 +14,17 @@ from app.schemas.autonomy import (
     NavigationPoint,
     OccupancyGrid,
 )
-from app.services.autonomy.topic_bus import TopicBus
-from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, ODOMETRY
+from app.services.autonomy.hybrid_astar import (
+    HybridAStarPlanner,
+    HybridPathNotFound,
+    HybridPose,
+)
 from app.services.autonomy.path_smoothing import (
     AckermannPathSmoother,
     PathGeometryRejected,
 )
+from app.services.autonomy.topic_bus import TopicBus
+from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, ODOMETRY
 
 
 GridCell = Tuple[int, int]
@@ -43,6 +48,7 @@ class GridPlan:
     curvature_limit_per_m: Optional[float] = None
     minimum_turning_radius_m: Optional[float] = None
     initial_heading_error_rad: Optional[float] = None
+    planning_method: Literal["grid_astar", "hybrid_astar"] = "grid_astar"
 
 
 class OccupancyGridPlanner:
@@ -62,6 +68,13 @@ class OccupancyGridPlanner:
         self.occupied_threshold = occupied_threshold
         self.max_cells = max_cells
         self.path_smoother = path_smoother
+        self.hybrid_planner = (
+            HybridAStarPlanner(
+                curvature_limit_per_m=path_smoother.curvature_limit_per_m
+            )
+            if path_smoother is not None
+            else None
+        )
 
     def plan(
         self,
@@ -127,21 +140,50 @@ class OccupancyGridPlanner:
         curvature_limit_per_m = None
         minimum_turning_radius_m = None
         initial_heading_error_rad = None
+        planning_method: Literal["grid_astar", "hybrid_astar"] = "grid_astar"
         if self.path_smoother is not None:
             if start_yaw_rad is None:
                 raise NavigationPlanRejected(
                     "current pose heading is required for curvature validation"
                 )
+            clearance_check = lambda candidate: self._metric_path_is_clear(
+                grid, blocked, candidate
+            )
             try:
                 geometry = self.path_smoother.smooth(
                     raw_path,
                     start_yaw_rad=start_yaw_rad,
-                    is_clear=lambda candidate: self._metric_path_is_clear(
-                        grid, blocked, candidate
-                    ),
+                    is_clear=clearance_check,
                 )
-            except PathGeometryRejected as error:
-                raise NavigationPlanRejected(str(error)) from error
+            except PathGeometryRejected as smoothing_error:
+                if self.hybrid_planner is None:
+                    raise NavigationPlanRejected(
+                        str(smoothing_error)
+                    ) from smoothing_error
+                try:
+                    recovery = self.hybrid_planner.plan(
+                        start=HybridPose(
+                            x_m=start_x_m,
+                            y_m=start_y_m,
+                            yaw_rad=start_yaw_rad,
+                        ),
+                        goal=NavigationPoint(x_m=goal.x_m, y_m=goal.y_m),
+                        grid_resolution_m=grid.resolution_m,
+                        is_clear=clearance_check,
+                        guide_path=raw_path,
+                    )
+                    geometry = self.path_smoother.smooth(
+                        recovery.path,
+                        start_yaw_rad=start_yaw_rad,
+                        is_clear=clearance_check,
+                    )
+                except (HybridPathNotFound, PathGeometryRejected) as recovery_error:
+                    raise NavigationPlanRejected(
+                        "the grid route is not drivable and curvature-aware "
+                        f"recovery failed: {recovery_error}"
+                    ) from recovery_error
+                expanded_nodes += recovery.expanded_nodes
+                planning_method = "hybrid_astar"
             path = geometry.path
             geometry_validated = True
             smoothed = geometry.smoothed
@@ -163,6 +205,7 @@ class OccupancyGridPlanner:
             curvature_limit_per_m=curvature_limit_per_m,
             minimum_turning_radius_m=minimum_turning_radius_m,
             initial_heading_error_rad=initial_heading_error_rad,
+            planning_method=planning_method,
         )
 
     def _metric_path_is_clear(
@@ -536,6 +579,7 @@ class NavigationPlanningService:
                 map_sequence=grid.header.sequence,
                 pose_source=pose_source,
                 expanded_nodes=plan.expanded_nodes,
+                planning_method=plan.planning_method,
                 geometry_validated=plan.geometry_validated,
                 smoothed=plan.smoothed,
                 raw_waypoint_count=plan.raw_waypoint_count,
@@ -549,8 +593,13 @@ class NavigationPlanningService:
                 ),
                 reason=(
                     "Route is collision-checked, smoothed, and validated for "
-                    "the configured steering geometry; no motion command has "
-                    "been issued"
+                    "the configured steering geometry"
+                    + (
+                        " using curvature-aware recovery"
+                        if plan.planning_method == "hybrid_astar"
+                        else ""
+                    )
+                    + "; no motion command has been issued"
                     if plan.geometry_validated
                     else "Route preview is ready; Ackermann geometry is not configured"
                 ),

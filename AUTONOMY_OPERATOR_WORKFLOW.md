@@ -641,6 +641,8 @@ Implemented:
 - one-goal planning and pure-pursuit path following in `odom`;
 - collision-preserving path smoothing and Ackermann curvature validation from
   the configured wheelbase and steering limits;
+- bounded forward-only Hybrid A* recovery when the shortest grid path cannot
+  be smoothed into a drivable route;
 - path, goal, route-geometry, and execution-progress UI;
 - explicit review/start, pause/resume/cancel, map-snapshot invalidation,
   localization freshness checks, and safety/arbiter blocked states.

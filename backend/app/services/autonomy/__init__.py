@@ -53,6 +53,12 @@ from app.services.autonomy.local_mapping import (
     LocalOccupancyGridConfig,
     StaticTransform2D,
 )
+from app.services.autonomy.hybrid_astar import (
+    HybridAStarPlanner,
+    HybridPath,
+    HybridPathNotFound,
+    HybridPose,
+)
 from app.services.autonomy.navigation_planning import (
     GridPlan,
     NavigationPlanRejected,
@@ -145,6 +151,10 @@ __all__ = [
     "GridPlan",
     "HardwareController",
     "HardwareMotionCommand",
+    "HybridAStarPlanner",
+    "HybridPath",
+    "HybridPathNotFound",
+    "HybridPose",
     "IMUPublisherService",
     "IntentRejectionReason",
     "IntentSubmissionResult",

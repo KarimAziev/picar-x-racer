@@ -278,6 +278,7 @@ export interface NavigationPlanStatus {
   map_sequence: number | null;
   pose_source: "localization" | "odometry" | null;
   expanded_nodes: number;
+  planning_method: "grid_astar" | "hybrid_astar";
   geometry_validated: boolean;
   smoothed: boolean;
   raw_waypoint_count: number;

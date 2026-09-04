@@ -5,6 +5,7 @@ from app.schemas.autonomy import (
     LocalizationPose2D,
     MessageHeader,
     NavigationGoalRequest,
+    NavigationPoint,
     NavigationPlanState,
     OccupancyGrid,
 )
@@ -229,6 +230,36 @@ class OccupancyGridPlannerTests(unittest.TestCase):
             result.max_curvature_per_m or math.inf,
             (result.curvature_limit_per_m or 0) * 1.05,
         )
+
+    def test_recovers_when_grid_route_cannot_be_smoothed_around_obstacle(self) -> None:
+        values = [0] * (40 * 30)
+        for cell_y in range(8, 13):
+            for cell_x in range(18, 23):
+                values[cell_y * 40 + cell_x] = 100
+        planner = OccupancyGridPlanner(
+            path_smoother=AckermannPathSmoother(
+                wheelbase_m=0.18,
+                max_abs_steering_angle_rad=math.radians(30),
+            )
+        )
+
+        result = planner.plan(
+            grid(40, 30, data=values, resolution_m=0.1),
+            start_x_m=0.5,
+            start_y_m=1.0,
+            start_yaw_rad=0,
+            goal=NavigationGoalRequest(
+                x_m=2.5,
+                y_m=1.0,
+                clearance_m=0.1,
+            ),
+        )
+
+        self.assertEqual(result.planning_method, "hybrid_astar")
+        self.assertTrue(result.geometry_validated)
+        self.assertGreater(result.path_length_m, 2.0)
+        self.assertGreater(result.expanded_nodes, 0)
+        self.assertEqual(result.path[-1], NavigationPoint(x_m=2.5, y_m=1.0))
 
 
 class NavigationPlanningServiceTests(unittest.IsolatedAsyncioTestCase):
