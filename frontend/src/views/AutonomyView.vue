@@ -201,12 +201,12 @@ const simulationEnabled = computed(
 const workflowTitle = computed(() =>
   simulationEnabled.value
     ? "Coherent virtual driving"
-    : "Manual mapping prototype",
+    : "Manual mapping and local navigation",
 );
 const workflowDescription = computed(() =>
   simulationEnabled.value
     ? "Arm manual control, start a bounded relative-motion action, or execute a reviewed map route. The same arbiter drives a virtual Ackermann vehicle while physical motors remain isolated."
-    : "Drive manually to create new observations. Mapping and telemetry do not move the vehicle, and no map-based navigation controller is installed yet.",
+    : "Drive manually to create observations, finish the map snapshot, then select and explicitly start a geometry-validated local route. Mapping and telemetry never move the vehicle by themselves.",
 );
 const workflowCaveat = computed(() =>
   simulationEnabled.value

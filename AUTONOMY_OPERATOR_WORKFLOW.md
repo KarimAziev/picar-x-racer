@@ -43,6 +43,8 @@ The application currently has:
   and safety status in the operator workspace;
 - disarmed motion-control startup with explicit manual arming;
 - cancelable, odometry-bounded straight-distance and fixed steering-arc actions;
+- click-to-goal local route planning with collision-preserving smoothing,
+  Ackermann curvature validation, and cancelable pure-pursuit execution;
 - a hot-reconfigurable coherent Ackermann simulation environment with physical
   drive isolation, synchronized steering/encoder/IMU topics, runtime status,
   synchronized odometry/map reset, and pose reset;
@@ -51,13 +53,14 @@ The application currently has:
 
 Important current limitations:
 
-- the localization and mapping features do not produce autonomous motion;
+- localization and mapping do not produce autonomous motion by themselves;
 - the current occupancy grid is a fixed local odometry grid, not SLAM;
 - maps cannot yet be saved, loaded, or localized against;
 - the map canvas does not yet visualize bounds warnings or individual scan
   insertion/rejection locations;
-- there is no navigation goal, path follower, exploration behavior, or
-  autonomy supervisor;
+- local click-to-goal planning and cancelable pure-pursuit execution exist,
+  but there is no exploration behavior, persistent global planner, or mission
+  supervisor;
 - steering-arc execution currently uses a fixed steering command and validates
   final measured yaw; it is not yet a closed-loop curvature controller;
 - high-risk settings and calibration flows do not yet disarm automatically;
@@ -633,10 +636,14 @@ Acceptance:
 
 ### Slice 6: Local waypoint navigation
 
-- add one-goal and path-following actions in `odom`;
-- enforce Ackermann turning radius;
-- add path and goal overlays;
-- add blocked-state and recovery hooks.
+Implemented:
+
+- one-goal planning and pure-pursuit path following in `odom`;
+- collision-preserving path smoothing and Ackermann curvature validation from
+  the configured wheelbase and steering limits;
+- path, goal, route-geometry, and execution-progress UI;
+- explicit review/start, pause/resume/cancel, map-snapshot invalidation,
+  localization freshness checks, and safety/arbiter blocked states.
 
 ### Slice 7: Persistent localization and exploration
 

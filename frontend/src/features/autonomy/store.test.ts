@@ -94,6 +94,13 @@ describe("autonomy telemetry store", () => {
           map_sequence: null,
           pose_source: null,
           expanded_nodes: 0,
+          geometry_validated: false,
+          smoothed: false,
+          raw_waypoint_count: 0,
+          max_curvature_per_m: null,
+          curvature_limit_per_m: null,
+          minimum_turning_radius_m: null,
+          initial_heading_error_deg: null,
           reason: "Click a free map location to preview a route",
         });
       }
@@ -334,6 +341,13 @@ describe("autonomy telemetry store", () => {
       map_sequence: 2,
       pose_source: "localization",
       expanded_nodes: 4,
+      geometry_validated: true,
+      smoothed: true,
+      raw_waypoint_count: 2,
+      max_curvature_per_m: 1.2,
+      curvature_limit_per_m: 3.2,
+      minimum_turning_radius_m: 0.31,
+      initial_heading_error_deg: 12,
       reason: null,
     };
     mocks.get.mockRejectedValueOnce({ response: { status: 404 } });
@@ -350,6 +364,13 @@ describe("autonomy telemetry store", () => {
       map_sequence: null,
       pose_source: null,
       expanded_nodes: 0,
+      geometry_validated: false,
+      smoothed: false,
+      raw_waypoint_count: 0,
+      max_curvature_per_m: null,
+      curvature_limit_per_m: null,
+      minimum_turning_radius_m: null,
+      initial_heading_error_deg: null,
       reason: "Click a free map location to preview a route",
     });
 
@@ -413,6 +434,13 @@ describe("autonomy telemetry store", () => {
           map_sequence: 12,
           pose_source: "localization",
           expanded_nodes: 17,
+          geometry_validated: true,
+          smoothed: true,
+          raw_waypoint_count: 2,
+          max_curvature_per_m: 1.1,
+          curvature_limit_per_m: 3.2,
+          minimum_turning_radius_m: 0.31,
+          initial_heading_error_deg: -8,
           reason: "Route preview is ready; no motion command has been issued",
         });
       }
@@ -429,6 +457,13 @@ describe("autonomy telemetry store", () => {
         map_sequence: null,
         pose_source: null,
         expanded_nodes: 0,
+        geometry_validated: false,
+        smoothed: false,
+        raw_waypoint_count: 0,
+        max_curvature_per_m: null,
+        curvature_limit_per_m: null,
+        minimum_turning_radius_m: null,
+        initial_heading_error_deg: null,
         reason: "Click a free map location to preview a route",
       });
     });

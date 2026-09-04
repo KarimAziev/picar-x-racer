@@ -196,6 +196,10 @@ class NavigationExecutionService:
             raise ActionConflictError("a ready navigation route is required")
         if len(plan.path) < 2 or plan.map_sequence is None:
             raise ActionConflictError("the navigation route is incomplete")
+        if not plan.geometry_validated:
+            raise ActionConflictError(
+                "the navigation route was not validated for Ackermann geometry"
+            )
         grid = self._bus.latest(LOCAL_MAP)
         if grid is None or grid.header.sequence != plan.map_sequence:
             raise ActionConflictError("the occupancy map changed; review a new route")

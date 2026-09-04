@@ -59,6 +59,11 @@ from app.services.autonomy.navigation_planning import (
     NavigationPlanningService,
     OccupancyGridPlanner,
 )
+from app.services.autonomy.path_smoothing import (
+    AckermannPathSmoother,
+    PathGeometryRejected,
+    SmoothedPath,
+)
 from app.services.autonomy.navigation_execution import (
     NavigationExecutionService,
     PurePursuitTracker,
@@ -129,6 +134,7 @@ __all__ = [
     "AckermannPlantState",
     "AckermannSimulationConfig",
     "AckermannSimulationPlant",
+    "AckermannPathSmoother",
     "ActuatorCommand",
     "ArbitrationResult",
     "DriveDirection",
@@ -169,6 +175,7 @@ __all__ = [
     "NavigationExecutionService",
     "OdometryInputError",
     "OccupancyGridPlanner",
+    "PathGeometryRejected",
     "PoseEstimationInputError",
     "PoseEstimator",
     "PoseEstimatorConfig",
@@ -183,6 +190,7 @@ __all__ = [
     "SafetySeverity",
     "SegmentSpatialIndex",
     "ScanMatchResult",
+    "SmoothedPath",
     "SelectableDriveHardware",
     "ModeTransitionError",
     "SubscriptionClosed",

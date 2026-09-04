@@ -57,7 +57,32 @@
         </div>
         <div v-if="plan.state === 'ready'">
           <dt class="text-surface-500">Waypoints</dt>
-          <dd>{{ plan.path.length }}</dd>
+          <dd>
+            {{ plan.path.length }}
+            <span v-if="plan.smoothed" class="text-surface-500">
+              (from {{ plan.raw_waypoint_count }})
+            </span>
+          </dd>
+        </div>
+        <div v-if="plan.state === 'ready'">
+          <dt class="text-surface-500">Drive geometry</dt>
+          <dd>
+            {{ plan.geometry_validated ? "Validated" : "Not configured" }}
+          </dd>
+        </div>
+        <div v-if="plan.minimum_turning_radius_m !== null">
+          <dt class="text-surface-500">Minimum turn radius</dt>
+          <dd>{{ plan.minimum_turning_radius_m.toFixed(2) }} m</dd>
+        </div>
+        <div v-if="plan.max_curvature_per_m !== null">
+          <dt class="text-surface-500">Route curvature</dt>
+          <dd>
+            {{ formatCurvature(plan.max_curvature_per_m) }}
+          </dd>
+        </div>
+        <div v-if="plan.initial_heading_error_deg !== null">
+          <dt class="text-surface-500">Initial heading offset</dt>
+          <dd>{{ formatSigned(plan.initial_heading_error_deg) }}°</dd>
         </div>
         <div v-if="plan.pose_source">
           <dt class="text-surface-500">Start pose</dt>
@@ -209,6 +234,7 @@ const navigationActive = computed(() =>
 const canStart = computed(
   () =>
     plan.value?.state === "ready" &&
+    plan.value.geometry_validated &&
     execution.value?.available !== false &&
     maxSpeed.value > 0 &&
     !store.navigationExecutionLoading,
@@ -261,6 +287,10 @@ const formatPoint = (point: NavigationPoint) =>
   `${point.x_m.toFixed(2)}, ${point.y_m.toFixed(2)} m`;
 const formatSigned = (value: number) =>
   (value > 0 ? "+" : "") + value.toFixed(1);
+const formatCurvature = (curvaturePerM: number) =>
+  curvaturePerM < 1e-6
+    ? "Straight"
+    : `${curvaturePerM.toFixed(2)} m⁻¹ (${(1 / curvaturePerM).toFixed(2)} m radius)`;
 const executionProgress = computed(() =>
   Math.min(
     100,

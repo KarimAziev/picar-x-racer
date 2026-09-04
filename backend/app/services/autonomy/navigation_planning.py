@@ -16,10 +16,14 @@ from app.schemas.autonomy import (
 )
 from app.services.autonomy.topic_bus import TopicBus
 from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, ODOMETRY
+from app.services.autonomy.path_smoothing import (
+    AckermannPathSmoother,
+    PathGeometryRejected,
+)
 
 
 GridCell = Tuple[int, int]
-PlanningPose = Tuple[float, float, Literal["localization", "odometry"]]
+PlanningPose = Tuple[float, float, float, Literal["localization", "odometry"]]
 _SQRT_TWO = math.sqrt(2.0)
 
 
@@ -32,6 +36,13 @@ class GridPlan:
     path: Tuple[NavigationPoint, ...]
     path_length_m: float
     expanded_nodes: int
+    geometry_validated: bool = False
+    smoothed: bool = False
+    raw_waypoint_count: int = 0
+    max_curvature_per_m: Optional[float] = None
+    curvature_limit_per_m: Optional[float] = None
+    minimum_turning_radius_m: Optional[float] = None
+    initial_heading_error_rad: Optional[float] = None
 
 
 class OccupancyGridPlanner:
@@ -42,6 +53,7 @@ class OccupancyGridPlanner:
         *,
         occupied_threshold: int = 65,
         max_cells: int = 1_000_000,
+        path_smoother: Optional[AckermannPathSmoother] = None,
     ) -> None:
         if not 0 <= occupied_threshold <= 100:
             raise ValueError("occupied threshold must be between 0 and 100")
@@ -49,6 +61,7 @@ class OccupancyGridPlanner:
             raise ValueError("maximum cell count must be positive")
         self.occupied_threshold = occupied_threshold
         self.max_cells = max_cells
+        self.path_smoother = path_smoother
 
     def plan(
         self,
@@ -56,6 +69,7 @@ class OccupancyGridPlanner:
         *,
         start_x_m: float,
         start_y_m: float,
+        start_yaw_rad: Optional[float] = None,
         goal: NavigationGoalRequest,
     ) -> GridPlan:
         if grid.width * grid.height > self.max_cells:
@@ -100,12 +114,41 @@ class OccupancyGridPlanner:
                 "no collision-free route reaches the selected goal"
             )
         simplified = self._simplify_path(grid, blocked, cell_path)
-        path = self._metric_path(
+        raw_path = self._metric_path(
             grid,
             simplified,
             start=NavigationPoint(x_m=start_x_m, y_m=start_y_m),
             goal=NavigationPoint(x_m=goal.x_m, y_m=goal.y_m),
         )
+        path = raw_path
+        geometry_validated = False
+        smoothed = False
+        max_curvature_per_m = None
+        curvature_limit_per_m = None
+        minimum_turning_radius_m = None
+        initial_heading_error_rad = None
+        if self.path_smoother is not None:
+            if start_yaw_rad is None:
+                raise NavigationPlanRejected(
+                    "current pose heading is required for curvature validation"
+                )
+            try:
+                geometry = self.path_smoother.smooth(
+                    raw_path,
+                    start_yaw_rad=start_yaw_rad,
+                    is_clear=lambda candidate: self._metric_path_is_clear(
+                        grid, blocked, candidate
+                    ),
+                )
+            except PathGeometryRejected as error:
+                raise NavigationPlanRejected(str(error)) from error
+            path = geometry.path
+            geometry_validated = True
+            smoothed = geometry.smoothed
+            max_curvature_per_m = geometry.max_curvature_per_m
+            curvature_limit_per_m = geometry.curvature_limit_per_m
+            minimum_turning_radius_m = geometry.minimum_turning_radius_m
+            initial_heading_error_rad = geometry.initial_heading_error_rad
         return GridPlan(
             path=path,
             path_length_m=sum(
@@ -113,7 +156,41 @@ class OccupancyGridPlanner:
                 for start, end in zip(path, path[1:])
             ),
             expanded_nodes=expanded_nodes,
+            geometry_validated=geometry_validated,
+            smoothed=smoothed,
+            raw_waypoint_count=len(raw_path),
+            max_curvature_per_m=max_curvature_per_m,
+            curvature_limit_per_m=curvature_limit_per_m,
+            minimum_turning_radius_m=minimum_turning_radius_m,
+            initial_heading_error_rad=initial_heading_error_rad,
         )
+
+    def _metric_path_is_clear(
+        self,
+        grid: OccupancyGrid,
+        blocked: bytearray,
+        path: Sequence[NavigationPoint],
+    ) -> bool:
+        """Sample world-space segments densely against the inflated grid."""
+
+        if len(path) < 2:
+            return False
+        sample_spacing_m = grid.resolution_m * 0.25
+        for start, end in zip(path, path[1:]):
+            distance_m = math.hypot(end.x_m - start.x_m, end.y_m - start.y_m)
+            if distance_m <= 1e-9:
+                return False
+            sample_count = max(1, math.ceil(distance_m / sample_spacing_m))
+            for sample_index in range(sample_count + 1):
+                fraction = sample_index / sample_count
+                cell = self._world_to_cell(
+                    grid,
+                    start.x_m + fraction * (end.x_m - start.x_m),
+                    start.y_m + fraction * (end.y_m - start.y_m),
+                )
+                if cell is None or self._is_blocked(grid, blocked, cell):
+                    return False
+        return True
 
     def _inflated_obstacles(
         self,
@@ -410,7 +487,7 @@ class NavigationPlanningService:
                     map_sequence=grid.header.sequence,
                     frame_id=grid.header.frame_id,
                 )
-            start_x_m, start_y_m, pose_source = pose
+            start_x_m, start_y_m, start_yaw_rad, pose_source = pose
             start = NavigationPoint(x_m=start_x_m, y_m=start_y_m)
             try:
                 plan = await asyncio.to_thread(
@@ -418,6 +495,7 @@ class NavigationPlanningService:
                     grid,
                     start_x_m=start_x_m,
                     start_y_m=start_y_m,
+                    start_yaw_rad=start_yaw_rad,
                     goal=request,
                 )
             except NavigationPlanRejected as error:
@@ -458,7 +536,24 @@ class NavigationPlanningService:
                 map_sequence=grid.header.sequence,
                 pose_source=pose_source,
                 expanded_nodes=plan.expanded_nodes,
-                reason="Route preview is ready; no motion command has been issued",
+                geometry_validated=plan.geometry_validated,
+                smoothed=plan.smoothed,
+                raw_waypoint_count=plan.raw_waypoint_count,
+                max_curvature_per_m=plan.max_curvature_per_m,
+                curvature_limit_per_m=plan.curvature_limit_per_m,
+                minimum_turning_radius_m=plan.minimum_turning_radius_m,
+                initial_heading_error_deg=(
+                    math.degrees(plan.initial_heading_error_rad)
+                    if plan.initial_heading_error_rad is not None
+                    else None
+                ),
+                reason=(
+                    "Route is collision-checked, smoothed, and validated for "
+                    "the configured steering geometry; no motion command has "
+                    "been issued"
+                    if plan.geometry_validated
+                    else "Route preview is ready; Ackermann geometry is not configured"
+                ),
             )
             return self._status
 
@@ -470,10 +565,15 @@ class NavigationPlanningService:
     def _planning_pose(self, frame_id: str) -> Optional[PlanningPose]:
         localization = self._bus.latest(LOCALIZATION_POSE)
         if localization is not None and localization.header.frame_id == frame_id:
-            return localization.x_m, localization.y_m, "localization"
+            return (
+                localization.x_m,
+                localization.y_m,
+                localization.yaw_rad,
+                "localization",
+            )
         odometry = self._bus.latest(ODOMETRY)
         if odometry is not None and odometry.header.frame_id == frame_id:
-            return odometry.x_m, odometry.y_m, "odometry"
+            return odometry.x_m, odometry.y_m, odometry.yaw_rad, "odometry"
         return None
 
     def _set_rejected(

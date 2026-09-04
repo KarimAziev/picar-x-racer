@@ -32,6 +32,7 @@ from app.schemas.robot.localization_sensors import (
 from app.schemas.autonomy import SensorName
 from app.services.connection_service import ConnectionService
 from app.services.autonomy import (
+    AckermannPathSmoother,
     AckermannOdometryConfig,
     AckermannOdometryEstimator,
     AckermannOdometryService,
@@ -60,6 +61,7 @@ from app.services.autonomy import (
     MotionLimits,
     NavigationExecutionService,
     NavigationPlanningService,
+    OccupancyGridPlanner,
     KnownWorldScanMatcher,
     KnownWorldScanMatcherConfig,
     KnownWorldScanMatcherService,
@@ -868,11 +870,28 @@ def get_local_mapping_service(
 
 @lru_cache(maxsize=1)
 def get_navigation_planning_service(
+    config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
 ) -> NavigationPlanningService:
-    """Return the stable planning-only goal preview service."""
+    """Return a goal planner configured with the vehicle's steering geometry."""
 
-    return NavigationPlanningService(topic_bus)
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    odometry = config.ackermann_odometry
+    path_smoother = None
+    if odometry.enabled and odometry.wheelbase_m is not None:
+        max_steering_degrees = min(
+            abs(config.steering_servo.min_angle),
+            abs(config.steering_servo.max_angle),
+        )
+        if max_steering_degrees > 0:
+            path_smoother = AckermannPathSmoother(
+                wheelbase_m=odometry.wheelbase_m,
+                max_abs_steering_angle_rad=math.radians(max_steering_degrees),
+            )
+    return NavigationPlanningService(
+        topic_bus,
+        OccupancyGridPlanner(path_smoother=path_smoother),
+    )
 
 
 @lru_cache(maxsize=1)

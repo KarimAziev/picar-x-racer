@@ -278,6 +278,13 @@ export interface NavigationPlanStatus {
   map_sequence: number | null;
   pose_source: "localization" | "odometry" | null;
   expanded_nodes: number;
+  geometry_validated: boolean;
+  smoothed: boolean;
+  raw_waypoint_count: number;
+  max_curvature_per_m: number | null;
+  curvature_limit_per_m: number | null;
+  minimum_turning_radius_m: number | null;
+  initial_heading_error_deg: number | null;
   reason: string | null;
 }
 

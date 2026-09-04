@@ -9,6 +9,7 @@ from app.schemas.autonomy import (
     OccupancyGrid,
 )
 from app.services.autonomy import (
+    AckermannPathSmoother,
     NavigationPlanRejected,
     NavigationPlanningService,
     OccupancyGridPlanner,
@@ -200,6 +201,34 @@ class OccupancyGridPlannerTests(unittest.TestCase):
                     clearance_m=0,
                 ),
             )
+
+    def test_smooths_and_validates_with_configured_ackermann_geometry(self) -> None:
+        planner = OccupancyGridPlanner(
+            path_smoother=AckermannPathSmoother(
+                wheelbase_m=0.18,
+                max_abs_steering_angle_rad=math.radians(30),
+            )
+        )
+
+        result = planner.plan(
+            grid(30, 30, resolution_m=0.1),
+            start_x_m=0.5,
+            start_y_m=0.5,
+            start_yaw_rad=0,
+            goal=NavigationGoalRequest(
+                x_m=2.5,
+                y_m=2.5,
+                clearance_m=0,
+            ),
+        )
+
+        self.assertTrue(result.geometry_validated)
+        self.assertTrue(result.smoothed)
+        self.assertGreater(len(result.path), result.raw_waypoint_count)
+        self.assertLessEqual(
+            result.max_curvature_per_m or math.inf,
+            (result.curvature_limit_per_m or 0) * 1.05,
+        )
 
 
 class NavigationPlanningServiceTests(unittest.IsolatedAsyncioTestCase):

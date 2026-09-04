@@ -14,6 +14,7 @@ from app.schemas.autonomy import (
     OccupancyGrid,
 )
 from app.services.autonomy import (
+    AckermannPathSmoother,
     ActuatorCommand,
     ActionConflictError,
     ArbitrationResult,
@@ -22,6 +23,7 @@ from app.services.autonomy import (
     MotionSource,
     NavigationExecutionService,
     NavigationPlanningService,
+    OccupancyGridPlanner,
     PurePursuitTracker,
     RobotMode,
     TopicBus,
@@ -144,7 +146,15 @@ class NavigationExecutionServiceTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.bus = TopicBus()
         self.motion = FakeMotionControl()
-        self.planning = NavigationPlanningService(self.bus)
+        self.planning = NavigationPlanningService(
+            self.bus,
+            OccupancyGridPlanner(
+                path_smoother=AckermannPathSmoother(
+                    wheelbase_m=0.25,
+                    max_abs_steering_angle_rad=math.radians(30),
+                )
+            ),
+        )
         self.service = NavigationExecutionService(
             self.bus,
             cast(Any, self.motion),
@@ -297,6 +307,22 @@ class NavigationExecutionServiceTests(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaisesRegex(ActionConflictError, "another autonomous"):
             await self.service.start(NavigationExecutionRequest())
+
+    async def test_rejects_a_route_without_geometry_validation(self) -> None:
+        planning = NavigationPlanningService(self.bus)
+        service = NavigationExecutionService(
+            self.bus,
+            cast(Any, self.motion),
+            planning,
+            wheelbase_m=0.25,
+            max_abs_steering_angle_rad=math.radians(30),
+        )
+        self.bus.publish(LOCAL_MAP, occupancy_grid())
+        self.bus.publish(LOCALIZATION_POSE, pose(0.5, 0.5))
+        await planning.plan(NavigationGoalRequest(x_m=1.5, y_m=0.5, clearance_m=0))
+
+        with self.assertRaisesRegex(ActionConflictError, "not validated"):
+            await service.start(NavigationExecutionRequest())
 
 
 if __name__ == "__main__":

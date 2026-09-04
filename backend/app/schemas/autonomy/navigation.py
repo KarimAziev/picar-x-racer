@@ -44,6 +44,21 @@ class NavigationPlanStatus(BaseModel):
     map_sequence: Optional[int] = Field(default=None, ge=0)
     pose_source: Optional[Literal["localization", "odometry"]] = None
     expanded_nodes: int = Field(default=0, ge=0)
+    geometry_validated: bool = False
+    smoothed: bool = False
+    raw_waypoint_count: int = Field(default=0, ge=0)
+    max_curvature_per_m: Optional[float] = Field(
+        default=None, ge=0.0, allow_inf_nan=False
+    )
+    curvature_limit_per_m: Optional[float] = Field(
+        default=None, gt=0.0, allow_inf_nan=False
+    )
+    minimum_turning_radius_m: Optional[float] = Field(
+        default=None, gt=0.0, allow_inf_nan=False
+    )
+    initial_heading_error_deg: Optional[float] = Field(
+        default=None, ge=-180.0, le=180.0, allow_inf_nan=False
+    )
     reason: Optional[str] = None
 
     @classmethod
