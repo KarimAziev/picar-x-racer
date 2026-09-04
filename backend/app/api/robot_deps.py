@@ -24,6 +24,7 @@ from app.schemas.robot.localization_sensors import (
     AS5600LEncoderConfig,
     AS5600LSteeringPositionConfig,
     GPIOQuadratureEncoderConfig,
+    LSM9DS1SensorConfig,
     MockEncoderConfig,
     MockIMUSensorConfig,
     MockLidarSensorConfig,
@@ -72,6 +73,7 @@ from app.services.autonomy import (
     PoseEstimatorSupervisor,
     TopicBus,
     TopicSensorMonitor,
+    StaticRotation3D,
     StaticTransform2D,
     RelativeMotionService,
     SelectableDriveHardware,
@@ -102,6 +104,8 @@ from robot_hat import (
     EncoderABC,
     IMUABC,
     Lidar2DABC,
+    LSM9DS1,
+    LSM9DS1Config,
     MockEncoder,
     MockAngularPosition,
     MockIMU,
@@ -551,6 +555,16 @@ def build_localization_sensor_service(
                 acceleration_mps2=imu_sensor_config.acceleration_mps2,
                 angular_velocity_radps=(imu_sensor_config.angular_velocity_radps),
             )
+        elif isinstance(imu_sensor_config, LSM9DS1SensorConfig):
+            imu_factory = lambda: LSM9DS1(
+                address=imu_sensor_config.address_int,
+                bus=smbus_manager.get_bus(imu_sensor_config.bus),
+                config=LSM9DS1Config(
+                    accelerometer_range_g=(imu_sensor_config.accelerometer_range_g),
+                    gyroscope_range_dps=imu_sensor_config.gyroscope_range_dps,
+                    output_data_rate_hz=imu_sensor_config.output_data_rate_hz,
+                ),
+            )
         else:
             imu_factory = lambda: SH3001(
                 address=imu_sensor_config.address_int,
@@ -566,6 +580,11 @@ def build_localization_sensor_service(
             imu_factory,
             frame_id=imu_sensor_config.frame_id,
             sample_frequency_hz=imu_sensor_config.sample_frequency_hz,
+            sensor_to_base_rotation=StaticRotation3D(
+                roll_rad=imu_sensor_config.transform.roll_rad,
+                pitch_rad=imu_sensor_config.transform.pitch_rad,
+                yaw_rad=imu_sensor_config.transform.yaw_rad,
+            ),
         )
 
     if sensors.encoder.enabled and not coherent_simulation:

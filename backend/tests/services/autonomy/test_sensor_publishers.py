@@ -9,6 +9,7 @@ from app.services.autonomy import (
     LaserScanConverter,
     LidarPublisherService,
     LocalizationSensorService,
+    StaticRotation3D,
     TopicBus,
     TopicSensorMonitor,
     UnavailableEncoderPublisher,
@@ -184,6 +185,40 @@ class TestLaserScanConverter(unittest.TestCase):
         self.assertAlmostEqual(message.angle_increment_rad, math.pi / 4)
 
 
+class TestStaticRotation3D(unittest.TestCase):
+    def test_identity_preserves_vector(self) -> None:
+        self.assertEqual(StaticRotation3D().rotate((1.0, 2.0, 3.0)), (1.0, 2.0, 3.0))
+
+    def test_yaw_rotates_sensor_x_onto_base_y(self) -> None:
+        rotated = StaticRotation3D(yaw_rad=math.pi / 2).rotate((1.0, 0.0, 0.0))
+
+        self.assertAlmostEqual(rotated[0], 0.0)
+        self.assertAlmostEqual(rotated[1], 1.0)
+        self.assertAlmostEqual(rotated[2], 0.0)
+
+    def test_roll_rotates_sensor_y_onto_base_z(self) -> None:
+        rotated = StaticRotation3D(roll_rad=math.pi / 2).rotate((0.0, 1.0, 0.0))
+
+        self.assertAlmostEqual(rotated[0], 0.0)
+        self.assertAlmostEqual(rotated[1], 0.0)
+        self.assertAlmostEqual(rotated[2], 1.0)
+
+    def test_pitch_rotates_sensor_x_onto_negative_base_z(self) -> None:
+        rotated = StaticRotation3D(pitch_rad=math.pi / 2).rotate((1.0, 0.0, 0.0))
+
+        self.assertAlmostEqual(rotated[0], 0.0)
+        self.assertAlmostEqual(rotated[1], 0.0)
+        self.assertAlmostEqual(rotated[2], -1.0)
+
+    def test_rejects_invalid_rotation_or_vector(self) -> None:
+        with self.assertRaisesRegex(ValueError, "rotation angles must be finite"):
+            StaticRotation3D(yaw_rad=math.inf)
+        with self.assertRaisesRegex(ValueError, "three-dimensional"):
+            StaticRotation3D().rotate((1.0, 2.0))
+        with self.assertRaisesRegex(ValueError, "components must be finite"):
+            StaticRotation3D().rotate((1.0, math.nan, 3.0))
+
+
 class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
     async def test_topic_monitor_reports_externally_published_simulated_frames(
         self,
@@ -231,10 +266,34 @@ class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(imu.initialized)
         self.assertEqual(imu.close_calls, 1)
+        self.assertEqual(message.header.frame_id, "base_link")
+        self.assertEqual(message.source_frame_id, "imu")
         self.assertEqual(message.angular_velocity_z_radps, 0.3)
         self.assertEqual(message.acceleration_z_mps2, 3.0)
         self.assertEqual(message.header.source_timestamp_ns, 100)
         self.assertEqual(service.status.published_messages, 1)
+
+    async def test_imu_publisher_rotates_sensor_vectors_into_base_link(self) -> None:
+        bus = TopicBus()
+        output = bus.subscribe(IMU_DATA, replay_latest=False)
+        service = IMUPublisherService(
+            bus,
+            FakeIMU,
+            frame_id="sense_hat_imu",
+            sample_frequency_hz=100,
+            sensor_to_base_rotation=StaticRotation3D(roll_rad=math.pi / 2),
+        )
+
+        await service.start()
+        message = await asyncio.wait_for(output.get(), timeout=1)
+        await service.stop()
+
+        self.assertEqual(message.header.frame_id, "base_link")
+        self.assertEqual(message.source_frame_id, "sense_hat_imu")
+        self.assertAlmostEqual(message.acceleration_x_mps2, 1.0)
+        self.assertAlmostEqual(message.acceleration_y_mps2, -3.0)
+        self.assertAlmostEqual(message.acceleration_z_mps2, 2.0)
+        self.assertAlmostEqual(message.angular_velocity_z_radps, 0.2)
 
     async def test_encoder_publisher_derives_delta_without_mutating_adapter(
         self,

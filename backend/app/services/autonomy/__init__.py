@@ -92,6 +92,7 @@ from app.services.autonomy.sensor_publishers import (
     LaserScanConverter,
     LidarPublisherService,
     LocalizationSensorService,
+    StaticRotation3D,
     TopicSensorMonitor,
     UnavailableEncoderPublisher,
 )
@@ -205,6 +206,7 @@ __all__ = [
     "ModeTransitionError",
     "SubscriptionClosed",
     "StaticTransform2D",
+    "StaticRotation3D",
     "SteeringAngleCalibration",
     "SteeringCalibrationPoint",
     "SteeringFeedbackSample",

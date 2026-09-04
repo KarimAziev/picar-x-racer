@@ -101,14 +101,15 @@ export interface LocalizationSensorsConfig {
   };
   imu: {
     enabled: boolean;
-    driver: "sh3001" | "mock";
+    driver: "sh3001" | "lsm9ds1" | "mock";
     bus?: number;
     address?: number | string;
     frame_id: string;
     transform: StaticTransformConfig;
     sample_frequency_hz: number;
     accelerometer_range_g?: 2 | 4 | 8 | 16;
-    gyroscope_range_dps?: 125 | 250 | 500 | 1000 | 2000;
+    gyroscope_range_dps?: 125 | 245 | 250 | 500 | 1000 | 2000;
+    output_data_rate_hz?: 119 | 238 | 476 | 952;
     acceleration_mps2?: [number, number, number];
     angular_velocity_radps?: [number, number, number];
   };

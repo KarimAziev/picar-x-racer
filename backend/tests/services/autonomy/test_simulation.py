@@ -190,6 +190,8 @@ class CoherentSimulationServiceTests(unittest.IsolatedAsyncioTestCase):
             imu.angular_velocity_z_radps,
             truth.yaw_rate_radps,
         )
+        self.assertEqual(imu.header.frame_id, "base_link")
+        self.assertEqual(imu.source_frame_id, "imu")
         self.assertEqual(encoder.left, encoder.right)
         self.assertEqual(
             encoder.left.ticks if encoder.left else None, truth.encoder_ticks

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
@@ -14,7 +15,13 @@ from app.managers.file_management.json_data_manager import JsonDataManager
 from app.schemas.robot.config import HardwareConfig
 from app.services.autonomy import TopicBus
 from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN
-from robot_hat import MockAngularPosition, MockEncoder, QuadratureDecodeMode
+from robot_hat import (
+    LSM9DS1Config,
+    MockAngularPosition,
+    MockEncoder,
+    MockIMU,
+    QuadratureDecodeMode,
+)
 
 
 class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
@@ -184,6 +191,58 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(statuses["imu"].published_messages, 0)
         self.assertGreater(statuses["encoder"].published_messages, 0)
         smbus_manager.get_bus.assert_not_called()
+
+    async def test_lsm9ds1_factory_uses_managed_i2c_bus_and_typed_config(
+        self,
+    ) -> None:
+        root_config = Path(__file__).parents[4] / "config.json"
+        data = json.loads(root_config.read_text())
+        data["localization_sensors"]["imu"] = {
+            "enabled": True,
+            "driver": "lsm9ds1",
+            "bus": 1,
+            "address": "0x6a",
+            "sample_frequency_hz": 100,
+            "accelerometer_range_g": 4,
+            "gyroscope_range_dps": 500,
+            "output_data_rate_hz": 119,
+            "transform": {"roll_rad": math.pi},
+        }
+        config = HardwareConfig.model_validate(data)
+        bus = TopicBus()
+        output = bus.subscribe(IMU_DATA, replay_latest=False)
+        managed_bus = MagicMock()
+        smbus_manager = MagicMock()
+        smbus_manager.get_bus.return_value = managed_bus
+
+        with patch(
+            "app.api.robot_deps.LSM9DS1",
+            return_value=MockIMU(
+                acceleration_mps2=(0.0, 0.0, 9.80665),
+                angular_velocity_radps=(0.0, 0.0, 0.25),
+            ),
+        ) as imu_type:
+            service = build_localization_sensor_service(config, bus, smbus_manager)
+            await service.start()
+            try:
+                sample = await asyncio.wait_for(output.get(), timeout=1)
+            finally:
+                await service.stop()
+
+        self.assertEqual(sample.header.frame_id, "base_link")
+        self.assertEqual(sample.source_frame_id, "imu")
+        self.assertAlmostEqual(sample.angular_velocity_z_radps, -0.25)
+        self.assertAlmostEqual(sample.acceleration_z_mps2, -9.80665)
+        smbus_manager.get_bus.assert_called_once_with(1)
+        imu_type.assert_called_once_with(
+            address=0x6A,
+            bus=managed_bus,
+            config=LSM9DS1Config(
+                accelerometer_range_g=4,
+                gyroscope_range_dps=500,
+                output_data_rate_hz=119,
+            ),
+        )
 
     async def test_as5600l_factories_share_managed_i2c_bus(self) -> None:
         root_config = Path(__file__).parents[4] / "config.json"

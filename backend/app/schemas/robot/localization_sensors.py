@@ -36,7 +36,11 @@ def _gpio_pin_key(value: int | str) -> str:
 
 
 class StaticTransformConfig(BaseModel):
-    """Measured transform from ``base_link`` to a sensor frame."""
+    """Measured pose of a sensor frame in ``base_link`` coordinates.
+
+    Sensor-native vectors are rotated into ``base_link`` using the configured
+    roll, pitch, and yaw in ``Rz * Ry * Rx`` order.
+    """
 
     x_m: FiniteFloat = 0.0
     y_m: FiniteFloat = 0.0
@@ -152,6 +156,45 @@ class SH3001SensorConfig(IMUSensorConfigBase):
         return self.address if isinstance(self.address, int) else int(self.address, 16)
 
 
+class LSM9DS1SensorConfig(IMUSensorConfigBase):
+    """Six-axis IMU settings for a Sense HAT or standalone LSM9DS1."""
+
+    driver: Literal["lsm9ds1"] = "lsm9ds1"
+    bus: IC2Bus = 1
+    address: AddressField = "0x6a"
+    accelerometer_range_g: Literal[2, 4, 8, 16] = 2
+    gyroscope_range_dps: Literal[245, 500, 2000] = 245
+    output_data_rate_hz: Literal[119, 238, 476, 952] = 119
+
+    @field_validator("address", mode="before")
+    @classmethod
+    def validate_address(cls, value: AddressField) -> AddressField:
+        if isinstance(value, str):
+            try:
+                parsed = int(value, 16)
+            except ValueError as error:
+                raise ValueError(
+                    "LSM9DS1 address must be an integer or hexadecimal"
+                ) from error
+        else:
+            parsed = value
+        if parsed not in (0x6A, 0x6B):
+            raise ValueError("LSM9DS1 address must be 0x6A or 0x6B")
+        return value
+
+    @model_validator(mode="after")
+    def require_output_rate_for_requested_sample_rate(self) -> Self:
+        if self.sample_frequency_hz > self.output_data_rate_hz:
+            raise ValueError(
+                "LSM9DS1 output_data_rate_hz must be at least sample_frequency_hz"
+            )
+        return self
+
+    @property
+    def address_int(self) -> int:
+        return self.address if isinstance(self.address, int) else int(self.address, 16)
+
+
 class MockIMUSensorConfig(IMUSensorConfigBase):
     driver: Literal["mock"] = "mock"
     acceleration_mps2: Vector3 = (0.0, 0.0, 9.80665)
@@ -159,7 +202,7 @@ class MockIMUSensorConfig(IMUSensorConfigBase):
 
 
 IMUSensorConfig = Annotated[
-    Union[SH3001SensorConfig, MockIMUSensorConfig],
+    Union[SH3001SensorConfig, LSM9DS1SensorConfig, MockIMUSensorConfig],
     Field(discriminator="driver"),
 ]
 
@@ -409,7 +452,9 @@ class LocalizationSensorsConfig(BaseModel):
                 "enabled AS5048A sensors must use unique SPI bus/device pairs"
             )
         i2c_devices = []
-        if self.imu.enabled and isinstance(self.imu, SH3001SensorConfig):
+        if self.imu.enabled and isinstance(
+            self.imu, (SH3001SensorConfig, LSM9DS1SensorConfig)
+        ):
             i2c_devices.append((self.imu.bus, self.imu.address_int, "imu"))
         if self.encoder.enabled:
             i2c_devices.extend(
@@ -442,6 +487,7 @@ __all__ = [
     "IMUSensorConfig",
     "LidarSensorConfig",
     "LocalizationSensorsConfig",
+    "LSM9DS1SensorConfig",
     "MockEncoderConfig",
     "MockIMUSensorConfig",
     "MockLidarSensorConfig",

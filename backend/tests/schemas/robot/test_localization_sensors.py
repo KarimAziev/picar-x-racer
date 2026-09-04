@@ -6,6 +6,7 @@ from app.schemas.robot.config import HardwareConfig
 from app.schemas.robot.localization_sensors import (
     EncoderSensorConfig,
     LocalizationSensorsConfig,
+    LSM9DS1SensorConfig,
     MockIMUSensorConfig,
     MockLidarSensorConfig,
     MockSteeringPositionConfig,
@@ -33,9 +34,26 @@ class TestLocalizationSensorConfig(unittest.TestCase):
 
     def test_imu_parses_hex_address_and_rejects_absolute_frame(self) -> None:
         self.assertEqual(SH3001SensorConfig(address="0x36").address_int, 0x36)
+        self.assertEqual(LSM9DS1SensorConfig(address="0x6a").address_int, 0x6A)
 
         with self.assertRaisesRegex(ValidationError, "relative"):
             SH3001SensorConfig(frame_id="/imu")
+
+    def test_lsm9ds1_output_rate_covers_publisher_sample_rate(self) -> None:
+        config = LSM9DS1SensorConfig(
+            sample_frequency_hz=200,
+            output_data_rate_hz=238,
+        )
+        self.assertEqual(config.gyroscope_range_dps, 245)
+
+        with self.assertRaisesRegex(ValidationError, "output_data_rate_hz"):
+            LSM9DS1SensorConfig(
+                sample_frequency_hz=200,
+                output_data_rate_hz=119,
+            )
+
+        with self.assertRaisesRegex(ValidationError, "0x6A or 0x6B"):
+            LSM9DS1SensorConfig(address="0x36")
 
     def test_mock_sensors_have_useful_hardware_free_defaults(self) -> None:
         lidar = MockLidarSensorConfig(enabled=True)
@@ -171,6 +189,12 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         schema = json.dumps(LocalizationSensorsConfig.model_json_schema())
 
         for driver in ("as5048a", "as5600l", "gpio_quadrature", "mock"):
+            self.assertIn(f'"{driver}"', schema)
+
+    def test_schema_exposes_every_robot_hat_imu_driver(self) -> None:
+        schema = json.dumps(LocalizationSensorsConfig.model_json_schema())
+
+        for driver in ("sh3001", "lsm9ds1", "mock"):
             self.assertIn(f'"{driver}"', schema)
 
     def test_transform_rejects_non_finite_measurements(self) -> None:

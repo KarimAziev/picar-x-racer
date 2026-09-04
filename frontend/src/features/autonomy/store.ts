@@ -48,6 +48,7 @@ export interface LaserScanTelemetry {
 
 export interface ImuTelemetry {
   header: MessageHeader;
+  source_frame_id: string | null;
   angular_velocity_z_radps: number;
   acceleration_x_mps2: number;
   acceleration_y_mps2: number;

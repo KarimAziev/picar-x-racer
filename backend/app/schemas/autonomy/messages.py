@@ -68,7 +68,7 @@ class LaserScan(FrozenMessage):
 
 
 class ImuData(FrozenMessage):
-    """Minimal planar-navigation IMU observation in SI units."""
+    """Minimal planar-navigation IMU observation in ``base_link`` SI units."""
 
     header: MessageHeader
     angular_velocity_z_radps: FiniteFloat
@@ -76,6 +76,7 @@ class ImuData(FrozenMessage):
     acceleration_y_mps2: FiniteFloat
     acceleration_z_mps2: FiniteFloat
     yaw_rad: Optional[FiniteFloat] = None
+    source_frame_id: Optional[str] = None
 
 
 class EncoderReading(FrozenMessage):

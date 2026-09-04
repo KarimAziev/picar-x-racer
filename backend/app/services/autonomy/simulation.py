@@ -414,12 +414,13 @@ class CoherentSimulationService:
             ),
         )
         imu = ImuData(
-            header=header.model_copy(update={"frame_id": "imu"}),
+            header=header,
             angular_velocity_z_radps=self._measured_yaw_rate(state),
             acceleration_x_mps2=state.longitudinal_acceleration_mps2,
             acceleration_y_mps2=state.lateral_acceleration_mps2,
             acceleration_z_mps2=self.config.gravity_mps2,
             yaw_rad=state.yaw_rad,
+            source_frame_id="imu",
         )
         simulation = self._simulation_message(
             state,

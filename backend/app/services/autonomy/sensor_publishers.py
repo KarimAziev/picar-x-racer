@@ -14,6 +14,7 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
+    Tuple,
 )
 
 from app.core.px_logger import Logger
@@ -41,6 +42,51 @@ class _PublisherMetrics:
     published_messages: int = 0
     last_timestamp_monotonic_ns: Optional[int] = None
     error: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class StaticRotation3D:
+    """Rotate free vectors from a sensor frame into ``base_link``.
+
+    The roll, pitch, and yaw angles describe the sensor frame's orientation in
+    ``base_link``. Rotations are applied in the conventional ``Rz * Ry * Rx``
+    order used by the localization sensor configuration.
+    """
+
+    roll_rad: float = 0.0
+    pitch_rad: float = 0.0
+    yaw_rad: float = 0.0
+
+    def __post_init__(self) -> None:
+        if not all(
+            math.isfinite(value)
+            for value in (self.roll_rad, self.pitch_rad, self.yaw_rad)
+        ):
+            raise ValueError("sensor rotation angles must be finite")
+
+    def rotate(self, vector: Sequence[float]) -> Tuple[float, float, float]:
+        if len(vector) != 3:
+            raise ValueError("a three-dimensional vector is required")
+        x, y, z = vector
+        if not all(math.isfinite(value) for value in (x, y, z)):
+            raise ValueError("sensor vector components must be finite")
+
+        sin_roll = math.sin(self.roll_rad)
+        cos_roll = math.cos(self.roll_rad)
+        sin_pitch = math.sin(self.pitch_rad)
+        cos_pitch = math.cos(self.pitch_rad)
+        sin_yaw = math.sin(self.yaw_rad)
+        cos_yaw = math.cos(self.yaw_rad)
+
+        return (
+            cos_yaw * cos_pitch * x
+            + (cos_yaw * sin_pitch * sin_roll - sin_yaw * cos_roll) * y
+            + (cos_yaw * sin_pitch * cos_roll + sin_yaw * sin_roll) * z,
+            sin_yaw * cos_pitch * x
+            + (sin_yaw * sin_pitch * sin_roll + cos_yaw * cos_roll) * y
+            + (sin_yaw * sin_pitch * cos_roll - cos_yaw * sin_roll) * z,
+            -sin_pitch * x + cos_pitch * sin_roll * y + cos_pitch * cos_roll * z,
+        )
 
 
 class SensorPublisher(Protocol):
@@ -301,6 +347,8 @@ class LidarPublisherService:
 
 
 class IMUPublisherService:
+    """Publish IMU observations normalized into the robot's ``base_link``."""
+
     sensor_name: SensorName = "imu"
 
     def __init__(
@@ -310,11 +358,13 @@ class IMUPublisherService:
         *,
         frame_id: str,
         sample_frequency_hz: float,
+        sensor_to_base_rotation: StaticRotation3D = StaticRotation3D(),
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
     ) -> None:
         self._bus = bus
         self._imu_factory = imu_factory
         self._frame_id = frame_id
+        self._sensor_to_base_rotation = sensor_to_base_rotation
         self._period_s = 1.0 / sample_frequency_hz
         self._monotonic_ns = monotonic_ns
         self._imu: Optional[IMUABC] = None
@@ -376,18 +426,25 @@ class IMUPublisherService:
         try:
             while not self._stop_requested:
                 sample = await asyncio.to_thread(imu.read_sample)
+                acceleration = self._sensor_to_base_rotation.rotate(
+                    sample.acceleration_mps2
+                )
+                angular_velocity = self._sensor_to_base_rotation.rotate(
+                    sample.angular_velocity_radps
+                )
                 sequence = self._metrics.published_messages + 1
                 message = ImuData(
                     header=MessageHeader(
                         sequence=sequence,
-                        frame_id=self._frame_id,
+                        frame_id="base_link",
                         timestamp_monotonic_ns=self._monotonic_ns(),
                         source_timestamp_ns=sample.timestamp_monotonic_ns,
                     ),
-                    angular_velocity_z_radps=sample.angular_velocity_radps[2],
-                    acceleration_x_mps2=sample.acceleration_mps2[0],
-                    acceleration_y_mps2=sample.acceleration_mps2[1],
-                    acceleration_z_mps2=sample.acceleration_mps2[2],
+                    angular_velocity_z_radps=angular_velocity[2],
+                    acceleration_x_mps2=acceleration[0],
+                    acceleration_y_mps2=acceleration[1],
+                    acceleration_z_mps2=acceleration[2],
+                    source_frame_id=self._frame_id,
                 )
                 self._bus.publish(IMU_DATA, message)
                 self._metrics.published_messages = sequence
@@ -703,6 +760,7 @@ __all__ = [
     "LaserScanConverter",
     "LidarPublisherService",
     "LocalizationSensorService",
+    "StaticRotation3D",
     "TopicSensorMonitor",
     "UnavailableEncoderPublisher",
 ]
