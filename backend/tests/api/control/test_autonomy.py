@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import Mock
 
@@ -10,6 +11,7 @@ from app.api.control.autonomy import (
     get_simulation_status,
     plan_navigation_goal,
     reset_simulation,
+    start_navigation_execution,
 )
 from app.services.autonomy import (
     AckermannSimulationConfig,
@@ -29,7 +31,9 @@ from app.services.autonomy import (
 )
 from app.schemas.autonomy import (
     LocalizationPose2D,
+    MappingSessionState,
     MessageHeader,
+    NavigationExecutionRequest,
     NavigationGoalRequest,
     NavigationPlanState,
     OccupancyGrid,
@@ -167,7 +171,7 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         message_header = MessageHeader(
             sequence=1,
             frame_id="odom",
-            timestamp_monotonic_ns=1,
+            timestamp_monotonic_ns=time.monotonic_ns(),
         )
         bus.publish(
             LOCAL_MAP,
@@ -201,6 +205,7 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         planned = await plan_navigation_goal(
             NavigationGoalRequest(x_m=4.5, y_m=4.5, clearance_m=0),
             service,
+            None,
         )
         cleared = await clear_navigation_plan(service)
 
@@ -208,6 +213,28 @@ class TestSimulationEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(planned.state, NavigationPlanState.READY)
         self.assertGreater(planned.path_length_m, 0)
         self.assertEqual(cleared.state, NavigationPlanState.IDLE)
+
+    async def test_navigation_rejects_an_active_mapping_session(self) -> None:
+        mapping = Mock()
+        mapping.status.state = MappingSessionState.ACTIVE
+
+        with self.assertRaises(HTTPException) as planning_error:
+            await plan_navigation_goal(
+                NavigationGoalRequest(x_m=1, y_m=1),
+                NavigationPlanningService(TopicBus()),
+                mapping,
+            )
+        with self.assertRaises(HTTPException) as execution_error:
+            await start_navigation_execution(
+                NavigationExecutionRequest(),
+                None,
+                mapping,
+            )
+
+        self.assertEqual(planning_error.exception.status_code, 409)
+        self.assertIn("finish mapping", planning_error.exception.detail)
+        self.assertEqual(execution_error.exception.status_code, 409)
+        self.assertIn("finish mapping", execution_error.exception.detail)
 
     async def test_navigation_execution_reports_unavailable_prerequisites(self) -> None:
         status = await get_navigation_execution(None)

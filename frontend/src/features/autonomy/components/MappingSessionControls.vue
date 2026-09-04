@@ -132,10 +132,14 @@ const pendingAction = ref<MappingSessionAction | null>(null);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 const session = computed(() => store.mappingSession);
+const navigationActive = computed(() =>
+  ["running", "paused"].includes(store.navigationExecution?.state ?? ""),
+);
 const canStart = computed(
   () =>
     Boolean(session.value?.enabled) &&
     session.value?.state !== "active" &&
+    !navigationActive.value &&
     !store.mappingActionLoading,
 );
 const stateLabel = computed(() => {

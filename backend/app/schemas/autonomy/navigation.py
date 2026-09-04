@@ -43,6 +43,7 @@ class NavigationPlanStatus(BaseModel):
     allow_unknown: bool = False
     map_sequence: Optional[int] = Field(default=None, ge=0)
     pose_source: Optional[Literal["localization", "odometry"]] = None
+    start_yaw_rad: Optional[float] = Field(default=None, allow_inf_nan=False)
     expanded_nodes: int = Field(default=0, ge=0)
     planning_method: Literal["grid_astar", "hybrid_astar"] = "grid_astar"
     geometry_validated: bool = False

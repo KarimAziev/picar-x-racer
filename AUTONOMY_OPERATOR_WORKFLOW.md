@@ -217,13 +217,20 @@ During the session:
 - manual controls submit short-lived `MANUAL` intents;
 - LiDAR safety may limit or stop forward speed;
 - encoder distance and steering state update odometry;
-- synchronized LiDAR scans are inserted at the estimated odometry pose;
-- the UI draws the robot pose and odometry trail;
+- synchronized LiDAR scans are inserted at the fused pose when localization is
+  available, with raw odometry retained as an explicit fallback;
+- the UI draws separate fused and raw-odometry poses and trails;
 - stale odometry or LiDAR pauses scan insertion and explains why;
 - emergency stop is always available.
 
 For the initial fixed grid, the operator must remain inside the configured map
 bounds. A rolling map or persistent global map is a later capability.
+
+The current local waypoint workflow requires a frozen occupancy snapshot. The
+operator pauses or finishes mapping, clicks an observed free point, reviews the
+route preview, and explicitly confirms navigation. Planning and execution are
+rejected while mapping is active. A live LiDAR safety constraint continues to
+operate even though scan insertion is stopped.
 
 ### Autonomous mapping
 
@@ -645,7 +652,9 @@ Implemented:
   be smoothed into a drivable route;
 - path, goal, route-geometry, and execution-progress UI;
 - explicit review/start, pause/resume/cancel, map-snapshot invalidation,
-  localization freshness checks, and safety/arbiter blocked states.
+  localization freshness and reviewed-start-pose checks, persistent command
+  errors, and safety/arbiter blocked states;
+- separate raw and fused trajectory diagnostics on the occupancy-map canvas.
 
 ### Slice 7: Persistent localization and exploration
 

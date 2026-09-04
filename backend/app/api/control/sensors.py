@@ -13,6 +13,7 @@ from app.schemas.autonomy import (
 from app.services.autonomy import (
     LocalizationSensorService,
     LocalMappingService,
+    NavigationExecutionService,
     SensorTelemetryStreamer,
     TopicBus,
     parse_telemetry_channels,
@@ -65,6 +66,10 @@ MappingServiceDependency = Annotated[
     Optional[LocalMappingService],
     Depends(robot_deps.get_local_mapping_service),
 ]
+NavigationExecutionDependency = Annotated[
+    Optional[NavigationExecutionService],
+    Depends(robot_deps.get_navigation_execution_service),
+]
 
 
 def _require_mapping_service(
@@ -93,7 +98,13 @@ async def get_mapping_session_status(
 )
 async def start_mapping_session(
     service: MappingServiceDependency,
+    navigation: NavigationExecutionDependency,
 ) -> MappingSessionStatus:
+    if navigation is not None and navigation.running:
+        raise HTTPException(
+            status_code=409,
+            detail="Cancel the active navigation action before starting mapping",
+        )
     return _require_mapping_service(service).start_session()
 
 

@@ -1,5 +1,6 @@
 import unittest
 from typing import cast
+from unittest.mock import Mock
 
 from app.api import robot_deps
 from app.api.control.sensors import (
@@ -115,6 +116,9 @@ class MappingSessionRouteTests(unittest.TestCase):
         control_app.dependency_overrides[robot_deps.get_local_mapping_service] = (
             lambda: self.service
         )
+        control_app.dependency_overrides[
+            robot_deps.get_navigation_execution_service
+        ] = lambda: None
         self.client = TestClient(control_app)
 
     def tearDown(self) -> None:
@@ -144,6 +148,22 @@ class MappingSessionRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["detail"], "Local mapping is disabled")
+
+    def test_rejects_start_while_navigation_is_active(self) -> None:
+        navigation = Mock()
+        navigation.running = True
+        control_app.dependency_overrides[
+            robot_deps.get_navigation_execution_service
+        ] = lambda: navigation
+
+        response = self.client.post("/px/api/map/session/start")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json()["detail"],
+            "Cancel the active navigation action before starting mapping",
+        )
+        self.assertEqual(self.service.status.state.value, "idle")
 
 
 if __name__ == "__main__":

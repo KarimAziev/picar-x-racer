@@ -19,10 +19,17 @@
       v-else
       ref="canvas"
       class="max-h-[420px] w-full rounded-lg border border-surface-200 bg-surface-900 [image-rendering:pixelated] dark:border-surface-700"
-      :class="{ 'cursor-crosshair': interactive }"
+      :class="{ 'cursor-crosshair': goalSelectionEnabled }"
       :aria-label="mapAriaLabel"
+      :aria-disabled="interactive && !goalSelectionEnabled"
       @click="selectNavigationGoal"
     />
+    <div
+      v-if="interactive && mappingActive"
+      class="rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-100"
+    >
+      Pause or finish mapping to freeze a snapshot before selecting a goal.
+    </div>
     <div
       v-if="map"
       class="flex flex-wrap gap-x-4 gap-y-1 text-[0.7rem] text-surface-500"
@@ -30,7 +37,14 @@
       <span><i class="mr-1 inline-block h-2 w-2 bg-slate-700" />unknown</span>
       <span><i class="mr-1 inline-block h-2 w-2 bg-slate-100" />free</span>
       <span><i class="mr-1 inline-block h-2 w-2 bg-red-500" />occupied</span>
-      <span><i class="mr-1 inline-block h-2 w-2 bg-cyan-400" />odom trail</span>
+      <span
+        ><i class="mr-1 inline-block h-0.5 w-3 bg-cyan-400" />raw odom
+        trail</span
+      >
+      <span v-if="localizationEnabled"
+        ><i class="mr-1 inline-block h-0.5 w-3 bg-emerald-400" />fused
+        trail</span
+      >
       <span
         ><i class="mr-1 inline-block h-2 w-2 rounded-full bg-blue-500" />raw
         odometry</span
@@ -86,6 +100,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let animationFrame: number | null = null;
 const odometryTrail = ref<Point2D[]>([]);
+const fusedTrail = ref<Point2D[]>([]);
 
 const mappingEnabled = computed(() => robotStore.data.local_mapping.enabled);
 const map = computed(() => store.localMap);
@@ -93,11 +108,27 @@ const simulationWorld = computed(() => store.simulation?.world ?? null);
 const localizationEnabled = computed(
   () => store.localization?.enabled ?? robotStore.data.pose_estimation.enabled,
 );
-const mapAriaLabel = computed(() =>
-  interactive
-    ? "Local occupancy grid in the odom frame; click observed free space to preview a route"
-    : "Local occupancy grid in the odom frame",
+const mappingActive = computed(() => store.mappingSession?.state === "active");
+const navigationActive = computed(() =>
+  ["running", "paused"].includes(store.navigationExecution?.state ?? ""),
 );
+const goalSelectionEnabled = computed(
+  () =>
+    interactive &&
+    !mappingActive.value &&
+    !navigationActive.value &&
+    !store.navigationPlanLoading,
+);
+const mapAriaLabel = computed(() => {
+  if (!interactive) return "Local occupancy grid in the odom frame";
+  if (mappingActive.value) {
+    return "Local occupancy grid; pause or finish mapping before selecting a navigation goal";
+  }
+  if (navigationActive.value) {
+    return "Local occupancy grid; goal selection is unavailable during navigation";
+  }
+  return "Local occupancy grid in the odom frame; click observed free space to preview a route";
+});
 const odomOriginInWorld = computed(() => {
   const origin = store.simulation?.odom_origin_in_world;
   return origin ? { x: origin.x_m, y: origin.y_m, yaw: origin.yaw_rad } : null;
@@ -163,7 +194,7 @@ const draw = () => {
   context.drawImage(bitmap, 0, 0, cssWidth, cssHeight);
   drawKnownWorldOverlay(context, grid, cssWidth, cssHeight);
   drawNavigationPlanOverlay(context, grid, cssWidth, cssHeight);
-  drawOdometryOverlay(context, grid, cssWidth, cssHeight);
+  drawPoseOverlay(context, grid, cssWidth, cssHeight);
 };
 
 const canvasPoint = (
@@ -299,15 +330,13 @@ const drawNavigationPlanOverlay = (
 const selectNavigationGoal = (event: MouseEvent) => {
   const element = canvas.value;
   const grid = map.value;
-  const navigationActive = ["running", "paused"].includes(
-    store.navigationExecution?.state ?? "",
-  );
   if (
     !interactive ||
     !element ||
     !grid ||
+    mappingActive.value ||
     store.navigationPlanLoading ||
-    navigationActive
+    navigationActive.value
   )
     return;
   const bounds = element.getBoundingClientRect();
@@ -322,7 +351,7 @@ const selectNavigationGoal = (event: MouseEvent) => {
   void store.planNavigationGoal(point.x, point.y);
 };
 
-const drawOdometryOverlay = (
+const drawPoseOverlay = (
   context: CanvasRenderingContext2D,
   grid: NonNullable<typeof map.value>,
   width: number,
@@ -334,11 +363,28 @@ const drawOdometryOverlay = (
   if (visibleTrail.length > 1) {
     context.save();
     context.strokeStyle = "#22d3ee";
-    context.lineWidth = 2;
-    context.globalAlpha = 0.9;
+    context.lineWidth = 1.25;
+    context.globalAlpha = 0.65;
+    context.setLineDash([5, 4]);
     context.beginPath();
     context.moveTo(visibleTrail[0].x, visibleTrail[0].y);
     for (const point of visibleTrail.slice(1)) context.lineTo(point.x, point.y);
+    context.stroke();
+    context.restore();
+  }
+
+  const visibleFusedTrail = fusedTrail.value
+    .map((point) => canvasPoint(grid, point, width, height))
+    .filter((point): point is Point2D => point !== null);
+  if (visibleFusedTrail.length > 1) {
+    context.save();
+    context.strokeStyle = "#34d399";
+    context.lineWidth = 2;
+    context.globalAlpha = 0.9;
+    context.beginPath();
+    context.moveTo(visibleFusedTrail[0].x, visibleFusedTrail[0].y);
+    for (const point of visibleFusedTrail.slice(1))
+      context.lineTo(point.x, point.y);
     context.stroke();
     context.restore();
   }
@@ -454,7 +500,29 @@ watch(
 );
 
 watch(() => store.latest.simulation?.payload.header.sequence, scheduleDraw);
-watch(() => store.latest.localization?.payload.header.sequence, scheduleDraw);
+watch(
+  () => store.latest.localization?.payload.header.sequence,
+  () => {
+    const envelope = store.latest.localization;
+    if (
+      envelope?.channel === "localization" &&
+      (mappingActive.value || navigationActive.value)
+    ) {
+      const point = { x: envelope.payload.x_m, y: envelope.payload.y_m };
+      const previous = fusedTrail.value.at(-1);
+      const minimumDistance = (map.value?.resolution_m ?? 0.05) / 2;
+      if (
+        !previous ||
+        Math.hypot(point.x - previous.x, point.y - previous.y) >=
+          minimumDistance
+      ) {
+        fusedTrail.value.push(point);
+        if (fusedTrail.value.length > 1000) fusedTrail.value.shift();
+      }
+    }
+    scheduleDraw();
+  },
+);
 watch(() => store.localization?.latest_pose?.header.sequence, scheduleDraw);
 watch(
   [() => store.navigationPlan, () => store.navigationPlanLoading],
@@ -467,6 +535,7 @@ watch(
   [() => store.mappingSession?.session_id, () => store.mapClearGeneration],
   () => {
     odometryTrail.value = [];
+    fusedTrail.value = [];
     scheduleDraw();
   },
 );

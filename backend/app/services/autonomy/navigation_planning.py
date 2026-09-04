@@ -3,6 +3,7 @@
 import asyncio
 import heapq
 import math
+import time
 from dataclasses import dataclass
 from itertools import count
 from typing import Dict, Iterable, List, Literal, Optional, Sequence, Tuple
@@ -499,9 +500,18 @@ class OccupancyGridPlanner:
 class NavigationPlanningService:
     """Hold the latest planning-only route preview for the operator UI."""
 
-    def __init__(self, bus: TopicBus, planner: Optional[OccupancyGridPlanner] = None):
+    def __init__(
+        self,
+        bus: TopicBus,
+        planner: Optional[OccupancyGridPlanner] = None,
+        *,
+        localization_timeout_seconds: float = 0.5,
+    ) -> None:
+        if localization_timeout_seconds <= 0:
+            raise ValueError("localization timeout must be positive")
         self._bus = bus
         self._planner = planner or OccupancyGridPlanner()
+        self._localization_timeout_ns = int(localization_timeout_seconds * 1e9)
         self._status = NavigationPlanStatus.idle()
         self._lock = asyncio.Lock()
 
@@ -549,6 +559,7 @@ class NavigationPlanningService:
                     reason=str(error),
                     map_sequence=grid.header.sequence,
                     pose_source=pose_source,
+                    start_yaw_rad=start_yaw_rad,
                     frame_id=grid.header.frame_id,
                 )
             except Exception as error:
@@ -562,9 +573,30 @@ class NavigationPlanningService:
                     allow_unknown=request.allow_unknown,
                     map_sequence=grid.header.sequence,
                     pose_source=pose_source,
+                    start_yaw_rad=start_yaw_rad,
                     reason=f"planner failed: {error}",
                 )
                 return self._status
+
+            current_grid = self._bus.latest(LOCAL_MAP)
+            if (
+                current_grid is None
+                or current_grid.header.frame_id != grid.header.frame_id
+                or current_grid.header.sequence != grid.header.sequence
+            ):
+                return self._set_rejected(
+                    request,
+                    goal=goal,
+                    start=start,
+                    reason=(
+                        "the occupancy map changed while the route was being planned; "
+                        "pause or finish mapping and try again"
+                    ),
+                    map_sequence=grid.header.sequence,
+                    pose_source=pose_source,
+                    start_yaw_rad=start_yaw_rad,
+                    frame_id=grid.header.frame_id,
+                )
 
             self._status = NavigationPlanStatus(
                 available=True,
@@ -578,6 +610,7 @@ class NavigationPlanningService:
                 allow_unknown=request.allow_unknown,
                 map_sequence=grid.header.sequence,
                 pose_source=pose_source,
+                start_yaw_rad=start_yaw_rad,
                 expanded_nodes=plan.expanded_nodes,
                 planning_method=plan.planning_method,
                 geometry_validated=plan.geometry_validated,
@@ -592,14 +625,23 @@ class NavigationPlanningService:
                     else None
                 ),
                 reason=(
-                    "Route is collision-checked, smoothed, and validated for "
-                    "the configured steering geometry"
-                    + (
-                        " using curvature-aware recovery"
-                        if plan.planning_method == "hybrid_astar"
-                        else ""
+                    (
+                        "Route is collision-checked, smoothed, and validated for "
+                        "the configured steering geometry"
+                        + (
+                            " using curvature-aware recovery"
+                            if plan.planning_method == "hybrid_astar"
+                            else ""
+                        )
+                        + (
+                            "; no motion command has been issued"
+                            if pose_source == "localization"
+                            else (
+                                "; this raw-odometry preview is diagnostic only; "
+                                "review a new route when fused localization is available"
+                            )
+                        )
                     )
-                    + "; no motion command has been issued"
                     if plan.geometry_validated
                     else "Route preview is ready; Ackermann geometry is not configured"
                 ),
@@ -613,7 +655,14 @@ class NavigationPlanningService:
 
     def _planning_pose(self, frame_id: str) -> Optional[PlanningPose]:
         localization = self._bus.latest(LOCALIZATION_POSE)
-        if localization is not None and localization.header.frame_id == frame_id:
+        now_ns = time.monotonic_ns()
+        if (
+            localization is not None
+            and localization.header.frame_id == frame_id
+            and 0
+            <= now_ns - localization.header.timestamp_monotonic_ns
+            <= self._localization_timeout_ns
+        ):
             return (
                 localization.x_m,
                 localization.y_m,
@@ -635,6 +684,7 @@ class NavigationPlanningService:
         start: Optional[NavigationPoint] = None,
         map_sequence: Optional[int] = None,
         pose_source: Optional[Literal["localization", "odometry"]] = None,
+        start_yaw_rad: Optional[float] = None,
         frame_id: str = "odom",
     ) -> NavigationPlanStatus:
         self._status = NavigationPlanStatus(
@@ -647,6 +697,7 @@ class NavigationPlanningService:
             allow_unknown=request.allow_unknown,
             map_sequence=map_sequence,
             pose_source=pose_source,
+            start_yaw_rad=start_yaw_rad,
             reason=reason,
         )
         return self._status

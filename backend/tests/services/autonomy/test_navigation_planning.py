@@ -1,5 +1,9 @@
+import asyncio
 import math
+import threading
+import time
 import unittest
+from unittest.mock import patch
 
 from app.schemas.autonomy import (
     LocalizationPose2D,
@@ -7,6 +11,7 @@ from app.schemas.autonomy import (
     NavigationGoalRequest,
     NavigationPoint,
     NavigationPlanState,
+    Odometry2D,
     OccupancyGrid,
 )
 from app.services.autonomy import (
@@ -16,14 +21,14 @@ from app.services.autonomy import (
     OccupancyGridPlanner,
     TopicBus,
 )
-from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP
+from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, ODOMETRY
 
 
 def header(*, sequence: int = 1, frame_id: str = "odom") -> MessageHeader:
     return MessageHeader(
         sequence=sequence,
         frame_id=frame_id,
-        timestamp_monotonic_ns=sequence * 1_000_000,
+        timestamp_monotonic_ns=time.monotonic_ns(),
     )
 
 
@@ -288,6 +293,7 @@ class NavigationPlanningServiceTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(status.state, NavigationPlanState.READY)
         self.assertEqual(status.pose_source, "localization")
+        self.assertEqual(status.start_yaw_rad, 0)
         self.assertEqual(status.map_sequence, 7)
         self.assertEqual(status.path[-1].x_m, 6.5)
         self.assertEqual(service.status, status)
@@ -302,8 +308,128 @@ class NavigationPlanningServiceTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertFalse(status.available)
-        self.assertEqual(status.state, NavigationPlanState.REJECTED)
+        self.assertEqual(
+            status.state,
+            NavigationPlanState.REJECTED,
+            msg=status.reason,
+        )
         self.assertIn("no occupancy map", status.reason or "")
+
+    async def test_stale_localization_only_produces_a_raw_odometry_preview(
+        self,
+    ) -> None:
+        bus = TopicBus()
+        bus.publish(LOCAL_MAP, grid(8, 5))
+        bus.publish(
+            LOCALIZATION_POSE,
+            LocalizationPose2D(
+                header=MessageHeader(
+                    sequence=8,
+                    frame_id="odom",
+                    timestamp_monotonic_ns=time.monotonic_ns() - 1_000_000_000,
+                ),
+                x_m=1.5,
+                y_m=2.5,
+                yaw_rad=0,
+                linear_speed_mps=0,
+                yaw_rate_radps=0,
+                position_variance_m2=0.001,
+                yaw_variance_rad2=0.001,
+                fusion_mode="corrected",
+            ),
+        )
+        bus.publish(
+            ODOMETRY,
+            Odometry2D(
+                header=header(sequence=9),
+                x_m=0.5,
+                y_m=2.5,
+                yaw_rad=0,
+                linear_speed_mps=0,
+                yaw_rate_radps=0,
+            ),
+        )
+
+        status = await NavigationPlanningService(
+            bus,
+            OccupancyGridPlanner(
+                path_smoother=AckermannPathSmoother(
+                    wheelbase_m=0.25,
+                    max_abs_steering_angle_rad=math.radians(30),
+                )
+            ),
+        ).plan(NavigationGoalRequest(x_m=6.5, y_m=2.5, clearance_m=0))
+
+        self.assertEqual(status.state, NavigationPlanState.READY)
+        self.assertEqual(status.pose_source, "odometry")
+        self.assertEqual(status.start, NavigationPoint(x_m=0.5, y_m=2.5))
+        self.assertIn("diagnostic only", status.reason or "")
+
+    async def test_rejects_a_route_if_the_map_changes_during_planning(self) -> None:
+        bus = TopicBus()
+        initial_grid = grid(8, 5)
+        bus.publish(LOCAL_MAP, initial_grid)
+        bus.publish(
+            LOCALIZATION_POSE,
+            LocalizationPose2D(
+                header=header(sequence=8),
+                x_m=1.5,
+                y_m=2.5,
+                yaw_rad=0,
+                linear_speed_mps=0,
+                yaw_rate_radps=0,
+                position_variance_m2=0.001,
+                yaw_variance_rad2=0.001,
+                fusion_mode="corrected",
+            ),
+        )
+        planner = OccupancyGridPlanner()
+        original_plan = planner.plan
+        planning_started = threading.Event()
+        release_planner = threading.Event()
+
+        def plan_and_update_map(
+            grid_message: OccupancyGrid,
+            *,
+            start_x_m: float,
+            start_y_m: float,
+            start_yaw_rad: float | None = None,
+            goal: NavigationGoalRequest,
+        ):
+            planning_started.set()
+            if not release_planner.wait(timeout=1):
+                raise TimeoutError("test did not release the route planner")
+            result = original_plan(
+                grid_message,
+                start_x_m=start_x_m,
+                start_y_m=start_y_m,
+                start_yaw_rad=start_yaw_rad,
+                goal=goal,
+            )
+            return result
+
+        with patch.object(planner, "plan", side_effect=plan_and_update_map):
+            planning_task = asyncio.create_task(
+                NavigationPlanningService(bus, planner).plan(
+                    NavigationGoalRequest(x_m=6.5, y_m=2.5, clearance_m=0)
+                )
+            )
+            await asyncio.to_thread(planning_started.wait)
+            bus.publish(
+                LOCAL_MAP,
+                initial_grid.model_copy(
+                    update={"header": header(sequence=8)},
+                ),
+            )
+            release_planner.set()
+            status = await planning_task
+
+        self.assertEqual(
+            status.state,
+            NavigationPlanState.REJECTED,
+            msg=status.reason,
+        )
+        self.assertIn("changed while", status.reason or "")
 
 
 if __name__ == "__main__":

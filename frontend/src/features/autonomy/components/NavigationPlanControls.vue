@@ -20,10 +20,16 @@
       {{ store.navigationPlanError }}
     </div>
     <div
-      v-if="store.navigationExecutionError"
+      v-if="executionError"
       class="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-200"
     >
-      {{ store.navigationExecutionError }}
+      {{ executionError }}
+    </div>
+    <div
+      v-if="mappingActive"
+      class="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-100"
+    >
+      Pause or finish mapping before reviewing and starting a navigation route.
     </div>
 
     <div
@@ -243,10 +249,16 @@ const execution = computed(() => {
 const navigationActive = computed(() =>
   ["running", "paused"].includes(execution.value?.state ?? ""),
 );
+const mappingActive = computed(() => store.mappingSession?.state === "active");
+const executionError = computed(
+  () => store.navigationExecutionError ?? store.navigationExecutionStatusError,
+);
 const canStart = computed(
   () =>
     plan.value?.state === "ready" &&
     plan.value.geometry_validated &&
+    plan.value.pose_source === "localization" &&
+    !mappingActive.value &&
     execution.value?.available !== false &&
     maxSpeed.value > 0 &&
     !store.navigationExecutionLoading,

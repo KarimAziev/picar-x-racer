@@ -93,6 +93,7 @@ describe("autonomy telemetry store", () => {
           allow_unknown: false,
           map_sequence: null,
           pose_source: null,
+          start_yaw_rad: null,
           expanded_nodes: 0,
           planning_method: "grid_astar",
           geometry_validated: false,
@@ -324,6 +325,22 @@ describe("autonomy telemetry store", () => {
     expect(store.mapClearGeneration).toBe(1);
   });
 
+  it("does not start mapping while navigation is active", async () => {
+    const store = useAutonomyStore();
+    await store.refreshNavigationExecution();
+    store.navigationExecution = {
+      ...store.navigationExecution!,
+      state: "running",
+      action_id: "navigation-1",
+    };
+    vi.clearAllMocks();
+
+    await store.runMappingAction("start");
+
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(store.mappingActionError).toContain("Cancel the active navigation");
+  });
+
   it("clears a stale route preview when the map disappears", async () => {
     const store = useAutonomyStore();
     store.navigationPlan = {
@@ -341,6 +358,7 @@ describe("autonomy telemetry store", () => {
       allow_unknown: false,
       map_sequence: 2,
       pose_source: "localization",
+      start_yaw_rad: 0,
       expanded_nodes: 4,
       planning_method: "hybrid_astar",
       geometry_validated: true,
@@ -365,6 +383,7 @@ describe("autonomy telemetry store", () => {
       allow_unknown: false,
       map_sequence: null,
       pose_source: null,
+      start_yaw_rad: null,
       expanded_nodes: 0,
       planning_method: "grid_astar",
       geometry_validated: false,
@@ -436,6 +455,7 @@ describe("autonomy telemetry store", () => {
           allow_unknown: false,
           map_sequence: 12,
           pose_source: "localization",
+          start_yaw_rad: 0.1,
           expanded_nodes: 17,
           planning_method: "grid_astar",
           geometry_validated: true,
@@ -460,6 +480,7 @@ describe("autonomy telemetry store", () => {
         allow_unknown: false,
         map_sequence: null,
         pose_source: null,
+        start_yaw_rad: null,
         expanded_nodes: 0,
         planning_method: "grid_astar",
         geometry_validated: false,
@@ -540,6 +561,39 @@ describe("autonomy telemetry store", () => {
       "/px/api/autonomy/navigation/execution/cancel",
     );
     expect(store.navigationExecution?.action_id).toBe("navigation-1");
+  });
+
+  it("blocks planning and execution while the map is changing", async () => {
+    const store = useAutonomyStore();
+    await store.refreshMappingSession();
+    store.mappingSession = { ...store.mappingSession!, state: "active" };
+
+    await store.planNavigationGoal(1, 1);
+    await store.startNavigation();
+
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(store.navigationPlanError).toContain("Pause or finish mapping");
+    expect(store.navigationExecutionError).toContain("Pause or finish mapping");
+  });
+
+  it("keeps a navigation command error across background status polls", async () => {
+    const store = useAutonomyStore();
+    store.navigationExecutionError = "The occupancy map changed.";
+
+    await store.refreshNavigationExecution();
+
+    expect(store.navigationExecution?.state).toBe("idle");
+    expect(store.navigationExecutionError).toBe("The occupancy map changed.");
+  });
+
+  it("clears a recovered navigation status-poll error", async () => {
+    const store = useAutonomyStore();
+    store.navigationExecutionStatusError = "Control server unavailable.";
+
+    await store.refreshNavigationExecution();
+
+    expect(store.navigationExecution?.state).toBe("idle");
+    expect(store.navigationExecutionStatusError).toBeNull();
   });
 
   it("starts a relative steering arc with SI distance and speed", async () => {

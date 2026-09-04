@@ -161,7 +161,13 @@ class NavigationExecutionService:
         localization_timeout_seconds: float = 0.5,
         intent_timeout_seconds: float = 0.25,
         max_cross_track_error_m: float = 0.35,
+        max_start_position_error_m: float = 0.15,
+        max_start_heading_error_rad: float = math.radians(15.0),
     ) -> None:
+        if max_start_position_error_m <= 0:
+            raise ValueError("maximum start-position error must be positive")
+        if not 0 < max_start_heading_error_rad < math.pi:
+            raise ValueError("maximum start-heading error must be between zero and pi")
         self._bus = bus
         self._motion = motion
         self._planning = planning
@@ -171,6 +177,8 @@ class NavigationExecutionService:
         self._localization_timeout_ns = int(localization_timeout_seconds * 1e9)
         self._intent_timeout_ns = int(intent_timeout_seconds * 1e9)
         self._max_cross_track_error_m = max_cross_track_error_m
+        self._max_start_position_error_m = max_start_position_error_m
+        self._max_start_heading_error_rad = max_start_heading_error_rad
         self._task: Optional[asyncio.Task[None]] = None
         self._status = NavigationExecutionStatus.idle()
         self._sequence = 0
@@ -200,12 +208,38 @@ class NavigationExecutionService:
             raise ActionConflictError(
                 "the navigation route was not validated for Ackermann geometry"
             )
+        if (
+            plan.pose_source != "localization"
+            or plan.start is None
+            or plan.start_yaw_rad is None
+        ):
+            raise ActionConflictError(
+                "review a new route after fresh fused localization is available"
+            )
         grid = self._bus.latest(LOCAL_MAP)
         if grid is None or grid.header.sequence != plan.map_sequence:
             raise ActionConflictError("the occupancy map changed; review a new route")
         pose = self._fresh_localization(plan.frame_id)
         if pose is None:
             raise ActionConflictError("fresh fused localization is required")
+        start_position_error_m = math.hypot(
+            pose.x_m - plan.start.x_m,
+            pose.y_m - plan.start.y_m,
+        )
+        if start_position_error_m > self._max_start_position_error_m:
+            raise ActionConflictError(
+                "the vehicle moved "
+                f"{start_position_error_m:.2f} m since route review; review a new route"
+            )
+        start_heading_error_rad = abs(
+            self._normalize_angle(pose.yaw_rad - plan.start_yaw_rad)
+        )
+        if start_heading_error_rad > self._max_start_heading_error_rad:
+            raise ActionConflictError(
+                "the vehicle heading changed "
+                f"{math.degrees(start_heading_error_rad):.1f} degrees since route review; "
+                "review a new route"
+            )
 
         tracker = PurePursuitTracker(
             plan.path,
@@ -456,6 +490,10 @@ class NavigationExecutionService:
         )
         curvature_scale = max(0.35, 1.0 - 0.65 * steering_fraction)
         return min(request.max_speed_mps, stopping_speed * curvature_scale)
+
+    @staticmethod
+    def _normalize_angle(angle: float) -> float:
+        return (angle + math.pi) % (2.0 * math.pi) - math.pi
 
     async def _finish(
         self,

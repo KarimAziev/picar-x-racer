@@ -8,6 +8,7 @@ from app.schemas.autonomy import (
     NavigationExecutionRequest,
     NavigationExecutionStatus,
     NavigationPlanStatus,
+    MappingSessionState,
     RelativeArcRequest,
     RelativeDistanceRequest,
     RelativeMotionStatus,
@@ -227,6 +228,16 @@ def _require_navigation_execution_service(
     return service
 
 
+def _require_frozen_mapping_snapshot(
+    service: Optional[LocalMappingService],
+) -> None:
+    if service is not None and service.status.state == MappingSessionState.ACTIVE:
+        raise HTTPException(
+            status_code=409,
+            detail="pause or finish mapping before reviewing a navigation route",
+        )
+
+
 @router.get(
     "/px/api/autonomy/navigation/plan",
     response_model=NavigationPlanStatus,
@@ -246,7 +257,9 @@ async def get_navigation_plan(
 async def plan_navigation_goal(
     request: NavigationGoalRequest,
     service: NavigationPlanningDependency,
+    mapping: MappingDependency,
 ) -> NavigationPlanStatus:
+    _require_frozen_mapping_snapshot(mapping)
     return await service.plan(request)
 
 
@@ -280,7 +293,9 @@ async def get_navigation_execution(
 async def start_navigation_execution(
     request: NavigationExecutionRequest,
     service: NavigationExecutionDependency,
+    mapping: MappingDependency,
 ) -> NavigationExecutionStatus:
+    _require_frozen_mapping_snapshot(mapping)
     try:
         return await _require_navigation_execution_service(service).start(request)
     except ActionConflictError as error:

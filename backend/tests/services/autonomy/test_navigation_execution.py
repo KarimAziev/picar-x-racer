@@ -11,6 +11,7 @@ from app.schemas.autonomy import (
     NavigationExecutionRequest,
     NavigationGoalRequest,
     NavigationPoint,
+    Odometry2D,
     OccupancyGrid,
 )
 from app.services.autonomy import (
@@ -28,7 +29,7 @@ from app.services.autonomy import (
     RobotMode,
     TopicBus,
 )
-from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP
+from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, ODOMETRY
 
 
 class FakeMotionControl:
@@ -308,6 +309,29 @@ class NavigationExecutionServiceTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ActionConflictError, "another autonomous"):
             await self.service.start(NavigationExecutionRequest())
 
+    async def test_rejects_start_after_vehicle_moves_from_reviewed_pose(self) -> None:
+        await self.prepare_route()
+        self.bus.publish(LOCALIZATION_POSE, pose(0.7, 0.5, sequence=2))
+
+        with self.assertRaisesRegex(ActionConflictError, "moved 0.20 m"):
+            await self.service.start(NavigationExecutionRequest())
+
+        self.assertEqual(self.motion.mode, RobotMode.DISARMED)
+        self.assertIsNone(self.motion.autonomy_owner)
+
+    async def test_rejects_start_after_heading_changes_from_review(self) -> None:
+        await self.prepare_route()
+        self.bus.publish(
+            LOCALIZATION_POSE,
+            pose(0.5, 0.5, yaw_rad=math.radians(20), sequence=2),
+        )
+
+        with self.assertRaisesRegex(ActionConflictError, "heading changed 20.0"):
+            await self.service.start(NavigationExecutionRequest())
+
+        self.assertEqual(self.motion.mode, RobotMode.DISARMED)
+        self.assertIsNone(self.motion.autonomy_owner)
+
     async def test_rejects_a_route_without_geometry_validation(self) -> None:
         planning = NavigationPlanningService(self.bus)
         service = NavigationExecutionService(
@@ -323,6 +347,27 @@ class NavigationExecutionServiceTests(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaisesRegex(ActionConflictError, "not validated"):
             await service.start(NavigationExecutionRequest())
+
+    async def test_rejects_an_executable_route_planned_from_raw_odometry(self) -> None:
+        self.bus.publish(LOCAL_MAP, occupancy_grid())
+        self.bus.publish(
+            ODOMETRY,
+            Odometry2D(
+                header=header(),
+                x_m=0.5,
+                y_m=0.5,
+                yaw_rad=0,
+                linear_speed_mps=0,
+                yaw_rate_radps=0,
+            ),
+        )
+        plan = await self.planning.plan(
+            NavigationGoalRequest(x_m=1.5, y_m=0.5, clearance_m=0)
+        )
+
+        self.assertEqual(plan.pose_source, "odometry")
+        with self.assertRaisesRegex(ActionConflictError, "fresh fused localization"):
+            await self.service.start(NavigationExecutionRequest())
 
 
 if __name__ == "__main__":

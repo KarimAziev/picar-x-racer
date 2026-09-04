@@ -277,6 +277,7 @@ export interface NavigationPlanStatus {
   allow_unknown: boolean;
   map_sequence: number | null;
   pose_source: "localization" | "odometry" | null;
+  start_yaw_rad: number | null;
   expanded_nodes: number;
   planning_method: "grid_astar" | "hybrid_astar";
   geometry_validated: boolean;
@@ -335,6 +336,7 @@ export interface State {
   navigationExecution: NavigationExecutionStatus | null;
   navigationExecutionLoading: boolean;
   navigationExecutionError: string | null;
+  navigationExecutionStatusError: string | null;
   simulation: SimulationRuntimeStatus | null;
   simulationLoading: boolean;
   simulationResetting: boolean;
@@ -368,6 +370,7 @@ const defaultState: State = {
   navigationExecution: null,
   navigationExecutionLoading: false,
   navigationExecutionError: null,
+  navigationExecutionStatusError: null,
   simulation: null,
   simulationLoading: false,
   simulationResetting: false,
@@ -441,6 +444,14 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     async runMappingAction(action: MappingSessionAction) {
+      if (
+        action === "start" &&
+        ["running", "paused"].includes(this.navigationExecution?.state ?? "")
+      ) {
+        this.mappingActionError =
+          "Cancel the active navigation action before starting mapping.";
+        return;
+      }
       try {
         this.mappingActionLoading = true;
         this.mappingSession = await robotApi.post<MappingSessionStatus>(
@@ -453,6 +464,8 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
             this.refreshLocalMap(),
             this.clearNavigationPlan(),
           ]);
+        } else if (action === "start") {
+          await this.clearNavigationPlan();
         }
       } catch (error) {
         this.mappingActionError = retrieveError(error).text;
@@ -484,6 +497,11 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     async planNavigationGoal(xM: number, yM: number, clearanceM = 0.2) {
+      if (this.mappingSession?.state === "active") {
+        this.navigationPlanError =
+          "Pause or finish mapping before reviewing a navigation route.";
+        return;
+      }
       try {
         this.navigationPlanLoading = true;
         this.navigationPlan = await robotApi.post<NavigationPlanStatus>(
@@ -496,6 +514,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
           },
         );
         this.navigationPlanError = null;
+        this.navigationExecutionError = null;
       } catch (error) {
         this.navigationPlanError = retrieveError(error).text;
       } finally {
@@ -510,6 +529,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
           "/px/api/autonomy/navigation/plan/clear",
         );
         this.navigationPlanError = null;
+        this.navigationExecutionError = null;
       } catch (error) {
         this.navigationPlanError = retrieveError(error).text;
       } finally {
@@ -523,13 +543,18 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
           await robotApi.get<NavigationExecutionStatus>(
             "/px/api/autonomy/navigation/execution",
           );
-        this.navigationExecutionError = null;
+        this.navigationExecutionStatusError = null;
       } catch (error) {
-        this.navigationExecutionError = retrieveError(error).text;
+        this.navigationExecutionStatusError = retrieveError(error).text;
       }
     },
 
     async startNavigation(maxSpeedMps = 0.15) {
+      if (this.mappingSession?.state === "active") {
+        this.navigationExecutionError =
+          "Pause or finish mapping before starting navigation.";
+        return;
+      }
       try {
         this.navigationExecutionLoading = true;
         this.navigationExecution =
@@ -542,6 +567,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
             },
           );
         this.navigationExecutionError = null;
+        this.navigationExecutionStatusError = null;
       } catch (error) {
         this.navigationExecutionError = retrieveError(error).text;
       } finally {
@@ -557,6 +583,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
             `/px/api/autonomy/navigation/execution/${action}`,
           );
         this.navigationExecutionError = null;
+        this.navigationExecutionStatusError = null;
       } catch (error) {
         this.navigationExecutionError = retrieveError(error).text;
       } finally {
