@@ -473,10 +473,13 @@ export const resolveNewListItem = (
   selectedOptionIdx: number,
   defs: Record<string, JSONSchema> | undefined,
 ) => {
-  if (isPlainObject(resolvedSchema?.items) && resolvedSchema.items.anyOf) {
+  const itemOptions =
+    resolvedSchema?.items?.anyOf || resolvedSchema?.items?.oneOf;
+  if (isPlainObject(resolvedSchema?.items) && itemOptions) {
+    const rawSelectedBranch = itemOptions[selectedOptionIdx];
     const selectedBranch =
-      resolvedSchema.items.anyOf[selectedOptionIdx] &&
-      resolveRef(resolvedSchema.items.anyOf[selectedOptionIdx], defs);
+      rawSelectedBranch &&
+      (resolveRef(rawSelectedBranch, defs) || rawSelectedBranch);
 
     if (selectedBranch && hasDirectSchemaType(selectedBranch, "object")) {
       return makeDefaults(selectedBranch);

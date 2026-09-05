@@ -11,6 +11,7 @@ import {
   getSchemaTypes,
   hasDirectSchemaType,
   resolveRef,
+  resolveNewListItem,
   schemaAllowsType,
   shouldInhibitGrid,
   validateAll,
@@ -42,6 +43,33 @@ const motorsSchema: JSONSchema = {
 };
 
 describe("polymorphic array schemas", () => {
+  it("creates defaults from a oneOf array item selected by its discriminator", () => {
+    const schema: JSONSchema = {
+      type: "array",
+      items: {
+        discriminator: {
+          propertyName: "driver",
+          mapping: { temperature: "#/$defs/TemperatureSensor" },
+        },
+        oneOf: [{ $ref: "#/$defs/TemperatureSensor" }],
+      },
+    };
+    const defs = {
+      TemperatureSensor: {
+        type: "object" as const,
+        properties: {
+          driver: { type: "string" as const, const: "temperature" },
+          name: { type: "string" as const, default: "Temperature" },
+        },
+      },
+    };
+
+    expect(resolveNewListItem(schema, 0, defs)).toEqual({
+      driver: "temperature",
+      name: "Temperature",
+    });
+  });
+
   it("selects widgets from OpenAPI extension metadata", () => {
     const component = getComponentWithProps({
       type: "integer",

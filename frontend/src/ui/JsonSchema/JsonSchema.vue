@@ -11,7 +11,7 @@
     <Grid :inhibit-grid="inhibitGrid">
       <JsonSchema
         :origModel="origModel"
-        v-for="(propSchema, propName) in resolvedSchema.properties"
+        v-for="(propSchema, propName) in visibleProperties"
         :level="level + 1"
         :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
         :key="[selectedOption, ...path, propName].join('-')"
@@ -53,7 +53,7 @@
       >
         <ArraySelectWrapper v-if="anyOfOptions && !!anyOfOptions.length">
           <SelectField
-            :label="resolvedSchema.title"
+            :label="resolvedSchema.props?.typeLabel || resolvedSchema.title"
             :options="anyOfOptions"
             v-model="selections[+index]"
             :tooltipHelp="tooltipHelp"
@@ -68,17 +68,15 @@
           :idPrefix="`${idPrefix}-${[selections[+index], ...path, index].join('-')}`"
           :key="[selections[+index], ...path, index].join('-')"
           :schema="
-            (resolvedSchema.items?.anyOf
-              ? resolveRef(
-                  resolvedSchema.items?.anyOf[selections[+index]],
-                  defs,
-                )
+            (effectiveAnyOf.length
+              ? getSelectedSchema(effectiveAnyOf, selections[+index], defs)
               : resolvedSchema.items) || null
           "
           :model="model"
           :invalidData="invalidData"
           :path="[...path, index]"
           :defs="defs"
+          :hiddenProperty="resolvedSchema.items?.discriminator?.propertyName"
         ></JsonSchema>
       </ArrayPanel>
       <slot></slot>
@@ -168,6 +166,7 @@
       :invalidData="invalidData"
       :path="path"
       :defs="defs"
+      :hiddenProperty="resolvedSchema?.discriminator?.propertyName"
     />
     <slot></slot>
     <Footer v-if="isRootLevel">
@@ -227,6 +226,7 @@ type Props = {
   collapsed?: boolean;
   level: number;
   inhibitFieldset?: boolean;
+  hiddenProperty?: string;
   dataComparator?: <
     V extends Record<string, any>,
     B extends Record<string, any>,
@@ -283,6 +283,13 @@ const invalidMessage = computed(() =>
 const isObjectSchema = computed(() => isObjectSchemaPred(resolvedSchema.value));
 const isArraySchema = computed(() => isArraySchemaPred(resolvedSchema.value));
 const isAnyOf = computed(() => isAnyOfPred(resolvedSchema.value));
+const visibleProperties = computed(() =>
+  Object.fromEntries(
+    Object.entries(resolvedSchema.value?.properties || {}).filter(
+      ([propertyName]) => propertyName !== props.hiddenProperty,
+    ),
+  ),
+);
 const enumOptions = computed(() => mapEnumOptions(resolvedSchema.value));
 const effectiveAnyOf = computed(() =>
   mapEffectiveAnyOf(resolvedSchema.value, props.defs),

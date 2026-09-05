@@ -202,6 +202,50 @@ export interface LocalizationSensorsConfig {
       };
 }
 
+interface AuxiliarySensorConfigBase {
+  name: string;
+  enabled: boolean;
+  poll_interval_seconds: number;
+}
+
+export type AuxiliarySensorConfig =
+  | (AuxiliarySensorConfigBase & {
+      driver: "hts221";
+      bus: number;
+      address: number | string;
+      output_data_rate_hz: 1 | 7 | 12.5;
+      humidity_average_samples: 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512;
+      temperature_average_samples: 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
+    })
+  | (AuxiliarySensorConfigBase & {
+      driver: "lps25h";
+      bus: number;
+      address: number | string;
+      output_data_rate_hz: 1 | 7 | 12.5 | 25;
+    })
+  | (AuxiliarySensorConfigBase & {
+      driver: "lsm9ds1_magnetometer";
+      bus: number;
+      address: number | string;
+      magnetic_field_range_gauss: 4 | 8 | 12 | 16;
+      output_data_rate_hz: 0.625 | 1.25 | 2.5 | 5 | 10 | 20 | 40 | 80;
+      performance_mode: "low" | "medium" | "high" | "ultra_high";
+    })
+  | (AuxiliarySensorConfigBase & {
+      driver: "mock_environmental";
+      temperature_c: number | null;
+      relative_humidity_percent: number | null;
+      pressure_pa: number | null;
+    })
+  | (AuxiliarySensorConfigBase & {
+      driver: "mock_magnetometer";
+      magnetic_field_t: [number, number, number];
+    });
+
+export interface AuxiliarySensorsConfig {
+  sensors: AuxiliarySensorConfig[];
+}
+
 export interface LidarSafetyConfig {
   enabled: boolean;
   front_half_angle_deg: number;
@@ -292,6 +336,7 @@ export interface Data extends ServoData, MotorsData {
   motion_control: MotionControlConfig;
   ackermann_odometry: AckermannOdometryConfig;
   localization_sensors: LocalizationSensorsConfig;
+  auxiliary_sensors: AuxiliarySensorsConfig;
   lidar_safety: LidarSafetyConfig;
   local_mapping: LocalMappingConfig;
   coherent_simulation: CoherentSimulationConfig;
@@ -448,6 +493,9 @@ const defaultState: State = {
         device: 0,
         max_speed_hz: 1000000,
       },
+    },
+    auxiliary_sensors: {
+      sensors: [],
     },
     lidar_safety: {
       enabled: false,

@@ -1,6 +1,7 @@
 from typing import List, Literal, Optional, Union
 
 from app.schemas.robot.avoid_obstacles import AvoidParams
+from app.schemas.robot.auxiliary_sensors import AuxiliarySensorsConfig
 from app.schemas.robot.battery import BatteryConfig
 from app.schemas.robot.distance import UltrasonicConfig
 from app.schemas.robot.led import LedConfig
@@ -70,6 +71,17 @@ class HardwareConfig(BaseModel):
             ),
         ),
     ] = LocalizationSensorsConfig()
+
+    auxiliary_sensors: Annotated[
+        AuxiliarySensorsConfig,
+        Field(
+            title="Auxiliary sensors",
+            description=(
+                "Named environmental and magnetic telemetry sensors that are "
+                "independent of localization and odometry."
+            ),
+        ),
+    ] = AuxiliarySensorsConfig()
 
     lidar_safety: Annotated[
         LidarSafetyConfig,

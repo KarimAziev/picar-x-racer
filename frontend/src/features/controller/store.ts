@@ -25,6 +25,7 @@ import { wait } from "@/util/wait";
 import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
 import { useAppSyncStore } from "@/features/syncer";
+import { useAuxiliarySensorStore } from "@/features/sensors";
 
 export const ACCELERATION = 10;
 export const MIN_SPEED = ACCELERATION;
@@ -167,6 +168,7 @@ export const useControllerStore = defineStore("controller", {
       const settingsStore = useSettingsStore();
       const batteryStore = useBatteryStore();
       const robotStore = useRobotStore();
+      const auxiliarySensorStore = useAuxiliarySensorStore();
       const handleMessage = (data: WSMessageData) => {
         if (!data) {
           return;
@@ -217,6 +219,11 @@ export const useControllerStore = defineStore("controller", {
           }
           case "battery": {
             batteryStore.mergeBatteryMetrics(payload);
+            break;
+          }
+
+          case "auxiliary_sensors": {
+            auxiliarySensorStore.setReadings(payload);
             break;
           }
 

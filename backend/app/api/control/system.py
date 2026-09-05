@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, Request
 if TYPE_CHECKING:
     from app.services.control.car_service import CarService
     from app.services.sensors.battery_service import BatteryService
+    from app.services.sensors.auxiliary_sensor_service import AuxiliarySensorService
     from app.services.sensors.distance_service import DistanceService
     from app.services.autonomy.sensor_publishers import LocalizationSensorService
     from app.services.autonomy.lidar_safety import LidarSafetyService
@@ -60,12 +61,22 @@ async def shutdown(
     """
     errors: list[str] = []
     battery_service: "BatteryService" = request.app.state.battery_service
+    auxiliary_sensor_service: "AuxiliarySensorService" = (
+        request.app.state.auxiliary_sensor_service
+    )
     try:
         _log.debug("Gracefully stopping battery service")
         await battery_service.cleanup_connection_manager()
     except Exception as e:
         errors.append(str(e))
         _log.error("Failed to cleanup battery service: %s", e)
+
+    try:
+        _log.debug("Gracefully stopping auxiliary sensor service")
+        await auxiliary_sensor_service.cleanup_connection_manager()
+    except Exception as e:
+        errors.append(str(e))
+        _log.error("Failed to cleanup auxiliary sensor service: %s", e)
 
     try:
         _log.debug("Gracefully stopping robot service")

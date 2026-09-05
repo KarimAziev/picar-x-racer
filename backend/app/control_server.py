@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.control import api_router, tags_metadata
 from app.core.px_logger import Logger
 from app.services.sensors.battery_service import BatteryService
+from app.services.sensors.auxiliary_sensor_service import AuxiliarySensorService
 
 if TYPE_CHECKING:
     from robot_hat.i2c.smbus_manager import SMBusManager
@@ -57,6 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config_manager: Optional["JsonDataManager"] = None
     smbus_manager: Optional["SMBusManager"] = None
     battery_service: Optional["BatteryService"] = None
+    auxiliary_sensor_service: Optional["AuxiliarySensorService"] = None
     motion_control_service: Optional["MotionControlService"] = None
     steering_feedback_service: Optional["SteeringFeedbackService"] = None
     topic_bus: Optional["TopicBus"] = None
@@ -110,7 +112,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             app_loop=app_loop,
         )
 
+        auxiliary_sensor_service = AuxiliarySensorService(
+            connection_manager=connection_service,
+            config_manager=config_manager,
+            smbus_manager=smbus_manager,
+            app_loop=app_loop,
+        )
+
         app.state.battery_service = battery_service
+        app.state.auxiliary_sensor_service = auxiliary_sensor_service
 
         if steering_feedback_service and not (
             coherent_simulation_supervisor and coherent_simulation_supervisor.enabled
@@ -168,6 +178,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             )
 
         battery_service.setup_connection_manager()
+        auxiliary_sensor_service.setup_connection_manager()
         distance_service.subscribe(broadcast_distance)
 
         settings = settings_service.load_data()
@@ -199,6 +210,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await battery_service.cleanup_connection_manager()
         except asyncio.CancelledError:
             logger.warning("Cancelled while cleaning up battery_service.")
+            raise
+
+    if auxiliary_sensor_service:
+        try:
+            await auxiliary_sensor_service.cleanup_connection_manager()
+        except asyncio.CancelledError:
+            logger.warning("Cancelled while cleaning up auxiliary sensor service.")
             raise
 
     if relative_motion_service:
