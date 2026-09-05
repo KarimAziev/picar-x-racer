@@ -11,6 +11,43 @@ from typing_extensions import Annotated, Self
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 Vector3 = Tuple[FiniteFloat, FiniteFloat, FiniteFloat]
 
+SensorName = Annotated[
+    str,
+    Field(
+        title="Sensor name",
+        description=(
+            "Unique display name used to identify this sensor in telemetry and "
+            "the controller UI."
+        ),
+        min_length=1,
+        max_length=80,
+        json_schema_extra={"shared": True},
+    ),
+]
+PollIntervalSeconds = Annotated[
+    float,
+    Field(
+        title="Telemetry interval",
+        description=(
+            "Minimum time in seconds between fresh sensor readings sent to the "
+            "browser."
+        ),
+        ge=0.05,
+        le=3600,
+        allow_inf_nan=False,
+        examples=[1.0],
+        json_schema_extra={"shared": True},
+    ),
+]
+I2CBusField = Annotated[
+    IC2Bus,
+    Field(
+        title="I2C bus",
+        description="Linux I2C bus number used to communicate with the sensor.",
+        json_schema_extra={"shared": True},
+    ),
+]
+
 
 class HTS221OutputDataRate(float, Enum):
     HZ_1 = 1.0
@@ -48,24 +85,9 @@ def _parse_address(value: AddressField, *, device: str) -> int:
 
 
 class AuxiliarySensorConfigBase(BaseModel):
-    name: Annotated[
-        str,
-        Field(
-            min_length=1,
-            max_length=80,
-            description="Unique human-readable name used in telemetry.",
-        ),
-    ]
+    name: SensorName
     enabled: EnabledField = True
-    poll_interval_seconds: Annotated[
-        float,
-        Field(
-            ge=0.05,
-            le=3600,
-            allow_inf_nan=False,
-            description="Minimum interval between browser telemetry samples.",
-        ),
-    ] = 1.0
+    poll_interval_seconds: PollIntervalSeconds = 1.0
 
     @field_validator("name")
     @classmethod
@@ -77,7 +99,7 @@ class AuxiliarySensorConfigBase(BaseModel):
 
 
 class I2CAuxiliarySensorConfig(AuxiliarySensorConfigBase):
-    bus: IC2Bus = 1
+    bus: I2CBusField = 1
     address: AddressField
 
     @property
@@ -86,14 +108,55 @@ class I2CAuxiliarySensorConfig(AuxiliarySensorConfigBase):
 
 
 class HTS221SensorConfig(I2CAuxiliarySensorConfig):
+    """Temperature and relative-humidity readings from an HTS221 sensor."""
+
     model_config = ConfigDict(title="Sense HAT temperature and humidity (HTS221)")
 
-    driver: Literal["hts221"] = "hts221"
-    name: str = "Sense HAT temperature and humidity"
-    address: AddressField = "0x5f"
-    output_data_rate_hz: HTS221OutputDataRate = HTS221OutputDataRate.HZ_1
-    humidity_average_samples: Literal[4, 8, 16, 32, 64, 128, 256, 512] = 32
-    temperature_average_samples: Literal[2, 4, 8, 16, 32, 64, 128, 256] = 16
+    driver: Annotated[
+        Literal["hts221"],
+        Field(
+            title="Sensor driver",
+            description="Hardware driver used for this sensor.",
+        ),
+    ] = "hts221"
+    name: SensorName = "Sense HAT temperature and humidity"
+    address: Annotated[
+        AddressField,
+        Field(
+            title="I2C address",
+            description="Fixed 7-bit I2C address of the HTS221 sensor (0x5F).",
+        ),
+    ] = "0x5f"
+    output_data_rate_hz: Annotated[
+        HTS221OutputDataRate,
+        Field(
+            title="Output data rate",
+            description=(
+                "Number of new temperature and humidity measurements produced "
+                "per second. It must be at least the requested telemetry rate."
+            ),
+        ),
+    ] = HTS221OutputDataRate.HZ_1
+    humidity_average_samples: Annotated[
+        Literal[4, 8, 16, 32, 64, 128, 256, 512],
+        Field(
+            title="Humidity averaging samples",
+            description=(
+                "Number of internal samples averaged for each humidity reading. "
+                "Higher values reduce noise but respond more slowly."
+            ),
+        ),
+    ] = 32
+    temperature_average_samples: Annotated[
+        Literal[2, 4, 8, 16, 32, 64, 128, 256],
+        Field(
+            title="Temperature averaging samples",
+            description=(
+                "Number of internal samples averaged for each temperature "
+                "reading. Higher values reduce noise but respond more slowly."
+            ),
+        ),
+    ] = 16
 
     @field_validator("address", mode="before")
     @classmethod
@@ -110,12 +173,37 @@ class HTS221SensorConfig(I2CAuxiliarySensorConfig):
 
 
 class LPS25HSensorConfig(I2CAuxiliarySensorConfig):
+    """Pressure and temperature readings from an LPS25H or LPS25HB sensor."""
+
     model_config = ConfigDict(title="Sense HAT pressure and temperature (LPS25H/HB)")
 
-    driver: Literal["lps25h"] = "lps25h"
-    name: str = "Sense HAT pressure and temperature"
-    address: AddressField = "0x5c"
-    output_data_rate_hz: LPS25HOutputDataRate = LPS25HOutputDataRate.HZ_1
+    driver: Annotated[
+        Literal["lps25h"],
+        Field(
+            title="Sensor driver",
+            description="Hardware driver used for this sensor.",
+        ),
+    ] = "lps25h"
+    name: SensorName = "Sense HAT pressure and temperature"
+    address: Annotated[
+        AddressField,
+        Field(
+            title="I2C address",
+            description=(
+                "7-bit I2C address of the LPS25H/LPS25HB sensor (0x5C or 0x5D)."
+            ),
+        ),
+    ] = "0x5c"
+    output_data_rate_hz: Annotated[
+        LPS25HOutputDataRate,
+        Field(
+            title="Output data rate",
+            description=(
+                "Number of new pressure and temperature measurements produced per "
+                "second. It must be at least the requested telemetry rate."
+            ),
+        ),
+    ] = LPS25HOutputDataRate.HZ_1
 
     @field_validator("address", mode="before")
     @classmethod
@@ -132,16 +220,57 @@ class LPS25HSensorConfig(I2CAuxiliarySensorConfig):
 
 
 class LSM9DS1MagnetometerSensorConfig(I2CAuxiliarySensorConfig):
+    """Three-axis magnetic-field readings from the LSM9DS1 magnetic die."""
+
     model_config = ConfigDict(title="Sense HAT magnetic field (LSM9DS1)")
 
-    driver: Literal["lsm9ds1_magnetometer"] = "lsm9ds1_magnetometer"
-    name: str = "Sense HAT magnetometer"
-    address: AddressField = "0x1c"
-    magnetic_field_range_gauss: Literal[4, 8, 12, 16] = 4
-    output_data_rate_hz: LSM9DS1MagnetometerOutputDataRate = (
-        LSM9DS1MagnetometerOutputDataRate.HZ_20
-    )
-    performance_mode: Literal["low", "medium", "high", "ultra_high"] = "ultra_high"
+    driver: Annotated[
+        Literal["lsm9ds1_magnetometer"],
+        Field(
+            title="Sensor driver",
+            description="Hardware driver used for this sensor.",
+        ),
+    ] = "lsm9ds1_magnetometer"
+    name: SensorName = "Sense HAT magnetometer"
+    address: Annotated[
+        AddressField,
+        Field(
+            title="I2C address",
+            description=(
+                "7-bit I2C address of the LSM9DS1 magnetic die (0x1C or 0x1E)."
+            ),
+        ),
+    ] = "0x1c"
+    magnetic_field_range_gauss: Annotated[
+        Literal[4, 8, 12, 16],
+        Field(
+            title="Magnetic field range",
+            description=(
+                "Full-scale magnetic field range in gauss. Lower ranges provide "
+                "finer resolution; increase the range if readings saturate."
+            ),
+        ),
+    ] = 4
+    output_data_rate_hz: Annotated[
+        LSM9DS1MagnetometerOutputDataRate,
+        Field(
+            title="Output data rate",
+            description=(
+                "Number of new three-axis magnetic field measurements produced per "
+                "second. It must be at least the requested telemetry rate."
+            ),
+        ),
+    ] = LSM9DS1MagnetometerOutputDataRate.HZ_20
+    performance_mode: Annotated[
+        Literal["low", "medium", "high", "ultra_high"],
+        Field(
+            title="Performance mode",
+            description=(
+                "Magnetometer conversion mode for all three axes. Higher modes "
+                "reduce measurement noise at the cost of power consumption."
+            ),
+        ),
+    ] = "ultra_high"
 
     @field_validator("address", mode="before")
     @classmethod
@@ -160,17 +289,56 @@ class LSM9DS1MagnetometerSensorConfig(I2CAuxiliarySensorConfig):
 
 
 class MockEnvironmentalSensorConfig(AuxiliarySensorConfigBase):
+    """Fixed environmental readings for development without sensor hardware."""
+
     model_config = ConfigDict(title="Mock environmental sensor")
 
-    driver: Literal["mock_environmental"] = "mock_environmental"
-    name: str = "Mock environment"
-    temperature_c: Optional[FiniteFloat] = 21.0
+    driver: Annotated[
+        Literal["mock_environmental"],
+        Field(
+            title="Sensor driver",
+            description="Simulated driver used for this sensor.",
+        ),
+    ] = "mock_environmental"
+    name: SensorName = "Mock environment"
+    temperature_c: Annotated[
+        Optional[FiniteFloat],
+        Field(
+            title="Temperature",
+            description=(
+                "Fixed simulated temperature in degrees Celsius. Leave empty to "
+                "omit temperature from telemetry."
+            ),
+            examples=[21.0],
+        ),
+    ] = 21.0
     relative_humidity_percent: Annotated[
-        Optional[float], Field(ge=0, le=100, allow_inf_nan=False)
+        Optional[float],
+        Field(
+            title="Relative humidity",
+            description=(
+                "Fixed simulated relative humidity as a percentage. Leave empty "
+                "to omit humidity from telemetry."
+            ),
+            ge=0,
+            le=100,
+            allow_inf_nan=False,
+            examples=[45.0],
+        ),
     ] = 45.0
-    pressure_pa: Annotated[Optional[float], Field(ge=0, allow_inf_nan=False)] = (
-        101_325.0
-    )
+    pressure_pa: Annotated[
+        Optional[float],
+        Field(
+            title="Pressure",
+            description=(
+                "Fixed simulated absolute pressure in pascals. Leave empty to omit "
+                "pressure from telemetry."
+            ),
+            ge=0,
+            allow_inf_nan=False,
+            examples=[101_325.0],
+        ),
+    ] = 101_325.0
 
     @model_validator(mode="after")
     def require_measurement(self) -> Self:
@@ -184,11 +352,28 @@ class MockEnvironmentalSensorConfig(AuxiliarySensorConfigBase):
 
 
 class MockMagnetometerSensorConfig(AuxiliarySensorConfigBase):
+    """Fixed three-axis magnetic-field readings for hardware-free development."""
+
     model_config = ConfigDict(title="Mock magnetometer")
 
-    driver: Literal["mock_magnetometer"] = "mock_magnetometer"
-    name: str = "Mock magnetometer"
-    magnetic_field_t: Vector3 = (20e-6, 0.0, 45e-6)
+    driver: Annotated[
+        Literal["mock_magnetometer"],
+        Field(
+            title="Sensor driver",
+            description="Simulated driver used for this sensor.",
+        ),
+    ] = "mock_magnetometer"
+    name: SensorName = "Mock magnetometer"
+    magnetic_field_t: Annotated[
+        Vector3,
+        Field(
+            title="Magnetic field vector",
+            description=(
+                "Fixed simulated X, Y, and Z magnetic field components in teslas."
+            ),
+            examples=[[20e-6, 0.0, 45e-6]],
+        ),
+    ] = (20e-6, 0.0, 45e-6)
 
 
 AuxiliarySensorConfig = Annotated[
@@ -207,6 +392,11 @@ class AuxiliarySensorsConfig(BaseModel):
     sensors: Annotated[
         List[AuxiliarySensorConfig],
         Field(
+            title="Auxiliary sensors",
+            description=(
+                "Environmental and magnetic sensors published independently of "
+                "localization and odometry."
+            ),
             max_length=32,
             json_schema_extra={
                 "uniqueItemProperty": "name",

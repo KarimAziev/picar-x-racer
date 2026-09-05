@@ -109,6 +109,80 @@ class TestAuxiliarySensorConfig(unittest.TestCase):
             "Sense HAT pressure and temperature (LPS25H/HB)",
         )
 
+    def test_schema_exposes_human_readable_sensor_field_metadata(self) -> None:
+        definitions = HardwareConfig.model_json_schema()["$defs"]
+        sensor_list = definitions["AuxiliarySensorsConfig"]["properties"]["sensors"]
+        self.assertEqual(sensor_list["title"], "Auxiliary sensors")
+        self.assertIn("Environmental and magnetic", sensor_list["description"])
+
+        expected_fields = {
+            "HTS221SensorConfig": {
+                "name",
+                "enabled",
+                "poll_interval_seconds",
+                "bus",
+                "address",
+                "driver",
+                "output_data_rate_hz",
+                "humidity_average_samples",
+                "temperature_average_samples",
+            },
+            "LPS25HSensorConfig": {
+                "name",
+                "enabled",
+                "poll_interval_seconds",
+                "bus",
+                "address",
+                "driver",
+                "output_data_rate_hz",
+            },
+            "LSM9DS1MagnetometerSensorConfig": {
+                "name",
+                "enabled",
+                "poll_interval_seconds",
+                "bus",
+                "address",
+                "driver",
+                "magnetic_field_range_gauss",
+                "output_data_rate_hz",
+                "performance_mode",
+            },
+            "MockEnvironmentalSensorConfig": {
+                "name",
+                "enabled",
+                "poll_interval_seconds",
+                "driver",
+                "temperature_c",
+                "relative_humidity_percent",
+                "pressure_pa",
+            },
+            "MockMagnetometerSensorConfig": {
+                "name",
+                "enabled",
+                "poll_interval_seconds",
+                "driver",
+                "magnetic_field_t",
+            },
+        }
+        for model_name, field_names in expected_fields.items():
+            with self.subTest(model=model_name):
+                model_schema = definitions[model_name]
+                self.assertTrue(model_schema.get("description"))
+                for field_name in field_names:
+                    with self.subTest(model=model_name, field=field_name):
+                        field_schema = model_schema["properties"][field_name]
+                        self.assertTrue(field_schema.get("title"))
+                        self.assertTrue(field_schema.get("description"))
+
+        hts221 = definitions["HTS221SensorConfig"]["properties"]
+        self.assertEqual(hts221["name"]["title"], "Sensor name")
+        self.assertTrue(hts221["name"]["shared"])
+        self.assertEqual(hts221["poll_interval_seconds"]["title"], "Telemetry interval")
+        self.assertTrue(hts221["poll_interval_seconds"]["shared"])
+        self.assertTrue(hts221["bus"]["shared"])
+        self.assertEqual(hts221["address"]["x-ui-type"], "hex")
+        self.assertEqual(hts221["output_data_rate_hz"]["title"], "Output data rate")
+
 
 if __name__ == "__main__":
     unittest.main()
