@@ -96,6 +96,21 @@ class TestRobotMessages(unittest.TestCase):
         self.assertIsNone(steering.measured_angle_rad)
         self.assertEqual(odometry.child_frame_id, "base_link")
 
+    def test_encoder_state_accepts_only_one_measurement_layout(self) -> None:
+        axle = EncoderReading(ticks=120, delta_ticks=8)
+        state = EncoderState(
+            header=self.header("rear_drivetrain"),
+            rear_axle_average=axle,
+        )
+
+        self.assertEqual(state.mean_delta_ticks, 8)
+        with self.assertRaisesRegex(ValidationError, "cannot be combined"):
+            EncoderState(
+                header=self.header("rear_axle"),
+                left=EncoderReading(ticks=100, delta_ticks=5),
+                rear_axle_average=axle,
+            )
+
     def test_messages_are_immutable(self) -> None:
         header = self.header()
 

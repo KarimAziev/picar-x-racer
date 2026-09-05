@@ -8,6 +8,7 @@ from typing_extensions import Annotated, Self
 
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 PositiveFiniteFloat = Annotated[float, Field(gt=0, allow_inf_nan=False)]
+EncoderRole = Literal["left_wheel", "right_wheel", "rear_axle_average"]
 
 
 class FrozenMessage(BaseModel):
@@ -86,21 +87,30 @@ class EncoderReading(FrozenMessage):
 
 
 class EncoderState(FrozenMessage):
-    """Synchronized readings from one or both rear wheel encoders."""
+    """Synchronized wheel readings or one common-drivetrain reading."""
 
     header: MessageHeader
     left: Optional[EncoderReading] = None
     right: Optional[EncoderReading] = None
+    rear_axle_average: Optional[EncoderReading] = None
 
     @model_validator(mode="after")
-    def require_at_least_one_wheel(self) -> Self:
-        if self.left is None and self.right is None:
-            raise ValueError("encoder state requires a left or right reading")
+    def validate_reading_layout(self) -> Self:
+        wheel_reading_exists = self.left is not None or self.right is not None
+        if not wheel_reading_exists and self.rear_axle_average is None:
+            raise ValueError("encoder state requires a wheel or rear-axle reading")
+        if wheel_reading_exists and self.rear_axle_average is not None:
+            raise ValueError(
+                "rear-axle-average and individual wheel readings cannot be combined"
+            )
         return self
 
     @property
     def mean_delta_ticks(self) -> float:
-        """Return mean rear-wheel motion, or the available side for one sensor."""
+        """Return the rear-axle-center tick delta used by odometry."""
+
+        if self.rear_axle_average is not None:
+            return float(self.rear_axle_average.delta_ticks)
 
         readings = tuple(
             reading for reading in (self.left, self.right) if reading is not None
@@ -343,6 +353,7 @@ class OccupancyGrid(FrozenMessage):
 
 __all__ = [
     "EncoderReading",
+    "EncoderRole",
     "EncoderState",
     "ImuData",
     "LaserScan",

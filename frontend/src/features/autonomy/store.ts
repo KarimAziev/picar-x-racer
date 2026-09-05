@@ -60,6 +60,7 @@ export interface EncoderTelemetry {
   header: MessageHeader;
   left: EncoderReadingTelemetry | null;
   right: EncoderReadingTelemetry | null;
+  rear_axle_average: EncoderReadingTelemetry | null;
 }
 
 export interface EncoderReadingTelemetry {

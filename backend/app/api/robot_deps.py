@@ -5,7 +5,6 @@ from typing import (
     AsyncGenerator,
     Callable,
     Dict,
-    Literal,
     Optional,
     TypedDict,
 )
@@ -30,7 +29,7 @@ from app.schemas.robot.localization_sensors import (
     MockLidarSensorConfig,
     MockSteeringPositionConfig,
 )
-from app.schemas.autonomy import SensorName
+from app.schemas.autonomy import EncoderRole, SensorName
 from app.services.connection_service import ConnectionService
 from app.services.autonomy import (
     AckermannPathSmoother,
@@ -589,7 +588,7 @@ def build_localization_sensor_service(
 
     if sensors.encoder.enabled and not coherent_simulation:
         enabled_sensors.append("encoder")
-        encoder_factories: Dict[Literal["left", "right"], Callable[[], EncoderABC]] = {}
+        encoder_factories: Dict[EncoderRole, Callable[[], EncoderABC]] = {}
         for encoder_sensor_config in sensors.encoder.sensors:
             if isinstance(encoder_sensor_config, AS5048AEncoderConfig):
 
@@ -605,7 +604,7 @@ def build_localization_sensor_service(
                         max_abs_speed_rps=sensor_config.max_abs_speed_rps,
                     )
 
-                encoder_factories[encoder_sensor_config.side] = create_as5048a_encoder
+                encoder_factories[encoder_sensor_config.role] = create_as5048a_encoder
             elif isinstance(encoder_sensor_config, AS5600LEncoderConfig):
 
                 def create_as5600l_encoder(
@@ -619,7 +618,7 @@ def build_localization_sensor_service(
                         max_abs_speed_rps=sensor_config.max_abs_speed_rps,
                     )
 
-                encoder_factories[encoder_sensor_config.side] = create_as5600l_encoder
+                encoder_factories[encoder_sensor_config.role] = create_as5600l_encoder
             elif isinstance(encoder_sensor_config, GPIOQuadratureEncoderConfig):
 
                 def create_gpio_quadrature_encoder(
@@ -649,7 +648,7 @@ def build_localization_sensor_service(
                         invert_direction=sensor_config.invert_direction,
                     )
 
-                encoder_factories[encoder_sensor_config.side] = (
+                encoder_factories[encoder_sensor_config.role] = (
                     create_gpio_quadrature_encoder
                 )
             elif isinstance(encoder_sensor_config, MockEncoderConfig):
@@ -666,7 +665,7 @@ def build_localization_sensor_service(
                         ),
                     )
 
-                encoder_factories[encoder_sensor_config.side] = create_mock_encoder
+                encoder_factories[encoder_sensor_config.role] = create_mock_encoder
 
         publishers["encoder"] = EncoderPublisherService(
             topic_bus,

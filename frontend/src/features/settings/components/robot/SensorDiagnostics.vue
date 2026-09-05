@@ -182,6 +182,8 @@ const latestSummary = (sensor: SensorName) => {
           `L ${envelope.payload.left.ticks} · Δ ${envelope.payload.left.delta_ticks}`,
         envelope.payload.right &&
           `R ${envelope.payload.right.ticks} · Δ ${envelope.payload.right.delta_ticks}`,
+        envelope.payload.rear_axle_average &&
+          `Axle ${envelope.payload.rear_axle_average.ticks} · Δ ${envelope.payload.rear_axle_average.delta_ticks}`,
       ].filter(Boolean);
       return readings.join(" · ");
     }

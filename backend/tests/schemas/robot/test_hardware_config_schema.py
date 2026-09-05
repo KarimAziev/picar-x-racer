@@ -99,7 +99,7 @@ class TestHardwareConfigSchemaMetadata(unittest.TestCase):
             with self.subTest(field_name=field_name):
                 self.assertTrue(lidar[field_name]["shared"])
 
-        for field_name in ("side", "invert_direction", "bus", "device"):
+        for field_name in ("role", "invert_direction", "bus", "device"):
             with self.subTest(field_name=field_name):
                 self.assertTrue(encoder[field_name]["shared"])
 

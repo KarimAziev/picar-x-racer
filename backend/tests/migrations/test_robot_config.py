@@ -41,8 +41,8 @@ class TestRobotConfigMigration(unittest.TestCase):
     def test_migrates_legacy_motor_fields(self):
         result = create_robot_config_migrator().migrate(self.make_legacy_config())
 
-        self.assertEqual(result.applied_versions, (1, 2, 3, 4, 5, 6))
-        self.assertEqual(result.data["schema_version"], 6)
+        self.assertEqual(result.applied_versions, (1, 2, 3, 4, 5, 6, 7))
+        self.assertEqual(result.data["schema_version"], 7)
         self.assertNotIn("left_motor", result.data)
         self.assertNotIn("right_motor", result.data)
         self.assertEqual(
@@ -77,8 +77,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (2, 3, 4, 5, 6))
-        self.assertEqual(result.data["schema_version"], 6)
+        self.assertEqual(result.applied_versions, (2, 3, 4, 5, 6, 7))
+        self.assertEqual(result.data["schema_version"], 7)
         self.assertEqual(result.data["batteries"][0]["name"], "Main battery")
 
     def test_migrates_v2_with_disabled_motion_control(self):
@@ -88,8 +88,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (3, 4, 5, 6))
-        self.assertEqual(result.data["schema_version"], 6)
+        self.assertEqual(result.applied_versions, (3, 4, 5, 6, 7))
+        self.assertEqual(result.data["schema_version"], 7)
         self.assertEqual(result.data["motion_control"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
@@ -123,8 +123,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (4, 5, 6))
-        self.assertEqual(result.data["schema_version"], 6)
+        self.assertEqual(result.applied_versions, (4, 5, 6, 7))
+        self.assertEqual(result.data["schema_version"], 7)
         self.assertEqual(result.data["ackermann_odometry"], {"enabled": False})
         HardwareConfig.model_validate(result.data)
 
@@ -175,8 +175,8 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (5, 6))
-        self.assertEqual(result.data["schema_version"], 6)
+        self.assertEqual(result.applied_versions, (5, 6, 7))
+        self.assertEqual(result.data["schema_version"], 7)
         self.assertEqual(
             result.data["localization_sensors"],
             {
@@ -224,7 +224,7 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         result = create_robot_config_migrator().migrate(data)
 
-        self.assertEqual(result.applied_versions, (6,))
+        self.assertEqual(result.applied_versions, (6, 7))
         self.assertEqual(
             result.data["localization_sensors"]["encoder"],
             {
@@ -245,6 +245,62 @@ class TestRobotConfigMigration(unittest.TestCase):
 
         with self.assertRaisesRegex(JsonDataMigrationError, "cannot be mapped"):
             create_robot_config_migrator().migrate(data)
+
+    def test_v7_maps_wheel_sides_to_explicit_roles(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 6
+        data["localization_sensors"]["encoder"] = {
+            "enabled": True,
+            "sensors": [
+                {"side": "left", "driver": "as5048a", "device": 0},
+                {"side": "right", "driver": "as5048a", "device": 1},
+            ],
+        }
+
+        result = create_robot_config_migrator().migrate(data)
+
+        self.assertEqual(result.applied_versions, (7,))
+        self.assertEqual(
+            [
+                sensor["role"]
+                for sensor in result.data["localization_sensors"]["encoder"]["sensors"]
+            ],
+            ["left_wheel", "right_wheel"],
+        )
+        self.assertNotIn(
+            "side",
+            result.data["localization_sensors"]["encoder"]["sensors"][0],
+        )
+
+    def test_v7_preserves_explicit_rear_axle_average_role(self):
+        data = deepcopy(self.current_config)
+        data["schema_version"] = 6
+        data["localization_sensors"]["encoder"] = {
+            "enabled": True,
+            "sensors": [
+                {"role": "rear_axle_average", "driver": "as5048a"},
+            ],
+        }
+
+        result = create_robot_config_migrator().migrate(data)
+
+        sensor = result.data["localization_sensors"]["encoder"]["sensors"][0]
+        self.assertEqual(sensor["role"], "rear_axle_average")
+
+    def test_v7_rejects_ambiguous_or_invalid_encoder_roles(self):
+        invalid_sensors = (
+            {"side": "left", "role": "left_wheel", "driver": "mock"},
+            {"side": "center", "driver": "mock"},
+            {"driver": "mock"},
+        )
+        for sensor in invalid_sensors:
+            with self.subTest(sensor=sensor):
+                data = deepcopy(self.current_config)
+                data["schema_version"] = 6
+                data["localization_sensors"]["encoder"]["sensors"] = [sensor]
+
+                with self.assertRaises(JsonDataMigrationError):
+                    create_robot_config_migrator().migrate(data)
 
     def test_v5_rejects_invalid_localization_sensor_shape(self):
         data = deepcopy(self.current_config)
@@ -315,7 +371,7 @@ class TestRobotConfigMigration(unittest.TestCase):
 
             persisted = json.loads(target.read_text())
             self.assertEqual(manager.load_data(), persisted)
-            self.assertEqual(persisted["schema_version"], 6)
+            self.assertEqual(persisted["schema_version"], 7)
             self.assertIn("motors", persisted)
             self.assertNotIn("left_motor", persisted)
 
@@ -331,7 +387,7 @@ class TestRobotConfigMigration(unittest.TestCase):
                 migrator=create_robot_config_migrator(),
             )
 
-            self.assertEqual(manager.load_data()["schema_version"], 6)
+            self.assertEqual(manager.load_data()["schema_version"], 7)
             self.assertFalse(target.exists())
 
     def test_manager_does_not_overwrite_invalid_migration(self):

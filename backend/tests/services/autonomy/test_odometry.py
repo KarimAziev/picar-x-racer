@@ -68,6 +68,25 @@ class OdometryTestCase(unittest.TestCase):
             measured_angle_rad=measured,
         )
 
+    @staticmethod
+    def drivetrain_encoder(
+        sequence: int,
+        timestamp_ns: int,
+        *,
+        delta_ticks: int = 0,
+    ) -> EncoderState:
+        return EncoderState(
+            header=MessageHeader(
+                sequence=sequence,
+                frame_id="rear_drivetrain",
+                timestamp_monotonic_ns=timestamp_ns,
+            ),
+            rear_axle_average=EncoderReading(
+                ticks=delta_ticks,
+                delta_ticks=delta_ticks,
+            ),
+        )
+
 
 class TestAckermannOdometryEstimator(OdometryTestCase):
     def test_runtime_config_requires_measured_geometry_when_enabled(self) -> None:
@@ -206,6 +225,23 @@ class TestAckermannOdometryEstimator(OdometryTestCase):
         )
 
         self.assertAlmostEqual(result.x_m, 1.5 * math.pi * 0.1)
+
+    def test_uses_common_drivetrain_as_rear_axle_average(self) -> None:
+        self.estimator.update(
+            self.drivetrain_encoder(1, 1_000_000_000),
+            self.steering(1_000_000_000),
+        )
+
+        result = self.estimator.update(
+            self.drivetrain_encoder(
+                2,
+                2_000_000_000,
+                delta_ticks=20,
+            ),
+            self.steering(2_000_000_000),
+        )
+
+        self.assertAlmostEqual(result.x_m, 2 * math.pi * 0.1)
 
 
 class TestAckermannOdometryService(unittest.IsolatedAsyncioTestCase):

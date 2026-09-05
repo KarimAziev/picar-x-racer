@@ -149,7 +149,7 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             "sample_frequency_hz": 100,
             "sensors": [
                 {
-                    "side": "left",
+                    "role": "left_wheel",
                     "driver": "mock",
                     "ticks_per_sample": 2,
                 }

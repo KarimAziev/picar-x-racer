@@ -8,7 +8,7 @@ from typing_extensions import Annotated, Self
 
 
 class AckermannOdometryConfig(BaseModel):
-    """Rear-wheel encoder odometry using measured Ackermann vehicle geometry."""
+    """Drive-encoder odometry using measured Ackermann vehicle geometry."""
 
     enabled: EnabledField = False
     wheelbase_m: Annotated[

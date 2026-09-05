@@ -56,12 +56,12 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
                 "sample_frequency_hz": 100,
                 "sensors": [
                     {
-                        "side": "left",
+                        "role": "left_wheel",
                         "driver": "mock",
                         "ticks_per_sample": 3,
                     },
                     {
-                        "side": "right",
+                        "role": "right_wheel",
                         "driver": "mock",
                         "ticks_per_sample": 5,
                     },
@@ -255,7 +255,7 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
                 "sample_frequency_hz": 100,
                 "sensors": [
                     {
-                        "side": "left",
+                        "role": "rear_axle_average",
                         "driver": "as5600l",
                         "bus": 1,
                         "address": "0x40",
@@ -300,7 +300,7 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
                 await service.stop()
                 await steering_service.stop()
 
-        self.assertIsNotNone(state.left)
+        self.assertIsNotNone(state.rear_axle_average)
         encoder_type.assert_called_once_with(
             bus=managed_bus,
             address=0x40,
@@ -319,7 +319,7 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
             "sample_frequency_hz": 100,
             "sensors": [
                 {
-                    "side": "right",
+                    "role": "right_wheel",
                     "driver": "gpio_quadrature",
                     "a_pin": 17,
                     "b_pin": "GPIO27",

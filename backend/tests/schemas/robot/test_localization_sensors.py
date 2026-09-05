@@ -65,25 +65,25 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         self.assertEqual(imu.acceleration_mps2, (0.0, 0.0, 9.80665))
         self.assertEqual(steering.initial_angle_degrees, 0.0)
 
-    def test_drive_encoders_require_unique_sides_and_spi_devices(self) -> None:
+    def test_drive_encoders_require_unique_roles_and_spi_devices(self) -> None:
         valid = EncoderSensorConfig.model_validate(
             {
                 "enabled": True,
                 "sensors": [
-                    {"side": "left", "driver": "as5048a", "device": 0},
-                    {"side": "right", "driver": "as5048a", "device": 1},
+                    {"role": "left_wheel", "driver": "as5048a", "device": 0},
+                    {"role": "right_wheel", "driver": "as5048a", "device": 1},
                 ],
             }
         )
         self.assertEqual(len(valid.sensors), 2)
 
-        with self.assertRaisesRegex(ValidationError, "sides must be unique"):
+        with self.assertRaisesRegex(ValidationError, "roles must be unique"):
             EncoderSensorConfig.model_validate(
                 {
                     "enabled": True,
                     "sensors": [
-                        {"side": "left", "driver": "mock"},
-                        {"side": "left", "driver": "mock"},
+                        {"role": "left_wheel", "driver": "mock"},
+                        {"role": "left_wheel", "driver": "mock"},
                     ],
                 }
             )
@@ -92,8 +92,30 @@ class TestLocalizationSensorConfig(unittest.TestCase):
                 {
                     "enabled": True,
                     "sensors": [
-                        {"side": "left", "driver": "as5048a"},
-                        {"side": "right", "driver": "as5048a"},
+                        {"role": "left_wheel", "driver": "as5048a"},
+                        {"role": "right_wheel", "driver": "as5048a"},
+                    ],
+                }
+            )
+
+    def test_rear_axle_average_must_be_the_only_drive_encoder(self) -> None:
+        single = EncoderSensorConfig.model_validate(
+            {
+                "enabled": True,
+                "sensors": [
+                    {"role": "rear_axle_average", "driver": "as5048a"},
+                ],
+            }
+        )
+        self.assertEqual(single.sensors[0].role, "rear_axle_average")
+
+        with self.assertRaisesRegex(ValidationError, "must be the only"):
+            EncoderSensorConfig.model_validate(
+                {
+                    "enabled": True,
+                    "sensors": [
+                        {"role": "rear_axle_average", "driver": "mock"},
+                        {"role": "left_wheel", "driver": "mock"},
                     ],
                 }
             )
@@ -111,7 +133,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
                             "enabled": True,
                             "sensors": [
                                 {
-                                    "side": "left",
+                                    "role": "left_wheel",
                                     "driver": "as5048a",
                                     "bus": 0,
                                     "device": 0,
@@ -134,8 +156,8 @@ class TestLocalizationSensorConfig(unittest.TestCase):
                 {
                     "enabled": True,
                     "sensors": [
-                        {"side": "left", "driver": "as5600l"},
-                        {"side": "right", "driver": "as5600l"},
+                        {"role": "left_wheel", "driver": "as5600l"},
+                        {"role": "right_wheel", "driver": "as5600l"},
                     ],
                 }
             )
@@ -146,13 +168,13 @@ class TestLocalizationSensorConfig(unittest.TestCase):
                     "enabled": True,
                     "sensors": [
                         {
-                            "side": "left",
+                            "role": "left_wheel",
                             "driver": "gpio_quadrature",
                             "a_pin": 17,
                             "b_pin": 27,
                         },
                         {
-                            "side": "right",
+                            "role": "right_wheel",
                             "driver": "gpio_quadrature",
                             "a_pin": 22,
                             "b_pin": 27,
@@ -169,7 +191,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
                         "enabled": True,
                         "sensors": [
                             {
-                                "side": "left",
+                                "role": "left_wheel",
                                 "driver": "as5600l",
                                 "bus": 1,
                                 "address": "0x40",
@@ -263,7 +285,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         )
         data["localization_sensors"]["encoder"] = {
             "enabled": True,
-            "sensors": [{"side": "left", "driver": "mock"}],
+            "sensors": [{"role": "left_wheel", "driver": "mock"}],
         }
         with self.assertRaisesRegex(ValidationError, "LiDAR publisher"):
             HardwareConfig.model_validate(data)
@@ -292,7 +314,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         )
         data["localization_sensors"]["encoder"] = {
             "enabled": True,
-            "sensors": [{"side": "left", "driver": "as5600l"}],
+            "sensors": [{"role": "left_wheel", "driver": "as5600l"}],
         }
 
         with self.assertRaisesRegex(ValidationError, "must be 4096"):

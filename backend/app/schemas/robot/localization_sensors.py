@@ -2,6 +2,7 @@
 
 from typing import List, Literal, Optional, Tuple, Union
 
+from app.schemas.autonomy.messages import EncoderRole
 from app.schemas.robot.common import AddressField, EnabledField, IC2Bus
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing_extensions import Annotated, Self
@@ -100,11 +101,14 @@ LocalizationI2CBus = Annotated[
         json_schema_extra={"shared": True},
     ),
 ]
-EncoderSide = Annotated[
-    Literal["left", "right"],
+DriveEncoderRole = Annotated[
+    EncoderRole,
     Field(
-        title="Driven side",
-        description="Rear wheel or outdrive measured by this encoder.",
+        title="Measurement role",
+        description=(
+            "Kinematic measurement supplied by this encoder: an individual rear "
+            "wheel or the geared mean of both wheels from the common drivetrain."
+        ),
         json_schema_extra={"shared": True},
     ),
 ]
@@ -580,7 +584,7 @@ IMUSensorConfig = Annotated[
 
 
 class DriveEncoderConfigBase(BaseModel):
-    side: EncoderSide
+    role: DriveEncoderRole
     invert_direction: InvertDirection = False
 
 
@@ -934,7 +938,7 @@ SteeringPositionConfig = Annotated[
 
 
 class EncoderSensorConfig(BaseModel):
-    """One or two independently acquired rear wheel/outdrive encoders."""
+    """A common-drivetrain encoder or independently acquired wheel encoders."""
 
     enabled: EnabledField = False
     frame_id: FrameId = "rear_axle"
@@ -953,15 +957,15 @@ class EncoderSensorConfig(BaseModel):
         Field(
             title="Drive encoders",
             description=(
-                "One or two rear wheel or outdrive encoders. Configured sides and "
-                "hardware resources must be unique."
+                "One common-drivetrain encoder or up to two rear wheel/outdrive "
+                "encoders. Configured roles and hardware resources must be unique."
             ),
             min_length=0,
             max_length=2,
             json_schema_extra={
                 "props": {
-                    "addLabel": "Add wheel encoder",
-                    "itemLabel": "Wheel encoder",
+                    "addLabel": "Add drive encoder",
+                    "itemLabel": "Drive encoder",
                     "typeLabel": "Encoder type",
                 }
             },
@@ -977,9 +981,13 @@ class EncoderSensorConfig(BaseModel):
     def validate_sensor_pair(self) -> Self:
         if self.enabled and not self.sensors:
             raise ValueError("enabled drive encoder acquisition requires a sensor")
-        sides = [sensor.side for sensor in self.sensors]
-        if len(sides) != len(set(sides)):
-            raise ValueError("drive encoder sides must be unique")
+        roles = [sensor.role for sensor in self.sensors]
+        if len(roles) != len(set(roles)):
+            raise ValueError("drive encoder roles must be unique")
+        if "rear_axle_average" in roles and len(roles) != 1:
+            raise ValueError(
+                "rear_axle_average must be the only configured drive encoder"
+            )
         spi_devices = [
             (sensor.bus, sensor.device)
             for sensor in self.sensors
@@ -1043,7 +1051,7 @@ class LocalizationSensorsConfig(BaseModel):
     def validate_hardware_resources(self) -> Self:
         devices = (
             [
-                (sensor.bus, sensor.device, f"rear {sensor.side}")
+                (sensor.bus, sensor.device, sensor.role.replace("_", " "))
                 for sensor in self.encoder.sensors
                 if isinstance(sensor, AS5048AEncoderConfig)
             ]
@@ -1069,7 +1077,7 @@ class LocalizationSensorsConfig(BaseModel):
             i2c_devices.append((self.imu.bus, self.imu.address_int, "imu"))
         if self.encoder.enabled:
             i2c_devices.extend(
-                (sensor.bus, sensor.address_int, f"rear {sensor.side}")
+                (sensor.bus, sensor.address_int, sensor.role.replace("_", " "))
                 for sensor in self.encoder.sensors
                 if isinstance(sensor, AS5600LEncoderConfig)
             )
@@ -1093,6 +1101,7 @@ __all__ = [
     "AS5600LEncoderConfig",
     "AS5600LSteeringPositionConfig",
     "DriveEncoderDeviceConfig",
+    "DriveEncoderRole",
     "EncoderSensorConfig",
     "GPIOQuadratureEncoderConfig",
     "IMUSensorConfig",

@@ -220,6 +220,20 @@ class TestStaticRotation3D(unittest.TestCase):
 
 
 class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
+    def test_encoder_publisher_rejects_ambiguous_measurement_roles(
+        self,
+    ) -> None:
+        with self.assertRaisesRegex(ValueError, "must be the only"):
+            EncoderPublisherService(
+                TopicBus(),
+                {
+                    "rear_axle_average": lambda: FakeEncoder([]),
+                    "left_wheel": lambda: FakeEncoder([]),
+                },
+                frame_id="rear_axle",
+                sample_frequency_hz=100,
+            )
+
     async def test_topic_monitor_reports_externally_published_simulated_frames(
         self,
     ) -> None:
@@ -314,7 +328,10 @@ class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
         )
         service = EncoderPublisherService(
             bus,
-            {"left": lambda: left_encoder, "right": lambda: right_encoder},
+            {
+                "left_wheel": lambda: left_encoder,
+                "right_wheel": lambda: right_encoder,
+            },
             frame_id="encoder",
             sample_frequency_hz=1000,
             monotonic_ns=lambda: 1_000,
@@ -340,6 +357,39 @@ class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second.mean_delta_ticks, 5)
         self.assertTrue(left_encoder.closed)
         self.assertTrue(right_encoder.closed)
+
+    async def test_encoder_publisher_exposes_common_drivetrain_as_axle_average(
+        self,
+    ) -> None:
+        bus = TopicBus()
+        output = bus.subscribe(ENCODER_STATE, max_queue_size=2, replay_latest=False)
+        drivetrain_encoder = FakeEncoder(
+            [
+                EncoderSample(ticks=100, timestamp_monotonic_ns=100),
+                EncoderSample(ticks=108, timestamp_monotonic_ns=200),
+            ]
+        )
+        service = EncoderPublisherService(
+            bus,
+            {"rear_axle_average": lambda: drivetrain_encoder},
+            frame_id="rear_drivetrain",
+            sample_frequency_hz=1000,
+        )
+
+        await service.start()
+        first = await asyncio.wait_for(output.get(), timeout=1)
+        second = await asyncio.wait_for(output.get(), timeout=1)
+        await service.stop()
+
+        self.assertIsNone(second.left)
+        self.assertIsNone(second.right)
+        self.assertIsNotNone(second.rear_axle_average)
+        assert first.rear_axle_average is not None
+        assert second.rear_axle_average is not None
+        self.assertEqual(first.rear_axle_average.delta_ticks, 0)
+        self.assertEqual(second.rear_axle_average.delta_ticks, 8)
+        self.assertEqual(second.mean_delta_ticks, 8)
+        self.assertTrue(drivetrain_encoder.closed)
 
     async def test_lidar_publisher_connects_validates_and_publishes(self) -> None:
         bus = TopicBus()

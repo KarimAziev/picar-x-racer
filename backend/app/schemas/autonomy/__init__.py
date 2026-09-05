@@ -10,6 +10,7 @@ from app.schemas.autonomy.actions import (
 
 from app.schemas.autonomy.messages import (
     EncoderReading,
+    EncoderRole,
     EncoderState,
     ImuData,
     LaserScan,
@@ -61,6 +62,7 @@ __all__ = [
     "RelativeActionType",
     "RelativeArcRequest",
     "EncoderReading",
+    "EncoderRole",
     "EncoderState",
     "ImuData",
     "LaserScan",

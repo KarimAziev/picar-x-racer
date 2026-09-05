@@ -119,7 +119,7 @@ export interface LocalizationSensorsConfig {
     sample_frequency_hz: number;
     sensors: Array<
       | {
-          side: "left" | "right";
+          role: "left_wheel" | "right_wheel" | "rear_axle_average";
           driver: "as5048a";
           bus: number;
           device: number;
@@ -129,7 +129,7 @@ export interface LocalizationSensorsConfig {
           max_abs_speed_rps: number | null;
         }
       | {
-          side: "left" | "right";
+          role: "left_wheel" | "right_wheel" | "rear_axle_average";
           driver: "as5600l";
           bus: number;
           address: number | string;
@@ -138,7 +138,7 @@ export interface LocalizationSensorsConfig {
           max_abs_speed_rps: number | null;
         }
       | {
-          side: "left" | "right";
+          role: "left_wheel" | "right_wheel" | "rear_axle_average";
           driver: "gpio_quadrature";
           a_pin: number | string;
           b_pin: number | string;
@@ -148,7 +148,7 @@ export interface LocalizationSensorsConfig {
           invert_direction: boolean;
         }
       | {
-          side: "left" | "right";
+          role: "left_wheel" | "right_wheel" | "rear_axle_average";
           driver: "mock";
           initial_ticks: number;
           ticks_per_sample: number;
@@ -420,7 +420,7 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
-    schema_version: 6,
+    schema_version: 7,
     motion_control: {
       enabled: false,
       control_frequency_hz: 20,

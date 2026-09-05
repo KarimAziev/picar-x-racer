@@ -36,7 +36,7 @@ class HardwareConfig(BaseModel):
     """
 
     schema_version: Annotated[
-        Literal[6],
+        Literal[7],
         Field(
             title="Schema version",
             description=(
@@ -45,7 +45,7 @@ class HardwareConfig(BaseModel):
             ),
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
-    ] = 6
+    ] = 7
 
     motion_control: Annotated[
         MotionControlConfig,
@@ -62,7 +62,10 @@ class HardwareConfig(BaseModel):
         AckermannOdometryConfig,
         Field(
             title="Ackermann odometry",
-            description="Measured chassis geometry and drive-encoder calibration.",
+            description=(
+                "Measured chassis geometry and wheel or common-drivetrain encoder "
+                "calibration."
+            ),
         ),
     ] = AckermannOdometryConfig()
 

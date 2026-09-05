@@ -9,7 +9,6 @@ from typing import (
     Callable,
     Dict,
     Iterator,
-    Literal,
     Mapping,
     Optional,
     Protocol,
@@ -20,6 +19,7 @@ from typing import (
 from app.core.px_logger import Logger
 from app.schemas.autonomy import (
     EncoderReading,
+    EncoderRole,
     EncoderState,
     ImuData,
     LaserScan,
@@ -35,6 +35,11 @@ from robot_hat import EncoderABC, IMUABC, Lidar2DABC, LidarScan
 
 
 _log = Logger(__name__)
+_ENCODER_ROLES: Tuple[EncoderRole, ...] = (
+    "left_wheel",
+    "right_wheel",
+    "rear_axle_average",
+)
 
 
 @dataclass
@@ -468,14 +473,14 @@ class IMUPublisherService:
 
 
 class EncoderPublisherService:
-    """Publish one synchronized rear-axle state from one or two encoders."""
+    """Publish synchronized wheel state or one common-drivetrain state."""
 
     sensor_name: SensorName = "encoder"
 
     def __init__(
         self,
         bus: TopicBus,
-        encoder_factories: Mapping[Literal["left", "right"], Callable[[], EncoderABC]],
+        encoder_factories: Mapping[EncoderRole, Callable[[], EncoderABC]],
         *,
         frame_id: str,
         sample_frequency_hz: float,
@@ -483,16 +488,23 @@ class EncoderPublisherService:
     ) -> None:
         if not encoder_factories:
             raise ValueError("at least one encoder factory is required")
+        unsupported_roles = [
+            role for role in encoder_factories if role not in _ENCODER_ROLES
+        ]
+        if unsupported_roles:
+            raise ValueError(f"unsupported encoder roles: {unsupported_roles}")
+        if "rear_axle_average" in encoder_factories and len(encoder_factories) != 1:
+            raise ValueError("rear_axle_average must be the only encoder factory")
         self._bus = bus
         self._encoder_factories = dict(encoder_factories)
         self._frame_id = frame_id
         self._period_s = 1.0 / sample_frequency_hz
         self._monotonic_ns = monotonic_ns
-        self._encoders: Dict[Literal["left", "right"], EncoderABC] = {}
+        self._encoders: Dict[EncoderRole, EncoderABC] = {}
         self._task: Optional[asyncio.Task[None]] = None
         self._stop_requested = False
-        self._previous_ticks: Dict[Literal["left", "right"], int] = {}
-        self._previous_source_timestamps_ns: Dict[Literal["left", "right"], int] = {}
+        self._previous_ticks: Dict[EncoderRole, int] = {}
+        self._previous_source_timestamps_ns: Dict[EncoderRole, int] = {}
         self._metrics = _PublisherMetrics()
 
     @property
@@ -518,17 +530,17 @@ class EncoderPublisherService:
         self._previous_ticks.clear()
         self._previous_source_timestamps_ns.clear()
         try:
-            for side in ("left", "right"):
-                factory = self._encoder_factories.get(side)
+            for role in _ENCODER_ROLES:
+                factory = self._encoder_factories.get(role)
                 if factory is None:
                     continue
                 encoder = await asyncio.to_thread(factory)
-                self._encoders[side] = encoder
+                self._encoders[role] = encoder
                 await asyncio.to_thread(encoder.initialize)
                 health = await asyncio.to_thread(encoder.read_health)
                 if not health.available:
                     raise RuntimeError(
-                        f"{side} encoder is unavailable after initialization"
+                        f"{role} encoder is unavailable after initialization"
                     )
             self._task = asyncio.create_task(
                 self._publish_loop(),
@@ -558,25 +570,25 @@ class EncoderPublisherService:
         next_read = loop.time()
         try:
             while not self._stop_requested:
-                readings: Dict[Literal["left", "right"], EncoderReading] = {}
+                readings: Dict[EncoderRole, EncoderReading] = {}
                 source_timestamps_ns = []
-                for side in ("left", "right"):
-                    encoder = self._encoders.get(side)
+                for role in _ENCODER_ROLES:
+                    encoder = self._encoders.get(role)
                     if encoder is None:
                         continue
                     sample = await asyncio.to_thread(encoder.read_sample)
                     previous_timestamp_ns = self._previous_source_timestamps_ns.get(
-                        side
+                        role
                     )
                     if (
                         previous_timestamp_ns is not None
                         and sample.timestamp_monotonic_ns <= previous_timestamp_ns
                     ):
                         raise ValueError(
-                            f"{side} encoder timestamps must increase monotonically"
+                            f"{role} encoder timestamps must increase monotonically"
                         )
-                    previous_ticks = self._previous_ticks.get(side)
-                    readings[side] = EncoderReading(
+                    previous_ticks = self._previous_ticks.get(role)
+                    readings[role] = EncoderReading(
                         ticks=sample.ticks,
                         delta_ticks=(
                             0
@@ -584,8 +596,8 @@ class EncoderPublisherService:
                             else sample.ticks - previous_ticks
                         ),
                     )
-                    self._previous_ticks[side] = sample.ticks
-                    self._previous_source_timestamps_ns[side] = (
+                    self._previous_ticks[role] = sample.ticks
+                    self._previous_source_timestamps_ns[role] = (
                         sample.timestamp_monotonic_ns
                     )
                     source_timestamps_ns.append(sample.timestamp_monotonic_ns)
@@ -597,8 +609,9 @@ class EncoderPublisherService:
                         timestamp_monotonic_ns=self._monotonic_ns(),
                         source_timestamp_ns=max(source_timestamps_ns),
                     ),
-                    left=readings.get("left"),
-                    right=readings.get("right"),
+                    left=readings.get("left_wheel"),
+                    right=readings.get("right_wheel"),
+                    rear_axle_average=readings.get("rear_axle_average"),
                 )
                 self._bus.publish(ENCODER_STATE, message)
                 self._metrics.published_messages = sequence
