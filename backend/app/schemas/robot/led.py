@@ -1,6 +1,6 @@
 from typing import Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Annotated
 
 
@@ -9,11 +9,14 @@ class LedConfig(BaseModel):
     The configuration for the single LED.
     """
 
+    model_config = ConfigDict(title="LED")
+
     name: Annotated[
         str,
         Field(
             ...,
-            description="Human-readable name",
+            title="LED name",
+            description="Human-readable name used to identify the LED.",
             examples=["LED"],
         ),
     ] = "LED"
@@ -22,8 +25,9 @@ class LedConfig(BaseModel):
         float,
         Field(
             default=0.1,
+            title="Blink interval",
             ge=0,
-            description="The interval of LED blinking.",
+            description="Time in seconds between LED state changes while blinking.",
             json_schema_extra={
                 "props": {
                     "step": 0.1,
@@ -42,6 +46,7 @@ class LedConfig(BaseModel):
         Union[str, int],
         Field(
             default=26,
+            title="GPIO pin",
             json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin number for the LED.",
             examples=[26],

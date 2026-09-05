@@ -8,6 +8,8 @@ from typing_extensions import Annotated, Self
 
 
 class LidarSafetyConfig(BaseModel):
+    """Directional speed limits derived from fresh front and rear LiDAR returns."""
+
     enabled: EnabledField = False
     front_half_angle_deg: Annotated[
         float,

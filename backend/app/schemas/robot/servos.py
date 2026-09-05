@@ -4,7 +4,7 @@ from app.core.logger import Logger
 from app.schemas.robot.common import EnabledField
 from app.schemas.robot.pwm import PWMDriverConfig
 from app.util.validator import ValidationRuleBuilder, Validator
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from robot_hat import ServoCalibrationMode
 from typing_extensions import Annotated, Self
 
@@ -48,7 +48,7 @@ class ServoConfig(BaseModel):
         bool,
         Field(
             ...,
-            title="Reversed",
+            title="Reverse direction",
             json_schema_extra={"shared": True},
             description="Indicates whether the input angle should be logically reversed before being sent to the servo",
         ),
@@ -57,6 +57,7 @@ class ServoConfig(BaseModel):
         str,
         Field(
             ...,
+            title="Servo name",
             description="A name for the servo (useful for debugging/logging). ",
             json_schema_extra={"shared": True},
             examples=["Steering Direction", "Camera Pan"],
@@ -66,6 +67,7 @@ class ServoConfig(BaseModel):
         float,
         Field(
             0.0,
+            title="Calibration offset",
             description="A calibration offset for fine-tuning servo angles.",
             examples=[0.0, 0.4, -4.2],
             json_schema_extra={
@@ -78,6 +80,7 @@ class ServoConfig(BaseModel):
         Optional[float],
         Field(
             0.0,
+            title="Saved calibration offset",
             description="A saved calibration offset for fine-tuning servo angles.",
             examples=[0.0, 0.4, -4.2],
             json_schema_extra={
@@ -91,6 +94,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
+            title="Minimum angle",
             description="Minimum allowable angle for the servo",
             json_schema_extra={"shared": True},
             examples=[-30, -45],
@@ -102,6 +106,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
+            title="Maximum angle",
             description="Maximum allowable angle for the servo",
             json_schema_extra={"shared": True},
             examples=[30, 45],
@@ -113,6 +118,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
+            title="Decrease step",
             description="The step value by which the servo's angle decreases. Must be a negative integer.",
             examples=[-5, -10],
             lt=0,
@@ -123,6 +129,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
+            title="Increase step",
             description="The step value by which the servo's angle increases. Must be a positive integer.",
             gt=0,
             examples=[5, 2],
@@ -133,6 +140,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
+            title="Minimum pulse width",
             description="The pulse width in microseconds (µs) corresponding to the servo's minimum position",
             examples=[500],
             json_schema_extra={
@@ -147,6 +155,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
+            title="Maximum pulse width",
             description="The maximum pulse width in microseconds (µs) corresponding to the servo's maximum position.",
             json_schema_extra={"shared": True},
             examples=[2500],
@@ -190,6 +199,8 @@ class ServoConfig(BaseModel):
 class AngularServoConfig(ServoConfig):
     """Configuration for servos driven via external PWM driver or HAT via I²C."""
 
+    model_config = ConfigDict(title="I2C PWM servo")
+
     channel: Annotated[
         Union[str, int],
         Field(
@@ -215,12 +226,14 @@ class GPIOAngularServoConfig(ServoConfig):
     Configuration for servos driven directly via Raspberry Pi GPIO (without I²C and external PWM driver).
     """
 
+    model_config = ConfigDict(title="GPIO PWM servo")
+
     pin: Annotated[
         Union[str, int],
         Field(
             ...,
             json_schema_extra={"x-ui-type": "pin"},
-            title="GPIO PIN",
+            title="GPIO pin",
             description="Broadcom (BCM) pin number for the GPIO pins, as opposed to physical (BOARD) numbering.",
             examples=["GPIO17", "GPIO27", 1, 2],
         ),

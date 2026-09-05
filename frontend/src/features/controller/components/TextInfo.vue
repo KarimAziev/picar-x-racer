@@ -60,6 +60,7 @@ const sensorStore = useAuxiliarySensorStore();
 
 const formatMetric = (value: number, suffix: string) =>
   `${Math.round(value * 10) / 10}${suffix}`;
+
 const formatMagneticField = (value: [number, number, number]) =>
   `${value.map((axis) => Math.round(axis * 1e7) / 10).join(" / ")} µT`;
 

@@ -20,94 +20,179 @@ class AvoidParams(BaseModel):
     safe: Annotated[
         float,
         Field(
+            title="Safe distance",
             ge=0,
-            description="Distance at or above this is fully comfortable to go straight.",
+            description=(
+                "Distance in centimetres at or above which the robot can cruise "
+                "straight ahead."
+            ),
         ),
     ] = 80.0
     caution: Annotated[
         float,
-        Field(ge=0, description="Below this, prefer turning or stop-turn behavior."),
+        Field(
+            title="Caution distance",
+            ge=0,
+            description=(
+                "Distance in centimetres below which the robot prefers turning or "
+                "stop-and-turn behavior."
+            ),
+        ),
     ] = 55.0
     danger: Annotated[
-        float, Field(ge=0, description="Below this, prepare to reverse soon.")
+        float,
+        Field(
+            title="Danger distance",
+            ge=0,
+            description="Distance in centimetres below which reversal is prepared.",
+        ),
     ] = 40.0
     stop: Annotated[
         float,
         Field(
-            ge=0, description="Immediate stop/reverse if distance is at or below this."
+            title="Stop distance",
+            ge=0,
+            description=(
+                "Distance in centimetres at or below which the robot immediately "
+                "stops and reverses."
+            ),
         ),
     ] = 30.0
 
     forward_speed: Annotated[
-        int, Field(ge=0, le=100, description="Target speed while cruising forward (%).")
+        int,
+        Field(
+            title="Forward speed",
+            ge=0,
+            le=100,
+            description="Target forward cruising speed as a percentage.",
+        ),
     ] = 40
     turn_speed: Annotated[
-        int, Field(ge=0, le=100, description="Target speed while turning (%).")
+        int,
+        Field(
+            title="Turn speed",
+            ge=0,
+            le=100,
+            description="Target forward speed while turning, as a percentage.",
+        ),
     ] = 40
     reverse_speed: Annotated[
-        int, Field(ge=0, le=100, description="Target speed while reversing (%).")
+        int,
+        Field(
+            title="Reverse speed",
+            ge=0,
+            le=100,
+            description="Target reversing speed as a percentage.",
+        ),
     ] = 40
 
     turn_angle: Annotated[
         float,
-        Field(ge=-45, le=45, description="Steering angle while turning forward (deg)."),
+        Field(
+            title="Forward turn angle",
+            ge=-45,
+            le=45,
+            description="Steering angle in degrees while turning forward.",
+        ),
     ] = 30.0
     reverse_angle: Annotated[
         float,
         Field(
+            title="Reverse turn angle",
             ge=-45,
             le=45,
-            description="Steering angle while reversing (deg). Can be negative.",
+            description="Steering angle in degrees while reversing; may be negative.",
         ),
     ] = -30.0
 
     reverse_time_s: Annotated[
-        float, Field(gt=0, description="Time to reverse before pausing (s).")
+        float,
+        Field(
+            title="Reverse duration",
+            gt=0,
+            description="Time in seconds to reverse before pausing.",
+        ),
     ] = 0.9
     wait_time_s: Annotated[
         float,
         Field(
-            ge=0, description="Pause after reversing before trying to turn again (s)."
+            title="Wait duration",
+            ge=0,
+            description=(
+                "Pause in seconds after reversing before trying to turn again."
+            ),
         ),
     ] = 0.25
     loop_period_s: Annotated[
-        float, Field(gt=0, description="Control loop period (s).")
+        float,
+        Field(
+            title="Control-loop period",
+            gt=0,
+            description="Time in seconds between obstacle-control updates.",
+        ),
     ] = 0.03
     hold_cruise_s: Annotated[
         float,
         Field(
+            title="Cruise hold duration",
             ge=0,
-            description="Min time with safe distance before returning to CRUISE (s).",
+            description=(
+                "Minimum time in seconds with a safe distance before returning to "
+                "cruise."
+            ),
         ),
     ] = 0.35
     stale_timeout_s: Annotated[
         float,
         Field(
+            title="Sensor stale timeout",
             gt=0,
-            description="If no valid distance for this long, treat sensor as stale and stop (s).",
+            description=(
+                "Stop when no valid distance measurement arrives within this many "
+                "seconds."
+            ),
         ),
     ] = 0.3
 
     accel_rate: Annotated[
-        float, Field(gt=0, description="Max speed increase per second (%/s).")
+        float,
+        Field(
+            title="Acceleration rate",
+            gt=0,
+            description="Maximum speed-command increase in percentage points per second.",
+        ),
     ] = 100.0
     decel_rate: Annotated[
-        float, Field(gt=0, description="Max speed decrease per second (%/s).")
+        float,
+        Field(
+            title="Deceleration rate",
+            gt=0,
+            description="Maximum speed-command decrease in percentage points per second.",
+        ),
     ] = 500.0
 
     ema_alpha: Annotated[
         float,
         Field(
+            title="Distance smoothing",
             ge=0,
             le=1,
-            description="EMA smoothing factor for distance (0=no smoothing, 1=instant).",
+            description=(
+                "Exponential moving-average factor for distance; zero keeps the "
+                "previous value and one uses the latest value immediately."
+            ),
         ),
     ] = 0.2
     max_range_cm: Annotated[
         float,
         Field(
+            title="Maximum distance",
             ge=0,
-            description="Clamp upper bound for distance readings to ignore spikes (cm).",
+            description=(
+                "Upper bound in centimetres used to clamp distance readings and "
+                "ignore spikes."
+            ),
         ),
     ] = 300.0
 

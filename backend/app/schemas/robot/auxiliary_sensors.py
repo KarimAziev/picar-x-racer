@@ -389,6 +389,8 @@ AuxiliarySensorConfig = Annotated[
 
 
 class AuxiliarySensorsConfig(BaseModel):
+    """Named environmental and magnetic sensors published as browser telemetry."""
+
     sensors: Annotated[
         List[AuxiliarySensorConfig],
         Field(

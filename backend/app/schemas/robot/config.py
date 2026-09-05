@@ -39,6 +39,10 @@ class HardwareConfig(BaseModel):
         Literal[6],
         Field(
             title="Schema version",
+            description=(
+                "Internal hardware-configuration format version maintained by "
+                "ordered migrations."
+            ),
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
     ] = 6
@@ -166,6 +170,7 @@ class HardwareConfig(BaseModel):
                 "props": {
                     "addLabel": "Add motor",
                     "itemLabel": "Motor",
+                    "typeLabel": "Motor type",
                 }
             },
         ),
@@ -209,8 +214,8 @@ class HardwareConfig(BaseModel):
         AvoidParams,
         Field(
             ...,
-            title="Avoid Obstacles Config",
-            description="Parameters for Avoid Obstacles Mode",
+            title="Obstacle avoidance",
+            description="Distance thresholds and motion behavior for obstacle mode.",
         ),
     ] = AvoidParams()
 

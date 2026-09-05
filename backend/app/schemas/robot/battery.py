@@ -1,7 +1,14 @@
 from typing import Literal, Optional, Union
 
 from app.schemas.robot.common import AddressField, AddressModel, EnabledField, IC2Bus
-from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 from robot_hat import (
     INA219ADCResolution,
     INA219BusVoltageRange,
@@ -316,9 +323,16 @@ class INA219BatteryDriverConfig(AddressModel):
     the UPS Module 3S from Waveshare).
     """
 
+    model_config = ConfigDict(title="INA219 battery monitor")
+
     driver_type: Annotated[
         Literal["INA219"],
-        Field(..., title="Driver type", frozen=True),
+        Field(
+            ...,
+            title="Driver type",
+            description="INA219 digital current and voltage monitor.",
+            frozen=True,
+        ),
     ] = "INA219"
     config: Annotated[
         INA219Config,
@@ -518,9 +532,16 @@ class INA260Config(BaseModel):
 class INA260BatteryDriverConfig(AddressModel):
     """Configuration wrapper for an INA260-based voltage and current sensor."""
 
+    model_config = ConfigDict(title="INA260 battery monitor")
+
     driver_type: Annotated[
         Literal["INA260"],
-        Field(..., title="Driver type", frozen=True),
+        Field(
+            ...,
+            title="Driver type",
+            description="INA260 integrated current and voltage monitor.",
+            frozen=True,
+        ),
     ] = "INA260"
     config: Annotated[
         INA260Config,
@@ -729,9 +750,16 @@ class INA226Config(BaseModel):
 class INA226BatteryDriverConfig(AddressModel):
     """Configuration for an INA226-based current and voltage sensor."""
 
+    model_config = ConfigDict(title="INA226 battery monitor")
+
     driver_type: Annotated[
         Literal["INA226"],
-        Field(..., title="Driver type", frozen=True),
+        Field(
+            ...,
+            title="Driver type",
+            description="INA226 digital current and voltage monitor.",
+            frozen=True,
+        ),
     ] = "INA226"
     config: Annotated[
         INA226Config,
@@ -765,14 +793,22 @@ class SunfounderBatteryConfig(AddressModel):
     The settings for configuring battery and power monitoring for Sunfounder's Robot HAT.
     """
 
+    model_config = ConfigDict(title="SunFounder Robot HAT battery monitor")
+
     driver_type: Annotated[
         Literal["Sunfounder"],
-        Field(..., title="Driver type", frozen=True),
+        Field(
+            ...,
+            title="Driver type",
+            description="SunFounder Robot HAT ADC voltage monitor.",
+            frozen=True,
+        ),
     ] = "Sunfounder"
     channel: Annotated[
         Union[str, int],
         Field(
             ...,
+            title="ADC channel",
             json_schema_extra={"x-ui-type": "string_or_number"},
             description="ADC channel number or name.",
             examples=["A4", 1, 3, 4],
@@ -798,11 +834,13 @@ class BatteryConfig(BaseModel):
     The settings for configuring battery and power monitoring.
     """
 
+    model_config = ConfigDict(title="Battery monitor")
+
     name: Annotated[
         str,
         Field(
             min_length=1,
-            title="Name",
+            title="Battery name",
             description="Unique human-readable name for this monitored supply.",
             examples=["Main battery", "Servo supply", "Raspberry Pi"],
             json_schema_extra={"shared": True},
@@ -812,28 +850,60 @@ class BatteryConfig(BaseModel):
     enabled: EnabledField = False
 
     full_voltage: Annotated[
-        float, Field(..., description="The maximum voltage.", examples=[8.4])
+        float,
+        Field(
+            ...,
+            title="Full voltage",
+            description="Voltage corresponding to a full battery.",
+            examples=[8.4],
+        ),
     ] = 8.4
     warn_voltage: Annotated[
-        float, Field(..., description="The warning voltage threshold.", examples=[7.15])
+        float,
+        Field(
+            ...,
+            title="Warning voltage",
+            description="Voltage threshold at which a low-battery warning begins.",
+            examples=[7.15],
+        ),
     ] = 7.15
     danger_voltage: Annotated[
-        float, Field(..., description="The danger voltage threshold.", examples=[6.5])
+        float,
+        Field(
+            ...,
+            title="Danger voltage",
+            description="Voltage threshold at which the battery is critically low.",
+            examples=[6.5],
+        ),
     ] = 6.5
     min_voltage: Annotated[
-        float, Field(..., description="The minimum voltage.", examples=[6.0])
+        float,
+        Field(
+            ...,
+            title="Minimum voltage",
+            description="Lowest voltage used by the battery-level calculation.",
+            examples=[6.0],
+        ),
     ] = 6.0
     auto_measure_seconds: Annotated[
         int,
         Field(
             ...,
+            title="Automatic measurement interval",
             ge=0,
             description="Time interval in seconds for automatic measurement.",
             examples=[60],
         ),
     ] = 60
     cache_seconds: Annotated[
-        float, Field(..., ge=0, description="Cache duration in seconds.", examples=[2])
+        float,
+        Field(
+            ...,
+            title="Measurement cache duration",
+            ge=0,
+            description="Time in seconds for which a battery reading remains cached.",
+            examples=[2],
+        ),
     ] = 2
 
     driver: Annotated[
@@ -843,7 +913,11 @@ class BatteryConfig(BaseModel):
             INA226BatteryDriverConfig,
             INA260BatteryDriverConfig,
         ],
-        Field(discriminator="driver_type"),
+        Field(
+            title="Battery monitor driver",
+            description="Hardware interface used to measure this supply.",
+            discriminator="driver_type",
+        ),
     ] = SunfounderBatteryConfig()
 
     @field_validator("name")

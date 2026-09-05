@@ -110,6 +110,8 @@ class SimulationSensorImperfectionsConfig(BaseModel):
 
 
 class CoherentSimulationConfig(BaseModel):
+    """Deterministic Ackermann vehicle, world, and localization-sensor simulation."""
+
     enabled: EnabledField = False
     update_frequency_hz: Annotated[
         float,
@@ -130,9 +132,30 @@ class CoherentSimulationConfig(BaseModel):
             le=5000,
         ),
     ] = 250
-    initial_x_m: Annotated[float, Field(allow_inf_nan=False)] = 0.0
-    initial_y_m: Annotated[float, Field(allow_inf_nan=False)] = 0.0
-    initial_yaw_rad: Annotated[float, Field(allow_inf_nan=False)] = 0.0
+    initial_x_m: Annotated[
+        float,
+        Field(
+            title="Initial X position",
+            description="Vehicle starting X coordinate in world metres.",
+            allow_inf_nan=False,
+        ),
+    ] = 0.0
+    initial_y_m: Annotated[
+        float,
+        Field(
+            title="Initial Y position",
+            description="Vehicle starting Y coordinate in world metres.",
+            allow_inf_nan=False,
+        ),
+    ] = 0.0
+    initial_yaw_rad: Annotated[
+        float,
+        Field(
+            title="Initial heading",
+            description="Vehicle starting yaw angle in world radians.",
+            allow_inf_nan=False,
+        ),
+    ] = 0.0
     world_scenario: Literal[
         "empty_room", "single_obstacle", "corridor", "apartment"
     ] = Field(
@@ -192,6 +215,10 @@ class CoherentSimulationConfig(BaseModel):
     sensor_imperfections: SimulationSensorImperfectionsConfig = Field(
         default_factory=SimulationSensorImperfectionsConfig,
         title="Simulated sensor imperfections",
+        description=(
+            "Optional deterministic bias, noise, scale error, and dropout applied "
+            "to simulated sensor measurements."
+        ),
     )
 
     @model_validator(mode="after")

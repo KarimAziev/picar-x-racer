@@ -3,7 +3,7 @@ from typing import Optional, Union
 from app.core.logger import Logger
 from app.schemas.robot.common import EnabledField
 from app.schemas.robot.pwm import PWMDriverConfig
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from robot_hat import MotorDirection
 from robot_hat.data_types.config.motor import (
     GPIODCMotorConfig as GPIODCMotorConfigDataclass,
@@ -24,7 +24,8 @@ MotorDirectionField = Annotated[
     Field(
         ge=-1,
         le=1,
-        description="Initial motor direction calibration (+1/-1)",
+        title="Calibration direction",
+        description="Active motor direction calibration; choose +1 or -1.",
         json_schema_extra={"x-ui-type": "motor_direction", "shared": True},
         examples=[1, -1],
     ),
@@ -40,7 +41,8 @@ class MotorBaseConfig(BaseModel):
             default=1,
             ge=-1,
             le=1,
-            description="Saved motor direction calibration (+1/-1)",
+            title="Saved calibration direction",
+            description="Persisted motor direction calibration; choose +1 or -1.",
             json_schema_extra={
                 "type": "integer",
                 "shared": True,
@@ -53,9 +55,9 @@ class MotorBaseConfig(BaseModel):
         str,
         Field(
             ...,
-            title="Name",
+            title="Motor name",
             json_schema_extra={"shared": True},
-            description="Human-readable name for the motor",
+            description="Human-readable name used to identify the motor.",
             examples=["Left", "Right"],
         ),
     ]
@@ -63,7 +65,7 @@ class MotorBaseConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Max speed",
+            title="Maximum motor speed",
             json_schema_extra={"shared": True},
             description="Maximum allowable speed for the motor.",
             examples=[100, 90],
@@ -91,6 +93,8 @@ class I2CDCMotorConfig(MotorBaseConfig):
     """
     The configuration for the motor, which is controlled via a PWM driver over I²C.
     """
+
+    model_config = ConfigDict(title="I2C PWM DC motor")
 
     channel: Annotated[
         Union[str, int],
@@ -143,11 +147,13 @@ class GPIODCMotorConfig(MotorBaseConfig):
     through direct GPIO calls.
     """
 
+    model_config = ConfigDict(title="GPIO dual-input DC motor")
+
     forward_pin: Annotated[
         Union[int, str],
         Field(
             ...,
-            title="Forward PIN",
+            title="Forward GPIO pin",
             json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin that the forward input of the motor driver chip "
             "is connected to.",
@@ -158,7 +164,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Field(
             ...,
             json_schema_extra={"x-ui-type": "pin"},
-            title="Backward PIN",
+            title="Backward GPIO pin",
             description="The GPIO pin that the backward input of the motor driver chip "
             "is connected to.",
         ),
@@ -167,7 +173,7 @@ class GPIODCMotorConfig(MotorBaseConfig):
         Optional[Union[int, str]],
         Field(
             ...,
-            title="Enable PIN",
+            title="Enable GPIO pin",
             json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin that enables the motor. "
             "Required for **some** motor controller boards.",
@@ -201,11 +207,13 @@ class PhaseMotorConfig(MotorBaseConfig):
     The configuration for the a phase/enable motor driver board.
     """
 
+    model_config = ConfigDict(title="GPIO phase-and-enable DC motor")
+
     phase_pin: Annotated[
         Union[int, str],
         Field(
             ...,
-            title="Phase PIN",
+            title="Phase GPIO pin",
             json_schema_extra={"x-ui-type": "pin"},
             description="GPIO pin for the phase/direction. ",
         ),
@@ -225,7 +233,7 @@ class PhaseMotorConfig(MotorBaseConfig):
         Union[int, str],
         Field(
             ...,
-            title="Enable PIN",
+            title="Enable GPIO pin",
             json_schema_extra={"x-ui-type": "pin"},
             description="The GPIO pin that the enable (speed) input of the motor driver chip is connected to.",
         ),

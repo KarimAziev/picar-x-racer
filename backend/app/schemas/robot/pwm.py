@@ -15,6 +15,7 @@ class PWMDriverConfig(AddressModel):
         Literal["PCA9685", "Sunfounder"],
         Field(
             ...,
+            title="PWM driver model",
             description="Model of the PWM driver chip",
             examples=["Sunfounder", "PCA9685"],
             json_schema_extra={

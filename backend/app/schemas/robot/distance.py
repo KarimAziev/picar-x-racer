@@ -1,6 +1,6 @@
 from typing import Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Annotated
 
 
@@ -32,6 +32,8 @@ class UltrasonicConfig(BaseModel):
     Ultrasonic distance sensor configuration.
     """
 
+    model_config = ConfigDict(title="Ultrasonic distance sensor")
+
     trig_pin: Annotated[
         Union[str, int],
         Field(
@@ -55,7 +57,8 @@ class UltrasonicConfig(BaseModel):
 
     timeout: float = Field(
         default=0.017,
-        description="The maximum duration to wait for a pulse to return.",
+        title="Echo timeout",
+        description="Maximum time in seconds to wait for an echo pulse to return.",
         gt=0,
         json_schema_extra={
             "props": {
