@@ -208,7 +208,7 @@ That's all! This is a one-time setup.
 You can launch the project by running the following command in the project directory:
 
 ```bash
-make backend-venv-run
+make backend-run
 ```
 
 Alternatively, to avoid starting it manually every time, you can run the script below (in the root of the project directory) to configure the application to start automatically upon boot:
@@ -567,8 +567,26 @@ Mocked motor and sensor values are simulations rather than hardware validation.
 Run the following command to execute the tests:
 
 ```bash
-make tests
+make test
 ```
+
+To run the complete local CI check suite—including Pyright, Black, backend and
+frontend tests, Vue type checking, and the production frontend build—run:
+
+```bash
+make check
+```
+
+The check target expects the backend and frontend development dependencies to
+already be installed and `pyright` to be available on `PATH`, as it is in CI.
+
+To format the backend Python code with Black, run:
+
+```bash
+make format-backend
+```
+
+Use `make format-check-backend` to verify formatting without changing files.
 
 ### API Documentation
 

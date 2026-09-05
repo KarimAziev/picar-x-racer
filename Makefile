@@ -5,32 +5,36 @@ VENV_PYTHON := $(VENV_DIR)/bin/python
 
 # Phony targets
 
-.PHONY: all tests dev dev-debug dev-without-install dev-with-install frontend-dev backend-venv-run build-dev-all \
-	sudo-build-all backend-sudo-run backend-sudo-install frontend-install frontend-build \
-	backend-venv-install clean clean-pyc help backend-venv-run-debug backend-venv-run-warning \
-	clean-build update-robot-hat update-robot-hat-dev backend-test frontend-test
+.PHONY: all check check-backend check-frontend test dev dev-debug dev-setup frontend-dev \
+	backend-run setup-and-run build-all frontend-install frontend-build backend-venv-install \
+	clean clean-pyc help clean-build update-robot-hat update-robot-hat-git test-backend \
+	test-frontend type-check-backend type-check-frontend format-backend format-check-backend
 
 # Default target
-all: build-all-no-sudo
+all: build-all
 
-tests: backend-test frontend-test
+check: check-backend check-frontend
 
-dev: dev-without-install
+check-backend: type-check-backend format-check-backend test-backend
+
+check-frontend: type-check-frontend test-frontend frontend-build
+
+test: test-backend test-frontend
 
 # Development environment setup
+dev:
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --dev
+
 dev-debug:
 	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --dev --log-level=DEBUG
 
-dev-without-install:
-	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --dev
-
-dev-with-install: frontend-install backend-venv-install dev-without-install
+dev-setup: frontend-install backend-venv-install dev
 
 update-robot-hat:
 	$(VENV_PYTHON) -m pip install --upgrade --force-reinstall robot-hat
 
-update-robot-hat-dev:
-	$(VENV_PYTHON) -m pip install "git+https://github.com/KarimAziev/robot-hat.git@dev#egg=robot_hat"
+update-robot-hat-git:
+	$(VENV_PYTHON) -m pip install "git+https://github.com/KarimAziev/robot-hat.git@main#egg=robot_hat"
 
 # Frontend installation and build
 frontend-install:
@@ -42,15 +46,18 @@ frontend-dev:
 frontend-build:
 	cd $(FRONTEND_DIR) && npm run build
 
-frontend-test:
+test-frontend:
 	cd $(FRONTEND_DIR) && npm run test
 
+type-check-frontend:
+	cd $(FRONTEND_DIR) && npm run type-check
 
-# Build targets for production
-build-dev-all: frontend-install frontend-build backend-venv-install backend-venv-run
 
-# Build targets for production
-build-all-no-sudo: frontend-install frontend-build
+# Install, build, and run the project
+setup-and-run: frontend-install frontend-build backend-venv-install backend-run
+
+# Install dependencies and build the frontend
+build-all: frontend-install frontend-build
 	$(MAKE) backend-venv-install INSTALL_FLAGS="$(INSTALL_FLAGS)"
 
 
@@ -60,31 +67,21 @@ backend-venv-install:
 
 
 # Run backend tests in virtual environment
-backend-test:
+test-backend:
 	cd $(BACKEND_DIR) && $(VENV_PYTHON) -m unittest discover
 
+type-check-backend:
+	cd $(BACKEND_DIR) && VIRTUAL_ENV="$(VENV_DIR)" PATH="$(VENV_DIR)/bin:$$PATH" pyright
+
+format-backend:
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -m black .
+
+format-check-backend:
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -m black --check .
+
 # Launch server in virtual environment
-backend-venv-run:
-	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py
-
-backend-venv-run-debug:
-	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --log-level=DEBUG
-
-backend-venv-run-warning:
-	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py --log-level=WARNING
-
-
-# Launch backend in sudo
-backend-sudo-run:
-	sudo python3 $(BACKEND_DIR)/run.py
-
-# Sudo setup
-sudo-build-all: frontend-install frontend-build backend-sudo-install backend-sudo-run
-
-# Sudo installation
-backend-sudo-install:
-	sudo python3 -m pip install -r $(BACKEND_DIR)/requirements.txt
-	sudo python3 -m pip install --no-deps -r $(BACKEND_DIR)/requirements-no-deps.txt
+backend-run:
+	cd $(BACKEND_DIR) && $(VENV_PYTHON) -u run.py $(if $(strip $(LOG_LEVEL)),--log-level="$(LOG_LEVEL)")
 
 
 # Cleanup targets
@@ -96,31 +93,53 @@ clean-pyc:
 clean-build:
 	cd $(FRONTEND_DIR) && rm -rf dist
 
-# Help target
 help:
-	@echo "Usage:"
-	@echo ""
-	@echo "Makefile targets available:"
-	@echo ""
-	@echo "all                      - Default target, install and build backend, frontend and system dependencies."
-	@echo "dev                      - Setup development environment without installation, alias for 'dev-without-install'."
-	@echo "dev-without-install      - Run both frontend and backend in development mode without installing dependencies."
-	@echo "dev-with-install         - Install frontend and backend dependencies, then run both in development mode."
-	@echo "tests                    - Run backend and front-end tests."
-	@echo "frontend-install         - Install frontend dependencies using npm."
-	@echo "frontend-dev             - Run frontend in development mode."
-	@echo "frontend-build           - Build frontend for production."
-	@echo "frontend-test            - Run frontend tests."
-	@echo "backend-venv-install     - Setup backend virtual environment and install dependencies."
-	@echo "backend-venv-run         - Run backend server in virtual environment."
-	@echo "backend-venv-run-debug   - Run backend server in virtual environment with DEBUG logging level."
-	@echo "backend-venv-run-warning - Run backend server in virtual environment with WARNING logging level."
-	@echo "backend-sudo-run         - Run backend server with sudo privileges."
-	@echo "backend-test             - Run backend tests in virtual environment."
-	@echo "sudo-build-all           - Install dependencies and build the project with sudo privileges."
-	@echo "backend-sudo-install     - Install backend dependencies with sudo privileges."
-	@echo "build-dev-all            - Install dependencies and build the entire project for development."
-	@echo "build-all-no-sudo        - Install dependencies and build the entire project without sudo."
-	@echo "clean                    - Clean the project, remove build artifacts and Python cache."
-	@echo "clean-pyc                - Remove Python file caches."
-	@echo "clean-build              - Clean frontend build artifacts."
+	@printf '%s\n' \
+		'Usage: make <target> [VARIABLE=value]' \
+		'' \
+		'Common targets:'
+	@printf '  %-27s %s\n' \
+		'all' 'Install dependencies and build the project (default).' \
+		'check' 'Run all backend and frontend CI checks.' \
+		'dev' 'Run the development environment without installing dependencies.' \
+		'test' 'Run the backend and frontend test suites.' \
+		'help' 'Show this help.'
+	@printf '%s\n' '' 'Setup and build:'
+	@printf '  %-27s %s\n' \
+		'build-all' 'Install dependencies and build the frontend.' \
+		'setup-and-run' 'Install, build, and run the project.' \
+		'frontend-install' 'Install frontend dependencies with npm.' \
+		'frontend-build' 'Build the production frontend bundle.' \
+		'backend-venv-install' 'Create the backend virtual environment and install dependencies.'
+	@printf '%s\n' '' 'Development and run:'
+	@printf '  %-27s %s\n' \
+		'dev-debug' 'Run the development environment with DEBUG logging.' \
+		'dev-setup' 'Install dependencies, then run the development environment.' \
+		'frontend-dev' 'Run the frontend development server.' \
+		'backend-run' 'Run the backend; optionally set LOG_LEVEL.'
+	@printf '%s\n' '' 'Checks and tests:'
+	@printf '  %-27s %s\n' \
+		'check-backend' 'Run backend type, format, and test checks.' \
+		'check-frontend' 'Run frontend type, test, and build checks.' \
+		'type-check-backend' 'Run Pyright against the backend.' \
+		'format-backend' 'Format backend Python files with Black.' \
+		'format-check-backend' 'Check backend formatting with Black.' \
+		'type-check-frontend' 'Run vue-tsc without emitting files.' \
+		'test-backend' 'Run the backend test suite.' \
+		'test-frontend' 'Run the frontend test suite.'
+	@printf '%s\n' '' 'Maintenance:'
+	@printf '  %-27s %s\n' \
+		'update-robot-hat' 'Reinstall the latest released robot-hat package.' \
+		'update-robot-hat-git' 'Install robot-hat from the main Git branch.' \
+		'clean' 'Remove Python caches and the frontend build.' \
+		'clean-pyc' 'Remove Python bytecode caches.' \
+		'clean-build' 'Remove the frontend production build.'
+	@printf '%s\n' \
+		'' \
+		'Variables:'
+	@printf '  %-27s %s\n' \
+		'FRONTEND_DIR=<path>' 'Frontend directory (default: frontend).' \
+		'BACKEND_DIR=<path>' 'Backend directory (default: backend).' \
+		'VENV_DIR=<path>' 'Backend virtual environment directory.' \
+		'INSTALL_FLAGS="<flags>"' 'Flags passed to backend/setup_env.sh.' \
+		'LOG_LEVEL=<level>' 'Backend log level, such as DEBUG or WARNING.'
