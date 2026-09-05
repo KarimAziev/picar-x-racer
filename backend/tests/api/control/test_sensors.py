@@ -119,6 +119,11 @@ class MappingSessionRouteTests(unittest.TestCase):
         control_app.dependency_overrides[
             robot_deps.get_navigation_execution_service
         ] = lambda: None
+        mission = Mock()
+        mission.running = False
+        control_app.dependency_overrides[robot_deps.get_navigation_mission_service] = (
+            lambda: mission
+        )
         self.client = TestClient(control_app)
 
     def tearDown(self) -> None:
@@ -161,9 +166,21 @@ class MappingSessionRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(
             response.json()["detail"],
-            "Cancel the active navigation action before starting mapping",
+            "Cancel the active navigation action or mission before starting mapping",
         )
         self.assertEqual(self.service.status.state.value, "idle")
+
+    def test_rejects_start_while_navigation_mission_is_active(self) -> None:
+        mission = Mock()
+        mission.running = True
+        control_app.dependency_overrides[robot_deps.get_navigation_mission_service] = (
+            lambda: mission
+        )
+
+        response = self.client.post("/px/api/map/session/start")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("mission", response.json()["detail"])
 
 
 if __name__ == "__main__":

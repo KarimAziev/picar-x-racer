@@ -304,6 +304,26 @@ class OccupancyGridPlannerTests(unittest.TestCase):
 
 
 class NavigationPlanningServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_previews_an_explicit_pose_without_replacing_interactive_status(
+        self,
+    ) -> None:
+        bus = TopicBus()
+        occupancy_grid = grid(8, 5)
+        bus.publish(LOCAL_MAP, occupancy_grid)
+        service = NavigationPlanningService(bus)
+
+        preview = await service.preview_from_pose(
+            NavigationGoalRequest(x_m=6.5, y_m=2.5, clearance_m=0),
+            grid=occupancy_grid,
+            start_x_m=1.5,
+            start_y_m=2.5,
+            start_yaw_rad=0.0,
+        )
+
+        self.assertEqual(preview.state, NavigationPlanState.READY)
+        self.assertEqual(preview.start, NavigationPoint(x_m=1.5, y_m=2.5))
+        self.assertEqual(service.status.state, NavigationPlanState.IDLE)
+
     async def test_uses_fused_pose_and_retains_then_clears_preview(self) -> None:
         bus = TopicBus()
         bus.publish(LOCAL_MAP, grid(8, 5))

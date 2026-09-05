@@ -131,6 +131,38 @@ describe("autonomy telemetry store", () => {
           reason: "Select and review a navigation goal",
         });
       }
+      if (path === "/px/api/autonomy/navigation/mission/plan") {
+        return Promise.resolve({
+          available: true,
+          state: "idle",
+          frame_id: "odom",
+          mode: "once",
+          lap_count: 1,
+          targets: [],
+          legs: [],
+          map_sequence: null,
+          total_path_length_m: 0,
+          total_reverse_distance_m: 0,
+          reason: "Add map targets, then review the complete mission",
+        });
+      }
+      if (path === "/px/api/autonomy/navigation/mission/execution") {
+        return Promise.resolve({
+          available: true,
+          state: "idle",
+          mission_id: null,
+          mode: "once",
+          current_lap: 0,
+          total_laps: 1,
+          active_target_index: null,
+          completed_target_visits: 0,
+          total_target_visits: 0,
+          map_sequence: null,
+          current_leg_path_length_m: 0,
+          completed_distance_m: 0,
+          reason: "Review a mission before starting it",
+        });
+      }
       if (path === "/px/api/autonomy/simulation") {
         return Promise.resolve({
           enabled: true,
@@ -582,6 +614,81 @@ describe("autonomy telemetry store", () => {
       "/px/api/autonomy/navigation/execution/cancel",
     );
     expect(store.navigationExecution?.action_id).toBe("navigation-1");
+  });
+
+  it("builds, reviews, and starts an ordered loop mission", async () => {
+    const store = useAutonomyStore();
+    const idlePlan = {
+      available: true,
+      state: "idle",
+      frame_id: "odom",
+      mode: "loop",
+      lap_count: 2,
+      targets: [],
+      legs: [],
+      map_sequence: null,
+      total_path_length_m: 0,
+      total_reverse_distance_m: 0,
+      reason: "Add map targets",
+    };
+    mocks.post.mockImplementation((path: string) => {
+      if (path.endsWith("/plan/clear")) return Promise.resolve(idlePlan);
+      if (path.endsWith("/mission/plan")) {
+        return Promise.resolve({
+          ...idlePlan,
+          state: "ready",
+          targets: store.missionTargets,
+          map_sequence: 8,
+          total_path_length_m: 4.2,
+          reason: "Validated 3 route legs",
+        });
+      }
+      return Promise.resolve({
+        available: true,
+        state: "running",
+        mission_id: "mission-1",
+        mode: "loop",
+        current_lap: 0,
+        total_laps: 2,
+        active_target_index: 0,
+        completed_target_visits: 0,
+        total_target_visits: 5,
+        map_sequence: 8,
+        current_leg_path_length_m: 1,
+        completed_distance_m: 0,
+        reason: "Following live route",
+      });
+    });
+
+    store.navigationMissionMode = "loop";
+    store.navigationMissionLapCount = 2;
+    await store.addMissionTarget(1, 0);
+    await store.addMissionTarget(2, 1);
+    await store.reviewNavigationMission();
+    await store.startNavigationMission(0.2);
+
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/mission/plan",
+      {
+        targets: [
+          { x_m: 1, y_m: 0, dwell_seconds: 0 },
+          { x_m: 2, y_m: 1, dwell_seconds: 0 },
+        ],
+        mode: "loop",
+        lap_count: 2,
+        clearance_m: 0.2,
+        allow_unknown: false,
+      },
+    );
+    expect(mocks.post).toHaveBeenCalledWith(
+      "/px/api/autonomy/navigation/mission/execution/start",
+      {
+        max_speed_mps: 0.2,
+        lookahead_m: 0.25,
+        goal_tolerance_m: 0.08,
+      },
+    );
+    expect(store.navigationMissionExecution?.mission_id).toBe("mission-1");
   });
 
   it("blocks planning and execution while the map is changing", async () => {

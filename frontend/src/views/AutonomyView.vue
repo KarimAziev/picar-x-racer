@@ -205,8 +205,8 @@ const workflowTitle = computed(() =>
 );
 const workflowDescription = computed(() =>
   simulationEnabled.value
-    ? "Arm manual control, start a bounded relative-motion action, or execute a reviewed map route. The same arbiter drives a virtual Ackermann vehicle while physical motors remain isolated."
-    : "Drive manually to create observations, finish the map snapshot, then select and explicitly start a geometry-validated local route. Mapping and telemetry never move the vehicle by themselves.",
+    ? "Arm manual control, start a bounded relative-motion action, or execute a reviewed multi-target mission. Every mission leg starts with a fresh fused-pose plan while the same arbiter drives a virtual Ackermann vehicle and keeps physical motors isolated."
+    : "Drive manually to create observations, finish the map snapshot, add ordered targets, then review and explicitly start the mission. Every leg is replanned from fresh fused localization; mapping and telemetry never move the vehicle by themselves.",
 );
 const workflowCaveat = computed(() =>
   simulationEnabled.value

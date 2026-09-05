@@ -585,8 +585,7 @@ class NavigationPlanningService:
             start_x_m, start_y_m, start_yaw_rad, pose_source = pose
             start = NavigationPoint(x_m=start_x_m, y_m=start_y_m)
             try:
-                plan = await asyncio.to_thread(
-                    self._planner.plan,
+                plan = await self._compute_plan(
                     grid,
                     start_x_m=start_x_m,
                     start_y_m=start_y_m,
@@ -640,63 +639,138 @@ class NavigationPlanningService:
                     frame_id=grid.header.frame_id,
                 )
 
-            self._status = NavigationPlanStatus(
-                available=True,
-                state=NavigationPlanState.READY,
-                frame_id=grid.header.frame_id,
-                goal=goal,
+            self._status = self._ready_status(
+                request,
+                grid=grid,
+                plan=plan,
                 start=start,
-                path=plan.path,
-                path_directions=plan.path_directions,
-                path_length_m=plan.path_length_m,
-                reverse_distance_m=plan.reverse_distance_m,
-                gear_changes=plan.gear_changes,
-                clearance_m=request.clearance_m,
-                allow_unknown=request.allow_unknown,
-                map_sequence=grid.header.sequence,
-                pose_source=pose_source,
                 start_yaw_rad=start_yaw_rad,
-                expanded_nodes=plan.expanded_nodes,
-                planning_method=plan.planning_method,
-                geometry_validated=plan.geometry_validated,
-                smoothed=plan.smoothed,
-                raw_waypoint_count=plan.raw_waypoint_count,
-                max_curvature_per_m=plan.max_curvature_per_m,
-                curvature_limit_per_m=plan.curvature_limit_per_m,
-                minimum_turning_radius_m=plan.minimum_turning_radius_m,
-                initial_heading_error_deg=(
-                    math.degrees(plan.initial_heading_error_rad)
-                    if plan.initial_heading_error_rad is not None
-                    else None
-                ),
-                reason=(
-                    (
-                        "Route is collision-checked and validated for "
-                        "the configured steering geometry"
-                        + (
-                            " using direction-aware Hybrid A* recovery"
-                            if plan.planning_method == "hybrid_astar"
-                            else "; smoothing is applied"
-                        )
-                        + (
-                            "; no motion command has been issued"
-                            if pose_source == "localization"
-                            else (
-                                "; this raw-odometry preview is diagnostic only; "
-                                "review a new route when fused localization is available"
-                            )
-                        )
-                    )
-                    if plan.geometry_validated
-                    else "Route preview is ready; Ackermann geometry is not configured"
-                ),
+                pose_source=pose_source,
             )
             return self._status
+
+    async def preview_from_pose(
+        self,
+        request: NavigationGoalRequest,
+        *,
+        grid: OccupancyGrid,
+        start_x_m: float,
+        start_y_m: float,
+        start_yaw_rad: float,
+    ) -> NavigationPlanStatus:
+        """Validate one preflight leg without replacing the interactive plan."""
+
+        async with self._lock:
+            plan = await self._compute_plan(
+                grid,
+                start_x_m=start_x_m,
+                start_y_m=start_y_m,
+                start_yaw_rad=start_yaw_rad,
+                goal=request,
+            )
+            current_grid = self._bus.latest(LOCAL_MAP)
+            if (
+                current_grid is None
+                or current_grid.header.frame_id != grid.header.frame_id
+                or current_grid.header.sequence != grid.header.sequence
+            ):
+                raise NavigationPlanRejected(
+                    "the occupancy map changed while the mission was being reviewed"
+                )
+            return self._ready_status(
+                request,
+                grid=grid,
+                plan=plan,
+                start=NavigationPoint(x_m=start_x_m, y_m=start_y_m),
+                start_yaw_rad=start_yaw_rad,
+                pose_source="localization",
+            )
 
     async def clear(self) -> NavigationPlanStatus:
         async with self._lock:
             self._status = NavigationPlanStatus.idle()
             return self._status
+
+    async def _compute_plan(
+        self,
+        grid: OccupancyGrid,
+        *,
+        start_x_m: float,
+        start_y_m: float,
+        start_yaw_rad: float,
+        goal: NavigationGoalRequest,
+    ) -> GridPlan:
+        return await asyncio.to_thread(
+            self._planner.plan,
+            grid,
+            start_x_m=start_x_m,
+            start_y_m=start_y_m,
+            start_yaw_rad=start_yaw_rad,
+            goal=goal,
+        )
+
+    @staticmethod
+    def _ready_status(
+        request: NavigationGoalRequest,
+        *,
+        grid: OccupancyGrid,
+        plan: GridPlan,
+        start: NavigationPoint,
+        start_yaw_rad: float,
+        pose_source: Literal["localization", "odometry"],
+    ) -> NavigationPlanStatus:
+        goal = NavigationPoint(x_m=request.x_m, y_m=request.y_m)
+        return NavigationPlanStatus(
+            available=True,
+            state=NavigationPlanState.READY,
+            frame_id=grid.header.frame_id,
+            goal=goal,
+            start=start,
+            path=plan.path,
+            path_directions=plan.path_directions,
+            path_length_m=plan.path_length_m,
+            reverse_distance_m=plan.reverse_distance_m,
+            gear_changes=plan.gear_changes,
+            clearance_m=request.clearance_m,
+            allow_unknown=request.allow_unknown,
+            map_sequence=grid.header.sequence,
+            pose_source=pose_source,
+            start_yaw_rad=start_yaw_rad,
+            expanded_nodes=plan.expanded_nodes,
+            planning_method=plan.planning_method,
+            geometry_validated=plan.geometry_validated,
+            smoothed=plan.smoothed,
+            raw_waypoint_count=plan.raw_waypoint_count,
+            max_curvature_per_m=plan.max_curvature_per_m,
+            curvature_limit_per_m=plan.curvature_limit_per_m,
+            minimum_turning_radius_m=plan.minimum_turning_radius_m,
+            initial_heading_error_deg=(
+                math.degrees(plan.initial_heading_error_rad)
+                if plan.initial_heading_error_rad is not None
+                else None
+            ),
+            reason=(
+                (
+                    "Route is collision-checked and validated for "
+                    "the configured steering geometry"
+                    + (
+                        " using direction-aware Hybrid A* recovery"
+                        if plan.planning_method == "hybrid_astar"
+                        else "; smoothing is applied"
+                    )
+                    + (
+                        "; no motion command has been issued"
+                        if pose_source == "localization"
+                        else (
+                            "; this raw-odometry preview is diagnostic only; "
+                            "review a new route when fused localization is available"
+                        )
+                    )
+                )
+                if plan.geometry_validated
+                else "Route preview is ready; Ackermann geometry is not configured"
+            ),
+        )
 
     def _planning_pose(self, frame_id: str) -> Optional[PlanningPose]:
         localization = self._bus.latest(LOCALIZATION_POSE)

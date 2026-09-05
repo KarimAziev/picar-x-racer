@@ -64,16 +64,17 @@
           class="mr-1 inline-block h-2 w-2 rounded-full border border-purple-400"
         />simulated truth</span
       >
-      <span v-if="store.navigationPlan?.goal"
+      <span v-if="store.missionTargets.length"
         ><i
           class="mr-1 inline-block h-2 w-2 rounded-full border-2 border-amber-400"
-        />navigation goal</span
+        />mission targets</span
       >
-      <span v-if="store.navigationPlan?.state === 'ready'"
+      <span v-if="store.navigationMissionPlan?.state === 'ready'"
         ><i class="mr-1 inline-block h-0.5 w-3 bg-amber-300" />planned
         forward</span
       >
-      <span v-if="(store.navigationPlan?.reverse_distance_m ?? 0) > 0"
+      <span
+        v-if="(store.navigationMissionPlan?.total_reverse_distance_m ?? 0) > 0"
         ><i class="mr-1 inline-block h-0.5 w-3 bg-fuchsia-400" />planned
         reverse</span
       >
@@ -114,24 +115,28 @@ const localizationEnabled = computed(
 );
 const mappingActive = computed(() => store.mappingSession?.state === "active");
 const navigationActive = computed(() =>
-  ["running", "paused"].includes(store.navigationExecution?.state ?? ""),
+  ["running", "paused"].includes(store.navigationExecution?.state ?? "") ||
+  ["running", "paused"].includes(
+    store.navigationMissionExecution?.state ?? "",
+  ),
 );
 const goalSelectionEnabled = computed(
   () =>
     interactive &&
     !mappingActive.value &&
     !navigationActive.value &&
-    !store.navigationPlanLoading,
+    store.missionTargets.length < 32 &&
+    !store.navigationMissionPlanLoading,
 );
 const mapAriaLabel = computed(() => {
   if (!interactive) return "Local occupancy grid in the odom frame";
   if (mappingActive.value) {
-    return "Local occupancy grid; pause or finish mapping before selecting a navigation goal";
+    return "Local occupancy grid; pause or finish mapping before adding mission targets";
   }
   if (navigationActive.value) {
-    return "Local occupancy grid; goal selection is unavailable during navigation";
+    return "Local occupancy grid; target editing is unavailable during navigation";
   }
-  return "Local occupancy grid in the odom frame; click observed free space to preview a route";
+  return "Local occupancy grid in the odom frame; click observed free space to add an ordered mission target";
 });
 const odomOriginInWorld = computed(() => {
   const origin = store.simulation?.odom_origin_in_world;
@@ -197,6 +202,7 @@ const draw = () => {
   context.clearRect(0, 0, cssWidth, cssHeight);
   context.drawImage(bitmap, 0, 0, cssWidth, cssHeight);
   drawKnownWorldOverlay(context, grid, cssWidth, cssHeight);
+  drawMissionOverlay(context, grid, cssWidth, cssHeight);
   drawNavigationPlanOverlay(context, grid, cssWidth, cssHeight);
   drawPoseOverlay(context, grid, cssWidth, cssHeight);
 };
@@ -351,6 +357,75 @@ const drawNavigationPlanOverlay = (
   context.restore();
 };
 
+const drawMissionOverlay = (
+  context: CanvasRenderingContext2D,
+  grid: NonNullable<typeof map.value>,
+  width: number,
+  height: number,
+) => {
+  const mission = store.navigationMissionPlan;
+  if (mission?.state === "ready" && mission.frame_id === grid.header.frame_id) {
+    context.save();
+    context.lineWidth = 2.25;
+    context.globalAlpha = 0.72;
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    for (const leg of mission.legs) {
+      const path = leg.plan.path;
+      for (let index = 0; index < path.length - 1; index += 1) {
+        const start = canvasPoint(
+          grid,
+          { x: path[index].x_m, y: path[index].y_m },
+          width,
+          height,
+        );
+        const end = canvasPoint(
+          grid,
+          { x: path[index + 1].x_m, y: path[index + 1].y_m },
+          width,
+          height,
+        );
+        if (!start || !end) continue;
+        context.strokeStyle =
+          (leg.plan.path_directions[index] ?? "forward") === "reverse"
+            ? "#e879f9"
+            : "#fde047";
+        context.beginPath();
+        context.moveTo(start.x, start.y);
+        context.lineTo(end.x, end.y);
+        context.stroke();
+      }
+    }
+    context.restore();
+  }
+
+  const activeTarget = store.navigationMissionExecution?.active_target_index;
+  for (const [index, target] of store.missionTargets.entries()) {
+    const point = canvasPoint(
+      grid,
+      { x: target.x_m, y: target.y_m },
+      width,
+      height,
+    );
+    if (!point) continue;
+    const active = index === activeTarget;
+    context.save();
+    context.fillStyle = active ? "#f59e0b" : "#0f172a";
+    context.strokeStyle = active ? "#fff7ed" : "#facc15";
+    context.lineWidth = active ? 3 : 2;
+    context.beginPath();
+    context.arc(point.x, point.y, active ? 12 : 10, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.fillStyle = "#ffffff";
+    context.font = "bold 11px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(String(index + 1), point.x, point.y + 0.5);
+    context.restore();
+  }
+};
+
 const selectNavigationGoal = (event: MouseEvent) => {
   const element = canvas.value;
   const grid = map.value;
@@ -359,7 +434,8 @@ const selectNavigationGoal = (event: MouseEvent) => {
     !element ||
     !grid ||
     mappingActive.value ||
-    store.navigationPlanLoading ||
+    store.navigationMissionPlanLoading ||
+    store.missionTargets.length >= 32 ||
     navigationActive.value
   )
     return;
@@ -372,7 +448,7 @@ const selectNavigationGoal = (event: MouseEvent) => {
     bounds.height,
   );
   if (!point) return;
-  void store.planNavigationGoal(point.x, point.y);
+  void store.addMissionTarget(point.x, point.y);
 };
 
 const drawPoseOverlay = (
@@ -551,6 +627,16 @@ watch(() => store.localization?.latest_pose?.header.sequence, scheduleDraw);
 watch(
   [() => store.navigationPlan, () => store.navigationPlanLoading],
   scheduleDraw,
+);
+watch(
+  [
+    () => store.navigationMissionPlan,
+    () => store.navigationMissionPlanLoading,
+    () => store.missionTargets,
+    () => store.navigationMissionExecution?.active_target_index,
+  ],
+  scheduleDraw,
+  { deep: true },
 );
 
 watch([simulationWorld, odomOriginInWorld], scheduleDraw);

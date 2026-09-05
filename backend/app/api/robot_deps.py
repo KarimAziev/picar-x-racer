@@ -60,6 +60,7 @@ from app.services.autonomy import (
     MotionControlService,
     MotionLimits,
     NavigationExecutionService,
+    NavigationMissionService,
     NavigationPlanningService,
     OccupancyGridPlanner,
     KnownWorldScanMatcher,
@@ -950,6 +951,20 @@ def get_navigation_execution_service(
 
 
 @lru_cache(maxsize=1)
+def get_navigation_mission_service(
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    planning_service: Annotated[
+        NavigationPlanningService, Depends(get_navigation_planning_service)
+    ],
+    execution_service: Annotated[
+        Optional[NavigationExecutionService],
+        Depends(get_navigation_execution_service),
+    ],
+) -> NavigationMissionService:
+    return NavigationMissionService(topic_bus, planning_service, execution_service)
+
+
+@lru_cache(maxsize=1)
 def get_relative_motion_service(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
@@ -1042,6 +1057,7 @@ class LifespanAppDeps(TypedDict):
     local_mapping_service: Optional[LocalMappingService]
     relative_motion_service: Optional[RelativeMotionService]
     navigation_execution_service: Optional[NavigationExecutionService]
+    navigation_mission_service: NavigationMissionService
     coherent_simulation_supervisor: CoherentSimulationSupervisor
     pose_estimator_supervisor: PoseEstimatorSupervisor
     known_world_scan_matcher_supervisor: KnownWorldScanMatcherSupervisor
@@ -1082,6 +1098,10 @@ async def get_lifespan_dependencies(
         Optional[NavigationExecutionService],
         Depends(get_navigation_execution_service),
     ],
+    navigation_mission_service: Annotated[
+        NavigationMissionService,
+        Depends(get_navigation_mission_service),
+    ],
     coherent_simulation_supervisor: Annotated[
         CoherentSimulationSupervisor,
         Depends(get_coherent_simulation_supervisor),
@@ -1113,6 +1133,7 @@ async def get_lifespan_dependencies(
         "local_mapping_service": local_mapping_service,
         "relative_motion_service": relative_motion_service,
         "navigation_execution_service": navigation_execution_service,
+        "navigation_mission_service": navigation_mission_service,
         "coherent_simulation_supervisor": coherent_simulation_supervisor,
         "pose_estimator_supervisor": pose_estimator_supervisor,
         "known_world_scan_matcher_supervisor": (known_world_scan_matcher_supervisor),

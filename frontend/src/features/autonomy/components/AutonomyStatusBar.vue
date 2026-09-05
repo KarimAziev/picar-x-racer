@@ -118,17 +118,26 @@ const canChangeNormalMode = computed(
     controlConnected.value &&
     controller.motionControlEnabled &&
     !controller.emergencyStopActive &&
-    !controller.motionFault,
+    !controller.motionFault &&
+    !navigationMissionActive.value,
 );
 
 const navigationRunning = computed(
   () => telemetry.navigationExecution?.state === "running",
 );
+const navigationMissionActive = computed(() =>
+  ["running", "paused"].includes(
+    telemetry.navigationMissionExecution?.state ?? "",
+  ),
+);
 const relativeMotionRunning = computed(
   () => telemetry.relativeMotion?.state === "running",
 );
 const autonomousActionRunning = computed(
-  () => navigationRunning.value || relativeMotionRunning.value,
+  () =>
+    navigationRunning.value ||
+    navigationMissionActive.value ||
+    relativeMotionRunning.value,
 );
 const effectiveRobotMode = computed(() =>
   autonomousActionRunning.value ? "autonomous" : controller.robotMode,

@@ -75,6 +75,7 @@ from app.services.autonomy.navigation_execution import (
     PurePursuitTracker,
     TrackingSolution,
 )
+from app.services.autonomy.navigation_mission import NavigationMissionService
 from app.services.autonomy.relative_motion import (
     ActionConflictError,
     RelativeMotionService,
@@ -184,6 +185,7 @@ __all__ = [
     "NavigationPlanRejected",
     "NavigationPlanningService",
     "NavigationExecutionService",
+    "NavigationMissionService",
     "OdometryInputError",
     "OccupancyGridPlanner",
     "PathGeometryRejected",

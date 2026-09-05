@@ -7,6 +7,10 @@ from app.schemas.autonomy import (
     NavigationGoalRequest,
     NavigationExecutionRequest,
     NavigationExecutionStatus,
+    NavigationMissionExecutionRequest,
+    NavigationMissionExecutionStatus,
+    NavigationMissionPlanStatus,
+    NavigationMissionReviewRequest,
     NavigationPlanStatus,
     MappingSessionState,
     RelativeArcRequest,
@@ -28,6 +32,7 @@ from app.services.autonomy import (
     MotionControlService,
     NavigationPlanningService,
     NavigationExecutionService,
+    NavigationMissionService,
     PoseEstimatorSupervisor,
     KnownWorldScanMatcherSupervisor,
     RelativeMotionService,
@@ -69,6 +74,10 @@ NavigationPlanningDependency = Annotated[
 NavigationExecutionDependency = Annotated[
     Optional[NavigationExecutionService],
     Depends(robot_deps.get_navigation_execution_service),
+]
+NavigationMissionDependency = Annotated[
+    NavigationMissionService,
+    Depends(robot_deps.get_navigation_mission_service),
 ]
 
 
@@ -336,6 +345,112 @@ async def cancel_navigation_execution(
     service: NavigationExecutionDependency,
 ) -> NavigationExecutionStatus:
     return await _require_navigation_execution_service(service).cancel()
+
+
+@router.get(
+    "/px/api/autonomy/navigation/mission/plan",
+    response_model=NavigationMissionPlanStatus,
+    summary="Retrieve the latest reviewed multi-target mission",
+)
+async def get_navigation_mission_plan(
+    service: NavigationMissionDependency,
+) -> NavigationMissionPlanStatus:
+    return service.plan_status
+
+
+@router.post(
+    "/px/api/autonomy/navigation/mission/plan",
+    response_model=NavigationMissionPlanStatus,
+    summary="Preflight every leg of an ordered target mission without moving",
+)
+async def review_navigation_mission(
+    request: NavigationMissionReviewRequest,
+    service: NavigationMissionDependency,
+    mapping: MappingDependency,
+) -> NavigationMissionPlanStatus:
+    _require_frozen_mapping_snapshot(mapping)
+    try:
+        return await service.review(request)
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/navigation/mission/plan/clear",
+    response_model=NavigationMissionPlanStatus,
+    summary="Clear the reviewed mission and its live-leg preview",
+)
+async def clear_navigation_mission(
+    service: NavigationMissionDependency,
+) -> NavigationMissionPlanStatus:
+    try:
+        return await service.clear()
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.get(
+    "/px/api/autonomy/navigation/mission/execution",
+    response_model=NavigationMissionExecutionStatus,
+    summary="Retrieve multi-target mission progress",
+)
+async def get_navigation_mission_execution(
+    service: NavigationMissionDependency,
+) -> NavigationMissionExecutionStatus:
+    return service.status
+
+
+@router.post(
+    "/px/api/autonomy/navigation/mission/execution/start",
+    response_model=NavigationMissionExecutionStatus,
+    summary="Start a reviewed mission with fresh-pose planning for every leg",
+)
+async def start_navigation_mission(
+    request: NavigationMissionExecutionRequest,
+    service: NavigationMissionDependency,
+    mapping: MappingDependency,
+) -> NavigationMissionExecutionStatus:
+    _require_frozen_mapping_snapshot(mapping)
+    try:
+        return await service.start(request)
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/navigation/mission/execution/pause",
+    response_model=NavigationMissionExecutionStatus,
+)
+async def pause_navigation_mission(
+    service: NavigationMissionDependency,
+) -> NavigationMissionExecutionStatus:
+    try:
+        return await service.pause()
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/navigation/mission/execution/resume",
+    response_model=NavigationMissionExecutionStatus,
+)
+async def resume_navigation_mission(
+    service: NavigationMissionDependency,
+) -> NavigationMissionExecutionStatus:
+    try:
+        return await service.resume()
+    except ActionConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post(
+    "/px/api/autonomy/navigation/mission/execution/cancel",
+    response_model=NavigationMissionExecutionStatus,
+)
+async def cancel_navigation_mission(
+    service: NavigationMissionDependency,
+) -> NavigationMissionExecutionStatus:
+    return await service.cancel()
 
 
 @router.get("/px/api/autonomy/relative-motion", response_model=RelativeMotionStatus)

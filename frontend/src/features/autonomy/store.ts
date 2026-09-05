@@ -321,6 +321,48 @@ export interface NavigationExecutionStatus {
   reason: string | null;
 }
 
+export type NavigationMissionMode = "once" | "loop";
+
+export interface NavigationMissionTarget extends NavigationPoint {
+  dwell_seconds: number;
+}
+
+export interface NavigationMissionLeg {
+  from_target_index: number | null;
+  to_target_index: number;
+  plan: NavigationPlanStatus;
+}
+
+export interface NavigationMissionPlanStatus {
+  available: boolean;
+  state: NavigationPlanState;
+  frame_id: string;
+  mode: NavigationMissionMode;
+  lap_count: number;
+  targets: NavigationMissionTarget[];
+  legs: NavigationMissionLeg[];
+  map_sequence: number | null;
+  total_path_length_m: number;
+  total_reverse_distance_m: number;
+  reason: string | null;
+}
+
+export interface NavigationMissionExecutionStatus {
+  available: boolean;
+  state: AutonomousActionState;
+  mission_id: string | null;
+  mode: NavigationMissionMode;
+  current_lap: number;
+  total_laps: number;
+  active_target_index: number | null;
+  completed_target_visits: number;
+  total_target_visits: number;
+  map_sequence: number | null;
+  current_leg_path_length_m: number;
+  completed_distance_m: number;
+  reason: string | null;
+}
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
@@ -350,6 +392,15 @@ export interface State {
   navigationExecutionLoading: boolean;
   navigationExecutionError: string | null;
   navigationExecutionStatusError: string | null;
+  missionTargets: NavigationMissionTarget[];
+  navigationMissionMode: NavigationMissionMode;
+  navigationMissionLapCount: number;
+  navigationMissionPlan: NavigationMissionPlanStatus | null;
+  navigationMissionPlanLoading: boolean;
+  navigationMissionPlanError: string | null;
+  navigationMissionExecution: NavigationMissionExecutionStatus | null;
+  navigationMissionExecutionLoading: boolean;
+  navigationMissionExecutionError: string | null;
   simulation: SimulationRuntimeStatus | null;
   simulationLoading: boolean;
   simulationResetting: boolean;
@@ -384,6 +435,15 @@ const defaultState: State = {
   navigationExecutionLoading: false,
   navigationExecutionError: null,
   navigationExecutionStatusError: null,
+  missionTargets: [],
+  navigationMissionMode: "once",
+  navigationMissionLapCount: 1,
+  navigationMissionPlan: null,
+  navigationMissionPlanLoading: false,
+  navigationMissionPlanError: null,
+  navigationMissionExecution: null,
+  navigationMissionExecutionLoading: false,
+  navigationMissionExecutionError: null,
   simulation: null,
   simulationLoading: false,
   simulationResetting: false,
@@ -459,10 +519,17 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     async runMappingAction(action: MappingSessionAction) {
       if (
         action === "start" &&
-        ["running", "paused"].includes(this.navigationExecution?.state ?? "")
+        (
+          ["running", "paused"].includes(
+            this.navigationExecution?.state ?? "",
+          ) ||
+          ["running", "paused"].includes(
+            this.navigationMissionExecution?.state ?? "",
+          )
+        )
       ) {
         this.mappingActionError =
-          "Cancel the active navigation action before starting mapping.";
+          "Cancel the active navigation action or mission before starting mapping.";
         return;
       }
       try {
@@ -476,9 +543,13 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
           await Promise.all([
             this.refreshLocalMap(),
             this.clearNavigationPlan(),
+            this.clearNavigationMission(),
           ]);
         } else if (action === "start") {
-          await this.clearNavigationPlan();
+          await Promise.all([
+            this.clearNavigationPlan(),
+            this.clearNavigationMission(),
+          ]);
         }
       } catch (error) {
         this.mappingActionError = retrieveError(error).text;
@@ -604,6 +675,160 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       }
     },
 
+    async refreshNavigationMissionPlan() {
+      try {
+        const plan = await robotApi.get<NavigationMissionPlanStatus>(
+          "/px/api/autonomy/navigation/mission/plan",
+        );
+        this.navigationMissionPlan = plan;
+        if (plan.targets.length > 0 && this.missionTargets.length === 0) {
+          this.missionTargets = plan.targets.map((target) => ({ ...target }));
+          this.navigationMissionMode = plan.mode;
+          this.navigationMissionLapCount = plan.lap_count;
+        }
+        this.navigationMissionPlanError = null;
+      } catch (error) {
+        this.navigationMissionPlanError = retrieveError(error).text;
+      }
+    },
+
+    async refreshNavigationMissionExecution() {
+      try {
+        this.navigationMissionExecution =
+          await robotApi.get<NavigationMissionExecutionStatus>(
+            "/px/api/autonomy/navigation/mission/execution",
+          );
+        this.navigationMissionExecutionError = null;
+      } catch (error) {
+        this.navigationMissionExecutionError = retrieveError(error).text;
+      }
+    },
+
+    async invalidateNavigationMissionReview() {
+      if (this.navigationMissionPlan?.state === "idle") return;
+      try {
+        this.navigationMissionPlan =
+          await robotApi.post<NavigationMissionPlanStatus>(
+            "/px/api/autonomy/navigation/mission/plan/clear",
+          );
+        await this.refreshNavigationMissionExecution();
+        this.navigationMissionPlanError = null;
+      } catch (error) {
+        this.navigationMissionPlanError = retrieveError(error).text;
+      }
+    },
+
+    async addMissionTarget(xM: number, yM: number) {
+      if (
+        ["running", "paused"].includes(
+          this.navigationMissionExecution?.state ?? "",
+        )
+      )
+        return;
+      this.missionTargets.push({ x_m: xM, y_m: yM, dwell_seconds: 0 });
+      await this.invalidateNavigationMissionReview();
+    },
+
+    async removeMissionTarget(index: number) {
+      this.missionTargets.splice(index, 1);
+      await this.invalidateNavigationMissionReview();
+    },
+
+    async moveMissionTarget(index: number, offset: -1 | 1) {
+      const destination = index + offset;
+      if (destination < 0 || destination >= this.missionTargets.length) return;
+      const [target] = this.missionTargets.splice(index, 1);
+      this.missionTargets.splice(destination, 0, target);
+      await this.invalidateNavigationMissionReview();
+    },
+
+    async reviewNavigationMission(clearanceM = 0.2) {
+      if (this.mappingSession?.state === "active") {
+        this.navigationMissionPlanError =
+          "Pause or finish mapping before reviewing a mission.";
+        return;
+      }
+      try {
+        this.navigationMissionPlanLoading = true;
+        this.navigationMissionPlan =
+          await robotApi.post<NavigationMissionPlanStatus>(
+            "/px/api/autonomy/navigation/mission/plan",
+            {
+              targets: this.missionTargets,
+              mode: this.navigationMissionMode,
+              lap_count: this.navigationMissionLapCount,
+              clearance_m: clearanceM,
+              allow_unknown: false,
+            },
+          );
+        await this.refreshNavigationMissionExecution();
+        this.navigationMissionPlanError = null;
+        this.navigationMissionExecutionError = null;
+      } catch (error) {
+        this.navigationMissionPlanError = retrieveError(error).text;
+      } finally {
+        this.navigationMissionPlanLoading = false;
+      }
+    },
+
+    async clearNavigationMission() {
+      try {
+        this.navigationMissionPlanLoading = true;
+        this.navigationMissionPlan =
+          await robotApi.post<NavigationMissionPlanStatus>(
+            "/px/api/autonomy/navigation/mission/plan/clear",
+          );
+        await this.refreshNavigationMissionExecution();
+        this.missionTargets = [];
+        this.navigationMissionPlanError = null;
+        this.navigationMissionExecutionError = null;
+      } catch (error) {
+        this.navigationMissionPlanError = retrieveError(error).text;
+      } finally {
+        this.navigationMissionPlanLoading = false;
+      }
+    },
+
+    async startNavigationMission(maxSpeedMps = 0.15) {
+      if (this.mappingSession?.state === "active") {
+        this.navigationMissionExecutionError =
+          "Pause or finish mapping before starting a mission.";
+        return;
+      }
+      try {
+        this.navigationMissionExecutionLoading = true;
+        this.navigationMissionExecution =
+          await robotApi.post<NavigationMissionExecutionStatus>(
+            "/px/api/autonomy/navigation/mission/execution/start",
+            {
+              max_speed_mps: maxSpeedMps,
+              lookahead_m: 0.25,
+              goal_tolerance_m: 0.08,
+            },
+          );
+        this.navigationMissionExecutionError = null;
+      } catch (error) {
+        this.navigationMissionExecutionError = retrieveError(error).text;
+      } finally {
+        this.navigationMissionExecutionLoading = false;
+      }
+    },
+
+    async runNavigationMissionAction(action: "pause" | "resume" | "cancel") {
+      try {
+        this.navigationMissionExecutionLoading = true;
+        this.navigationMissionExecution =
+          await robotApi.post<NavigationMissionExecutionStatus>(
+            `/px/api/autonomy/navigation/mission/execution/${action}`,
+          );
+        this.navigationMissionExecutionError = null;
+      } catch (error) {
+        this.navigationMissionExecutionError = retrieveError(error).text;
+      } finally {
+        this.navigationMissionExecutionLoading = false;
+      }
+    },
+
     async startRelativeDistance(distanceM: number, speedMps: number) {
       try {
         this.relativeMotionLoading = true;
@@ -709,6 +934,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
           this.refreshLocalMap(),
           this.refreshScanMatching(),
           this.clearNavigationPlan(),
+          this.clearNavigationMission(),
         ]);
         this.simulationError = null;
         this.simulationLastUpdatedAt = Date.now();
@@ -726,6 +952,8 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       void this.refreshScanMatching();
       void this.refreshNavigationPlan();
       void this.refreshNavigationExecution();
+      void this.refreshNavigationMissionPlan();
+      void this.refreshNavigationMissionExecution();
       if (this.connection) {
         return;
       }
