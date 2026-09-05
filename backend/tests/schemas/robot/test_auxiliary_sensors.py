@@ -102,11 +102,11 @@ class TestAuxiliarySensorConfig(unittest.TestCase):
         )
         self.assertEqual(
             definitions["HTS221SensorConfig"]["title"],
-            "Sense HAT temperature and humidity (HTS221)",
+            "Temperature/humidity (HTS221)",
         )
         self.assertEqual(
             definitions["LPS25HSensorConfig"]["title"],
-            "Sense HAT pressure and temperature (LPS25H/HB)",
+            "Pressure and temperature (LPS25H/HB)",
         )
 
     def test_schema_exposes_human_readable_sensor_field_metadata(self) -> None:
