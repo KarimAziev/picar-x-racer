@@ -117,7 +117,7 @@ class HTS221SensorConfig(I2CAuxiliarySensorConfig):
             description="Hardware driver used for this sensor.",
         ),
     ] = "hts221"
-    name: SensorName = "Temperature and humidity"
+    name: SensorName = "HTS221"
     address: Annotated[
         AddressField,
         Field(
@@ -182,7 +182,7 @@ class LPS25HSensorConfig(I2CAuxiliarySensorConfig):
             description="Hardware driver used for this sensor.",
         ),
     ] = "lps25h"
-    name: SensorName = "Pressure and temperature"
+    name: SensorName = "LPS25H"
     address: Annotated[
         AddressField,
         Field(
