@@ -133,7 +133,9 @@ li {
   font-weight: bold;
 }
 
-input:not(.p-inputnumber-input):not(.p-checkbox-input) {
+input:not(.p-inputnumber-input):not(.p-checkbox-input):not(
+    .p-colorpicker-preview
+  ) {
   width: 80px;
   height: 30px;
 
