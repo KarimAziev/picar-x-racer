@@ -7,7 +7,6 @@ from app.schemas.robot.common import AddressField, EnabledField, IC2Bus
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing_extensions import Annotated, Self
 
-
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 Vector3 = Tuple[FiniteFloat, FiniteFloat, FiniteFloat]
 
@@ -29,8 +28,7 @@ PollIntervalSeconds = Annotated[
     Field(
         title="Telemetry interval",
         description=(
-            "Minimum time in seconds between fresh sensor readings sent to the "
-            "browser."
+            "Minimum time in seconds between fresh sensor readings sent to the browser."
         ),
         ge=0.05,
         le=3600,
@@ -110,7 +108,7 @@ class I2CAuxiliarySensorConfig(AuxiliarySensorConfigBase):
 class HTS221SensorConfig(I2CAuxiliarySensorConfig):
     """Temperature and relative-humidity readings from an HTS221 sensor."""
 
-    model_config = ConfigDict(title="Sense HAT temperature and humidity (HTS221)")
+    model_config = ConfigDict(title="Temperature/humidity (HTS221)")
 
     driver: Annotated[
         Literal["hts221"],
@@ -119,7 +117,7 @@ class HTS221SensorConfig(I2CAuxiliarySensorConfig):
             description="Hardware driver used for this sensor.",
         ),
     ] = "hts221"
-    name: SensorName = "Sense HAT temperature and humidity"
+    name: SensorName = "Temperature and humidity"
     address: Annotated[
         AddressField,
         Field(
@@ -175,7 +173,7 @@ class HTS221SensorConfig(I2CAuxiliarySensorConfig):
 class LPS25HSensorConfig(I2CAuxiliarySensorConfig):
     """Pressure and temperature readings from an LPS25H or LPS25HB sensor."""
 
-    model_config = ConfigDict(title="Sense HAT pressure and temperature (LPS25H/HB)")
+    model_config = ConfigDict(title="Pressure and temperature (LPS25H/HB)")
 
     driver: Annotated[
         Literal["lps25h"],
@@ -184,7 +182,7 @@ class LPS25HSensorConfig(I2CAuxiliarySensorConfig):
             description="Hardware driver used for this sensor.",
         ),
     ] = "lps25h"
-    name: SensorName = "Sense HAT pressure and temperature"
+    name: SensorName = "Pressure and temperature"
     address: Annotated[
         AddressField,
         Field(
@@ -222,7 +220,7 @@ class LPS25HSensorConfig(I2CAuxiliarySensorConfig):
 class LSM9DS1MagnetometerSensorConfig(I2CAuxiliarySensorConfig):
     """Three-axis magnetic-field readings from the LSM9DS1 magnetic die."""
 
-    model_config = ConfigDict(title="Sense HAT magnetic field (LSM9DS1)")
+    model_config = ConfigDict(title="Magnetometer (LSM9DS1)")
 
     driver: Annotated[
         Literal["lsm9ds1_magnetometer"],
@@ -231,7 +229,7 @@ class LSM9DS1MagnetometerSensorConfig(I2CAuxiliarySensorConfig):
             description="Hardware driver used for this sensor.",
         ),
     ] = "lsm9ds1_magnetometer"
-    name: SensorName = "Sense HAT magnetometer"
+    name: SensorName = "Magnetometer"
     address: Annotated[
         AddressField,
         Field(

@@ -6,7 +6,6 @@ from typing import Literal, Optional, Tuple
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing_extensions import Annotated, Self
 
-
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 PositiveFiniteFloat = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 
@@ -68,7 +67,7 @@ class LaserScan(FrozenMessage):
 
 
 class ImuData(FrozenMessage):
-    """Minimal planar-navigation IMU observation in ``base_link`` SI units."""
+    """Minimal planar-navigation IMU observation in base_link SI units."""
 
     header: MessageHeader
     angular_velocity_z_radps: FiniteFloat

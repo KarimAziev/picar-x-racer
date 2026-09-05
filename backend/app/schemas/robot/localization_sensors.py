@@ -6,7 +6,6 @@ from app.schemas.robot.common import AddressField, EnabledField, IC2Bus
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing_extensions import Annotated, Self
 
-
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 Vector3 = Tuple[FiniteFloat, FiniteFloat, FiniteFloat]
 GPIOPin = Annotated[
@@ -195,10 +194,10 @@ def _gpio_pin_key(value: int | str) -> str:
 
 
 class StaticTransformConfig(BaseModel):
-    """Measured pose of a sensor frame in ``base_link`` coordinates.
+    """Measured pose of a sensor frame in base_link coordinates.
 
-    Sensor-native vectors are rotated into ``base_link`` using the configured
-    roll, pitch, and yaw in ``Rz * Ry * Rx`` order.
+    Sensor-native vectors are rotated into base_link using the configured
+    roll, pitch, and yaw in Rz * Ry * Rx order.
     """
 
     x_m: Annotated[
@@ -794,8 +793,7 @@ class SteeringPositionConfigBase(BaseModel):
         Field(
             title="Sensor center angle",
             description=(
-                "Raw sensor angle in degrees corresponding to straight-ahead "
-                "steering."
+                "Raw sensor angle in degrees corresponding to straight-ahead steering."
             ),
             json_schema_extra={"shared": True},
         ),
