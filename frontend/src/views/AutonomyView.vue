@@ -211,7 +211,9 @@ const workflowDescription = computed(() =>
     : "Drive manually to create observations, finish the map snapshot, add ordered targets, then review and explicitly start the mission. Every leg is replanned from fresh fused localization; mapping and telemetry never move the vehicle by themselves.",
 );
 const workflowCaveat = computed(() =>
-  simulationEnabled.value
+  autonomyStore.scanMatching?.enabled && autonomyStore.scanMatching.reference === "occupancy_map"
+    ? "LiDAR corrects the fused pose against your observed map while mapping is paused or finished. Corrections wait during mapping and are rejected when alignment is ambiguous. This follows the frozen map; it does not repair mapping drift or perform loop closure."
+    : simulationEnabled.value
     ? autonomyStore.scanMatching?.enabled
       ? "The known-world matcher now turns LiDAR scans into bounded pose corrections without reading simulator truth. Blue is raw wheel odometry, green is the corrected wheel/gyro estimate, and purple remains truth for evaluation only."
       : "The coherent plant supplies steering, rear encoders, IMU, and world-aware LiDAR. Blue remains raw wheel odometry, green is wheel/gyro pose fusion, and purple is exact simulated truth. Enable simulation scan matching under pose estimation to correct accumulated drift."

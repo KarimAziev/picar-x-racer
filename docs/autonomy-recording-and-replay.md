@@ -98,7 +98,7 @@ events, and recomputation of raw-encoder odometry are future extensions.
 ## Next milestones
 
 - Use recorded scenarios to test delayed or missing sensors and mission recovery.
-- Add localization against a frozen map built from observations; the current
-  known-world matcher remains a simulation reference.
+- Validate [observed-map localization](observed-map-localization.md) on recorded
+  and real drives; the known-world matcher remains a simulation reference.
 - Extend to map correction/loop closure after frozen-map localization is validated.
 - Add guided gyro, steering, and drivetrain-distance calibration exercises.

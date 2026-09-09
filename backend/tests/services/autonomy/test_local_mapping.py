@@ -20,6 +20,7 @@ from app.services.autonomy.topics import (
     LIDAR_SCAN,
     LOCALIZATION_POSE,
     LOCAL_MAP,
+    MAPPING_SESSION,
     ODOMETRY,
 )
 
@@ -303,6 +304,7 @@ class TestLocalMappingService(unittest.IsolatedAsyncioTestCase):
         )
         service.start()
         started = service.start_session()
+        self.assertEqual(bus.latest(MAPPING_SESSION), started)
         self.assertEqual(started.session_id, 1)
         bus.publish(ODOMETRY, odometry(timestamp=100))
         await asyncio.sleep(0)
@@ -310,6 +312,7 @@ class TestLocalMappingService(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(maps.get(), timeout=1)
 
         paused = service.pause_session()
+        self.assertEqual(bus.latest(MAPPING_SESSION), paused)
         self.assertEqual(paused.state.value, "paused")
         bus.publish(LIDAR_SCAN, scan(1, timestamp=120))
         await asyncio.sleep(0.02)
@@ -317,6 +320,8 @@ class TestLocalMappingService(unittest.IsolatedAsyncioTestCase):
 
         cleared = service.clear_map()
         cleared_map = await asyncio.wait_for(maps.get(), timeout=1)
+        self.assertEqual(bus.latest(MAPPING_SESSION), cleared)
+        self.assertEqual(cleared.map_sequence, cleared_map.header.sequence)
         self.assertEqual(cleared.state.value, "paused")
         self.assertFalse(cleared.has_map)
         self.assertTrue(all(value == -1 for value in cleared_map.data))
@@ -328,6 +333,9 @@ class TestLocalMappingService(unittest.IsolatedAsyncioTestCase):
         reset_map = await asyncio.wait_for(maps.get(), timeout=1)
         await service.stop()
 
+        stopped = bus.latest(MAPPING_SESSION)
+        assert stopped is not None
+        self.assertFalse(stopped.enabled)
         self.assertEqual(reset.state.value, "idle")
         self.assertEqual(reset.scans_received, 0)
         self.assertEqual(reset.session_id, 1)

@@ -4,13 +4,24 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from app.schemas.autonomy import MessageHeader, Odometry2D, LaserScan
+from app.schemas.autonomy import (
+    MessageHeader,
+    Odometry2D,
+    LaserScan,
+    MappingSessionStatus,
+    MappingSessionState,
+)
 from app.services.autonomy.clock import ReplayClock
 from app.services.autonomy.messages import ActuatorCommand, MotionSource
 from app.services.autonomy.recording import AutonomyRecorder
 from app.services.autonomy.replay import SessionReplay
 from app.services.autonomy.topic_bus import TopicBus
-from app.services.autonomy.topics import MOTION_COMMANDED, ODOMETRY, LIDAR_SCAN
+from app.services.autonomy.topics import (
+    MOTION_COMMANDED,
+    ODOMETRY,
+    LIDAR_SCAN,
+    MAPPING_SESSION,
+)
 
 
 def odometry(sequence: int) -> Odometry2D:
@@ -132,6 +143,32 @@ class RecordingTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(status.active)
         self.assertIn("size limit", status.error or "")
         self.assertTrue((self.directory / f"{status.session_id}.jsonl").is_file())
+
+    async def test_mapping_freeze_transitions_round_trip(self) -> None:
+        await self.recorder.start({}, {})
+        for state in (
+            MappingSessionState.ACTIVE,
+            MappingSessionState.PAUSED,
+            MappingSessionState.IDLE,
+        ):
+            self.bus.publish(
+                MAPPING_SESSION,
+                MappingSessionStatus(
+                    enabled=True,
+                    state=state,
+                    has_map=True,
+                    map_sequence=12,
+                ),
+            )
+        status = await self.recorder.stop()
+        path = self.directory / f"{status.session_id}.jsonl"
+        report = await SessionReplay(path).run()
+        self.assertEqual(report["events"][MAPPING_SESSION.name], 3)
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        self.assertEqual(
+            [row["payload"]["state"] for row in rows[1:-1]],
+            ["active", "paused", "idle"],
+        )
 
     async def test_replay_rejects_missing_footer_unknown_version_and_changed_sequence(
         self,

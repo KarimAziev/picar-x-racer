@@ -27,6 +27,7 @@ from app.services.autonomy.topics import (
     LOCALIZATION_POSE,
     LOCAL_MAP,
     ODOMETRY,
+    MAPPING_SESSION,
 )
 
 
@@ -273,17 +274,20 @@ class LocalMappingService:
             self._session_id += 1
             self._reset_session_counters()
         self._state = MappingSessionState.ACTIVE
+        self._bus.publish(MAPPING_SESSION, self.status)
         return self.status
 
     def pause_session(self) -> MappingSessionStatus:
         if self._state == MappingSessionState.ACTIVE:
             self._state = MappingSessionState.PAUSED
+        self._bus.publish(MAPPING_SESSION, self.status)
         return self.status
 
     def finish_session(self) -> MappingSessionStatus:
         """Stop inserting scans while retaining the completed map."""
 
         self._state = MappingSessionState.IDLE
+        self._bus.publish(MAPPING_SESSION, self.status)
         return self.status
 
     def clear_map(self) -> MappingSessionStatus:
@@ -321,6 +325,7 @@ class LocalMappingService:
     def start(self) -> None:
         if self.running:
             return
+        self._bus.publish(MAPPING_SESSION, self.status)
         self._odom_subscription = self._bus.subscribe(ODOMETRY, max_queue_size=1)
         if self._prefer_localization:
             self._localization_subscription = self._bus.subscribe(
@@ -338,6 +343,7 @@ class LocalMappingService:
         self._tasks = tuple(tasks)
 
     async def stop(self) -> None:
+        self._bus.publish(MAPPING_SESSION, MappingSessionStatus.disabled())
         for task in self._tasks:
             task.cancel()
         if self._tasks:
@@ -470,6 +476,7 @@ class LocalMappingService:
                 )
             ),
         )
+        self._bus.publish(MAPPING_SESSION, self.status)
 
 
 __all__ = [

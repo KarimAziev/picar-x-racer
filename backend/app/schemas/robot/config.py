@@ -327,6 +327,25 @@ class HardwareConfig(BaseModel):
                 raise ValueError(
                     "simulation scan matching requires the LiDAR publisher"
                 )
+        if (
+            self.pose_estimation is not None
+            and self.pose_estimation.occupancy_map_scan_matching.enabled
+        ):
+            if self.pose_estimation.simulation_scan_matching.enabled:
+                raise ValueError(
+                    "choose either observed-map or simulation known-world scan matching"
+                )
+            if not self.pose_estimation.enabled:
+                raise ValueError("observed-map scan matching requires pose estimation")
+            if self.local_mapping is not None and not self.local_mapping.enabled:
+                raise ValueError("observed-map scan matching requires local mapping")
+            if (
+                self.localization_sensors is not None
+                and not self.localization_sensors.lidar.enabled
+            ):
+                raise ValueError(
+                    "observed-map scan matching requires the LiDAR publisher"
+                )
         return self
 
 

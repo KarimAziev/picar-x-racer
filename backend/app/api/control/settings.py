@@ -115,7 +115,12 @@ async def _reload_autonomy_runtime(
         odometry_service.reconfigure(estimator.config)
 
     pose_estimation_changed = (
-        previous.pose_estimation != current.pose_estimation
+        previous.pose_estimation.model_dump(
+            exclude={"simulation_scan_matching", "occupancy_map_scan_matching"}
+        )
+        != current.pose_estimation.model_dump(
+            exclude={"simulation_scan_matching", "occupancy_map_scan_matching"}
+        )
         or previous.ackermann_odometry != current.ackermann_odometry
         or previous_simulation != current_simulation
     )
@@ -127,7 +132,10 @@ async def _reload_autonomy_runtime(
         await pose_estimator_supervisor.reconfigure_from(replacement_pose_estimator)
 
     scan_matching_changed = (
-        previous.pose_estimation.simulation_scan_matching
+        previous.pose_estimation.occupancy_map_scan_matching
+        != current.pose_estimation.occupancy_map_scan_matching
+        or previous.pose_estimation.enabled != current.pose_estimation.enabled
+        or previous.pose_estimation.simulation_scan_matching
         != current.pose_estimation.simulation_scan_matching
         or previous.coherent_simulation != current.coherent_simulation
         or previous.localization_sensors.lidar != current.localization_sensors.lidar

@@ -1,5 +1,7 @@
 """Configuration for wheel/IMU pose fusion and future pose corrections."""
 
+import math
+
 from app.schemas.robot.common import EnabledField
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Annotated
@@ -174,6 +176,86 @@ class SimulationScanMatchingConfig(BaseModel):
         return self
 
 
+class OccupancyMapScanMatchingConfig(SimulationScanMatchingConfig):
+    """Local pose correction against an observed, paused or finished map."""
+
+    enabled: EnabledField = Field(
+        default=False,
+        title="Observed-map localization",
+        description="Use LiDAR to correct pose against a frozen observed map. Waits while mapping is active.",
+    )
+    occupied_threshold: int = Field(
+        default=65,
+        ge=1,
+        le=100,
+        title="Occupied-cell threshold",
+        description="Minimum occupancy value used as an obstacle in the frozen reference.",
+    )
+    min_occupied_cells: int = Field(
+        default=16,
+        ge=3,
+        le=10000,
+        title="Minimum occupied cells",
+        description="Wait for a reference with at least this many occupied cells.",
+    )
+    min_overlap_fraction: float = Field(
+        default=0.6,
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+        title="Minimum observed overlap",
+        description="Fraction of range endpoints that must fall within observed map cells.",
+    )
+    ambiguity_distance_m: float = Field(
+        default=0.10,
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+        title="Ambiguity probe distance",
+        description="Reject alignments with similarly good scores at this displacement.",
+    )
+    ambiguity_heading_deg: float = Field(
+        default=3.0,
+        gt=0,
+        le=20,
+        allow_inf_nan=False,
+        title="Ambiguity probe angle",
+        description="Heading offset in degrees used to check for equally plausible alignments.",
+    )
+    ambiguity_margin_m: float = Field(
+        default=0.003,
+        gt=0,
+        le=0.1,
+        allow_inf_nan=False,
+        title="Minimum alignment score separation",
+        description="Reject an alignment if an ambiguity probe scores within this many metres of its mean residual.",
+    )
+
+    @model_validator(mode="after")
+    def bound_search_work(self) -> "OccupancyMapScanMatchingConfig":
+        def count(span: float, step: float) -> int:
+            ratio = span / step
+            if not math.isfinite(ratio) or ratio > 500_000:
+                raise ValueError(
+                    "observed-map search exceeds the bounded candidate budget"
+                )
+            return 2 * max(1, math.floor(ratio + 1e-9)) + 1
+
+        coarse = count(
+            self.search_translation_m, self.coarse_translation_step_m
+        ) ** 2 * count(self.search_heading_deg, self.coarse_heading_step_deg)
+        fine = count(
+            (self.coarse_translation_step_m + self.refinement_translation_step_m) / 2,
+            self.refinement_translation_step_m,
+        ) ** 2 * count(
+            (self.coarse_heading_step_deg + self.refinement_heading_step_deg) / 2,
+            self.refinement_heading_step_deg,
+        )
+        if (coarse + fine + 11) * self.max_scan_points > 500_000:
+            raise ValueError("observed-map search exceeds the bounded candidate budget")
+        return self
+
+
 class PoseEstimationConfig(BaseModel):
     """Wheel-odometry and IMU fusion with optional absolute pose corrections."""
 
@@ -280,6 +362,15 @@ class PoseEstimationConfig(BaseModel):
             "LiDAR scans and the configured simulation world."
         ),
     )
+    occupancy_map_scan_matching: OccupancyMapScanMatchingConfig = Field(
+        default_factory=OccupancyMapScanMatchingConfig,
+        title="Observed-map localization",
+        description="Correct pose against a paused or finished occupancy map, on hardware or in simulation.",
+    )
 
 
-__all__ = ["PoseEstimationConfig", "SimulationScanMatchingConfig"]
+__all__ = [
+    "OccupancyMapScanMatchingConfig",
+    "PoseEstimationConfig",
+    "SimulationScanMatchingConfig",
+]

@@ -12,6 +12,7 @@ from typing import (
 
 from app.adapters.picarx_adapter import PicarxAdapter
 from app.services.autonomy.recording import AutonomyRecorder
+from app.services.autonomy.occupancy_scan_matching import OccupancyMapScanMatcherService
 from app.config.config import settings as app_config
 from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
@@ -434,48 +435,53 @@ def build_known_world_scan_matcher_supervisor(
     config: HardwareConfig,
     topic_bus: TopicBus,
 ) -> KnownWorldScanMatcherSupervisor:
-    """Build the development scan matcher without exposing simulator truth."""
+    """Build the selected correction source behind the existing stable supervisor."""
 
-    settings = config.pose_estimation.simulation_scan_matching
+    observed = config.pose_estimation.occupancy_map_scan_matching
+    settings = (
+        observed
+        if observed.enabled
+        else config.pose_estimation.simulation_scan_matching
+    )
     if not settings.enabled:
         return KnownWorldScanMatcherSupervisor()
     simulation = config.coherent_simulation
     lidar = config.localization_sensors.lidar
+    matcher_config = KnownWorldScanMatcherConfig(
+        odom_origin_in_world=(
+            simulation.initial_x_m,
+            simulation.initial_y_m,
+            simulation.initial_yaw_rad,
+        ),
+        sensor_transform=StaticTransform2D(
+            x_m=lidar.transform.x_m,
+            y_m=lidar.transform.y_m,
+            yaw_rad=lidar.transform.yaw_rad,
+        ),
+        expected_scan_frame_id=lidar.frame_id,
+        search_translation_m=settings.search_translation_m,
+        search_heading_rad=math.radians(settings.search_heading_deg),
+        coarse_translation_step_m=settings.coarse_translation_step_m,
+        coarse_heading_step_rad=math.radians(settings.coarse_heading_step_deg),
+        refinement_translation_step_m=(settings.refinement_translation_step_m),
+        refinement_heading_step_rad=math.radians(settings.refinement_heading_step_deg),
+        max_scan_points=settings.max_scan_points,
+        min_valid_points=settings.min_valid_points,
+        max_mean_error_m=settings.max_mean_error_m,
+        max_residual_m=settings.max_residual_m,
+        position_stddev_m=settings.position_stddev_m,
+        heading_stddev_rad=math.radians(settings.heading_stddev_deg),
+    )
+    if observed.enabled:
+        return KnownWorldScanMatcherSupervisor(
+            OccupancyMapScanMatcherService(topic_bus, matcher_config, observed)
+        )
     world = build_simulation_world(
         simulation.world_scenario,
         width_m=simulation.world_width_m,
         height_m=simulation.world_height_m,
     )
-    matcher = KnownWorldScanMatcher(
-        world,
-        KnownWorldScanMatcherConfig(
-            odom_origin_in_world=(
-                simulation.initial_x_m,
-                simulation.initial_y_m,
-                simulation.initial_yaw_rad,
-            ),
-            sensor_transform=StaticTransform2D(
-                x_m=lidar.transform.x_m,
-                y_m=lidar.transform.y_m,
-                yaw_rad=lidar.transform.yaw_rad,
-            ),
-            expected_scan_frame_id=lidar.frame_id,
-            search_translation_m=settings.search_translation_m,
-            search_heading_rad=math.radians(settings.search_heading_deg),
-            coarse_translation_step_m=settings.coarse_translation_step_m,
-            coarse_heading_step_rad=math.radians(settings.coarse_heading_step_deg),
-            refinement_translation_step_m=(settings.refinement_translation_step_m),
-            refinement_heading_step_rad=math.radians(
-                settings.refinement_heading_step_deg
-            ),
-            max_scan_points=settings.max_scan_points,
-            min_valid_points=settings.min_valid_points,
-            max_mean_error_m=settings.max_mean_error_m,
-            max_residual_m=settings.max_residual_m,
-            position_stddev_m=settings.position_stddev_m,
-            heading_stddev_rad=math.radians(settings.heading_stddev_deg),
-        ),
-    )
+    matcher = KnownWorldScanMatcher(world, matcher_config)
     return KnownWorldScanMatcherSupervisor(
         KnownWorldScanMatcherService(
             topic_bus,

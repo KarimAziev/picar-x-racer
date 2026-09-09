@@ -16,7 +16,7 @@ from app.services.autonomy import (
     TopicBus,
 )
 from fastapi import HTTPException, WebSocket
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from starlette.websockets import WebSocketState
 
 
@@ -104,7 +104,7 @@ class MappingSessionEndpointTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(context.exception.status_code, 409)
 
 
-class MappingSessionRouteTests(unittest.TestCase):
+class MappingSessionRouteTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.service = LocalMappingService(
             TopicBus(),
@@ -124,17 +124,21 @@ class MappingSessionRouteTests(unittest.TestCase):
         control_app.dependency_overrides[robot_deps.get_navigation_mission_service] = (
             lambda: mission
         )
-        self.client = TestClient(control_app)
+        # All requests must share the bus event loop, just like the real server.
+        self.client = AsyncClient(
+            transport=ASGITransport(app=control_app), base_url="http://testserver"
+        )
 
-    def tearDown(self) -> None:
+    async def asyncTearDown(self) -> None:
+        await self.client.aclose()
         control_app.dependency_overrides.clear()
 
-    def test_operates_mapping_session_over_http(self) -> None:
-        initial = self.client.get("/px/api/map/session")
-        started = self.client.post("/px/api/map/session/start")
-        paused = self.client.post("/px/api/map/session/pause")
-        finished = self.client.post("/px/api/map/session/finish")
-        reset = self.client.post("/px/api/map/session/reset")
+    async def test_operates_mapping_session_over_http(self) -> None:
+        initial = await self.client.get("/px/api/map/session")
+        started = await self.client.post("/px/api/map/session/start")
+        paused = await self.client.post("/px/api/map/session/pause")
+        finished = await self.client.post("/px/api/map/session/finish")
+        reset = await self.client.post("/px/api/map/session/reset")
 
         self.assertEqual(initial.status_code, 200, initial.text)
         self.assertEqual(initial.json()["state"], "idle")
@@ -144,24 +148,24 @@ class MappingSessionRouteTests(unittest.TestCase):
         self.assertEqual(finished.json()["state"], "idle")
         self.assertEqual(reset.json()["state"], "idle")
 
-    def test_rejects_action_when_mapping_is_disabled(self) -> None:
+    async def test_rejects_action_when_mapping_is_disabled(self) -> None:
         control_app.dependency_overrides[robot_deps.get_local_mapping_service] = (
             lambda: None
         )
 
-        response = self.client.post("/px/api/map/session/start")
+        response = await self.client.post("/px/api/map/session/start")
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["detail"], "Local mapping is disabled")
 
-    def test_rejects_start_while_navigation_is_active(self) -> None:
+    async def test_rejects_start_while_navigation_is_active(self) -> None:
         navigation = Mock()
         navigation.running = True
         control_app.dependency_overrides[
             robot_deps.get_navigation_execution_service
         ] = lambda: navigation
 
-        response = self.client.post("/px/api/map/session/start")
+        response = await self.client.post("/px/api/map/session/start")
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(
@@ -170,14 +174,14 @@ class MappingSessionRouteTests(unittest.TestCase):
         )
         self.assertEqual(self.service.status.state.value, "idle")
 
-    def test_rejects_start_while_navigation_mission_is_active(self) -> None:
+    async def test_rejects_start_while_navigation_mission_is_active(self) -> None:
         mission = Mock()
         mission.running = True
         control_app.dependency_overrides[robot_deps.get_navigation_mission_service] = (
             lambda: mission
         )
 
-        response = self.client.post("/px/api/map/session/start")
+        response = await self.client.post("/px/api/map/session/start")
 
         self.assertEqual(response.status_code, 409)
         self.assertIn("mission", response.json()["detail"])

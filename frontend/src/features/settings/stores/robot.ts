@@ -303,6 +303,14 @@ export interface CoherentSimulationConfig {
 }
 
 export interface PoseEstimationConfig {
+  occupancy_map_scan_matching: PoseEstimationConfig["simulation_scan_matching"] & {
+    occupied_threshold: number;
+    min_occupied_cells: number;
+    min_overlap_fraction: number;
+    ambiguity_distance_m: number;
+    ambiguity_heading_deg: number;
+    ambiguity_margin_m: number;
+  };
   enabled: boolean;
   imu_yaw_rate_weight: number;
   max_imu_age_ms: number;
@@ -551,6 +559,28 @@ const defaultState: State = {
       },
     },
     pose_estimation: {
+      occupancy_map_scan_matching: {
+        enabled: false,
+        max_pose_age_ms: 200,
+        search_translation_m: 0.15,
+        search_heading_deg: 8,
+        coarse_translation_step_m: 0.05,
+        coarse_heading_step_deg: 2,
+        refinement_translation_step_m: 0.01,
+        refinement_heading_step_deg: 0.5,
+        max_scan_points: 48,
+        min_valid_points: 16,
+        max_mean_error_m: 0.08,
+        max_residual_m: 0.5,
+        position_stddev_m: 0.03,
+        heading_stddev_deg: 1.5,
+        occupied_threshold: 65,
+        min_occupied_cells: 16,
+        min_overlap_fraction: 0.6,
+        ambiguity_distance_m: 0.1,
+        ambiguity_heading_deg: 3,
+        ambiguity_margin_m: 0.003,
+      },
       enabled: false,
       imu_yaw_rate_weight: 0.35,
       max_imu_age_ms: 100,

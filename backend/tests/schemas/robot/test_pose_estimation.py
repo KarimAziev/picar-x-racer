@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.schemas.robot.config import HardwareConfig
 from app.schemas.robot.pose_estimation import (
+    OccupancyMapScanMatchingConfig,
     PoseEstimationConfig,
     SimulationScanMatchingConfig,
 )
@@ -44,6 +45,21 @@ class TestPoseEstimationConfig(unittest.TestCase):
 
         self.assertFalse(config.simulation_scan_matching.enabled)
         self.assertEqual(config.simulation_scan_matching.max_scan_points, 48)
+        self.assertFalse(config.occupancy_map_scan_matching.enabled)
+
+    def test_observed_matching_rejects_excessive_search_work(self) -> None:
+        for step in (0.0001, 1e-320):
+            with self.subTest(step=step), self.assertRaisesRegex(
+                ValidationError, "search"
+            ):
+                OccupancyMapScanMatchingConfig(refinement_translation_step_m=step)
+
+    def test_v7_without_observed_matching_keeps_working(self) -> None:
+        data = deepcopy(self.root_data)
+        data["pose_estimation"].pop("occupancy_map_scan_matching", None)
+        config = HardwareConfig.model_validate(data)
+        self.assertEqual(config.schema_version, 7)
+        self.assertFalse(config.pose_estimation.occupancy_map_scan_matching.enabled)
 
     def test_scan_matching_validates_search_resolution(self) -> None:
         with self.assertRaisesRegex(ValidationError, "refinement"):

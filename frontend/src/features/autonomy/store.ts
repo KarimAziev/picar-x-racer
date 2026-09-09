@@ -112,6 +112,9 @@ export interface PoseObservationTelemetry {
 }
 
 export interface ScanMatchingRuntimeStatus {
+  reference?: "known_world" | "occupancy_map";
+  reference_map_sequence?: number | null;
+  rejected_reference?: number;
   enabled: boolean;
   running: boolean;
   scans_received: number;

@@ -1,10 +1,10 @@
-"""Deterministic 2D LiDAR scan matching against a configured known world."""
+"""Deterministic planar scan matching with pluggable distance references."""
 
 import asyncio
 import math
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Literal, Optional, Sequence, Tuple
+from typing import Deque, Literal, Optional, Protocol, Sequence, Tuple
 
 from app.schemas.autonomy import (
     LaserScan,
@@ -22,7 +22,13 @@ from app.services.autonomy.topic_bus import (
 from app.services.autonomy.topics import LIDAR_SCAN, LOCALIZATION_POSE, POSE_OBSERVATION
 
 
-ScanMatchRejection = Literal["insufficient_points", "poor_quality"]
+ScanMatchRejection = Literal[
+    "insufficient_points",
+    "poor_quality",
+    "insufficient_overlap",
+    "ambiguous_alignment",
+    "search_boundary",
+]
 _POSE_HISTORY_LIMIT = 4096
 
 
@@ -106,18 +112,18 @@ class ScanMatchResult:
         return self.observation is not None
 
 
-class KnownWorldScanMatcher:
-    """Align range endpoints to line segments with a bounded local grid search."""
+class DistanceIndex(Protocol):
+    def distance_to_nearest(self, x_m: float, y_m: float) -> float: ...
+
+
+class PlanarScanMatcher:
+    """Bounded correlative search against a supplied distance reference."""
 
     def __init__(
-        self, world: SimulationWorld, config: KnownWorldScanMatcherConfig
+        self, distance_index: DistanceIndex, config: KnownWorldScanMatcherConfig
     ) -> None:
-        self.world = world
         self.config = config
-        self._distance_index = SegmentSpatialIndex(
-            world.segments,
-            max_distance=config.max_residual_m,
-        )
+        self._distance_index = distance_index
 
     def match(
         self,
@@ -306,13 +312,26 @@ class KnownWorldScanMatcher:
         return (angle + math.pi) % (2 * math.pi) - math.pi
 
 
+class KnownWorldScanMatcher(PlanarScanMatcher):
+    """Simulation reference using only the configured obstacle geometry."""
+
+    def __init__(
+        self, world: SimulationWorld, config: KnownWorldScanMatcherConfig
+    ) -> None:
+        self.world = world
+        super().__init__(
+            SegmentSpatialIndex(world.segments, max_distance=config.max_residual_m),
+            config,
+        )
+
+
 class KnownWorldScanMatcherService:
     """Match each fresh scan to its causal fused-pose prior."""
 
     def __init__(
         self,
         bus: TopicBus,
-        matcher: KnownWorldScanMatcher,
+        matcher: Optional[PlanarScanMatcher],
         *,
         max_pose_age_seconds: float,
     ) -> None:
@@ -370,6 +389,9 @@ class KnownWorldScanMatcherService:
         self._scan_subscription = None
 
     def reset(self) -> None:
+        self.reference: Literal["known_world", "occupancy_map"] = "known_world"
+        self.reference_map_sequence: Optional[int] = None
+        self.rejected_reference = 0
         self.scans_received = 0
         self.matches_published = 0
         self.rejected_missing_pose = 0
@@ -385,6 +407,12 @@ class KnownWorldScanMatcherService:
         self.last_error: Optional[Exception] = None
         self._sequence = 0
         self._pose_history.clear()
+
+    async def _prepare_reference(self, scan: LaserScan) -> bool:
+        return self.matcher is not None
+
+    def _reference_is_current(self) -> bool:
+        return True
 
     async def _read_poses(self) -> None:
         subscription = self._pose_subscription
@@ -418,6 +446,9 @@ class KnownWorldScanMatcherService:
         try:
             async for scan in subscription:
                 self.scans_received += 1
+                if not await self._prepare_reference(scan):
+                    self.rejected_reference += 1
+                    continue
                 prior, timing_rejection = self._pose_at_scan(scan)
                 if prior is None:
                     if timing_rejection == "no localization pose is available":
@@ -427,12 +458,19 @@ class KnownWorldScanMatcherService:
                     self.last_rejection = timing_rejection
                     continue
                 try:
+                    assert self.matcher is not None
                     result = await asyncio.to_thread(
                         self.matcher.match, scan, prior, sequence=self._sequence
                     )
                 except Exception as error:
                     self.last_error = error
                     self.last_rejection = str(error)
+                    continue
+                if not self._reference_is_current():
+                    self.rejected_reference += 1
+                    self.last_rejection = (
+                        "map or mapping session changed during alignment"
+                    )
                     continue
                 self.last_valid_points = result.valid_points
                 self.last_candidates_evaluated = result.candidates_evaluated
@@ -442,11 +480,14 @@ class KnownWorldScanMatcherService:
                     self.rejected_insufficient_points += 1
                     self.last_rejection = "scan has too few finite returns"
                     continue
-                if result.rejection == "poor_quality":
+                if result.rejection is not None:
                     self.rejected_quality += 1
-                    self.last_rejection = (
-                        "best scan alignment exceeds the error threshold"
-                    )
+                    self.last_rejection = {
+                        "poor_quality": "best scan alignment exceeds the error threshold",
+                        "insufficient_overlap": "alignment needs a known-free origin and sufficient observed return overlap",
+                        "ambiguous_alignment": "map geometry does not constrain the pose uniquely",
+                        "search_boundary": "alignment reached the local search boundary",
+                    }.get(result.rejection, result.rejection)
                     continue
                 if result.observation is None:
                     continue
@@ -461,7 +502,7 @@ class KnownWorldScanMatcherService:
 
 
 class KnownWorldScanMatcherSupervisor:
-    """Stable hot-reloadable handle for the optional known-world matcher."""
+    """Stable hot-reloadable handle for the selected scan-matching reference."""
 
     def __init__(self, service: Optional[KnownWorldScanMatcherService] = None) -> None:
         self._service = service
@@ -513,5 +554,6 @@ __all__ = [
     "KnownWorldScanMatcherConfig",
     "KnownWorldScanMatcherService",
     "KnownWorldScanMatcherSupervisor",
+    "PlanarScanMatcher",
     "ScanMatchResult",
 ]

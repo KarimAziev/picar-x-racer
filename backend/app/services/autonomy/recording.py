@@ -39,6 +39,7 @@ RECORDED_TOPICS: Dict[str, Topic[Any]] = {
         topics.LOCAL_MAP,
         topics.MISSION_STATUS,
         topics.NAVIGATION_PLAN,
+        topics.MAPPING_SESSION,
     )
 }
 ADAPTERS: Dict[str, TypeAdapter[Any]] = {

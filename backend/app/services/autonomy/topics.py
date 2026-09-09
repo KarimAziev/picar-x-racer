@@ -12,6 +12,7 @@ from app.schemas.autonomy import (
     SimulationState,
     SteeringState,
     NavigationPlanStatus,
+    MappingSessionStatus,
 )
 from app.services.autonomy.messages import ActuatorCommand
 from app.schemas.autonomy.navigation_mission import NavigationMissionExecutionStatus
@@ -31,6 +32,7 @@ SAFETY_STATE = Topic("/safety/state", SafetyState)
 LOCAL_MAP = Topic("/map", OccupancyGrid)
 MISSION_STATUS = Topic("/navigation/mission/status", NavigationMissionExecutionStatus)
 NAVIGATION_PLAN = Topic("/navigation/plan", NavigationPlanStatus)
+MAPPING_SESSION = Topic("/mapping/session", MappingSessionStatus)
 
 
 __all__ = [
@@ -38,6 +40,9 @@ __all__ = [
     "IMU_DATA",
     "LIDAR_SCAN",
     "LOCAL_MAP",
+    "MAPPING_SESSION",
+    "MISSION_STATUS",
+    "NAVIGATION_PLAN",
     "LOCALIZATION_POSE",
     "MOTION_COMMANDED",
     "ODOMETRY",

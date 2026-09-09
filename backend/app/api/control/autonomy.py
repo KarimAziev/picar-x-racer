@@ -185,6 +185,11 @@ def _scan_matching_status(
     return ScanMatchingRuntimeStatus(
         enabled=supervisor.enabled,
         running=supervisor.running,
+        reference=service.reference if service is not None else "known_world",
+        reference_map_sequence=(
+            service.reference_map_sequence if service is not None else None
+        ),
+        rejected_reference=service.rejected_reference if service is not None else 0,
         scans_received=service.scans_received if service is not None else 0,
         matches_published=service.matches_published if service is not None else 0,
         rejected_missing_pose=(

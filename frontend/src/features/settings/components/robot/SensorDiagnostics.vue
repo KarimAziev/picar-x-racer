@@ -80,9 +80,16 @@
         class="mt-2 rounded-md bg-surface-100 px-2.5 py-2 dark:bg-surface-800"
       >
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <span class="font-semibold">Known-world scan correction</span>
+          <span class="font-semibold">{{
+            store.scanMatching.reference === "occupancy_map"
+              ? "Observed-map localization"
+              : "Known-world scan correction"
+          }}</span>
           <div class="flex items-center gap-1.5">
-            <Tag severity="info" value="Simulation only" />
+            <Tag
+              severity="info"
+              :value="store.scanMatching.reference === 'occupancy_map' ? 'Frozen map' : 'Simulation only'"
+            />
             <Tag :severity="scanMatchingSeverity" :value="scanMatchingState" />
           </div>
         </div>
@@ -91,6 +98,9 @@
           class="mt-1 text-surface-500 dark:text-surface-400"
         >
           {{ scanMatchingSummary }}
+          <span v-if="store.scanMatching.reference_map_sequence != null">
+            · Map #{{ store.scanMatching.reference_map_sequence }}
+          </span>
         </div>
         <div
           v-if="store.scanMatching.error || store.scanMatchingError"
@@ -233,6 +243,11 @@ const scanMatchingSeverity = computed(() => {
   const status = store.scanMatching;
   if (!status?.enabled) return "secondary";
   if (status.error || store.scanMatchingError) return "danger";
+  if (
+    status.last_rejection ||
+    (status.reference === "occupancy_map" && status.reference_map_sequence == null)
+  )
+    return "warn";
   return status.running ? "success" : "warn";
 });
 
@@ -240,13 +255,16 @@ const scanMatchingState = computed(() => {
   const status = store.scanMatching;
   if (!status?.enabled) return "Disabled";
   if (status.error || store.scanMatchingError) return "Error";
+  if (status.reference === "occupancy_map" && status.reference_map_sequence == null)
+    return "Waiting for frozen map";
+  if (status.last_rejection) return "Alignment rejected";
   return status.running ? "Correcting" : "Waiting";
 });
 
 const scanMatchingSummary = computed(() => {
   const status = store.scanMatching;
   if (!status?.enabled) {
-    return "Enable this development localizer under pose-estimation settings.";
+    return "Enable an observed-map or simulation-reference localizer under pose-estimation settings.";
   }
   const residual =
     status.last_mean_error_m === null

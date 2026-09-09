@@ -215,6 +215,9 @@ class ScanMatchingRuntimeStatus(FrozenMessage):
 
     enabled: bool
     running: bool
+    reference: Literal["known_world", "occupancy_map"] = "known_world"
+    reference_map_sequence: Optional[Annotated[int, Field(ge=0)]] = None
+    rejected_reference: Annotated[int, Field(ge=0)] = 0
     scans_received: Annotated[int, Field(ge=0)] = 0
     matches_published: Annotated[int, Field(ge=0)] = 0
     rejected_missing_pose: Annotated[int, Field(ge=0)] = 0

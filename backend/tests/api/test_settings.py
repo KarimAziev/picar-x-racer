@@ -4,7 +4,7 @@ import math
 import unittest
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from app.api import robot_deps
 from app.api.control.settings import _reload_autonomy_runtime
@@ -191,6 +191,65 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             fused_mapping.status.preferred_pose_source.value,
             "localization",
         )
+
+    async def test_switching_to_observed_map_preserves_estimator_and_map(self) -> None:
+        _, previous = self.make_configs()
+        data = previous.model_dump(mode="json")
+        data["pose_estimation"]["simulation_scan_matching"]["enabled"] = False
+        data["pose_estimation"]["occupancy_map_scan_matching"]["enabled"] = True
+        current = HardwareConfig.model_validate(data)
+        bus = TopicBus()
+        mapping = AsyncMock(spec=LocalMappingService)
+        estimator = robot_deps.build_pose_estimator_supervisor(previous, bus)
+        matcher = robot_deps.build_known_world_scan_matcher_supervisor(previous, bus)
+        simulation = robot_deps.build_coherent_simulation_supervisor(previous, bus)
+        initial_estimator = estimator.service
+        with patch.object(
+            robot_deps,
+            "build_simulation_world",
+            side_effect=AssertionError("observed matcher must not use world geometry"),
+        ):
+            await _reload_autonomy_runtime(
+                previous,
+                current,
+                Mock(),
+                bus,
+                Mock(),
+                None,
+                None,
+                None,
+                None,
+                mapping,
+                simulation,
+                estimator,
+                matcher,
+            )
+        self.assertIs(estimator.service, initial_estimator)
+        mapping.reconfigure_from.assert_not_awaited()
+        assert matcher.service is not None
+        self.assertEqual(matcher.service.reference, "occupancy_map")
+
+    def test_observed_map_requires_dependencies_and_exclusive_source(self) -> None:
+        _, simulated = self.make_configs()
+        data = simulated.model_dump(mode="json")
+        data["pose_estimation"]["occupancy_map_scan_matching"]["enabled"] = True
+        with self.assertRaises(ValidationError):
+            HardwareConfig.model_validate(data)
+        data["pose_estimation"]["simulation_scan_matching"]["enabled"] = False
+        data["coherent_simulation"]["enabled"] = False
+        self.assertTrue(
+            HardwareConfig.model_validate(
+                data
+            ).pose_estimation.occupancy_map_scan_matching.enabled
+        )
+        for section in ("local_mapping", "pose_estimation"):
+            invalid = deepcopy(data)
+            invalid[section]["enabled"] = False
+            with self.assertRaises(ValidationError):
+                HardwareConfig.model_validate(invalid)
+        data["localization_sensors"]["lidar"]["enabled"] = False
+        with self.assertRaises(ValidationError):
+            HardwareConfig.model_validate(data)
 
     async def test_switches_publishers_and_drive_route_without_restart(self) -> None:
         physical_config, simulated_config = self.make_configs()

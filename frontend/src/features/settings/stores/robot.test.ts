@@ -133,4 +133,27 @@ describe("robot configuration save feedback", () => {
 
     expect(warning).not.toHaveBeenCalled();
   });
+
+  it("defaults observed-map localization off and hot-reloads reference switches", async () => {
+    const robot = useRobotStore();
+    const warning = vi.spyOn(useMessagerStore(), "warning");
+    expect(robot.data.pose_estimation.occupancy_map_scan_matching.enabled).toBe(false);
+
+    await robot.updatePartialData({
+      pose_estimation: {
+        ...robot.data.pose_estimation,
+        simulation_scan_matching: {
+          ...robot.data.pose_estimation.simulation_scan_matching,
+          enabled: false,
+        },
+        occupancy_map_scan_matching: {
+          ...robot.data.pose_estimation.occupancy_map_scan_matching,
+          enabled: true,
+        },
+      },
+    });
+
+    expect(patchMock).toHaveBeenCalledTimes(1);
+    expect(warning).not.toHaveBeenCalled();
+  });
 });
