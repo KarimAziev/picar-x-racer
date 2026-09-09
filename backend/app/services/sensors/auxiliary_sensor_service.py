@@ -10,6 +10,7 @@ from app.schemas.connection import ConnectionEvent
 from app.schemas.robot.auxiliary_sensors import (
     AuxiliarySensorConfig,
     HTS221SensorConfig,
+    LIS3MDLSensorConfig,
     LPS25HSensorConfig,
     LSM9DS1MagnetometerSensorConfig,
     MockEnvironmentalSensorConfig,
@@ -20,6 +21,8 @@ from robot_hat import (
     EnvironmentalSensorABC,
     HTS221,
     HTS221Config,
+    LIS3MDL,
+    LIS3MDLConfig,
     LPS25H,
     LPS25HConfig,
     LSM9DS1Magnetometer,
@@ -156,6 +159,16 @@ class AuxiliarySensorService:
                 bus=bus_manager.get_bus(config.bus),
                 config=LPS25HConfig(
                     output_data_rate_hz=config.output_data_rate_hz.value
+                ),
+            )
+        if isinstance(config, LIS3MDLSensorConfig):
+            return LIS3MDL(
+                address=config.address_int,
+                bus=bus_manager.get_bus(config.bus),
+                config=LIS3MDLConfig(
+                    magnetic_field_range_gauss=config.magnetic_field_range_gauss,
+                    output_data_rate_hz=config.output_data_rate_hz.value,
+                    performance_mode=config.performance_mode,
                 ),
             )
         if isinstance(config, LSM9DS1MagnetometerSensorConfig):
@@ -335,7 +348,11 @@ class AuxiliarySensorService:
             "magnetometer"
             if isinstance(
                 config,
-                (LSM9DS1MagnetometerSensorConfig, MockMagnetometerSensorConfig),
+                (
+                    LIS3MDLSensorConfig,
+                    LSM9DS1MagnetometerSensorConfig,
+                    MockMagnetometerSensorConfig,
+                ),
             )
             else "environmental"
         )

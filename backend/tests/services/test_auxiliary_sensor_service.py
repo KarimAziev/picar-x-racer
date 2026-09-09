@@ -7,11 +7,21 @@ from unittest.mock import AsyncMock, MagicMock
 from app.schemas.robot.auxiliary_sensors import (
     HTS221SensorConfig,
     HTS221OutputDataRate,
+    LIS3MDLOutputDataRate,
+    LIS3MDLSensorConfig,
     MockEnvironmentalSensorConfig,
     MockMagnetometerSensorConfig,
 )
 from app.services.sensors.auxiliary_sensor_service import AuxiliarySensorService
-from robot_hat import HTS221, MockEnvironmentalSensor, MockMagnetometer
+from robot_hat import (
+    HTS221,
+    LIS3MDL,
+    LIS3MDLConfig,
+    MockEnvironmentalSensor,
+    MockMagnetometer,
+    SMBusABC,
+)
+from robot_hat.i2c.smbus_manager import SMBusManager
 
 
 class TestAuxiliarySensorService(unittest.IsolatedAsyncioTestCase):
@@ -92,6 +102,81 @@ class TestAuxiliarySensorService(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(adapter.own_bus)
         self.assertEqual(adapter.config.output_data_rate_hz, 7.0)
         self.assertEqual(adapter.config.humidity_average_samples, 128)
+
+    def test_lis3mdl_factory_preserves_config_and_shared_bus_ownership(self) -> None:
+        bus_manager = MagicMock(spec=SMBusManager)
+        bus = MagicMock(spec=SMBusABC)
+        bus_manager.get_bus.return_value = bus
+        config = LIS3MDLSensorConfig(
+            bus=2,
+            address="0x1c",
+            magnetic_field_range_gauss=12,
+            output_data_rate_hz=LIS3MDLOutputDataRate.HZ_40,
+            performance_mode="high",
+        )
+
+        adapter = AuxiliarySensorService.make_adapter(config, bus_manager)
+
+        assert isinstance(adapter, LIS3MDL)
+        bus_manager.get_bus.assert_called_once_with(2)
+        self.assertIs(adapter.bus, bus)
+        self.assertFalse(adapter.own_bus)
+        self.assertEqual(adapter.address, 0x1C)
+        self.assertEqual(
+            adapter.config,
+            LIS3MDLConfig(
+                magnetic_field_range_gauss=12,
+                output_data_rate_hz=40.0,
+                performance_mode="high",
+            ),
+        )
+        self.service._adapters = {config.name: adapter}
+        self.service.close_adapters()
+        bus.close.assert_not_called()
+        self.assertEqual(self.service.adapters, {})
+
+    async def test_lis3mdl_publishes_native_magnetic_vector_and_timestamp(self) -> None:
+        config = LIS3MDLSensorConfig(name="MiniIMU compass")
+        adapter = MockMagnetometer(
+            magnetic_field_t=(12e-6, -34e-6, 56e-6), monotonic_ns=lambda: 123
+        )
+        adapter.initialize()
+        self.service._adapters = {config.name: adapter}
+
+        reading = await self.service.read_sensor(config)
+
+        self.assertEqual(reading.name, "MiniIMU compass")
+        self.assertEqual(reading.driver, "lis3mdl")
+        self.assertEqual(reading.kind, "magnetometer")
+        self.assertEqual(reading.magnetic_field_t, (12e-6, -34e-6, 56e-6))
+        self.assertEqual(reading.timestamp_monotonic_ns, 123)
+        self.assertIsNone(reading.temperature_c)
+        self.assertIsNone(reading.error)
+
+    async def test_lis3mdl_read_and_initialization_errors_remain_magnetic(self) -> None:
+        config = LIS3MDLSensorConfig()
+        adapter = MockMagnetometer()
+        adapter.initialize()
+        adapter.set_available(False)
+        self.service._adapters = {config.name: adapter}
+
+        reading = await self.service.read_sensor(config)
+
+        self.assertEqual(reading.driver, "lis3mdl")
+        self.assertEqual(reading.kind, "magnetometer")
+        self.assertIsNone(reading.magnetic_field_t)
+        self.assertIn("unavailable", reading.error or "")
+
+        self.service._adapters = {}
+        self.service._cache = {}
+        self.service._adapter_errors = {config.name: "LIS3MDL WHO_AM_I mismatch"}
+
+        reading = await self.service.read_sensor(config)
+
+        self.assertEqual(reading.driver, "lis3mdl")
+        self.assertEqual(reading.kind, "magnetometer")
+        self.assertIsNone(reading.magnetic_field_t)
+        self.assertEqual(reading.error, "LIS3MDL WHO_AM_I mismatch")
 
 
 if __name__ == "__main__":

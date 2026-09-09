@@ -101,7 +101,7 @@ export interface LocalizationSensorsConfig {
   };
   imu: {
     enabled: boolean;
-    driver: "sh3001" | "lsm9ds1" | "mock";
+    driver: "sh3001" | "lsm6ds33" | "lsm9ds1" | "mock";
     bus?: number;
     address?: number | string;
     frame_id: string;
@@ -109,7 +109,19 @@ export interface LocalizationSensorsConfig {
     sample_frequency_hz: number;
     accelerometer_range_g?: 2 | 4 | 8 | 16;
     gyroscope_range_dps?: 125 | 245 | 250 | 500 | 1000 | 2000;
-    output_data_rate_hz?: 119 | 238 | 476 | 952;
+    output_data_rate_hz?:
+      | 13
+      | 26
+      | 52
+      | 104
+      | 119
+      | 208
+      | 238
+      | 416
+      | 476
+      | 833
+      | 952
+      | 1666;
     acceleration_mps2?: [number, number, number];
     angular_velocity_radps?: [number, number, number];
   };
@@ -224,7 +236,7 @@ export type AuxiliarySensorConfig =
       output_data_rate_hz: 1 | 7 | 12.5 | 25;
     })
   | (AuxiliarySensorConfigBase & {
-      driver: "lsm9ds1_magnetometer";
+      driver: "lis3mdl" | "lsm9ds1_magnetometer";
       bus: number;
       address: number | string;
       magnetic_field_range_gauss: 4 | 8 | 12 | 16;

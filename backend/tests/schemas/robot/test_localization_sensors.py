@@ -6,6 +6,7 @@ from app.schemas.robot.config import HardwareConfig
 from app.schemas.robot.localization_sensors import (
     EncoderSensorConfig,
     LocalizationSensorsConfig,
+    LSM6DS33SensorConfig,
     LSM9DS1SensorConfig,
     MockIMUSensorConfig,
     MockLidarSensorConfig,
@@ -34,6 +35,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
 
     def test_imu_parses_hex_address_and_rejects_absolute_frame(self) -> None:
         self.assertEqual(SH3001SensorConfig(address="0x36").address_int, 0x36)
+        self.assertEqual(LSM6DS33SensorConfig(address="0x6b").address_int, 0x6B)
         self.assertEqual(LSM9DS1SensorConfig(address="0x6a").address_int, 0x6A)
 
         with self.assertRaisesRegex(ValidationError, "relative"):
@@ -54,6 +56,48 @@ class TestLocalizationSensorConfig(unittest.TestCase):
 
         with self.assertRaisesRegex(ValidationError, "0x6A or 0x6B"):
             LSM9DS1SensorConfig(address="0x36")
+
+    def test_lsm6ds33_validates_address_and_output_rate(self) -> None:
+        config = LSM6DS33SensorConfig(
+            sample_frequency_hz=200,
+            output_data_rate_hz=208,
+            accelerometer_range_g=8,
+            gyroscope_range_dps=125,
+        )
+
+        self.assertEqual(config.address_int, 0x6B)
+        self.assertEqual(config.accelerometer_range_g, 8)
+        self.assertEqual(config.gyroscope_range_dps, 125)
+
+        with self.assertRaisesRegex(ValidationError, "output_data_rate_hz"):
+            LSM6DS33SensorConfig(
+                sample_frequency_hz=200,
+                output_data_rate_hz=104,
+            )
+
+        with self.assertRaisesRegex(ValidationError, "0x6A or 0x6B"):
+            LSM6DS33SensorConfig(address="0x36")
+
+        with self.assertRaisesRegex(ValidationError, "integer or hexadecimal"):
+            LSM6DS33SensorConfig(address="not-an-address")
+
+    def test_lsm6ds33_schema_has_ui_titles_and_descriptions(self) -> None:
+        schema = LSM6DS33SensorConfig.model_json_schema()
+
+        self.assertEqual(schema["title"], "LSM6DS33 (gyro and accelerometer)")
+        self.assertIn("Pololu MiniIMU-9 v5", schema["description"])
+        for field_name in (
+            "driver",
+            "bus",
+            "address",
+            "accelerometer_range_g",
+            "gyroscope_range_dps",
+            "output_data_rate_hz",
+        ):
+            with self.subTest(field=field_name):
+                field_schema = schema["properties"][field_name]
+                self.assertTrue(field_schema["title"])
+                self.assertTrue(field_schema["description"])
 
     def test_mock_sensors_have_useful_hardware_free_defaults(self) -> None:
         lidar = MockLidarSensorConfig(enabled=True)
@@ -216,7 +260,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
     def test_schema_exposes_every_robot_hat_imu_driver(self) -> None:
         schema = json.dumps(LocalizationSensorsConfig.model_json_schema())
 
-        for driver in ("sh3001", "lsm9ds1", "mock"):
+        for driver in ("sh3001", "lsm6ds33", "lsm9ds1", "mock"):
             self.assertIn(f'"{driver}"', schema)
 
     def test_transform_rejects_non_finite_measurements(self) -> None:

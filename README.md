@@ -271,6 +271,64 @@ safety evaluator, mapping, and odometry code, including when the app runs on a
 Raspberry Pi. The mock LiDAR represents a configurable uniform circular wall;
 mock encoders advance by configurable ticks per sample.
 
+Real IMU acquisition supports the Robot HAT's SH3001, the Raspberry Pi Sense
+HAT's LSM9DS1, and the LSM6DS33 used by Pololu's MiniIMU-9 v5 and AltIMU-10 v5.
+Each driver exposes its supported full-scale ranges in the schema-driven Robot
+settings UI; LSM9DS1 and LSM6DS33 also expose hardware output rates.
+Configure the measured roll, pitch, and yaw
+from the sensor frame into `base_link`; the publisher applies that rotation to
+both acceleration and angular velocity before localization consumes them. The
+MiniIMU-9 v5 contains two independently addressed sensors. Configure both to
+read its gyro, accelerometer, and magnetic field:
+
+| Sensor option | Robot settings location | Default I²C address | Address with `SA0` low |
+| --- | --- | --- | --- |
+| **LSM6DS33 (gyro and accelerometer)** | Localization sensors → IMU | `0x6b` | `0x6a` |
+| **LIS3MDL (magnetometer)** | Auxiliary sensors → Add sensor | `0x1e` | `0x1c` |
+
+Both use I²C bus 1 by default and receive the same manager-owned bus. Inertial
+samples feed localization; native X/Y/Z magnetic-field samples are available in
+the auxiliary-sensor API, WebSocket telemetry, and controller display. Magnetic
+readings remain independent of heading estimation and sensor fusion.
+
+For example, merge these sensor entries into your hardware configuration,
+preserving any other configured sensors:
+
+```json
+{
+  "localization_sensors": {
+    "imu": {
+      "enabled": true,
+      "driver": "lsm6ds33",
+      "bus": 1,
+      "address": "0x6b",
+      "sample_frequency_hz": 100,
+      "output_data_rate_hz": 104
+    }
+  },
+  "auxiliary_sensors": {
+    "sensors": [
+      {
+        "name": "MiniIMU magnetometer",
+        "enabled": true,
+        "driver": "lis3mdl",
+        "bus": 1,
+        "address": "0x1e",
+        "poll_interval_seconds": 0.1,
+        "magnetic_field_range_gauss": 4,
+        "output_data_rate_hz": 10,
+        "performance_mode": "ultra_high"
+      }
+    ]
+  }
+}
+```
+
+Set the IMU's measured mounting transform before using its observations for
+localization, and restart the backend after saving localization settings.
+See the [MiniIMU-9 v5 library guide](https://github.com/KarimAziev/robot-hat/blob/main/docs/pololu_miniimu9_v5.md)
+for wiring and calibration details. This integration uses `robot-hat>=3.3.1`.
+
 Optional steering feedback can use an AS5048A, AS5600L, or mock absolute-position
 sensor mounted after the servo gear train. Center offset, direction, mechanical
 ratio, and optional piecewise linkage calibration convert its absolute bearing

@@ -23,6 +23,7 @@ from app.schemas.robot.localization_sensors import (
     AS5600LEncoderConfig,
     AS5600LSteeringPositionConfig,
     GPIOQuadratureEncoderConfig,
+    LSM6DS33SensorConfig,
     LSM9DS1SensorConfig,
     MockEncoderConfig,
     MockIMUSensorConfig,
@@ -104,6 +105,8 @@ from robot_hat import (
     EncoderABC,
     IMUABC,
     Lidar2DABC,
+    LSM6DS33,
+    LSM6DS33Config,
     LSM9DS1,
     LSM9DS1Config,
     MockEncoder,
@@ -554,6 +557,16 @@ def build_localization_sensor_service(
             imu_factory = lambda: MockIMU(
                 acceleration_mps2=imu_sensor_config.acceleration_mps2,
                 angular_velocity_radps=(imu_sensor_config.angular_velocity_radps),
+            )
+        elif isinstance(imu_sensor_config, LSM6DS33SensorConfig):
+            imu_factory = lambda: LSM6DS33(
+                address=imu_sensor_config.address_int,
+                bus=smbus_manager.get_bus(imu_sensor_config.bus),
+                config=LSM6DS33Config(
+                    accelerometer_range_g=(imu_sensor_config.accelerometer_range_g),
+                    gyroscope_range_dps=imu_sensor_config.gyroscope_range_dps,
+                    output_data_rate_hz=imu_sensor_config.output_data_rate_hz,
+                ),
             )
         elif isinstance(imu_sensor_config, LSM9DS1SensorConfig):
             imu_factory = lambda: LSM9DS1(

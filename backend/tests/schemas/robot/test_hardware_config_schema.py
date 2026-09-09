@@ -52,6 +52,8 @@ class TestHardwareConfigSchemaMetadata(unittest.TestCase):
             "RPLidarC1SensorConfig": "RPLIDAR C1",
             "MockLidarSensorConfig": "Mock LiDAR",
             "SH3001SensorConfig": "SH3001 IMU",
+            "LSM6DS33SensorConfig": "LSM6DS33 (gyro and accelerometer)",
+            "LIS3MDLSensorConfig": "LIS3MDL (magnetometer)",
             "LSM9DS1SensorConfig": "LSM9DS1 IMU",
             "MockIMUSensorConfig": "Mock IMU",
             "AS5048AEncoderConfig": "AS5048A drive encoder",

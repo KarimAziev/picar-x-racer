@@ -71,6 +71,17 @@ class LSM9DS1MagnetometerOutputDataRate(float, Enum):
     HZ_80 = 80.0
 
 
+class LIS3MDLOutputDataRate(float, Enum):
+    HZ_0_625 = 0.625
+    HZ_1_25 = 1.25
+    HZ_2_5 = 2.5
+    HZ_5 = 5.0
+    HZ_10 = 10.0
+    HZ_20 = 20.0
+    HZ_40 = 40.0
+    HZ_80 = 80.0
+
+
 def _parse_address(value: AddressField, *, device: str) -> int:
     if isinstance(value, str):
         try:
@@ -286,6 +297,80 @@ class LSM9DS1MagnetometerSensorConfig(I2CAuxiliarySensorConfig):
         return self
 
 
+class LIS3MDLSensorConfig(I2CAuxiliarySensorConfig):
+    """Three-axis magnetic-field readings from a LIS3MDL magnetometer.
+
+    Supports the Pololu MiniIMU-9 v5, AltIMU-10 v5, and standalone carriers.
+    The gyro and accelerometer on those boards use the separate LSM6DS33 driver.
+    """
+
+    model_config = ConfigDict(title="LIS3MDL (magnetometer)")
+
+    driver: Annotated[
+        Literal["lis3mdl"],
+        Field(
+            title="Sensor driver",
+            description="LIS3MDL driver for three-axis magnetic-field measurements.",
+        ),
+    ] = "lis3mdl"
+    name: SensorName = "LIS3MDL"
+    address: Annotated[
+        AddressField,
+        Field(
+            title="I2C address",
+            description=(
+                "7-bit I2C address of the LIS3MDL magnetometer. The Pololu "
+                "MiniIMU-9 v5 uses 0x1E by default and 0x1C when SA0 is low."
+            ),
+        ),
+    ] = "0x1e"
+    magnetic_field_range_gauss: Annotated[
+        Literal[4, 8, 12, 16],
+        Field(
+            title="Magnetic field range",
+            description=(
+                "Full-scale magnetic field range in gauss. Lower ranges provide "
+                "finer resolution; increase the range if readings saturate."
+            ),
+        ),
+    ] = 4
+    output_data_rate_hz: Annotated[
+        LIS3MDLOutputDataRate,
+        Field(
+            title="Output data rate",
+            description=(
+                "Number of new three-axis magnetic field measurements produced per "
+                "second. It must be at least the requested telemetry rate."
+            ),
+        ),
+    ] = LIS3MDLOutputDataRate.HZ_10
+    performance_mode: Annotated[
+        Literal["low", "medium", "high", "ultra_high"],
+        Field(
+            title="Performance mode",
+            description=(
+                "Magnetometer conversion mode for all three axes. Higher modes "
+                "reduce measurement noise at the cost of power consumption."
+            ),
+        ),
+    ] = "ultra_high"
+
+    @field_validator("address", mode="before")
+    @classmethod
+    def validate_address(cls, value: AddressField) -> AddressField:
+        if _parse_address(value, device="LIS3MDL magnetometer") not in (0x1C, 0x1E):
+            raise ValueError("LIS3MDL magnetometer address must be 0x1C or 0x1E")
+        return value
+
+    @model_validator(mode="after")
+    def validate_poll_rate(self) -> Self:
+        if 1.0 / self.poll_interval_seconds > self.output_data_rate_hz.value:
+            raise ValueError(
+                "LIS3MDL magnetometer poll rate must not exceed output_data_rate_hz"
+            )
+        return self
+
+
 class MockEnvironmentalSensorConfig(AuxiliarySensorConfigBase):
     """Fixed environmental readings for development without sensor hardware."""
 
@@ -378,6 +463,7 @@ AuxiliarySensorConfig = Annotated[
     Union[
         HTS221SensorConfig,
         LPS25HSensorConfig,
+        LIS3MDLSensorConfig,
         LSM9DS1MagnetometerSensorConfig,
         MockEnvironmentalSensorConfig,
         MockMagnetometerSensorConfig,
@@ -431,6 +517,8 @@ __all__ = [
     "AuxiliarySensorsConfig",
     "HTS221SensorConfig",
     "LPS25HSensorConfig",
+    "LIS3MDLOutputDataRate",
+    "LIS3MDLSensorConfig",
     "LSM9DS1MagnetometerSensorConfig",
     "MockEnvironmentalSensorConfig",
     "MockMagnetometerSensorConfig",

@@ -541,6 +541,95 @@ class LSM9DS1SensorConfig(IMUSensorConfigBase):
         return self.address if isinstance(self.address, int) else int(self.address, 16)
 
 
+class LSM6DS33SensorConfig(IMUSensorConfigBase):
+    """Gyro and accelerometer settings for a Pololu MiniIMU-9 v5 or LSM6DS33.
+
+    To read the board's magnetic field, also add LIS3MDL under Auxiliary sensors.
+    """
+
+    model_config = ConfigDict(title="LSM6DS33 (gyro and accelerometer)")
+
+    driver: Annotated[
+        Literal["lsm6ds33"],
+        Field(
+            title="IMU driver",
+            description=(
+                "LSM6DS33 gyro and accelerometer driver for a Pololu MiniIMU-9 v5, "
+                "AltIMU-10 v5, or standalone carrier."
+            ),
+        ),
+    ] = "lsm6ds33"
+    bus: LocalizationI2CBus = 1
+    address: Annotated[
+        AddressField,
+        Field(
+            title="I2C address",
+            description=(
+                "7-bit I2C address of the LSM6DS33 inertial sensor. The Pololu "
+                "MiniIMU-9 v5 uses 0x6B by default and 0x6A when SA0 is low."
+            ),
+        ),
+    ] = "0x6b"
+    accelerometer_range_g: Annotated[
+        Literal[2, 4, 8, 16],
+        Field(
+            title="Accelerometer range",
+            description=(
+                "Full-scale acceleration range in multiples of standard gravity. "
+                "Lower ranges provide finer resolution."
+            ),
+        ),
+    ] = 2
+    gyroscope_range_dps: Annotated[
+        Literal[125, 245, 500, 1000, 2000],
+        Field(
+            title="Gyroscope range",
+            description=(
+                "Full-scale angular-rate range in degrees per second. Lower ranges "
+                "provide finer resolution."
+            ),
+        ),
+    ] = 245
+    output_data_rate_hz: Annotated[
+        Literal[13, 26, 52, 104, 208, 416, 833, 1666],
+        Field(
+            title="Output data rate",
+            description=(
+                "Hardware accelerometer and gyroscope output rate in hertz. It "
+                "must be at least the requested IMU sample frequency."
+            ),
+        ),
+    ] = 104
+
+    @field_validator("address", mode="before")
+    @classmethod
+    def validate_address(cls, value: AddressField) -> AddressField:
+        if isinstance(value, str):
+            try:
+                parsed = int(value, 16)
+            except ValueError as error:
+                raise ValueError(
+                    "LSM6DS33 address must be an integer or hexadecimal"
+                ) from error
+        else:
+            parsed = value
+        if parsed not in (0x6A, 0x6B):
+            raise ValueError("LSM6DS33 address must be 0x6A or 0x6B")
+        return value
+
+    @model_validator(mode="after")
+    def require_output_rate_for_requested_sample_rate(self) -> Self:
+        if self.sample_frequency_hz > self.output_data_rate_hz:
+            raise ValueError(
+                "LSM6DS33 output_data_rate_hz must be at least sample_frequency_hz"
+            )
+        return self
+
+    @property
+    def address_int(self) -> int:
+        return self.address if isinstance(self.address, int) else int(self.address, 16)
+
+
 class MockIMUSensorConfig(IMUSensorConfigBase):
     """Fixed inertial measurements for development without IMU hardware."""
 
@@ -578,7 +667,12 @@ class MockIMUSensorConfig(IMUSensorConfigBase):
 
 
 IMUSensorConfig = Annotated[
-    Union[SH3001SensorConfig, LSM9DS1SensorConfig, MockIMUSensorConfig],
+    Union[
+        SH3001SensorConfig,
+        LSM6DS33SensorConfig,
+        LSM9DS1SensorConfig,
+        MockIMUSensorConfig,
+    ],
     Field(discriminator="driver"),
 ]
 
@@ -1072,7 +1166,8 @@ class LocalizationSensorsConfig(BaseModel):
             )
         i2c_devices = []
         if self.imu.enabled and isinstance(
-            self.imu, (SH3001SensorConfig, LSM9DS1SensorConfig)
+            self.imu,
+            (SH3001SensorConfig, LSM6DS33SensorConfig, LSM9DS1SensorConfig),
         ):
             i2c_devices.append((self.imu.bus, self.imu.address_int, "imu"))
         if self.encoder.enabled:
@@ -1107,6 +1202,7 @@ __all__ = [
     "IMUSensorConfig",
     "LidarSensorConfig",
     "LocalizationSensorsConfig",
+    "LSM6DS33SensorConfig",
     "LSM9DS1SensorConfig",
     "MockEncoderConfig",
     "MockIMUSensorConfig",
