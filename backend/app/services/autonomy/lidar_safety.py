@@ -196,6 +196,7 @@ class LidarSafetyService:
         self._task: Optional[asyncio.Task[None]] = None
         self._sequence = 0
         self._last_state: Optional[SafetyState] = None
+        self._last_scan_timestamp_ns: Optional[int] = None
 
     @property
     def running(self) -> bool:
@@ -257,11 +258,24 @@ class LidarSafetyService:
             return
         while True:
             try:
+                # A delayed scan only buys its remaining measurement lifetime,
+                # not another complete timeout starting at delivery.
+                timeout = self._scan_timeout_seconds
+                if self._last_scan_timestamp_ns is not None:
+                    remaining = (
+                        timeout
+                        - (self._clock.monotonic_ns() - self._last_scan_timestamp_ns)
+                        / 1e9
+                    )
+                    if remaining > 0:
+                        timeout = remaining
+                    else:
+                        self.check_freshness()
                 scan = await asyncio.wait_for(
                     subscription.get(),
-                    timeout=self._scan_timeout_seconds,
+                    timeout=timeout,
                 )
-                self._apply_decision(scan, self._evaluator.evaluate(scan))
+                self.process_scan(scan)
             except asyncio.TimeoutError:
                 self._apply_block("LiDAR scan is stale")
             except SubscriptionClosed:
@@ -272,6 +286,34 @@ class LidarSafetyService:
             except Exception as error:
                 _log.error("LiDAR safety evaluation failed: %s", error)
                 self._apply_block(f"LiDAR safety error: {error}")
+
+    def process_scan(self, scan: LaserScan) -> None:
+        """Apply one delivered measurement, preserving source-time freshness."""
+        timestamp = scan.header.timestamp_monotonic_ns
+        age = self._clock.monotonic_ns() - timestamp
+        if age < 0:
+            self._apply_block("LiDAR scan is from the future")
+        elif age > int(self._scan_timeout_seconds * 1e9):
+            self._apply_block("LiDAR scan is stale")
+        elif (
+            self._last_scan_timestamp_ns is not None
+            and timestamp <= self._last_scan_timestamp_ns
+        ):
+            self._apply_block("LiDAR scan timestamp did not increase")
+        else:
+            decision = self._evaluator.evaluate(scan)
+            self._last_scan_timestamp_ns = timestamp
+            self._apply_decision(scan, decision)
+
+    def check_freshness(self) -> bool:
+        """Check the measurement watchdog without waiting on wall-clock time."""
+        timestamp = self._last_scan_timestamp_ns
+        if timestamp is None or not 0 <= self._clock.monotonic_ns() - timestamp <= int(
+            self._scan_timeout_seconds * 1e9
+        ):
+            self._apply_block("LiDAR scan is stale")
+            return False
+        return True
 
     def _apply_decision(
         self,

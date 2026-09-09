@@ -40,12 +40,13 @@ def scan(
     angle_min_rad: float = -math.pi / 2,
     angle_increment_rad: float = math.pi / 8,
     sequence: int = 1,
+    timestamp_ns: int = 999_000_000,
 ) -> LaserScan:
     return LaserScan(
         header=MessageHeader(
             sequence=sequence,
             frame_id="laser",
-            timestamp_monotonic_ns=sequence * 100,
+            timestamp_monotonic_ns=timestamp_ns,
         ),
         angle_min_rad=angle_min_rad,
         angle_max_rad=angle_min_rad + angle_increment_rad * (len(ranges) - 1),
@@ -206,6 +207,44 @@ class TestLidarSafetyService(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(stale.forward_blocked)
         self.assertTrue(stale.reverse_blocked)
         self.assertIn("stale", stale.reason or "")
+
+    async def test_arriving_stale_scan_does_not_clear_safety_block(self) -> None:
+        states = self.bus.subscribe(SAFETY_STATE)
+        self.service.start()
+        await states.get()
+        self.bus.publish(
+            LIDAR_SCAN,
+            scan((2.0,), angle_min_rad=0, angle_increment_rad=1, timestamp_ns=1),
+        )
+        state = await asyncio.wait_for(states.get(), timeout=1)
+        self.assertTrue(state.forward_blocked)
+        self.assertTrue(state.reverse_blocked)
+        self.assertIn("stale", state.reason or "")
+
+    async def test_future_and_reordered_clear_scans_are_fail_closed(self) -> None:
+        self.service.process_scan(scan((0.2,), angle_min_rad=0, angle_increment_rad=1))
+        self.service.process_scan(
+            scan(
+                (2.0,), angle_min_rad=0, angle_increment_rad=1, timestamp_ns=998_000_000
+            )
+        )
+        state = self.service.last_state
+        assert state is not None
+        self.assertTrue(state.forward_blocked)
+        self.assertTrue(state.reverse_blocked)
+        self.assertIn("increase", state.reason or "")
+        self.service.process_scan(
+            scan(
+                (2.0,),
+                angle_min_rad=0,
+                angle_increment_rad=1,
+                timestamp_ns=2_000_000_000,
+            )
+        )
+        state = self.service.last_state
+        assert state is not None
+        self.assertTrue(state.forward_blocked)
+        self.assertIn("future", state.reason or "")
 
 
 if __name__ == "__main__":

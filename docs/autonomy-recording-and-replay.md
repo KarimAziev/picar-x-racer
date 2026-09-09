@@ -97,6 +97,8 @@ events, and recomputation of raw-encoder odometry are future extensions.
 
 ## Next milestones
 
+- [Fixed-step sensor-fault regressions](autonomy-simulation-fault-tests.md) now
+  cover delayed/missing inputs, safe navigation failure, and explicit restart.
 - Use recorded scenarios to test delayed or missing sensors and mission recovery.
 - Validate [observed-map localization](observed-map-localization.md) on recorded
   and real drives; the known-world matcher remains a simulation reference.

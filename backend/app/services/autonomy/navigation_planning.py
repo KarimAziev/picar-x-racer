@@ -3,10 +3,11 @@
 import asyncio
 import heapq
 import math
-import time
 from dataclasses import dataclass
 from itertools import count
 from typing import Dict, Iterable, List, Literal, Optional, Sequence, Tuple
+
+from app.services.autonomy.clock import Clock, SystemClock
 
 from app.schemas.autonomy import (
     NavigationDirection,
@@ -553,10 +554,12 @@ class NavigationPlanningService:
         planner: Optional[OccupancyGridPlanner] = None,
         *,
         localization_timeout_seconds: float = 0.5,
+        clock: Optional[Clock] = None,
     ) -> None:
         if localization_timeout_seconds <= 0:
             raise ValueError("localization timeout must be positive")
         self._bus = bus
+        self._clock = clock or SystemClock()
         self._planner = planner or OccupancyGridPlanner()
         self._localization_timeout_ns = int(localization_timeout_seconds * 1e9)
         self._plan_status = NavigationPlanStatus.idle()
@@ -788,7 +791,7 @@ class NavigationPlanningService:
 
     def _planning_pose(self, frame_id: str) -> Optional[PlanningPose]:
         localization = self._bus.latest(LOCALIZATION_POSE)
-        now_ns = time.monotonic_ns()
+        now_ns = self._clock.monotonic_ns()
         if (
             localization is not None
             and localization.header.frame_id == frame_id

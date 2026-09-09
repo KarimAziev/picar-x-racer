@@ -40,6 +40,7 @@ class OdometryTestCase(unittest.TestCase):
         *,
         delta_ticks: int = 0,
         right_delta_ticks: int | None = None,
+        ticks: int | None = None,
     ) -> EncoderState:
         right_delta = delta_ticks if right_delta_ticks is None else right_delta_ticks
         return EncoderState(
@@ -48,8 +49,12 @@ class OdometryTestCase(unittest.TestCase):
                 frame_id="base_link",
                 timestamp_monotonic_ns=timestamp_ns,
             ),
-            left=EncoderReading(ticks=delta_ticks, delta_ticks=delta_ticks),
-            right=EncoderReading(ticks=right_delta, delta_ticks=right_delta),
+            left=EncoderReading(
+                ticks=delta_ticks if ticks is None else ticks, delta_ticks=delta_ticks
+            ),
+            right=EncoderReading(
+                ticks=right_delta if ticks is None else ticks, delta_ticks=right_delta
+            ),
         )
 
     @staticmethod
@@ -89,6 +94,50 @@ class OdometryTestCase(unittest.TestCase):
 
 
 class TestAckermannOdometryEstimator(OdometryTestCase):
+    def test_skipped_messages_use_cumulative_ticks_for_each_encoder_layout(
+        self,
+    ) -> None:
+        for roles in (("left",), ("left", "right"), ("rear_axle_average",)):
+            with self.subTest(roles=roles):
+                self.estimator.reset()
+                for sequence, total, delta, expected_ticks in (
+                    (1, 100, 10, 0),
+                    (4, 115, 5, 15),
+                    (5, 110, -5, 10),
+                ):
+                    message = EncoderState.model_validate(
+                        {
+                            "header": self.encoder(
+                                sequence, sequence * 1_000_000_000
+                            ).header,
+                            **{
+                                role: EncoderReading(ticks=total, delta_ticks=delta)
+                                for role in roles
+                            },
+                        }
+                    )
+                    result = self.estimator.update(
+                        message, self.steering(sequence * 1_000_000_000)
+                    )
+                    self.assertAlmostEqual(
+                        result.x_m, expected_ticks * 2 * math.pi * 0.1 / 20
+                    )
+
+    def test_encoder_layout_change_requires_reset_without_corrupting_baseline(
+        self,
+    ) -> None:
+        self.estimator.update(
+            self.encoder(1, 1_000_000_000), self.steering(1_000_000_000)
+        )
+        with self.assertRaisesRegex(OdometryInputError, "layout changed"):
+            self.estimator.update(
+                self.drivetrain_encoder(2, 2_000_000_000), self.steering(2_000_000_000)
+            )
+        result = self.estimator.update(
+            self.encoder(3, 3_000_000_000, delta_ticks=20), self.steering(3_000_000_000)
+        )
+        self.assertAlmostEqual(result.x_m, 2 * math.pi * 0.1)
+
     def test_runtime_config_requires_measured_geometry_when_enabled(self) -> None:
         self.assertFalse(AckermannOdometrySchema().enabled)
         with self.assertRaisesRegex(ValidationError, "requires calibrated"):
@@ -123,7 +172,7 @@ class TestAckermannOdometryEstimator(OdometryTestCase):
             self.steering(2_000_000_000),
         )
         reverse = self.estimator.update(
-            self.encoder(3, 3_000_000_000, delta_ticks=-10),
+            self.encoder(3, 3_000_000_000, delta_ticks=-10, ticks=10),
             self.steering(3_000_000_000),
         )
 

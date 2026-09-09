@@ -2,7 +2,6 @@
 
 import asyncio
 import math
-import time
 import uuid
 from dataclasses import dataclass
 from typing import Optional, Sequence, Tuple
@@ -17,6 +16,7 @@ from app.schemas.autonomy import (
     NavigationPoint,
 )
 from app.services.autonomy.messages import MotionIntent, MotionSource, RobotMode
+from app.services.autonomy.clock import Clock, SystemClock
 from app.services.autonomy.motion_control_service import MotionControlService
 from app.services.autonomy.navigation_planning import NavigationPlanningService
 from app.services.autonomy.relative_motion import ActionConflictError
@@ -177,6 +177,7 @@ class NavigationExecutionService:
         max_start_heading_error_rad: float = math.radians(15.0),
         direction_change_stop_seconds: float = 0.25,
         direction_change_speed_threshold_mps: float = 0.02,
+        clock: Optional[Clock] = None,
     ) -> None:
         if max_start_position_error_m <= 0:
             raise ValueError("maximum start-position error must be positive")
@@ -187,6 +188,7 @@ class NavigationExecutionService:
         if direction_change_speed_threshold_mps < 0:
             raise ValueError("direction-change speed threshold must be non-negative")
         self._bus = bus
+        self._clock = clock or SystemClock()
         self._motion = motion
         self._planning = planning
         self._wheelbase_m = wheelbase_m
@@ -376,13 +378,13 @@ class NavigationExecutionService:
         frame_id: str,
     ) -> None:
         active_elapsed_ns = 0
-        previous_loop_ns = time.monotonic_ns()
+        previous_loop_ns = self._clock.monotonic_ns()
         section_index = 0
         tracker = self._tracker_for(sections[section_index], request.lookahead_m)
         direction_change_started_ns: Optional[int] = None
         try:
             while True:
-                now = time.monotonic_ns()
+                now = self._clock.monotonic_ns()
                 elapsed = max(0, now - previous_loop_ns)
                 previous_loop_ns = now
                 if not self._route_snapshot_is_current(frame_id):
@@ -563,7 +565,7 @@ class NavigationExecutionService:
         pose = self._bus.latest(LOCALIZATION_POSE)
         if pose is None or pose.header.frame_id != frame_id:
             return None
-        age = time.monotonic_ns() - pose.header.timestamp_monotonic_ns
+        age = self._clock.monotonic_ns() - pose.header.timestamp_monotonic_ns
         return pose if 0 <= age <= self._localization_timeout_ns else None
 
     @staticmethod

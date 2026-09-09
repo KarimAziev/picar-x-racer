@@ -58,6 +58,7 @@ class AckermannOdometryEstimator:
         self._yaw_rad = self._normalize_angle(yaw_rad)
         self._last_encoder_timestamp_ns: Optional[int] = None
         self._last_encoder_sequence: Optional[int] = None
+        self._last_encoder: Optional[EncoderState] = None
         self._output_sequence = 0
 
     def update(
@@ -87,6 +88,27 @@ class AckermannOdometryEstimator:
         if steering_age_ns > maximum_age_ns:
             raise OdometryInputError("steering observation is stale")
 
+        delta_ticks = 0.0
+        if self._last_encoder is not None:
+            deltas = []
+            for current, previous in zip(
+                (encoder.left, encoder.right, encoder.rear_axle_average),
+                (
+                    self._last_encoder.left,
+                    self._last_encoder.right,
+                    self._last_encoder.rear_axle_average,
+                ),
+            ):
+                if (current is None) != (previous is None):
+                    raise OdometryInputError(
+                        "encoder layout changed; reset odometry before continuing"
+                    )
+                if current is not None and previous is not None:
+                    deltas.append(current.ticks - previous.ticks)
+            # Publisher deltas describe only its previous sample, which a bounded
+            # topic queue may have dropped. Absolute counters cover the full gap.
+            delta_ticks = sum(deltas) / len(deltas)
+        self._last_encoder = encoder
         self._last_encoder_sequence = encoder.header.sequence
         previous_timestamp = self._last_encoder_timestamp_ns
         self._last_encoder_timestamp_ns = timestamp
@@ -99,7 +121,7 @@ class AckermannOdometryEstimator:
 
         dt_seconds = (timestamp - previous_timestamp) / 1_000_000_000
         wheel_revolutions = (
-            encoder.mean_delta_ticks
+            delta_ticks
             / self.config.encoder_ticks_per_revolution
             / self.config.gear_ratio
         )
