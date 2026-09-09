@@ -1,6 +1,7 @@
 import asyncio
 import time
 import unittest
+from unittest.mock import AsyncMock
 from typing import Any, List, cast
 
 from pydantic import ValidationError
@@ -23,7 +24,7 @@ from app.schemas.autonomy import (
     OccupancyGrid,
 )
 from app.services.autonomy import NavigationMissionService, TopicBus
-from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP
+from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, MISSION_STATUS
 
 
 def header(sequence: int = 1) -> MessageHeader:
@@ -247,6 +248,81 @@ class NavigationMissionServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self) -> None:
         await self.service.stop()
+
+    async def test_cancel_during_planning_never_starts_a_leg_and_clears_route(
+        self,
+    ) -> None:
+        await self.service.review(
+            NavigationMissionReviewRequest(
+                targets=(NavigationMissionTarget(x_m=1, y_m=0),),
+            )
+        )
+        planning_started = asyncio.Event()
+
+        async def slow_plan(request: NavigationGoalRequest) -> NavigationPlanStatus:
+            planning_started.set()
+            await asyncio.Event().wait()
+            raise AssertionError("canceled planning must not finish")
+
+        self.planning.plan = AsyncMock(side_effect=slow_plan)
+        await self.service.start(NavigationMissionExecutionRequest())
+        await asyncio.wait_for(planning_started.wait(), 1)
+        await self.service.cancel()
+        self.assertEqual(self.execution.starts, [])
+        self.assertEqual(self.planning.status.state, NavigationPlanState.IDLE)
+        self.assertEqual(self.service.status.state, ActionState.CANCELED)
+        self.assertEqual(self.bus.latest(MISSION_STATUS), self.service.status)
+
+    async def test_pause_during_planning_holds_start_until_resume(self) -> None:
+        await self.service.review(
+            NavigationMissionReviewRequest(
+                targets=(NavigationMissionTarget(x_m=1, y_m=0),),
+            )
+        )
+        planning_started = asyncio.Event()
+        finish_planning = asyncio.Event()
+        planned = asyncio.Event()
+        original = self.planning.plan
+
+        async def slow_plan(request: NavigationGoalRequest) -> NavigationPlanStatus:
+            planning_started.set()
+            await finish_planning.wait()
+            result = await original(request)
+            planned.set()
+            return result
+
+        self.planning.plan = AsyncMock(side_effect=slow_plan)
+        await self.service.start(NavigationMissionExecutionRequest())
+        await asyncio.wait_for(planning_started.wait(), 1)
+        await self.service.pause()
+        finish_planning.set()
+        await asyncio.wait_for(planned.wait(), 1)
+        self.assertEqual(self.execution.starts, [])
+        self.assertEqual(self.service.status.state, ActionState.PAUSED)
+        await self.service.resume()
+        for _ in range(20):
+            if not self.service.running:
+                break
+            await asyncio.sleep(0.001)
+        self.assertEqual(len(self.execution.starts), 1)
+        self.assertEqual(self.service.status.state, ActionState.SUCCEEDED)
+
+    async def test_live_planner_failure_is_terminal_without_motion(self) -> None:
+        await self.service.review(
+            NavigationMissionReviewRequest(
+                targets=(NavigationMissionTarget(x_m=1, y_m=0),),
+            )
+        )
+        self.planning.plan = AsyncMock(side_effect=ValueError("test route rejected"))
+        await self.service.start(NavigationMissionExecutionRequest())
+        for _ in range(20):
+            if not self.service.running:
+                break
+            await asyncio.sleep(0.001)
+        self.assertEqual(self.execution.starts, [])
+        self.assertEqual(self.service.status.state, ActionState.FAILED)
+        self.assertIn("test route rejected", self.service.status.reason or "")
+        self.assertEqual(self.planning.status.state, NavigationPlanState.IDLE)
 
     async def test_loop_preflight_includes_closure_and_scales_lap_distance(
         self,

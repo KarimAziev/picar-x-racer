@@ -275,7 +275,9 @@ class NavigationExecutionService:
             raise ActionConflictError("another autonomous action is already running")
         try:
             await self._motion.set_mode(RobotMode.AUTONOMOUS)
-        except Exception:
+        except BaseException:
+            # Cancellation can arrive while the asynchronous mode switch runs.
+            self._motion.revoke(MotionSource.AUTONOMY)
             self._motion.release_autonomy(owner)
             raise
 

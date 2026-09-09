@@ -1,6 +1,7 @@
 import app.api.control.battery as battery
 import app.api.control.auxiliary_sensors as auxiliary_sensors
 import app.api.control.autonomy as autonomy
+import app.api.control.recordings as recordings
 import app.api.control.car_control as car_control
 import app.api.control.distance as distance
 import app.api.control.integration as integration
@@ -18,6 +19,7 @@ routers, tags_metadata = build_routers_and_metadata(
         settings,
         car_control,
         autonomy,
+        recordings,
         battery,
         distance,
         integration,

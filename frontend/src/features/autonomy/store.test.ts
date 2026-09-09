@@ -793,6 +793,80 @@ describe("autonomy telemetry store", () => {
     expect(store.simulationLastUpdatedAt).not.toBeNull();
   });
 
+  it("refreshes the live route and mission together, including terminal route clearing", async () => {
+    const store = useAutonomyStore();
+    await store.refreshNavigationPlan();
+    const idleRoute = store.navigationPlan;
+    const liveRoute = { ...idleRoute, state: "ready", path: [
+      { x_m: 0.3, y_m: 0.1 }, { x_m: 1, y_m: 1 },
+    ] };
+    store.navigationMissionExecutionError = "Start was rejected";
+    mocks.get.mockResolvedValueOnce({
+      mission: { state: "running", active_target_index: 1 },
+      execution: { state: "running", action_id: "new-leg" },
+      route: liveRoute,
+    });
+    await store.refreshNavigationMissionRuntime();
+    expect(store.navigationPlan?.path[0]).toEqual({ x_m: 0.3, y_m: 0.1 });
+    expect(store.navigationExecution?.action_id).toBe("new-leg");
+    expect(store.navigationMissionExecution?.active_target_index).toBe(1);
+    expect(store.navigationMissionExecutionError).toBe("Start was rejected");
+    mocks.get.mockResolvedValueOnce({
+      mission: { state: "canceled", active_target_index: null },
+      execution: { state: "canceled" }, route: idleRoute,
+    });
+    await store.refreshNavigationMissionRuntime();
+    expect(store.navigationPlan?.path).toEqual([]);
+    expect(store.navigationMissionExecution?.state).toBe("canceled");
+  });
+
+  it("records a session and exposes the completed file identifier", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockResolvedValueOnce({ active: true, session_id: "session", events_written: 0 });
+    await store.runRecordingAction("start");
+    expect(store.recording?.active).toBe(true);
+    expect(mocks.post).toHaveBeenCalledWith("/px/api/autonomy/recordings/start");
+    mocks.post.mockResolvedValueOnce({ active: false, session_id: "session", events_written: 123 });
+    await store.runRecordingAction("stop");
+    expect(store.recording?.active).toBe(false);
+    expect(store.recording?.events_written).toBe(123);
+    expect(store.recordingLoading).toBe(false);
+  });
+
+  it("ignores a runtime poll that predates an operator cancellation", async () => {
+    const store = useAutonomyStore();
+    let resolvePoll!: (value: unknown) => void;
+    mocks.get.mockReturnValueOnce(new Promise((resolve) => { resolvePoll = resolve; }));
+    const poll = store.refreshNavigationMissionRuntime();
+    mocks.post.mockResolvedValueOnce({ state: "canceled", active_target_index: null });
+    await store.runNavigationMissionAction("cancel");
+    resolvePoll({ mission: { state: "running" }, execution: {}, route: {} });
+    await poll;
+    expect(store.navigationMissionExecution?.state).toBe("canceled");
+  });
+
+  it("clears a recovered recording status error without hiding an action error", async () => {
+    const store = useAutonomyStore();
+    store.recordingError = "Could not start";
+    store.recordingStatusError = "Network error";
+    mocks.get.mockResolvedValueOnce({ active: false, session_id: null });
+    await store.refreshRecording();
+    expect(store.recordingStatusError).toBeNull();
+    expect(store.recordingError).toBe("Could not start");
+  });
+
+  it("ignores a recording status poll that started before stop", async () => {
+    const store = useAutonomyStore();
+    let resolvePoll!: (value: unknown) => void;
+    mocks.get.mockReturnValueOnce(new Promise((resolve) => { resolvePoll = resolve; }));
+    const poll = store.refreshRecording();
+    mocks.post.mockResolvedValueOnce({ active: false, session_id: "session" });
+    await store.runRecordingAction("stop");
+    resolvePoll({ active: true, session_id: "session" });
+    await poll;
+    expect(store.recording?.active).toBe(false);
+  });
+
   it("keeps a shared telemetry connection until its last consumer leaves", () => {
     const store = useAutonomyStore();
 

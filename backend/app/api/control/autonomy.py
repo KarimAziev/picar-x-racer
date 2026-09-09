@@ -3,6 +3,7 @@
 from typing import Annotated, Optional
 
 from app.api import robot_deps
+from app.schemas.autonomy.navigation_mission import NavigationMissionRuntime
 from app.schemas.autonomy import (
     NavigationGoalRequest,
     NavigationExecutionRequest,
@@ -398,6 +399,22 @@ async def get_navigation_mission_execution(
     service: NavigationMissionDependency,
 ) -> NavigationMissionExecutionStatus:
     return service.status
+
+
+@router.get("/px/api/autonomy/navigation/mission/runtime")
+async def get_navigation_mission_runtime(
+    service: NavigationMissionDependency,
+    execution: NavigationExecutionDependency,
+    planning: NavigationPlanningDependency,
+) -> NavigationMissionRuntime:
+    # No awaits between reads: a leg transition cannot split this snapshot.
+    return NavigationMissionRuntime(
+        mission=service.status,
+        execution=(
+            execution.status if execution else NavigationExecutionStatus.unavailable()
+        ),
+        route=planning.status,
+    )
 
 
 @router.post(

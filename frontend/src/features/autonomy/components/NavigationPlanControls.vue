@@ -34,6 +34,7 @@
             label="Once"
             size="small"
             :outlined="store.navigationMissionMode !== 'once'"
+            :aria-pressed="store.navigationMissionMode === 'once'"
             :disabled="missionActive"
             @click="setMode('once')"
           />
@@ -42,6 +43,7 @@
             icon="pi pi-refresh"
             size="small"
             :outlined="store.navigationMissionMode !== 'loop'"
+            :aria-pressed="store.navigationMissionMode === 'loop'"
             :disabled="missionActive"
             @click="setMode('loop')"
           />
@@ -280,6 +282,7 @@ const store = useAutonomyStore();
 const confirm = useConfirm();
 const maxSpeed = ref(0.15);
 let timer: ReturnType<typeof setInterval> | null = null;
+let polling = false;
 const plan = computed(() => store.navigationMissionPlan);
 const execution = computed(() => store.navigationMissionExecution);
 const liveExecution = computed(() => store.navigationExecution);
@@ -289,7 +292,8 @@ const missionActive = computed(() =>
 );
 const missionError = computed(
   () =>
-    store.navigationMissionPlanError ?? store.navigationMissionExecutionError,
+    store.navigationMissionPlanError ?? store.navigationMissionExecutionError ??
+    store.navigationExecutionStatusError,
 );
 const canReview = computed(
   () =>
@@ -338,7 +342,9 @@ const stateSeverity = computed(() => {
 const planMessageClasses = computed(() =>
   plan.value?.state === "ready"
     ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-    : "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-100",
+    : plan.value?.state === "idle"
+      ? "bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300"
+      : "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-100",
 );
 
 const formatPoint = (point: NavigationPoint) =>
@@ -372,13 +378,20 @@ const confirmStart = (event: MouseEvent) =>
     accept: () => void store.startNavigationMission(maxSpeed.value),
   });
 
+const refreshRuntime = async () => {
+  if (polling) return;
+  polling = true;
+  try {
+    await store.refreshNavigationMissionRuntime();
+  } finally {
+    polling = false;
+  }
+};
+
 onMounted(() => {
   void store.refreshNavigationMissionPlan();
-  void store.refreshNavigationMissionExecution();
-  timer = setInterval(() => {
-    void store.refreshNavigationMissionExecution();
-    if (missionActive.value) void store.refreshNavigationExecution();
-  }, 250);
+  void refreshRuntime();
+  timer = setInterval(() => void refreshRuntime(), 250);
 });
 onUnmounted(() => {
   if (timer) clearInterval(timer);

@@ -30,7 +30,7 @@ from app.services.autonomy.navigation_planning import (
 )
 from app.services.autonomy.relative_motion import ActionConflictError
 from app.services.autonomy.topic_bus import TopicBus
-from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP
+from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, MISSION_STATUS
 
 
 class NavigationMissionService:
@@ -53,7 +53,7 @@ class NavigationMissionService:
         self._localization_timeout_ns = int(localization_timeout_seconds * 1e9)
         self._update_period_seconds = update_period_seconds
         self._plan = NavigationMissionPlanStatus.idle()
-        self._status = (
+        self._mission_status = (
             NavigationMissionExecutionStatus.idle()
             if execution is not None
             else NavigationMissionExecutionStatus.unavailable()
@@ -62,6 +62,16 @@ class NavigationMissionService:
         self._pause_gate = asyncio.Event()
         self._pause_gate.set()
         self._lock = asyncio.Lock()
+        self._execution_lock = asyncio.Lock()
+
+    @property
+    def _status(self) -> NavigationMissionExecutionStatus:
+        return self._mission_status
+
+    @_status.setter
+    def _status(self, value: NavigationMissionExecutionStatus) -> None:
+        self._mission_status = value
+        self._bus.publish(MISSION_STATUS, value)
 
     @property
     def plan_status(self) -> NavigationMissionPlanStatus:
@@ -84,6 +94,10 @@ class NavigationMissionService:
             if self.running:
                 raise ActionConflictError(
                     "cancel the active mission before reviewing it"
+                )
+            if self._execution is not None and self._execution.running:
+                raise ActionConflictError(
+                    "cancel the active navigation action before reviewing a mission"
                 )
             self._reset_execution_status()
             await self._planning.clear()
@@ -217,6 +231,10 @@ class NavigationMissionService:
                 )
             if self.running:
                 raise ActionConflictError("a navigation mission is already running")
+            if self._execution.running:
+                raise ActionConflictError(
+                    "another navigation action is already running"
+                )
             if self._plan.state != NavigationPlanState.READY or not self._plan.targets:
                 raise ActionConflictError("a reviewed mission is required")
             grid = self._bus.latest(LOCAL_MAP)
@@ -254,17 +272,27 @@ class NavigationMissionService:
             return self._status
 
     async def pause(self) -> NavigationMissionExecutionStatus:
-        if not self.running or self._status.state != ActionState.RUNNING:
-            raise ActionConflictError("no running mission can be paused")
-        self._pause_gate.clear()
-        if self._execution is not None and self._execution.running:
-            await self._execution.pause()
-        self._status = self._status.model_copy(
-            update={"state": ActionState.PAUSED, "reason": "Mission paused by operator"}
-        )
-        return self._status
+        async with self._lock:
+            if not self.running or self._status.state != ActionState.RUNNING:
+                raise ActionConflictError("no running mission can be paused")
+            self._pause_gate.clear()
+            async with self._execution_lock:
+                if self._execution is not None and self._execution.running:
+                    await self._execution.pause()
+            if self.running:
+                self._status = self._status.model_copy(
+                    update={
+                        "state": ActionState.PAUSED,
+                        "reason": "Mission paused by operator",
+                    }
+                )
+            return self._status
 
     async def resume(self) -> NavigationMissionExecutionStatus:
+        async with self._lock:
+            return await self._resume()
+
+    async def _resume(self) -> NavigationMissionExecutionStatus:
         if not self.running or self._status.state != ActionState.PAUSED:
             raise ActionConflictError("no paused mission can be resumed")
         if not self._reviewed_map_is_current():
@@ -290,10 +318,11 @@ class NavigationMissionService:
     async def cancel(
         self, reason: str = "operator canceled"
     ) -> NavigationMissionExecutionStatus:
-        if not self.running:
+        async with self._lock:
+            if not self.running:
+                return self._status
+            await self._terminate(ActionState.CANCELED, reason)
             return self._status
-        await self._terminate(ActionState.CANCELED, reason)
-        return self._status
 
     async def stop(self) -> None:
         if self.running:
@@ -320,6 +349,7 @@ class NavigationMissionService:
                 if pose is None:
                     await self._finish(ActionState.FAILED, "localization became stale")
                     return
+                await self._planning.clear()
                 self._status = self._status.model_copy(
                     update={
                         "current_lap": lap,
@@ -367,14 +397,15 @@ class NavigationMissionService:
                         }
                     )
                     assert self._execution is not None
-                    await self._execution.start(
-                        NavigationExecutionRequest(
-                            max_speed_mps=request.max_speed_mps,
-                            lookahead_m=request.lookahead_m,
-                            goal_tolerance_m=request.goal_tolerance_m,
-                            timeout_seconds=request.leg_timeout_seconds,
+                    async with self._execution_lock:
+                        await self._execution.start(
+                            NavigationExecutionRequest(
+                                max_speed_mps=request.max_speed_mps,
+                                lookahead_m=request.lookahead_m,
+                                goal_tolerance_m=request.goal_tolerance_m,
+                                timeout_seconds=request.leg_timeout_seconds,
+                            )
                         )
-                    )
                     while self._execution.running:
                         await asyncio.sleep(self._update_period_seconds)
                     result = self._execution.status
@@ -426,22 +457,21 @@ class NavigationMissionService:
 
     async def _terminate(self, state: ActionState, reason: str) -> None:
         task = self._task
-        self._task = None
-        self._pause_gate.set()
-        if self._execution is not None and self._execution.running:
-            await self._execution.cancel(reason)
+        # Stop the producer first: it must not launch another leg during cleanup.
         if task is not None and not task.done() and task is not asyncio.current_task():
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
+        if self._execution is not None and self._execution.running:
+            await self._execution.cancel(reason)
         await self._finish(state, reason)
 
     async def _finish(self, state: ActionState, reason: str) -> None:
-        self._task = None
         self._pause_gate.set()
         await self._planning.clear()
         self._status = self._status.model_copy(
             update={"state": state, "active_target_index": None, "reason": reason}
         )
+        self._task = None
 
     def _fresh_localization(self, frame_id: str) -> Optional[LocalizationPose2D]:
         pose = self._bus.latest(LOCALIZATION_POSE)

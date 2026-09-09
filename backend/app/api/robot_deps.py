@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 from functools import lru_cache
 from typing import (
     Annotated,
@@ -10,6 +11,7 @@ from typing import (
 )
 
 from app.adapters.picarx_adapter import PicarxAdapter
+from app.services.autonomy.recording import AutonomyRecorder
 from app.config.config import settings as app_config
 from app.core.async_emitter import AsyncEventEmitter
 from app.core.logger import Logger
@@ -147,6 +149,15 @@ def get_async_task_manager() -> AsyncTaskManager:
 @lru_cache()
 def get_robot_topic_bus() -> TopicBus:
     return TopicBus()
+
+
+@lru_cache()
+def get_autonomy_recorder(
+    bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+) -> AutonomyRecorder:
+    return AutonomyRecorder(
+        bus, Path(app_config.ROBOT_CONFIG_FILE).parent / "autonomy-recordings"
+    )
 
 
 @lru_cache()
@@ -1053,6 +1064,7 @@ def get_pinout_service() -> PinoutService:
 
 
 class LifespanAppDeps(TypedDict):
+    autonomy_recorder: AutonomyRecorder
     connection_service: ConnectionService
     robot_service: CarService
     settings_service: JsonDataManager
@@ -1077,6 +1089,7 @@ class LifespanAppDeps(TypedDict):
 
 
 async def get_lifespan_dependencies(
+    autonomy_recorder: Annotated[AutonomyRecorder, Depends(get_autonomy_recorder)],
     connection_service: Annotated[ConnectionService, Depends(get_connection_manager)],
     robot_service: Annotated[CarService, Depends(get_robot_service)],
     settings_service: Annotated[JsonDataManager, Depends(get_app_settings_manager)],
@@ -1129,6 +1142,7 @@ async def get_lifespan_dependencies(
     ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
+        "autonomy_recorder": autonomy_recorder,
         "connection_service": connection_service,
         "robot_service": robot_service,
         "distance_service": distance_service,

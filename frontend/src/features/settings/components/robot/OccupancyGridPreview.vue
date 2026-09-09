@@ -71,12 +71,15 @@
       >
       <span v-if="store.navigationMissionPlan?.state === 'ready'"
         ><i class="mr-1 inline-block h-0.5 w-3 bg-amber-300" />planned
-        forward</span
+        forward (preflight)</span
       >
       <span
         v-if="(store.navigationMissionPlan?.total_reverse_distance_m ?? 0) > 0"
         ><i class="mr-1 inline-block h-0.5 w-3 bg-fuchsia-400" />planned
-        reverse</span
+        reverse (preflight)</span
+      >
+      <span v-if="store.navigationPlan?.state === 'ready'"
+        ><i class="mr-1 inline-block h-0.5 w-3 bg-cyan-300" />live route</span
       >
     </div>
   </div>
@@ -296,7 +299,8 @@ const drawNavigationPlanOverlay = (
   height: number,
 ) => {
   const plan = store.navigationPlan;
-  if (!plan || plan.frame_id !== grid.header.frame_id) return;
+  if (!plan || plan.frame_id !== grid.header.frame_id ||
+      plan.map_sequence !== grid.header.sequence) return;
   if (plan.path.length > 1) {
     context.save();
     context.lineWidth = 3;
@@ -318,7 +322,8 @@ const drawNavigationPlanOverlay = (
       );
       if (!start || !end) continue;
       const direction = plan.path_directions[index] ?? "forward";
-      context.strokeStyle = direction === "reverse" ? "#e879f9" : "#fde047";
+      context.strokeStyle = "#67e8f9";
+      context.setLineDash(direction === "reverse" ? [6, 4] : []);
       context.beginPath();
       context.moveTo(start.x, start.y);
       context.lineTo(end.x, end.y);
@@ -364,7 +369,8 @@ const drawMissionOverlay = (
   height: number,
 ) => {
   const mission = store.navigationMissionPlan;
-  if (mission?.state === "ready" && mission.frame_id === grid.header.frame_id) {
+  if (mission?.state === "ready" && mission.frame_id === grid.header.frame_id &&
+      mission.map_sequence === grid.header.sequence) {
     context.save();
     context.lineWidth = 2.25;
     context.globalAlpha = 0.72;

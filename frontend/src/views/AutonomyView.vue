@@ -101,6 +101,7 @@
       >
         <SimulationControls />
         <NavigationPlanControls />
+        <RecordingControls />
         <RelativeMotionControls />
         <MappingSessionControls />
 
@@ -172,6 +173,7 @@ import AutonomyStatusBar from "@/features/autonomy/components/AutonomyStatusBar.
 import EmptyOperationalView from "@/features/autonomy/components/EmptyOperationalView.vue";
 import MappingSessionControls from "@/features/autonomy/components/MappingSessionControls.vue";
 import NavigationPlanControls from "@/features/autonomy/components/NavigationPlanControls.vue";
+import RecordingControls from "@/features/autonomy/components/RecordingControls.vue";
 import RelativeMotionControls from "@/features/autonomy/components/RelativeMotionControls.vue";
 import SimulationControls from "@/features/autonomy/components/SimulationControls.vue";
 import SensorDiagnostics from "@/features/settings/components/robot/SensorDiagnostics.vue";

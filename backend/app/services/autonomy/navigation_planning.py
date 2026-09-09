@@ -26,7 +26,12 @@ from app.services.autonomy.path_smoothing import (
     PathGeometryRejected,
 )
 from app.services.autonomy.topic_bus import TopicBus
-from app.services.autonomy.topics import LOCALIZATION_POSE, LOCAL_MAP, ODOMETRY
+from app.services.autonomy.topics import (
+    LOCALIZATION_POSE,
+    LOCAL_MAP,
+    ODOMETRY,
+    NAVIGATION_PLAN,
+)
 
 
 GridCell = Tuple[int, int]
@@ -554,8 +559,17 @@ class NavigationPlanningService:
         self._bus = bus
         self._planner = planner or OccupancyGridPlanner()
         self._localization_timeout_ns = int(localization_timeout_seconds * 1e9)
-        self._status = NavigationPlanStatus.idle()
+        self._plan_status = NavigationPlanStatus.idle()
         self._lock = asyncio.Lock()
+
+    @property
+    def _status(self) -> NavigationPlanStatus:
+        return self._plan_status
+
+    @_status.setter
+    def _status(self, value: NavigationPlanStatus) -> None:
+        self._plan_status = value
+        self._bus.publish(NAVIGATION_PLAN, value)
 
     @property
     def status(self) -> NavigationPlanStatus:

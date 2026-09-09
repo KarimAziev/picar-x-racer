@@ -21,6 +21,7 @@ from app.services.sensors.auxiliary_sensor_service import AuxiliarySensorService
 
 if TYPE_CHECKING:
     from robot_hat.i2c.smbus_manager import SMBusManager
+    from app.services.autonomy.recording import AutonomyRecorder
 
     from app.managers.file_management.json_data_manager import JsonDataManager
     from app.services.connection_service import ConnectionService
@@ -50,6 +51,7 @@ logger = Logger(name=__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    autonomy_recorder: Optional["AutonomyRecorder"] = None
     connection_service: Optional["ConnectionService"] = None
     robot_service: Optional["CarService"] = None
     distance_service: Optional["DistanceService"] = None
@@ -82,6 +84,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         lifespan_deps = solve_lifespan(robot_deps.get_lifespan_dependencies)
         async with lifespan_deps(app) as deps:
+            autonomy_recorder = deps.get("autonomy_recorder")
             connection_service = deps.get("connection_service")
             robot_service = deps.get("robot_service")
             settings_service = deps.get("settings_service")
@@ -348,6 +351,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise
         except Exception as e:
             logger.error("Failed to cleanup LiDAR safety service: %s", e)
+
+    if autonomy_recorder:
+        await autonomy_recorder.stop()
 
     if topic_bus:
         topic_bus.close()

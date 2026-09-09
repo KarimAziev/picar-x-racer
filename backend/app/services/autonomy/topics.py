@@ -11,8 +11,10 @@ from app.schemas.autonomy import (
     SafetyState,
     SimulationState,
     SteeringState,
+    NavigationPlanStatus,
 )
 from app.services.autonomy.messages import ActuatorCommand
+from app.schemas.autonomy.navigation_mission import NavigationMissionExecutionStatus
 from app.services.autonomy.topic_bus import Topic
 
 
@@ -27,6 +29,8 @@ MOTION_COMMANDED = Topic("/motion/commanded", ActuatorCommand)
 SIMULATION_STATE = Topic("/simulation/state", SimulationState)
 SAFETY_STATE = Topic("/safety/state", SafetyState)
 LOCAL_MAP = Topic("/map", OccupancyGrid)
+MISSION_STATUS = Topic("/navigation/mission/status", NavigationMissionExecutionStatus)
+NAVIGATION_PLAN = Topic("/navigation/plan", NavigationPlanStatus)
 
 
 __all__ = [

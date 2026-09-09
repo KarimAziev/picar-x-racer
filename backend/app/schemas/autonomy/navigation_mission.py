@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Self
 
 from app.schemas.autonomy.actions import ActionState
+from app.schemas.autonomy.navigation_execution import NavigationExecutionStatus
 from app.schemas.autonomy.navigation import (
     NavigationPlanState,
     NavigationPlanStatus,
@@ -131,6 +132,16 @@ class NavigationMissionExecutionStatus(BaseModel):
                 "and Ackermann geometry"
             ),
         )
+
+
+class NavigationMissionRuntime(BaseModel):
+    """One consistent snapshot of mission progress and the current live route."""
+
+    model_config = ConfigDict(frozen=True)
+
+    mission: NavigationMissionExecutionStatus
+    execution: NavigationExecutionStatus
+    route: NavigationPlanStatus
 
 
 __all__ = [

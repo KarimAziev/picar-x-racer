@@ -1,6 +1,7 @@
 """Typed, bounded, non-blocking topics for high-rate robot data."""
 
 import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, Optional, Set, Type, TypeVar, Union, cast
 
@@ -124,6 +125,24 @@ class TopicBus:
         self._stats: Dict[str, _MutableTopicStats] = {}
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._closed = False
+        self._observers: Set[TopicSubscription[PublishedMessage]] = set()
+
+    def observe(
+        self, *, max_queue_size: int = 2048, replay_latest: bool = False
+    ) -> TopicSubscription["PublishedMessage"]:
+        """Observe publication order with a bounded queue; never block producers."""
+        if self._closed:
+            raise RuntimeError("topic bus is closed")
+        if max_queue_size <= 0:
+            raise ValueError("max_queue_size must be greater than zero")
+        self._bind_running_loop()
+        subscription = TopicSubscription(self, PUBLICATIONS, max_queue_size)
+        self._observers.add(subscription)
+        if replay_latest:
+            now = time.monotonic_ns()
+            for name, message in self._latest.items():
+                subscription._offer(PublishedMessage(name, message, now, snapshot=True))
+        return subscription
 
     def subscribe(
         self,
@@ -159,6 +178,10 @@ class TopicBus:
         stats.published_messages += 1
         if topic.retain_latest:
             self._latest[topic.name] = message
+        if self._observers:
+            publication = PublishedMessage(topic.name, message, time.monotonic_ns())
+            for observer in tuple(self._observers):
+                observer._offer(publication)
         for subscription in tuple(self._subscriptions.get(topic.name, ())):
             dropped = subscription._offer(message)
             stats.delivered_messages += 1
@@ -195,6 +218,9 @@ class TopicBus:
             for subscription in tuple(subscriptions):
                 subscription._mark_closed()
         self._subscriptions.clear()
+        for observer in tuple(self._observers):
+            observer._mark_closed()
+        self._observers.clear()
 
     def _bind_running_loop(self) -> None:
         loop = asyncio.get_running_loop()
@@ -214,12 +240,24 @@ class TopicBus:
             self._stats[topic.name] = _MutableTopicStats()
 
     def _close_subscription(self, subscription: TopicSubscription[Any]) -> None:
+        self._observers.discard(subscription)
         subscriptions = self._subscriptions.get(subscription.topic.name)
         if subscriptions is not None:
             subscriptions.discard(subscription)
             if not subscriptions:
                 self._subscriptions.pop(subscription.topic.name, None)
         subscription._mark_closed()
+
+
+@dataclass(frozen=True)
+class PublishedMessage:
+    topic: str
+    message: Any
+    received_monotonic_ns: int
+    snapshot: bool = False
+
+
+PUBLICATIONS = Topic("/internal/publications", PublishedMessage, retain_latest=False)
 
 
 __all__ = [

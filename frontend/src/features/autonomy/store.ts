@@ -363,6 +363,21 @@ export interface NavigationMissionExecutionStatus {
   reason: string | null;
 }
 
+export interface NavigationMissionRuntime {
+  mission: NavigationMissionExecutionStatus;
+  execution: NavigationExecutionStatus;
+  route: NavigationPlanStatus;
+}
+
+export interface AutonomyRecordingStatus {
+  active: boolean;
+  session_id: string | null;
+  events_written: number;
+  dropped_events: number;
+  bytes_written: number;
+  error: string | null;
+}
+
 export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
@@ -373,6 +388,12 @@ export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"simulation", SimulationState>;
 
 export interface State {
+  recording: AutonomyRecordingStatus | null;
+  recordingLoading: boolean;
+  recordingError: string | null;
+  recordingStatusError: string | null;
+  recordingGeneration: number;
+  missionRuntimeGeneration: number;
   loading: boolean;
   error: string | null;
   mapError: string | null;
@@ -416,6 +437,12 @@ export interface State {
 }
 
 const defaultState: State = {
+  recording: null,
+  recordingLoading: false,
+  recordingError: null,
+  recordingStatusError: null,
+  recordingGeneration: 0,
+  missionRuntimeGeneration: 0,
   loading: false,
   error: null,
   mapError: null,
@@ -459,7 +486,7 @@ const defaultState: State = {
 };
 
 export const useAutonomyStore = defineStore("autonomy-telemetry", {
-  state: (): State => ({ ...defaultState, latest: {} }),
+  state: (): State => ({ ...defaultState, latest: {}, missionTargets: [] }),
   getters: {
     connected({ connection }) {
       // Pinia/Vue unwrap nested refs when the websocket model is stored in
@@ -469,6 +496,38 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
   },
   actions: {
+    async refreshRecording() {
+      if (this.recordingLoading) return;
+      const generation = this.recordingGeneration;
+      try {
+        const recording = await robotApi.get<AutonomyRecordingStatus>(
+          "/px/api/autonomy/recordings/status",
+        );
+        if (generation !== this.recordingGeneration) return;
+        this.recording = recording;
+        this.recordingStatusError = null;
+      } catch (error) {
+        if (generation === this.recordingGeneration)
+          this.recordingStatusError = retrieveError(error).text;
+      }
+    },
+
+    async runRecordingAction(action: "start" | "stop") {
+      if (this.recordingLoading) return;
+      this.recordingGeneration += 1;
+      this.recordingLoading = true;
+      try {
+        this.recording = await robotApi.post<AutonomyRecordingStatus>(
+          `/px/api/autonomy/recordings/${action}`,
+        );
+        this.recordingError = null;
+        this.recordingStatusError = null;
+      } catch (error) {
+        this.recordingError = retrieveError(error).text;
+      } finally {
+        this.recordingLoading = false;
+      }
+    },
     async refreshStatus() {
       try {
         this.loading = this.sensors.length === 0;
@@ -704,8 +763,28 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       }
     },
 
+    async refreshNavigationMissionRuntime() {
+      if (this.navigationMissionExecutionLoading) return;
+      const generation = this.missionRuntimeGeneration;
+      try {
+        const runtime = await robotApi.get<NavigationMissionRuntime>(
+          "/px/api/autonomy/navigation/mission/runtime",
+        );
+        if (generation !== this.missionRuntimeGeneration) return;
+        this.navigationMissionExecution = runtime.mission;
+        this.navigationExecution = runtime.execution;
+        this.navigationPlan = runtime.route;
+        this.navigationExecutionStatusError = null;
+        // Keep operator-action errors visible across successful polling.
+      } catch (error) {
+        if (generation === this.missionRuntimeGeneration)
+          this.navigationExecutionStatusError = retrieveError(error).text;
+      }
+    },
+
     async invalidateNavigationMissionReview() {
       if (this.navigationMissionPlan?.state === "idle") return;
+      this.navigationMissionPlan = null;
       try {
         this.navigationMissionPlan =
           await robotApi.post<NavigationMissionPlanStatus>(
@@ -719,6 +798,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     async addMissionTarget(xM: number, yM: number) {
+      if (this.missionTargets.length >= 32) return;
       if (
         ["running", "paused"].includes(
           this.navigationMissionExecution?.state ?? "",
@@ -730,11 +810,13 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     async removeMissionTarget(index: number) {
+      if (["running", "paused"].includes(this.navigationMissionExecution?.state ?? "")) return;
       this.missionTargets.splice(index, 1);
       await this.invalidateNavigationMissionReview();
     },
 
     async moveMissionTarget(index: number, offset: -1 | 1) {
+      if (["running", "paused"].includes(this.navigationMissionExecution?.state ?? "")) return;
       const destination = index + offset;
       if (destination < 0 || destination >= this.missionTargets.length) return;
       const [target] = this.missionTargets.splice(index, 1);
@@ -790,6 +872,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     async startNavigationMission(maxSpeedMps = 0.15) {
+      this.missionRuntimeGeneration += 1;
       if (this.mappingSession?.state === "active") {
         this.navigationMissionExecutionError =
           "Pause or finish mapping before starting a mission.";
@@ -815,6 +898,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     async runNavigationMissionAction(action: "pause" | "resume" | "cancel") {
+      this.missionRuntimeGeneration += 1;
       try {
         this.navigationMissionExecutionLoading = true;
         this.navigationMissionExecution =
