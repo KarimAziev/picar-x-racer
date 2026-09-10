@@ -59,6 +59,45 @@ class OccupancyGridPlannerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.planner = OccupancyGridPlanner()
 
+    def test_forward_preference_turns_in_open_room_and_keeps_reverse_escape(
+        self,
+    ) -> None:
+        planner = OccupancyGridPlanner(
+            prefer_forward=True,
+            forward_search_nodes=100,
+            path_smoother=AckermannPathSmoother(
+                wheelbase_m=0.18, max_abs_steering_angle_rad=math.radians(30)
+            ),
+        )
+        for height, expected in (
+            (40, NavigationDirection.FORWARD),
+            (3, NavigationDirection.REVERSE),
+        ):
+            with self.subTest(height=height):
+                result = planner.plan(
+                    grid(
+                        40,
+                        height,
+                        resolution_m=0.1,
+                        origin_x_m=-2,
+                        origin_y_m=-height * 0.05,
+                    ),
+                    start_x_m=0,
+                    start_y_m=0,
+                    start_yaw_rad=0,
+                    goal=NavigationGoalRequest(x_m=-1, y_m=0, clearance_m=0),
+                )
+                self.assertEqual(set(result.path_directions), {expected})
+
+    def test_body_radius_rejects_goal_too_close_to_boundary(self) -> None:
+        source = grid(40, 40, resolution_m=0.1)
+        goal = NavigationGoalRequest(x_m=0.3, y_m=2, clearance_m=0)
+        self.planner.plan(source, start_x_m=2, start_y_m=2, goal=goal)
+        with self.assertRaisesRegex(NavigationPlanRejected, "clearance"):
+            OccupancyGridPlanner(body_radius_m=0.5).plan(
+                source, start_x_m=2, start_y_m=2, goal=goal
+            )
+
     def test_plans_and_simplifies_a_clear_route(self) -> None:
         result = self.planner.plan(
             grid(10, 6),

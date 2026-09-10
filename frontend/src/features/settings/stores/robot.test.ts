@@ -84,6 +84,15 @@ describe("robot configuration save feedback", () => {
     expect(warning).not.toHaveBeenCalled();
   });
 
+  it("keeps overall body length separate from wheelbase and reports restart", async () => {
+    const robot = useRobotStore();
+    const wheelbase = robot.data.ackermann_odometry.wheelbase_m;
+    const warning = vi.spyOn(useMessagerStore(), "warning");
+    await robot.updatePartialData({ navigation: { ...robot.data.navigation, body_length_m: 0.57 } });
+    expect(robot.data.ackermann_odometry.wheelbase_m).toBe(wheelbase);
+    expect(warning).toHaveBeenCalledWith("Restart the backend to apply autonomy runtime configuration changes.");
+  });
+
   it("reports enabled odometry geometry tuning as hot reloaded", async () => {
     const robot = useRobotStore();
     const messager = useMessagerStore();

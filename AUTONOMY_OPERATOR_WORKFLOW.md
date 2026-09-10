@@ -4,6 +4,11 @@ Status: active implementation specification
 
 Related architecture: [AUTONOMY_ARCHITECTURE_PLAN.md](./AUTONOMY_ARCHITECTURE_PLAN.md)
 
+Current body geometry, forward-preferred planning, and explicit saved-map
+workflow: [operator guide](./docs/autonomy-body-and-saved-maps.md). Historical
+milestone descriptions below include future design notes; the guide records
+the implemented Save/Load behavior and its manual-alignment limitations.
+
 ## Purpose
 
 This document defines how a user should configure, observe, manually drive, map,
@@ -55,7 +60,8 @@ Important current limitations:
 
 - localization and mapping do not produce autonomous motion by themselves;
 - the current occupancy grid is a fixed local odometry grid, not SLAM;
-- maps cannot yet be saved, loaded, or localized against;
+- maps can be explicitly saved and loaded as frozen localization references;
+  loading requires manual pose alignment, not automatic global relocalization;
 - the map canvas does not yet visualize bounds warnings or individual scan
   insertion/rejection locations;
 - local click-to-goal planning and cancelable pure-pursuit execution exist,
@@ -404,13 +410,12 @@ POST /px/api/odometry/reset
 GET  /px/api/map/current
 ```
 
-Later persistent-map operations:
+Implemented persistent-map operations:
 
 ```text
-POST /px/api/map/save
-POST /px/api/map/load
+POST /px/api/maps
+POST /px/api/maps/{id}/load
 GET  /px/api/maps
-DELETE /px/api/maps/{name}
 ```
 
 Rules:
@@ -421,8 +426,9 @@ Rules:
 - `clear` requires confirmation and creates a new map sequence;
 - odometry reset is explicit and reports the new origin;
 - stale or unsynchronized inputs reject insertion without corrupting the grid;
-- a persistent map must record resolution, dimensions, frame metadata, and the
-  calibration identity used to create it.
+- persistent maps record resolution, dimensions, origin/frame metadata, and an
+  optional save-time pose. Calibration identity compatibility checking remains
+  future work; operators must verify it before reuse.
 
 The map should eventually be streamed rather than polled once per second.
 Dense grids may use a compact binary or image representation while metadata and

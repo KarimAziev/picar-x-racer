@@ -18,6 +18,7 @@ from app.schemas.robot.motors import (
 )
 from app.schemas.robot.motion_control import MotionControlConfig
 from app.schemas.robot.odometry import AckermannOdometryConfig
+from app.schemas.robot.navigation import NavigationConfig
 from app.schemas.robot.pose_estimation import PoseEstimationConfig
 from app.schemas.robot.safety import LidarSafetyConfig
 from app.schemas.robot.simulation import CoherentSimulationConfig
@@ -34,6 +35,12 @@ class HardwareConfig(BaseModel):
     """
     The configuration for the robot components and sensors.
     """
+
+    navigation: NavigationConfig = Field(
+        default_factory=NavigationConfig,
+        title="Navigation geometry and policy",
+        description="Forward-route preference and measured body dimensions. Wheelbase remains under Ackermann odometry. Changes require backend restart.",
+    )
 
     schema_version: Annotated[
         Literal[7],

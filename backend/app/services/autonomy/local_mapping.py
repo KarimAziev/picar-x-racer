@@ -237,6 +237,7 @@ class LocalMappingService:
         self._scans_inserted_with_localization = 0
         self._localization_fallbacks = 0
         self._has_map = False
+        self._loaded_grid: Optional[OccupancyGrid] = None
 
     @property
     def running(self) -> bool:
@@ -265,11 +266,16 @@ class LocalMappingService:
             scans_inserted_with_localization=(self._scans_inserted_with_localization),
             localization_fallbacks=self._localization_fallbacks,
             has_map=self._has_map,
+            loaded_from_disk=self._loaded_grid is not None,
         )
 
     def start_session(self) -> MappingSessionStatus:
         """Start a new session or resume the currently paused session."""
 
+        if self._loaded_grid is not None:
+            raise ValueError(
+                "loaded maps are frozen localization references; clear the map before starting new mapping"
+            )
         if self._state == MappingSessionState.IDLE:
             self._session_id += 1
             self._reset_session_counters()
@@ -293,6 +299,7 @@ class LocalMappingService:
     def clear_map(self) -> MappingSessionStatus:
         """Clear cells while preserving the session state and latest odometry."""
 
+        self._loaded_grid = None
         self._grid.clear()
         self._has_map = False
         self._publish_snapshot(timestamp_monotonic_ns=time.monotonic_ns())
@@ -301,6 +308,7 @@ class LocalMappingService:
     def reset_session(self) -> MappingSessionStatus:
         """Clear the map and return to an unarmed mapping session."""
 
+        self._loaded_grid = None
         self._state = MappingSessionState.IDLE
         self._odometry_history.clear()
         self._localization_history.clear()
@@ -365,6 +373,7 @@ class LocalMappingService:
 
         was_running = self.running
         await self.stop()
+        self._loaded_grid = None
         self._grid = replacement._grid
         self._max_odometry_age_ns = replacement._max_odometry_age_ns
         self._prefer_localization = replacement._prefer_localization
@@ -467,16 +476,39 @@ class LocalMappingService:
         self._sequence += 1
         self._bus.publish(
             LOCAL_MAP,
-            self._grid.message(
-                header=MessageHeader(
-                    sequence=self._sequence,
-                    frame_id="odom",
-                    timestamp_monotonic_ns=timestamp_monotonic_ns,
-                    source_timestamp_ns=source_timestamp_ns,
+            (
+                self._loaded_grid.model_copy(
+                    update={
+                        "header": MessageHeader(
+                            sequence=self._sequence,
+                            frame_id="odom",
+                            timestamp_monotonic_ns=timestamp_monotonic_ns,
+                        )
+                    }
+                )
+                if self._loaded_grid is not None
+                else self._grid.message(
+                    header=MessageHeader(
+                        sequence=self._sequence,
+                        frame_id="odom",
+                        timestamp_monotonic_ns=timestamp_monotonic_ns,
+                        source_timestamp_ns=source_timestamp_ns,
+                    )
                 )
             ),
         )
         self._bus.publish(MAPPING_SESSION, self.status)
+
+    def load_frozen_grid(self, grid: OccupancyGrid) -> MappingSessionStatus:
+        if self._state == MappingSessionState.ACTIVE:
+            raise ValueError("pause or finish mapping before loading a map")
+        self._loaded_grid = grid
+        self._state = MappingSessionState.PAUSED
+        self._has_map = True
+        self._session_id += 1
+        self._reset_session_counters()
+        self._publish_snapshot(timestamp_monotonic_ns=time.monotonic_ns())
+        return self.status
 
 
 __all__ = [

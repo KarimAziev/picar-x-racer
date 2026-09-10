@@ -71,6 +71,9 @@
       />
     </div>
 
+    <p v-if="session?.loaded_from_disk" class="mt-3 text-xs text-surface-500">
+      Saved map loaded as a frozen localization reference. Clear it before starting a new mapping session.
+    </p>
     <dl
       v-if="session?.enabled"
       class="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:grid-cols-3 xl:grid-cols-2"
@@ -114,6 +117,7 @@
         <dd>{{ session.rejected_stale_odometry.toLocaleString() }}</dd>
       </div>
     </dl>
+    <SavedMapControls />
   </section>
 </template>
 
@@ -121,6 +125,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import ConfirmPopup from "primevue/confirmpopup";
 import { useConfirm } from "primevue/useconfirm";
+import SavedMapControls from "./SavedMapControls.vue";
 import {
   useAutonomyStore,
   type MappingSessionAction,
@@ -139,6 +144,7 @@ const canStart = computed(
   () =>
     Boolean(session.value?.enabled) &&
     session.value?.state !== "active" &&
+    !session.value?.loaded_from_disk &&
     !navigationActive.value &&
     !store.mappingActionLoading,
 );

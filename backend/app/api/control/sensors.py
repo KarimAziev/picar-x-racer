@@ -111,7 +111,10 @@ async def start_mapping_session(
             status_code=409,
             detail="Cancel the active navigation action or mission before starting mapping",
         )
-    return _require_mapping_service(service).start_session()
+    try:
+        return _require_mapping_service(service).start_session()
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
 
 
 @router.post(

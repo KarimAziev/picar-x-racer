@@ -1,4 +1,12 @@
 {
+  "navigation": {
+    "prefer_forward": true,
+    "forward_search_nodes": 3000,
+    "use_body_clearance": false,
+    "body_length_m": null,
+    "body_width_m": null,
+    "rear_overhang_m": null
+  },
   "schema_version": 7,
   "motion_control": {
     "enabled": false,

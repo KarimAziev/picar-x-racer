@@ -77,6 +77,18 @@ class HybridAStarPlannerTests(unittest.TestCase):
                 is_clear=lambda path: all(point.x_m < 0.4 for point in path),
             )
 
+    def test_forward_only_search_turns_to_goal_behind_without_reverse(self) -> None:
+        result = self.planner.plan(
+            start=HybridPose(0, 0, 0),
+            goal=NavigationPoint(x_m=-1, y_m=0),
+            grid_resolution_m=0.05,
+            is_clear=lambda path: all(-2 < p.x_m < 2 and -2 < p.y_m < 2 for p in path),
+            allow_reverse=False,
+        )
+        self.assertEqual(set(result.path_directions), {NavigationDirection.FORWARD})
+        self.assertEqual(result.reverse_distance_m, 0)
+        self.assertTrue(any(abs(point.y_m) > 0.1 for point in result.path))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,6 +35,41 @@ vi.mock("@/composables/useWebsocket", () => ({
 import { useAutonomyStore } from "@/features/autonomy/store";
 
 describe("autonomy telemetry store", () => {
+  it("saves a named map without starting motion or changing the current map", async () => {
+    const store = useAutonomyStore();
+    const saved = { id: "a".repeat(32), name: "Flat", created_at: "2026-09-10T10:00:00Z", saved_pose: null };
+    mocks.post.mockResolvedValueOnce(saved);
+    expect(await store.saveMap("Flat")).toBe(true);
+    expect(mocks.post).toHaveBeenCalledExactlyOnceWith("/px/api/maps", { name: "Flat" });
+    expect(store.savedMaps).toEqual([saved]);
+    expect(store.savedMapMessage).toContain("survive a backend restart");
+    expect(store.savedMapBusy).toBe(false);
+  });
+
+  it("keeps saved-map errors visible across successful catalog refreshes", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockRejectedValueOnce(new Error("Disarm first"));
+    expect(await store.loadSavedMap("a".repeat(32), { x_m: 0, y_m: 0, yaw_deg: 0 })).toBe(false);
+    const error = store.savedMapError;
+    expect(error).toBeTruthy();
+    mocks.get.mockResolvedValueOnce([]);
+    await store.refreshSavedMaps();
+    expect(store.savedMapError).toBe(error);
+    expect(store.mapClearGeneration).toBe(0);
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads explicit placement and discards old route previews without motion", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockResolvedValue({ enabled: true, state: "paused", loaded_from_disk: true, has_map: true });
+    const alignment = { x_m: 1.2, y_m: -0.3, yaw_deg: 90 };
+    expect(await store.loadSavedMap("b".repeat(32), alignment)).toBe(true);
+    expect(mocks.post).toHaveBeenCalledWith(`/px/api/maps/${"b".repeat(32)}/load`, alignment);
+    expect(store.mapClearGeneration).toBe(1);
+    expect(store.mappingSession?.loaded_from_disk).toBe(true);
+    expect(mocks.post.mock.calls.some(([path]) => String(path).endsWith("/start"))).toBe(false);
+  });
+
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();

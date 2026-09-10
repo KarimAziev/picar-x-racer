@@ -352,6 +352,14 @@ export interface LEDConfig {
   name: string | null;
 }
 export interface Data extends ServoData, MotorsData {
+  navigation: {
+    prefer_forward: boolean;
+    forward_search_nodes: number;
+    use_body_clearance: boolean;
+    body_length_m: number | null;
+    body_width_m: number | null;
+    rear_overhang_m: number | null;
+  };
   schema_version: number;
   motion_control: MotionControlConfig;
   ackermann_odometry: AckermannOdometryConfig;
@@ -397,6 +405,7 @@ const ledDefaults = {
 
 const startupScopedConfigKeys = [
   "motion_control",
+  "navigation",
 ] as const satisfies readonly (keyof Data)[];
 
 const runtimeOptionalConfigKeys = [
@@ -441,6 +450,14 @@ const defaultState: State = {
   config: null,
   data: {
     schema_version: 7,
+    navigation: {
+      prefer_forward: true,
+      forward_search_nodes: 3000,
+      use_body_clearance: false,
+      body_length_m: null,
+      body_width_m: null,
+      rear_overhang_m: null,
+    },
     motion_control: {
       enabled: false,
       control_frequency_hz: 20,

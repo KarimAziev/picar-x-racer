@@ -235,6 +235,20 @@ export interface MappingSessionStatus {
   scans_inserted_with_localization: number;
   localization_fallbacks: number;
   has_map: boolean;
+  loaded_from_disk?: boolean;
+}
+
+export interface SavedMapAlignment {
+  x_m: number;
+  y_m: number;
+  yaw_deg: number;
+}
+
+export interface SavedMapInfo {
+  id: string;
+  name: string;
+  created_at: string;
+  saved_pose: SavedMapAlignment | null;
 }
 
 export type MappingSessionAction =
@@ -391,6 +405,11 @@ export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"simulation", SimulationState>;
 
 export interface State {
+  savedMaps: SavedMapInfo[];
+  savedMapsLoading: boolean;
+  savedMapBusy: boolean;
+  savedMapError: string | null;
+  savedMapMessage: string | null;
   recording: AutonomyRecordingStatus | null;
   recordingLoading: boolean;
   recordingError: string | null;
@@ -440,6 +459,11 @@ export interface State {
 }
 
 const defaultState: State = {
+  savedMaps: [],
+  savedMapsLoading: false,
+  savedMapBusy: false,
+  savedMapError: null,
+  savedMapMessage: null,
   recording: null,
   recordingLoading: false,
   recordingError: null,
@@ -489,7 +513,7 @@ const defaultState: State = {
 };
 
 export const useAutonomyStore = defineStore("autonomy-telemetry", {
-  state: (): State => ({ ...defaultState, latest: {}, missionTargets: [] }),
+  state: (): State => ({ ...defaultState, latest: {}, missionTargets: [], savedMaps: [] }),
   getters: {
     connected({ connection }) {
       // Pinia/Vue unwrap nested refs when the websocket model is stored in
@@ -499,6 +523,60 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
   },
   actions: {
+    async refreshSavedMaps() {
+      if (this.savedMapsLoading || this.savedMapBusy) return;
+      this.savedMapsLoading = true;
+      try {
+        this.savedMaps = await robotApi.get<SavedMapInfo[]>("/px/api/maps");
+      } catch (error) {
+        this.savedMapError = retrieveError(error).text;
+      } finally {
+        this.savedMapsLoading = false;
+      }
+    },
+
+    async saveMap(name: string) {
+      if (this.savedMapBusy || this.savedMapsLoading) return false;
+      this.savedMapBusy = true;
+      this.savedMapError = null;
+      this.savedMapMessage = null;
+      try {
+        const saved = await robotApi.post<SavedMapInfo>("/px/api/maps", { name });
+        this.savedMaps = [saved, ...this.savedMaps];
+        this.savedMapMessage = `Saved “${saved.name}” on the robot backend. It will survive a backend restart.`;
+        return true;
+      } catch (error) {
+        this.savedMapError = retrieveError(error).text;
+        return false;
+      } finally {
+        this.savedMapBusy = false;
+      }
+    },
+
+    async loadSavedMap(id: string, alignment: SavedMapAlignment) {
+      if (this.savedMapBusy || this.savedMapsLoading) return false;
+      this.savedMapBusy = true;
+      this.savedMapError = null;
+      this.savedMapMessage = null;
+      try {
+        this.mappingSession = await robotApi.post<MappingSessionStatus>(
+          `/px/api/maps/${encodeURIComponent(id)}/load`, alignment,
+        );
+        this.mapClearGeneration += 1;
+        await Promise.all([
+          this.refreshLocalMap(),
+          this.clearNavigationPlan(),
+          this.clearNavigationMission(),
+        ]);
+        this.savedMapMessage = "Loaded a frozen map at the specified placement. Robot remains disarmed; review a new route before driving.";
+        return true;
+      } catch (error) {
+        this.savedMapError = retrieveError(error).text;
+        return false;
+      } finally {
+        this.savedMapBusy = false;
+      }
+    },
     async refreshRecording() {
       if (this.recordingLoading) return;
       const generation = this.recordingGeneration;

@@ -11,6 +11,7 @@ from app.api.control.settings import _reload_autonomy_runtime
 from app.control_server import app as control_app
 from app.exceptions.settings import InvalidSettings
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
+from app.schemas.robot.navigation import NavigationConfig
 from app.services.autonomy import (
     ActuationCalibration,
     AckermannOdometryService,
@@ -191,6 +192,31 @@ class TestSimulationSettingsHotReload(unittest.IsolatedAsyncioTestCase):
             fused_mapping.status.preferred_pose_source.value,
             "localization",
         )
+
+    def test_simulator_checks_larger_of_body_envelope_and_legacy_radius(self) -> None:
+        _, config = self.make_configs()
+        config.navigation = NavigationConfig(
+            use_body_clearance=True,
+            body_length_m=0.57,
+            body_width_m=0.3,
+            rear_overhang_m=0.1,
+        )
+        world = Mock()
+        world.collides_circle.return_value = True
+        for legacy_radius in (0.1, 0.75):
+            with self.subTest(radius=legacy_radius):
+                config.coherent_simulation.vehicle_radius_m = legacy_radius
+                with patch.object(
+                    robot_deps, "build_simulation_world", return_value=world
+                ):
+                    with self.assertRaisesRegex(ValueError, "initial pose collides"):
+                        robot_deps.build_coherent_simulation_supervisor(
+                            config, TopicBus()
+                        )
+                self.assertAlmostEqual(
+                    world.collides_circle.call_args.args[2],
+                    max(legacy_radius, math.hypot(0.47, 0.15)),
+                )
 
     async def test_switching_to_observed_map_preserves_estimator_and_map(self) -> None:
         _, previous = self.make_configs()

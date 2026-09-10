@@ -71,6 +71,9 @@ class OccupancyGridPlanner:
         occupied_threshold: int = 65,
         max_cells: int = 1_000_000,
         path_smoother: Optional[AckermannPathSmoother] = None,
+        prefer_forward: bool = False,
+        forward_search_nodes: int = 3000,
+        body_radius_m: float = 0.0,
     ) -> None:
         if not 0 <= occupied_threshold <= 100:
             raise ValueError("occupied threshold must be between 0 and 100")
@@ -79,6 +82,11 @@ class OccupancyGridPlanner:
         self.occupied_threshold = occupied_threshold
         self.max_cells = max_cells
         self.path_smoother = path_smoother
+        self.prefer_forward = prefer_forward
+        self.forward_search_nodes = forward_search_nodes
+        if not math.isfinite(body_radius_m) or body_radius_m < 0:
+            raise ValueError("body radius must be finite and non-negative")
+        self.body_radius_m = body_radius_m
         self.hybrid_planner = (
             HybridAStarPlanner(
                 curvature_limit_per_m=path_smoother.curvature_limit_per_m
@@ -115,7 +123,12 @@ class OccupancyGridPlanner:
 
         blocked = self._inflated_obstacles(
             grid,
-            clearance_m=goal.clearance_m,
+            # Both the obstacle and traversed cell have spatial extent, not
+            # just a center point. Cover their combined half diagonals when
+            # protecting a measured body envelope with a rasterized mask.
+            clearance_m=goal.clearance_m
+            + self.body_radius_m
+            + (math.sqrt(2) * grid.resolution_m if self.body_radius_m else 0),
             allow_unknown=goal.allow_unknown,
         )
         if self._is_blocked(grid, blocked, start_cell):
@@ -173,7 +186,23 @@ class OccupancyGridPlanner:
                         str(smoothing_error)
                     ) from smoothing_error
                 try:
-                    recovery = self.hybrid_planner.plan(
+                    forward_recovery = None
+                    if self.prefer_forward:
+                        try:
+                            forward_recovery = HybridAStarPlanner(
+                                curvature_limit_per_m=self.path_smoother.curvature_limit_per_m,
+                                max_expanded_nodes=self.forward_search_nodes,
+                            ).plan(
+                                start=HybridPose(start_x_m, start_y_m, start_yaw_rad),
+                                goal=NavigationPoint(x_m=goal.x_m, y_m=goal.y_m),
+                                grid_resolution_m=grid.resolution_m,
+                                is_clear=clearance_check,
+                                guide_path=raw_path,
+                                allow_reverse=False,
+                            )
+                        except HybridPathNotFound:
+                            pass
+                    recovery = forward_recovery or self.hybrid_planner.plan(
                         start=HybridPose(
                             x_m=start_x_m,
                             y_m=start_y_m,

@@ -37,6 +37,7 @@ class MappingSessionStatus(BaseModel):
     scans_inserted_with_localization: Annotated[int, Field(ge=0)] = 0
     localization_fallbacks: Annotated[int, Field(ge=0)] = 0
     has_map: bool = False
+    loaded_from_disk: bool = False
 
     @classmethod
     def disabled(cls) -> "MappingSessionStatus":

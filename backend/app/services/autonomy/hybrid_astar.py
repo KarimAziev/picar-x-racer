@@ -116,6 +116,7 @@ class HybridAStarPlanner:
         grid_resolution_m: float,
         is_clear: PathClearanceCheck,
         guide_path: Sequence[NavigationPoint] = (),
+        allow_reverse: bool = True,
     ) -> HybridPath:
         if grid_resolution_m <= 0:
             raise ValueError("grid resolution must be positive")
@@ -190,6 +191,7 @@ class HybridAStarPlanner:
                     goal,
                     sample_spacing_m=collision_spacing_m,
                     is_clear=is_clear,
+                    allow_reverse=allow_reverse,
                 )
                 if analytic is not None:
                     return self._reconstruct(nodes, node_index, analytic, expanded)
@@ -198,6 +200,8 @@ class HybridAStarPlanner:
                 NavigationDirection.FORWARD,
                 NavigationDirection.REVERSE,
             ):
+                if direction == NavigationDirection.REVERSE and not allow_reverse:
+                    continue
                 direction_sign = self._direction_sign(direction)
                 for curvature_per_m in primitive_curvatures:
                     segment, end_pose = self._rollout(
@@ -282,12 +286,15 @@ class HybridAStarPlanner:
         *,
         sample_spacing_m: float,
         is_clear: PathClearanceCheck,
+        allow_reverse: bool = True,
     ) -> Optional[_AnalyticConnection]:
         candidates = []
         for direction in (
             NavigationDirection.FORWARD,
             NavigationDirection.REVERSE,
         ):
+            if direction == NavigationDirection.REVERSE and not allow_reverse:
+                continue
             connection = self._analytic_connection(
                 node.pose,
                 goal,

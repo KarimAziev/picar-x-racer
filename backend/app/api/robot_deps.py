@@ -735,7 +735,7 @@ def build_coherent_simulation_supervisor(
     if world.collides_circle(
         simulation.initial_x_m,
         simulation.initial_y_m,
-        simulation.vehicle_radius_m,
+        max(simulation.vehicle_radius_m, config.navigation.body_radius_m),
     ):
         raise ValueError("coherent simulation initial pose collides with the world")
     lidar = config.localization_sensors.lidar
@@ -771,7 +771,7 @@ def build_coherent_simulation_supervisor(
             collision_checker=lambda x_m, y_m: world.collides_circle(
                 x_m,
                 y_m,
-                simulation.vehicle_radius_m,
+                max(simulation.vehicle_radius_m, config.navigation.body_radius_m),
             ),
         ),
         initial_x_m=simulation.initial_x_m,
@@ -943,7 +943,12 @@ def get_navigation_planning_service(
             )
     return NavigationPlanningService(
         topic_bus,
-        OccupancyGridPlanner(path_smoother=path_smoother),
+        OccupancyGridPlanner(
+            path_smoother=path_smoother,
+            prefer_forward=config.navigation.prefer_forward,
+            forward_search_nodes=config.navigation.forward_search_nodes,
+            body_radius_m=config.navigation.body_radius_m,
+        ),
     )
 
 
