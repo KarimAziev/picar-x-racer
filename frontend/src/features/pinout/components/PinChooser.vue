@@ -1,34 +1,62 @@
 <template>
   <div class="md:p-2 lg:p-4">
+    <p
+      v-if="assignments"
+      class="mb-3 text-[14px] text-slate-600 dark:text-slate-300"
+    >
+      Direct GPIO assignments include unsaved edits, not live activity.
+      “Configured” means no enable switch. I²C channels are separate from GPIO
+      pins.
+    </p>
     <SelectField
       :filter="false"
       label="Pin Layout"
+      class="text-[14px]"
       :options="layoutOptions"
       v-model="selectedLayout"
     />
+    <p v-if="pinoutStore.loading" role="status" class="mt-3">
+      Loading board pins…
+    </p>
+    <p v-else-if="!Object.keys(pinHeaders).length" role="status" class="mt-3">
+      Board pin layout is unavailable.
+    </p>
+    <div
+      v-else-if="unmappedAssignments.length"
+      class="my-3 text-[14px] text-amber-800 dark:text-amber-300"
+      role="status"
+    >
+      <p>These configured pins could not be matched to this board:</p>
+      <ul class="list-disc pl-5">
+        <li v-for="assignment in unmappedAssignments" :key="assignment.key">
+          {{ assignment.owner }} · {{ assignment.field }}:
+          {{ assignment.value }}
+        </li>
+      </ul>
+    </div>
     <div v-for="(header, headerKey) in pinHeaders" :key="headerKey">
       <div class="flex items-center justify-between mb-3">
-        <div class="text-lg font-semibold">{{ header.name }}</div>
+        <div class="text-[16px] font-semibold">{{ header.name }}</div>
       </div>
-      <div class="flex gap-1 md:gap-4 lg:gap-12">
-        <div
-          class="flex-1"
-          v-for="(pinRows, i) in groupColumnsSorted(header.pins)"
-          :key="`${headerKey}-${i}`"
-        >
-          <div
-            v-for="pin in pinRows"
-            :key="`${headerKey}-${i}-${pin.name}`"
-            class="p-1"
-          >
-            <PinButton
-              :pin-info="pin"
-              @update:model-value="(val) => emit('update:modelValue', val)"
-              :pinLayout="selectedLayout"
-              :selected="isSelected(pin)"
-            />
-          </div>
-        </div>
+      <div
+        class="grid grid-cols-1 sm:grid-cols-[repeat(var(--pin-columns),minmax(0,1fr))] gap-2 sm:gap-x-4"
+        :style="{ '--pin-columns': header.columns }"
+      >
+        <PinButton
+          v-for="pin in pinsInHeaderOrder(header.pins)"
+          :key="`${headerKey}-${pin.number}`"
+          :pin-info="pin"
+          @update:model-value="(val) => emit('update:modelValue', val)"
+          :pinLayout="selectedLayout"
+          :selected="isSelected(pin)"
+          :assignments="
+            pin.gpio_number === null
+              ? []
+              : assignmentsByGpio.get(pin.gpio_number)
+          "
+          :show-usage="!!assignments"
+          :current-assignment-key="currentAssignmentKey"
+        />
       </div>
     </div>
   </div>
@@ -36,10 +64,15 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { isString, isNumber } from "@/util/guards";
+import { isNumber } from "@/util/guards";
 import SelectField from "@/ui/SelectField.vue";
 import { useStore as usePinoutStore } from "@/features/pinout/store";
-import { pinValueLayout, groupColumnsSorted } from "@/features/pinout/util";
+import {
+  pinValueLayout,
+  gpioForPin,
+  groupPinAssignments,
+} from "@/features/pinout/util";
+import type { PinAssignment } from "@/features/pinout/usage";
 import PinButton from "@/features/pinout/components/PinButton.vue";
 import type { ModelValue } from "@/features/pinout/components/PinButton.vue";
 import type { PinSchema, PinMapping } from "@/features/pinout/store";
@@ -52,9 +85,25 @@ const layoutOptions = computed(() => pinoutStore.layoutOptions);
 
 export interface Props {
   modelValue: ModelValue;
+  assignments?: PinAssignment[];
+  currentAssignmentKey?: string;
 }
 
 const props = defineProps<Props>();
+
+const assignmentsByGpio = computed(() =>
+  groupPinAssignments(props.assignments || [], pinoutStore.hash),
+);
+
+const unmappedAssignments = computed(() =>
+  (props.assignments || []).filter(
+    (assignment) =>
+      gpioForPin(assignment.value, pinoutStore.hash) === undefined,
+  ),
+);
+
+const pinsInHeaderOrder = (pins: Record<string, PinSchema>) =>
+  Object.values(pins).sort((a, b) => a.row - b.row || a.col - b.col);
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: ModelValue): void;
@@ -70,17 +119,9 @@ const selectedLayout = ref(
   pinValueLayout(layoutOptions.value, modelNormalizedValue.value),
 );
 
-const isSelected = (pin: PinSchema | null | undefined) => {
-  if (!pin) {
-    return false;
-  }
-  return isNumber(props.modelValue)
-    ? pin.gpio_number === props.modelValue
-    : isString(props.modelValue)
-      ? pin.name === props.modelValue ||
-        (pin.names && pin.names.includes(props.modelValue))
-      : false;
-};
+const isSelected = (pin: PinSchema) =>
+  pin.gpio_number !== null &&
+  pin.gpio_number === gpioForPin(props.modelValue, pinoutStore.hash);
 
 watch(layoutOptions, (newVal) => {
   selectedLayout.value = pinValueLayout(newVal, modelNormalizedValue.value);

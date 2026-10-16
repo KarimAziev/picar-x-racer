@@ -4,11 +4,17 @@
       v-model:visible="visible"
       header="Choose a pin"
       content-class="min-h-[40vh] overflow-auto"
+      class="w-[min(64rem,calc(100vw-2rem))]"
       dismissableMask
       @show="handleSelectBeforeShow"
       @hide="handleSelectBeforeHide"
     >
-      <PinChooser @update:model-value="updateValue" :model-value="modelValue" />
+      <PinChooser
+        @update:model-value="updateValue"
+        :model-value="modelValue"
+        :assignments="assignments"
+        :current-assignment-key="JSON.stringify(path)"
+      />
 
       <template #footer>
         <div class="text-right">
@@ -47,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, inject } from "vue";
 import { isNil } from "@/util/guards";
 import type { Props as FieldProps } from "@/ui/Field.vue";
 import Field from "@/ui/Field.vue";
@@ -55,9 +61,11 @@ import { useStore as usePinoutStore } from "@/features/pinout/store";
 import { usePopupStore } from "@/features/settings/stores";
 import type { ModelValue } from "@/features/pinout/components/PinButton.vue";
 import PinChooser from "@/features/pinout/components/PinChooser.vue";
+import { pinAssignmentsKey } from "@/features/pinout/context";
 
 const deviceStore = usePinoutStore();
 const popupStore = usePopupStore();
+const assignments = inject(pinAssignmentsKey, undefined);
 
 const visible = ref(false);
 
@@ -68,6 +76,7 @@ export interface Props extends FieldProps {
   disabled?: boolean;
   tooltip?: string;
   invalid?: boolean;
+  path?: (string | number)[];
 }
 
 const props = withDefaults(defineProps<Props>(), {

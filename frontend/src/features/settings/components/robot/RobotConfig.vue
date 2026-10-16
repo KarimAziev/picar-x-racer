@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, computed } from "vue";
+import { onMounted, ref, watch, computed, provide } from "vue";
 import { useRobotStore } from "@/features/settings/stores";
 import { cloneDeep } from "@/util/obj";
 import { isDataChangedPred } from "@/features/settings/components/robot/util";
@@ -37,11 +37,18 @@ import { validateAll, resolveRefRecursive } from "@/ui/JsonSchema/util";
 import { isPlainObject } from "@/util/guards";
 import JsonSchema from "@/ui/JsonSchema/JsonSchema.vue";
 import Loader from "@/features/settings/components/robot/Loader.vue";
+import { pinAssignmentsKey } from "@/features/pinout/context";
+import { collectPinAssignments } from "@/features/pinout/usage";
 
 defineProps<{ idPrefix: string }>();
 
 const store = useRobotStore();
 const currValue = ref(cloneDeep(store.data));
+
+provide(
+  pinAssignmentsKey,
+  computed(() => collectPinAssignments(store.config, currValue.value)),
+);
 
 const handleSave = async () => {
   await store.saveData(currValue.value);

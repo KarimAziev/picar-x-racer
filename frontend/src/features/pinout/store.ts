@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { useMessagerStore } from "@/features/messager";
 import { robotApi } from "@/api";
-import { normalizePins } from "@/ui/PinChooser/util";
+import { normalizePins } from "@/features/pinout/util";
 import type { ValueLabelOption } from "@/types/common";
 
 export interface PinSchema {

@@ -4,6 +4,7 @@ import type {
   PinInfoNormalized,
 } from "@/features/pinout/store";
 import { isNil } from "@/util/guards";
+import type { PinAssignment } from "@/features/pinout/usage";
 import { ValueLabelOption } from "@/types/common";
 import { groupBy } from "@/util/obj";
 import {
@@ -132,4 +133,34 @@ export function groupColumnsSorted(pinsObj: Record<string, PinSchema>) {
   return Object.entries(groups)
     .sort(([a1], [a2]) => +a1 - +a2)
     .map(([_, val]) => val.sort((a, b) => a.row - b.row));
+}
+
+export function gpioForPin(
+  value: string | number | null,
+  pins: Map<string | number, PinInfoNormalized>,
+): number | undefined {
+  if (value === null) {
+    return;
+  }
+  const key =
+    typeof value === "string" && /^(0|[1-9]\d*)$/.test(value)
+      ? Number(value)
+      : value;
+  return pins.get(key)?.gpio_number ?? undefined;
+}
+
+export function groupPinAssignments(
+  assignments: readonly PinAssignment[],
+  pins: Map<string | number, PinInfoNormalized>,
+): Map<number, PinAssignment[]> {
+  const grouped = new Map<number, PinAssignment[]>();
+  for (const assignment of assignments) {
+    const gpio = gpioForPin(assignment.value, pins);
+    if (gpio !== undefined) {
+      const owners = grouped.get(gpio) || [];
+      owners.push(assignment);
+      grouped.set(gpio, owners);
+    }
+  }
+  return grouped;
 }
