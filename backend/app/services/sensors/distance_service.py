@@ -11,6 +11,7 @@ from app.util.gpio_reservations import validate_distance_pins
 
 if TYPE_CHECKING:
     from multiprocessing.sharedctypes import Synchronized
+    from multiprocessing.synchronize import Event
 
     from app.core.async_emitter import AsyncEventEmitter, Listener
     from app.managers.async_task_manager import AsyncTaskManager
@@ -30,10 +31,11 @@ class DistanceService:
 
         self.config_manager = config_manager
         self.robot_config = HardwareConfig(**config_manager.load_data())
-        self._distance: Synchronized[float] = mp.Value("f", 0)
+        self._distance: Optional[Synchronized[float]] = mp.Value("f", 0)
+        self._last_distance = 0.0
         self._process = None
         self._closed = False
-        self.stop_event = mp.Event()
+        self.stop_event: Optional[Event] = mp.Event()
         self.interval = interval
         self._lock = threading.RLock()
         self._async_lock = asyncio.Lock()
@@ -90,19 +92,22 @@ class DistanceService:
         self._emitter.off("distance", listener)
 
     async def distance_watcher(self) -> None:
-        initial_value = self._distance.value
+        distance = self._distance
+        stop_event = self.stop_event
+        if distance is None or stop_event is None:
+            return
+        initial_value = distance.value
         try:
             while (
-                hasattr(self, "stop_event")
-                and self._process
+                self._process
                 and self._process.is_alive()
                 and not self._task_manager.stop_event.is_set()
-                and not self.stop_event.is_set()
+                and not stop_event.is_set()
             ):
                 if not self.loading:
                     await self._emitter.emit("distance", self.distance)
                     await asyncio.sleep(self.interval)
-                elif initial_value == self._distance.value:
+                elif initial_value == distance.value:
                     await asyncio.sleep(self.interval)
                 else:
                     self.loading = False
@@ -149,7 +154,10 @@ class DistanceService:
 
     @property
     def distance(self) -> float:
-        return round(self._distance.value, 2)
+        distance = self._distance
+        if distance is not None:
+            self._last_distance = distance.value
+        return round(self._last_distance, 2)
 
     @property
     def running(self) -> Optional[bool]:
@@ -177,6 +185,8 @@ class DistanceService:
 
     def _cancel_process(self) -> None:
         with self._lock:
+            if self.stop_event is None:
+                return
             if self._process is None:
                 _log.info("No distance process to stop")
             else:
@@ -200,8 +210,32 @@ class DistanceService:
             _log.info("Stop event cleared")
 
     async def cleanup(self) -> None:
-        """Stop acquisition and reject subsequent attempts to start the service."""
+        """Stop acquisition and release IPC resources before process exit."""
         self._closed = True
         self.config_manager.off(self.config_manager.UPDATE_EVENT, self.update_config)
         self.config_manager.off(self.config_manager.LOAD_EVENT, self.update_config)
-        await self.stop_all()
+        task = asyncio.create_task(self._cleanup_resources())
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            while not task.done():
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    continue
+                except Exception:
+                    break
+            if not task.cancelled() and task.exception() is not None:
+                _log.error(
+                    "Distance cleanup failed during cancellation: %s", task.exception()
+                )
+            raise
+
+    async def _cleanup_resources(self) -> None:
+        async with self._async_lock:
+            await self._stop_all_locked()
+            with self._lock:
+                # Cached services can outlive lifespan shutdown. Dropping these
+                # references unlinks their semaphores before Uvicorn replays SIGTERM.
+                self._distance = None
+                self.stop_event = None

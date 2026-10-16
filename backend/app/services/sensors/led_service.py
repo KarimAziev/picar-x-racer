@@ -1,7 +1,7 @@
 import multiprocessing as mp
 import threading
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from app.core.px_logger import Logger
 from app.managers.led_manager import led_process
@@ -10,6 +10,8 @@ from app.util.async_threads import run_in_thread
 from app.util.gpio_reservations import gpio_number, validate_led_pin
 
 if TYPE_CHECKING:
+    from multiprocessing.synchronize import Event
+
     from app.adapters.picarx_adapter import PicarxAdapter
     from app.core.async_emitter import AsyncEventEmitter
     from app.managers.async_task_manager import AsyncTaskManager
@@ -53,7 +55,7 @@ class LEDService:
         self.config_manager = config_manager
         self.robot_config = HardwareConfig(**config_manager.load_data())
         self.led_config = self.robot_config.led
-        self.stop_event = mp.Event()
+        self.stop_event: Optional[Event] = mp.Event()
         self.emitter = emitter
         self.task_manager = task_manager
         self._process = None
@@ -161,6 +163,8 @@ class LEDService:
         Sets the stop_event, waits for the process to join and terminates it if still alive.
         """
         with self.lock:
+            if self.stop_event is None:
+                return
             if self._process is None:
                 _log.info("No LED process to stop")
             else:
@@ -241,16 +245,15 @@ class LEDService:
                 self._start_process()
 
     async def cleanup(self) -> None:
-        """
-        Performs cleanup operations needed for LED service shutdown.
-
-        This method stops the running LED process and removes associated properties
-        to aid in graceful shutdown.
-
-        Usage:
-            await led_service.cleanup()
-        """
+        """Stop the worker and release IPC resources before process exit."""
         self._closed = True
         self.config_manager.off(self.config_manager.UPDATE_EVENT, self.update_config)
         self.config_manager.off(self.config_manager.LOAD_EVENT, self.update_config)
-        await self.stop_all()
+        await run_in_thread(self._cleanup_resources)
+
+    def _cleanup_resources(self) -> None:
+        with self.lock:
+            self._cancel_process()
+            # Cached services can outlive lifespan shutdown. Dropping this event
+            # unlinks its semaphores before Uvicorn replays SIGTERM.
+            self.stop_event = None
