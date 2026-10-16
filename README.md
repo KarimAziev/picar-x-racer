@@ -203,6 +203,47 @@ make backend-venv-install INSTALL_FLAGS="--dry-run"
 
 That's all! This is a one-time setup.
 
+To update an installed checkout, run as the account that owns it:
+
+```bash
+make update
+```
+
+The current branch must have an upstream and no local or staged changes to
+tracked files. The updater checks these conditions before stopping anything,
+stops `picar_x_racer.service` when running, pulls with `git pull --ff-only`,
+installs the checked-out Python requirements, installs frontend dependencies
+with `npm ci`, and builds the frontend. It starts the service after every step
+succeeds and confirms that systemd reports it active. When no service is
+installed, it runs the application in the foreground. For a foreground
+installation, stop its existing process with Ctrl+C before updating.
+
+Automatic service detection checks the system scope first, then the current
+user's scope. An unreachable service manager is an error, not evidence that a
+service is absent. Select a scope or a custom unit when needed:
+
+```bash
+make update SERVICE_SCOPE=user
+make update SERVICE_NAME=my_robot.service
+make update SERVICE_SCOPE=none
+```
+
+`SERVICE_SCOPE=none` is for foreground installations, including Linux hosts
+without a systemd manager. System service actions use `sudo`; Git, npm, and pip
+run as the calling account. A failed stop, pull, installation, or build prevents
+startup. A service stopped for an unsuccessful update stays stopped; resolve
+the error and rerun the update. Concurrent updates are rejected. First-time
+machine provisioning remains `make all`; `make update` installs Python packages
+without running system package installation or changing Polkit rules.
+
+Python synchronization satisfies `backend/requirements.txt`, including
+`robot-hat[spi]>=3.3.3,<4`, and installs `requirements-no-deps.txt` with dependency
+resolution disabled as declared. Packages already satisfying the requirements
+can remain installed. This is not a locked Python environment or a package
+pruning operation. The frontend uses its committed lockfile. The individual
+steps are also available as `make backend-deps-sync`, `make frontend-ci`, and
+`make frontend-build`.
+
 ### Usage
 
 You can launch the project by running the following command in the project directory:
@@ -302,6 +343,15 @@ calibration for localization. See
 for why pulse-to-angle response must be checked per servo.
 
 The servo mapping and shutdown protections require `robot-hat>=3.3.3`.
+
+Robot configuration schema v8 persists `real_min_angle=-90` and
+`real_max_angle=90` for servos without explicit pulse-angle calibration.
+Migration runs automatically through `JsonDataManager` when configuration is
+loaded, including the v6 → v7 → v8 sequence. Existing calibration pairs,
+travel limits, pulse widths, offsets, and enabled states are preserved. An
+incomplete calibration pair is rejected. These nominal defaults are not
+measurements inferred from the travel limits; verify them during commissioning.
+Successful upgrades of the runtime configuration are written atomically.
 
 #### Motor safety and commissioning
 

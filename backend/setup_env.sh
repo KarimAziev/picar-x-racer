@@ -284,14 +284,15 @@ install_python_deps() {
   # Both OpenCV wheels install the same cv2 package, so reinstall headless after
   # removing the GUI distribution to leave a complete, unambiguous installation.
   if pip show opencv-python > /dev/null 2>&1; then
+    local headless_version
+    headless_version="$(python -c 'from importlib.metadata import version; print(version("opencv-python-headless"))')"
     log_info "Replacing the GUI OpenCV wheel with opencv-python-headless..."
     run_cmd "pip uninstall --yes opencv-python"
-    run_cmd "pip install --force-reinstall --no-deps opencv-python-headless"
+    run_cmd "pip install --force-reinstall --no-deps 'opencv-python-headless==$headless_version'"
   fi
 
   log_info "Installing packages whose optional GUI dependencies are intentionally omitted..."
   run_cmd "pip install --no-deps -r requirements-no-deps.txt"
-  run_cmd "pip install platformdirs -U --force-reinstall"
 
   if [[ "$OS_TYPE" = "Darwin" && $SKIP_GSTREAMER -eq 0 ]]; then
     log_info "Installing the optional PyGObject binding for GStreamer on macOS..."

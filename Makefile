@@ -2,13 +2,18 @@ FRONTEND_DIR ?= frontend
 BACKEND_DIR ?= backend
 VENV_DIR ?= $(abspath $(BACKEND_DIR)/.venv)
 VENV_PYTHON := $(VENV_DIR)/bin/python
+SERVICE_NAME ?= picar_x_racer.service
+SERVICE_SCOPE ?= auto
+# An indirect reference keeps make -n from executing the updater as a recursive recipe.
+UPDATE_MAKE := $(MAKE)
 
 # Phony targets
 
 .PHONY: all check check-backend check-frontend test dev dev-debug dev-setup frontend-dev \
 	backend-run setup-and-run build-all frontend-install frontend-build backend-venv-install \
 	clean clean-pyc help clean-build update-robot-hat update-robot-hat-git test-backend \
-	test-frontend type-check-backend type-check-frontend format-backend format-check-backend
+	test-frontend type-check-backend type-check-frontend format-backend format-check-backend \
+	update backend-deps-sync frontend-ci
 
 # Default target
 all: build-all
@@ -40,6 +45,9 @@ update-robot-hat-git:
 frontend-install:
 	cd $(FRONTEND_DIR) && npm install
 
+frontend-ci:
+	cd $(FRONTEND_DIR) && npm ci
+
 frontend-dev:
 	cd $(FRONTEND_DIR) && npm run dev
 
@@ -64,6 +72,16 @@ build-all: frontend-install frontend-build
 # Backend setup in virtual environment
 backend-venv-install:
 	cd $(BACKEND_DIR) && VENV_DIR="$(VENV_DIR)" bash ./setup_env.sh $(INSTALL_FLAGS)
+
+backend-deps-sync:
+	cd $(BACKEND_DIR) && VENV_DIR="$(VENV_DIR)" bash ./setup_env.sh -s create_venv,install_python_deps
+	$(VENV_PYTHON) -c 'from importlib.metadata import version; print("Installed robot-hat:", version("robot-hat"))'
+
+update:
+	python3 "$(BACKEND_DIR)/update_project.py" --make "$(UPDATE_MAKE)" \
+		--backend-dir "$(BACKEND_DIR)" --frontend-dir "$(FRONTEND_DIR)" \
+		--venv-dir "$(VENV_DIR)" --log-level "$(LOG_LEVEL)" \
+		--service-name "$(SERVICE_NAME)" --service-scope "$(SERVICE_SCOPE)"
 
 
 # Run backend tests in virtual environment
@@ -129,6 +147,9 @@ help:
 		'test-frontend' 'Run the frontend test suite.'
 	@printf '%s\n' '' 'Maintenance:'
 	@printf '  %-27s %s\n' \
+		'update' 'Stop service, pull, sync dependencies, build, and start service or foreground app.' \
+		'backend-deps-sync' 'Install checked-out Python requirements without provisioning system packages.' \
+		'frontend-ci' 'Install frontend dependencies from package-lock.json.' \
 		'update-robot-hat' 'Reinstall the latest released robot-hat package.' \
 		'update-robot-hat-git' 'Install robot-hat from the main Git branch.' \
 		'clean' 'Remove Python caches and the frontend build.' \
@@ -142,4 +163,6 @@ help:
 		'BACKEND_DIR=<path>' 'Backend directory (default: backend).' \
 		'VENV_DIR=<path>' 'Backend virtual environment directory.' \
 		'INSTALL_FLAGS="<flags>"' 'Flags passed to backend/setup_env.sh.' \
-		'LOG_LEVEL=<level>' 'Backend log level, such as DEBUG or WARNING.'
+		'LOG_LEVEL=<level>' 'Backend log level, such as DEBUG or WARNING.' \
+		'SERVICE_NAME=<unit>' 'Service for make update (default: picar_x_racer.service).' \
+		'SERVICE_SCOPE=<scope>' 'auto detects system then user services; system/user selects a scope; none runs foreground.'
