@@ -144,12 +144,16 @@ class JsonDataManager(EventEmitter):
 
         return self._cache
 
-    def update(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update(
+        self, data: Dict[str, Any], *, emit_event: bool = True
+    ) -> Dict[str, Any]:
         """
         Update the file with new JSON data.
 
         Args:
             data: A dictionary representing the new JSON data to save.
+            emit_event: Notify listeners after persistence. Callers that defer this
+                must emit UPDATE_EVENT with the returned data themselves.
 
         Returns:
             The updated JSON data.
@@ -161,10 +165,9 @@ class JsonDataManager(EventEmitter):
         self._last_modified_time = self._get_modified_time(self._target_file)
         self._cache = data
         self._last_cached_file = self._target_file
-        self._logger.info(
-            "File '%s' sucessfully saved, emitting update event", self._target_file
-        )
-        self.emit(self.UPDATE_EVENT, self._cache)
+        self._logger.info("File '%s' successfully saved", self._target_file)
+        if emit_event:
+            self.emit(self.UPDATE_EVENT, self._cache)
         return self._cache
 
     def _write_file(self, data: Dict[str, Any]) -> None:

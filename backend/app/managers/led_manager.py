@@ -1,4 +1,3 @@
-from time import sleep
 from typing import TYPE_CHECKING, Optional, Union
 
 from app.core.px_logger import Logger
@@ -24,9 +23,10 @@ def led_process(
         while not stop_event.is_set():
             try:
                 led.on()
-                sleep(interval)
+                if stop_event.wait(interval):
+                    break
                 led.off()
-                sleep(interval)
+                stop_event.wait(interval)
             except ValueError as e:
                 _log.error("Aborting LED process: %s", str(e))
                 break
@@ -50,6 +50,9 @@ def led_process(
         if led:
             _log.info("Closing LED.")
             try:
-                led.close()
+                try:
+                    led.off()
+                finally:
+                    led.close()
             except Exception as e:
                 _log.warning("Failed to close LED: %s", e)

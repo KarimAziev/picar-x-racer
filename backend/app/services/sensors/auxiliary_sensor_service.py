@@ -17,6 +17,7 @@ from app.schemas.robot.auxiliary_sensors import (
     MockMagnetometerSensorConfig,
 )
 from app.schemas.robot.config import HardwareConfig
+from app.util.async_threads import run_in_thread
 from robot_hat import (
     EnvironmentalSensorABC,
     HTS221,
@@ -60,6 +61,8 @@ class AuxiliarySensorService:
         self._stop_event = asyncio.Event()
         self._task: Optional[asyncio.Task[None]] = None
         self._lock = asyncio.Lock()
+        self._lifecycle_lock = asyncio.Lock()
+        self._closed = False
         self._adapters: Dict[str, AuxiliarySensorAdapter] = {}
         self._adapter_errors: Dict[str, str] = {}
         self._cache: Dict[str, Tuple[float, AuxiliarySensorReading]] = {}
@@ -79,15 +82,14 @@ class AuxiliarySensorService:
         return dict(self._adapters)
 
     def update_config(self, new_config: Dict[str, object]) -> None:
-        next_config = HardwareConfig.model_validate(new_config)
-        if self.config.auxiliary_sensors == next_config.auxiliary_sensors:
-            self.config = next_config
+        if self._closed:
             return
+        next_config = HardwareConfig.model_validate(new_config)
         if not self._app_loop.is_running():
-            self.config = next_config
-            self.close_adapters()
-            self._reset_runtime_state()
-            self._initialize_adapters()
+            if self.config.auxiliary_sensors == next_config.auxiliary_sensors:
+                self.config = next_config
+            else:
+                self._replace_adapters(next_config)
             return
         try:
             running_loop = asyncio.get_running_loop()
@@ -107,14 +109,26 @@ class AuxiliarySensorService:
                 )
 
     async def _apply_config(self, next_config: HardwareConfig) -> None:
-        await self._cancel_broadcast_task()
+        async with self._lifecycle_lock:
+            if self._closed:
+                return
+            if self.config.auxiliary_sensors == next_config.auxiliary_sensors:
+                self.config = next_config
+                return
+            await self._cancel_broadcast_task()
+            async with self._lock:
+                if self._closed:
+                    return
+                await run_in_thread(self._replace_adapters, next_config)
+            if not self.enabled_sensors and self.connection_manager.active_connections:
+                await self.broadcast_state()
+            self._start_broadcast_task()
+
+    def _replace_adapters(self, next_config: HardwareConfig) -> None:
         self.config = next_config
         self.close_adapters()
         self._reset_runtime_state()
         self._initialize_adapters()
-        if not self.enabled_sensors and self.connection_manager.active_connections:
-            await self.broadcast_state()
-        self._start_broadcast_task()
 
     def _initialize_adapters(self) -> None:
         self._adapter_errors = {}
@@ -194,24 +208,23 @@ class AuxiliarySensorService:
     async def read_sensor(
         self, config: AuxiliarySensorConfig
     ) -> AuxiliarySensorReading:
-        cached = self._cache.get(config.name)
-        if cached and time.monotonic() - cached[0] < config.poll_interval_seconds:
-            return cached[1]
-        adapter = self._adapters.get(config.name)
-        if adapter is None:
-            return self._error_reading(
-                config,
-                self._adapter_errors.get(
-                    config.name, "sensor adapter is not initialized"
-                ),
-            )
         async with self._lock:
+            if self._closed:
+                return self._error_reading(config, "Sensor service is shut down")
             cached = self._cache.get(config.name)
             if cached and time.monotonic() - cached[0] < config.poll_interval_seconds:
                 return cached[1]
+            adapter = self._adapters.get(config.name)
+            if adapter is None:
+                return self._error_reading(
+                    config,
+                    self._adapter_errors.get(
+                        config.name, "sensor adapter is not initialized"
+                    ),
+                )
             try:
                 if isinstance(adapter, EnvironmentalSensorABC):
-                    sample = await asyncio.to_thread(adapter.read_sample)
+                    sample = await run_in_thread(adapter.read_sample)
                     reading = AuxiliarySensorReading(
                         name=config.name,
                         driver=config.driver,
@@ -222,7 +235,7 @@ class AuxiliarySensorService:
                         pressure_pa=sample.pressure_pa,
                     )
                 else:
-                    sample = await asyncio.to_thread(adapter.read_sample)
+                    sample = await run_in_thread(adapter.read_sample)
                     reading = AuxiliarySensorReading(
                         name=config.name,
                         driver=config.driver,
@@ -274,6 +287,9 @@ class AuxiliarySensorService:
         )
 
     async def cleanup_connection_manager(self) -> None:
+        self._closed = True
+        self.config_manager.off(self.config_manager.UPDATE_EVENT, self.update_config)
+        self.config_manager.off(self.config_manager.LOAD_EVENT, self.update_config)
         self.connection_manager.off(
             ConnectionEvent.FIRST_ACTIVE_CONNECTION.value,
             self._start_broadcast_task,
@@ -282,8 +298,11 @@ class AuxiliarySensorService:
             ConnectionEvent.LAST_CONNECTION.value,
             self._cancel_broadcast_task,
         )
-        await self._cancel_broadcast_task()
-        self.close_adapters()
+        async with self._lifecycle_lock:
+            await self._cancel_broadcast_task()
+            async with self._lock:
+                await run_in_thread(self.close_adapters)
+                self._reset_runtime_state()
 
     def close_adapters(self) -> None:
         for name, adapter in self._adapters.items():
@@ -299,7 +318,8 @@ class AuxiliarySensorService:
 
     def _start_broadcast_task(self) -> None:
         if (
-            self._task is None
+            not self._closed
+            and self._task is None
             and self.enabled_sensors
             and self.connection_manager.active_connections
         ):
@@ -314,6 +334,8 @@ class AuxiliarySensorService:
             await self._task
         except asyncio.CancelledError:
             pass
+        except Exception as error:
+            _log.error("Auxiliary sensor broadcast task failed: %s", error)
         finally:
             self._task = None
             self._stop_event.clear()

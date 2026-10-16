@@ -19,6 +19,10 @@ export interface ServoConfig {
   servo_pin: Nullable<string | number>;
   min_angle: number;
   max_angle: number;
+  real_min_angle: number;
+  real_max_angle: number;
+  min_pulse: number;
+  max_pulse: number;
   calibration_offset: Nullable<number>;
   calibration_mode?: Nullable<ServoCalibrationMode>;
   dec_step: number;
@@ -377,6 +381,10 @@ const defaultServo = {
   servo_pin: null,
   min_angle: -30,
   max_angle: 30,
+  real_min_angle: -90,
+  real_max_angle: 90,
+  min_pulse: 500,
+  max_pulse: 2500,
   dec_step: -5,
   inc_step: 5,
   calibration_offset: null,
@@ -449,7 +457,7 @@ const defaultState: State = {
   loaded: false,
   config: null,
   data: {
-    schema_version: 7,
+    schema_version: 8,
     navigation: {
       prefer_forward: true,
       forward_search_nodes: 3000,

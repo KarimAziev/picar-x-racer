@@ -20,7 +20,7 @@ class TestSettingsServiceSharedPWMDrivers(unittest.TestCase):
     def setUp(self) -> None:
         self.config_manager = MagicMock()
         self.config_manager.load_data.return_value = deepcopy(self.config_data)
-        self.config_manager.update.side_effect = lambda data: data
+        self.config_manager.update.side_effect = lambda data, **kwargs: data
         self.picarx = MagicMock()
         self.picarx.config = HardwareConfig.model_validate(self.config_data)
         self.service = SettingsService(
@@ -92,6 +92,85 @@ class TestSettingsServiceSharedPWMDrivers(unittest.TestCase):
         candidate = HardwareConfig.model_validate(candidate_data)
 
         self.service._validate_shared_pwm_drivers(candidate)
+
+    def test_rejects_led_motor_enable_collision_before_activation(self) -> None:
+        candidate_data = deepcopy(self.config_data)
+        candidate_data["motors"] = [
+            {
+                "name": "Drive",
+                "forward_pin": "GPIO20",
+                "backward_pin": "GPIO21",
+                "enable_pin": "GPIO26",
+            }
+        ]
+        candidate_data["led"] = {"name": "LED", "pin": 26, "interval": 0.1}
+        candidate = HardwareConfig.model_validate(candidate_data)
+
+        with self.assertRaisesRegex(InvalidSettings, "LED GPIO26 is reserved"):
+            self.service.save_settings(candidate)
+
+        self.picarx.cleanup.assert_not_called()
+        self.config_manager.update.assert_not_called()
+
+    def _gpio_motor_candidate(self, enable_pin: str) -> HardwareConfig:
+        candidate_data = deepcopy(self.config_data)
+        candidate_data["motors"] = [
+            {
+                "name": "Drive",
+                "forward_pin": "GPIO20",
+                "backward_pin": "GPIO21",
+                "enable_pin": enable_pin,
+            }
+        ]
+        candidate_data["led"] = None
+        candidate_data["ultrasonic"] = None
+        return HardwareConfig.model_validate(candidate_data)
+
+    def test_cannot_assign_motor_to_led_pin_in_same_update_that_disables_led(
+        self,
+    ) -> None:
+        candidate = self._gpio_motor_candidate("GPIO26")
+
+        with self.assertRaisesRegex(InvalidSettings, "GPIO26 is still reserved by LED"):
+            self.service.save_settings(candidate)
+
+        self.picarx.cleanup.assert_not_called()
+        self.config_manager.update.assert_not_called()
+
+    def test_runtime_led_pin_is_reserved_during_actuator_initialization(self) -> None:
+        self.service._led_service = MagicMock()
+        self.service._led_service.led_config.pin = "GPIO25"
+        candidate = self._gpio_motor_candidate("GPIO25")
+
+        with self.assertRaisesRegex(InvalidSettings, "GPIO25 is still reserved by LED"):
+            self.service.save_settings(candidate)
+
+        self.picarx.cleanup.assert_not_called()
+
+    def test_cannot_assign_motor_to_running_ultrasonic_gpio(self) -> None:
+        self.service._distance_service = MagicMock()
+        self.service._distance_service.robot_config = (
+            self.service.saved_settings.model_copy(deep=True)
+        )
+        self.service.saved_settings.ultrasonic = None
+        candidate = self._gpio_motor_candidate("GPIO27")
+
+        with self.assertRaisesRegex(
+            InvalidSettings, "GPIO27 is still reserved by ultrasonic trigger"
+        ):
+            self.service.save_settings(candidate)
+
+        self.picarx.cleanup.assert_not_called()
+
+    def test_can_claim_led_gpio_after_led_disable_has_been_applied(self) -> None:
+        self.service.saved_settings.led = None
+        self.service._led_service = MagicMock(led_config=None)
+        candidate = self._gpio_motor_candidate("GPIO26")
+
+        self.service.save_settings(candidate)
+
+        self.picarx.init_hardware.assert_called_once()
+        self.config_manager.update.assert_called_once()
 
     def test_failed_strict_initialization_restores_previous_hardware(self) -> None:
         update = self.make_steering_update()

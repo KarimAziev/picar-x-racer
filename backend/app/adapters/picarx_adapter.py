@@ -1,4 +1,19 @@
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from contextlib import contextmanager
+from functools import wraps
+from threading import Event, RLock
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Concatenate,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    ParamSpec,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from app.core.px_logger import Logger
 from app.exceptions.robot import (
@@ -37,12 +52,29 @@ if TYPE_CHECKING:
     from app.managers.file_management.json_data_manager import JsonDataManager
 
 
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def _synchronized(
+    method: Callable[Concatenate["PicarxAdapter", _P], _R],
+) -> Callable[Concatenate["PicarxAdapter", _P], _R]:
+    @wraps(method)
+    def locked(self: "PicarxAdapter", *args: _P.args, **kwargs: _P.kwargs) -> _R:
+        with self._hardware_lock:
+            return method(self, *args, **kwargs)
+
+    return locked
+
+
 class PicarxAdapter:
     def __init__(
         self, config_manager: "JsonDataManager", smbus_manager: SMBusManager
     ) -> None:
         self.config_manager = config_manager
         self.smbus_manager = smbus_manager
+        self._hardware_lock = RLock()
+        self._shutdown_requested = Event()
         self._motor_addresses: List[int] = []
         self._pwm_drivers: Dict[Tuple[int, int], PWMDriverABC] = {}
         self._pwm_driver_configs: Dict[Tuple[int, int], PWMDriverConfig] = {}
@@ -53,11 +85,42 @@ class PicarxAdapter:
         self.motor_controller: Optional[BaseMotorService] = None
         self.init_hardware()
 
+    @contextmanager
+    def hardware_session(self) -> Iterator[None]:
+        """Serialize reconfiguration with actuator commands and final shutdown."""
+        with self._hardware_lock:
+            self._ensure_active()
+            yield
+
+    def _ensure_active(self) -> None:
+        if self._shutdown_requested.is_set():
+            raise RuntimeError("Robot hardware is shutting down")
+
+    def begin_shutdown(self) -> None:
+        """Reject further actuation and stop motors while retaining their GPIOs."""
+        self._shutdown_requested.set()
+        with self._hardware_lock:
+            if self.motor_controller:
+                self.stop()
+            else:
+                errors: List[Exception] = []
+                for motor in self.motors:
+                    try:
+                        motor.stop()
+                    except Exception as error:
+                        errors.append(error)
+                if errors:
+                    raise RuntimeError(
+                        "Failed to stop motors during shutdown"
+                    ) from errors[0]
+
+    @_synchronized
     def init_hardware(
         self,
         config: Optional[HardwareConfig] = None,
         strict: bool = False,
     ) -> None:
+        self._ensure_active()
         self.config = (
             config.model_copy(deep=True)
             if config is not None
@@ -67,11 +130,11 @@ class PicarxAdapter:
         logger.debug("Initializing config %s", self.config)
 
         for fn in [
+            self._init_motors,
+            self._init_motor_controller,
             self._init_pan_servo,
             self._init_tilt_servo,
             self._init_steering_servo,
-            self._init_motors,
-            self._init_motor_controller,
         ]:
             fn(strict=strict)
 
@@ -83,6 +146,7 @@ class PicarxAdapter:
         return self._motor_addresses
 
     @property
+    @_synchronized
     def state(self) -> PicarState:
         """
         Returns key metrics of the current state as a dictionary.
@@ -110,6 +174,7 @@ class PicarxAdapter:
             ),
         }
 
+    @_synchronized
     def set_dir_servo_angle(self, value: float) -> None:
         """
         Set the steering servo angle.
@@ -121,6 +186,7 @@ class PicarxAdapter:
             RobotI2CTimeout: If the operation times out.
             RobotI2CBusError: If the operation fails due to a bus error.
         """
+        self._ensure_active()
         if not self.steering_servo:
             raise ServoNotFoundError("Steering servo not configured")
         try:
@@ -138,6 +204,7 @@ class PicarxAdapter:
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
+    @_synchronized
     def set_cam_pan_angle(self, value: float) -> None:
         """
         Set the camera pan angle.
@@ -150,6 +217,7 @@ class PicarxAdapter:
            RobotI2CTimeout: If the operation times out.
            RobotI2CBusError: If the operation fails due to a bus error.
         """
+        self._ensure_active()
         if not self.cam_pan_servo:
             raise ServoNotFoundError("Pan servo is not configured")
         try:
@@ -167,6 +235,7 @@ class PicarxAdapter:
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
+    @_synchronized
     def set_cam_tilt_angle(self, value: float) -> None:
         """
         Set the camera tilt angle.
@@ -179,6 +248,7 @@ class PicarxAdapter:
            RobotI2CTimeout: If the operation times out.
            RobotI2CBusError: If the operation fails due to a bus error.
         """
+        self._ensure_active()
         if not self.cam_tilt_servo:
             raise ServoNotFoundError("Tilt servo is not configured")
 
@@ -197,6 +267,7 @@ class PicarxAdapter:
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
+    @_synchronized
     def move(self, speed: int, direction: MotorServiceDirection) -> None:
         """
         Move the robot forward or backward.
@@ -205,6 +276,7 @@ class PicarxAdapter:
         - speed: The base speed at which to move.
         - direction: 1 for forward, -1 for backward.
         """
+        self._ensure_active()
         if not self.motor_controller:
             raise MotorNotFoundError("Motors not found or not configured")
         self.motor_controller.move(speed, direction)
@@ -269,6 +341,7 @@ class PicarxAdapter:
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
+    @_synchronized
     def stop(self) -> None:
         """
         Stop the motors by setting the motor speed pins' pulse width to 0 twice, with a
@@ -280,6 +353,8 @@ class PicarxAdapter:
            RobotI2CBusError: If the operation fails due to a bus-related error.
         """
         if not self.motor_controller:
+            if self._shutdown_requested.is_set():
+                return
             raise MotorNotFoundError("Motors not found or not configured")
         try:
             return self.motor_controller.stop_all()
@@ -296,33 +371,28 @@ class PicarxAdapter:
                 strerror=e.strerror if hasattr(e, "strerror") else str(e),
             )
 
+    @_synchronized
     def cleanup(self) -> None:
         """
         Clean up hardware resources by stopping all motors and gracefully closing all
         associated I2C connections for motors and servos.
         """
 
+        errors: List[Exception] = []
         if self.motor_controller:
             try:
                 self.stop()
+            except Exception as error:
+                errors.append(error)
+                logger.error("Failed to stop motor controller: %s", error)
+            try:
                 self.motor_controller.close()
-            except RobotI2CTimeout as e:
-                logger.error("I2C timeout error closing motors %s", e)
-            except RobotI2CBusError as e:
-                logger.error("I2C bus error closing motors %s", e)
-            except Exception as e:
-                logger.error(
-                    "Unexpected error while closing motor controller %s",
-                    e,
-                    exc_info=True,
-                )
+            except Exception as error:
+                errors.append(error)
+                logger.error("Failed to close motor controller: %s", error)
+                self._close_motors(errors)
         else:
-            for motor in self.motors:
-                if motor:
-                    try:
-                        motor.close()
-                    except Exception as e:
-                        logger.error("Error closing motor %s", e)
+            self._close_motors(errors)
 
         self._motor_addresses = []
         self.motors = []
@@ -336,10 +406,8 @@ class PicarxAdapter:
             if servo_service:
                 try:
                     servo_service.close()
-                except (TimeoutError, OSError) as e:
-                    err_msg = str(e)
-                    logger.error(err_msg)
                 except Exception as e:
+                    errors.append(e)
                     logger.error("Error closing servo %s", e)
 
         self.steering_servo = None
@@ -350,9 +418,27 @@ class PicarxAdapter:
             try:
                 driver.close()
             except Exception as e:
+                errors.append(e)
                 logger.error("Error closing shared PWM driver %s", e)
         self._pwm_drivers.clear()
         self._pwm_driver_configs.clear()
+        if errors:
+            raise RuntimeError(
+                "Hardware cleanup failed: " + "; ".join(str(error) for error in errors)
+            ) from errors[0]
+
+    def _close_motors(self, errors: List[Exception]) -> None:
+        for motor in self.motors:
+            try:
+                motor.stop()
+            except Exception as error:
+                errors.append(error)
+                logger.error("Error stopping motor: %s", error)
+            try:
+                motor.close()
+            except Exception as error:
+                errors.append(error)
+                logger.error("Error closing motor: %s", error)
 
     def _init_pan_servo(self, strict: bool = False) -> None:
         try:
@@ -501,17 +587,19 @@ class PicarxAdapter:
             servo = Servo(
                 channel=servo_config.channel,
                 driver=driver,
-                min_angle=servo_config.min_angle,
-                max_angle=servo_config.max_angle,
+                min_angle=servo_config.real_min_angle,
+                max_angle=servo_config.real_max_angle,
                 min_pulse=servo_config.min_pulse,
                 max_pulse=servo_config.max_pulse,
+                real_min_angle=servo_config.real_min_angle,
+                real_max_angle=servo_config.real_max_angle,
                 owns_driver=False,
             )
         else:
             servo = GPIOAngularServo(
                 servo_config.pin,
-                min_angle=servo_config.min_angle,
-                max_angle=servo_config.max_angle,
+                min_angle=servo_config.real_min_angle,
+                max_angle=servo_config.real_max_angle,
                 min_pulse=servo_config.min_pulse,
                 max_pulse=servo_config.max_pulse,
             )

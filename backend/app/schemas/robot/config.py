@@ -43,7 +43,7 @@ class HardwareConfig(BaseModel):
     )
 
     schema_version: Annotated[
-        Literal[7],
+        Literal[8],
         Field(
             title="Schema version",
             description=(
@@ -52,7 +52,7 @@ class HardwareConfig(BaseModel):
             ),
             json_schema_extra={"props": {"disabled": True, "hidden": True}},
         ),
-    ] = 7
+    ] = 8
 
     motion_control: Annotated[
         MotionControlConfig,

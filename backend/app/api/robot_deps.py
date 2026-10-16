@@ -1029,8 +1029,15 @@ def get_relative_motion_service(
 def get_robot_settings_service(
     picarx_adapter: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
+    led_service: Annotated[LEDService, Depends(get_led_service)],
+    distance_service: Annotated[DistanceService, Depends(get_distance_service)],
 ) -> SettingsService:
-    return SettingsService(picarx=picarx_adapter, config_manager=config_manager)
+    return SettingsService(
+        picarx=picarx_adapter,
+        config_manager=config_manager,
+        led_service=led_service,
+        distance_service=distance_service,
+    )
 
 
 @lru_cache(maxsize=1)

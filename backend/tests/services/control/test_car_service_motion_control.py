@@ -99,6 +99,7 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
             drive_hardware=self.selectable_hardware,
         )
         self.car = CarService.__new__(CarService)
+        self.car._shutting_down = False
         self.car.px = cast(Any, self.hardware)
         self.car.config = self.config
         self.car.motion_control_service = self.motion

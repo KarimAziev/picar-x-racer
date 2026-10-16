@@ -85,6 +85,19 @@ class TestJsonDataManager(unittest.TestCase):
 
         manager.emit.assert_called_with(JsonDataManager.UPDATE_EVENT, expected)
 
+    def test_update_can_defer_notification_until_after_persistence(self):
+        manager = JsonDataManager(str(self.target_file), str(self.template_file))
+        manager.emit = MagicMock()
+        data = {"value": 37}
+
+        saved = manager.update(data, emit_event=False)
+
+        self.assertEqual(json.loads(self.target_file.read_text()), data)
+        self.assertEqual(manager.load_data(), data)
+        manager.emit.assert_not_called()
+        manager.emit(manager.UPDATE_EVENT, saved)
+        manager.emit.assert_called_once_with(manager.UPDATE_EVENT, data)
+
     def test_load_data_uses_cache_and_reloads_after_external_change(self):
         target_data = {"initial": True}
         with open(self.target_file, "w") as f:

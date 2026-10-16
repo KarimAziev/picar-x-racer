@@ -1,8 +1,8 @@
 import asyncio
+import threading
 import unittest
-from types import SimpleNamespace
-from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock
+from typing import cast
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.schemas.robot.auxiliary_sensors import (
     HTS221SensorConfig,
@@ -11,7 +11,9 @@ from app.schemas.robot.auxiliary_sensors import (
     LIS3MDLSensorConfig,
     MockEnvironmentalSensorConfig,
     MockMagnetometerSensorConfig,
+    AuxiliarySensorsConfig,
 )
+from app.schemas.robot.config import HardwareConfig
 from app.services.sensors.auxiliary_sensor_service import AuxiliarySensorService
 from robot_hat import (
     HTS221,
@@ -25,17 +27,14 @@ from robot_hat.i2c.smbus_manager import SMBusManager
 
 
 class TestAuxiliarySensorService(unittest.IsolatedAsyncioTestCase):
-    def setUp(self) -> None:
+    async def asyncSetUp(self) -> None:
         self.environment_config = MockEnvironmentalSensorConfig(name="Environment")
         self.magnetometer_config = MockMagnetometerSensorConfig(name="Compass")
         self.service = AuxiliarySensorService.__new__(AuxiliarySensorService)
-        self.service.config = cast(
-            Any,
-            SimpleNamespace(
-                auxiliary_sensors=SimpleNamespace(
-                    sensors=[self.environment_config, self.magnetometer_config]
-                )
-            ),
+        self.service.config = HardwareConfig.model_construct(
+            auxiliary_sensors=AuxiliarySensorsConfig(
+                sensors=[self.environment_config, self.magnetometer_config]
+            )
         )
         environment = MockEnvironmentalSensor(monotonic_ns=lambda: 10)
         magnetometer = MockMagnetometer(monotonic_ns=lambda: 11)
@@ -49,8 +48,158 @@ class TestAuxiliarySensorService(unittest.IsolatedAsyncioTestCase):
         self.service._cache = {}
         self.service._last_broadcast_time = {}
         self.service._lock = asyncio.Lock()
+        self.service._lifecycle_lock = asyncio.Lock()
+        self.service._stop_event = asyncio.Event()
+        self.service._task = None
+        self.service._closed = False
+        self.service._app_loop = asyncio.get_running_loop()
+        self.config_manager = MagicMock()
+        self.service.config_manager = self.config_manager
+        self.service._smbus_manager = MagicMock()
         self.broadcast_json = AsyncMock()
         self.service.connection_manager = MagicMock(broadcast_json=self.broadcast_json)
+        self.service.connection_manager.active_connections = []
+
+    async def test_reconfiguration_runs_device_io_off_event_loop(self) -> None:
+        current_thread = threading.get_ident()
+        close_threads: list[int] = []
+        init_threads: list[int] = []
+        config = self.service.config.model_copy(deep=True)
+        config.auxiliary_sensors.sensors = []
+
+        with patch.object(
+            self.service,
+            "close_adapters",
+            side_effect=lambda: close_threads.append(threading.get_ident()),
+        ), patch.object(
+            self.service,
+            "_initialize_adapters",
+            side_effect=lambda: init_threads.append(threading.get_ident()),
+        ):
+            await self.service._apply_config(config)
+
+        self.assertEqual(len(close_threads), 1)
+        self.assertEqual(len(init_threads), 1)
+        self.assertNotIn(current_thread, close_threads + init_threads)
+
+    async def test_cleanup_waits_for_cancelled_read_without_blocking_loop(self) -> None:
+        adapter = self.service._adapters["Environment"]
+        original_read = adapter.read_sample
+        started = threading.Event()
+        release = threading.Event()
+        finished = threading.Event()
+
+        def blocked_read():
+            started.set()
+            release.wait(timeout=2)
+            try:
+                return original_read()
+            finally:
+                finished.set()
+
+        with patch.object(
+            adapter, "read_sample", side_effect=blocked_read
+        ), patch.object(adapter, "close", wraps=adapter.close) as close:
+            task = asyncio.create_task(
+                self.service.read_sensor(self.environment_config)
+            )
+            self.assertTrue(await asyncio.to_thread(started.wait, 1))
+            task.cancel()
+            cleanup = asyncio.create_task(self.service.cleanup_connection_manager())
+            try:
+                await asyncio.sleep(0.01)
+                close.assert_not_called()
+                self.assertFalse(cleanup.done())
+            finally:
+                release.set()
+                await asyncio.gather(task, cleanup, return_exceptions=True)
+
+            self.assertTrue(finished.is_set())
+            close.assert_called_once()
+
+    async def test_shutdown_prevents_adapter_reinitialization(self) -> None:
+        await self.service.cleanup_connection_manager()
+        config = self.service.config.model_copy(deep=True)
+        config.auxiliary_sensors.sensors = []
+        with patch.object(self.service, "_initialize_adapters") as initialize:
+            await self.service._apply_config(config)
+            self.service.update_config({})
+            self.service.connection_manager.active_connections = [MagicMock()]
+            self.service._start_broadcast_task()
+            initialize.assert_not_called()
+        self.assertIsNone(self.service._task)
+        self.assertEqual(self.config_manager.off.call_count, 2)
+
+    async def test_cleanup_closes_adapters_after_broadcast_failure(self) -> None:
+        async def fail():
+            raise OSError("Browser disconnected")
+
+        self.service._task = asyncio.create_task(fail())
+        await asyncio.sleep(0)
+        with patch.object(self.service, "close_adapters") as close:
+            await self.service.cleanup_connection_manager()
+        close.assert_called_once()
+        self.assertIsNone(self.service._task)
+
+    async def test_queued_read_uses_adapter_installed_by_reconfiguration(self) -> None:
+        previous = self.service._adapters["Environment"]
+        replacement = MockEnvironmentalSensor(temperature_c=35.0)
+        config = self.service.config.model_copy(deep=True)
+        config.auxiliary_sensors.sensors = [
+            self.environment_config.model_copy(update={"temperature_c": 35.0})
+        ]
+
+        with patch.object(
+            self.service, "make_adapter", return_value=replacement
+        ), patch.object(
+            previous, "read_sample", wraps=previous.read_sample
+        ) as old_read:
+            await self.service._lock.acquire()
+            update = asyncio.create_task(self.service._apply_config(config))
+            await asyncio.sleep(0)
+            read = asyncio.create_task(
+                self.service.read_sensor(self.environment_config)
+            )
+            await asyncio.sleep(0)
+            self.service._lock.release()
+            await update
+            reading = await read
+
+        old_read.assert_not_called()
+        self.assertEqual(reading.temperature_c, 35.0)
+        self.assertIsNone(reading.error)
+
+    async def test_overlapping_configuration_updates_initialize_in_order(self) -> None:
+        started = threading.Event()
+        release = threading.Event()
+        names: list[str] = []
+        first = self.service.config.model_copy(deep=True)
+        first.auxiliary_sensors.sensors = [MockEnvironmentalSensorConfig(name="First")]
+        second = self.service.config.model_copy(deep=True)
+        second.auxiliary_sensors.sensors = [
+            MockEnvironmentalSensorConfig(name="Second")
+        ]
+
+        def initialize():
+            names.append(self.service.enabled_sensors[0].name)
+            if len(names) == 1:
+                started.set()
+                release.wait(timeout=2)
+
+        with patch.object(self.service, "_initialize_adapters", side_effect=initialize):
+            first_update = asyncio.create_task(self.service._apply_config(first))
+            self.assertTrue(await asyncio.to_thread(started.wait, 1))
+            second_update = asyncio.create_task(self.service._apply_config(second))
+            try:
+                await asyncio.sleep(0.01)
+                self.assertEqual(names, ["First"])
+                self.assertFalse(second_update.done())
+            finally:
+                release.set()
+                await asyncio.gather(first_update, second_update)
+
+        self.assertEqual(names, ["First", "Second"])
+        self.assertEqual(self.service.config, second)
 
     async def test_reads_typed_environmental_and_magnetic_payloads(self) -> None:
         readings = await self.service.read_all()

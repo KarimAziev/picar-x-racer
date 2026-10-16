@@ -2,6 +2,7 @@ import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from threading import Event, RLock
 from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 
@@ -170,6 +171,8 @@ class TestMotorCalibrationSettings(unittest.TestCase):
 class TestSharedPWMDriverOwnership(unittest.TestCase):
     def setUp(self):
         self.adapter = PicarxAdapter.__new__(PicarxAdapter)
+        self.adapter._hardware_lock = RLock()
+        self.adapter._shutdown_requested = Event()
         self.adapter.smbus_manager = MagicMock()
         self.adapter._pwm_drivers = {}
         self.adapter._pwm_driver_configs = {}

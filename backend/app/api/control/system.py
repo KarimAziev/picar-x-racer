@@ -65,6 +65,13 @@ async def shutdown(
         request.app.state.auxiliary_sensor_service
     )
     try:
+        _log.debug("Gracefully stopping robot service")
+        await robot_service.cleanup()
+    except Exception as e:
+        errors.append(str(e))
+        _log.error("Failed to cleanup robot service: %s", e)
+
+    try:
         _log.debug("Gracefully stopping battery service")
         await battery_service.cleanup_connection_manager()
     except Exception as e:
@@ -77,13 +84,6 @@ async def shutdown(
     except Exception as e:
         errors.append(str(e))
         _log.error("Failed to cleanup auxiliary sensor service: %s", e)
-
-    try:
-        _log.debug("Gracefully stopping robot service")
-        await robot_service.cleanup()
-    except Exception as e:
-        errors.append(str(e))
-        _log.error("Failed to cleanup robot service: %s", e)
 
     try:
         _log.debug("Gracefully stopping distance service")

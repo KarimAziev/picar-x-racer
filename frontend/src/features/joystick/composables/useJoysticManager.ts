@@ -2,7 +2,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import nipplejs from "nipplejs";
 import type { JoystickManagerOptions } from "nipplejs";
 import { useControllerStore } from "@/features/controller/store";
-import { roundToNearestTen, inRange } from "@/util/number";
+import { inRange } from "@/util/number";
 import { constrain } from "@/util/constrain";
 import { debounce } from "@/util/debounce";
 import { useRobotStore } from "@/features/settings/stores";
@@ -43,27 +43,25 @@ export const useJoystickControl = (
 
     const speed = Math.round(Math.round(distance * 2) / 10) * 10;
 
-    const minServoAngle = robotStore.data.steering_servo.dec_step;
-    const maxServoAngle = robotStore.data.steering_servo.inc_step;
+    const minServoAngle = robotStore.data.steering_servo.min_angle;
+    const maxServoAngle = robotStore.data.steering_servo.max_angle;
 
     const directionWithinRange =
       (isPlainForward ? direction : direction - HALF_CIRCLE_MAX) -
       MIN_JOYSTICK_ANGLE;
 
-    const value =
-      (directionWithinRange * (minServoAngle - maxServoAngle)) /
-        (HALF_CIRCLE_MAX - MIN_JOYSTICK_ANGLE) +
-      maxServoAngle;
-
-    const clampedValue = constrain(
-      robotStore.data.steering_servo.dec_step,
-      robotStore.data.steering_servo.inc_step,
-      value,
+    const steeringFraction = constrain(
+      -1,
+      1,
+      (1 - (2 * directionWithinRange) / HALF_CIRCLE_MAX) *
+        (isExtraForward ? -1 : 1) *
+        (isForward ? 1 : -1),
     );
-
-    const roundedValue = roundToNearestTen(clampedValue);
-
-    const servoDir = (isExtraForward ? -1 : 1) * roundedValue;
+    const servoDir = Math.round(
+      steeringFraction < 0
+        ? -steeringFraction * minServoAngle
+        : steeringFraction * maxServoAngle,
+    );
 
     const servoDirNotLocked = !optionsParams.value?.lockY;
 
@@ -77,7 +75,7 @@ export const useJoystickControl = (
       }
     } else {
       if (servoDirNotLocked) {
-        controllerStore.setDirServoAngle(-servoDir);
+        controllerStore.setDirServoAngle(servoDir);
       }
 
       if (!optionsParams.value?.lockX) {

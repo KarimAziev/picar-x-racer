@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import threading
 import time
@@ -8,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.core.video_capture_abc import VideoCaptureABC
+from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings
 from app.schemas.detection import DetectionSettings, OverlayStyle
 from app.schemas.stream import StreamSettings
@@ -344,6 +346,46 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
             await self.camera_service.start_camera_and_wait_for_stream_img()
             self.assertIsNotNone(self.camera_service.stream_img)
 
+    async def test_wait_for_frame_allows_recovery_from_previous_error(self):
+        self.camera_service.stream_img = None
+        self.camera_service.camera_device_error = "Camera is disconnected"
+
+        def fake_start_camera():
+            self.camera_service.camera_run = True
+
+        async def deliver_frame():
+            await asyncio.sleep(0.01)
+            self.camera_service.stream_img = np.ones((2, 2, 3), dtype=np.uint8)
+            self.camera_service.camera_device_error = None
+
+        with patch.object(
+            self.camera_service, "start_camera", side_effect=fake_start_camera
+        ), patch.object(self.camera_service, "stop_camera") as stop_camera:
+            await asyncio.wait_for(
+                asyncio.gather(
+                    self.camera_service.start_camera_and_wait_for_stream_img(),
+                    deliver_frame(),
+                ),
+                timeout=1,
+            )
+
+        stop_camera.assert_not_called()
+        self.assertIsNotNone(self.camera_service.stream_img)
+
+    async def test_wait_for_frame_preserves_capture_failure(self):
+        self.camera_service.stream_img = None
+        self.camera_service.camera_device_error = "Camera is disconnected"
+
+        with patch.object(self.camera_service, "start_camera"), patch.object(
+            self.camera_service, "stop_camera"
+        ):
+            with self.assertRaisesRegex(CameraDeviceError, "Camera is disconnected"):
+                await self.camera_service.start_camera_and_wait_for_stream_img()
+
+        self.assertEqual(
+            self.camera_service.camera_device_error, "Camera is disconnected"
+        )
+
 
 class TestCameraServiceSync(unittest.TestCase):
     """Synchronous tests for non-async methods."""
@@ -374,6 +416,58 @@ class TestCameraServiceSync(unittest.TestCase):
         self.camera_service.cap = cast(VideoCaptureABC, DummyVideoCapture())
         self.camera_service.stop_camera()
         self.assertIsNone(self.camera_service.cap)
+
+    def test_failed_reconnect_preserves_camera_error(self):
+        self.camera_service.camera_device_error = "Camera is disconnected"
+        with patch.object(
+            self.video_device_adapter,
+            "setup_video_capture",
+            side_effect=CameraNotFoundError("Camera is disconnected"),
+        ), patch.object(
+            self.camera_service,
+            "_dispatch_camera_error",
+            wraps=self.camera_service._dispatch_camera_error,
+        ) as dispatch_error:
+            for _ in range(2):
+                with self.assertRaises(CameraNotFoundError):
+                    self.camera_service.start_camera()
+
+        self.assertNotIn(None, [call.args[0] for call in dispatch_error.call_args_list])
+        self.assertEqual(
+            self.camera_service.camera_device_error, "Camera is disconnected"
+        )
+
+    def test_camera_error_clears_only_after_frame_capture(self):
+        self.camera_service.camera_device_error = "Camera is disconnected"
+        capture = ContinuousVideoCapture()
+        self.camera_service.video_device_adapter = cast(
+            VideoDeviceAdapter, SequenceVideoDeviceAdapter([capture])
+        )
+        self.addCleanup(self.camera_service.stop_camera)
+
+        with patch(
+            "app.services.camera.camera_service.threading.Thread.start"
+        ), patch.object(
+            self.camera_service,
+            "_dispatch_camera_error",
+            wraps=self.camera_service._dispatch_camera_error,
+        ) as dispatch_error:
+            self.camera_service.start_camera()
+            self.assertEqual(
+                self.camera_service.camera_device_error, "Camera is disconnected"
+            )
+            dispatch_error.assert_not_called()
+
+            def process_one_frame(_frame):
+                self.camera_service.camera_run = False
+
+            with patch.object(
+                self.camera_service, "_process_frame", side_effect=process_one_frame
+            ):
+                self.camera_service._camera_thread_func(cast(VideoCaptureABC, capture))
+
+            dispatch_error.assert_called_once_with(None)
+        self.assertIsNone(self.camera_service.camera_device_error)
 
     def test_dispatch_camera_error_uses_bound_loop(self):
         fake_loop = MagicMock()

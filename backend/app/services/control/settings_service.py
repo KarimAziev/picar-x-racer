@@ -1,3 +1,4 @@
+from threading import RLock
 from typing import TYPE_CHECKING, Any, Dict, Iterator, Literal, Tuple, Union, cast
 
 from app.core.px_logger import Logger
@@ -7,11 +8,19 @@ from app.schemas.robot.motors import I2CDCMotorConfig
 from app.schemas.robot.pwm import PWMDriverConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.util.diff import recursive_diff
+from app.util.gpio_reservations import (
+    gpio_number,
+    hardware_gpio_pins,
+    validate_distance_pins,
+    validate_led_pin,
+)
 from pydantic import ValidationError
 
 if TYPE_CHECKING:
     from app.adapters.picarx_adapter import PicarxAdapter
     from app.managers.file_management.json_data_manager import JsonDataManager
+    from app.services.sensors.distance_service import DistanceService
+    from app.services.sensors.led_service import LEDService
     from robot_hat import ServoService
 
 _log = Logger(__name__, app_name="px_robot")
@@ -36,11 +45,19 @@ class SettingsService:
             "cam_tilt_servo",
             "cam_pan_servo",
         ],
+        *,
+        led_service: Union["LEDService", None] = None,
+        distance_service: Union["DistanceService", None] = None,
     ) -> None:
         self.px = picarx
         self.config_manager = config_manager
         self.saved_settings = HardwareConfig(**self.config_manager.load_data())
         self._servo_field_names = servo_field_names
+        self._led_service = led_service
+        self._distance_service = distance_service
+        self._settings_lock = RLock()
+        if led_service is not None:
+            led_service.bind_hardware(picarx)
 
         self.config_manager.on(self.config_manager.UPDATE_EVENT, self.refresh_config)
         self.config_manager.on(self.config_manager.LOAD_EVENT, self.refresh_config)
@@ -49,6 +66,10 @@ class SettingsService:
         self.saved_settings = HardwareConfig(**data)
 
     def merge_settings(self, data: PartialHardwareConfig) -> PartialHardwareConfig:
+        with self._settings_lock:
+            return self._merge_settings(data)
+
+    def _merge_settings(self, data: PartialHardwareConfig) -> PartialHardwareConfig:
         data_dict = self._model_json_dump(data, exclude_unset=True)
         _log.info("Merging hardware settings: %s", data_dict)
         updated_keys = set(data_dict)
@@ -81,11 +102,15 @@ class SettingsService:
             )
         except ValidationError as err:
             raise InvalidSettings(f"Unable to merge hardware settings: {err}") from err
-        self._validate_shared_pwm_drivers(candidate)
+        self._validate_hardware(candidate)
         return candidate
 
     def save_settings(self, data: HardwareConfig) -> HardwareConfig:
-        self._validate_shared_pwm_drivers(data)
+        with self._settings_lock:
+            return self._save_settings(data)
+
+    def _save_settings(self, data: HardwareConfig) -> HardwareConfig:
+        self._validate_hardware(data)
         data_dict = self._model_json_dump(data)
         current_data = self._model_json_dump(self.saved_settings)
         lines = recursive_diff(data_dict, current_data)
@@ -110,23 +135,85 @@ class SettingsService:
         *,
         activate_hardware: bool,
     ) -> Dict[str, Any]:
-        if not activate_hardware:
-            return self.config_manager.update(self._model_json_dump(config))
+        with self._settings_lock:
+            with self.px.hardware_session():
+                previous_config = self.px.config.model_copy(deep=True)
+                if activate_hardware:
+                    self._validate_hardware_transition(config)
+                    self.px.cleanup()
+                    try:
+                        self.px.init_hardware(config=config, strict=True)
+                    except Exception as err:
+                        self._restore_hardware(previous_config)
+                        raise InvalidSettings(
+                            f"Unable to apply hardware settings: {err}"
+                        ) from err
 
-        previous_config = self.px.config.model_copy(deep=True)
-        self.px.cleanup()
+                try:
+                    saved = self.config_manager.update(
+                        self._model_json_dump(config), emit_event=False
+                    )
+                except Exception:
+                    if activate_hardware:
+                        self._restore_hardware(previous_config)
+                    raise
 
-        try:
-            self.px.init_hardware(config=config, strict=True)
-        except Exception as err:
-            self._restore_hardware(previous_config)
-            raise InvalidSettings(f"Unable to apply hardware settings: {err}") from err
+            # Sensor callbacks may wait for polling threads and child processes.
+            # Actuator stop must remain available while those callbacks run.
+            self.config_manager.emit(self.config_manager.UPDATE_EVENT, saved)
+            return saved
 
-        try:
-            return self.config_manager.update(self._model_json_dump(config))
-        except Exception:
-            self._restore_hardware(previous_config)
-            raise
+    @staticmethod
+    def _active_actuator_gpio_pins(config: HardwareConfig) -> set[int]:
+        owners = {
+            f"motors[{index}]"
+            for index, motor in enumerate(config.motors)
+            if motor.enabled
+        }
+        for name in ("steering_servo", "cam_pan_servo", "cam_tilt_servo"):
+            servo = getattr(config, name)
+            if servo is not None and servo.enabled:
+                owners.add(name)
+        return {
+            gpio_number(pin)
+            for owner, pin in hardware_gpio_pins(config)
+            if owner.partition(".")[0] in owners
+        }
+
+    def _validate_hardware_transition(self, config: HardwareConfig) -> None:
+        """Keep actuator initialization away from GPIOs held by sensor processes."""
+        acquired_pins = self._active_actuator_gpio_pins(
+            config
+        ) - self._active_actuator_gpio_pins(self.px.config)
+        reservations: list[tuple[str, Union[int, str]]] = []
+        for previous in (self.saved_settings, config):
+            if previous.led is not None:
+                reservations.append(("LED", previous.led.pin))
+            if previous.ultrasonic is not None:
+                reservations.extend(
+                    [
+                        ("ultrasonic trigger", previous.ultrasonic.trig_pin),
+                        ("ultrasonic echo", previous.ultrasonic.echo_pin),
+                    ]
+                )
+        if self._led_service is not None and self._led_service.led_config is not None:
+            reservations.append(("LED", self._led_service.led_config.pin))
+        if self._distance_service is not None:
+            ultrasonic = self._distance_service.robot_config.ultrasonic
+            if ultrasonic is not None:
+                reservations.extend(
+                    [
+                        ("ultrasonic trigger", ultrasonic.trig_pin),
+                        ("ultrasonic echo", ultrasonic.echo_pin),
+                    ]
+                )
+        for owner, pin in reservations:
+            number = gpio_number(pin)
+            if number in acquired_pins:
+                raise InvalidSettings(
+                    f"GPIO{number} is still reserved by {owner}; disable or move "
+                    "that service and save its settings before assigning this actuator pin"
+                )
 
     def _restore_hardware(self, config: HardwareConfig) -> None:
         _log.warning("Restoring the previous hardware configuration")
@@ -172,6 +259,16 @@ class SettingsService:
         for index, motor in enumerate(config.motors):
             if isinstance(motor, I2CDCMotorConfig) and motor.enabled:
                 yield f"motors[{index}]", motor.driver
+
+    @classmethod
+    def _validate_hardware(cls, config: HardwareConfig) -> None:
+        cls._validate_shared_pwm_drivers(config)
+        try:
+            if config.led is not None:
+                validate_led_pin(config, config.led.pin)
+            validate_distance_pins(config)
+        except ValueError as error:
+            raise InvalidSettings(str(error)) from error
 
     @classmethod
     def _validate_shared_pwm_drivers(cls, config: HardwareConfig) -> None:

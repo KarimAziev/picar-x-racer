@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from app.core.px_logger import Logger
 from app.managers.distance_manager import distance_process
 from app.schemas.robot.config import HardwareConfig
+from app.util.async_threads import run_in_thread
+from app.util.gpio_reservations import validate_distance_pins
 
 if TYPE_CHECKING:
     from multiprocessing.sharedctypes import Synchronized
@@ -30,10 +32,12 @@ class DistanceService:
         self.robot_config = HardwareConfig(**config_manager.load_data())
         self._distance: Synchronized[float] = mp.Value("f", 0)
         self._process = None
+        self._closed = False
         self.stop_event = mp.Event()
         self.interval = interval
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._async_lock = asyncio.Lock()
+        self._app_loop: Optional[asyncio.AbstractEventLoop] = None
         self._emitter = emitter
         self._task_manager = task_manager
         self.loading = False
@@ -50,11 +54,34 @@ class DistanceService:
         Args:
             new_config: The dictionary with new robot config.
         """
-        _log.info("Updating robot distance config", new_config)
-        self.robot_config = HardwareConfig(**new_config)
-        if self.running:
-            await self.stop_all()
-            await self.start_all()
+        if self._closed:
+            return
+        _log.info("Updating robot distance config: %s", new_config)
+        candidate = HardwareConfig(**new_config)
+        loop = asyncio.get_running_loop()
+        if (
+            self._app_loop
+            and self._app_loop.is_running()
+            and loop is not self._app_loop
+        ):
+            await asyncio.wrap_future(
+                asyncio.run_coroutine_threadsafe(
+                    self._apply_config(candidate), self._app_loop
+                )
+            )
+        else:
+            await self._apply_config(candidate)
+
+    async def _apply_config(self, config: HardwareConfig) -> None:
+        async with self._async_lock:
+            if self._closed:
+                return
+            was_running = self.running
+            await self._stop_all_locked()
+            with self._lock:
+                self.robot_config = config
+            if was_running:
+                await self._start_all_locked()
 
     def subscribe(self, listener: "Listener") -> None:
         self._emitter.on("distance", listener)
@@ -92,19 +119,33 @@ class DistanceService:
             self.loading = False
 
     async def start_all(self) -> None:
-        await self.stop_all()
+        self._app_loop = asyncio.get_running_loop()
         async with self._async_lock:
-            self.loading = True
-            await asyncio.to_thread(self._start_process)
+            await self._stop_all_locked()
+            await self._start_all_locked()
+
+    async def _start_all_locked(self) -> None:
+        self.loading = True
+        try:
+            await run_in_thread(self._start_process)
+        except BaseException:
+            self.loading = False
+            raise
+        if self.running:
             self._task_manager.start_task(
                 self.distance_watcher, task_name="distance_watcher"
             )
+        else:
+            self.loading = False
 
     async def stop_all(self) -> None:
         async with self._async_lock:
-            await asyncio.to_thread(self._cancel_process)
-            if self._task_manager.task:
-                await self._task_manager.cancel_task()
+            await self._stop_all_locked()
+
+    async def _stop_all_locked(self) -> None:
+        await run_in_thread(self._cancel_process)
+        if self._task_manager.task:
+            await self._task_manager.cancel_task()
 
     @property
     def distance(self) -> float:
@@ -116,8 +157,11 @@ class DistanceService:
             return self._process and self._process.is_alive()
 
     def _start_process(self) -> None:
-        if self.robot_config.ultrasonic:
-            with self._lock:
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("Distance service is shut down")
+            if self.robot_config.ultrasonic:
+                validate_distance_pins(self.robot_config)
                 self._process = mp.Process(
                     target=distance_process,
                     args=(
@@ -147,23 +191,17 @@ class DistanceService:
                     )
                     self._process.terminate()
                     self._process.join(5)
-                    self._process.close()
+                if self._process.is_alive():
+                    raise RuntimeError("Distance process did not stop")
+                self._process.close()
+                self._process = None
             _log.info("Clearing stop event")
             self.stop_event.clear()
             _log.info("Stop event cleared")
 
     async def cleanup(self) -> None:
-        """
-        Performs cleanup operations for the distance service, preparing it for shutdown.
-
-        Behavior:
-            - Cancels any running tasks and stops the distance _process.
-            - Deletes class properties associated with multiprocessing and async state.
-        """
-        await self._task_manager.cancel_task()
-        await asyncio.to_thread(self._cancel_process)
-        async with self._async_lock:
-            with self._lock:
-                self.__dict__.pop("stop_event", None)
-                self.__dict__.pop("_process", None)
-                self.__dict__.pop("_distance", None)
+        """Stop acquisition and reject subsequent attempts to start the service."""
+        self._closed = True
+        self.config_manager.off(self.config_manager.UPDATE_EVENT, self.update_config)
+        self.config_manager.off(self.config_manager.LOAD_EVENT, self.update_config)
+        await self.stop_all()

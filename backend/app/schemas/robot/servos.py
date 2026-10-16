@@ -14,6 +14,12 @@ validator = (
     Validator()
     .addRule(
         ValidationRuleBuilder()
+        .addIf("real_min_angle", "ge", "$real_max_angle")
+        .addThen("real_min_angle", "Must be less than the angle at maximum pulse!")
+        .build()
+    )
+    .addRule(
+        ValidationRuleBuilder()
         .addIf("min_pulse", "ge", "$max_pulse")
         .addThen("min_pulse", "Cannot be greater than max_pulse!")
         .build()
@@ -95,7 +101,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             title="Minimum angle",
-            description="Minimum allowable angle for the servo",
+            description="Lower travel limit in calibrated degrees relative to the centered position. Limits movement without changing the pulse calibration.",
             json_schema_extra={"shared": True},
             examples=[-30, -45],
             le=360,
@@ -107,7 +113,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             title="Maximum angle",
-            description="Maximum allowable angle for the servo",
+            description="Upper travel limit in calibrated degrees relative to the centered position. Limits movement without changing the pulse calibration.",
             json_schema_extra={"shared": True},
             examples=[30, 45],
             le=360,
@@ -119,7 +125,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             title="Decrease step",
-            description="The step value by which the servo's angle decreases. Must be a negative integer.",
+            description="Angle increment for each decrease-button or keyboard action. Must be negative; does not define joystick travel or pulse calibration.",
             examples=[-5, -10],
             lt=0,
             json_schema_extra={"shared": True},
@@ -130,7 +136,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             title="Increase step",
-            description="The step value by which the servo's angle increases. Must be a positive integer.",
+            description="Angle increment for each increase-button or keyboard action. Must be positive; does not define joystick travel or pulse calibration.",
             gt=0,
             examples=[5, 2],
             json_schema_extra={"shared": True},
@@ -141,7 +147,7 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             title="Minimum pulse width",
-            description="The pulse width in microseconds (µs) corresponding to the servo's minimum position",
+            description="Pulse width in microseconds at real_min_angle. A measured calibration point, independent of the permitted travel limits.",
             examples=[500],
             json_schema_extra={
                 "cross_field_validation": {"lessThan": "max_pulse"},
@@ -156,12 +162,36 @@ class ServoConfig(BaseModel):
         Field(
             ...,
             title="Maximum pulse width",
-            description="The maximum pulse width in microseconds (µs) corresponding to the servo's maximum position.",
+            description="Pulse width in microseconds at real_max_angle. A measured calibration point, independent of the permitted travel limits.",
             json_schema_extra={"shared": True},
             examples=[2500],
             le=3000,
         ),
     ] = 2500
+
+    real_min_angle: Annotated[
+        float,
+        Field(
+            title="Angle at minimum pulse",
+            description="Measured servo angle in degrees at min_pulse, before the center offset is applied. Together with real_max_angle, defines the pulse-to-angle calibration. The default assumes -90 degrees and must be checked for the servo.",
+            json_schema_extra={"shared": True},
+            ge=-360,
+            le=360,
+            allow_inf_nan=False,
+        ),
+    ] = -90.0
+
+    real_max_angle: Annotated[
+        float,
+        Field(
+            title="Angle at maximum pulse",
+            description="Measured servo angle in degrees at max_pulse, before the center offset is applied. Must be greater than real_min_angle. The default assumes +90 degrees and must be checked for the servo.",
+            json_schema_extra={"shared": True},
+            ge=-360,
+            le=360,
+            allow_inf_nan=False,
+        ),
+    ] = 90.0
 
     calibration_mode: Annotated[
         ServoCalibrationMode,

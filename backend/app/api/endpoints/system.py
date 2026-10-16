@@ -79,11 +79,11 @@ async def shutdown(
 
     try:
         logger.info("Starting the shutdown process...")
+        await robot_communication_service.shutdown_robot_services()
         await connection_manager.warning("Powering off the system")
         await detection_service.cancel_detection_watcher()
         await detection_service.stop_detection_process()
         await music_service.cleanup()
-        await robot_communication_service.shutdown_robot_services()
         await asyncio.to_thread(power_off)
         return {"message": "System shutdown initiated successfully."}
     except Exception:
@@ -144,11 +144,11 @@ async def restart_system(
     connection_manager: "ConnectionService" = request.app.state.app_manager
 
     try:
+        await robot_communication_service.shutdown_robot_services()
         await connection_manager.warning("Restarting the system")
         await music_service.cleanup()
         await detection_service.cancel_detection_watcher()
         await detection_service.stop_detection_process()
-        await robot_communication_service.shutdown_robot_services()
         await asyncio.to_thread(restart)
         return {"message": "System restart initiated successfully."}
     except Exception:

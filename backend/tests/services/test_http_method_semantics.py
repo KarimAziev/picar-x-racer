@@ -54,7 +54,9 @@ class TestRobotCommunicationHttpMethods(unittest.IsolatedAsyncioTestCase):
     @patch("app.services.integration.robot_communication_service.httpx.AsyncClient")
     async def test_robot_service_shutdown_uses_post(self, client_factory: Mock) -> None:
         client = AsyncMock()
-        client.post.return_value = Mock(status_code=200)
+        client.post.return_value = Mock(
+            status_code=200, json=Mock(return_value={"success": True})
+        )
         client_factory.return_value.__aenter__.return_value = client
         service = RobotCommunicationService("http://robot.local/")
 

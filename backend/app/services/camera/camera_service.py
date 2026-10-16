@@ -449,7 +449,6 @@ class CameraService:
             self._capture_thread = None
             self._reset_camera_state()
             self.camera_run = True
-            self._dispatch_camera_error(None)
 
             cap, props = self.video_device_adapter.setup_video_capture(
                 self.camera_settings
@@ -524,18 +523,17 @@ class CameraService:
 
         counter = 0
 
-        while not self.camera_device_error:
-            if self.stream_img is not None:
-                break
+        while self.stream_img is None and self.camera_run and not self.shutting_down:
             if counter <= 1:
                 _log.debug("Waiting for stream img")
                 counter += 1
             await asyncio.sleep(0.05)
 
-        if self.camera_device_error:
-            err = self.camera_device_error
-            self.camera_device_error = None
-            self.stop_camera()
+        if self.shutting_down:
+            raise CameraShutdownInProgressError("The camera is shutting down.")
+        if self.camera_device_error or self.stream_img is None:
+            err = self.camera_device_error or "Camera stopped before producing a frame."
+            await asyncio.to_thread(self.stop_camera)
             raise CameraDeviceError(err)
 
     def stop_camera(self) -> None:

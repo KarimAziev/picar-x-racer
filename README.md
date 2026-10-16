@@ -252,6 +252,92 @@ bus/address in one full Robot settings save. Conflicting or hardware-invalid
 updates are rejected before the configuration file is written and are reported
 in the UI.
 
+#### Servo angles and calibration
+
+Servo movement uses two independent ranges:
+
+- `min_angle` and `max_angle` limit movement in calibrated degrees relative to
+  the centered position. Reducing these limits reduces travel.
+- `real_min_angle` is the measured angle at `min_pulse`; `real_max_angle` is
+  the measured angle at `max_pulse`. These four fields define the pulse
+  calibration. The default angles of -90° and +90° are assumptions to verify
+  for the particular servo, not its mechanical specifications.
+
+For example, **if measured** calibration points are -45° at 1000 µs and +45°
+at 2000 µs, this steering configuration limits travel to ±10°:
+
+```json
+{
+  "min_angle": -10,
+  "max_angle": 10,
+  "dec_step": -5,
+  "inc_step": 5,
+  "min_pulse": 1000,
+  "max_pulse": 2000,
+  "real_min_angle": -45,
+  "real_max_angle": 45,
+  "calibration_offset": 0,
+  "calibration_mode": "sum"
+}
+```
+
+This produces approximately 1389–1611 µs. Change only the travel limits to
+±15° for approximately 1333–1667 µs. Keep measured pulse calibration fixed.
+`dec_step`/`inc_step` control keyboard and button increments; the joystick
+uses the full travel limits at one-degree resolution. `calibration_offset`
+sets the center in the same degree scale. `sum` applies offset + angle;
+`negative` applies offset - angle. The UI's `reverse` option reverses the
+direction of manual commands.
+
+Calibrate with motor power disconnected and the linkage free to move safely.
+Measure two positions within a safe range; do not drive into mechanical end
+stops to find calibration points. Enter their pulse widths and measured angles,
+then set the center offset and verify small positive and negative commands.
+Measure shaft rotation if the configured units represent servo degrees. Wheel
+angle requires measuring the linkage's response, which may be nonlinear;
+these fields provide a linear calibration and do not provide position feedback.
+The steering-position sensor configuration has a separate measured wheel-angle
+calibration for localization. See
+[Pololu's servo interface explanation](https://www.pololu.com/blog/17/servo-control-interface-in-detail)
+for why pulse-to-angle response must be checked per servo.
+
+The servo mapping and shutdown protections require `robot-hat>=3.3.3`.
+
+#### Motor safety and commissioning
+
+Each GPIO must have one hardware owner. An LED on GPIO26 conflicts with a
+motor whose enable input uses GPIO26, including when the LED runs in a
+separate process. Set `led` to `null` when no independent LED is wired.
+LED and ultrasonic acquisition refuse GPIOs reserved for wired actuators or
+encoders. Disabled actuators still reserve their pins for this check. Pin
+names such as `26`, `GPIO26`, `BCM26`, `BOARD37`, and `D14` identify the same
+GPIO on the supported 40-pin header.
+
+Power-off and restart require a successful robot-service shutdown response.
+Motor shutdown precedes telemetry cleanup, and shutdown rejects further
+actuator commands and hardware reinitialization. A failed or timed-out
+shutdown response prevents the host power action and must be investigated.
+An unconfigured servo command reports an error without releasing motor
+resources. Sensor reads, reconfiguration, and cleanup serialize adapter
+ownership; a cancelled read completes its worker operation before the
+adapter can be closed.
+
+Software shutdown cannot guarantee a disabled motor after GPIOs are released
+or the Pi loses power. The motor driver must have a defined inactive state
+with the Pi unpowered, during boot, and during halt. Verify the board's
+enable/inhibit truth table and biasing; use a hardware interlock or motor
+supply cutoff that does not depend on the application. A supply fuse protects
+against overcurrent and does not provide a motion stop. Treat even a brief
+startup or shutdown movement as a failed safety check.
+
+Validate hardware with the driven wheels lifted and a reachable motor-power
+cutoff. Check boot and halt with motor power already present, service stop,
+browser disconnection, disabled-servo commands, configuration saves, and
+sensor enable/disable transitions. Confirm the driver's inhibit signal and
+motor outputs electrically through each transition. Automated tests use
+mock GPIO and I2C interfaces and cannot verify those voltage levels, wiring,
+power transients, or the physical motor driver.
+
 Motion control, Ackermann odometry, localization publishers, LiDAR safety, and
 local mapping are startup-scoped services. Their settings are validated and
 saved without interrupting the active motor/servo adapter, but the backend must

@@ -54,11 +54,11 @@ class TestPoseEstimationConfig(unittest.TestCase):
             ):
                 OccupancyMapScanMatchingConfig(refinement_translation_step_m=step)
 
-    def test_v7_without_observed_matching_keeps_working(self) -> None:
+    def test_missing_observed_matching_uses_disabled_default(self) -> None:
         data = deepcopy(self.root_data)
         data["pose_estimation"].pop("occupancy_map_scan_matching", None)
         config = HardwareConfig.model_validate(data)
-        self.assertEqual(config.schema_version, 7)
+        self.assertEqual(config.schema_version, 8)
         self.assertFalse(config.pose_estimation.occupancy_map_scan_matching.enabled)
 
     def test_scan_matching_validates_search_resolution(self) -> None:

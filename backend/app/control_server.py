@@ -207,158 +207,167 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info(f"Starting {app.title} app on the port {port}")
 
         yield
-    except asyncio.CancelledError:
-        logger.warning(
-            "Lifespan was cancelled mid-shutdown (first-level). Proceeding to final cleanup."
-        )
+    finally:
+        cancelled = False
+        if robot_service:
+            try:
+                await robot_service.cleanup()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up robot_service.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup robot service: %s", e)
 
-    if battery_service:
-        try:
-            await battery_service.cleanup_connection_manager()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up battery_service.")
-            raise
+        if battery_service:
+            try:
+                await battery_service.cleanup_connection_manager()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up battery_service.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup battery service: %s", e)
 
-    if auxiliary_sensor_service:
-        try:
-            await auxiliary_sensor_service.cleanup_connection_manager()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up auxiliary sensor service.")
-            raise
+        if auxiliary_sensor_service:
+            try:
+                await auxiliary_sensor_service.cleanup_connection_manager()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up auxiliary sensor service.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup auxiliary sensor service: %s", e)
 
-    if relative_motion_service:
-        try:
-            await relative_motion_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up relative motion.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup relative motion service: %s", e)
+        if relative_motion_service:
+            try:
+                await relative_motion_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up relative motion.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup relative motion service: %s", e)
 
-    if navigation_mission_service:
-        try:
-            await navigation_mission_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up navigation mission.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup navigation mission service: %s", e)
+        if navigation_mission_service:
+            try:
+                await navigation_mission_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up navigation mission.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup navigation mission service: %s", e)
 
-    if navigation_execution_service:
-        try:
-            await navigation_execution_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up navigation execution.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup navigation execution service: %s", e)
+        if navigation_execution_service:
+            try:
+                await navigation_execution_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up navigation execution.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup navigation execution service: %s", e)
 
-    if robot_service:
-        try:
-            await robot_service.cleanup()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up robot_service.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup robot service: %s", e)
+        if coherent_simulation_supervisor:
+            try:
+                await coherent_simulation_supervisor.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up coherent simulation.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup coherent simulation: %s", e)
 
-    if coherent_simulation_supervisor:
-        try:
-            await coherent_simulation_supervisor.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up coherent simulation.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup coherent simulation: %s", e)
+        if known_world_scan_matcher_supervisor:
+            try:
+                await known_world_scan_matcher_supervisor.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up known-world scan matcher.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup known-world scan matcher: %s", e)
 
-    if known_world_scan_matcher_supervisor:
-        try:
-            await known_world_scan_matcher_supervisor.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up known-world scan matcher.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup known-world scan matcher: %s", e)
+        if pose_estimator_supervisor:
+            try:
+                await pose_estimator_supervisor.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up pose estimator.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup pose estimator: %s", e)
 
-    if pose_estimator_supervisor:
-        try:
-            await pose_estimator_supervisor.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up pose estimator.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup pose estimator: %s", e)
+        if distance_service:
+            try:
+                await distance_service.cleanup()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up distance service.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup distance service: %s", e)
 
-    if distance_service:
-        try:
-            await distance_service.cleanup()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up distance service.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup distance service: %s", e)
+        if led_service:
+            try:
+                await led_service.cleanup()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up LED service.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup LED service: %s", e)
 
-    if led_service:
-        try:
-            await led_service.cleanup()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up LED service.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup LED service: %s", e)
+        if odometry_service:
+            try:
+                await odometry_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up odometry service.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup odometry service: %s", e)
 
-    if odometry_service:
-        try:
-            await odometry_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up odometry service.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup odometry service: %s", e)
+        if steering_feedback_service:
+            try:
+                await steering_feedback_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up steering feedback.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup steering feedback service: %s", e)
 
-    if steering_feedback_service:
-        try:
-            await steering_feedback_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up steering feedback.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup steering feedback service: %s", e)
+        if localization_sensor_service:
+            try:
+                await localization_sensor_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up localization sensors.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup localization sensors: %s", e)
 
-    if localization_sensor_service:
-        try:
-            await localization_sensor_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up localization sensors.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup localization sensors: %s", e)
+        if local_mapping_service:
+            try:
+                await local_mapping_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up local mapping.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup local mapping service: %s", e)
 
-    if local_mapping_service:
-        try:
-            await local_mapping_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up local mapping.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup local mapping service: %s", e)
+        if lidar_safety_service:
+            try:
+                await lidar_safety_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while cleaning up LiDAR safety.")
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup LiDAR safety service: %s", e)
 
-    if lidar_safety_service:
-        try:
-            await lidar_safety_service.stop()
-        except asyncio.CancelledError:
-            logger.warning("Cancelled while cleaning up LiDAR safety.")
-            raise
-        except Exception as e:
-            logger.error("Failed to cleanup LiDAR safety service: %s", e)
+        if autonomy_recorder:
+            try:
+                await autonomy_recorder.stop()
+            except asyncio.CancelledError:
+                cancelled = True
+            except Exception as e:
+                logger.error("Failed to cleanup autonomy recorder: %s", e)
 
-    if autonomy_recorder:
-        await autonomy_recorder.stop()
+        if topic_bus:
+            topic_bus.close()
 
-    if topic_bus:
-        topic_bus.close()
+        logger.info(f"Stopped {app.title}")
 
-    logger.info(f"Stopped {app.title}")
+        if cancelled:
+            raise asyncio.CancelledError
 
 
 app = FastAPI(

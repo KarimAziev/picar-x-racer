@@ -1,11 +1,5 @@
 <template>
-  <ScanLines
-    v-if="!isVideoStreamActive || errorMsg"
-    class="w-full"
-    :class="{
-      'h-[90%]': !imgInitted && !errorMsg,
-    }"
-  >
+  <ScanLines v-if="!isVideoVisible" class="w-full h-[99%]">
     <div
       class="text-center text-error text-xl font-black absolute inset-0 flex items-center justify-center uppercase"
     >
@@ -13,12 +7,12 @@
     </div>
   </ScanLines>
   <img
-    v-else
+    v-show="isVideoVisible"
     ref="imgRef"
     class="w-full block h-[99%] shadow-[0_0_4px_2px] shadow-primary-500 select-none cursor-grab touch-none"
     :draggable="false"
     @load="handleImageOnLoad"
-    :class="imgClass"
+    :class="props.imgClass"
     alt="Video"
   />
   <canvas
@@ -56,21 +50,20 @@ const {
   handleImageOnLoad,
   imgLoading,
   active: isVideoStreamActive,
-  imgInitted,
 } = useWebsocketStream({ url: "api/ws/video-stream", imgRef });
 
-const imgClass = computed(() => ({
-  "opacity-0": imgLoading.value,
-  [props.imgClass || ""]: !!props.imgClass,
-}));
+const isVideoVisible = computed(
+  () => isVideoStreamActive.value && !imgLoading.value && !errorMsg.value,
+);
 
 const isOverlayEnabled = computed(
-  () => detectionStore.data.active && isVideoStreamActive.value,
+  () => detectionStore.data.active && isVideoVisible.value,
 );
 
 const font = useCssVar("--canvas-font");
 const colorText = useCssVar("--color-text");
 let overlayAnimationFrame: number | null = null;
+let disposed = false;
 
 const {
   addListeners: addCameraRotateListeners,
@@ -176,6 +169,9 @@ const handleSocketsCleanup = () => {
 
 onMounted(async () => {
   await camStore.fetchAllCameraSettings();
+  if (disposed) {
+    return;
+  }
   initVideoStreamWS();
   if (detectionStore.data.active) {
     detectionStore.initializeWebSocket();
@@ -188,6 +184,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  disposed = true;
   if (overlayAnimationFrame !== null) {
     cancelAnimationFrame(overlayAnimationFrame);
   }

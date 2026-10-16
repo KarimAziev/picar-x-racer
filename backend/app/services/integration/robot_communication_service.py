@@ -2,6 +2,7 @@ from typing import Any, Dict
 
 import httpx
 from app.core.logger import Logger
+from app.schemas.system import ShutdownResponse
 
 logger = Logger(__name__)
 
@@ -11,19 +12,21 @@ class RobotCommunicationService:
         self.base_url = base_url.rstrip("/")
 
     async def shutdown_robot_services(self) -> None:
-        """Notify the robot app to shutdown its services."""
+        """Require confirmation that the robot services stopped successfully."""
         robot_shutdown_url = f"{self.base_url}/px/api/system/shutdown"
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(robot_shutdown_url)
-                if response.status_code != 200:
-                    logger.error(
-                        "Robot shutdown call failed. Status: %s, Response: %s",
-                        response.status_code,
-                        response.text,
+                response.raise_for_status()
+                result = ShutdownResponse.model_validate(response.json(), strict=True)
+                if not result.success or result.errors:
+                    raise RuntimeError(
+                        "Robot shutdown was not confirmed: "
+                        + "; ".join(result.errors or ["unsuccessful shutdown"])
                     )
         except Exception as e:
             logger.error("Error calling robot shutdown endpoint: %s", e)
+            raise
 
     async def refresh_robot_settings(self, new_settings: Dict[str, Any]) -> None:
         """Refresh settings in the robot app."""

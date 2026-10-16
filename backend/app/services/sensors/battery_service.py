@@ -14,6 +14,7 @@ from app.schemas.robot.battery import (
     SunfounderBatteryConfig,
 )
 from app.schemas.robot.config import HardwareConfig
+from app.util.async_threads import run_in_thread
 from robot_hat import (
     BatteryABC,
     INA219Battery,
@@ -44,6 +45,8 @@ class BatteryService:
         self._stop_event = asyncio.Event()
         self._task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()
+        self._lifecycle_lock = asyncio.Lock()
+        self._closed = False
         self._app_loop = app_loop
         self._metrics_cache: Dict[str, Tuple[float, BatteryStatusResponse]] = {}
         self._last_broadcast_time: Dict[str, float] = {}
@@ -58,16 +61,15 @@ class BatteryService:
         return [battery for battery in self.config.batteries if battery.enabled]
 
     def update_config(self, new_config: Dict[str, Any]) -> None:
-        next_config = HardwareConfig(**new_config)
-        if self.config.batteries == next_config.batteries:
-            self.config = next_config
+        if self._closed:
             return
+        next_config = HardwareConfig(**new_config)
 
         if not self._app_loop.is_running():
-            self.config = next_config
-            self.close_battery_adapters()
-            self._reset_runtime_state()
-            self._initialize_adapters()
+            if self.config.batteries == next_config.batteries:
+                self.config = next_config
+            else:
+                self._replace_adapters(next_config)
             return
 
         try:
@@ -87,12 +89,24 @@ class BatteryService:
                 _log.error("Error while updating battery configuration: %s", error)
 
     async def _apply_config(self, next_config: HardwareConfig) -> None:
-        await self._cancel_broadcast_task()
+        async with self._lifecycle_lock:
+            if self._closed:
+                return
+            if self.config.batteries == next_config.batteries:
+                self.config = next_config
+                return
+            await self._cancel_broadcast_task()
+            async with self._lock:
+                if self._closed:
+                    return
+                await run_in_thread(self._replace_adapters, next_config)
+            self._start_broadcast_task()
+
+    def _replace_adapters(self, next_config: HardwareConfig) -> None:
         self.config = next_config
         self.close_battery_adapters()
         self._reset_runtime_state()
         self._initialize_adapters()
-        self._start_broadcast_task()
 
     def _reset_runtime_state(self) -> None:
         self._metrics_cache.clear()
@@ -151,29 +165,32 @@ class BatteryService:
             return adapter.get_battery_voltage(), None
 
     async def read_metrics(self, battery: BatteryConfig) -> BatteryStatusResponse:
-        cached = self._metrics_cache.get(battery.name)
-        if cached and time.monotonic() - cached[0] <= battery.cache_seconds:
-            return cached[1]
-
-        adapter = self.battery_adapters.get(battery.name)
-        if adapter is None:
-            error = self._adapter_errors.get(
-                battery.name, "Battery adapter is not initialized"
-            )
-            return BatteryStatusResponse(
-                name=battery.name,
-                voltage=None,
-                current=None,
-                percentage=None,
-                error=error,
-            )
-
         async with self._lock:
+            if self._closed:
+                return BatteryStatusResponse(
+                    name=battery.name,
+                    voltage=None,
+                    current=None,
+                    percentage=None,
+                    error="Battery service is shut down",
+                )
             cached = self._metrics_cache.get(battery.name)
             if cached and time.monotonic() - cached[0] <= battery.cache_seconds:
                 return cached[1]
+            adapter = self.battery_adapters.get(battery.name)
+            if adapter is None:
+                error = self._adapter_errors.get(
+                    battery.name, "Battery adapter is not initialized"
+                )
+                return BatteryStatusResponse(
+                    name=battery.name,
+                    voltage=None,
+                    current=None,
+                    percentage=None,
+                    error=error,
+                )
             try:
-                voltage, current = await asyncio.to_thread(
+                voltage, current = await run_in_thread(
                     self._read_adapter_metrics, adapter
                 )
             except Exception as error:
@@ -186,15 +203,15 @@ class BatteryService:
                     error=str(error),
                 )
 
-        status = BatteryStatusResponse(
-            name=battery.name,
-            voltage=voltage,
-            current=current,
-            percentage=self._calculate_battery_percentage(battery, voltage),
-            error=None,
-        )
-        self._metrics_cache[battery.name] = (time.monotonic(), status)
-        return status
+            status = BatteryStatusResponse(
+                name=battery.name,
+                voltage=voltage,
+                current=current,
+                percentage=self._calculate_battery_percentage(battery, voltage),
+                error=None,
+            )
+            self._metrics_cache[battery.name] = (time.monotonic(), status)
+            return status
 
     async def read_all_metrics(
         self, batteries: Optional[Sequence[BatteryConfig]] = None
@@ -222,14 +239,20 @@ class BatteryService:
         self.battery_adapters = {}
 
     async def cleanup_connection_manager(self) -> None:
+        self._closed = True
+        self.config_manager.off(self.config_manager.UPDATE_EVENT, self.update_config)
+        self.config_manager.off(self.config_manager.LOAD_EVENT, self.update_config)
         self.connection_manager.off(
             ConnectionEvent.FIRST_ACTIVE_CONNECTION.value, self._start_broadcast_task
         )
         self.connection_manager.off(
             ConnectionEvent.LAST_CONNECTION.value, self._cancel_broadcast_task
         )
-        await self._cancel_broadcast_task()
-        self.close_battery_adapters()
+        async with self._lifecycle_lock:
+            await self._cancel_broadcast_task()
+            async with self._lock:
+                await run_in_thread(self.close_battery_adapters)
+                self._reset_runtime_state()
 
     async def broadcast_state(
         self, batteries: Optional[Sequence[BatteryConfig]] = None
@@ -257,7 +280,8 @@ class BatteryService:
 
     def _start_broadcast_task(self) -> None:
         if (
-            self._task is None
+            not self._closed
+            and self._task is None
             and self.enabled_batteries
             and self.connection_manager.active_connections
         ):
@@ -274,6 +298,8 @@ class BatteryService:
             await self._task
         except asyncio.CancelledError:
             _log.info("Battery task was cancelled")
+        except Exception as error:
+            _log.error("Battery broadcast task failed: %s", error)
         finally:
             self._task = None
             self._stop_event.clear()

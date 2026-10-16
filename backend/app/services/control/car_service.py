@@ -51,6 +51,10 @@ class CarService:
         self.led_service = led_service
         self.speed_estimator = speed_estimator
         self.motion_control_service = motion_control_service
+        self._shutting_down = False
+        self._cleanup_lock = asyncio.Lock()
+        self._cleanup_complete = False
+        self._cleanup_error: Union[RuntimeError, None] = None
 
         self.app_settings_manager = app_settings_manager
 
@@ -139,6 +143,7 @@ class CarService:
     async def start_motion_control(self) -> None:
         """Start the opt-in runtime disarmed and begin its watchdog."""
 
+        self._ensure_running()
         if not self.motion_control_service:
             return
         await self.motion_control_service.set_mode(RobotMode.DISARMED)
@@ -238,6 +243,7 @@ class CarService:
             payload: The payload data associated with the action.
             websocket (WebSocket): WebSocket connection instance.
         """
+        self._ensure_running()
         calibration_actions_map = {
             "increaseCamPanCali": self.calibration.increase_cam_pan_angle,
             "decreaseCamPanCali": self.calibration.decrease_cam_pan_angle,
@@ -285,8 +291,12 @@ class CarService:
             handler = calibration_actions_map[action]
             if inspect.iscoroutinefunction(handler):
                 calibrationData = await handler()
-            else:
+            elif action == "saveCalibration":
                 calibrationData = await asyncio.to_thread(handler)
+            else:
+                calibrationData = await asyncio.to_thread(
+                    self._run_hardware_action, handler
+                )
 
             if calibrationData:
 
@@ -307,7 +317,7 @@ class CarService:
                 if inspect.iscoroutinefunction(func):
                     await func(payload)
                 else:
-                    func(payload)
+                    await asyncio.to_thread(self._run_hardware_action, func, payload)
             except ValueError as e:
                 await self.connection_manager.error(str(e))
 
@@ -360,7 +370,7 @@ class CarService:
 
     async def reset_mcu(self, _: Any = None) -> None:
         try:
-            await asyncio.to_thread(reset_mcu_sync)
+            await asyncio.to_thread(self._run_hardware_action, reset_mcu_sync)
             await self.connection_manager.info("MCU has been reset")
         except Exception as e:
             await self.connection_manager.error(f"Failed to reset MCU: {e}")
@@ -430,6 +440,7 @@ class CarService:
             await asyncio.to_thread(self.px.set_cam_pan_angle, angle)
 
     async def handle_avoid_obstacles(self, _=None) -> None:
+        self._ensure_running()
         self.avoid_obstacles_mode = not self.avoid_obstacles_mode
 
         if self.avoid_obstacles_mode:
@@ -774,6 +785,7 @@ class CarService:
             direction: The direction to move the car (1 for forward, -1 for backward).
             speed: The speed at which to move the car.
         """
+        self._ensure_running()
         if self.motion_control_service:
             await self._submit_motion(
                 direction,
@@ -791,6 +803,7 @@ class CarService:
         speed: int,
         steering_degrees: float,
     ) -> None:
+        self._ensure_running()
         service = self.motion_control_service
         if service is None:
             raise RuntimeError("Motion control is not enabled")
@@ -896,26 +909,74 @@ class CarService:
             await self.broadcast()
             await asyncio.sleep(0.5)
 
+    def _ensure_running(self) -> None:
+        if self._shutting_down:
+            raise RuntimeError("Robot services are shutting down")
+
+    def _run_hardware_action(self, action: Callable[..., Any], *args: Any) -> Any:
+        with self.px.hardware_session():
+            return action(*args)
+
     async def cleanup(self) -> None:
-        async_handlers = [
-            self._stop_avoid_loop,
-            self.handle_stop,
-            self.distance_service.stop_all,
-        ]
-        for fn in async_handlers:
+        """Latch actuation off and attempt every cleanup before reporting failures."""
+        self._shutting_down = True
+        self.avoid_obstacles_mode = False
+        task = asyncio.create_task(self._cleanup_resources())
+        cancellation: Union[asyncio.CancelledError, None] = None
+        while not task.done():
             try:
-                await fn()
+                await asyncio.shield(task)
+            except asyncio.CancelledError as error:
+                cancellation = error
             except Exception:
-                pass
+                break
+        if cancellation is not None:
+            if not task.cancelled() and task.exception() is not None:
+                _log.error(
+                    "Robot cleanup failed during cancellation: %s", task.exception()
+                )
+            raise cancellation
+        task.result()
 
-        if self.motion_control_service:
+    async def _cleanup_resources(self) -> None:
+        async with self._cleanup_lock:
+            if self._cleanup_complete:
+                if self._cleanup_error is not None:
+                    raise self._cleanup_error
+                return
+
+            errors: list[BaseException] = []
             try:
-                await self.motion_control_service.stop()
-            except Exception as e:
-                _log.error("Failed to stop motion control service: %s", e)
+                await asyncio.to_thread(self.px.begin_shutdown)
+            except (Exception, asyncio.CancelledError) as e:
+                errors.append(e)
+                _log.error("Failed to stop hardware for shutdown: %s", e)
 
-        try:
-            await asyncio.to_thread(self.px.cleanup)
+            async_handlers = [self._stop_avoid_loop]
+            if self.motion_control_service:
+                async_handlers.append(self.motion_control_service.stop)
+            for fn in async_handlers:
+                try:
+                    await fn()
+                except (Exception, asyncio.CancelledError) as e:
+                    errors.append(e)
+                    _log.error("Failed to stop control task: %s", e)
 
-        except Exception as e:
-            _log.error("Failed to cleanup Picarx: %s", e)
+            try:
+                await asyncio.to_thread(self.px.cleanup)
+            except (Exception, asyncio.CancelledError) as e:
+                errors.append(e)
+                _log.error("Failed to cleanup Picarx: %s", e)
+
+            try:
+                await self.distance_service.stop_all()
+            except (Exception, asyncio.CancelledError) as e:
+                errors.append(e)
+                _log.error("Failed to stop distance service: %s", e)
+
+            self._cleanup_complete = True
+            if errors:
+                self._cleanup_error = RuntimeError(
+                    "Robot cleanup failed: " + "; ".join(str(error) for error in errors)
+                )
+                raise self._cleanup_error from errors[0]
