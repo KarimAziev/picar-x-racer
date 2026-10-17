@@ -1,5 +1,9 @@
 <template>
-  <div class="grid grid-cols-[80%_20%] gap-2">
+  <Grid class="mb-3">
     <slot></slot>
-  </div>
+  </Grid>
 </template>
+
+<script setup lang="ts">
+import Grid from "@/ui/JsonSchema/Grid.vue";
+</script>

@@ -8,7 +8,7 @@
     :idPrefix="idPrefix"
     :description="resolvedSchema.description"
   >
-    <Grid :inhibit-grid="inhibitGrid">
+    <Grid>
       <JsonSchema
         :origModel="origModel"
         v-for="(propSchema, propName) in visibleProperties"
@@ -142,32 +142,33 @@
     :collapsed="collapsed"
     toggleable
   >
-    <SelectField
-      v-if="anyOfOptions?.length > 1"
-      :field="`select-${stringifyArrSafe(path)}`"
-      class="mb-2"
-      :label="resolvedSchema?.title"
-      :options="anyOfOptions"
-      v-model="selectedOption"
-      :tooltipHelp="tooltipHelp"
-      @update:model-value="handleNewOption"
-    />
+    <Grid alignEnd>
+      <SelectField
+        v-if="anyOfOptions?.length > 1"
+        :field="`select-${stringifyArrSafe(path)}`"
+        :label="resolvedSchema?.title"
+        :options="anyOfOptions"
+        v-model="selectedOption"
+        :tooltipHelp="tooltipHelp"
+        @update:model-value="handleNewOption"
+      />
 
-    <JsonSchema
-      v-if="selectedSchema"
-      :inhibitFieldset="anyOfOptions?.length > 1"
-      :level="level + 1"
-      :origModel="origModel"
-      :collapsed="anyOfOptions?.length === 0"
-      :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
-      :key="`schema-${stringifyArrSafe([...path, selectedOption])}`"
-      :schema="selectedSchema"
-      :model="model"
-      :invalidData="invalidData"
-      :path="path"
-      :defs="defs"
-      :hiddenProperty="resolvedSchema?.discriminator?.propertyName"
-    />
+      <JsonSchema
+        v-if="selectedSchema"
+        :inhibitFieldset="anyOfOptions?.length > 1"
+        :level="level + 1"
+        :origModel="origModel"
+        :collapsed="anyOfOptions?.length === 0"
+        :idPrefix="`${idPrefix}-${[selectedOption, ...path].join('-')}`"
+        :key="`schema-${stringifyArrSafe([...path, selectedOption])}`"
+        :schema="selectedSchema"
+        :model="model"
+        :invalidData="invalidData"
+        :path="path"
+        :defs="defs"
+        :hiddenProperty="resolvedSchema?.discriminator?.propertyName"
+      />
+    </Grid>
     <slot></slot>
     <Footer v-if="isRootLevel">
       <Button
@@ -205,7 +206,6 @@ import {
   getComponentWithProps,
   hasDirectSchemaType,
   resolveNewListItem,
-  shouldInhibitGrid,
 } from "@/ui/JsonSchema/util";
 import JsonSchema from "./JsonSchema.vue";
 import Footer from "@/ui/JsonSchema/Footer.vue";
@@ -324,9 +324,6 @@ const selectedSchema = computed(() =>
 );
 
 const isRootLevel = computed(() => props.level === 0);
-const inhibitGrid = computed(() =>
-  shouldInhibitGrid(props.level, props.inhibitFieldset),
-);
 
 const disabled = computed(() => {
   if (!isRootLevel.value) {

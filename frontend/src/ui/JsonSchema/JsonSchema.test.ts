@@ -17,7 +17,11 @@ afterEach(() => {
   });
 });
 
-const mountSchema = (schema: JSONSchemaType, value: string | number) => {
+const mountSchema = (
+  schema: JSONSchemaType,
+  value: unknown,
+  defs?: Record<string, JSONSchemaType>,
+) => {
   const container = document.createElement("div");
   const model = { pin: value };
   const pinia = createPinia();
@@ -26,11 +30,13 @@ const mountSchema = (schema: JSONSchemaType, value: string | number) => {
     setup: () => () =>
       h(JsonSchema, {
         schema,
+        defs,
         model,
         origModel: { ...model },
         path: ["pin"],
         idPrefix: "test-pin",
         level: 0,
+        collapsed: false,
       }),
   });
 
@@ -144,5 +150,107 @@ describe("JsonSchema custom union rendering", () => {
     expect(container.textContent).toContain("Sensor type");
     expect(container.textContent).toContain("Cabin temperature");
     expect(container.textContent).not.toContain("Driver");
+  });
+});
+
+describe("JsonSchema nested layout", () => {
+  it("gives nested objects, arrays and selected variants full-width sections", async () => {
+    const container = mountSchema(
+      {
+        type: "object",
+        title: "Hardware",
+        properties: {
+          encoders: {
+            type: "object",
+            title: "Drive encoders",
+            properties: {
+              frequency: { type: "number", title: "Sample frequency" },
+              devices: {
+                type: "array",
+                title: "Devices",
+                items: { $ref: "#/$defs/Encoder" },
+              },
+            },
+          },
+          steering: {
+            title: "Steering sensor",
+            anyOf: [{ $ref: "#/$defs/Encoder" }, { type: "null" }],
+          },
+        },
+      },
+      {
+        encoders: { frequency: 100, devices: [{ enabled: true, ticks: 160 }] },
+        steering: { enabled: true, ticks: 8 },
+      },
+      {
+        Encoder: {
+          type: "object",
+          title: "Mock encoder",
+          properties: {
+            enabled: { type: "boolean", title: "Enabled" },
+            ticks: { type: "integer", title: "Ticks per sample" },
+          },
+        },
+      },
+    );
+    await nextTick();
+
+    const grids = container.querySelectorAll(".schema-grid");
+    expect(grids).toHaveLength(5);
+    const sections = container.querySelectorAll(".schema-section");
+    expect(sections).toHaveLength(6);
+    sections.forEach((section) => {
+      expect(section.classList.contains("col-span-full")).toBe(true);
+    });
+
+    const fieldsets = container.querySelectorAll("fieldset");
+    expect(fieldsets).toHaveLength(4);
+    expect(fieldsets[0].classList.contains("schema-section-flat")).toBe(false);
+    expect(fieldsets[1].classList.contains("schema-section-flat")).toBe(false);
+    expect(fieldsets[2].classList.contains("schema-section-flat")).toBe(true);
+    expect(container.textContent).toContain("Ticks per sample");
+    expect(container.querySelector('[aria-label="Remove item"]')).not.toBeNull();
+  });
+
+  it("keeps deeply nested sections collapsible and their fields editable", async () => {
+    const value = { sensor: { calibration: { name: "Center" } } };
+    const container = mountSchema(
+      {
+        type: "object",
+        properties: {
+          sensor: {
+            type: "object",
+            title: "Sensor",
+            properties: {
+              calibration: {
+                type: "object",
+                title: "Calibration",
+                properties: { name: { type: "string", title: "Name" } },
+              },
+            },
+          },
+        },
+      },
+      value,
+    );
+    await nextTick();
+
+    const section = container.querySelector(".schema-section-flat")!;
+    const toggle = section.querySelector<HTMLButtonElement>("legend button")!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    toggle.click();
+    await nextTick();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+
+    const input = section.querySelector<HTMLInputElement>("input")!;
+    input.value = "Straight ahead";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+    expect(value.sensor.calibration.name).toBe("Straight ahead");
+
+    toggle.click();
+    await nextTick();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(value.sensor.calibration.name).toBe("Straight ahead");
   });
 });

@@ -1,19 +1,33 @@
 <template>
-  <div
-    class="w-full min-w-0 [&>*]:min-w-0 [&>*]:max-w-full"
-    :class="{
-      'grid grid-cols-2 gap-2 justify-around': !inhibitGrid,
-    }"
-  >
-    <slot></slot>
+  <div class="schema-grid-container w-full min-w-0">
+    <div
+      class="schema-grid grid gap-x-4 gap-y-3 [&>*]:min-w-0 [&>*]:max-w-full"
+      :class="{ 'items-end': alignEnd }"
+    >
+      <slot></slot>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ inhibitGrid: boolean }>();
+defineProps<{ alignEnd?: boolean }>();
 </script>
 
 <style scoped>
+.schema-grid-container {
+  container-type: inline-size;
+}
+
+.schema-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 40rem) {
+  .schema-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 :deep(.p-inputtext:not(.p-select-filter)),
 :deep(.p-treeselect),
 :deep(.p-select),

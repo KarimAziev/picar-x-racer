@@ -13,7 +13,6 @@ import {
   resolveRef,
   resolveNewListItem,
   schemaAllowsType,
-  shouldInhibitGrid,
   validateAll,
 } from "@/ui/JsonSchema/util";
 
@@ -122,24 +121,6 @@ describe("polymorphic array schemas", () => {
         { channel: "P12", name: " main " },
       ]),
     ).toBe("Name values must be unique.");
-  });
-});
-
-describe("object grid layout", () => {
-  it("uses a grid for a root object", () => {
-    expect(shouldInhibitGrid(0, false)).toBe(false);
-  });
-
-  it("stacks fields inside a nested object panel", () => {
-    expect(shouldInhibitGrid(1, false)).toBe(true);
-  });
-
-  it("keeps the grid for a selected object rendered without another fieldset", () => {
-    expect(shouldInhibitGrid(1, true)).toBe(false);
-  });
-
-  it("keeps transparent array item objects compact at deeper levels", () => {
-    expect(shouldInhibitGrid(2, true)).toBe(false);
   });
 });
 
