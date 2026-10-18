@@ -3,7 +3,7 @@
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useControllerStore } from "@/features/controller/store";
-import { useSettingsStore } from "@/features/settings/stores";
+import { useRobotStore, useSettingsStore } from "@/features/settings/stores";
 
 const websocket = vi.hoisted(() => ({
   send: vi.fn(),
@@ -36,6 +36,13 @@ describe("controller motion heartbeat", () => {
     websocket.cleanup.mockClear();
     websocket.handleMessage = null;
     setActivePinia(createPinia());
+    const robot = useRobotStore();
+    robot.data = {
+      ...robot.data,
+      steering_servo: { ...robot.data.steering_servo },
+      cam_pan_servo: { ...robot.data.cam_pan_servo },
+      cam_tilt_servo: { ...robot.data.cam_tilt_servo },
+    };
   });
 
   afterEach(() => {
@@ -111,6 +118,71 @@ describe("controller motion heartbeat", () => {
     expect(websocket.send).toHaveBeenNthCalledWith(2, {
       action: "setServoDirAngle",
       payload: -10,
+    });
+  });
+
+  for (const servo of [
+    {
+      field: "steering_servo",
+      move: "setDirServoAngle",
+      increase: "increaseServoDirCali",
+      decrease: "decreaseServoDirCali",
+    },
+    {
+      field: "cam_pan_servo",
+      move: "setCamPanAngle",
+      increase: "increaseCamPanCali",
+      decrease: "decreaseCamPanCali",
+    },
+    {
+      field: "cam_tilt_servo",
+      move: "setCamTiltAngle",
+      increase: "increaseCamTiltCali",
+      decrease: "decreaseCamTiltCali",
+    },
+  ] as const) {
+    for (const reverse of [false, true]) {
+      for (const mode of ["sum", "negative"] as const) {
+        it(`matches ${servo.field} calibration direction to movement with reverse=${reverse}, mode=${mode}`, () => {
+          const robot = useRobotStore();
+          const config = robot.data[servo.field];
+          config.reverse = reverse;
+          config.calibration_mode = mode;
+          config.calibration_offset = 4.5;
+          const store = useControllerStore();
+          store.initializeWebSocket();
+
+          for (const direction of [-1, 1]) {
+            store[servo.move](direction * 5);
+            const motionCommand = websocket.send.mock.lastCall?.[0];
+            const physicalDirection =
+              Math.sign(motionCommand.payload) * (mode === "negative" ? -1 : 1);
+
+            store[direction > 0 ? servo.increase : servo.decrease]();
+            expect(websocket.send).toHaveBeenLastCalledWith({
+              action: physicalDirection > 0 ? servo.increase : servo.decrease,
+            });
+          }
+          expect(config.calibration_offset).toBe(4.5);
+        });
+      }
+    }
+  }
+
+  it("uses the current reverse setting for each calibration step", () => {
+    const robot = useRobotStore();
+    robot.data.steering_servo.calibration_mode = "sum";
+    const store = useControllerStore();
+    store.initializeWebSocket();
+    store.increaseServoDirCali();
+    expect(websocket.send).toHaveBeenLastCalledWith({
+      action: "increaseServoDirCali",
+    });
+
+    robot.data.steering_servo.reverse = true;
+    store.increaseServoDirCali();
+    expect(websocket.send).toHaveBeenLastCalledWith({
+      action: "decreaseServoDirCali",
     });
   });
 

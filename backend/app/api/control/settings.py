@@ -95,6 +95,7 @@ async def _reload_autonomy_runtime(
             replacement_steering = robot_deps.build_steering_feedback_service(
                 current,
                 smbus_manager,
+                topic_bus=topic_bus,
             )
             if replacement_steering is not None:
                 await steering_feedback_service.reconfigure_from(replacement_steering)

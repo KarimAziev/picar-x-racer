@@ -22,6 +22,7 @@ from app.schemas.autonomy import (
     Odometry2D,
     SafetyState,
     SimulationState,
+    SteeringPosition,
 )
 from app.schemas.autonomy.telemetry import (
     LaserScanTelemetry,
@@ -38,6 +39,7 @@ from app.services.autonomy.topics import (
     ODOMETRY,
     SAFETY_STATE,
     SIMULATION_STATE,
+    STEERING_POSITION,
 )
 
 
@@ -47,6 +49,7 @@ TELEMETRY_TOPICS: Mapping[TelemetryChannel, Topic[Any]] = {
     "lidar": LIDAR_SCAN,
     "imu": IMU_DATA,
     "encoder": ENCODER_STATE,
+    "steering": STEERING_POSITION,
     "odometry": ODOMETRY,
     "localization": LOCALIZATION_POSE,
     "safety": SAFETY_STATE,
@@ -102,6 +105,7 @@ def make_telemetry_envelope(
         expected_types = {
             "imu": ImuData,
             "encoder": EncoderState,
+            "steering": SteeringPosition,
             "odometry": Odometry2D,
             "localization": LocalizationPose2D,
             "safety": SafetyState,

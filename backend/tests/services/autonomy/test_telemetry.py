@@ -10,6 +10,7 @@ from app.schemas.autonomy import (
     LocalizationPose2D,
     MessageHeader,
     SimulationState,
+    SteeringPosition,
 )
 from app.services.autonomy import (
     SensorTelemetryStreamer,
@@ -29,6 +30,16 @@ def header(sequence: int = 1) -> MessageHeader:
 
 
 class TestTelemetryContract(unittest.TestCase):
+    def test_steering_position_keeps_raw_and_calibrated_angles(self) -> None:
+        position = SteeringPosition(
+            header=header(), sensor_angle_deg=190, wheel_angle_rad=math.radians(10)
+        )
+        envelope = make_telemetry_envelope("steering", position)
+        self.assertEqual(envelope.topic, "/steering/position")
+        self.assertEqual(envelope.payload, position)
+        self.assertEqual(parse_telemetry_channels("steering"), ("steering",))
+        json.dumps(envelope.model_dump(mode="json"), allow_nan=False)
+
     def test_lidar_infinity_is_standard_json_null(self) -> None:
         scan = LaserScan(
             header=header(),

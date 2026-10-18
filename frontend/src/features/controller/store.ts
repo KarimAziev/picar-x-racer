@@ -26,6 +26,12 @@ import { roundToNearestTen } from "@/util/number";
 import { takePhotoEffect } from "@/util/dom";
 import { useAppSyncStore } from "@/features/syncer";
 import { useAuxiliarySensorStore } from "@/features/sensors";
+import type { ServoConfig } from "@/features/settings/stores/robot";
+
+const isCalibrationStepReversed = (config: ServoConfig) => {
+  // Offsets add to the hardware angle; movement also applies direction and mode.
+  return config.reverse !== (config.calibration_mode === "negative");
+};
 
 export const ACCELERATION = 10;
 export const MIN_SPEED = ACCELERATION;
@@ -698,22 +704,46 @@ export const useControllerStore = defineStore("controller", {
       }
     },
     increaseCamPanCali() {
-      this.sendMessage({ action: "increaseCamPanCali" });
+      this.sendMessage({
+        action: isCalibrationStepReversed(useRobotStore().data.cam_pan_servo)
+          ? "decreaseCamPanCali"
+          : "increaseCamPanCali",
+      });
     },
     decreaseCamPanCali() {
-      this.sendMessage({ action: "decreaseCamPanCali" });
+      this.sendMessage({
+        action: isCalibrationStepReversed(useRobotStore().data.cam_pan_servo)
+          ? "increaseCamPanCali"
+          : "decreaseCamPanCali",
+      });
     },
     increaseCamTiltCali() {
-      this.sendMessage({ action: "increaseCamTiltCali" });
+      this.sendMessage({
+        action: isCalibrationStepReversed(useRobotStore().data.cam_tilt_servo)
+          ? "decreaseCamTiltCali"
+          : "increaseCamTiltCali",
+      });
     },
     decreaseCamTiltCali() {
-      this.sendMessage({ action: "decreaseCamTiltCali" });
+      this.sendMessage({
+        action: isCalibrationStepReversed(useRobotStore().data.cam_tilt_servo)
+          ? "increaseCamTiltCali"
+          : "decreaseCamTiltCali",
+      });
     },
     increaseServoDirCali() {
-      this.sendMessage({ action: "increaseServoDirCali" });
+      this.sendMessage({
+        action: isCalibrationStepReversed(useRobotStore().data.steering_servo)
+          ? "decreaseServoDirCali"
+          : "increaseServoDirCali",
+      });
     },
     decreaseServoDirCali() {
-      this.sendMessage({ action: "decreaseServoDirCali" });
+      this.sendMessage({
+        action: isCalibrationStepReversed(useRobotStore().data.steering_servo)
+          ? "increaseServoDirCali"
+          : "decreaseServoDirCali",
+      });
     },
     reverseMotor(index: number) {
       this.sendMessage({ action: "reverseMotor", payload: index });

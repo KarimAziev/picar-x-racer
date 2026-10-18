@@ -9,6 +9,10 @@ from typing import Callable, Optional, Tuple
 
 from robot_hat import AngularPositionABC
 
+from app.schemas.autonomy import MessageHeader, SensorPublisherStatus, SteeringPosition
+from app.services.autonomy.topic_bus import TopicBus
+from app.services.autonomy.topics import STEERING_POSITION
+
 
 @dataclass(frozen=True)
 class SteeringCalibrationPoint:
@@ -112,11 +116,15 @@ class SteeringFeedbackService:
         calibration: SteeringAngleCalibration,
         *,
         sample_frequency_hz: float,
+        topic_bus: Optional[TopicBus] = None,
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
     ) -> None:
         if sample_frequency_hz <= 0 or not math.isfinite(sample_frequency_hz):
             raise ValueError("sample_frequency_hz must be finite and positive")
         self._sensor_factory = sensor_factory
+        self._topic_bus = topic_bus
+        self._published_messages = 0
+        self._last_timestamp_monotonic_ns: Optional[int] = None
         self._calibration = calibration
         self._period_s = 1.0 / sample_frequency_hz
         self._max_sample_age_ns = max(
@@ -149,20 +157,34 @@ class SteeringFeedbackService:
     def running(self) -> bool:
         return self._task is not None and not self._task.done()
 
+    @property
+    def status(self) -> SensorPublisherStatus:
+        return SensorPublisherStatus(
+            sensor="steering",
+            enabled=True,
+            running=self.running,
+            published_messages=self._published_messages,
+            last_timestamp_monotonic_ns=self._last_timestamp_monotonic_ns,
+            error=str(self._last_error) if self._last_error is not None else None,
+        )
+
     async def start(self) -> None:
         if self.running:
             return
         self._last_error = None
-        sensor = await asyncio.to_thread(self._sensor_factory)
-        self._sensor = sensor
+        with self._lock:
+            self._latest = None
         try:
+            sensor = await asyncio.to_thread(self._sensor_factory)
+            self._sensor = sensor
             await asyncio.to_thread(sensor.initialize)
             health = await asyncio.to_thread(sensor.read_health)
             if not health.available:
                 raise RuntimeError(
                     "steering position sensor is unavailable after initialization"
                 )
-        except Exception:
+        except Exception as error:
+            self._last_error = error
             await self._close_sensor()
             raise
         self._task = asyncio.create_task(
@@ -222,6 +244,22 @@ class SteeringFeedbackService:
                             "steering sensor timestamps must increase monotonically"
                         )
                     self._latest = calibrated
+                if self._topic_bus is not None:
+                    sequence = self._published_messages + 1
+                    self._topic_bus.publish(
+                        STEERING_POSITION,
+                        SteeringPosition(
+                            header=MessageHeader(
+                                sequence=sequence,
+                                frame_id="base_link",
+                                timestamp_monotonic_ns=sample.timestamp_monotonic_ns,
+                            ),
+                            sensor_angle_deg=sample.angle_degrees,
+                            wheel_angle_rad=calibrated.wheel_angle_rad,
+                        ),
+                    )
+                    self._published_messages = sequence
+                    self._last_timestamp_monotonic_ns = sample.timestamp_monotonic_ns
                 next_read += self._period_s
                 await asyncio.sleep(max(0.0, next_read - loop.time()))
         except asyncio.CancelledError:
@@ -230,6 +268,8 @@ class SteeringFeedbackService:
             self._last_error = error
             with self._lock:
                 self._latest = None
+        finally:
+            await self._close_sensor()
 
     async def _close_sensor(self) -> None:
         sensor = self._sensor

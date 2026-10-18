@@ -92,7 +92,9 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
             bus,
             smbus_manager,
         )
-        steering_service = get_steering_feedback_service(config_manager, smbus_manager)
+        steering_service = get_steering_feedback_service(
+            config_manager, smbus_manager, bus
+        )
         self.assertIsNotNone(steering_service)
         assert steering_service is not None
 
@@ -341,7 +343,7 @@ class TestLocalizationMockMode(unittest.IsolatedAsyncioTestCase):
                 config_manager, bus, smbus_manager
             )
             steering_service = get_steering_feedback_service(
-                config_manager, smbus_manager
+                config_manager, smbus_manager, bus
             )
             self.assertIsNotNone(steering_service)
             assert steering_service is not None

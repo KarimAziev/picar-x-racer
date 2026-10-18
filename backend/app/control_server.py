@@ -131,7 +131,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if steering_feedback_service and not (
             coherent_simulation_supervisor and coherent_simulation_supervisor.enabled
         ):
-            await steering_feedback_service.start()
+            try:
+                await steering_feedback_service.start()
+            except Exception as error:
+                logger.error("Failed to start steering position sensor: %s", error)
         if robot_service and motion_control_service:
             await robot_service.start_motion_control()
         if pose_estimator_supervisor:

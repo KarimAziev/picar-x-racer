@@ -11,6 +11,7 @@ from app.schemas.autonomy import (
     SafetyState,
     SimulationState,
     SteeringState,
+    SteeringPosition,
     NavigationPlanStatus,
     MappingSessionStatus,
 )
@@ -23,6 +24,7 @@ LIDAR_SCAN = Topic("/lidar/scan", LaserScan)
 IMU_DATA = Topic("/imu/data", ImuData)
 ENCODER_STATE = Topic("/encoder/state", EncoderState)
 STEERING_STATE = Topic("/steering/state", SteeringState)
+STEERING_POSITION = Topic("/steering/position", SteeringPosition)
 ODOMETRY = Topic("/odom", Odometry2D)
 LOCALIZATION_POSE = Topic("/pose", LocalizationPose2D)
 POSE_OBSERVATION = Topic("/localization/observation", PoseObservation2D)
@@ -50,4 +52,5 @@ __all__ = [
     "SAFETY_STATE",
     "SIMULATION_STATE",
     "STEERING_STATE",
+    "STEERING_POSITION",
 ]

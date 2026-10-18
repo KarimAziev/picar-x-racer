@@ -5,7 +5,7 @@ import { robotApi } from "@/api";
 import { useWebSocket, WebSocketModel } from "@/composables/useWebsocket";
 import { retrieveError } from "@/util/error";
 
-export type SensorName = "lidar" | "imu" | "encoder";
+export type SensorName = "lidar" | "imu" | "encoder" | "steering";
 export type TelemetryChannel =
   SensorName | "odometry" | "localization" | "safety" | "simulation";
 
@@ -66,6 +66,12 @@ export interface EncoderTelemetry {
 export interface EncoderReadingTelemetry {
   ticks: number;
   delta_ticks: number;
+}
+
+export interface SteeringPositionTelemetry {
+  header: MessageHeader;
+  sensor_angle_deg: number;
+  wheel_angle_rad: number;
 }
 
 export interface OdometryTelemetry {
@@ -399,6 +405,7 @@ export type TelemetryEnvelope =
   | BaseTelemetryEnvelope<"lidar", LaserScanTelemetry>
   | BaseTelemetryEnvelope<"imu", ImuTelemetry>
   | BaseTelemetryEnvelope<"encoder", EncoderTelemetry>
+  | BaseTelemetryEnvelope<"steering", SteeringPositionTelemetry>
   | BaseTelemetryEnvelope<"odometry", OdometryTelemetry>
   | BaseTelemetryEnvelope<"localization", LocalizationPoseTelemetry>
   | BaseTelemetryEnvelope<"safety", SafetyTelemetry>

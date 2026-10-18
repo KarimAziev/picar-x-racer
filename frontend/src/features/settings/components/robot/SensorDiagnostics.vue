@@ -18,14 +18,16 @@
       Loading sensor status…
     </div>
 
-    <div v-else class="grid gap-2 md:grid-cols-3">
+    <div v-else class="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
       <div
         v-for="sensor in store.sensors"
         :key="sensor.sensor"
         class="rounded-lg border border-surface-200 p-3 dark:border-surface-700"
       >
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <span class="font-semibold uppercase">{{ sensor.sensor }}</span>
+          <span class="font-semibold uppercase">{{
+            sensor.sensor === "encoder" ? "Drive encoders" : sensor.sensor
+          }}</span>
           <Tag
             :severity="sensorSeverity(sensor)"
             :value="sensorState(sensor)"
@@ -172,6 +174,12 @@ const sensorState = (sensor: SensorPublisherStatus) => {
 };
 
 const latestSummary = (sensor: SensorName) => {
+  if (
+    sensor === "steering" &&
+    !store.sensors.find((item) => item.sensor === sensor)?.running
+  ) {
+    return null;
+  }
   const envelope = store.latest[sensor];
   if (!envelope) return null;
   switch (envelope.channel) {
@@ -186,6 +194,8 @@ const latestSummary = (sensor: SensorName) => {
     }
     case "imu":
       return `yaw rate ${formatNumber(envelope.payload.angular_velocity_z_radps)} rad/s`;
+    case "steering":
+      return `Sensor ${formatNumber(envelope.payload.sensor_angle_deg)}° · wheel ${formatNumber((envelope.payload.wheel_angle_rad * 180) / Math.PI)}°`;
     case "encoder": {
       const readings = [
         envelope.payload.left &&

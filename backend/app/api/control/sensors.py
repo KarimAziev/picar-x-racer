@@ -5,10 +5,13 @@ from typing import Annotated, Optional
 
 from app.api import robot_deps
 from app.core.px_logger import Logger
+from app.managers.file_management.json_data_manager import JsonDataManager
+from app.schemas.robot.config import HardwareConfig
 from app.schemas.autonomy import (
     LocalizationSensorStatus,
     MappingSessionStatus,
     OccupancyGrid,
+    SensorPublisherStatus,
 )
 from app.services.autonomy import (
     LocalizationSensorService,
@@ -16,6 +19,7 @@ from app.services.autonomy import (
     NavigationExecutionService,
     NavigationMissionService,
     SensorTelemetryStreamer,
+    SteeringFeedbackService,
     TopicBus,
     parse_telemetry_channels,
 )
@@ -25,6 +29,7 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
+    Request,
     WebSocket,
     WebSocketDisconnect,
 )
@@ -38,15 +43,36 @@ _log = Logger(__name__)
 @router.get(
     "/px/api/sensors/status",
     response_model=LocalizationSensorStatus,
-    summary="Retrieve LiDAR, IMU, and encoder publisher diagnostics",
+    summary="Retrieve LiDAR, IMU, drive encoder, and steering sensor diagnostics",
 )
 def get_localization_sensor_status(
+    request: Request,
     sensor_service: Annotated[
         LocalizationSensorService,
         Depends(robot_deps.get_localization_sensor_service),
     ],
+    config_manager: Annotated[JsonDataManager, Depends(robot_deps.get_config_manager)],
 ) -> LocalizationSensorStatus:
-    return sensor_service.status
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    enabled = (
+        config.localization_sensors.steering.enabled
+        and not config.coherent_simulation.enabled
+    )
+    steering = getattr(request.app.state, "steering_feedback_service", None)
+    if enabled and isinstance(steering, SteeringFeedbackService):
+        steering_status = steering.status
+    else:
+        steering_status = SensorPublisherStatus(
+            sensor="steering",
+            enabled=enabled,
+            running=False,
+            error=(
+                "Restart the backend to start steering acquisition" if enabled else None
+            ),
+        )
+    return LocalizationSensorStatus(
+        sensors=(*sensor_service.status.sensors, steering_status)
+    )
 
 
 @router.get(
@@ -203,10 +229,10 @@ async def stream_localization_telemetry(
         str,
         Query(
             description=(
-                "Comma-separated lidar, imu, encoder, odometry, and safety channels"
+                "Comma-separated lidar, imu, encoder, steering, odometry, and safety channels"
             )
         ),
-    ] = "lidar,imu,encoder,odometry,safety",
+    ] = "lidar,imu,encoder,steering,odometry,safety",
     rate_hz: Annotated[
         float,
         Query(ge=0.5, le=30, description="Maximum browser telemetry rate"),

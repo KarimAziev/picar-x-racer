@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Annotated
 
 
-SensorName = Literal["lidar", "imu", "encoder"]
+SensorName = Literal["lidar", "imu", "encoder", "steering"]
 
 
 class SensorPublisherStatus(BaseModel):

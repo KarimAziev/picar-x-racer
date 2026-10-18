@@ -118,6 +118,14 @@ class EncoderState(FrozenMessage):
         return sum(reading.delta_ticks for reading in readings) / len(readings)
 
 
+class SteeringPosition(FrozenMessage):
+    """Absolute sensor bearing and calibrated road-wheel angle."""
+
+    header: MessageHeader
+    sensor_angle_deg: Annotated[float, Field(ge=0, lt=360, allow_inf_nan=False)]
+    wheel_angle_rad: FiniteFloat
+
+
 class SteeringState(FrozenMessage):
     """Commanded steering plus optional measured wheel angle."""
 
@@ -375,4 +383,5 @@ __all__ = [
     "SimulationWorldGeometry",
     "SimulationWorldSegment",
     "SteeringState",
+    "SteeringPosition",
 ]

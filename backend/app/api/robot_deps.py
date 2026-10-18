@@ -234,6 +234,8 @@ def get_selectable_drive_hardware(
 def build_steering_feedback_service(
     config: HardwareConfig,
     smbus_manager: SMBusManager,
+    *,
+    topic_bus: Optional[TopicBus] = None,
 ) -> Optional[SteeringFeedbackService]:
     """Build optional steering feedback without opening its hardware yet."""
 
@@ -276,6 +278,7 @@ def build_steering_feedback_service(
             ),
         ),
         sample_frequency_hz=steering.sample_frequency_hz,
+        topic_bus=topic_bus,
     )
 
 
@@ -283,9 +286,10 @@ def build_steering_feedback_service(
 def get_steering_feedback_service(
     config_manager: Annotated[JsonDataManager, Depends(get_config_manager)],
     smbus_manager: Annotated[SMBusManager, Depends(get_smbus_manager)],
+    topic_bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
 ) -> Optional[SteeringFeedbackService]:
     config = HardwareConfig.model_validate(config_manager.load_data())
-    return build_steering_feedback_service(config, smbus_manager)
+    return build_steering_feedback_service(config, smbus_manager, topic_bus=topic_bus)
 
 
 @lru_cache(maxsize=1)

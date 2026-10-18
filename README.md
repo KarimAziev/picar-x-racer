@@ -472,6 +472,13 @@ to physical road-wheel radians. The motion loop never waits for sensor I/O: it
 embeds only a fresh cached measurement in `/steering/state`, and odometry falls
 back to the commanded angle when feedback is disabled or stale.
 
+Steering acquisition publishes `/steering/position` independently of motion
+control. The `steering` telemetry channel includes the absolute sensor bearing
+in degrees and the calibrated wheel angle in radians. Robot settings diagnostics
+show the steering sensor's publication count, running state, errors, and both
+angles. Set the sensor center angle with the wheels straight before interpreting
+the calibrated wheel angle. Restart the backend after enabling steering feedback.
+
 ### General
 
 ![Settings](./demo/general-settings.gif)

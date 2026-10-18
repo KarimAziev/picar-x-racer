@@ -11,6 +11,7 @@ from app.schemas.autonomy.messages import (
     Odometry2D,
     SafetyState,
     SimulationState,
+    SteeringPosition,
 )
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Annotated
@@ -20,6 +21,7 @@ TelemetryChannel = Literal[
     "lidar",
     "imu",
     "encoder",
+    "steering",
     "odometry",
     "localization",
     "safety",
@@ -48,6 +50,7 @@ TelemetryPayload = Union[
     LaserScanTelemetry,
     ImuData,
     EncoderState,
+    SteeringPosition,
     Odometry2D,
     LocalizationPose2D,
     SafetyState,

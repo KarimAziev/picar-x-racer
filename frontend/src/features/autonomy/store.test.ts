@@ -311,6 +311,31 @@ describe("autonomy telemetry store", () => {
     expect(mocks.cleanup).toHaveBeenCalledOnce();
   });
 
+  it("receives steering position independently of drive encoders", () => {
+    const store = useAutonomyStore();
+    store.initialize();
+    mocks.options?.onMessage?.({
+      channel: "steering",
+      topic: "/steering/position",
+      payload: {
+        header: {
+          sequence: 1,
+          frame_id: "base_link",
+          timestamp_monotonic_ns: 200,
+          source_timestamp_ns: null,
+        },
+        sensor_angle_deg: 190,
+        wheel_angle_rad: Math.PI / 18,
+      },
+    });
+    expect(store.latest.steering?.payload).toMatchObject({
+      sensor_angle_deg: 190,
+      wheel_angle_rad: Math.PI / 18,
+    });
+    expect(store.latest.encoder).toBeUndefined();
+    store.cleanup();
+  });
+
   it("keeps fused pose telemetry and localization runtime status", async () => {
     const store = useAutonomyStore();
     store.initialize();

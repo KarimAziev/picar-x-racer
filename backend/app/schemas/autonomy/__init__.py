@@ -29,6 +29,7 @@ from app.schemas.autonomy.messages import (
     SimulationWorldGeometry,
     SimulationWorldSegment,
     SteeringState,
+    SteeringPosition,
 )
 from app.schemas.autonomy.mapping_status import (
     MappingPoseSource,
@@ -113,6 +114,7 @@ __all__ = [
     "SimulationWorldGeometry",
     "SimulationWorldSegment",
     "SteeringState",
+    "SteeringPosition",
     "TelemetryChannel",
     "TelemetryEnvelope",
 ]
