@@ -17,6 +17,17 @@
   <Teleport to="#settings-footer">
     <span class="flex gap-2 justify-self-start">
       <Button
+        :disabled="loading || !store.config"
+        size="small"
+        label="Export"
+        icon="pi pi-download"
+        type="button"
+        outlined
+        title="Download robot configuration, including unsaved edits"
+        @click="handleExport"
+        class="w-fit"
+      />
+      <Button
         :disabled="loading || disabled"
         size="small"
         label="Save"
@@ -49,6 +60,23 @@ provide(
   pinAssignmentsKey,
   computed(() => collectPinAssignments(store.config, currValue.value)),
 );
+
+const handleExport = () => {
+  const blob = new Blob([JSON.stringify(currValue.value, null, 2) + "\n"], {
+    type: "application/json;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "robot-config.json";
+  document.body.append(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+};
 
 const handleSave = async () => {
   await store.saveData(currValue.value);

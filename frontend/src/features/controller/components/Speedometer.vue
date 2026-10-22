@@ -10,8 +10,15 @@
   >
     <template #extra>
       <div class="flex flex-col justify-end items-end">
-        <div v-if="distanceStore.speed">Ultrasonic:</div>
-        <span v-if="distanceStore.speed">{{ distanceStore.speed }} km/h</span>
+        <template v-if="encoderSpeedKmh !== null">
+          <div>Encoder:</div>
+          <span>{{ roundToTwoDecimalPlaces(encoderSpeedKmh) }} km/h</span>
+        </template>
+        <template v-else-if="distanceStore.speed != null">
+          <div>Ultrasonic:</div>
+          <span>{{ distanceStore.speed }} km/h</span>
+        </template>
+        <div>Command estimate:</div>
         <span>{{ speedToReal(speed) }} km/h</span>
       </div>
     </template>
@@ -26,6 +33,10 @@ import { useWindowSize } from "@/composables/useWindowSize";
 import { constrain } from "@/util/constrain";
 import { useRobotStore, useDistanceStore } from "@/features/settings/stores";
 
+import { useEncoderTelemetry } from "@/features/controller/composables/useEncoderTelemetry";
+import { roundToTwoDecimalPlaces } from "@/util/number";
+
+const { encoderSpeedKmh } = useEncoderTelemetry();
 const store = useControllerStore();
 const robotStore = useRobotStore();
 const distanceStore = useDistanceStore();

@@ -1118,7 +1118,7 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
     },
 
     initialize() {
-      this.consumers += 1;
+      this.initializeTelemetry();
       void this.refreshStatus();
       void this.refreshLocalization();
       void this.refreshScanMatching();
@@ -1126,6 +1126,10 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
       void this.refreshNavigationExecution();
       void this.refreshNavigationMissionPlan();
       void this.refreshNavigationMissionExecution();
+    },
+
+    initializeTelemetry() {
+      this.consumers += 1;
       if (this.connection) {
         return;
       }

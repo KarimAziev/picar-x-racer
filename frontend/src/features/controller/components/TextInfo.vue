@@ -4,6 +4,16 @@
     <InfoItem label="Camera Tilt:" :value="camTilt" />
     <InfoItem label="Camera Pan:" :value="camPan" />
     <InfoItem label="Servo Dir:" :value="servoAngle" />
+    <template v-if="steering">
+      <InfoItem
+        label="Steering encoder:"
+        :value="formatMetric(steering.sensor_angle_deg, '°')"
+      />
+      <InfoItem
+        label="Measured steering:"
+        :value="formatMetric((steering.wheel_angle_rad * 180) / Math.PI, '°')"
+      />
+    </template>
     <template v-for="reading in sensorStore.readings" :key="reading.name">
       <InfoItem
         v-if="!isNull(reading.temperature_c)"
@@ -55,6 +65,9 @@ import { formatDisplayNumber } from "@/util/number";
 import { useAuxiliarySensorStore } from "@/features/sensors";
 import { isNull } from "@/util/guards";
 
+import { useEncoderTelemetry } from "@/features/controller/composables/useEncoderTelemetry";
+
+const { steering } = useEncoderTelemetry();
 const store = useControllerStore();
 const sensorStore = useAuxiliarySensorStore();
 

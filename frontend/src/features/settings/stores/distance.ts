@@ -7,7 +7,7 @@ export interface State {
   loading?: boolean;
   error?: string;
   distance: number;
-  speed?: 0;
+  speed?: number;
 }
 
 const defaultState: State = {
