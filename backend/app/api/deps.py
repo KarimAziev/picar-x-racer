@@ -277,6 +277,7 @@ def get_tts_service() -> TTSService:
 
 
 class LifespanAppDeps(TypedDict):
+    camera_manager: CameraService
     connection_manager: ConnectionService
     detection_manager: DetectionService
     music_file_service: MusicFileService
@@ -284,12 +285,14 @@ class LifespanAppDeps(TypedDict):
 
 
 async def get_lifespan_dependencies(
+    camera_manager: Annotated[CameraService, Depends(get_camera_service)],
     connection_manager: Annotated[ConnectionService, Depends(get_connection_service)],
     detection_manager: Annotated[DetectionService, Depends(get_detection_service)],
     music_file_service: Annotated[MusicFileService, Depends(get_music_file_service)],
     tts_service: Annotated[TTSService, Depends(get_tts_service)],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
+        "camera_manager": camera_manager,
         "connection_manager": connection_manager,
         "detection_manager": detection_manager,
         "music_file_service": music_file_service,

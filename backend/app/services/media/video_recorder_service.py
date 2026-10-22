@@ -1,3 +1,4 @@
+import threading
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
@@ -25,6 +26,8 @@ class VideoRecorderService:
         self.video_writer: Optional[cv2.VideoWriter] = None
         self.current_video_path: Optional[str] = None
         self.video_file_service = self.file_manager
+        # OpenCV releases the GIL; native write and release must never overlap.
+        self._writer_lock = threading.RLock()
 
     def start_recording(self, width: int, height: int, fps: float) -> None:
         """
@@ -41,16 +44,23 @@ class VideoRecorderService:
         Raises:
             Exception: If the video directory cannot be created or video writer fails to initialize.
         """
-        video_dir_path = Path(self.video_file_service.root_directory)
-        video_dir_path.mkdir(exist_ok=True, parents=True)
+        with self._writer_lock:
+            self.stop_recording()
+            self.current_video_path = None
+            video_dir_path = Path(self.video_file_service.root_directory)
+            video_dir_path.mkdir(exist_ok=True, parents=True)
 
-        fourcc = cv2.VideoWriter.fourcc(*"MP4V")
-        file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.mp4"
-        video_path = video_dir_path.joinpath(file_name).as_posix()
+            fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+            file_name = f"recording_{time.strftime('%Y-%m-%d-%H-%M-%S')}.mp4"
+            video_path = video_dir_path.joinpath(file_name).as_posix()
 
-        logger.info(f"Recording video at {video_path}, {width}x{height}, {fps}")
-        self.video_writer = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
-        self.current_video_path = video_path
+            logger.info(f"Recording video at {video_path}, {width}x{height}, {fps}")
+            writer = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
+            if not writer.isOpened():
+                writer.release()
+                raise RuntimeError(f"Failed to open video writer for {video_path}")
+            self.video_writer = writer
+            self.current_video_path = video_path
 
     def write_frame(self, frame: np.ndarray) -> None:
         """
@@ -62,8 +72,9 @@ class VideoRecorderService:
         Raises:
             Exception: If the video writer is not properly initialized.
         """
-        if self.video_writer:
-            self.video_writer.write(frame)
+        with self._writer_lock:
+            if self.video_writer is not None:
+                self.video_writer.write(frame)
 
     def stop_recording_safe(self) -> None:
         """
@@ -83,8 +94,10 @@ class VideoRecorderService:
 
         Releases the OpenCV video writer and sets it to None.
         """
-        if self.video_writer:
-            logger.info("Releasing video writer")
-            self.video_writer.release()
-            logger.info("video writer released")
+        with self._writer_lock:
+            writer = self.video_writer
             self.video_writer = None
+            if writer is not None:
+                logger.info("Releasing video writer")
+                writer.release()
+                logger.info("Video writer released")

@@ -22,9 +22,11 @@ from fastapi.staticfiles import StaticFiles
 from app.config.config import settings
 from app.core.logger import Logger
 from app.util.ansi import print_initial_message
+from app.util.async_threads import run_in_thread
 from app.util.get_ip_address import get_ip_address
 
 if TYPE_CHECKING:
+    from app.services.camera.camera_service import CameraService
     from app.services.connection_service import ConnectionService
     from app.services.detection.detection_service import DetectionService
     from app.services.media.music_file_service import MusicFileService
@@ -42,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     app.state.cancelled = False
     signal_file_path: Optional[str] = None
+    camera_manager: Optional["CameraService"] = None
     connection_manager: Optional["ConnectionService"] = None
     detection_manager: Optional["DetectionService"] = None
     music_file_service: Optional["MusicFileService"] = None
@@ -61,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         lifespan_deps = solve_lifespan(deps.get_lifespan_dependencies)
         async with lifespan_deps(app) as deps:
+            camera_manager = deps.get("camera_manager")
             connection_manager = deps.get("connection_manager")
             detection_manager = deps.get("detection_manager")
             music_file_service = deps.get("music_file_service")
@@ -96,12 +100,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.cancelled = True
 
         _log.info(f"Stopping {app.title}")
+        cancelled = False
+        try:
+            if camera_manager:
+                await run_in_thread(camera_manager.shutdown)
+        except asyncio.CancelledError:
+            _log.warning("Cancelled while stopping the camera.")
+            cancelled = True
+        except Exception:
+            _log.error("Failed to stop the camera.", exc_info=True)
+
         try:
             if tts_service:
-                await asyncio.to_thread(tts_service.close)
+                await run_in_thread(tts_service.close)
         except asyncio.CancelledError:
             _log.warning("Cancelled while cleaning up tts_service.")
-            raise
+            cancelled = True
         except Exception:
             _log.error("Failed to clean up tts_service.", exc_info=True)
 
@@ -110,7 +124,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await music_file_service.music_service.close()
         except asyncio.CancelledError:
             _log.warning("Cancelled while cleaning up music_file_service.")
-            raise
+            cancelled = True
         except Exception:
             _log.error("Failed to clean up music_file_service.", exc_info=True)
 
@@ -119,12 +133,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await detection_manager.cleanup()
         except asyncio.CancelledError:
             _log.warning("Cancelled while cleaning up detection_manager.")
-            raise
+            cancelled = True
+        except Exception:
+            _log.error("Failed to clean up detection_manager.", exc_info=True)
 
         if signal_file_path and os.path.exists(signal_file_path):
             os.remove(signal_file_path)
 
         _log.info(f"{app.title} stopped")
+        if cancelled:
+            raise asyncio.CancelledError
 
 
 from app.api.endpoints import api_router, serve_router, tags_metadata
