@@ -42,6 +42,12 @@
         <div v-if="latestSummary(sensor.sensor)" class="mt-2 text-xs">
           {{ latestSummary(sensor.sensor) }}
         </div>
+        <div
+          v-if="sensor.sensor === 'encoder' && latestSummary(sensor.sensor)"
+          class="mt-1 text-xs text-surface-500 dark:text-surface-400"
+        >
+          Cumulative ticks · Δ ticks per sensor sample
+        </div>
       </div>
     </div>
 

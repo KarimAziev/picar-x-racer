@@ -10,6 +10,10 @@
   >
     <template #extra>
       <div class="flex flex-col justify-end items-end">
+        <template v-if="encoderCalibrationRequired">
+          <div>Encoder:</div>
+          <span>Calibration required</span>
+        </template>
         <template v-if="encoderSpeedKmh !== null">
           <div>Encoder:</div>
           <span>{{ roundToTwoDecimalPlaces(encoderSpeedKmh) }} km/h</span>
@@ -36,7 +40,7 @@ import { useRobotStore, useDistanceStore } from "@/features/settings/stores";
 import { useEncoderTelemetry } from "@/features/controller/composables/useEncoderTelemetry";
 import { roundToTwoDecimalPlaces } from "@/util/number";
 
-const { encoderSpeedKmh } = useEncoderTelemetry();
+const { encoderSpeedKmh, encoderCalibrationRequired } = useEncoderTelemetry();
 const store = useControllerStore();
 const robotStore = useRobotStore();
 const distanceStore = useDistanceStore();

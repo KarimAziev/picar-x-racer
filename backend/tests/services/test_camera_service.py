@@ -9,7 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 from app.adapters.video_device_adapter import VideoDeviceAdapter
 from app.core.video_capture_abc import VideoCaptureABC
-from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
+from app.exceptions.camera import (
+    CameraDeviceError,
+    CameraNotFoundError,
+    CameraFrameTimeout,
+)
 from app.schemas.camera import CameraSettings
 from app.schemas.detection import DetectionSettings, OverlayStyle
 from app.schemas.stream import StreamSettings
@@ -502,6 +506,38 @@ class TestCameraServiceSync(unittest.TestCase):
             self.camera_service.restart_camera()
             mock_stop.assert_called_once()
             mock_start.assert_called_once()
+
+    def test_camera_continues_after_transient_frame_timeout(self):
+        capture = MagicMock()
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        capture.read.side_effect = [CameraFrameTimeout("waiting"), (True, frame)]
+        service = self.camera_service
+        service.cap = capture
+        service.camera_run = True
+
+        def process_frame(_frame):
+            service.camera_run = False
+
+        with patch.object(
+            service, "_process_frame", side_effect=process_frame
+        ) as process, patch.object(service, "_dispatch_camera_error") as notify:
+            service._camera_thread_func(capture)
+        process.assert_called_once_with(frame)
+        notify.assert_not_called()
+        capture.release.assert_called_once()
+
+    def test_camera_reports_persistent_frame_timeout(self):
+        capture = MagicMock()
+        capture.read.side_effect = CameraFrameTimeout("waiting")
+        service = self.camera_service
+        service.cap = capture
+        service.camera_run = True
+        with patch(
+            "app.services.camera.camera_service.time.monotonic", side_effect=[0, 0, 6]
+        ), patch.object(service, "_dispatch_camera_error") as notify:
+            service._camera_thread_func(capture)
+        self.assertIn("5 seconds", notify.call_args.args[0])
+        capture.release.assert_called_once()
 
     def test_camera_thread_exit_marks_camera_stopped(self):
         one_shot_cap = OneShotVideoCapture()

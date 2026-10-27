@@ -178,6 +178,34 @@ describe("controller encoder telemetry", () => {
     expect(container.textContent).not.toContain("Encoder:");
   });
 
+  it("explains missing calibration while preserving the ultrasonic fallback", async () => {
+    const robot = useRobotStore();
+    robot.data.ackermann_odometry.wheel_radius_m = null;
+    useDistanceStore().speed = 2;
+    const container = document.createElement("div");
+    const app = createApp(Speedometer);
+    app.mount(container);
+    apps.push(app);
+    encoder(1, 1, 100);
+    encoder(2, 1.5, 200);
+    await nextTick();
+    expect(container.textContent).toContain("Encoder:");
+    expect(container.textContent).toContain("Calibration required");
+    expect(container.textContent).toContain("Ultrasonic:");
+
+    robot.data.localization_sensors.encoder.enabled = false;
+    await nextTick();
+    expect(container.textContent).not.toContain("Calibration required");
+    robot.data.localization_sensors.encoder.enabled = true;
+    robot.data.ackermann_odometry.wheel_radius_m = 0.05;
+    encoder(3, 2, 200);
+    encoder(4, 2.5, 200);
+    await nextTick();
+    expect(container.textContent).not.toContain("Calibration required");
+    expect(container.textContent).not.toContain("Ultrasonic:");
+    expect(container.textContent).toContain("0 km/h");
+  });
+
   it("hides disabled sensors and shares the connection between mounted consumers", () => {
     const first = mount();
     mount();

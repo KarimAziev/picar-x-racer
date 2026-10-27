@@ -33,6 +33,28 @@ export function useEncoderTelemetry() {
   let previousEncoder: EncoderTelemetry | null = null;
   let timer: ReturnType<typeof setInterval> | undefined;
 
+  const encoderCalibration = computed(() => {
+    const {
+      wheel_radius_m: radius,
+      encoder_ticks_per_revolution: resolution,
+      gear_ratio: ratio,
+    } = robot.data.ackermann_odometry;
+    if (
+      radius === null ||
+      resolution === null ||
+      ![radius, resolution, ratio].every(
+        (value) => Number.isFinite(value) && value > 0,
+      )
+    )
+      return null;
+    return { radius, resolution, ratio };
+  });
+  const encoderCalibrationRequired = computed(
+    () =>
+      robot.data.localization_sensors.encoder.enabled &&
+      encoderCalibration.value === null,
+  );
+
   const fresh = (receivedAt: number | null) =>
     telemetry.connected &&
     receivedAt !== null &&
@@ -98,19 +120,9 @@ export function useEncoderTelemetry() {
         1e9;
       if (elapsedSeconds <= 0 || elapsedSeconds > MAX_READING_AGE_MS / 1000)
         return;
-      const {
-        wheel_radius_m: radius,
-        encoder_ticks_per_revolution: resolution,
-        gear_ratio: ratio,
-      } = robot.data.ackermann_odometry;
-      if (
-        radius === null ||
-        resolution === null ||
-        ![radius, resolution, ratio].every(
-          (value) => Number.isFinite(value) && value > 0,
-        )
-      )
-        return;
+      const calibration = encoderCalibration.value;
+      if (!calibration) return;
+      const { radius, resolution, ratio } = calibration;
       const ticks = meanTicks(current);
       const previousTicks = meanTicks(previous);
       if (ticks === null || previousTicks === null) return;
@@ -153,5 +165,5 @@ export function useEncoderTelemetry() {
     telemetry.cleanup();
   });
 
-  return { steering, encoderSpeedKmh };
+  return { steering, encoderSpeedKmh, encoderCalibrationRequired };
 }

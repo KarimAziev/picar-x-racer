@@ -13,6 +13,7 @@ from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import (
     CameraDeviceError,
+    CameraFrameTimeout,
     CameraNotFoundError,
     CameraShutdownInProgressError,
 )
@@ -303,11 +304,18 @@ class CameraService:
         prev_fps = 0.0
         capture_thread = threading.current_thread()
         self.frame_timestamps.clear()
+        last_frame_received = time.monotonic()
 
         try:
             while not self.shutting_down and self.camera_run and self.cap is cap:
                 frame_start_time = time.monotonic()
-                ret, frame = cap.read()
+                try:
+                    ret, frame = cap.read()
+                except CameraFrameTimeout:
+                    if time.monotonic() - last_frame_received < 5.0:
+                        continue
+                    raise CameraDeviceError("No camera frame received for 5 seconds")
+                last_frame_received = time.monotonic()
                 if not ret:
                     if self.shutting_down or not self.camera_run or self.cap is not cap:
                         break

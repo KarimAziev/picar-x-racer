@@ -54,11 +54,12 @@ class GStreamerService(VideoDeviceABC):
         media_type: Optional[str] = None,
     ) -> str:
 
-        if width is None or height is None or fps is None or pixel_format is None:
-
-            width = width
-            height = height
-            pixel_format = pixel_format
+        api, _ = GStreamerParser.parse_device_path(device)
+        if api in ("libcamera", "libcamerasrc"):
+            # Pin processed video caps to keep Bayer sensor modes out of negotiation.
+            media_type = media_type or "video/x-raw"
+            pixel_format = pixel_format or "NV12"
+            fps = fps if fps is not None else 30
 
         fps = int(fps) if fps else None
 

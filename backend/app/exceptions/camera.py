@@ -5,6 +5,10 @@ class CameraDeviceError(Exception):
     pass
 
 
+class CameraFrameTimeout(TimeoutError):
+    """A bounded capture read timed out without an end-of-stream or device error."""
+
+
 class CameraNotFoundError(Exception):
     pass
 

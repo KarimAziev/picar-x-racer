@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Tuple, cast
 import numpy as np
 from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
-from app.exceptions.camera import CameraDeviceError
+from app.exceptions.camera import CameraDeviceError, CameraFrameTimeout
 from app.schemas.camera import CameraSettings
 
 logger = Logger(name=__name__)
@@ -90,8 +90,24 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
             if self.appsink
             else None
         )
-        if not sample or not self.Gst:
-            return (False, np.empty((0, 0), dtype=np.uint8))
+        if not sample:
+            bus = self.pipeline.get_bus()
+            message = (
+                bus.pop_filtered(self.Gst.MessageType.ERROR | self.Gst.MessageType.EOS)
+                if bus
+                else None
+            )
+            if message is not None and message.type == self.Gst.MessageType.ERROR:
+                error, debug = message.parse_error()
+                logger.error("GStreamer pipeline error: %s (%s)", error.message, debug)
+                raise CameraDeviceError(f"GStreamer: {error.message}")
+            if (
+                message is not None
+                or self.appsink is None
+                or self.appsink.get_property("eos")
+            ):
+                return (False, np.empty((0, 0), dtype=np.uint8))
+            raise CameraFrameTimeout("GStreamer is waiting for a video frame")
 
         buffer = sample.get_buffer()
         caps = sample.get_caps()

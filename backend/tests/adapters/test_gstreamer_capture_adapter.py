@@ -5,9 +5,54 @@ from unittest.mock import Mock, patch
 import numpy as np
 from app.adapters.gstreamer_capture_adapter import GStreamerCaptureAdapter
 from app.services.camera.gstreamer_service import GStreamerService
+from app.exceptions.camera import CameraDeviceError, CameraFrameTimeout
 
 
 class TestGStreamerCapture(unittest.TestCase):
+    def test_libcamera_defaults_select_processed_video(self):
+        pipeline = GStreamerService.setup_pipeline(
+            "libcamera:/base/camera", width=1280, height=720
+        )
+        self.assertIn("format=NV12", pipeline)
+        self.assertIn("framerate=30/1", pipeline)
+
+    def test_timeout_is_distinct_from_end_of_stream(self):
+        adapter = object.__new__(GStreamerCaptureAdapter)
+        adapter.appsink = Mock()
+        adapter.appsink.emit.return_value = None
+        adapter.appsink.get_property.return_value = False
+        adapter.pipeline = Mock()
+        adapter.pipeline.get_bus.return_value.pop_filtered.return_value = None
+        gst = Mock()
+        gst.SECOND = 1000000000
+        gst.MessageType.ERROR = 1
+        gst.MessageType.EOS = 2
+        with patch.object(adapter, "Gst", gst, create=True):
+            with self.assertRaises(CameraFrameTimeout):
+                adapter.read()
+            adapter.appsink.get_property.return_value = True
+            self.assertFalse(adapter.read()[0])
+
+    def test_pipeline_error_reports_gstreamer_diagnostic(self):
+        adapter = object.__new__(GStreamerCaptureAdapter)
+        adapter.appsink = Mock()
+        adapter.appsink.emit.return_value = None
+        message = Mock()
+        message.type = 1
+        message.parse_error.return_value = (
+            SimpleNamespace(message="not-negotiated"),
+            "source failed",
+        )
+        adapter.pipeline = Mock()
+        adapter.pipeline.get_bus.return_value.pop_filtered.return_value = message
+        gst = Mock()
+        gst.SECOND = 1000000000
+        gst.MessageType.ERROR = 1
+        gst.MessageType.EOS = 2
+        with patch.object(adapter, "Gst", gst, create=True):
+            with self.assertRaisesRegex(CameraDeviceError, "not-negotiated"):
+                adapter.read()
+
     def test_libcamera_device_without_object_path(self):
         props = Mock()
         props.get_string.side_effect = lambda key: {
