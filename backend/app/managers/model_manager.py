@@ -69,14 +69,21 @@ class ModelManager:
                         resolve_absolute_path(settings.HAILO_LABELS, settings.DATA_DIR)
                     )
                 ):
-                    with open(settings.HAILO_LABELS, "r", encoding="utf-8") as f:
+                    with open(
+                        resolve_absolute_path(settings.HAILO_LABELS, settings.DATA_DIR),
+                        "r",
+                        encoding="utf-8",
+                    ) as f:
                         lines = f.read().splitlines()
                         for idx, name in enumerate(lines):
                             labels[idx] = name
                 try:
                     self.model = YOLOHailoAdapter(self.model_path, labels=labels)
-                except (ImportError, ModuleNotFoundError, FileNotFoundError) as err:
-                    self.error_msg = str(err)
+                except Exception as err:
+                    self.error_msg = (
+                        f"Failed to load Hailo model {self.model_path}: {err}"
+                    )
+                    _log.error(self.error_msg, exc_info=True)
                     return self.model, self.error_msg
                 _log.info("Hailo model loaded successfully")
             else:
@@ -141,4 +148,10 @@ class ModelManager:
 
             if traceback:
                 _log.error(f"Traceback: {''.join(tb.format_tb(traceback))}")
-        del self.model
+        try:
+            if self.model_path and self.model_path.endswith(".hef") and self.model:
+                close = getattr(self.model, "close", None)
+                if callable(close):
+                    close()
+        finally:
+            del self.model

@@ -73,6 +73,17 @@ class GStreamerService(VideoDeviceABC):
             .build()
         )
 
+    @staticmethod
+    def device_path(properties: Any, display_name: str) -> Optional[str]:
+        path = properties.get_string("object.path")
+        if path:
+            return path
+        if properties.get_string("api.libcamera.Model") and display_name.startswith(
+            "/"
+        ):
+            return f"libcamera:{display_name}"
+        return None
+
     def list_video_devices(self) -> List[DeviceType]:
         """
         Cached method for enumerating video devices using GStreamer.
@@ -175,7 +186,7 @@ class GStreamerService(VideoDeviceABC):
             if props_obj is None:
                 continue
 
-            object_path = props_obj.get_string("object.path")
+            object_path = GStreamerService.device_path(props_obj, display_name)
 
             if object_path is None:
                 continue

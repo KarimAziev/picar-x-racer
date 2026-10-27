@@ -9,6 +9,7 @@ import {
 } from "@/features/detection/overlays/overlay";
 import type { DetectionOverlayHandler } from "@/features/detection/overlays/overlay";
 
+import { drawDepthOverlay } from "./depth";
 import { OverlayStyle } from "@/features/detection";
 
 export const overlayStyleHandlers: Record<
@@ -22,4 +23,5 @@ export const overlayStyleHandlers: Record<
   [OverlayStyle.BBOX_SEGMENT]: drawSegmentOverlay,
   [OverlayStyle.NO_BBOX_SEGMENT]: drawSegmentOnlyOverlay,
   [OverlayStyle.SEMANTIC]: drawSemanticOverlay,
+  [OverlayStyle.DEPTH]: drawDepthOverlay,
 };

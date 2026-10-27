@@ -8,6 +8,27 @@ from app.util.photo import prepare_photo_frame, should_render_detection_overlay
 
 
 class TestPhotoUtils(unittest.TestCase):
+    def test_depth_overlay_renders_without_boxes(self):
+        from app.util.depth import encode_depth_map
+
+        frame = np.zeros((80, 80, 3), dtype=np.uint8)
+        state: DetectionQueueData = {
+            "detection_result": [],
+            "timestamp": 10.0,
+            "depth_map": encode_depth_map(np.tile(np.arange(80), (80, 1))),
+        }
+        result = prepare_photo_frame(
+            frame=frame,
+            rotation=ImageRotation.rotate_0,
+            detection_settings=DetectionSettings(
+                model="scdepthv3.hef", active=True, overlay_style=OverlayStyle.DEPTH
+            ),
+            detection_state=state,
+            frame_timestamp=10.1,
+        )
+        self.assertGreater(int(result.sum()), 0)
+        self.assertEqual(int(frame.sum()), 0)
+
     def test_should_render_detection_overlay_when_recent(self):
         self.assertTrue(should_render_detection_overlay(10.5, 10.0, 1.0))
 

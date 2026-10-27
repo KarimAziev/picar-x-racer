@@ -56,6 +56,7 @@ export interface DetectionSettings {
 export interface DetectionResponse {
   detection_result: DetectionResult[];
   semantic_mask?: SemanticMaskData | null;
+  depth_map?: DepthMapData | null;
   timestamp: number | null;
   loading: boolean;
 }
@@ -69,6 +70,16 @@ export interface DetectionResult {
   confidence: number;
   keypoints?: Keypoint[];
   segments?: DetectionSegment[];
+}
+
+/** Relative per-frame depth, base64 uint8: zero near, 255 far. */
+export interface DepthMapData {
+  width: number;
+  height: number;
+  data: string;
+  near: number;
+  far: number;
+  units: "relative";
 }
 
 export interface SemanticMaskData {

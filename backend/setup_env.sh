@@ -2,6 +2,9 @@
 set -e
 set -o pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 INTERACTIVE="non-interactive"
 SKIP_PROMPT="yes"
 SKIP_DBUS=0
@@ -10,8 +13,6 @@ SKIP_POLKIT=0
 MINIMAL=0
 DRY_RUN=0
 VENV_DIR="${VENV_DIR:-.venv}"
-POLKIT_RULE_FILE="/etc/polkit-1/rules.d/99-reboot-no-auth.rules"
-POLKIT_SERVICE="polkit.service"
 
 SYSTEM_SITE_PACKAGES=
 
@@ -184,6 +185,10 @@ install_system_deps_linux() {
   # pydub/ffmpeg
   run_cmd "$SUDO apt-get install -y ffmpeg libavcodec-extra"
 
+  if is_raspberry_pi; then
+    run_cmd "$SUDO apt-get install -y python3-picamera2 python3-libcamera python3-gi python3-gst-1.0 dbus-user-session pipewire-audio"
+  fi
+
   # portaudio for sounddevice
   run_cmd "$SUDO apt-get install -y portaudio19-dev"
 
@@ -272,11 +277,20 @@ create_venv() {
 }
 
 install_python_deps() {
+  if [[ $DRY_RUN -eq 1 ]]; then
+    log_info "Dry-run: $VENV_DIR/bin/python -m pip install -r $SCRIPT_DIR/requirements.txt"
+    log_info "Dry-run: $VENV_DIR/bin/python -m pip install --no-deps -r $SCRIPT_DIR/requirements-no-deps.txt"
+    return
+  fi
   # shellcheck disable=SC1091
   . "$VENV_DIR/bin/activate"
 
   log_info "Upgrading pip..."
   run_cmd "pip install --quiet --upgrade pip"
+  if [[ "$OS_TYPE" == "Linux" && "$(uname -m)" == "aarch64" ]]; then
+    log_info "Installing CPU PyTorch wheels for ARM64..."
+    run_cmd "pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu"
+  fi
   log_info "Installing Python dependencies from requirements.txt..."
   run_cmd "pip install -r requirements.txt"
 
@@ -334,18 +348,12 @@ setup_gstreamer() {
       brew_install_missing gstreamer
     fi
   else
-    # Linux apt-based install
-    run_cmd "$SUDO apt-get install -y python3-dev python3-numpy \
-      libunwind-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base \
-      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
-      gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl \
-      gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio \
-      libavcodec-dev libavformat-dev libswscale-dev \
-      libgstreamer-plugins-base1.0-dev \
-      libgstreamer1.0-dev libgtk-3-dev \
-      libpng-dev libjpeg-dev libopenexr-dev libtiff-dev libwebp-dev \
-      libopencv-dev x264 libx264-dev libssl-dev ffmpeg"
-    run_cmd "$SUDO apt-get install -y python3-gi gir1.2-gstreamer-1.0"
+    run_cmd "$SUDO apt-get install -y python3-gi python3-gst-1.0 gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+      gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+      gstreamer1.0-libav gstreamer1.0-tools"
+    if is_raspberry_pi; then
+      run_cmd "$SUDO apt-get install -y gstreamer1.0-libcamera"
+    fi
   fi
   log_info "GStreamer step completed."
 }
@@ -361,30 +369,7 @@ setup_polkit_rule() {
     return
   fi
 
-  if [ -f "$POLKIT_RULE_FILE" ]; then
-    log_warn "Polkit rule already exists at $POLKIT_RULE_FILE. Skipping rule creation."
-  else
-    log_info "Creating Polkit rule at $POLKIT_RULE_FILE..."
-    if [ $DRY_RUN -eq 1 ]; then
-      log_info "Dry-run: Would create file $POLKIT_RULE_FILE with polkit rule contents."
-    else
-      cat <<- EOL | $SUDO tee "$POLKIT_RULE_FILE" > /dev/null
-polkit.addRule(function(action, subject) {
-    if ((action.id == "org.freedesktop.login1.power-off" || action.id == "org.freedesktop.login1.reboot") &&
-        subject.isInGroup("sudo")) {
-        return polkit.Result.YES;
-    }
-});
-EOL
-      log_info "Polkit rule created successfully."
-    fi
-  fi
-
-  log_info "Restarting the Polkit service to apply the new rule..."
-  run_cmd "systemctl restart $POLKIT_SERVICE" || {
-    log_warn "Failed to restart the Polkit service. Please ensure the 'polkit' service is installed and running."
-  }
-  log_info "Setup completed. Users in the 'sudo' group can now reboot/shut down without interactive authorization."
+  run_cmd "$SUDO bash \"$SCRIPT_DIR/../setup-polkit-reboot-rule.sh\""
 }
 
 prompt_step() {

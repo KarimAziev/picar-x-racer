@@ -86,6 +86,46 @@ You can switch between them dynamically.
 
 ## Raspberry OS Setup
 
+Use 64-bit Raspberry Pi OS Trixie for a fresh Pi 5 installation. Raspberry Pi
+[recommends a fresh image for a major OS upgrade](https://www.raspberrypi.com/news/trixie-the-new-version-of-raspberry-pi-os/).
+Back up `~/.config/picar-x-racer/` (hardware calibration, user settings, and model
+profiles), the repository including local changes, `data/`, media files, and
+`backend/.env` before imaging. Keep a separate copy of standalone Hailo models
+and runners, such as `~/hailo10-setup/`. Restore data and configuration, then
+create a fresh virtual environment for the new OS's Python version.
+
+The backend installer supports Bookworm's Python 3.11 and Trixie's Python 3.13.
+On a Raspberry Pi it installs Picamera2/libcamera and GStreamer through apt and
+creates a virtual environment with system packages visible. Run it as your
+normal user; it invokes sudo for system changes:
+
+```bash
+bash backend/setup_env.sh
+```
+
+For AI HAT+ 2, install the OS-supported accelerator stack before starting the app:
+
+```bash
+sudo apt update
+sudo apt install dkms hailo-h10-all
+sudo reboot
+# After reconnecting:
+hailortcli fw-control identify
+backend/.venv/bin/python -c 'from picamera2.devices.hailo import Hailo; import hailo_platform'
+sudo bash setup-service.sh install
+```
+
+Follow the [Raspberry Pi AI installation guide](https://www.raspberrypi.com/documentation/computers/ai.html)
+for OS/firmware updates and the matching runtime. Python wheels are tied to the
+interpreter: a `cp311` HailoRT wheel cannot be reused with Python 3.13. The service
+runs as the sudo caller and enables user-session linger for audio at boot.
+`bash setup-service.sh print` previews the generated systemd unit.
+
+GStreamer camera modes appear under `libcamera:` device IDs; `picamera2:` IDs use
+the Picamera2 backend. The GStreamer installer includes the libcamera source,
+Python overrides, and appsink/video introspection bindings. Both backends can
+feed Hailo inference.
+
 Before proceeding, install make if it isn’t already installed:
 
 ```bash
@@ -102,7 +142,7 @@ Using [Node Version Manager (NVM)](https://github.com/nvm-sh/nvm?tab=readme-ov-f
 1. Install NVM by running the install script:
 
    ```bash
-   wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bas
+   wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
    ```
 
    Then, restart your shell (or source your profile):
@@ -255,7 +295,7 @@ make backend-run
 Alternatively, to avoid starting it manually every time, you can run the script below (in the root of the project directory) to configure the application to start automatically upon boot:
 
 ```bash
-bash ./setup-service.sh
+sudo bash ./setup-service.sh install
 ```
 
 Once the application is running, open your browser and navigate to the following URL (replace `<your-raspberry-pi-ip>` with your Raspberry Pi's actual IP address):
@@ -566,13 +606,49 @@ If you want to harness the Hailo Accelerator for real-time object detection, you
 
 To use it, simply upload your Hailo model via the **Add Model** button in the UI. Alternatively, you can manually place your model file (ensuring it has a `.hef` extension) into the project's data directory.
 
+#### Hardware and Runtime Compatibility
+
+The app uses Picamera2's Hailo inference wrapper with the matching HailoRT runtime and Python bindings. Hailo-8/8L and Hailo-10H require HEFs compiled for their respective architectures. Keep models in architecture-specific directories, such as `data/hailo8l/` and `data/hailo10h/`, and select the model for the connected device.
+
+For Raspberry Pi OS Trixie, follow the [Raspberry Pi AI setup guide](https://www.raspberrypi.com/documentation/computers/ai.html): AI HAT+ uses `hailo-all`; AI HAT+ 2 uses `hailo-h10-all`. These software stacks cannot coexist. The driver, runtime, Python bindings, and model compilation version must be compatible. Verify the installed hardware with `hailortcli fw-control identify` before loading a model in the app.
+
+Supported Hailo-10H vision models include these [Hailo Model Zoo](https://github.com/hailo-ai/hailo_model_zoo) v5.3.0 HEFs:
+
+| Model | Task | Overlay | Native input |
+| --- | --- | --- | --- |
+| `yolov8n.hef`, `yolov11s.hef` | COCO object detection | Box | 640 × 640 |
+| `yolov8s_pose.hef` | 17 human keypoints | Pose | 640 × 640 |
+| `yolov8n_seg.hef` | COCO instance segmentation | Bbox Segment / No Bbox Segment | 640 × 640 |
+| `scdepthv3.hef` | Relative monocular depth | Depth | 320 × 256 |
+
+Download HEFs compiled for the connected architecture and compatible runtime;
+matching filenames alone do not establish compatibility. For example, the v5.3.0
+Hailo-10H files are available under
+`https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v5.3.0/hailo10h/`.
+Place them in `data/hailo10h/` to select them in the app. Preserve the task suffixes
+in filenames so new profiles receive the appropriate overlay defaults.
+
+Object detection HEFs must provide decoded, per-class NMS output. YOLOv8 pose
+and instance segmentation use host decoding and NMS, with the selected confidence,
+IoU, and maximum-detection settings. Pose keypoint confidence controls joint
+visibility. Instance masks are rendered as polygons. Depth is sent as a separate
+compact map and rendered in live video, photos, and recordings: red is nearer,
+blue is farther, normalized independently for each frame. It is **relative depth,
+not a calibrated distance measurement**.
+
+Keep LLM and VLM models outside the app's detection model directory and run them
+through HailoRT's GenAI API or [Hailo Apps](https://github.com/hailo-ai/hailo-apps).
+Other HEF output formats require a matching decoder.
+
+The app applies the selected confidence threshold to decoded object detections. The HEF's compiled NMS score floor and IoU settings still constrain the available results.
+
 #### Configuring Labels
 
 Unlike other models, the Hailo Accelerator requires you to explicitly specify detection labels. By default, the system uses the standard [coco2017](./coco2017.txt) labels. To customize these labels, set the `HAILO_LABELS` environment variable (or configure it in the `.env` file) to point to your custom labels file. If your labels file resides in the project's data directory, you can specify a relative path; otherwise, provide an absolute path.
 
 #### Image Size Configuration
 
-No manual configuration of the image size is required when using a Hailo model - the app automatically reads the model’s native input shape. As a result, any image size settings specified in the UI will be disregarded.
+The Hailo adapter reads the HEF's native input shape and resizes frames to fit it. Set the UI image size to the model's input resolution (640 for the YOLOv8n and YOLO11s models above) to preserve detail through the camera preprocessing stage. Object detection boxes are mapped back through letterbox padding into the source frame.
 
 Once loaded, your Hailo-based model will deliver fast and efficient object detection on your Raspberry Pi or other supported platforms.
 

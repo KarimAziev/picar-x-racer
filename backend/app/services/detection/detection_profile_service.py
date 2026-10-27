@@ -16,6 +16,8 @@ from app.schemas.detection import (
 
 def infer_model_task(model: str) -> DetectionModelTask:
     name = os.path.basename(model).lower()
+    if name.startswith("scdepthv3"):
+        return DetectionModelTask.DEPTH
     if re.search(r"(?:^|[-_.])pose(?:[-_.]|$)", name):
         return DetectionModelTask.POSE
     if re.search(r"(?:^|[-_.])sem(?:[-_.]|$)", name):
@@ -56,6 +58,7 @@ class DetectionProfileService:
     def default_profile(self, model: str) -> DetectionModelSettings:
         task = infer_model_task(model)
         style_by_task = {
+            DetectionModelTask.DEPTH: OverlayStyle.DEPTH,
             DetectionModelTask.DETECT: OverlayStyle.BOX,
             DetectionModelTask.POSE: OverlayStyle.POSE,
             DetectionModelTask.INSTANCE_SEGMENTATION: OverlayStyle.BBOX_SEGMENT,
@@ -63,12 +66,20 @@ class DetectionProfileService:
         }
         return DetectionModelSettings(
             overlay_style=style_by_task[task],
+            img_size=(
+                640
+                if model.lower().endswith(".hef") and task != DetectionModelTask.DEPTH
+                else 320
+            ),
             available_labels=self._default_labels_for(model),
         )
 
     def _default_labels_for(self, model: str) -> List[str]:
         name = os.path.basename(model).lower()
-        if infer_model_task(model) == DetectionModelTask.SEMANTIC_SEGMENTATION:
+        if infer_model_task(model) in (
+            DetectionModelTask.SEMANTIC_SEGMENTATION,
+            DetectionModelTask.DEPTH,
+        ):
             return []
         if any(marker in name for marker in ("-oiv7", "world", "yoloe-")):
             return []

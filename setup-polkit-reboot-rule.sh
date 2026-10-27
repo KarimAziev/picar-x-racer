@@ -22,6 +22,12 @@ fi
 POLKIT_RULE_FILE="/etc/polkit-1/rules.d/99-reboot-no-auth.rules"
 POLKIT_SERVICE="polkit.service"
 
+if ! command -v polkitd >/dev/null 2>&1 && [ ! -x /usr/lib/polkit-1/polkitd ]; then
+  apt-get update
+  apt-get install -y polkitd
+fi
+install -d -m 0755 /etc/polkit-1/rules.d
+
 create_polkit_rule() {
   log_info "Creating Polkit rule at $POLKIT_RULE_FILE..."
 

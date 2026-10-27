@@ -28,6 +28,7 @@ class TestDetectionProfileService(unittest.TestCase):
 
     def test_infers_model_tasks_from_common_file_names(self) -> None:
         self.assertEqual(infer_model_task("yolo11n.pt").value, "detect")
+        self.assertEqual(infer_model_task("hailo10h/scdepthv3.hef").value, "depth")
         self.assertEqual(infer_model_task("yolo11n-pose.pt").value, "pose")
         self.assertEqual(infer_model_task("yolov8s_pose.hef").value, "pose")
         self.assertEqual(
@@ -50,6 +51,14 @@ class TestDetectionProfileService(unittest.TestCase):
             )
             self.assertEqual(
                 service.get_profile("yolo11n-seg.pt").overlay_style,
+                OverlayStyle.BBOX_SEGMENT,
+            )
+            depth = service.get_profile("hailo10h/scdepthv3.hef")
+            self.assertEqual(depth.overlay_style, OverlayStyle.DEPTH)
+            self.assertEqual(depth.available_labels, [])
+            self.assertEqual(service.get_profile("yolov8s_pose.hef").img_size, 640)
+            self.assertEqual(
+                service.get_profile("yolov8n_seg.hef").overlay_style,
                 OverlayStyle.BBOX_SEGMENT,
             )
             semantic = service.get_profile("yolo26n-sem.pt")

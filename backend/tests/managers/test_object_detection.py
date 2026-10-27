@@ -71,6 +71,36 @@ class FakeModel:
 
 
 class TestObjectDetection(unittest.TestCase):
+    def test_depth_map_crops_padding_without_object_boxes(self):
+        from types import SimpleNamespace
+
+        result = SimpleNamespace(
+            boxes=[],
+            masks=None,
+            keypoints=None,
+            names={},
+            depth=np.pad(
+                np.tile(np.linspace(1, 5, 80), (40, 1)),
+                ((20, 20), (0, 0)),
+                constant_values=100,
+            ),
+        )
+        output = perform_detection(
+            frame=np.zeros((80, 80, 3), dtype=np.uint8),
+            yolo_model=cast(Any, FakeModel(result)),
+            resized_height=40,
+            resized_width=80,
+            original_width=160,
+            original_height=80,
+            pad_top=20,
+            pad_left=0,
+        )
+        self.assertEqual(output["detection_result"], [])
+        assert "depth_map" in output
+        self.assertEqual(output["depth_map"]["width"], 160)
+        self.assertEqual(output["depth_map"]["height"], 80)
+        self.assertLessEqual(output["depth_map"]["far"], 5)
+
     def test_passes_nms_settings_to_model(self):
         model = FakeModel(FakeResults([]))
 

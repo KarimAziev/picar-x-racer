@@ -37,6 +37,7 @@ export const defaultState: State = {
   detectors: [],
   detection_result: [],
   semantic_mask: null,
+  depth_map: null,
   timestamp: null,
   connection: null,
 };
@@ -102,6 +103,7 @@ export const useStore = defineStore("detection-settings", {
           if (data.detection_result) {
             this.detection_result = data.detection_result;
             this.semantic_mask = data.semantic_mask ?? null;
+            this.depth_map = data.depth_map ?? null;
             this.timestamp = data.timestamp;
           }
         },
@@ -112,6 +114,7 @@ export const useStore = defineStore("detection-settings", {
         onClose: () => {
           this.detection_result = [];
           this.semantic_mask = null;
+          this.depth_map = null;
         },
         onError: () => {
           if (this.data.active) {
@@ -119,6 +122,7 @@ export const useStore = defineStore("detection-settings", {
           }
           this.detection_result = [];
           this.semantic_mask = null;
+          this.depth_map = null;
         },
         isRetryable: () =>
           new Promise((res) => {

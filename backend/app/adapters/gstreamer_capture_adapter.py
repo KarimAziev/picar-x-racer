@@ -29,12 +29,14 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
 
             gi.require_version("Gst", "1.0")
             gi.require_version("GstApp", "1.0")
-            from gi.repository import Gst  # type: ignore
+            gi.require_version("GstVideo", "1.0")
+            from gi.repository import Gst, GstVideo  # type: ignore
         except ImportError:
             raise CameraDeviceError("GStreamer (gi) bindings are not available.")
 
         Gst.init([])
         self.Gst = Gst
+        self.GstVideo = GstVideo
 
         pipeline_str = service.setup_pipeline(
             device,
@@ -55,7 +57,10 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
         if self.appsink is None:
             raise CameraDeviceError("Pipeline did not contain an appsink element.")
 
-        self.appsink.set_property("emit-signals", True)
+        self.appsink.set_property("emit-signals", False)
+        self.appsink.set_property("max-buffers", 1)
+        self.appsink.set_property("drop", True)
+        self.appsink.set_property("sync", False)
 
         caps = Gst.Caps.from_string("video/x-raw, format=BGR")
         self.appsink.set_property("caps", caps)
@@ -80,7 +85,11 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
         Returns a tuple (status, frame) where status is True if a frame was
         successfully retrieved and frame is a NumPy array representing the image.
         """
-        sample = self.appsink.emit("pull-sample") if self.appsink else None
+        sample = (
+            self.appsink.emit("try-pull-sample", self.Gst.SECOND)
+            if self.appsink
+            else None
+        )
         if not sample or not self.Gst:
             return (False, np.empty((0, 0), dtype=np.uint8))
 
@@ -98,8 +107,20 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
         if not success:
             return (False, np.empty((0, 0), dtype=np.uint8))
         try:
-            frame = np.frombuffer(map_info.data, dtype=np.uint8)
-            frame = frame.reshape((height, width, 3))
+            info = self.GstVideo.VideoInfo.new_from_caps(caps)
+            if info is None:
+                raise ValueError("Invalid BGR video caps")
+            meta = self.GstVideo.buffer_get_video_meta(buffer)
+            stride = meta.stride[0] if meta else info.stride[0]
+            offset = meta.offset[0] if meta else info.offset[0]
+            # The returned frame must own its pixels after the GstBuffer is unmapped.
+            frame = np.ndarray(
+                (height, width, 3),
+                dtype=np.uint8,
+                buffer=map_info.data,
+                offset=offset,
+                strides=(stride, 3, 1),
+            ).copy()
         except Exception as e:
             logger.error("Error converting buffer to NumPy array: %s", e)
             frame = None

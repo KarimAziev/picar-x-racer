@@ -21,6 +21,8 @@ class OverlayStyle(str, Enum):
               Requires segmentation model, i.e. yolo11n-seg.pt.
     - **no-bbox-segment**`: Draws instance segmentation masks without bounding boxes or labels.
               Requires segmentation model, i.e. yolo11n-seg.pt.
+    - **depth**: Draws a relative-depth colour map (near red, far blue).
+              Requires a supported depth model, such as scdepthv3.hef.
     - **semantic**`: Draws a dense semantic segmentation class map.
               Requires semantic segmentation model, i.e. yolo26n-sem.pt.
     """
@@ -32,6 +34,7 @@ class OverlayStyle(str, Enum):
     BBOX_SEGMENT = "bbox-segment"
     NO_BBOX_SEGMENT = "no-bbox-segment"
     SEMANTIC = "semantic"
+    DEPTH = "depth"
 
 
 class SegmentationDetail(str, Enum):
@@ -54,6 +57,7 @@ class DetectionModelTask(str, Enum):
     POSE = "pose"
     INSTANCE_SEGMENTATION = "instance-segmentation"
     SEMANTIC_SEGMENTATION = "semantic-segmentation"
+    DEPTH = "depth"
 
 
 class DetectionModelSettings(BaseModel):

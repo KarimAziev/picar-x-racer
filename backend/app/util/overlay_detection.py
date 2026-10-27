@@ -4,7 +4,8 @@ import cv2
 import numpy as np
 from app.core.logger import Logger
 from app.schemas.detection import OverlayStyle
-from app.types.detection import DetectionKeypoint, SemanticMaskData
+from app.types.detection import DetectionKeypoint, SemanticMaskData, DepthMapData
+from app.util.depth import draw_depth_map
 
 logger = Logger(__name__)
 
@@ -37,6 +38,7 @@ def overlay_detection(
     overlay_style: OverlayStyle = OverlayStyle.BOX,
     semantic_mask: Optional[SemanticMaskData] = None,
     keypoint_confidence_threshold: float = KEYPOINT_CONFIDENCE_THRESHOLD,
+    depth_map: Optional[DepthMapData] = None,
 ) -> np.ndarray:
     """
     Overlays detection results onto the frame.
@@ -54,6 +56,9 @@ def overlay_detection(
     ----------
     The frame with detection overlays.
     """
+
+    if overlay_style == OverlayStyle.DEPTH:
+        return draw_depth_map(frame, depth_map)
 
     if overlay_style == OverlayStyle.SEMANTIC:
         return draw_semantic_segmentation_overlay(frame, semantic_mask)
@@ -129,6 +134,7 @@ def draw_crosshair_overlay(
     full_frame: bool = False,
     color: tuple[int, int, int] = OVERLAY_COLOR,
     keypoint_confidence_threshold: float = KEYPOINT_CONFIDENCE_THRESHOLD,
+    depth_map: Optional[DepthMapData] = None,
 ) -> np.ndarray:
     """Draw crosshair lines centered on a detection or its nose keypoint."""
     x1, y1, x2, y2 = [int(val) for val in (x1, y1, x2, y2)]

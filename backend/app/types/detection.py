@@ -92,6 +92,20 @@ class SemanticMaskData(TypedDict):
     classes: Dict[int, str]
 
 
+class DepthMapData(TypedDict):
+    """Row-major base64 uint8 relative depth; zero is near, 255 is far.
+
+    Near/far describe this frame's model output range, not calibrated metres.
+    """
+
+    width: int
+    height: int
+    data: str
+    near: float
+    far: float
+    units: Literal["relative"]
+
+
 class DetectionPoseResult(DetectionResult):
     """
     Represents a detection result with additional pose keypoints.
@@ -114,6 +128,7 @@ class DetectionProcessOutput(TypedDict):
 
     detection_result: DetectionResults
     semantic_mask: NotRequired[SemanticMaskData]
+    depth_map: NotRequired[DepthMapData]
 
 
 class DetectionQueueData(TypedDict):
@@ -126,6 +141,7 @@ class DetectionQueueData(TypedDict):
     detection_result: DetectionResults
     timestamp: float
     semantic_mask: NotRequired[SemanticMaskData]
+    depth_map: NotRequired[DepthMapData]
 
 
 class DetectionResultData(DetectionQueueData):

@@ -28,7 +28,12 @@ class PoseEstimationResult(TypedDict):
 
 
 def postproc_yolov8_pose(
-    num_of_classes: int, raw_detections: Dict[str, Any], img_size: Tuple[int, int]
+    num_of_classes: int,
+    raw_detections: Dict[str, Any],
+    img_size: Tuple[int, int],
+    confidence: float = 0.4,
+    iou: float = 0.7,
+    max_detections: int = 300,
 ) -> PoseEstimationResult:
     """
     Post-processes YOLOv8 pose detection outputs.
@@ -48,7 +53,13 @@ def postproc_yolov8_pose(
         else:
             raise RuntimeError("Pose post-processing only supports a batch size of 1")
 
-    kwargs["img_dims"] = img_size
+    options = {
+        **kwargs,
+        "img_dims": img_size,
+        "score_threshold": confidence,
+        "nms_iou_thresh": iou,
+        "nms_max_output_per_class": max_detections,
+    }
     raw_detections_keys = list(raw_detections.keys())
     layer_from_shape: dict = {
         raw_detections[key].shape: key for key in raw_detections_keys
@@ -72,7 +83,7 @@ def postproc_yolov8_pose(
         raw_detections[layer_from_shape[1, 80, 80, keypoints]],
     ]
 
-    predictions_dict = yolov8_pose_estimation_postprocess(endnodes, **kwargs)
+    predictions_dict = yolov8_pose_estimation_postprocess(endnodes, **options)
 
     return predictions_dict
 

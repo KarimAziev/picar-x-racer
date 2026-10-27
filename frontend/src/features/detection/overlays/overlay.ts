@@ -3,6 +3,7 @@ import {
   OverlayLinesParams,
   KeypointsParams,
   SemanticMaskData,
+  DepthMapData,
 } from "@/features/detection/interface";
 import {
   setupCtx,
@@ -28,6 +29,7 @@ export type DetectionOverlayHandler = (
   poseKeystrokes?: KeypointsParams,
   semanticMask?: SemanticMaskData | null,
   keypointConfidenceThreshold?: number,
+  depthMap?: DepthMapData | null,
 ) => void;
 
 /**

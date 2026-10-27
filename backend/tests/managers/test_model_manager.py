@@ -1,7 +1,7 @@
 import os
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 from app.config.config import settings
 from app.managers.model_manager import ModelManager
@@ -25,6 +25,8 @@ class DummyYOLO:
 
 class TestModelManager(unittest.TestCase):
     def setUp(self):
+        for name in ("YOLO_MODEL_EDGE_TPU_PATH", "YOLO_MODEL_PATH", "DATA_DIR"):
+            self.addCleanup(setattr, settings, name, getattr(settings, name))
         settings.YOLO_MODEL_EDGE_TPU_PATH = "fake_edge_tpu_path"
         settings.YOLO_MODEL_PATH = "fake_yolo_model_path"
         settings.DATA_DIR = "/dummy/data/dir"
@@ -171,6 +173,31 @@ class TestModelManager(unittest.TestCase):
         exc_value = ValueError("dummy error")
         manager.__exit__(exc_type, exc_value, None)
         self.assertFalse(hasattr(manager, "model"))
+
+    @patch("app.adapters.hailo_adapter.YOLOHailoAdapter")
+    def test_hailo_runtime_error_is_reported(self, adapter: MagicMock) -> None:
+        adapter.side_effect = RuntimeError("HEF architecture does not match device")
+        with ModelManager("hailo8l.hef") as (model, error):
+            self.assertIsNone(model)
+            self.assertIn("HEF architecture does not match device", error or "")
+
+    @patch("app.adapters.hailo_adapter.YOLOHailoAdapter")
+    def test_hailo_relative_labels_and_device_cleanup(self, adapter: MagicMock) -> None:
+        with (
+            patch.object(settings, "HAILO_LABELS", "labels.txt"),
+            patch("app.managers.model_manager.os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="person\ncar\n")) as labels_file,
+        ):
+            with ModelManager("hailo10h.hef") as (model, error):
+                self.assertIs(model, adapter.return_value)
+                self.assertIsNone(error)
+            labels_file.assert_called_once_with(
+                "/dummy/data/dir/labels.txt", "r", encoding="utf-8"
+            )
+            adapter.assert_called_once_with(
+                "/dummy/data/dir/hailo10h.hef", labels={0: "person", 1: "car"}
+            )
+            adapter.return_value.close.assert_called_once()
 
 
 if __name__ == "__main__":

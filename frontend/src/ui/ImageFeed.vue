@@ -96,6 +96,7 @@ const drawDetectionResults = (newResults: DetectionResult[]) => {
       themeStore.keypoints,
       detectionStore.semantic_mask,
       detectionStore.data.keypoint_confidence_threshold,
+      detectionStore.depth_map,
     );
   } else {
     handler(overlayCanvas.value, imgRef.value, []);
@@ -127,7 +128,7 @@ watch(
 );
 
 watch(
-  () => detectionStore.semantic_mask,
+  [() => detectionStore.semantic_mask, () => detectionStore.depth_map],
   () => {
     scheduleOverlayDraw(detectionStore.detection_result);
   },

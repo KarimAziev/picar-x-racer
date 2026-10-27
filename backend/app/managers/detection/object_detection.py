@@ -16,6 +16,7 @@ from app.types.detection import (
     SemanticMaskData,
 )
 from app.util.video_utils import letterbox
+from app.util.depth import encode_depth_map
 
 if TYPE_CHECKING:
     from app.adapters.hailo_adapter import YOLOHailoAdapter
@@ -464,4 +465,25 @@ def perform_detection(
     )
     if semantic_mask is not None:
         output["semantic_mask"] = semantic_mask
+    depth = getattr(results, "depth", None)
+    if depth is not None:
+        cropped_depth = _crop_letterbox_padding(
+            np.asarray(depth),
+            (resized_frame.shape[0], resized_frame.shape[1]),
+            resized_width,
+            resized_height,
+            pad_left,
+            pad_top,
+        )
+        max_side = SEMANTIC_MAX_SIDE_BY_DETAIL.get(segmentation_detail, 256)
+        scale = min(1.0, max_side / float(max(original_width, original_height)))
+        depth_frame = cv2.resize(
+            cropped_depth,
+            (
+                max(1, round(original_width * scale)),
+                max(1, round(original_height * scale)),
+            ),
+            interpolation=cv2.INTER_LINEAR,
+        )
+        output["depth_map"] = encode_depth_map(depth_frame, max_side=max_side)
     return output

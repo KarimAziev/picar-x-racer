@@ -26,6 +26,7 @@ export enum OverlayStyle {
   BBOX_SEGMENT = "bbox-segment",
   NO_BBOX_SEGMENT = "no-bbox-segment",
   SEMANTIC = "semantic",
+  DEPTH = "depth",
 }
 
 export enum SegmentationDetail {
