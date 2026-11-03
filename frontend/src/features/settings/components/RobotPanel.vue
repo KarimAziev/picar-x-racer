@@ -3,7 +3,7 @@
     <BoardInfo />
   </Fieldset>
   <Fieldset
-    legend="Localization Sensors"
+    legend="Sensor readings and diagnostics"
     toggleable
     collapsed
     :id="`${popupStore.tab}-localization-sensors`"

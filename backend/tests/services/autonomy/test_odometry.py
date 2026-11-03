@@ -140,7 +140,9 @@ class TestAckermannOdometryEstimator(OdometryTestCase):
 
     def test_runtime_config_requires_measured_geometry_when_enabled(self) -> None:
         self.assertFalse(AckermannOdometrySchema().enabled)
-        with self.assertRaisesRegex(ValidationError, "requires calibrated"):
+        with self.assertRaisesRegex(
+            ValidationError, "Before enabling Ackermann odometry, enter"
+        ):
             AckermannOdometrySchema(enabled=True)
 
         config = AckermannOdometrySchema(

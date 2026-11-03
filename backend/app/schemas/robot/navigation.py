@@ -32,7 +32,7 @@ class NavigationConfig(BaseModel):
         gt=0,
         le=3,
         allow_inf_nan=False,
-        title="Overall body length",
+        title="Overall body length (m)",
         json_schema_extra={"props": {"step": 0.01, "suffix": " m"}},
         description="Frontmost to rearmost extent in metres, including equipment. This is NOT the axle-to-axle wheelbase; 57 cm is 0.57 m.",
     )
@@ -41,7 +41,7 @@ class NavigationConfig(BaseModel):
         gt=0,
         le=3,
         allow_inf_nan=False,
-        title="Overall body width",
+        title="Overall body width (m)",
         json_schema_extra={"props": {"step": 0.01, "suffix": " m"}},
         description="Maximum centered width in metres, including wheels, suspension, and equipment. For an asymmetric body, use twice the larger lateral extent from the centerline.",
     )
@@ -50,7 +50,7 @@ class NavigationConfig(BaseModel):
         ge=0,
         le=3,
         allow_inf_nan=False,
-        title="Rear axle to rear end",
+        title="Rear axle to rear end (m)",
         json_schema_extra={"props": {"step": 0.01, "suffix": " m"}},
         description="Distance from the rear axle center to the rearmost body point. The odometry reference is the rear axle, not the body center.",
     )

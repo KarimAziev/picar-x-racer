@@ -20,7 +20,7 @@ class AvoidParams(BaseModel):
     safe: Annotated[
         float,
         Field(
-            title="Safe distance",
+            title="Safe distance (cm)",
             ge=0,
             description=(
                 "Distance in centimetres at or above which the robot can cruise "
@@ -31,7 +31,7 @@ class AvoidParams(BaseModel):
     caution: Annotated[
         float,
         Field(
-            title="Caution distance",
+            title="Caution distance (cm)",
             ge=0,
             description=(
                 "Distance in centimetres below which the robot prefers turning or "
@@ -42,7 +42,7 @@ class AvoidParams(BaseModel):
     danger: Annotated[
         float,
         Field(
-            title="Danger distance",
+            title="Danger distance (cm)",
             ge=0,
             description="Distance in centimetres below which reversal is prepared.",
         ),
@@ -50,7 +50,7 @@ class AvoidParams(BaseModel):
     stop: Annotated[
         float,
         Field(
-            title="Stop distance",
+            title="Stop distance (cm)",
             ge=0,
             description=(
                 "Distance in centimetres at or below which the robot immediately "
@@ -62,7 +62,7 @@ class AvoidParams(BaseModel):
     forward_speed: Annotated[
         int,
         Field(
-            title="Forward speed",
+            title="Forward speed (%)",
             ge=0,
             le=100,
             description="Target forward cruising speed as a percentage.",
@@ -71,7 +71,7 @@ class AvoidParams(BaseModel):
     turn_speed: Annotated[
         int,
         Field(
-            title="Turn speed",
+            title="Turn speed (%)",
             ge=0,
             le=100,
             description="Target forward speed while turning, as a percentage.",
@@ -80,7 +80,7 @@ class AvoidParams(BaseModel):
     reverse_speed: Annotated[
         int,
         Field(
-            title="Reverse speed",
+            title="Reverse speed (%)",
             ge=0,
             le=100,
             description="Target reversing speed as a percentage.",
@@ -90,7 +90,7 @@ class AvoidParams(BaseModel):
     turn_angle: Annotated[
         float,
         Field(
-            title="Forward turn angle",
+            title="Forward turn angle (degrees)",
             ge=-45,
             le=45,
             description="Steering angle in degrees while turning forward.",
@@ -99,7 +99,7 @@ class AvoidParams(BaseModel):
     reverse_angle: Annotated[
         float,
         Field(
-            title="Reverse turn angle",
+            title="Reverse turn angle (degrees)",
             ge=-45,
             le=45,
             description="Steering angle in degrees while reversing; may be negative.",
@@ -109,7 +109,7 @@ class AvoidParams(BaseModel):
     reverse_time_s: Annotated[
         float,
         Field(
-            title="Reverse duration",
+            title="Reverse duration (s)",
             gt=0,
             description="Time in seconds to reverse before pausing.",
         ),
@@ -117,7 +117,7 @@ class AvoidParams(BaseModel):
     wait_time_s: Annotated[
         float,
         Field(
-            title="Wait duration",
+            title="Wait duration (s)",
             ge=0,
             description=(
                 "Pause in seconds after reversing before trying to turn again."
@@ -127,7 +127,7 @@ class AvoidParams(BaseModel):
     loop_period_s: Annotated[
         float,
         Field(
-            title="Control-loop period",
+            title="Control-loop period (s)",
             gt=0,
             description="Time in seconds between obstacle-control updates.",
         ),
@@ -135,7 +135,7 @@ class AvoidParams(BaseModel):
     hold_cruise_s: Annotated[
         float,
         Field(
-            title="Cruise hold duration",
+            title="Cruise hold duration (s)",
             ge=0,
             description=(
                 "Minimum time in seconds with a safe distance before returning to "
@@ -146,7 +146,7 @@ class AvoidParams(BaseModel):
     stale_timeout_s: Annotated[
         float,
         Field(
-            title="Sensor stale timeout",
+            title="Sensor stale timeout (s)",
             gt=0,
             description=(
                 "Stop when no valid distance measurement arrives within this many "
@@ -158,7 +158,7 @@ class AvoidParams(BaseModel):
     accel_rate: Annotated[
         float,
         Field(
-            title="Acceleration rate",
+            title="Acceleration rate (%/s)",
             gt=0,
             description="Maximum speed-command increase in percentage points per second.",
         ),
@@ -166,7 +166,7 @@ class AvoidParams(BaseModel):
     decel_rate: Annotated[
         float,
         Field(
-            title="Deceleration rate",
+            title="Deceleration rate (%/s)",
             gt=0,
             description="Maximum speed-command decrease in percentage points per second.",
         ),
@@ -187,7 +187,7 @@ class AvoidParams(BaseModel):
     max_range_cm: Annotated[
         float,
         Field(
-            title="Maximum distance",
+            title="Maximum distance (cm)",
             ge=0,
             description=(
                 "Upper bound in centimetres used to clamp distance readings and "

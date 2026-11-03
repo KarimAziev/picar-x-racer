@@ -1,5 +1,6 @@
 <template>
   <FieldsPanel
+    ref="sectionPanel"
     v-if="isObjectSchema && resolvedSchema"
     :level="level"
     :inhibitFieldset="inhibitFieldset"
@@ -35,6 +36,7 @@
   </FieldsPanel>
 
   <FieldsPanel
+    ref="sectionPanel"
     v-else-if="isArraySchema && resolvedSchema"
     :level="level"
     :inhibitFieldset="inhibitFieldset"
@@ -134,6 +136,7 @@
   </template>
 
   <FieldsPanel
+    ref="sectionPanel"
     v-else-if="isAnyOf"
     :level="level"
     :inhibitFieldset="inhibitFieldset"
@@ -502,7 +505,10 @@ watch(detectedCandidateIndex, (newVal, oldVal) => {
   }
 });
 
+const sectionPanel = ref<InstanceType<typeof FieldsPanel> | null>(null);
 defineExpose({
+  expand: () => sectionPanel.value?.expand(),
+  path: props.path,
   localValue,
   selectedOption,
   oldData,

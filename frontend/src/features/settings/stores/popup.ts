@@ -4,6 +4,7 @@ import { SettingsTab } from "@/features/settings/enums";
 
 export interface State {
   isOpen: boolean;
+  robotSection?: string;
   tab: SettingsTab;
   isKeyRecording?: boolean;
   isPreviewImageOpen: boolean;

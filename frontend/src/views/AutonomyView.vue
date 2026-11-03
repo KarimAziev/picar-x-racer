@@ -42,11 +42,10 @@
             class="h-full min-h-[30rem] overflow-auto p-3"
           >
             <OccupancyGridPreview v-if="mappingEnabled" interactive />
-            <EmptyOperationalView
+            <MappingSetupGuide
               v-else
-              icon="pi pi-map"
-              title="Local mapping is disabled"
-              description="Enable local mapping in Robot Settings after configuring LiDAR and odometry. Enabling mapping never starts vehicle motion."
+              :data="robotStore.data"
+              @open-section="openRobotSection"
             />
           </div>
 
@@ -85,11 +84,10 @@
             </div>
             <div class="min-h-[20rem] overflow-auto bg-surface-950 p-3">
               <OccupancyGridPreview v-if="mappingEnabled" interactive />
-              <EmptyOperationalView
+              <MappingSetupGuide
                 v-else
-                icon="pi pi-map"
-                title="Local mapping is disabled"
-                description="Configure and enable mapping to use the split operator view."
+                :data="robotStore.data"
+                @open-section="openRobotSection"
               />
             </div>
           </div>
@@ -110,9 +108,9 @@
         >
           <div class="mb-2 flex items-center justify-between gap-2">
             <div>
-              <h2 class="text-sm font-semibold">Localization runtime</h2>
+              <h2 class="text-sm font-semibold">Sensors and position</h2>
               <p class="text-[0.68rem] text-surface-500 dark:text-surface-400">
-                Acquisition, odometry, fusion, and directional safety
+                Sensor readings, movement tracking, and obstacle stops
               </p>
             </div>
             <Button
@@ -168,9 +166,10 @@ import {
   type AutonomyOperatorView,
   useAutonomyStore,
 } from "@/features/autonomy";
-import { useRobotStore } from "@/features/settings/stores";
+import { useRobotStore, usePopupStore } from "@/features/settings/stores";
 import AutonomyStatusBar from "@/features/autonomy/components/AutonomyStatusBar.vue";
-import EmptyOperationalView from "@/features/autonomy/components/EmptyOperationalView.vue";
+import MappingSetupGuide from "@/features/autonomy/components/MappingSetupGuide.vue";
+import { SettingsTab } from "@/features/settings/enums";
 import MappingSessionControls from "@/features/autonomy/components/MappingSessionControls.vue";
 import NavigationPlanControls from "@/features/autonomy/components/NavigationPlanControls.vue";
 import RecordingControls from "@/features/autonomy/components/RecordingControls.vue";
@@ -184,6 +183,12 @@ const route = useRoute();
 const router = useRouter();
 const robotStore = useRobotStore();
 const autonomyStore = useAutonomyStore();
+const popupStore = usePopupStore();
+const openRobotSection = (section: string) => {
+  popupStore.robotSection = section;
+  popupStore.tab = SettingsTab.ROBOT;
+  popupStore.isOpen = true;
+};
 
 onBeforeMount(() => {
   if (!robotStore.loaded) {
@@ -202,22 +207,23 @@ const simulationEnabled = computed(
 );
 const workflowTitle = computed(() =>
   simulationEnabled.value
-    ? "Coherent virtual driving"
+    ? "Virtual driving"
     : "Manual mapping and local navigation",
 );
 const workflowDescription = computed(() =>
   simulationEnabled.value
-    ? "Arm manual control, start a bounded relative-motion action, or execute a reviewed multi-target mission. Every mission leg starts with a fresh fused-pose plan while the same arbiter drives a virtual Ackermann vehicle and keeps physical motors isolated."
-    : "Drive manually to create observations, finish the map snapshot, add ordered targets, then review and explicitly start the mission. Every leg is replanned from fresh fused localization; mapping and telemetry never move the vehicle by themselves.",
+    ? "Drive the virtual robot manually, request a short movement, or plan a route through several targets. Review the route before starting it. Physical motors stay isolated while simulation is enabled."
+    : "Start a mapping session and drive manually to map the area. Finish the map, add targets in order, then review and start the route. Mapping alone does not move the robot.",
 );
 const workflowCaveat = computed(() =>
-  autonomyStore.scanMatching?.enabled && autonomyStore.scanMatching.reference === "occupancy_map"
-    ? "LiDAR corrects the fused pose against your observed map while mapping is paused or finished. Corrections wait during mapping and are rejected when alignment is ambiguous. This follows the frozen map; it does not repair mapping drift or perform loop closure."
+  autonomyStore.scanMatching?.enabled &&
+  autonomyStore.scanMatching.reference === "occupancy_map"
+    ? "While mapping is paused or finished, LiDAR can correct the estimated robot position by matching nearby obstacles to the map. It waits when a match is unclear. Errors already drawn into the map remain."
     : simulationEnabled.value
-    ? autonomyStore.scanMatching?.enabled
-      ? "The known-world matcher now turns LiDAR scans into bounded pose corrections without reading simulator truth. Blue is raw wheel odometry, green is the corrected wheel/gyro estimate, and purple remains truth for evaluation only."
-      : "The coherent plant supplies steering, rear encoders, IMU, and world-aware LiDAR. Blue remains raw wheel odometry, green is wheel/gyro pose fusion, and purple is exact simulated truth. Enable simulation scan matching under pose estimation to correct accumulated drift."
-    : "Independent mock encoders can report motion while the physical robot is stationary. Treat the resulting map as a pipeline demonstration, not a physically coherent simulation.",
+      ? autonomyStore.scanMatching?.enabled
+        ? "LiDAR matches the simulated room to correct position errors. Blue shows movement calculated from the wheels, green adds sensor corrections, and purple shows the exact virtual position for comparison."
+        : "The virtual robot supplies wheel, steering, rotation, and LiDAR readings. Blue shows wheel-based position, green adds rotation-sensor readings, and purple shows the exact virtual position. Under Robot > Pose estimation, enable Simulation scan matching to correct position drift."
+      : "Mapping uses the configured wheel sensors. A mock encoder reports artificial movement even when the real robot is stationary; use physical encoders for a real map or Coherent simulation for virtual driving.",
 );
 
 const selectView = (view: AutonomyOperatorView) => {

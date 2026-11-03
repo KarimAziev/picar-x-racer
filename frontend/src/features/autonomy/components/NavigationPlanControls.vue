@@ -371,7 +371,7 @@ const confirmStart = (event: MouseEvent) =>
     target: event.currentTarget as HTMLElement,
     header: "Start navigation mission?",
     message:
-      "Each leg will be replanned from live fused localization. The vehicle may drive forward or reverse and will stop if safety validation fails.",
+      "Each route segment is planned using the latest position estimate. The robot may drive forward or reverse and stops if a safety check fails.",
     icon: "pi pi-exclamation-triangle",
     rejectProps: { label: "Keep reviewing", severity: "secondary" },
     acceptProps: { label: "Start mission", severity: "danger" },

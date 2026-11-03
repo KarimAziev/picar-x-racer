@@ -73,7 +73,7 @@ class ServoConfig(BaseModel):
         float,
         Field(
             0.0,
-            title="Calibration offset",
+            title="Calibration offset (degrees)",
             description="A calibration offset for fine-tuning servo angles.",
             examples=[0.0, 0.4, -4.2],
             json_schema_extra={
@@ -86,7 +86,7 @@ class ServoConfig(BaseModel):
         Optional[float],
         Field(
             0.0,
-            title="Saved calibration offset",
+            title="Saved calibration offset (degrees)",
             description="A saved calibration offset for fine-tuning servo angles.",
             examples=[0.0, 0.4, -4.2],
             json_schema_extra={
@@ -100,7 +100,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Minimum angle",
+            title="Minimum angle (degrees)",
             description="Lower travel limit in calibrated degrees relative to the centered position. Limits movement without changing the pulse calibration.",
             json_schema_extra={"shared": True},
             examples=[-30, -45],
@@ -112,7 +112,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Maximum angle",
+            title="Maximum angle (degrees)",
             description="Upper travel limit in calibrated degrees relative to the centered position. Limits movement without changing the pulse calibration.",
             json_schema_extra={"shared": True},
             examples=[30, 45],
@@ -124,7 +124,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Decrease step",
+            title="Decrease step (degrees)",
             description="Angle increment for each decrease-button or keyboard action. Must be negative; does not define joystick travel or pulse calibration.",
             examples=[-5, -10],
             lt=0,
@@ -135,7 +135,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Increase step",
+            title="Increase step (degrees)",
             description="Angle increment for each increase-button or keyboard action. Must be positive; does not define joystick travel or pulse calibration.",
             gt=0,
             examples=[5, 2],
@@ -146,7 +146,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Minimum pulse width",
+            title="Minimum pulse width (µs)",
             description="Pulse width in microseconds at real_min_angle. A measured calibration point, independent of the permitted travel limits.",
             examples=[500],
             json_schema_extra={
@@ -161,7 +161,7 @@ class ServoConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Maximum pulse width",
+            title="Maximum pulse width (µs)",
             description="Pulse width in microseconds at real_max_angle. A measured calibration point, independent of the permitted travel limits.",
             json_schema_extra={"shared": True},
             examples=[2500],
@@ -172,7 +172,7 @@ class ServoConfig(BaseModel):
     real_min_angle: Annotated[
         float,
         Field(
-            title="Angle at minimum pulse",
+            title="Angle at minimum pulse (degrees)",
             description="Measured servo angle in degrees at min_pulse, before the center offset is applied. Together with real_max_angle, defines the pulse-to-angle calibration. The default assumes -90 degrees and must be checked for the servo.",
             json_schema_extra={"shared": True},
             ge=-360,
@@ -184,7 +184,7 @@ class ServoConfig(BaseModel):
     real_max_angle: Annotated[
         float,
         Field(
-            title="Angle at maximum pulse",
+            title="Angle at maximum pulse (degrees)",
             description="Measured servo angle in degrees at max_pulse, before the center offset is applied. Must be greater than real_min_angle. The default assumes +90 degrees and must be checked for the servo.",
             json_schema_extra={"shared": True},
             ge=-360,

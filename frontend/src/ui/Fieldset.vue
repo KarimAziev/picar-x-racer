@@ -1,5 +1,6 @@
 <template>
   <FieldsetPrimevue
+    :id="id"
     :toggleable="toggleable"
     :legend="legend || header"
     :collapsed="isCollapsed"

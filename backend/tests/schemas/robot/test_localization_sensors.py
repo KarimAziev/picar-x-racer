@@ -23,7 +23,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
     def test_lidar_requires_measured_range_only_when_enabled(self) -> None:
         self.assertFalse(RPLidarC1SensorConfig().enabled)
 
-        with self.assertRaisesRegex(ValidationError, "range_min_m"):
+        with self.assertRaisesRegex(ValidationError, "Minimum range"):
             RPLidarC1SensorConfig(enabled=True)
 
         config = RPLidarC1SensorConfig(
@@ -48,7 +48,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         )
         self.assertEqual(config.gyroscope_range_dps, 245)
 
-        with self.assertRaisesRegex(ValidationError, "output_data_rate_hz"):
+        with self.assertRaisesRegex(ValidationError, "Output data rate"):
             LSM9DS1SensorConfig(
                 sample_frequency_hz=200,
                 output_data_rate_hz=119,
@@ -69,7 +69,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
         self.assertEqual(config.accelerometer_range_g, 8)
         self.assertEqual(config.gyroscope_range_dps, 125)
 
-        with self.assertRaisesRegex(ValidationError, "output_data_rate_hz"):
+        with self.assertRaisesRegex(ValidationError, "Output data rate"):
             LSM6DS33SensorConfig(
                 sample_frequency_hz=200,
                 output_data_rate_hz=104,
@@ -270,7 +270,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
     def test_lidar_safety_requires_measured_stop_and_slow_distances(self) -> None:
         self.assertFalse(LidarSafetyConfig().enabled)
 
-        with self.assertRaisesRegex(ValidationError, "stop_distance_m"):
+        with self.assertRaisesRegex(ValidationError, "Directional stop distance"):
             LidarSafetyConfig(enabled=True)
 
         config = LidarSafetyConfig(
@@ -289,7 +289,7 @@ class TestLocalizationSensorConfig(unittest.TestCase):
             "slow_distance_m": 1.0,
         }
 
-        with self.assertRaisesRegex(ValidationError, "motion control"):
+        with self.assertRaisesRegex(ValidationError, "Motion control"):
             HardwareConfig.model_validate(data)
 
         data["motion_control"].update(
@@ -297,7 +297,9 @@ class TestLocalizationSensorConfig(unittest.TestCase):
             max_forward_speed_mps=1.0,
             max_reverse_speed_mps=0.5,
         )
-        with self.assertRaisesRegex(ValidationError, "LiDAR publisher"):
+        with self.assertRaisesRegex(
+            ValidationError, "Localization sensors > LiDAR sensor"
+        ):
             HardwareConfig.model_validate(data)
 
         data["localization_sensors"]["lidar"].update(
@@ -331,7 +333,9 @@ class TestLocalizationSensorConfig(unittest.TestCase):
             "enabled": True,
             "sensors": [{"role": "left_wheel", "driver": "mock"}],
         }
-        with self.assertRaisesRegex(ValidationError, "LiDAR publisher"):
+        with self.assertRaisesRegex(
+            ValidationError, "Localization sensors > LiDAR sensor"
+        ):
             HardwareConfig.model_validate(data)
 
         data["localization_sensors"]["lidar"].update(

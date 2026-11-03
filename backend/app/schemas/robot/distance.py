@@ -57,7 +57,7 @@ class UltrasonicConfig(BaseModel):
 
     timeout: float = Field(
         default=0.017,
-        title="Echo timeout",
+        title="Echo timeout (s)",
         description="Maximum time in seconds to wait for an echo pulse to return.",
         gt=0,
         json_schema_extra={

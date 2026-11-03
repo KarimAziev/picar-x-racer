@@ -31,7 +31,7 @@ class TestPoseEstimationConfig(unittest.TestCase):
         data = deepcopy(self.root_data)
         data["pose_estimation"]["enabled"] = True
 
-        with self.assertRaisesRegex(ValidationError, "requires Ackermann odometry"):
+        with self.assertRaisesRegex(ValidationError, "Robot > Ackermann odometry"):
             HardwareConfig.model_validate(data)
 
     def test_validates_blend_weight_and_noise(self) -> None:
@@ -72,7 +72,7 @@ class TestPoseEstimationConfig(unittest.TestCase):
         data = deepcopy(self.root_data)
         data["pose_estimation"]["simulation_scan_matching"] = {"enabled": True}
 
-        with self.assertRaisesRegex(ValidationError, "requires pose estimation"):
+        with self.assertRaisesRegex(ValidationError, "Robot > Pose estimation"):
             HardwareConfig.model_validate(data)
 
 

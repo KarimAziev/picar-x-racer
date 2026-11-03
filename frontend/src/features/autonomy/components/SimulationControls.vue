@@ -7,7 +7,7 @@
       <div>
         <h2 class="text-sm font-semibold">Simulation environment</h2>
         <p class="text-[0.68rem] text-surface-500 dark:text-surface-400">
-          One Ackermann plant for motion, steering, encoders, IMU, and LiDAR
+          Drive a virtual robot with simulated wheel, steering, and obstacle sensors
         </p>
       </div>
       <Tag :severity="statusSeverity" :value="statusLabel" />
@@ -18,7 +18,7 @@
       class="mt-3 flex items-center gap-2 text-xs text-surface-500"
     >
       <ProgressSpinner class="h-4 w-4" stroke-width="5" />
-      Checking simulation runtime…
+      Checking whether simulation is running…
     </div>
 
     <template v-else-if="status?.enabled">
@@ -34,9 +34,8 @@
       <div
         class="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-[0.7rem] leading-relaxed text-blue-900 dark:bg-blue-950 dark:text-blue-100"
       >
-        The map marker follows command-driven odometry. Throttle moves it;
-        steering changes its curvature once the Ackermann vehicle is moving.
-        Releasing throttle keeps the pose stationary.
+        The map marker follows the virtual robot. Accelerate to move and steer
+        while moving to turn. Release the driving control to stop.
       </div>
 
       <dl
@@ -44,7 +43,7 @@
         class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-3 xl:grid-cols-2"
       >
         <div>
-          <dt class="text-surface-500">Ground truth</dt>
+          <dt class="text-surface-500">Exact virtual position</dt>
           <dd>
             {{ format(status.latest_state.x_m) }},
             {{ format(status.latest_state.y_m) }} m
@@ -69,7 +68,7 @@
           </dd>
         </div>
         <div>
-          <dt class="text-surface-500">Plant frames</dt>
+          <dt class="text-surface-500">Simulation updates</dt>
           <dd>{{ status.published_updates.toLocaleString() }}</dd>
         </div>
         <div>
@@ -86,7 +85,7 @@
         </div>
       </dl>
       <div v-else class="mt-3 text-xs text-surface-500">
-        Waiting for the first synchronized plant frame.
+        Waiting for the virtual robot to report its position.
       </div>
 
       <div
@@ -102,19 +101,19 @@
           <dt class="text-violet-700 dark:text-violet-300">Position</dt>
           <dt class="text-violet-700 dark:text-violet-300">Heading</dt>
           <template v-if="rawEstimationError">
-            <dd>Raw odometry</dd>
+            <dd>Wheel-based position</dd>
             <dd>{{ formatErrorDistance(rawEstimationError.positionM) }}</dd>
             <dd>{{ degrees(rawEstimationError.headingRad) }}°</dd>
           </template>
           <template v-if="fusedEstimationError">
-            <dd>Fused pose</dd>
+            <dd>Position with sensor corrections</dd>
             <dd>{{ formatErrorDistance(fusedEstimationError.positionM) }}</dd>
             <dd>{{ degrees(fusedEstimationError.headingRad) }}°</dd>
           </template>
         </dl>
         <p class="mt-1 opacity-75">
-          Distance from the simulator's exact pose—not an application fault.
-          Blue is raw odometry, green is fused pose, and purple is exact truth.
+          Compare estimated positions with the exact virtual position. Blue uses
+          wheel readings, green adds sensor corrections, and purple is the exact position.
         </p>
       </div>
 
@@ -123,8 +122,8 @@
         class="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200"
         role="status"
       >
-        Collision envelope reached an obstacle. The plant rejected forward
-        translation; steer away or reverse.
+        The virtual robot reached an obstacle and stopped moving into it.
+        Steer away or reverse.
       </div>
 
       <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -247,22 +246,22 @@ const simulationPrerequisiteError = computed(() => {
   const { motion_control: motion, ackermann_odometry: odometry } =
     robotStore.data;
   if (!motion.enabled)
-    return "Enable motion control and restart the backend once.";
+    return "Open Robot > Motion control, enter both measured maximum speeds (m/s), enable it, and save. Restart the robot application after setup.";
   if (
     motion.max_forward_speed_mps === null ||
     motion.max_reverse_speed_mps === null
   ) {
-    return "Configure forward and reverse speed calibration first.";
+    return "Enter Measured maximum forward speed (m/s) and Measured maximum reverse speed (m/s) under Robot > Motion control.";
   }
   if (!odometry.enabled) {
-    return "Enable Ackermann odometry and restart the backend once.";
+    return "Configure Robot > Ackermann odometry. If you have no physical encoders, enable Coherent simulation in the same save using the bottom Save button. Restart the robot application after setup.";
   }
   if (
     odometry.wheelbase_m === null ||
     odometry.wheel_radius_m === null ||
     odometry.encoder_ticks_per_revolution === null
   ) {
-    return "Configure wheelbase, wheel radius, and encoder resolution first.";
+    return "Under Robot > Ackermann odometry, enter Wheelbase (m), Driven wheel radius (m), and Encoder ticks per revolution.";
   }
   return null;
 });

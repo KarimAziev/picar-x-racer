@@ -294,11 +294,15 @@ class TestAuxiliarySensorConfig(unittest.TestCase):
         hts221 = definitions["HTS221SensorConfig"]["properties"]
         self.assertEqual(hts221["name"]["title"], "Sensor name")
         self.assertTrue(hts221["name"]["shared"])
-        self.assertEqual(hts221["poll_interval_seconds"]["title"], "Telemetry interval")
+        self.assertEqual(
+            hts221["poll_interval_seconds"]["title"], "Telemetry interval (s)"
+        )
         self.assertTrue(hts221["poll_interval_seconds"]["shared"])
         self.assertTrue(hts221["bus"]["shared"])
         self.assertEqual(hts221["address"]["x-ui-type"], "hex")
-        self.assertEqual(hts221["output_data_rate_hz"]["title"], "Output data rate")
+        self.assertEqual(
+            hts221["output_data_rate_hz"]["title"], "Output data rate (Hz)"
+        )
 
         lis3mdl = definitions["LIS3MDLSensorConfig"]["properties"]
         self.assertTrue(lis3mdl["bus"]["shared"])

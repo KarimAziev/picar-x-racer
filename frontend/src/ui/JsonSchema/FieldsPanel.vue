@@ -1,9 +1,10 @@
 <template>
   <Fieldset
     v-if="!inhibitFieldset"
+    ref="fieldset"
     class="schema-section col-span-full min-w-0 max-w-full"
     :class="{ 'schema-section-flat': level >= 2 }"
-    :legend="title ? startCase(title) : undefined"
+    :legend="title || undefined"
     toggleable
     :collapsed="collapsed"
     :id="idPrefix"
@@ -19,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { startCase } from "@/util/str";
+import { useTemplateRef } from "vue";
 import Title from "@/ui/JsonSchema/Title.vue";
 import TextExpandable from "@/ui/JsonSchema/TextExpandable.vue";
 import Fieldset from "@/ui/Fieldset.vue";
@@ -32,6 +33,8 @@ defineProps<{
   idPrefix: string;
   description?: string;
 }>();
+const fieldset = useTemplateRef("fieldset");
+defineExpose({ expand: () => fieldset.value?.expand() });
 </script>
 
 <style scoped>
@@ -45,7 +48,8 @@ defineProps<{
   padding-inline: 0;
 }
 
-.schema-section-flat > :deep(.p-fieldset-content-container > .p-fieldset-content) {
+.schema-section-flat
+  > :deep(.p-fieldset-content-container > .p-fieldset-content) {
   padding-inline: 0;
   padding-bottom: 0;
 }

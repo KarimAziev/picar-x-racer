@@ -4,6 +4,7 @@ import type { Nullable } from "@/util/ts-helpers";
 import { Battery } from "@/features/settings/interface";
 import type { JSONSchema } from "@/ui/JsonSchema/interface";
 import { robotApi } from "@/api";
+import { robotSettingsError } from "@/features/settings/robotErrors";
 
 export interface State {
   data: Data;
@@ -711,7 +712,7 @@ export const useStore = defineStore("robot", {
         this.data = response;
         showSavedMessages(messager, restartRequired);
       } catch (error) {
-        messager.handleError(error, `Error saving robot config`);
+        messager.error(robotSettingsError(error, this.config), "Robot settings were not saved");
       } finally {
         this.loading = false;
       }
@@ -725,7 +726,7 @@ export const useStore = defineStore("robot", {
         await robotApi.patch<Partial<Data>>("px/api/settings/config", data);
         showSavedMessages(messager, restartRequired);
       } catch (error) {
-        messager.handleError(error, `Error saving robot config`);
+        messager.error(robotSettingsError(error, this.config), "Robot settings were not saved");
       } finally {
         this.loading = false;
       }

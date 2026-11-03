@@ -25,7 +25,7 @@ class LedConfig(BaseModel):
         float,
         Field(
             default=0.1,
-            title="Blink interval",
+            title="Blink interval (s)",
             ge=0,
             description="Time in seconds between LED state changes while blinking.",
             json_schema_extra={

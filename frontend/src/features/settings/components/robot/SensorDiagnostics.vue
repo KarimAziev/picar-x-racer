@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-3">
     <div class="flex items-center justify-between gap-3">
       <div class="text-xs text-surface-500 dark:text-surface-400">
-        Hardware-rate acquisition with a bounded 5 Hz browser preview.
+        Live sensor readings; this display refreshes up to 5 times per second.
       </div>
       <Tag
         :severity="store.connected ? 'success' : 'secondary'"
@@ -63,7 +63,7 @@
       class="rounded-lg border border-surface-200 px-3 py-2 text-xs dark:border-surface-700"
     >
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <span class="font-semibold">Pose fusion</span>
+        <span class="font-semibold">Position estimate</span>
         <Tag :severity="localizationSeverity" :value="localizationState" />
       </div>
       <div v-if="localizationSummary" class="mt-1">
@@ -246,8 +246,8 @@ const localizationSummary = computed(() => {
       : store.localization?.latest_pose;
   if (!pose) {
     return store.localization?.enabled
-      ? "Waiting for the first odometry update…"
-      : "Enable pose estimation to fuse wheel odometry and fresh gyro yaw rate.";
+      ? "Waiting for the first wheel-based position update…"
+      : "Enable Robot > Pose estimation to combine wheel movement with rotation sensor readings.";
   }
   const positionStddevM = Math.sqrt(pose.position_variance_m2);
   const headingStddevDeg = (Math.sqrt(pose.yaw_variance_rad2) * 180) / Math.PI;

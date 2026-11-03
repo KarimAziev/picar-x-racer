@@ -423,7 +423,7 @@ class INA260Config(BaseModel):
         INA260ConversionTime,
         WithJsonSchema(
             {
-                "title": "Bus conversion time",
+                "title": "Bus conversion time (µs)",
                 "description": "Conversion interval for bus voltage measurements. Longer windows improve noise rejection.",
                 "type": "integer",
                 "x-ui-type": "select",
@@ -437,7 +437,7 @@ class INA260Config(BaseModel):
         INA260ConversionTime,
         WithJsonSchema(
             {
-                "title": "Current conversion time",
+                "title": "Current conversion time (µs)",
                 "description": "Conversion interval for shunt current measurements. Longer windows improve precision at the cost of speed.",
                 "type": "integer",
                 "x-ui-type": "select",
@@ -625,7 +625,7 @@ class INA226Config(BaseModel):
         INA226ConversionTime,
         WithJsonSchema(
             {
-                "title": "Bus Conversion Time",
+                "title": "Bus Conversion Time (µs)",
                 "description": "Conversion time for the bus voltage measurement. Longer times improve accuracy.",
                 "type": "integer",
                 "x-ui-type": "select",
@@ -639,7 +639,7 @@ class INA226Config(BaseModel):
         INA226ConversionTime,
         WithJsonSchema(
             {
-                "title": "Shunt Conversion Time",
+                "title": "Shunt Conversion Time (µs)",
                 "description": "Conversion time for the shunt voltage measurement. Increase to improve precision.",
                 "type": "integer",
                 "x-ui-type": "select",
@@ -889,7 +889,7 @@ class BatteryConfig(BaseModel):
         int,
         Field(
             ...,
-            title="Automatic measurement interval",
+            title="Automatic measurement interval (s)",
             ge=0,
             description="Time interval in seconds for automatic measurement.",
             examples=[60],
@@ -899,7 +899,7 @@ class BatteryConfig(BaseModel):
         float,
         Field(
             ...,
-            title="Measurement cache duration",
+            title="Measurement cache duration (s)",
             ge=0,
             description="Time in seconds for which a battery reading remains cached.",
             examples=[2],

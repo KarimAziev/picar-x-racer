@@ -78,7 +78,7 @@ class TestActuationCalibration(ActuationTestCase):
                     )
 
     def test_motion_runtime_requires_speed_calibration_when_enabled(self) -> None:
-        with self.assertRaisesRegex(ValidationError, "speeds are required"):
+        with self.assertRaisesRegex(ValidationError, "Measured maximum forward speed"):
             MotionControlConfig(enabled=True)
 
         disabled = MotionControlConfig(enabled=False)
@@ -86,7 +86,7 @@ class TestActuationCalibration(ActuationTestCase):
         self.assertIsNone(disabled.max_reverse_speed_mps)
 
     def test_command_timeout_covers_two_control_cycles(self) -> None:
-        with self.assertRaisesRegex(ValidationError, "at least two"):
+        with self.assertRaisesRegex(ValidationError, "at least 400 ms"):
             MotionControlConfig(
                 enabled=True,
                 control_frequency_hz=5,

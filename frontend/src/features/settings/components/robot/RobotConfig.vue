@@ -1,8 +1,14 @@
 <template>
+  <MappingSetupGuide
+    :data="currValue"
+    @open-section="openSection"
+    class="mb-4"
+  />
   <Loader v-if="!store.config && loading" />
   <JsonSchema
     v-else-if="store.config"
     v-for="(propSchema, propName) in store.config.properties"
+    ref="sections"
     :level="0"
     :schema="propSchema"
     :invalidData="invalidData"
@@ -40,8 +46,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, computed, provide } from "vue";
-import { useRobotStore } from "@/features/settings/stores";
+import {
+  onMounted,
+  ref,
+  watch,
+  computed,
+  provide,
+  nextTick,
+  useTemplateRef,
+} from "vue";
+import { useRobotStore, usePopupStore } from "@/features/settings/stores";
 import { cloneDeep } from "@/util/obj";
 import { isDataChangedPred } from "@/features/settings/components/robot/util";
 import { validateAll, resolveRefRecursive } from "@/ui/JsonSchema/util";
@@ -51,7 +65,20 @@ import Loader from "@/features/settings/components/robot/Loader.vue";
 import { pinAssignmentsKey } from "@/features/pinout/context";
 import { collectPinAssignments } from "@/features/pinout/usage";
 
-defineProps<{ idPrefix: string }>();
+import MappingSetupGuide from "@/features/autonomy/components/MappingSetupGuide.vue";
+
+const props = defineProps<{ idPrefix: string }>();
+const popupStore = usePopupStore();
+const sections = useTemplateRef("sections");
+const openSection = async (name: string) => {
+  const section = sections.value?.find((item) => item?.path[0] === name);
+  if (!section) return;
+  section.expand();
+  await nextTick();
+  document
+    .getElementById(`${props.idPrefix}-${name}`)
+    ?.scrollIntoView({ block: "start", behavior: "smooth" });
+};
 
 const store = useRobotStore();
 const currValue = ref(cloneDeep(store.data));
@@ -132,6 +159,17 @@ watch(
     }
   },
   { deep: true, immediate: true },
+);
+
+watch(
+  () => [popupStore.robotSection, store.config, sections.value] as const,
+  async () => {
+    if (popupStore.robotSection && store.config && sections.value?.length) {
+      await openSection(popupStore.robotSection);
+      popupStore.robotSection = undefined;
+    }
+  },
+  { flush: "post", immediate: true },
 );
 
 onMounted(async () => {

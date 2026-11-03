@@ -27,6 +27,35 @@ class TestSettingsServiceSharedPWMDrivers(unittest.TestCase):
             cast(Any, self.picarx), cast(Any, self.config_manager)
         )
 
+    def test_odometry_setup_error_points_to_motion_control_without_debug_dump(
+        self,
+    ) -> None:
+        update = PartialHardwareConfig.model_validate(
+            {
+                "ackermann_odometry": {
+                    "enabled": True,
+                    "wheelbase_m": 0.26,
+                    "wheel_radius_m": 0.03,
+                    "encoder_ticks_per_revolution": 4096,
+                },
+                "localization_sensors": {
+                    "encoder": {
+                        "enabled": True,
+                        "sensors": [{"driver": "mock", "role": "rear_axle_average"}],
+                    },
+                },
+            }
+        )
+        with self.assertRaises(InvalidSettings) as caught:
+            self.service.merge_settings(update)
+        message = str(caught.exception)
+        self.assertIn("Robot > Motion control", message)
+        self.assertIn("measured forward and reverse speeds", message)
+        self.assertNotIn("input_value", message)
+        self.assertNotIn("pydantic.dev", message)
+        self.picarx.init_hardware.assert_not_called()
+        self.config_manager.update.assert_not_called()
+
     def make_steering_update(self, **driver_updates: Any) -> PartialHardwareConfig:
         steering = deepcopy(self.config_data["steering_servo"])
         steering["driver"].update(driver_updates)
@@ -60,7 +89,7 @@ class TestSettingsServiceSharedPWMDrivers(unittest.TestCase):
 
         with self.assertRaisesRegex(
             InvalidSettings,
-            "LiDAR safety requires motion control",
+            "Robot > Motion control",
         ):
             self.service.merge_settings(update)
 

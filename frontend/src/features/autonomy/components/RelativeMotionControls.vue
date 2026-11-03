@@ -7,7 +7,7 @@
       <div>
         <h2 class="text-sm font-semibold">Relative motion</h2>
         <p class="text-[0.68rem] text-surface-500">
-          Odometry-bounded straight or steering-arc action
+          Drive a set distance in a straight line or a turn
         </p>
       </div>
       <Tag :severity="severity" :value="label" />
@@ -76,14 +76,14 @@
     <p v-if="actionType === 'arc'" class="mt-2 text-[0.68rem] text-surface-500">
       Steering is held at a fixed signed angle: negative turns left and positive
       turns right. The backend limits it to ±{{ maxSteeringAngle.toFixed(1) }}°
-      and verifies measured yaw before declaring success.
+      and checks the measured turn before reporting completion.
     </p>
     <div
       v-if="distance < 0"
       class="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100"
     >
-      Reverse uses odometry only. A front-facing LiDAR does not protect the rear
-      path.
+      Reverse distance is measured using wheel movement. A front-facing LiDAR
+      cannot check the path behind the robot.
     </div>
     <div class="mt-3">
       <Button

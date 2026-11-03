@@ -81,7 +81,7 @@ class TestCoherentSimulationConfig(unittest.TestCase):
         data["motion_control"]["max_forward_speed_mps"] = None
         data["motion_control"]["max_reverse_speed_mps"] = None
 
-        with self.assertRaisesRegex(ValidationError, "requires motion control"):
+        with self.assertRaisesRegex(ValidationError, "Robot > Motion control"):
             HardwareConfig.model_validate(data)
 
     def test_simulation_requires_ackermann_odometry(self) -> None:
@@ -91,7 +91,7 @@ class TestCoherentSimulationConfig(unittest.TestCase):
         data["ackermann_odometry"]["wheel_radius_m"] = None
         data["ackermann_odometry"]["encoder_ticks_per_revolution"] = None
 
-        with self.assertRaisesRegex(ValidationError, "requires Ackermann odometry"):
+        with self.assertRaisesRegex(ValidationError, "Robot > Ackermann odometry"):
             HardwareConfig.model_validate(data)
 
     def test_watchdog_must_cover_two_simulation_updates(self) -> None:

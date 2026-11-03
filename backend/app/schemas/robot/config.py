@@ -39,7 +39,7 @@ class HardwareConfig(BaseModel):
     navigation: NavigationConfig = Field(
         default_factory=NavigationConfig,
         title="Navigation geometry and policy",
-        description="Forward-route preference and measured body dimensions. Wheelbase remains under Ackermann odometry. Changes require backend restart.",
+        description="Choose how routes are planned and enter the robot body dimensions. Measure the axle spacing separately under Ackermann odometry. Save and restart the backend to apply changes.",
     )
 
     schema_version: Annotated[
@@ -59,8 +59,7 @@ class HardwareConfig(BaseModel):
         Field(
             title="Motion control",
             description=(
-                "Physical speed calibration and watchdog settings for the "
-                "single-writer motion runtime."
+                "Converts driving commands into motor speed and steering angle. Enter measured forward and reverse speeds before enabling. Required for Ackermann odometry. Save and restart the backend to apply changes."
             ),
         ),
     ] = MotionControlConfig()
@@ -70,8 +69,7 @@ class HardwareConfig(BaseModel):
         Field(
             title="Ackermann odometry",
             description=(
-                "Measured chassis geometry and wheel or common-drivetrain encoder "
-                "calibration."
+                "Tracks distance travelled and turns using wheel encoders and steering angle. First configure Motion control and Localization sensors > Drive encoders, then enter the wheel measurements below. Save and restart the backend after enabling."
             ),
         ),
     ] = AckermannOdometryConfig()
@@ -81,7 +79,7 @@ class HardwareConfig(BaseModel):
         Field(
             title="Localization sensors",
             description=(
-                "Disabled-by-default LiDAR, IMU, and drive-encoder acquisition."
+                "Set up the sensors that measure nearby obstacles, wheel movement, and turning. LiDAR and drive encoders are needed for mapping on the real robot; the IMU can improve turn estimates."
             ),
         ),
     ] = LocalizationSensorsConfig()
@@ -91,8 +89,7 @@ class HardwareConfig(BaseModel):
         Field(
             title="Auxiliary sensors",
             description=(
-                "Named environmental and magnetic telemetry sensors that are "
-                "independent of localization and odometry."
+                "Add temperature, humidity, pressure, or magnetic-field sensors to display their readings. These sensors are optional for mapping."
             ),
         ),
     ] = AuxiliarySensorsConfig()
@@ -101,7 +98,7 @@ class HardwareConfig(BaseModel):
         LidarSafetyConfig,
         Field(
             title="LiDAR directional safety",
-            description="Fail-safe front/rear speed limiting and stop behavior.",
+            description="Automatically slow or stop driving toward nearby obstacles. First enable Motion control and Localization sensors > LiDAR sensor. Set stopping distances that allow room for the whole robot. Restart the backend after enabling.",
         ),
     ] = LidarSafetyConfig()
 
@@ -109,7 +106,7 @@ class HardwareConfig(BaseModel):
         LocalMappingConfig,
         Field(
             title="Local occupancy mapping",
-            description="LiDAR ray integration in the odom frame.",
+            description="Build a top-down map of free space and obstacles as you drive. First enable Motion control, Localization sensors > LiDAR sensor and Drive encoders, and Ackermann odometry. Then enable mapping, save, and restart the backend. Mapping does not start driving.",
         ),
     ] = LocalMappingConfig()
 
@@ -118,7 +115,7 @@ class HardwareConfig(BaseModel):
         Field(
             title="Coherent simulation",
             description=(
-                "Whole-vehicle Ackermann simulation driven by final motion commands."
+                "Drive a virtual robot in a simulated room, with physical motors isolated. Requires calibrated Motion control and Ackermann odometry. Configure both and enable simulation in one save using the bottom Save button."
             ),
         ),
     ] = CoherentSimulationConfig()
@@ -128,8 +125,7 @@ class HardwareConfig(BaseModel):
         Field(
             title="Pose estimation",
             description=(
-                "Fuse locally smooth wheel odometry with fresh IMU yaw rate and "
-                "optional external pose corrections."
+                "Estimate where the robot is and which way it faces. Requires Ackermann odometry; an enabled IMU helps track turns. Optional LiDAR matching corrects the estimate against a map."
             ),
         ),
     ] = PoseEstimationConfig()
@@ -247,25 +243,31 @@ class HardwareConfig(BaseModel):
         # validates the merged, complete HardwareConfig before activation.
         if self.lidar_safety is not None and self.lidar_safety.enabled:
             if self.motion_control is not None and not self.motion_control.enabled:
-                raise ValueError("LiDAR safety requires motion control to be enabled")
+                raise ValueError(
+                    "To enable LiDAR directional safety, open Robot > Motion control, enter the measured forward and reverse speeds, enable it, and save."
+                )
             if (
                 self.localization_sensors is not None
                 and not self.localization_sensors.lidar.enabled
             ):
                 raise ValueError(
-                    "LiDAR safety requires the LiDAR publisher to be enabled"
+                    "To enable LiDAR directional safety, open Robot > Localization sensors > LiDAR sensor, configure the sensor, enable it, and save."
                 )
         if self.local_mapping is not None and self.local_mapping.enabled:
             if (
                 self.ackermann_odometry is not None
                 and not self.ackermann_odometry.enabled
             ):
-                raise ValueError("local mapping requires Ackermann odometry")
+                raise ValueError(
+                    "To enable Local occupancy mapping, first configure and enable Robot > Ackermann odometry. It needs Motion control and drive encoders on a real robot."
+                )
             if (
                 self.localization_sensors is not None
                 and not self.localization_sensors.lidar.enabled
             ):
-                raise ValueError("local mapping requires the LiDAR publisher")
+                raise ValueError(
+                    "To enable Local occupancy mapping, open Robot > Localization sensors > LiDAR sensor, configure the sensor, enable it, and save."
+                )
         if self.ackermann_odometry is not None and self.ackermann_odometry.enabled:
             if (
                 self.localization_sensors is not None
@@ -273,11 +275,11 @@ class HardwareConfig(BaseModel):
                 and not simulation_enabled
             ):
                 raise ValueError(
-                    "Ackermann odometry requires drive encoders or coherent simulation"
+                    "To enable Ackermann odometry on a real robot, configure and enable Robot > Localization sensors > Drive encoders. For a virtual robot, enable Coherent simulation in the same save using the bottom Save button."
                 )
             if self.motion_control is not None and not self.motion_control.enabled:
                 raise ValueError(
-                    "Ackermann odometry requires motion control steering state"
+                    "To enable Ackermann odometry, open Robot > Motion control, enter the measured forward and reverse speeds, enable it, and save. Odometry uses its steering angle to calculate turns. Restart the backend after setup."
                 )
             known_resolutions = (
                 {
@@ -300,39 +302,47 @@ class HardwareConfig(BaseModel):
                     != expected_ticks
                 ):
                     raise ValueError(
-                        "Ackermann odometry encoder_ticks_per_revolution must be "
+                        "Under Robot > Ackermann odometry, Encoder ticks per revolution must be "
                         f"{expected_ticks} for the configured magnetic encoder"
                     )
         if simulation_enabled:
             if self.motion_control is not None and not self.motion_control.enabled:
-                raise ValueError("coherent simulation requires motion control")
+                raise ValueError(
+                    "To enable Coherent simulation, configure and enable Robot > Motion control. Enter the measured maximum forward and reverse speeds."
+                )
             if (
                 self.ackermann_odometry is not None
                 and not self.ackermann_odometry.enabled
             ):
-                raise ValueError("coherent simulation requires Ackermann odometry")
+                raise ValueError(
+                    "To enable Coherent simulation, configure and enable Robot > Ackermann odometry. Save both sections together with the bottom Save button."
+                )
         if self.pose_estimation is not None and self.pose_estimation.enabled:
             if (
                 self.ackermann_odometry is not None
                 and not self.ackermann_odometry.enabled
             ):
-                raise ValueError("pose estimation requires Ackermann odometry")
+                raise ValueError(
+                    "To enable Pose estimation, first configure and enable Robot > Ackermann odometry."
+                )
         if (
             self.pose_estimation is not None
             and self.pose_estimation.simulation_scan_matching.enabled
         ):
             if not self.pose_estimation.enabled:
-                raise ValueError("simulation scan matching requires pose estimation")
+                raise ValueError(
+                    "To enable Simulation scan matching, first enable Robot > Pose estimation."
+                )
             if self.coherent_simulation is not None and not simulation_enabled:
                 raise ValueError(
-                    "simulation scan matching requires coherent simulation"
+                    "To enable Simulation scan matching, first configure and enable Robot > Coherent simulation."
                 )
             if (
                 self.localization_sensors is not None
                 and not self.localization_sensors.lidar.enabled
             ):
                 raise ValueError(
-                    "simulation scan matching requires the LiDAR publisher"
+                    "To enable Simulation scan matching, enable Robot > Localization sensors > LiDAR sensor."
                 )
         if (
             self.pose_estimation is not None
@@ -340,18 +350,22 @@ class HardwareConfig(BaseModel):
         ):
             if self.pose_estimation.simulation_scan_matching.enabled:
                 raise ValueError(
-                    "choose either observed-map or simulation known-world scan matching"
+                    "Choose one map correction method under Robot > Pose estimation: Observed-map localization or Simulation scan matching. Disable the other method."
                 )
             if not self.pose_estimation.enabled:
-                raise ValueError("observed-map scan matching requires pose estimation")
+                raise ValueError(
+                    "To enable Observed-map localization, first enable Robot > Pose estimation."
+                )
             if self.local_mapping is not None and not self.local_mapping.enabled:
-                raise ValueError("observed-map scan matching requires local mapping")
+                raise ValueError(
+                    "To enable Observed-map localization, first enable Robot > Local occupancy mapping."
+                )
             if (
                 self.localization_sensors is not None
                 and not self.localization_sensors.lidar.enabled
             ):
                 raise ValueError(
-                    "observed-map scan matching requires the LiDAR publisher"
+                    "To enable Observed-map localization, enable Robot > Localization sensors > LiDAR sensor."
                 )
         return self
 

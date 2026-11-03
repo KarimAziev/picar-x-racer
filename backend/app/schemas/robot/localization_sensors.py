@@ -25,8 +25,7 @@ FrameId = Annotated[
     Field(
         title="Frame ID",
         description=(
-            "Relative coordinate-frame name assigned to published measurements; "
-            "do not include a leading slash."
+            "Name used to identify this sensor in diagnostic messages. Keep the default unless connecting external robotics software; do not start the name with a slash."
         ),
         min_length=1,
         json_schema_extra={"shared": True},
@@ -35,10 +34,9 @@ FrameId = Annotated[
 LidarMinimumRange = Annotated[
     Optional[float],
     Field(
-        title="Minimum range",
+        title="Minimum range (m)",
         description=(
-            "Shortest valid LiDAR return in metres. Leave empty to require an "
-            "explicit value before enabling the sensor."
+            "Ignore LiDAR distances shorter than this. Enter the minimum reliable distance from the sensor specifications in metres; 5 cm = 0.05 m. Required before enabling LiDAR."
         ),
         ge=0,
         allow_inf_nan=False,
@@ -48,10 +46,9 @@ LidarMinimumRange = Annotated[
 LidarMaximumRange = Annotated[
     Optional[float],
     Field(
-        title="Maximum range",
+        title="Maximum range (m)",
         description=(
-            "Longest valid LiDAR return in metres. Leave empty to require an "
-            "explicit value before enabling the sensor."
+            "Ignore LiDAR distances longer than this. Enter the maximum reliable distance from the sensor specifications in metres. Required before enabling LiDAR."
         ),
         gt=0,
         allow_inf_nan=False,
@@ -61,8 +58,8 @@ LidarMaximumRange = Annotated[
 LidarAngularResolution = Annotated[
     float,
     Field(
-        title="Angular resolution",
-        description="Angular spacing in degrees between published scan bins.",
+        title="Angular resolution (degrees)",
+        description="Angle between neighboring scan directions. Smaller values give finer detail but create more scan data.",
         gt=0,
         le=45,
         allow_inf_nan=False,
@@ -85,8 +82,8 @@ MinimumScanMeasurements = Annotated[
 IMUSampleFrequency = Annotated[
     float,
     Field(
-        title="IMU sample frequency",
-        description="Requested inertial measurement publication rate in hertz.",
+        title="IMU sample frequency (Hz)",
+        description="How many rotation and acceleration readings to request each second. Keep this at or below the sensor Output data rate.",
         ge=1,
         le=500,
         allow_inf_nan=False,
@@ -106,8 +103,7 @@ DriveEncoderRole = Annotated[
     Field(
         title="Measurement role",
         description=(
-            "Kinematic measurement supplied by this encoder: an individual rear "
-            "wheel or the geared mean of both wheels from the common drivetrain."
+            "Choose what this encoder measures: the left rear wheel, right rear wheel, or a shared shaft representing both rear wheels."
         ),
         json_schema_extra={"shared": True},
     ),
@@ -116,7 +112,7 @@ InvertDirection = Annotated[
     bool,
     Field(
         title="Invert direction",
-        description="Reverse the sign of measurements reported by this sensor.",
+        description="Turn on if this sensor reports motion with the wrong sign, such as negative wheel counts while driving forward.",
         json_schema_extra={"shared": True},
     ),
 ]
@@ -141,7 +137,7 @@ SPIDevice = Annotated[
 SPIMaxSpeed = Annotated[
     int,
     Field(
-        title="Maximum SPI clock",
+        title="Maximum SPI clock (Hz)",
         description="Maximum SPI clock frequency in hertz.",
         gt=0,
         le=10_000_000,
@@ -151,10 +147,9 @@ SPIMaxSpeed = Annotated[
 MaximumSampleGap = Annotated[
     Optional[int],
     Field(
-        title="Maximum sample gap",
+        title="Maximum sample gap (ms)",
         description=(
-            "Re-baseline without adding motion when consecutive samples are this "
-            "many milliseconds apart; leave empty to disable this scheduling limit."
+            "Ignore movement across a longer gap between readings because full turns may have been missed. Leave empty to disable this time limit."
         ),
         gt=0,
         le=10_000,
@@ -164,11 +159,9 @@ MaximumSampleGap = Annotated[
 MaximumAbsoluteSpeed = Annotated[
     Optional[float],
     Field(
-        title="Maximum absolute speed",
+        title="Maximum absolute speed (rev/s)",
         description=(
-            "Expected physical speed limit in revolutions per second, used to derive "
-            "the maximum unambiguous interval between absolute-angle samples. Leave "
-            "empty to disable this derived limit."
+            "Fastest expected encoder shaft rotation, in turns per second. Used to detect when readings are too far apart to count turns reliably. Leave empty to disable this check."
         ),
         gt=0,
         allow_inf_nan=False,
@@ -207,43 +200,43 @@ class StaticTransformConfig(BaseModel):
     x_m: Annotated[
         FiniteFloat,
         Field(
-            title="X position",
-            description="Sensor-frame X position in metres relative to base_link.",
+            title="X position (m)",
+            description="Sensor distance ahead of the rear axle midpoint. Positive is forward, negative is backward. 10 cm = 0.1 m.",
         ),
     ] = 0.0
     y_m: Annotated[
         FiniteFloat,
         Field(
-            title="Y position",
-            description="Sensor-frame Y position in metres relative to base_link.",
+            title="Y position (m)",
+            description="Sensor distance to the left of the rear axle midpoint. Positive is left, negative is right. 10 cm = 0.1 m.",
         ),
     ] = 0.0
     z_m: Annotated[
         FiniteFloat,
         Field(
-            title="Z position",
-            description="Sensor-frame Z position in metres relative to base_link.",
+            title="Z position (m)",
+            description="Sensor height above the robot reference point at the rear axle. Positive is up, negative is down. 10 cm = 0.1 m.",
         ),
     ] = 0.0
     roll_rad: Annotated[
         FiniteFloat,
         Field(
-            title="Roll",
-            description="Sensor-frame roll rotation in radians about its X axis.",
+            title="Roll (rad)",
+            description="Sensor tilt around the robot forward axis. Enter radians: 1.57 is about 90 degrees. Use 0 for an upright sensor.",
         ),
     ] = 0.0
     pitch_rad: Annotated[
         FiniteFloat,
         Field(
-            title="Pitch",
-            description="Sensor-frame pitch rotation in radians about its Y axis.",
+            title="Pitch (rad)",
+            description="Sensor tilt around the robot left axis. Enter radians: 1.57 is about 90 degrees. Use 0 for a level sensor.",
         ),
     ] = 0.0
     yaw_rad: Annotated[
         FiniteFloat,
         Field(
-            title="Yaw",
-            description="Sensor-frame yaw rotation in radians about its Z axis.",
+            title="Yaw (rad)",
+            description="Sensor direction viewed from above. 0 faces forward; 1.57 radians faces left; -1.57 faces right.",
         ),
     ] = 0.0
 
@@ -252,14 +245,17 @@ SensorTransform = Annotated[
     StaticTransformConfig,
     Field(
         title="Sensor transform",
-        description="Measured position and orientation of the sensor in base_link.",
+        description="Where the sensor is mounted relative to the midpoint of the rear axle, and which direction it faces. Used to place its readings correctly on the map.",
         json_schema_extra={"shared": True},
     ),
 ]
 
 
 class LidarSensorConfigBase(BaseModel):
-    enabled: EnabledField = False
+    enabled: EnabledField = Field(
+        default=False,
+        description="Start reading distances from this LiDAR. Set its minimum and maximum reliable range before enabling. Required for mapping and LiDAR directional safety.",
+    )
     frame_id: FrameId = "laser"
     transform: SensorTransform = Field(default_factory=StaticTransformConfig)
     range_min_m: LidarMinimumRange = None
@@ -276,14 +272,17 @@ class LidarSensorConfigBase(BaseModel):
     def require_ranges_when_enabled(self) -> Self:
         if self.enabled and (self.range_min_m is None or self.range_max_m is None):
             raise ValueError(
-                "lidar range_min_m and range_max_m are required when enabled"
+                "Before enabling LiDAR, enter Minimum range (m) and Maximum range (m) "
+                "under Robot > Localization sensors > LiDAR sensor."
             )
         if (
             self.range_min_m is not None
             and self.range_max_m is not None
             and self.range_max_m <= self.range_min_m
         ):
-            raise ValueError("lidar range_max_m must be greater than range_min_m")
+            raise ValueError(
+                "LiDAR Maximum range (m) must be greater than Minimum range (m)."
+            )
         return self
 
 
@@ -318,7 +317,7 @@ class RPLidarC1SensorConfig(LidarSensorConfigBase):
     timeout_s: Annotated[
         float,
         Field(
-            title="Serial timeout",
+            title="Serial timeout (s)",
             description="Maximum time in seconds to wait for serial scan data.",
             gt=0,
             le=10,
@@ -345,7 +344,7 @@ class MockLidarSensorConfig(LidarSensorConfigBase):
         int,
         Field(
             title="Points per scan",
-            description="Number of evenly spaced returns in each simulated scan.",
+            description="Number of directions measured in each fake circular scan. 360 gives one reading per degree.",
             ge=8,
             le=1440,
         ),
@@ -353,8 +352,8 @@ class MockLidarSensorConfig(LidarSensorConfigBase):
     distance_m: Annotated[
         float,
         Field(
-            title="Simulated distance",
-            description="Uniform range in metres reported by every simulated ray.",
+            title="Simulated distance (m)",
+            description="Distance reported in every direction by the standalone mock LiDAR. 2 m draws a circle 2 m away. Vehicle simulation uses its room and obstacles instead.",
             ge=0,
             allow_inf_nan=False,
         ),
@@ -363,7 +362,7 @@ class MockLidarSensorConfig(LidarSensorConfigBase):
         int,
         Field(
             title="Return quality",
-            description="Quality value assigned to every simulated LiDAR return.",
+            description="Signal quality assigned to every fake reading on a 0–255 scale. Keep the default unless testing low-quality readings.",
             ge=0,
             le=255,
         ),
@@ -371,8 +370,8 @@ class MockLidarSensorConfig(LidarSensorConfigBase):
     scan_frequency_hz: Annotated[
         float,
         Field(
-            title="Scan frequency",
-            description="Rate in hertz at which simulated scans are published.",
+            title="Scan frequency (Hz)",
+            description="How many fake circular scans to produce each second. 10 Hz means a scan every 100 ms.",
             gt=0,
             le=30,
             allow_inf_nan=False,
@@ -388,7 +387,10 @@ LidarSensorConfig = Annotated[
 
 
 class IMUSensorConfigBase(BaseModel):
-    enabled: EnabledField = False
+    enabled: EnabledField = Field(
+        default=False,
+        description="Start reading rotation and acceleration. Pose estimation can use these readings to improve turn estimates; configure and enable Pose estimation separately.",
+    )
     frame_id: FrameId = "imu"
     transform: SensorTransform = Field(default_factory=StaticTransformConfig)
     sample_frequency_hz: IMUSampleFrequency = 100.0
@@ -422,7 +424,7 @@ class SH3001SensorConfig(IMUSensorConfigBase):
     accelerometer_range_g: Annotated[
         Literal[2, 4, 8, 16],
         Field(
-            title="Accelerometer range",
+            title="Accelerometer range (g)",
             description=(
                 "Full-scale acceleration range in multiples of standard gravity. "
                 "Lower ranges provide finer resolution."
@@ -432,7 +434,7 @@ class SH3001SensorConfig(IMUSensorConfigBase):
     gyroscope_range_dps: Annotated[
         Literal[125, 250, 500, 1000, 2000],
         Field(
-            title="Gyroscope range",
+            title="Gyroscope range (degrees/s)",
             description=(
                 "Full-scale angular-rate range in degrees per second. Lower ranges "
                 "provide finer resolution."
@@ -484,7 +486,7 @@ class LSM9DS1SensorConfig(IMUSensorConfigBase):
     accelerometer_range_g: Annotated[
         Literal[2, 4, 8, 16],
         Field(
-            title="Accelerometer range",
+            title="Accelerometer range (g)",
             description=(
                 "Full-scale acceleration range in multiples of standard gravity. "
                 "Lower ranges provide finer resolution."
@@ -494,7 +496,7 @@ class LSM9DS1SensorConfig(IMUSensorConfigBase):
     gyroscope_range_dps: Annotated[
         Literal[245, 500, 2000],
         Field(
-            title="Gyroscope range",
+            title="Gyroscope range (degrees/s)",
             description=(
                 "Full-scale angular-rate range in degrees per second. Lower ranges "
                 "provide finer resolution."
@@ -504,7 +506,7 @@ class LSM9DS1SensorConfig(IMUSensorConfigBase):
     output_data_rate_hz: Annotated[
         Literal[119, 238, 476, 952],
         Field(
-            title="Output data rate",
+            title="Output data rate (Hz)",
             description=(
                 "Hardware accelerometer and gyroscope output rate in hertz. It "
                 "must be at least the requested IMU sample frequency."
@@ -532,7 +534,7 @@ class LSM9DS1SensorConfig(IMUSensorConfigBase):
     def require_output_rate_for_requested_sample_rate(self) -> Self:
         if self.sample_frequency_hz > self.output_data_rate_hz:
             raise ValueError(
-                "LSM9DS1 output_data_rate_hz must be at least sample_frequency_hz"
+                "For LSM9DS1, Output data rate (Hz) must be at least IMU sample frequency (Hz). Increase Output data rate or lower IMU sample frequency."
             )
         return self
 
@@ -573,7 +575,7 @@ class LSM6DS33SensorConfig(IMUSensorConfigBase):
     accelerometer_range_g: Annotated[
         Literal[2, 4, 8, 16],
         Field(
-            title="Accelerometer range",
+            title="Accelerometer range (g)",
             description=(
                 "Full-scale acceleration range in multiples of standard gravity. "
                 "Lower ranges provide finer resolution."
@@ -583,7 +585,7 @@ class LSM6DS33SensorConfig(IMUSensorConfigBase):
     gyroscope_range_dps: Annotated[
         Literal[125, 245, 500, 1000, 2000],
         Field(
-            title="Gyroscope range",
+            title="Gyroscope range (degrees/s)",
             description=(
                 "Full-scale angular-rate range in degrees per second. Lower ranges "
                 "provide finer resolution."
@@ -593,7 +595,7 @@ class LSM6DS33SensorConfig(IMUSensorConfigBase):
     output_data_rate_hz: Annotated[
         Literal[13, 26, 52, 104, 208, 416, 833, 1666],
         Field(
-            title="Output data rate",
+            title="Output data rate (Hz)",
             description=(
                 "Hardware accelerometer and gyroscope output rate in hertz. It "
                 "must be at least the requested IMU sample frequency."
@@ -621,7 +623,7 @@ class LSM6DS33SensorConfig(IMUSensorConfigBase):
     def require_output_rate_for_requested_sample_rate(self) -> Self:
         if self.sample_frequency_hz > self.output_data_rate_hz:
             raise ValueError(
-                "LSM6DS33 output_data_rate_hz must be at least sample_frequency_hz"
+                "For LSM6DS33, Output data rate (Hz) must be at least IMU sample frequency (Hz). Increase Output data rate or lower IMU sample frequency."
             )
         return self
 
@@ -645,7 +647,7 @@ class MockIMUSensorConfig(IMUSensorConfigBase):
     acceleration_mps2: Annotated[
         Vector3,
         Field(
-            title="Acceleration vector",
+            title="Acceleration vector (m/s²)",
             description=(
                 "Fixed simulated X, Y, and Z acceleration components in metres per "
                 "second squared."
@@ -656,7 +658,7 @@ class MockIMUSensorConfig(IMUSensorConfigBase):
     angular_velocity_radps: Annotated[
         Vector3,
         Field(
-            title="Angular velocity vector",
+            title="Angular velocity vector (rad/s)",
             description=(
                 "Fixed simulated X, Y, and Z angular velocity components in radians "
                 "per second."
@@ -797,8 +799,7 @@ class GPIOQuadratureEncoderConfig(DriveEncoderConfigBase):
         Field(
             title="Active state",
             description=(
-                "Optional active logic level passed to the GPIO backend; leave empty "
-                "to use edge transitions without an active-state override."
+                "Electrical level treated as active by the GPIO input. Leave empty to let the pull-up setting determine it."
             ),
         ),
     ] = None
@@ -833,7 +834,7 @@ class MockEncoderConfig(DriveEncoderConfigBase):
         int,
         Field(
             title="Ticks per sample",
-            description="Signed tick increment applied to each simulated sample.",
+            description="Counts added on every fake wheel reading. Positive means forward, negative means reverse. A nonzero value reports movement even when the real robot is stationary.",
         ),
     ] = 0
 
@@ -857,29 +858,31 @@ class SteeringCalibrationPointConfig(BaseModel):
     sensor_offset_deg: Annotated[
         FiniteFloat,
         Field(
-            title="Sensor offset",
-            description="Signed sensor displacement in degrees from its center value.",
+            title="Sensor offset (degrees)",
+            description="Difference from the sensor reading with the wheels pointing straight ahead. Pair it with the measured Wheel angle to calibrate steering.",
         ),
     ]
     wheel_angle_rad: Annotated[
         FiniteFloat,
         Field(
-            title="Wheel angle",
+            title="Wheel angle (rad)",
             description=(
-                "Measured signed front-wheel steering angle in radians at this "
-                "sensor offset."
+                "Actual front-wheel angle at this sensor reading. 0 is straight; positive turns left. Enter radians: 0.524 is about 30 degrees."
             ),
         ),
     ]
 
 
 class SteeringPositionConfigBase(BaseModel):
-    enabled: EnabledField = False
+    enabled: EnabledField = Field(
+        default=False,
+        description="Read the actual steering angle from this sensor. Measure the straight-ahead center angle and configure the ratio or calibration points first. Restart the backend after enabling.",
+    )
     sample_frequency_hz: Annotated[
         float,
         Field(
-            title="Steering sample frequency",
-            description="Requested steering-position publication rate in hertz.",
+            title="Steering sample frequency (Hz)",
+            description="How many steering-angle readings to request each second. Higher rates track steering changes more quickly.",
             ge=1,
             le=500,
             allow_inf_nan=False,
@@ -889,7 +892,7 @@ class SteeringPositionConfigBase(BaseModel):
     center_angle_deg: Annotated[
         FiniteFloat,
         Field(
-            title="Sensor center angle",
+            title="Sensor center angle (degrees)",
             description=(
                 "Raw sensor angle in degrees corresponding to straight-ahead steering."
             ),
@@ -902,8 +905,7 @@ class SteeringPositionConfigBase(BaseModel):
         Field(
             title="Wheel-to-sensor angle ratio",
             description=(
-                "Front-wheel angle change in degrees per degree of sensor movement "
-                "when no calibration table is configured."
+                "How far the wheels turn for each degree the sensor turns. Use 1 if both turn equally. Used when no steering calibration points are entered."
             ),
             gt=0,
             allow_inf_nan=False,
@@ -915,9 +917,7 @@ class SteeringPositionConfigBase(BaseModel):
         Field(
             title="Steering calibration points",
             description=(
-                "Optional piecewise-linear mapping from sensor offset to measured "
-                "front-wheel angle. Use zero points for the fixed ratio or provide "
-                "at least two points in increasing sensor-offset order."
+                "Measure the sensor offset and actual wheel angle at two or more steering positions, ordered by increasing sensor offset. Leave empty to use the fixed angle ratio."
             ),
             max_length=20,
             json_schema_extra={
@@ -1008,14 +1008,14 @@ class MockSteeringPositionConfig(SteeringPositionConfigBase):
     initial_angle_degrees: Annotated[
         FiniteFloat,
         Field(
-            title="Initial sensor angle",
+            title="Initial sensor angle (degrees)",
             description="Raw sensor angle in degrees reported by the first sample.",
         ),
     ] = 0.0
     degrees_per_sample: Annotated[
         FiniteFloat,
         Field(
-            title="Degrees per sample",
+            title="Degrees per sample (degrees/sample)",
             description="Signed sensor-angle increment applied to each sample.",
         ),
     ] = 0.0
@@ -1034,13 +1034,16 @@ SteeringPositionConfig = Annotated[
 class EncoderSensorConfig(BaseModel):
     """A common-drivetrain encoder or independently acquired wheel encoders."""
 
-    enabled: EnabledField = False
+    enabled: EnabledField = Field(
+        default=False,
+        description="Start reading wheel rotation. Add at least one encoder below and choose which wheel or shared shaft it measures. Required for Ackermann odometry on the real robot.",
+    )
     frame_id: FrameId = "rear_axle"
     sample_frequency_hz: Annotated[
         float,
         Field(
-            title="Encoder sample frequency",
-            description="Requested drive-encoder publication rate in hertz.",
+            title="Encoder sample frequency (Hz)",
+            description="How many wheel-count readings to request each second. Higher rates track wheel movement more quickly.",
             ge=1,
             le=1000,
             allow_inf_nan=False,
@@ -1051,8 +1054,7 @@ class EncoderSensorConfig(BaseModel):
         Field(
             title="Drive encoders",
             description=(
-                "One common-drivetrain encoder or up to two rear wheel/outdrive "
-                "encoders. Configured roles and hardware resources must be unique."
+                "Add one sensor on a shaft shared by both rear wheels, or one sensor per rear wheel. Choose a different measurement role and hardware connection for each sensor."
             ),
             min_length=0,
             max_length=2,
@@ -1074,7 +1076,9 @@ class EncoderSensorConfig(BaseModel):
     @model_validator(mode="after")
     def validate_sensor_pair(self) -> Self:
         if self.enabled and not self.sensors:
-            raise ValueError("enabled drive encoder acquisition requires a sensor")
+            raise ValueError(
+                "Before enabling Drive encoders, add an encoder under Robot > Localization sensors > Drive encoders and choose its measurement role."
+            )
         roles = [sensor.role for sensor in self.sensors]
         if len(roles) != len(set(roles)):
             raise ValueError("drive encoder roles must be unique")
@@ -1114,28 +1118,28 @@ class LocalizationSensorsConfig(BaseModel):
         LidarSensorConfig,
         Field(
             title="LiDAR sensor",
-            description="Scan source used by mapping, telemetry, and motion safety.",
+            description="Measures distances to nearby walls and objects. Choose your sensor, enter its reliable range and mounting position, then enable it for mapping.",
         ),
     ] = Field(default_factory=RPLidarC1SensorConfig)
     imu: Annotated[
         IMUSensorConfig,
         Field(
             title="Inertial measurement unit",
-            description="Acceleration and angular-velocity source for pose estimation.",
+            description="Measures rotation and acceleration. Enable it to help Pose estimation track turns. Basic mapping can use wheel odometry without it.",
         ),
     ] = Field(default_factory=SH3001SensorConfig)
     encoder: Annotated[
         EncoderSensorConfig,
         Field(
             title="Drive encoders",
-            description="Rear wheel or outdrive position and speed acquisition.",
+            description="Measure rear-wheel rotation so Ackermann odometry can calculate distance travelled. Add the encoders below, choose their wheel roles, then enable readings.",
         ),
     ] = Field(default_factory=EncoderSensorConfig)
     steering: Annotated[
         SteeringPositionConfig,
         Field(
             title="Steering position sensor",
-            description="Measured front-wheel steering position acquisition.",
+            description="Optional sensor that measures the actual steering angle. Without one, Motion control uses the commanded steering angle for odometry.",
         ),
     ] = Field(
         default_factory=AS5048ASteeringPositionConfig,

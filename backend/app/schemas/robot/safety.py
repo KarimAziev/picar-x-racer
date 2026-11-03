@@ -10,12 +10,15 @@ from typing_extensions import Annotated, Self
 class LidarSafetyConfig(BaseModel):
     """Directional speed limits derived from fresh front and rear LiDAR returns."""
 
-    enabled: EnabledField = False
+    enabled: EnabledField = Field(
+        default=False,
+        description="Use LiDAR to slow or stop near obstacles. Requires Motion control, LiDAR, and both distance limits below. Restart the backend after enabling.",
+    )
     front_half_angle_deg: Annotated[
         float,
         Field(
-            title="Safety sector half-angle",
-            description="Angular half-width used for both front and rear safety sectors.",
+            title="Safety sector half-angle (degrees)",
+            description="How far to look to each side of straight ahead and straight behind. 35 degrees checks a 70-degree-wide area in each direction.",
             gt=0,
             le=90,
             allow_inf_nan=False,
@@ -24,8 +27,8 @@ class LidarSafetyConfig(BaseModel):
     stop_distance_m: Annotated[
         Optional[float],
         Field(
-            title="Directional stop distance",
-            description="Confirmed obstacles at or inside this distance block motion toward them.",
+            title="Directional stop distance (m)",
+            description="Block driving toward an obstacle this close to the robot reference point at the rear axle. Include the body overhang and room to stop; 0.3 m means 30 cm.",
             gt=0,
             allow_inf_nan=False,
         ),
@@ -33,8 +36,8 @@ class LidarSafetyConfig(BaseModel):
     slow_distance_m: Annotated[
         Optional[float],
         Field(
-            title="Directional slowdown distance",
-            description="Speed is reduced between stop and slowdown distance in either direction.",
+            title="Directional slowdown distance (m)",
+            description="Begin reducing speed when an obstacle comes within this distance of the rear-axle reference point. Set this farther away than the stop distance.",
             gt=0,
             allow_inf_nan=False,
         ),
@@ -42,8 +45,8 @@ class LidarSafetyConfig(BaseModel):
     scan_timeout_ms: Annotated[
         int,
         Field(
-            title="LiDAR scan timeout",
-            description="Block forward and reverse motion when a fresh scan is not received.",
+            title="LiDAR scan timeout (ms)",
+            description="Block forward and reverse driving if no new LiDAR scan arrives within this time. 500 ms is half a second.",
             ge=100,
             le=5000,
         ),
@@ -52,7 +55,7 @@ class LidarSafetyConfig(BaseModel):
         int,
         Field(
             title="Minimum obstacle returns",
-            description="Nearest-return rank used to reject isolated scan noise.",
+            description="Number of nearby LiDAR points needed to limit speed. 2 ignores a single stray point; larger values can miss small obstacles.",
             ge=1,
             le=20,
         ),
@@ -64,14 +67,17 @@ class LidarSafetyConfig(BaseModel):
             self.stop_distance_m is None or self.slow_distance_m is None
         ):
             raise ValueError(
-                "LiDAR safety requires measured stop_distance_m and slow_distance_m"
+                "Before enabling LiDAR directional safety, enter Directional stop distance (m) "
+                "and Directional slowdown distance (m)."
             )
         if (
             self.stop_distance_m is not None
             and self.slow_distance_m is not None
             and self.slow_distance_m <= self.stop_distance_m
         ):
-            raise ValueError("slow_distance_m must be greater than stop_distance_m")
+            raise ValueError(
+                "Directional slowdown distance (m) must be greater than Directional stop distance (m)."
+            )
         return self
 
 

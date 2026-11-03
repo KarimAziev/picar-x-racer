@@ -22,7 +22,7 @@ class SimulationSensorImperfectionsConfig(BaseModel):
         int,
         Field(
             title="Sensor error random seed",
-            description="Reusing a seed reproduces the same sensor-error sequence.",
+            description="Use the same number to repeat the same sequence of simulated sensor errors.",
             ge=0,
             le=2_147_483_647,
         ),
@@ -30,8 +30,8 @@ class SimulationSensorImperfectionsConfig(BaseModel):
     encoder_scale_error_percent: Annotated[
         float,
         Field(
-            title="Encoder scale error",
-            description="Systematic rear-wheel distance error in percent.",
+            title="Encoder scale error (%)",
+            description="Make the wheels report a consistently wrong distance. 1 means 1% too far; -1 means 1% too short.",
             ge=-20,
             le=20,
             allow_inf_nan=False,
@@ -41,7 +41,7 @@ class SimulationSensorImperfectionsConfig(BaseModel):
         float,
         Field(
             title="Encoder noise",
-            description="Per-moving-sample Gaussian encoder noise in ticks.",
+            description="Amount of random variation added to wheel counts while moving, expressed as a standard deviation. 0 disables this noise.",
             ge=0,
             le=100,
             allow_inf_nan=False,
@@ -50,8 +50,8 @@ class SimulationSensorImperfectionsConfig(BaseModel):
     steering_bias_deg: Annotated[
         float,
         Field(
-            title="Steering sensor bias",
-            description="Constant measured wheel-angle offset in degrees.",
+            title="Steering sensor bias (degrees)",
+            description="Add this fixed error to every reported steering angle. Positive and negative values bias the reading in opposite directions.",
             ge=-10,
             le=10,
             allow_inf_nan=False,
@@ -60,8 +60,8 @@ class SimulationSensorImperfectionsConfig(BaseModel):
     steering_noise_stddev_deg: Annotated[
         float,
         Field(
-            title="Steering sensor noise",
-            description="Gaussian measured wheel-angle noise in degrees.",
+            title="Steering sensor noise (degrees)",
+            description="Random variation in the reported steering angle, expressed as a standard deviation. 0 disables this noise.",
             ge=0,
             le=5,
             allow_inf_nan=False,
@@ -70,8 +70,8 @@ class SimulationSensorImperfectionsConfig(BaseModel):
     imu_yaw_rate_bias_radps: Annotated[
         float,
         Field(
-            title="IMU yaw-rate bias",
-            description="Constant simulated gyro Z-axis bias in radians per second.",
+            title="IMU yaw-rate bias (rad/s)",
+            description="Add this fixed error to the simulated turning-speed reading. It makes the estimated direction drift over time.",
             ge=-1,
             le=1,
             allow_inf_nan=False,
@@ -80,8 +80,8 @@ class SimulationSensorImperfectionsConfig(BaseModel):
     imu_yaw_rate_noise_stddev_radps: Annotated[
         float,
         Field(
-            title="IMU yaw-rate noise",
-            description="Gaussian gyro Z-axis noise in radians per second.",
+            title="IMU yaw-rate noise (rad/s)",
+            description="Random variation in the simulated turning-speed reading, expressed as a standard deviation. 0 disables this noise.",
             ge=0,
             le=1,
             allow_inf_nan=False,
@@ -90,8 +90,8 @@ class SimulationSensorImperfectionsConfig(BaseModel):
     lidar_range_noise_stddev_m: Annotated[
         float,
         Field(
-            title="LiDAR range noise",
-            description="Gaussian range noise applied to valid returns in metres.",
+            title="LiDAR range noise (m)",
+            description="Random variation in measured obstacle distances, expressed as a standard deviation. 0.015 m means 1.5 cm; 0 disables this noise.",
             ge=0,
             le=1,
             allow_inf_nan=False,
@@ -101,7 +101,7 @@ class SimulationSensorImperfectionsConfig(BaseModel):
         float,
         Field(
             title="LiDAR return dropout",
-            description="Independent probability that a valid simulated return is lost.",
+            description="Chance of losing each simulated distance reading. 0.01 means 1%; 0 keeps every reading.",
             ge=0,
             le=1,
             allow_inf_nan=False,
@@ -112,12 +112,15 @@ class SimulationSensorImperfectionsConfig(BaseModel):
 class CoherentSimulationConfig(BaseModel):
     """Deterministic Ackermann vehicle, world, and localization-sensor simulation."""
 
-    enabled: EnabledField = False
+    enabled: EnabledField = Field(
+        default=False,
+        description="Run driving commands on a virtual robot with physical motors isolated. Configure Motion control and Ackermann odometry, then save all three sections together with the bottom Save button.",
+    )
     update_frequency_hz: Annotated[
         float,
         Field(
-            title="Simulation update frequency",
-            description="Fixed-rate Ackermann plant and ideal sensor updates.",
+            title="Simulation update frequency (Hz)",
+            description="How often the virtual robot position and wheel readings update each second. Higher rates use more processing.",
             ge=10,
             le=500,
             allow_inf_nan=False,
@@ -126,8 +129,8 @@ class CoherentSimulationConfig(BaseModel):
     command_timeout_ms: Annotated[
         int,
         Field(
-            title="Simulation command timeout",
-            description="Stop when final arbiter commands are no longer fresh.",
+            title="Simulation command timeout (ms)",
+            description="Stop the virtual robot if no renewed driving command arrives within this time. 250 ms is a quarter of a second.",
             ge=50,
             le=5000,
         ),
@@ -135,24 +138,24 @@ class CoherentSimulationConfig(BaseModel):
     initial_x_m: Annotated[
         float,
         Field(
-            title="Initial X position",
-            description="Vehicle starting X coordinate in world metres.",
+            title="Initial X position (m)",
+            description="Starting position along the room X axis. 0 is the room center; positive values move toward positive X. The robot must fit inside the room.",
             allow_inf_nan=False,
         ),
     ] = 0.0
     initial_y_m: Annotated[
         float,
         Field(
-            title="Initial Y position",
-            description="Vehicle starting Y coordinate in world metres.",
+            title="Initial Y position (m)",
+            description="Starting position along the room Y axis. 0 is the room center; positive values move toward positive Y. The robot must fit inside the room.",
             allow_inf_nan=False,
         ),
     ] = 0.0
     initial_yaw_rad: Annotated[
         float,
         Field(
-            title="Initial heading",
-            description="Vehicle starting yaw angle in world radians.",
+            title="Initial heading (rad)",
+            description="Starting direction: 0 faces positive X; 1.57 radians turns left by about 90 degrees.",
             allow_inf_nan=False,
         ),
     ] = 0.0
@@ -161,13 +164,13 @@ class CoherentSimulationConfig(BaseModel):
     ] = Field(
         default="single_obstacle",
         title="Simulation world",
-        description="Deterministic line-segment world used by collision and LiDAR.",
+        description="Choose the room and obstacles the virtual robot drives through and detects with LiDAR.",
     )
     world_width_m: Annotated[
         float,
         Field(
-            title="World width",
-            description="Inside width of the simulated room.",
+            title="World width (m)",
+            description="Room size along the X axis. The room extends half this distance on each side of its center.",
             ge=2,
             le=50,
             allow_inf_nan=False,
@@ -176,8 +179,8 @@ class CoherentSimulationConfig(BaseModel):
     world_height_m: Annotated[
         float,
         Field(
-            title="World height",
-            description="Inside height of the simulated room.",
+            title="World height (m)",
+            description="Room size along the Y axis in the top-down view. This is floor space, not ceiling height.",
             ge=2,
             le=50,
             allow_inf_nan=False,
@@ -186,8 +189,8 @@ class CoherentSimulationConfig(BaseModel):
     vehicle_radius_m: Annotated[
         float,
         Field(
-            title="Vehicle collision radius",
-            description="Conservative circular collision envelope around base_link.",
+            title="Vehicle collision radius (m)",
+            description="Radius of the circle used to check whether the virtual robot hits an obstacle. Include the whole body. Navigation geometry can override this with measured body dimensions.",
             gt=0,
             le=1,
             allow_inf_nan=False,
@@ -196,8 +199,8 @@ class CoherentSimulationConfig(BaseModel):
     lidar_scan_frequency_hz: Annotated[
         float,
         Field(
-            title="Simulated LiDAR scan frequency",
-            description="World-aware scan publication rate during coherent simulation.",
+            title="Simulated LiDAR scan frequency (Hz)",
+            description="How many complete scans of the virtual room are produced each second. Higher rates update the map more often.",
             gt=0,
             le=30,
             allow_inf_nan=False,
@@ -207,7 +210,7 @@ class CoherentSimulationConfig(BaseModel):
         int,
         Field(
             title="Simulated LiDAR return quality",
-            description="Quality value assigned to deterministic wall and obstacle hits.",
+            description="Signal quality assigned to simulated obstacle readings on a 0–255 scale. Keep the default for normal simulation.",
             ge=0,
             le=255,
         ),
@@ -216,8 +219,7 @@ class CoherentSimulationConfig(BaseModel):
         default_factory=SimulationSensorImperfectionsConfig,
         title="Simulated sensor imperfections",
         description=(
-            "Optional deterministic bias, noise, scale error, and dropout applied "
-            "to simulated sensor measurements."
+            "Add repeatable measurement errors to test how well the position estimate handles imperfect sensors."
         ),
     )
 

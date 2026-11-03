@@ -7,7 +7,7 @@
       <div>
         <h2 class="text-sm font-semibold">Mapping session</h2>
         <p class="text-[0.68rem] text-surface-500 dark:text-surface-400">
-          Scan insertion only; these controls never move the vehicle
+          Start or pause adding obstacles to the map; driving is controlled separately
         </p>
       </div>
       <Tag :severity="stateSeverity" :value="stateLabel" />
@@ -167,12 +167,12 @@ const poseSourceLabel = computed(() => {
     session.value.preferred_pose_source === "localization" &&
     session.value.active_pose_source === "odometry"
   ) {
-    return "Raw odometry fallback";
+    return "Using wheel-based position";
   }
-  if (session.value.active_pose_source === "odometry") return "Raw odometry";
+  if (session.value.active_pose_source === "odometry") return "Wheel-based position";
   return session.value.preferred_pose_source === "localization"
-    ? "Awaiting fused localization"
-    : "Awaiting raw odometry";
+    ? "Waiting for position with sensor corrections"
+    : "Waiting for wheel-based position";
 });
 
 const run = async (action: MappingSessionAction) => {

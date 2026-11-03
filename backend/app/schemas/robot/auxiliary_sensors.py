@@ -26,7 +26,7 @@ SensorName = Annotated[
 PollIntervalSeconds = Annotated[
     float,
     Field(
-        title="Telemetry interval",
+        title="Telemetry interval (s)",
         description=(
             "Minimum time in seconds between fresh sensor readings sent to the browser."
         ),
@@ -139,7 +139,7 @@ class HTS221SensorConfig(I2CAuxiliarySensorConfig):
     output_data_rate_hz: Annotated[
         HTS221OutputDataRate,
         Field(
-            title="Output data rate",
+            title="Output data rate (Hz)",
             description=(
                 "Number of new temperature and humidity measurements produced "
                 "per second. It must be at least the requested telemetry rate."
@@ -206,7 +206,7 @@ class LPS25HSensorConfig(I2CAuxiliarySensorConfig):
     output_data_rate_hz: Annotated[
         LPS25HOutputDataRate,
         Field(
-            title="Output data rate",
+            title="Output data rate (Hz)",
             description=(
                 "Number of new pressure and temperature measurements produced per "
                 "second. It must be at least the requested telemetry rate."
@@ -253,7 +253,7 @@ class LSM9DS1MagnetometerSensorConfig(I2CAuxiliarySensorConfig):
     magnetic_field_range_gauss: Annotated[
         Literal[4, 8, 12, 16],
         Field(
-            title="Magnetic field range",
+            title="Magnetic field range (gauss)",
             description=(
                 "Full-scale magnetic field range in gauss. Lower ranges provide "
                 "finer resolution; increase the range if readings saturate."
@@ -263,7 +263,7 @@ class LSM9DS1MagnetometerSensorConfig(I2CAuxiliarySensorConfig):
     output_data_rate_hz: Annotated[
         LSM9DS1MagnetometerOutputDataRate,
         Field(
-            title="Output data rate",
+            title="Output data rate (Hz)",
             description=(
                 "Number of new three-axis magnetic field measurements produced per "
                 "second. It must be at least the requested telemetry rate."
@@ -327,7 +327,7 @@ class LIS3MDLSensorConfig(I2CAuxiliarySensorConfig):
     magnetic_field_range_gauss: Annotated[
         Literal[4, 8, 12, 16],
         Field(
-            title="Magnetic field range",
+            title="Magnetic field range (gauss)",
             description=(
                 "Full-scale magnetic field range in gauss. Lower ranges provide "
                 "finer resolution; increase the range if readings saturate."
@@ -337,7 +337,7 @@ class LIS3MDLSensorConfig(I2CAuxiliarySensorConfig):
     output_data_rate_hz: Annotated[
         LIS3MDLOutputDataRate,
         Field(
-            title="Output data rate",
+            title="Output data rate (Hz)",
             description=(
                 "Number of new three-axis magnetic field measurements produced per "
                 "second. It must be at least the requested telemetry rate."
@@ -387,7 +387,7 @@ class MockEnvironmentalSensorConfig(AuxiliarySensorConfigBase):
     temperature_c: Annotated[
         Optional[FiniteFloat],
         Field(
-            title="Temperature",
+            title="Temperature (°C)",
             description=(
                 "Fixed simulated temperature in degrees Celsius. Leave empty to "
                 "omit temperature from telemetry."
@@ -398,7 +398,7 @@ class MockEnvironmentalSensorConfig(AuxiliarySensorConfigBase):
     relative_humidity_percent: Annotated[
         Optional[float],
         Field(
-            title="Relative humidity",
+            title="Relative humidity (%)",
             description=(
                 "Fixed simulated relative humidity as a percentage. Leave empty "
                 "to omit humidity from telemetry."
@@ -412,7 +412,7 @@ class MockEnvironmentalSensorConfig(AuxiliarySensorConfigBase):
     pressure_pa: Annotated[
         Optional[float],
         Field(
-            title="Pressure",
+            title="Pressure (Pa)",
             description=(
                 "Fixed simulated absolute pressure in pascals. Leave empty to omit "
                 "pressure from telemetry."
@@ -450,7 +450,7 @@ class MockMagnetometerSensorConfig(AuxiliarySensorConfigBase):
     magnetic_field_t: Annotated[
         Vector3,
         Field(
-            title="Magnetic field vector",
+            title="Magnetic field vector (T)",
             description=(
                 "Fixed simulated X, Y, and Z magnetic field components in teslas."
             ),

@@ -8,6 +8,7 @@ from app.schemas.robot.motors import I2CDCMotorConfig
 from app.schemas.robot.pwm import PWMDriverConfig
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.util.diff import recursive_diff
+from app.util.settings_errors import format_settings_errors
 from app.util.gpio_reservations import (
     gpio_number,
     hardware_gpio_pins,
@@ -101,7 +102,9 @@ class SettingsService:
                 )
             )
         except ValidationError as err:
-            raise InvalidSettings(f"Unable to merge hardware settings: {err}") from err
+            raise InvalidSettings(
+                format_settings_errors(err, HardwareConfig.model_json_schema())
+            ) from err
         self._validate_hardware(candidate)
         return candidate
 

@@ -209,7 +209,9 @@ describe("JsonSchema nested layout", () => {
     expect(fieldsets[1].classList.contains("schema-section-flat")).toBe(false);
     expect(fieldsets[2].classList.contains("schema-section-flat")).toBe(true);
     expect(container.textContent).toContain("Ticks per sample");
-    expect(container.querySelector('[aria-label="Remove item"]')).not.toBeNull();
+    expect(
+      container.querySelector('[aria-label="Remove item"]'),
+    ).not.toBeNull();
   });
 
   it("keeps deeply nested sections collapsible and their fields editable", async () => {
@@ -253,4 +255,49 @@ describe("JsonSchema nested layout", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(value.sensor.calibration.name).toBe("Straight ahead");
   });
+});
+
+it("opens a saved collapsed section when following a setup link", async () => {
+  const container = document.createElement("div");
+  const id = "mapping-setup-test";
+  localStorage.setItem(id, "true");
+  let section: InstanceType<typeof JsonSchema> | null = null;
+  const model = { local_mapping: { width_m: 10 } };
+  const app = createApp({
+    setup: () => () =>
+      h(JsonSchema, {
+        ref: (instance) => {
+          section = instance as InstanceType<typeof JsonSchema> | null;
+        },
+        schema: {
+          type: "object",
+          title: "Local occupancy mapping",
+          properties: { width_m: { type: "number", title: "Map width (m)" } },
+        },
+        model,
+        origModel: model,
+        path: ["local_mapping"],
+        idPrefix: id,
+        level: 0,
+      }),
+  });
+  app.use(createPinia());
+  app.use(PrimeVue, { unstyled: true });
+  app.directive("tooltip", {});
+  document.body.append(container);
+  app.mount(container);
+  mountedApps.push({ app, container });
+  await nextTick();
+  expect(container.querySelector("button")?.getAttribute("aria-expanded")).toBe(
+    "false",
+  );
+  const exposed = section as InstanceType<typeof JsonSchema> | null;
+  expect(exposed?.path).toEqual(["local_mapping"]);
+  exposed?.expand();
+  await nextTick();
+  expect(container.querySelector("button")?.getAttribute("aria-expanded")).toBe(
+    "true",
+  );
+  expect(document.getElementById(id)).not.toBeNull();
+  localStorage.removeItem(id);
 });
