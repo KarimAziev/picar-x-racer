@@ -33,6 +33,14 @@ const isCalibrationStepReversed = (config: ServoConfig) => {
   return config.reverse !== (config.calibration_mode === "negative");
 };
 
+// Commands and telemetry use logical angles; the backend applies servo reversal.
+const constrainServoCommand = (config: ServoConfig, angle: number) =>
+  constrain(
+    config.reverse ? -config.max_angle : config.min_angle,
+    config.reverse ? -config.min_angle : config.max_angle,
+    angle,
+  );
+
 export const ACCELERATION = 10;
 export const MIN_SPEED = ACCELERATION;
 
@@ -184,27 +192,17 @@ export const useControllerStore = defineStore("controller", {
         switch (type) {
           case "update": {
             const typedPayload: UpdatePayloadResponse = payload;
-            const shouldSteeringReverse =
-              robotStore.data?.steering_servo?.reverse;
-            const shouldTiltReverse = robotStore.data?.cam_tilt_servo?.reverse;
-            const shouldPanReverse = robotStore.data?.cam_pan_servo.reverse;
             this.speed = typedPayload.speed;
             this.direction = typedPayload.direction;
-            this.servoAngle = shouldSteeringReverse
-              ? -typedPayload.servoAngle
-              : typedPayload.servoAngle;
+            this.servoAngle = typedPayload.servoAngle;
             if (
               this.requestedServoAngle !== null &&
               Math.abs(this.servoAngle - this.requestedServoAngle) < 0.001
             ) {
               this.requestedServoAngle = null;
             }
-            this.camTilt = shouldTiltReverse
-              ? -typedPayload.camTilt
-              : typedPayload.camTilt;
-            this.camPan = shouldPanReverse
-              ? -typedPayload.camPan
-              : typedPayload.camPan;
+            this.camTilt = typedPayload.camTilt;
+            this.camPan = typedPayload.camPan;
             this.maxSpeed = typedPayload.maxSpeed;
             this.avoidObstacles = typedPayload.avoidObstacles;
             this.ledBlinking = typedPayload.ledBlinking;
@@ -262,20 +260,17 @@ export const useControllerStore = defineStore("controller", {
             break;
 
           case "setServoDirAngle": {
-            const shouldReverse = robotStore.data?.steering_servo?.reverse;
-            this.servoAngle = shouldReverse ? -payload : payload;
+            this.servoAngle = payload;
             break;
           }
 
           case "setCamPanAngle": {
-            const shouldReverse = robotStore.data?.cam_pan_servo?.reverse;
-            this.camPan = shouldReverse ? -payload : payload;
+            this.camPan = payload;
             break;
           }
 
           case "setCamTiltAngle":
-            const shouldReverse = robotStore.data?.cam_tilt_servo?.reverse;
-            this.camTilt = shouldReverse ? -payload : payload;
+            this.camTilt = payload;
             break;
 
           case "avoidObstacles":
@@ -404,39 +399,24 @@ export const useControllerStore = defineStore("controller", {
       }
     },
     setCamTiltAngle(angle: number): void {
-      const robotStore = useRobotStore();
-      const shouldReverse = robotStore.data?.cam_tilt_servo?.reverse;
       const nextAngle = Math.trunc(
-        constrain(
-          robotStore.data.cam_tilt_servo.min_angle,
-          robotStore.data.cam_tilt_servo.max_angle,
-          shouldReverse ? -angle : angle,
-        ),
+        constrainServoCommand(useRobotStore().data.cam_tilt_servo, angle),
       );
       this.sendMessage({ action: "setCamTiltAngle", payload: nextAngle });
     },
 
     setDirServoAngle(servoAngle: number) {
-      const robotStore = useRobotStore();
-      const shouldReverse = robotStore.data?.steering_servo?.reverse;
-      const nextAngle = constrain(
-        robotStore.data.steering_servo.min_angle,
-        robotStore.data.steering_servo.max_angle,
-        shouldReverse ? -servoAngle : servoAngle,
+      const nextAngle = constrainServoCommand(
+        useRobotStore().data.steering_servo,
+        servoAngle,
       );
-      this.requestedServoAngle = shouldReverse ? -nextAngle : nextAngle;
+      this.requestedServoAngle = nextAngle;
       this.sendMessage({ action: "setServoDirAngle", payload: nextAngle });
     },
 
     setCamPanAngle(servoAngle: number): void {
-      const robotStore = useRobotStore();
-      const shouldReverse = robotStore.data?.cam_pan_servo?.reverse;
       const nextAngle = Math.trunc(
-        constrain(
-          robotStore.data.cam_pan_servo.min_angle,
-          robotStore.data.cam_pan_servo.max_angle,
-          shouldReverse ? -servoAngle : servoAngle,
-        ),
+        constrainServoCommand(useRobotStore().data.cam_pan_servo, servoAngle),
       );
       this.sendMessage({ action: "setCamPanAngle", payload: nextAngle });
     },

@@ -156,7 +156,9 @@ describe("controller motion heartbeat", () => {
             store[servo.move](direction * 5);
             const motionCommand = websocket.send.mock.lastCall?.[0];
             const physicalDirection =
-              Math.sign(motionCommand.payload) * (mode === "negative" ? -1 : 1);
+              Math.sign(motionCommand.payload) *
+              (reverse ? -1 : 1) *
+              (mode === "negative" ? -1 : 1);
 
             store[direction > 0 ? servo.increase : servo.decrease]();
             expect(websocket.send).toHaveBeenLastCalledWith({
@@ -168,6 +170,103 @@ describe("controller motion heartbeat", () => {
       }
     }
   }
+
+  for (const reverse of [false, true]) {
+    it(`sends logical steering and camera angles with reverse=${reverse}`, () => {
+      const robot = useRobotStore();
+      robot.data.steering_servo.reverse = reverse;
+      robot.data.cam_pan_servo.reverse = reverse;
+      robot.data.cam_tilt_servo.reverse = reverse;
+      const store = useControllerStore();
+      store.initializeWebSocket();
+
+      store.left();
+      store.left();
+      expect(websocket.send).toHaveBeenNthCalledWith(1, {
+        action: "setServoDirAngle",
+        payload: -5,
+      });
+      expect(websocket.send).toHaveBeenNthCalledWith(2, {
+        action: "setServoDirAngle",
+        payload: -10,
+      });
+      store.setCamPanAngle(10);
+      expect(websocket.send).toHaveBeenLastCalledWith({
+        action: "setCamPanAngle",
+        payload: 10,
+      });
+      store.setCamTiltAngle(-10);
+      expect(websocket.send).toHaveBeenLastCalledWith({
+        action: "setCamTiltAngle",
+        payload: -10,
+      });
+    });
+  }
+
+  for (const motionControlEnabled of [false, true]) {
+    it(`keeps logical angles from state updates with motion control=${motionControlEnabled}`, () => {
+      const robot = useRobotStore();
+      robot.data.steering_servo.reverse = true;
+      robot.data.cam_pan_servo.reverse = true;
+      robot.data.cam_tilt_servo.reverse = true;
+      const store = useControllerStore();
+      store.initializeWebSocket();
+      store.left();
+      websocket.handleMessage?.({
+        type: "update",
+        payload: {
+          servoAngle: -5,
+          camPan: 10,
+          camTilt: -10,
+          motionControlEnabled,
+        },
+      });
+      expect(store.servoAngle).toBe(-5);
+      expect(store.camPan).toBe(10);
+      expect(store.camTilt).toBe(-10);
+      expect(store.requestedServoAngle).toBeNull();
+      store.left();
+      expect(websocket.send).toHaveBeenLastCalledWith({
+        action: "setServoDirAngle",
+        payload: -10,
+      });
+      for (const [type, property, payload] of [
+        ["setServoDirAngle", "servoAngle", 5],
+        ["setCamPanAngle", "camPan", -10],
+        ["setCamTiltAngle", "camTilt", 10],
+      ] as const) {
+        websocket.handleMessage?.({ type, payload });
+        expect(store[property]).toBe(payload);
+      }
+    });
+  }
+
+  it("clamps reversed commands to asymmetric hardware travel limits", () => {
+    const robot = useRobotStore();
+    for (const field of [
+      "steering_servo",
+      "cam_pan_servo",
+      "cam_tilt_servo",
+    ] as const) {
+      Object.assign(robot.data[field], {
+        reverse: true,
+        min_angle: -10,
+        max_angle: 30,
+      });
+    }
+    const store = useControllerStore();
+    store.initializeWebSocket();
+    for (const [method, action] of [
+      ["setDirServoAngle", "setServoDirAngle"],
+      ["setCamPanAngle", "setCamPanAngle"],
+      ["setCamTiltAngle", "setCamTiltAngle"],
+    ] as const) {
+      store[method](-100);
+      expect(websocket.send).toHaveBeenLastCalledWith({ action, payload: -30 });
+      store[method](100);
+      expect(websocket.send).toHaveBeenLastCalledWith({ action, payload: 10 });
+    }
+  });
 
   it("uses the current reverse setting for each calibration step", () => {
     const robot = useRobotStore();

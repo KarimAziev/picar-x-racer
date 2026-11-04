@@ -1,7 +1,12 @@
+import asyncio
 import unittest
+from pathlib import Path
+from threading import Event, RLock
 from unittest.mock import Mock, patch
 
 from app.adapters.picarx_adapter import PicarxAdapter
+from app.schemas.robot.config import HardwareConfig
+from app.services.control.car_service import CarService
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from pydantic import ValidationError
 from robot_hat import ServoCalibrationMode
@@ -30,6 +35,74 @@ class TestServoAngleCalibration(unittest.TestCase):
             service.set_angle(9)
             self.driver.set_servo_pulse.assert_called_with(11, 1400)
             service.close()
+
+    def test_reversed_servo_state_and_opposite_commands_use_logical_angles(
+        self,
+    ) -> None:
+        for reverse in (False, True):
+            for mode in (ServoCalibrationMode.SUM, ServoCalibrationMode.NEGATIVE):
+                with self.subTest(reverse=reverse, mode=mode):
+                    config = AngularServoConfig(
+                        name="Steering",
+                        channel="P11",
+                        min_angle=-10,
+                        max_angle=30,
+                        min_pulse=1000,
+                        max_pulse=2000,
+                        real_min_angle=-45,
+                        real_max_angle=45,
+                        calibration_mode=mode,
+                        reverse=reverse,
+                    )
+                    self.adapter.config = HardwareConfig.model_validate_json(
+                        (
+                            Path(__file__).resolve().parents[4] / "config.json"
+                        ).read_text()
+                    )
+                    self.adapter.config.steering_servo = config
+                    self.adapter.config.cam_pan_servo = config
+                    self.adapter.config.cam_tilt_servo = config
+                    self.adapter._hardware_lock = RLock()
+                    self.adapter._shutdown_requested = Event()
+                    self.adapter.motor_controller = None
+                    with patch.object(
+                        self.adapter, "_get_pwm_driver", return_value=self.driver
+                    ):
+                        servo = self.adapter._make_servo(config)
+                    self.addCleanup(servo.close)
+                    self.adapter.steering_servo = servo
+                    self.adapter.cam_pan_servo = servo
+                    self.adapter.cam_tilt_servo = servo
+                    car = CarService.__new__(CarService)
+                    car.px = self.adapter
+                    car.motion_control_service = None
+                    for handler in (
+                        car.handle_set_servo_dir_angle,
+                        car.handle_set_cam_pan_angle,
+                        car.handle_set_cam_tilt_angle,
+                    ):
+                        for angle in (-9, 9, -9):
+                            asyncio.run(handler(angle))
+                            for key in (
+                                "steering_servo_angle",
+                                "cam_pan_angle",
+                                "cam_tilt_angle",
+                            ):
+                                self.assertEqual(self.adapter.state[key], angle)
+                            physical = (
+                                angle
+                                * (-1 if reverse else 1)
+                                * (-1 if mode == ServoCalibrationMode.NEGATIVE else 1)
+                            )
+                            expected_pulse = 1500 + physical / 90 * 1000
+                            self.driver.set_servo_pulse.assert_called_with(
+                                11, round(expected_pulse)
+                            )
+                    asyncio.run(car.handle_set_servo_dir_angle(100))
+                    self.assertEqual(
+                        self.adapter.state["steering_servo_angle"],
+                        10 if reverse else 30,
+                    )
 
     def test_i2c_travel_limits_preserve_pulse_scale(self) -> None:
         for limit, low, high in ((30, 1267, 1733), (10, 1422, 1578)):

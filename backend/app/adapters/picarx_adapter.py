@@ -205,7 +205,10 @@ class PicarxAdapter:
     @_synchronized
     def state(self) -> PicarState:
         """
-        Returns key metrics of the current state as a dictionary.
+        Return actuator state in the logical coordinates used by commands.
+
+        ServoService stores angles after direction reversal. Convert these back
+        so clients can display and reuse them as command inputs.
 
         The returned dictionary contains:
         - "speed": Current speed.
@@ -220,13 +223,22 @@ class PicarxAdapter:
                 self.motor_controller.direction if self.motor_controller else 0
             ),
             "steering_servo_angle": (
-                self.steering_servo.current_angle if self.steering_servo else 0
+                self.steering_servo.current_angle
+                * (-1 if self.config.steering_servo.reverse else 1)
+                if self.steering_servo
+                else 0
             ),
             "cam_pan_angle": (
-                self.cam_pan_servo.current_angle if self.cam_pan_servo else 0
+                self.cam_pan_servo.current_angle
+                * (-1 if self.config.cam_pan_servo.reverse else 1)
+                if self.cam_pan_servo
+                else 0
             ),
             "cam_tilt_angle": (
-                self.cam_tilt_servo.current_angle if self.cam_tilt_servo else 0
+                self.cam_tilt_servo.current_angle
+                * (-1 if self.config.cam_tilt_servo.reverse else 1)
+                if self.cam_tilt_servo
+                else 0
             ),
         }
 
