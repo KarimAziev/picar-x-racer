@@ -22,8 +22,8 @@
           <div>Ultrasonic:</div>
           <span>{{ distanceStore.speed }} km/h</span>
         </template>
-        <div>Command estimate:</div>
-        <span>{{ speedToReal(speed) }} km/h</span>
+        <div>Speed:</div>
+        <span>{{ speed }} %</span>
       </div>
     </template>
   </SpeedometerGauge>
@@ -32,7 +32,6 @@
 import { computed } from "vue";
 import { useControllerStore, ACCELERATION } from "@/features/controller/store";
 import SpeedometerGauge from "@/features/controller/components/SpeedometerGauge.vue";
-import { speedToReal } from "@/util/speed";
 import { useWindowSize } from "@/composables/useWindowSize";
 import { constrain } from "@/util/constrain";
 import { useRobotStore, useDistanceStore } from "@/features/settings/stores";

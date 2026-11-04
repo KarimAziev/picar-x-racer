@@ -186,6 +186,10 @@ provide("isMobile", isMobile);
 
 <style scoped>
 .control-section {
+  --p-fieldset-color: var(--color-text);
+  --p-fieldset-legend-hover-color: var(--color-text);
+  --p-fieldset-toggle-icon-color: var(--color-text);
+  --p-fieldset-toggle-icon-hover-color: var(--color-text);
   min-width: 0;
   padding: 0;
   border: 0;
