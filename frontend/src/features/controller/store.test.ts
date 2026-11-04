@@ -71,6 +71,21 @@ describe("controller motion heartbeat", () => {
     expect(websocket.send).toHaveBeenCalledTimes(callsAfterStop);
   });
 
+  for (const payload of [{ speed: 0 }, { direction: 0 }]) {
+    it(`cancels motion refresh for a combined stop ${JSON.stringify(payload)}`, () => {
+      const store = useControllerStore();
+      store.initializeWebSocket();
+      store.move(40, 1);
+      store.updateCombined({ ...payload, servoAngle: 0 });
+      expect(store.requestedSpeed).toBe(0);
+      expect(store.requestedDirection).toBe(0);
+      expect(store.motionHeartbeat).toBeNull();
+      websocket.send.mockClear();
+      vi.advanceTimersByTime(500);
+      expect(websocket.send).not.toHaveBeenCalled();
+    });
+  }
+
   it("cancels motion heartbeat before sending emergency stop", () => {
     const store = useControllerStore();
     store.initializeWebSocket();

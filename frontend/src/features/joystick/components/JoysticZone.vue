@@ -3,7 +3,7 @@
   <div :ref="setJoystickZoneX" class="joystick-zone-right"></div>
 </template>
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onUnmounted } from "vue";
 import type { VNodeRef } from "vue";
 import { useControllerStore } from "@/features/controller/store";
 import { useJoystickControl } from "@/features/joystick/composables/useJoysticManager";
@@ -16,10 +16,6 @@ const timeout = ref<ReturnType<typeof setTimeout>>();
 const sideOffset = "60px";
 const bottomOffset = "60px";
 
-const handleStopAll = () => {
-  controllerStore.updateCombined({ speed: 0, direction: 0, servoAngle: 0 });
-};
-
 const { joystickZone: joystickZoneY, params } = useJoystickControl(
   controllerStore,
   robotStore,
@@ -28,7 +24,7 @@ const { joystickZone: joystickZoneY, params } = useJoystickControl(
   },
   {
     onEnd: () => {
-      handleStopAll();
+      controllerStore.resetDirServoAngle();
     },
   },
 );
@@ -70,6 +66,8 @@ const { joystickZone: joystickZoneX } = useJoystickControl(
     onEnd: handleEnd,
   },
 );
+
+onUnmounted(() => clearTimeout(timeout.value));
 
 const setJoystickZoneY: VNodeRef = (element) => {
   joystickZoneY.value = element instanceof HTMLElement ? element : null;

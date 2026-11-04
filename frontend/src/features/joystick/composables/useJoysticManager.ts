@@ -1,10 +1,9 @@
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import nipplejs from "nipplejs";
 import type { JoystickManagerOptions } from "nipplejs";
 import { useControllerStore } from "@/features/controller/store";
 import { inRange } from "@/util/number";
 import { constrain } from "@/util/constrain";
-import { debounce } from "@/util/debounce";
 import { useRobotStore } from "@/features/settings/stores";
 
 export interface Callbacks {
@@ -28,7 +27,22 @@ export const useJoystickControl = (
   const joystickManager = ref<nipplejs.JoystickManager | null>(null);
   const optionsParams = ref<JoystickManagerOptions | undefined>(options);
 
+  let active = false;
+  let lastData: nipplejs.JoystickOutputData | undefined;
+  let restartTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const finishGesture = () => {
+    if (!active) return;
+    active = false;
+    // Stop also cancels the repeating motion command, even before telemetry arrives.
+    if (!optionsParams.value?.lockX) controllerStore.stop();
+    if (lastData) handlers?.onEnd?.(lastData);
+    lastData = undefined;
+  };
+
   const handleJoystickMove = (data: nipplejs.JoystickOutputData) => {
+    if (!active) return;
+    lastData = data;
     const { angle, distance } = data;
     const direction = angle.degree;
 
@@ -84,19 +98,10 @@ export const useJoystickControl = (
     }
   };
 
-  const handleJoystickEnd = (
-    _evt: nipplejs.EventData,
-    data: nipplejs.JoystickOutputData,
-  ) => {
-    if (handlers?.onEnd) {
-      handlers?.onEnd(data);
-    }
-  };
-
   const handleDestroyJoysticManager = () => {
-    if (joystickManager.value) {
-      joystickManager.value.destroy();
-    }
+    finishGesture();
+    joystickManager.value?.destroy();
+    joystickManager.value = null;
   };
 
   const handleCreateJoysticManager = (params?: JoystickManagerOptions) => {
@@ -113,6 +118,8 @@ export const useJoystickControl = (
       });
 
       joystickManager.value.on("start", (_event, data) => {
+        active = true;
+        lastData = data;
         if (handlers?.onStart) {
           handlers?.onStart(data);
         }
@@ -122,23 +129,43 @@ export const useJoystickControl = (
         handleJoystickMove(data);
       });
 
-      joystickManager.value.on("end", handleJoystickEnd);
+      joystickManager.value.on("end", finishGesture);
     }
   };
 
-  const restartJoysticManager = debounce(() => {
-    handleDestroyJoysticManager();
-    handleCreateJoysticManager({ ...optionsParams.value });
-  }, 500);
+  const restartJoysticManager = () => {
+    finishGesture();
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(() => {
+      handleDestroyJoysticManager();
+      handleCreateJoysticManager({ ...optionsParams.value });
+    }, 500);
+  };
 
   const recreateJoysticManager = (params?: JoystickManagerOptions) => {
-    optionsParams.value = { ...optionsParams.value, ...params };
+    clearTimeout(restartTimer);
     handleDestroyJoysticManager();
-    handleCreateJoysticManager(params);
+    optionsParams.value = { ...optionsParams.value, ...params };
+    handleCreateJoysticManager(optionsParams.value);
   };
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) finishGesture();
+  };
+
+  watch(
+    () => controllerStore.model?.connected,
+    (connected) => {
+      if (!connected) finishGesture();
+    },
+    { flush: "sync" },
+  );
 
   onMounted(() => {
     controllerStore.initializeWebSocket();
+    window.addEventListener("blur", finishGesture);
+    window.addEventListener("pagehide", finishGesture);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("resize", restartJoysticManager);
     window.addEventListener("update-primary-palette", restartJoysticManager);
     window.addEventListener("orientationchange", restartJoysticManager);
@@ -146,6 +173,10 @@ export const useJoystickControl = (
   });
 
   onBeforeUnmount(() => {
+    clearTimeout(restartTimer);
+    window.removeEventListener("blur", finishGesture);
+    window.removeEventListener("pagehide", finishGesture);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
     window.removeEventListener("resize", restartJoysticManager);
     window.removeEventListener("update-primary-palette", restartJoysticManager);
     window.removeEventListener("orientationchange", restartJoysticManager);

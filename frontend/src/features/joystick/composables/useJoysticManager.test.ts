@@ -14,6 +14,7 @@ const joystick = vi.hoisted(() => ({
         data: { angle: { degree: number }; distance: number },
       ) => void)
     | null,
+  start: null as (() => void) | null,
   destroy: vi.fn(),
 }));
 
@@ -22,6 +23,9 @@ vi.mock("nipplejs", () => ({
     create: () => ({
       on: (event: string, handler: NonNullable<typeof joystick.move>) => {
         if (event === "move") joystick.move = handler;
+        if (event === "start")
+          joystick.start = () =>
+            handler({}, { angle: { degree: 90 }, distance: 0 });
       },
       destroy: joystick.destroy,
     }),
@@ -70,6 +74,7 @@ describe("joystick steering limits", () => {
       },
     });
     app.mount(container);
+    joystick.start?.();
     return steering;
   }
 

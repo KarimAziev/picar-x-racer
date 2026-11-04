@@ -422,6 +422,9 @@ export const useControllerStore = defineStore("controller", {
     },
 
     updateCombined(payload: UpdateCombinedPayload): void {
+      if (payload.speed === 0 || payload.direction === 0) {
+        this.stop();
+      }
       this.sendMessage({ action: "update", payload });
     },
 
