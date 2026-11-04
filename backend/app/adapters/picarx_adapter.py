@@ -75,6 +75,9 @@ class PicarxAdapter:
         self.smbus_manager = smbus_manager
         self._hardware_lock = RLock()
         self._shutdown_requested = Event()
+        self._calibration_owner: Optional[str] = None
+        self._calibration_writer = False
+        self._calibration_interrupted = False
         self._motor_addresses: List[int] = []
         self._pwm_drivers: Dict[Tuple[int, int], PWMDriverABC] = {}
         self._pwm_driver_configs: Dict[Tuple[int, int], PWMDriverConfig] = {}
@@ -95,6 +98,59 @@ class PicarxAdapter:
     def _ensure_active(self) -> None:
         if self._shutdown_requested.is_set():
             raise RuntimeError("Robot hardware is shutting down")
+        if self.calibration_active and not self._calibration_writer:
+            raise RuntimeError(
+                "Guided calibration is active. Finish or cancel it before using other controls."
+            )
+
+    @property
+    def calibration_active(self) -> bool:
+        return getattr(self, "_calibration_owner", None) is not None
+
+    @property
+    def calibration_interrupted(self) -> bool:
+        return self._calibration_interrupted
+
+    @_synchronized
+    def acquire_calibration(self, owner: str) -> None:
+        self._ensure_active()
+        if self.motor_controller:
+            self.stop()
+        self._calibration_owner = owner
+        self._calibration_interrupted = False
+
+    @_synchronized
+    def calibration_command(
+        self, owner: str, power: int, steering_degrees: Optional[float] = None
+    ) -> None:
+        if owner != self._calibration_owner or self._calibration_interrupted:
+            raise RuntimeError(
+                "Calibration was stopped. Start a new trial to continue."
+            )
+        self._calibration_writer = True
+        try:
+            self._ensure_active()
+            if steering_degrees is not None:
+                self.set_dir_servo_angle(steering_degrees)
+            if power:
+                self.move(abs(power), 1 if power > 0 else -1)
+            elif self.motor_controller:
+                self.stop()
+        except Exception:
+            self._calibration_interrupted = True
+            self.stop()
+            raise
+        finally:
+            self._calibration_writer = False
+
+    @_synchronized
+    def release_calibration(self, owner: str) -> None:
+        if owner != self._calibration_owner:
+            return
+        if self.motor_controller:
+            self.stop()
+        self._calibration_owner = None
+        self._calibration_writer = False
 
     def begin_shutdown(self) -> None:
         """Reject further actuation and stop motors while retaining their GPIOs."""
@@ -352,6 +408,8 @@ class PicarxAdapter:
            RobotI2CTimeout: If the operation fails due to a timeout.
            RobotI2CBusError: If the operation fails due to a bus-related error.
         """
+        if self.calibration_active and not self._calibration_writer:
+            self._calibration_interrupted = True
         if not self.motor_controller:
             if self._shutdown_requested.is_set():
                 return
@@ -609,5 +667,6 @@ class PicarxAdapter:
             min_angle=servo_config.min_angle,
             max_angle=servo_config.max_angle,
             calibration_mode=servo_config.calibration_mode,
+            reverse=servo_config.reverse,
             name=servo_config.name,
         )

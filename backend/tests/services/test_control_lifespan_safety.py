@@ -16,6 +16,10 @@ class TestControlLifespanSafety(unittest.IsolatedAsyncioTestCase):
             with self.subTest(failure=type(failure).__name__):
                 events: list[str] = []
 
+                async def calibration_cleanup() -> None:
+                    events.append("calibration")
+                    raise failure
+
                 async def robot_cleanup() -> None:
                     events.append("motors")
 
@@ -33,6 +37,9 @@ class TestControlLifespanSafety(unittest.IsolatedAsyncioTestCase):
                 settings.load_data.return_value = {}
                 values = MagicMock(spec=dict)
                 deps_by_name = {
+                    "guided_calibration_service": MagicMock(
+                        stop=AsyncMock(side_effect=calibration_cleanup)
+                    ),
                     "robot_service": robot,
                     "connection_service": MagicMock(),
                     "distance_service": distance,
@@ -71,7 +78,9 @@ class TestControlLifespanSafety(unittest.IsolatedAsyncioTestCase):
                     else:
                         async with lifespan(FastAPI()):
                             pass
-                self.assertEqual(events, ["motors", "battery", "auxiliary"])
+                self.assertEqual(
+                    events, ["calibration", "motors", "battery", "auxiliary"]
+                )
                 distance.cleanup.assert_awaited_once()
                 led.cleanup.assert_awaited_once()
 

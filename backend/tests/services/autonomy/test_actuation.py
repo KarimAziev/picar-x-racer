@@ -232,3 +232,37 @@ class TestSelectableDriveHardware(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMeasuredSpeedCurves(ActuationTestCase):
+    def test_interpolates_measured_power_and_clamps_outside_measured_range(self):
+        translator = LinearActuatorTranslator(
+            ActuationCalibration(
+                max_forward_speed_mps=0.4,
+                max_reverse_speed_mps=0.3,
+                max_abs_steering_angle_rad=0.5,
+                forward_speed_curve=((20, 0.1), (50, 0.4)),
+                reverse_speed_curve=((30, 0.1), (60, 0.3)),
+            )
+        )
+        self.assertEqual(translator.translate(self.command(0.25)).speed, 35)
+        self.assertEqual(translator.translate(self.command(-0.2)).speed, 45)
+        self.assertEqual(translator.translate(self.command(1)).speed, 50)
+        self.assertEqual(
+            translator.translate(self.command(0.05)).direction, DriveDirection.STOPPED
+        )
+
+    def test_rejects_non_monotonic_or_non_finite_curves(self):
+        for curve in (
+            ((20, 0.2), (30, 0.1)),
+            ((20, 0.1), (20, 0.2)),
+            ((20, math.nan), (30, 0.2)),
+            ((20, 0.1),),
+        ):
+            with self.subTest(curve=curve), self.assertRaises(ValueError):
+                ActuationCalibration(
+                    max_forward_speed_mps=1,
+                    max_reverse_speed_mps=1,
+                    max_abs_steering_angle_rad=0.5,
+                    forward_speed_curve=curve,
+                )

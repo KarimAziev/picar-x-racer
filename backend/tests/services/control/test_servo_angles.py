@@ -12,6 +12,25 @@ class TestServoAngleCalibration(unittest.TestCase):
         self.adapter = PicarxAdapter.__new__(PicarxAdapter)
         self.driver = Mock()
 
+    def test_servo_reverse_is_applied_to_requested_angles(self):
+        config = AngularServoConfig(
+            name="Steering",
+            channel="P11",
+            min_angle=-30,
+            max_angle=30,
+            min_pulse=1000,
+            max_pulse=2000,
+            real_min_angle=-45,
+            real_max_angle=45,
+            calibration_mode=ServoCalibrationMode.SUM,
+            reverse=True,
+        )
+        with patch.object(self.adapter, "_get_pwm_driver", return_value=self.driver):
+            service = self.adapter._make_servo(config)
+            service.set_angle(9)
+            self.driver.set_servo_pulse.assert_called_with(11, 1400)
+            service.close()
+
     def test_i2c_travel_limits_preserve_pulse_scale(self) -> None:
         for limit, low, high in ((30, 1267, 1733), (10, 1422, 1578)):
             config = AngularServoConfig(

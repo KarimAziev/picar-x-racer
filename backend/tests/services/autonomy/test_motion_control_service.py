@@ -85,6 +85,28 @@ class TestMotionControlService(unittest.IsolatedAsyncioTestCase):
             topic_bus=self.topic_bus,
         )
 
+    async def test_calibration_gate_blocks_arming_and_emergency_stop_writes_through_cache(
+        self,
+    ):
+        await self.service.step()
+        self.hardware.calls.clear()
+        self.service.calibration_active = True
+        with self.assertRaisesRegex(ModeTransitionError, "calibration"):
+            await self.service.set_mode(RobotMode.MANUAL)
+        self.service.start()
+        self.assertFalse(self.service.running)
+        await self.service.emergency_stop("operator")
+        self.assertIn(("stop", None), self.hardware.calls)
+        self.assertEqual(self.service.mode, RobotMode.ESTOP)
+
+    async def test_saved_speed_curve_requires_restart_before_arming(self):
+        self.service.calibration_restart_required = True
+        with self.assertRaisesRegex(ModeTransitionError, "Restart"):
+            await self.service.set_mode(RobotMode.MANUAL)
+        await self.service.set_mode(RobotMode.DISARMED)
+        await self.service.emergency_stop("operator")
+        self.assertEqual(self.service.mode, RobotMode.ESTOP)
+
     def intent(
         self,
         *,

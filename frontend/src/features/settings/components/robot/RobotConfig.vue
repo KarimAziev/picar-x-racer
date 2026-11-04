@@ -1,25 +1,34 @@
 <template>
+  <GuidedCalibration @open-section="openSection" />
   <MappingSetupGuide
     :data="currValue"
     @open-section="openSection"
     class="mb-4"
   />
-  <Loader v-if="!store.config && loading" />
-  <JsonSchema
-    v-else-if="store.config"
-    v-for="(propSchema, propName) in store.config.properties"
-    ref="sections"
-    :level="0"
-    :schema="propSchema"
-    :invalidData="invalidData"
-    :model="currValue"
-    :origModel="store.data"
-    :path="[propName]"
-    :defs="store.config['$defs']"
-    :idPrefix="`${idPrefix}-${propName}`"
-    :data-comparator="isDataChangedPred"
-    @handle-save="store.updatePartialData"
-  />
+  <details
+    ref="advanced"
+    class="mb-4 rounded-lg border border-slate-400/40 p-3"
+  >
+    <summary class="cursor-pointer font-semibold">
+      Advanced settings — connections and individual fields
+    </summary>
+    <Loader v-if="!store.config && loading" />
+    <JsonSchema
+      v-else-if="store.config"
+      v-for="(propSchema, propName) in store.config.properties"
+      ref="sections"
+      :level="0"
+      :schema="propSchema"
+      :invalidData="invalidData"
+      :model="currValue"
+      :origModel="store.data"
+      :path="[propName]"
+      :defs="store.config['$defs']"
+      :idPrefix="`${idPrefix}-${propName}`"
+      :data-comparator="isDataChangedPred"
+      @handle-save="store.updatePartialData"
+    />
+  </details>
   <Teleport to="#settings-footer">
     <span class="flex gap-2 justify-self-start">
       <Button
@@ -65,12 +74,22 @@ import Loader from "@/features/settings/components/robot/Loader.vue";
 import { pinAssignmentsKey } from "@/features/pinout/context";
 import { collectPinAssignments } from "@/features/pinout/usage";
 
+import GuidedCalibration from "@/features/calibration/GuidedCalibration.vue";
 import MappingSetupGuide from "@/features/autonomy/components/MappingSetupGuide.vue";
 
 const props = defineProps<{ idPrefix: string }>();
 const popupStore = usePopupStore();
 const sections = useTemplateRef("sections");
+const advanced = useTemplateRef<HTMLDetailsElement>("advanced");
 const openSection = async (name: string) => {
+  if (name === "guided-calibration") {
+    document
+      .getElementById(name)
+      ?.scrollIntoView({ block: "start", behavior: "smooth" });
+    return;
+  }
+  if (advanced.value) advanced.value.open = true;
+  await nextTick();
   const section = sections.value?.find((item) => item?.path[0] === name);
   if (!section) return;
   section.expand();

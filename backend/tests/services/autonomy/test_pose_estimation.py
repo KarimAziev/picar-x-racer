@@ -86,6 +86,17 @@ def observation(
 
 
 class TestPoseEstimator(unittest.TestCase):
+    def test_stationary_gyro_offset_is_removed_before_fusion(self):
+        estimator = PoseEstimator(
+            PoseEstimatorConfig(imu_yaw_rate_weight=1, imu_yaw_bias_radps=0.02)
+        )
+        estimator.update(odometry(1, 1_000_000_000))
+        result = estimator.update(
+            odometry(2, 2_000_000_000), imu=imu(2_000_000_000, 0.02)
+        )
+        self.assertAlmostEqual(result.pose.yaw_rad, 0)
+        self.assertAlmostEqual(result.pose.yaw_rate_radps, 0)
+
     def test_first_odometry_sample_initializes_without_inventing_motion(self) -> None:
         estimator = PoseEstimator(PoseEstimatorConfig())
 

@@ -11,6 +11,7 @@ from typing import (
 )
 
 from app.adapters.picarx_adapter import PicarxAdapter
+from app.services.autonomy.calibration import GuidedCalibrationService
 from app.services.autonomy.recording import AutonomyRecorder
 from app.services.autonomy.occupancy_scan_matching import OccupancyMapScanMatcherService
 from app.config.config import settings as app_config
@@ -335,6 +336,14 @@ def get_motion_control_service(
         max_abs_steering_angle_rad=max_steering_radians,
         max_forward_command=max_motor_command,
         max_reverse_command=max_motor_command,
+        forward_speed_curve=tuple(
+            (point.power_percent, point.speed_mps)
+            for point in motion.forward_speed_curve
+        ),
+        reverse_speed_curve=tuple(
+            (point.power_percent, point.speed_mps)
+            for point in motion.reverse_speed_curve
+        ),
     )
     return MotionControlService(
         arbiter=MotionArbiter(limits),
@@ -406,6 +415,7 @@ def build_pose_estimator_supervisor(
         raise ValueError("pose estimation requires Ackermann odometry")
     estimator = PoseEstimator(
         PoseEstimatorConfig(
+            imu_yaw_bias_radps=settings.imu_yaw_bias_radps,
             imu_yaw_rate_weight=settings.imu_yaw_rate_weight,
             max_imu_age_seconds=settings.max_imu_age_ms / 1000,
             max_pose_observation_age_seconds=(
@@ -1081,11 +1091,27 @@ def get_robot_service(
     )
 
 
+@lru_cache(maxsize=1)
+def get_guided_calibration_service(
+    robot: Annotated[CarService, Depends(get_robot_service)],
+    px: Annotated[PicarxAdapter, Depends(get_picarx_adapter)],
+    settings: Annotated[SettingsService, Depends(get_robot_settings_service)],
+    bus: Annotated[TopicBus, Depends(get_robot_topic_bus)],
+    motion: Annotated[
+        Optional[MotionControlService], Depends(get_motion_control_service)
+    ],
+) -> GuidedCalibrationService:
+    return GuidedCalibrationService(
+        bus, px, settings, motion, autonomous_active=lambda: robot.avoid_obstacles_mode
+    )
+
+
 def get_pinout_service() -> PinoutService:
     return PinoutService()
 
 
 class LifespanAppDeps(TypedDict):
+    guided_calibration_service: GuidedCalibrationService
     autonomy_recorder: AutonomyRecorder
     connection_service: ConnectionService
     robot_service: CarService
@@ -1111,6 +1137,9 @@ class LifespanAppDeps(TypedDict):
 
 
 async def get_lifespan_dependencies(
+    guided_calibration_service: Annotated[
+        GuidedCalibrationService, Depends(get_guided_calibration_service)
+    ],
     autonomy_recorder: Annotated[AutonomyRecorder, Depends(get_autonomy_recorder)],
     connection_service: Annotated[ConnectionService, Depends(get_connection_manager)],
     robot_service: Annotated[CarService, Depends(get_robot_service)],
@@ -1164,6 +1193,7 @@ async def get_lifespan_dependencies(
     ],
 ) -> AsyncGenerator[LifespanAppDeps, None]:
     deps: LifespanAppDeps = {
+        "guided_calibration_service": guided_calibration_service,
         "autonomy_recorder": autonomy_recorder,
         "connection_service": connection_service,
         "robot_service": robot_service,

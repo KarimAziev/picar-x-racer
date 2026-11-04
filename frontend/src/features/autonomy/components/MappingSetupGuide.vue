@@ -8,6 +8,17 @@
       Mapping needs obstacle distances from LiDAR and movement from the wheels.
       Complete these settings in order.
     </p>
+    <button
+      type="button"
+      class="mt-3 rounded border border-current px-3 py-2 font-semibold"
+      @click="$emit('open-section', 'guided-calibration')"
+    >
+      Start guided calibration
+    </button>
+    <p class="mt-2 text-xs">
+      For a real robot, use the guides to measure wheel travel and driving speed
+      before enabling these features.
+    </p>
     <ol class="mt-3 space-y-3">
       <li v-for="(step, index) in steps" :key="step.section" class="flex gap-3">
         <span class="mt-1 font-semibold" aria-hidden="true"
@@ -68,7 +79,7 @@ const steps = computed(() => [
     title: "Motion control",
     enabled: props.data.motion_control.enabled,
     description:
-      "Enter measured maximum forward and reverse speeds in metres per second, then enable Motion control. This also supplies the steering angle needed to calculate turns.",
+      "Complete the Driving speed guide to calculate forward and reverse speeds, then enable Motion control. This also supplies the steering angle needed to calculate turns.",
   },
   {
     section: "localization_sensors",
@@ -85,7 +96,7 @@ const steps = computed(() => [
     title: "Ackermann odometry",
     enabled: props.data.ackermann_odometry.enabled,
     description:
-      "This means tracking movement from wheel turns and steering. Enter the axle spacing, driven-wheel radius, and encoder counts per turn, then enable it. Enter distances in metres: 25 cm = 0.25 m.",
+      "This means tracking movement from wheel turns and steering. Complete Body measurements and Wheel travel in Guided calibration, then enable it. The guides calculate the wheel scale from measured travel.",
   },
   {
     section: "local_mapping",

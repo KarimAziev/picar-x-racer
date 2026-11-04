@@ -244,6 +244,14 @@ class CarService:
             websocket (WebSocket): WebSocket connection instance.
         """
         self._ensure_running()
+        if getattr(self.px, "calibration_active", False) is True and action not in {
+            "stop",
+            "emergencyStop",
+        }:
+            await self.connection_manager.error(
+                "Guided calibration is active. Use its controls or cancel it first."
+            )
+            return
         calibration_actions_map = {
             "increaseCamPanCali": self.calibration.increase_cam_pan_angle,
             "decreaseCamPanCali": self.calibration.decrease_cam_pan_angle,
@@ -376,6 +384,9 @@ class CarService:
             await self.connection_manager.error(f"Failed to reset MCU: {e}")
 
     async def handle_stop(self, _: Any = None) -> None:
+        if getattr(self.px, "calibration_active", False) is True:
+            await asyncio.to_thread(self.px.stop)
+            return
         if self.motion_control_service:
             await self._submit_motion(0, 0, self._desired_steering_degrees)
             return

@@ -113,8 +113,22 @@ class ActuationCalibration:
     max_abs_steering_angle_rad: float
     max_forward_command: int = 100
     max_reverse_command: int = 100
+    forward_speed_curve: tuple[tuple[int, float], ...] = ()
+    reverse_speed_curve: tuple[tuple[int, float], ...] = ()
 
     def __post_init__(self) -> None:
+        for curve in (self.forward_speed_curve, self.reverse_speed_curve):
+            if curve and len(curve) < 2:
+                raise ValueError("A measured speed curve requires at least two points")
+            for power, speed in curve:
+                if not 1 <= power <= 100 or not math.isfinite(speed) or speed <= 0:
+                    raise ValueError(
+                        "Speed curve points require power 1–100% and positive finite speed"
+                    )
+            if any(
+                p1 >= p2 or s1 >= s2 for (p1, s1), (p2, s2) in zip(curve, curve[1:])
+            ):
+                raise ValueError("Speed curve power and speed must increase together")
         for name, value in [
             ("max_forward_speed_mps", self.max_forward_speed_mps),
             ("max_reverse_speed_mps", self.max_reverse_speed_mps),
@@ -177,6 +191,7 @@ class LinearActuatorTranslator:
                 command.linear_speed_mps,
                 self.calibration.max_forward_speed_mps,
                 self.calibration.max_forward_command,
+                self.calibration.forward_speed_curve,
             )
             direction = DriveDirection.FORWARD
         else:
@@ -184,6 +199,7 @@ class LinearActuatorTranslator:
                 -command.linear_speed_mps,
                 self.calibration.max_reverse_speed_mps,
                 self.calibration.max_reverse_command,
+                self.calibration.reverse_speed_curve,
             )
             direction = DriveDirection.REVERSE
 
@@ -196,7 +212,27 @@ class LinearActuatorTranslator:
         )
 
     @staticmethod
-    def _scale_speed(speed: float, physical_max: float, command_max: int) -> int:
+    def _scale_speed(
+        speed: float,
+        physical_max: float,
+        command_max: int,
+        curve: tuple[tuple[int, float], ...] = (),
+    ) -> int:
+        if curve:
+            # Below the first reliable speed, stop rather than invent a motor
+            # command in the unmeasured starting-friction region.
+            if speed < curve[0][1]:
+                return 0
+            for (low_power, low_speed), (high_power, high_speed) in zip(
+                curve, curve[1:]
+            ):
+                if speed <= high_speed:
+                    fraction = (speed - low_speed) / (high_speed - low_speed)
+                    return min(
+                        command_max,
+                        round(low_power + fraction * (high_power - low_power)),
+                    )
+            return min(command_max, curve[-1][0])
         ratio = LinearActuatorTranslator._clamp(speed / physical_max, 0.0, 1.0)
         return int(round(ratio * command_max))
 

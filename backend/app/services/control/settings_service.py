@@ -70,6 +70,17 @@ class SettingsService:
         with self._settings_lock:
             return self._merge_settings(data)
 
+    def merge_if_current(
+        self, data: PartialHardwareConfig, expected: HardwareConfig
+    ) -> PartialHardwareConfig:
+        """Apply measurements only to the configuration they were collected with."""
+        with self._settings_lock:
+            if self.saved_settings != expected:
+                raise InvalidSettings(
+                    "Robot settings changed. Repeat the calibration before applying it."
+                )
+            return self._merge_settings(data)
+
     def _merge_settings(self, data: PartialHardwareConfig) -> PartialHardwareConfig:
         data_dict = self._model_json_dump(data, exclude_unset=True)
         _log.info("Merging hardware settings: %s", data_dict)

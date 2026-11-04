@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.control import api_router, tags_metadata
 from app.core.px_logger import Logger
 from app.services.sensors.battery_service import BatteryService
+from app.services.autonomy.calibration import GuidedCalibrationService
 from app.services.sensors.auxiliary_sensor_service import AuxiliarySensorService
 
 if TYPE_CHECKING:
@@ -51,6 +52,7 @@ logger = Logger(name=__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    guided_calibration_service: Optional[GuidedCalibrationService] = None
     autonomy_recorder: Optional["AutonomyRecorder"] = None
     connection_service: Optional["ConnectionService"] = None
     robot_service: Optional["CarService"] = None
@@ -84,6 +86,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         lifespan_deps = solve_lifespan(robot_deps.get_lifespan_dependencies)
         async with lifespan_deps(app) as deps:
+            guided_calibration_service = deps.get("guided_calibration_service")
+            app.state.guided_calibration_service = guided_calibration_service
             autonomy_recorder = deps.get("autonomy_recorder")
             connection_service = deps.get("connection_service")
             robot_service = deps.get("robot_service")
@@ -212,6 +216,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         yield
     finally:
         cancelled = False
+        if guided_calibration_service:
+            try:
+                await guided_calibration_service.stop()
+            except asyncio.CancelledError:
+                logger.warning("Cancelled while stopping guided calibration.")
+                cancelled = True
+            except Exception:
+                logger.exception("Failed to stop guided calibration")
         if robot_service:
             try:
                 await robot_service.cleanup()

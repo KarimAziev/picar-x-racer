@@ -3,6 +3,10 @@
 from typing import Optional
 
 from app.schemas.robot.common import EnabledField
+from app.schemas.robot.speed_calibration import (
+    SpeedCalibrationPoint,
+    validate_speed_curve,
+)
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Annotated, Self
 
@@ -39,7 +43,7 @@ class MotionControlConfig(BaseModel):
         Field(
             title="Measured maximum forward speed (m/s)",
             description=(
-                "Measure how far the robot travels forward in one second at its configured maximum motor speed. Enter metres per second: 50 cm in one second = 0.5 m/s. Required to translate requested speeds into motor power."
+                "Use Guided calibration > Driving speed to measure forward travel at several power levels. The guide saves the highest measured speed here, in metres per second. Driving requests are limited to this speed."
             ),
             gt=0,
         ),
@@ -49,11 +53,22 @@ class MotionControlConfig(BaseModel):
         Field(
             title="Measured maximum reverse speed (m/s)",
             description=(
-                "Measure how far the robot travels backward in one second at its configured maximum motor speed. Enter a positive value in metres per second. Required before enabling Motion control."
+                "Use Guided calibration > Driving speed to measure reverse travel separately. The guide saves a positive speed here, in metres per second, and limits reverse requests to it."
             ),
             gt=0,
         ),
     ] = None
+
+    forward_speed_curve: list[SpeedCalibrationPoint] = Field(
+        default_factory=list,
+        title="Forward speed calibration",
+        description="Measured by Guided calibration. Requests above the highest measured speed are limited to that speed.",
+    )
+    reverse_speed_curve: list[SpeedCalibrationPoint] = Field(
+        default_factory=list,
+        title="Reverse speed calibration",
+        description="Measured by Guided calibration, separately from forward driving.",
+    )
 
     @model_validator(mode="after")
     def require_physical_calibration_when_enabled(self) -> Self:
@@ -64,6 +79,15 @@ class MotionControlConfig(BaseModel):
                 "Before enabling Motion control, enter Measured maximum forward speed (m/s) "
                 "and Measured maximum reverse speed (m/s)."
             )
+        for curve, limit in (
+            (self.forward_speed_curve, self.max_forward_speed_mps),
+            (self.reverse_speed_curve, self.max_reverse_speed_mps),
+        ):
+            validate_speed_curve(curve)
+            if curve and (limit is None or abs(curve[-1].speed_mps - limit) > 1e-6):
+                raise ValueError(
+                    "The speed limit must match the highest measured point in its speed calibration curve."
+                )
         minimum_timeout_ms = 2_000 / self.control_frequency_hz
         if self.command_timeout_ms < minimum_timeout_ms:
             raise ValueError(

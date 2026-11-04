@@ -867,7 +867,7 @@ class SteeringCalibrationPointConfig(BaseModel):
         Field(
             title="Wheel angle (rad)",
             description=(
-                "Actual front-wheel angle at this sensor reading. 0 is straight; positive turns left. Enter radians: 0.524 is about 30 degrees."
+                "Actual front-wheel angle at this sensor reading. 0 is straight; positive turns right and negative turns left. Enter radians: 0.524 is about 30 degrees."
             ),
         ),
     ]

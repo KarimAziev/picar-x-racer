@@ -27,14 +27,35 @@
   >
     <MediaControls />
     <ToggleableView setting="general.show_object_detection_settings">
-      <DetectionControls />
+      <Fieldset
+        id="controls-detection"
+        legend="Detection"
+        class="control-section"
+        :collapsed="false"
+      >
+        <DetectionControls />
+      </Fieldset>
     </ToggleableView>
     <CalibrationModeInfo id="calibration-mode-info" />
     <ToggleableView setting="general.text_to_speech_input">
-      <TextToSpeechInput />
+      <Fieldset
+        id="controls-text-to-speech"
+        legend="Text to speech"
+        class="control-section"
+        :collapsed="false"
+      >
+        <TextToSpeechInput />
+      </Fieldset>
     </ToggleableView>
     <ToggleableView setting="general.show_player">
-      <MusicPlayer />
+      <Fieldset
+        id="controls-music"
+        legend="Music"
+        class="control-section"
+        :collapsed="false"
+      >
+        <MusicPlayer />
+      </Fieldset>
     </ToggleableView>
   </div>
   <div
@@ -42,10 +63,24 @@
     v-if="isMobile && isSettingsLoaded"
   >
     <ToggleableView setting="general.show_object_detection_settings">
-      <DetectionControls class="portrait:justify-end" />
+      <Fieldset
+        id="controls-detection"
+        legend="Detection"
+        class="control-section"
+        :collapsed="false"
+      >
+        <DetectionControls class="portrait:justify-end" />
+      </Fieldset>
     </ToggleableView>
     <ToggleableView setting="general.show_player">
-      <MusicPlayer />
+      <Fieldset
+        id="controls-music"
+        legend="Music"
+        class="control-section"
+        :collapsed="false"
+      >
+        <MusicPlayer />
+      </Fieldset>
     </ToggleableView>
   </div>
 </template>
@@ -68,6 +103,7 @@ import { useAppHeight } from "@/composables/useAppHeight";
 import { useAppSyncStore } from "@/features/syncer";
 
 import ToggleableView from "@/ui/ToggleableView.vue";
+import Fieldset from "@/ui/Fieldset.vue";
 import TopRightPanel from "@/ui/TopRightPanel.vue";
 
 const syncStore = useAppSyncStore();
@@ -147,3 +183,26 @@ onBeforeUnmount(() => {
 
 provide("isMobile", isMobile);
 </script>
+
+<style scoped>
+.control-section {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.control-section :deep(.p-fieldset-legend) {
+  padding: 0;
+  background: transparent;
+}
+
+.control-section :deep(.p-fieldset-toggle-button) {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.control-section :deep(.p-fieldset-content) {
+  padding: 0.25rem 0 0;
+}
+</style>

@@ -36,9 +36,11 @@ class PoseEstimatorConfig:
     heading_process_noise_rad_per_second: float = 0.01
     odometry_heading_noise_fraction: float = 0.05
     imu_yaw_rate_stddev_radps: float = 0.03
+    imu_yaw_bias_radps: float = 0.0
 
     def __post_init__(self) -> None:
         values = (
+            self.imu_yaw_bias_radps,
             self.imu_yaw_rate_weight,
             self.max_imu_age_seconds,
             self.max_pose_observation_age_seconds,
@@ -182,7 +184,9 @@ class PoseEstimator:
                     imu_rejection = "IMU observation is stale"
                 else:
                     imu_used = True
-                    imu_delta_yaw = imu.angular_velocity_z_radps * dt_seconds
+                    imu_delta_yaw = (
+                        imu.angular_velocity_z_radps - self.config.imu_yaw_bias_radps
+                    ) * dt_seconds
 
             weight = self.config.imu_yaw_rate_weight if imu_used else 0.0
             fused_delta_yaw = (1 - weight) * odometry_delta_yaw + weight * imu_delta_yaw

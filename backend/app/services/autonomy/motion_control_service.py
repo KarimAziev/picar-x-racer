@@ -62,6 +62,8 @@ class MotionControlService:
         self._estop_reason: Optional[str] = None
         self._steering_state_sequence = 0
         self._autonomy_owner: Optional[str] = None
+        self.calibration_active = False
+        self.calibration_restart_required = False
 
     @property
     def mode(self) -> RobotMode:
@@ -147,6 +149,20 @@ class MotionControlService:
     async def set_mode(self, mode: RobotMode) -> ArbitrationResult:
         """Invalidate old intents and apply the new mode's safe output immediately."""
 
+        if self.calibration_restart_required and mode not in {
+            RobotMode.DISARMED,
+            RobotMode.ESTOP,
+        }:
+            raise ModeTransitionError(
+                "Restart the robot application to load the measured speed calibration before driving."
+            )
+        if self.calibration_active and mode not in {
+            RobotMode.DISARMED,
+            RobotMode.ESTOP,
+        }:
+            raise ModeTransitionError(
+                "Finish or cancel guided calibration before arming motion."
+            )
         if self._mode == RobotMode.ESTOP and mode != RobotMode.ESTOP:
             raise ModeTransitionError(
                 "emergency stop is latched; clear it before changing mode"
@@ -163,6 +179,8 @@ class MotionControlService:
         if not reason.strip():
             raise ValueError("emergency stop reason must not be empty")
         self._estop_reason = reason
+        if self.calibration_active:
+            await asyncio.to_thread(self._hardware_controller.force_stop)
         if self._mode == RobotMode.FAULT:
             return await self.step()
         return await self._set_mode_unchecked(RobotMode.ESTOP)
@@ -186,6 +204,10 @@ class MotionControlService:
     async def set_simulation_enabled(self, enabled: bool) -> ArbitrationResult:
         """Safely switch drive output after invalidating every prior intent."""
 
+        if self.calibration_active:
+            raise ModeTransitionError(
+                "Finish or cancel guided calibration before changing simulation."
+            )
         selector = self._drive_hardware
         if selector is None:
             raise RuntimeError("motion control has no selectable drive hardware")
@@ -270,7 +292,7 @@ class MotionControlService:
     def start(self) -> None:
         """Start periodic watchdog execution on the current event loop."""
 
-        if self.running:
+        if self.running or self.calibration_active:
             return
         self._last_error = None
         self._task = asyncio.create_task(self._run(), name="motion-control-watchdog")

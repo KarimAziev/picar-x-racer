@@ -61,6 +61,8 @@ export interface MotorsData {
 }
 
 export interface MotionControlConfig {
+  forward_speed_curve: Array<{power_percent: number; speed_mps: number}>;
+  reverse_speed_curve: Array<{power_percent: number; speed_mps: number}>;
   enabled: boolean;
   control_frequency_hz: number;
   command_timeout_ms: number;
@@ -308,6 +310,7 @@ export interface CoherentSimulationConfig {
 }
 
 export interface PoseEstimationConfig {
+  imu_yaw_bias_radps: number;
   occupancy_map_scan_matching: PoseEstimationConfig["simulation_scan_matching"] & {
     occupied_threshold: number;
     min_occupied_cells: number;
@@ -468,6 +471,8 @@ const defaultState: State = {
       rear_overhang_m: null,
     },
     motion_control: {
+      forward_speed_curve: [],
+      reverse_speed_curve: [],
       enabled: false,
       control_frequency_hz: 20,
       command_timeout_ms: 250,
@@ -585,6 +590,7 @@ const defaultState: State = {
       },
     },
     pose_estimation: {
+      imu_yaw_bias_radps: 0,
       occupancy_map_scan_matching: {
         enabled: false,
         max_pose_age_ms: 200,

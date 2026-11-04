@@ -25,6 +25,8 @@ from app.types.car import PicarState
 
 
 class FakePicarxAdapter:
+    calibration_active = False
+
     def __init__(self) -> None:
         self.calls: List[Tuple[str, Union[int, float, None]]] = []
         self._state: PicarState = {
@@ -114,6 +116,13 @@ class TestCarServiceMotionControl(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         await self.motion.set_mode(RobotMode.MANUAL)
         self.hardware.calls.clear()
+
+    async def test_stop_interrupts_calibration_without_arming_motion(self):
+        self.hardware.calibration_active = True
+        self.motion.calibration_active = True
+        self.hardware.calls.clear()
+        await self.car.handle_stop()
+        self.assertEqual(self.hardware.calls, [("stop", None)])
 
     async def test_manual_percent_command_crosses_si_boundary_without_drift(
         self,

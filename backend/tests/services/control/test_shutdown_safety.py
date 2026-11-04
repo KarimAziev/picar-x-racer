@@ -15,6 +15,9 @@ class TestAdapterShutdownSafety(unittest.TestCase):
         self.adapter = PicarxAdapter.__new__(PicarxAdapter)
         self.adapter._hardware_lock = RLock()
         self.adapter._shutdown_requested = Event()
+        self.adapter._calibration_owner = None
+        self.adapter._calibration_writer = False
+        self.adapter._calibration_interrupted = False
         self.adapter._pwm_drivers = {}
         self.adapter._pwm_driver_configs = {}
         self.adapter._motor_addresses = []
@@ -108,6 +111,44 @@ class TestAdapterShutdownSafety(unittest.TestCase):
                 self.fail("shutdown must reject hardware configuration")
         with self.assertRaisesRegex(RuntimeError, "shutting down"):
             self.adapter.set_cam_pan_angle(30)
+
+    def test_calibration_blocks_other_writers_but_allows_stop(self) -> None:
+        self.adapter.steering_servo = MagicMock()
+        self.adapter.acquire_calibration("owner")
+        with self.assertRaisesRegex(RuntimeError, "calibration"):
+            self.adapter.forward(50)
+        with self.assertRaisesRegex(RuntimeError, "calibration"):
+            self.adapter.set_dir_servo_angle(10)
+        self.adapter.calibration_command("owner", 20, 0)
+        self.controller.move.assert_called_once_with(20, 1)
+        self.adapter.stop()
+        with self.assertRaisesRegex(RuntimeError, "stopped"):
+            self.adapter.calibration_command("owner", 20, 0)
+        self.adapter.release_calibration("owner")
+        self.assertFalse(self.adapter.calibration_active)
+
+    def test_passive_calibration_works_without_motor_or_servo(self) -> None:
+        self.adapter.motor_controller = None
+        self.adapter.acquire_calibration("owner")
+        self.adapter.calibration_command("owner", 0, None)
+        self.adapter.release_calibration("owner")
+        self.assertFalse(self.adapter.calibration_active)
+
+    def test_failed_stop_keeps_hardware_exclusive(self) -> None:
+        self.adapter.acquire_calibration("owner")
+        self.controller.stop_all.side_effect = RuntimeError("stop failed")
+        with self.assertRaisesRegex(RuntimeError, "stop failed"):
+            self.adapter.release_calibration("owner")
+        self.assertTrue(self.adapter.calibration_active)
+        with self.assertRaisesRegex(RuntimeError, "calibration"):
+            self.adapter.forward(50)
+
+    def test_wrong_token_cannot_release_or_drive(self) -> None:
+        self.adapter.acquire_calibration("owner")
+        self.adapter.release_calibration("other")
+        self.assertTrue(self.adapter.calibration_active)
+        with self.assertRaisesRegex(RuntimeError, "stopped"):
+            self.adapter.calibration_command("other", 20, 0)
 
 
 class TestCarShutdownSafety(unittest.IsolatedAsyncioTestCase):

@@ -259,6 +259,14 @@ class PoseEstimationConfig(BaseModel):
         default=False,
         description="Combine wheel movement with available rotation-sensor readings to estimate position and direction. Requires Ackermann odometry; map corrections below are optional.",
     )
+    imu_yaw_bias_radps: float = Field(
+        default=0.0,
+        ge=-0.5,
+        le=0.5,
+        allow_inf_nan=False,
+        title="Stationary gyro offset (rad/s)",
+        description="Measured by the stationary IMU guide and subtracted from turning-speed readings.",
+    )
     imu_yaw_rate_weight: Annotated[
         float,
         Field(

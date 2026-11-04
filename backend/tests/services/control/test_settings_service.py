@@ -27,6 +27,18 @@ class TestSettingsServiceSharedPWMDrivers(unittest.TestCase):
             cast(Any, self.picarx), cast(Any, self.config_manager)
         )
 
+    def test_calibration_update_rejects_changed_settings_before_persistence(self):
+        expected = self.service.saved_settings.model_copy(deep=True)
+        self.service.saved_settings.ackermann_odometry.gear_ratio = 2
+        with self.assertRaisesRegex(InvalidSettings, "settings changed"):
+            self.service.merge_if_current(
+                PartialHardwareConfig.model_validate(
+                    {"pose_estimation": {"imu_yaw_bias_radps": 0.01}}
+                ),
+                expected,
+            )
+        self.config_manager.update.assert_not_called()
+
     def test_odometry_setup_error_points_to_motion_control_without_debug_dump(
         self,
     ) -> None:

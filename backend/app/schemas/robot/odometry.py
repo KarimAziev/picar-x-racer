@@ -26,7 +26,7 @@ class AckermannOdometryConfig(BaseModel):
         Optional[float],
         Field(
             title="Driven wheel radius (m)",
-            description="Distance from the center of a driven wheel to the floor with the robot resting on its wheels. Enter metres: 3 cm = 0.03 m. Used to convert wheel turns into distance.",
+            description="Use Guided calibration > Wheel travel to calculate this from a measured path; a precise ruler measurement of the wheel is not required. This effective radius converts encoder counts into travelled distance. Enter metres if editing manually: 3 cm = 0.03 m.",
             gt=0,
         ),
     ] = None
