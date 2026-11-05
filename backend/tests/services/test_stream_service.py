@@ -246,6 +246,43 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.stream_service.active_clients, 0)
         self.dummy_cam.stop_camera.assert_not_called()
 
+    async def test_capture_failure_without_a_frame_closes_stream_for_reconnect(self):
+        ws = FakeWebSocket()
+        self.dummy_cam.camera_run = False
+        self.dummy_cam.stream_img = None
+        self.dummy_cam.camera_device_error = "Camera was unplugged"
+
+        await asyncio.wait_for(
+            self.stream_service.video_stream(cast(WebSocket, ws)), timeout=0.2
+        )
+
+        self.assertTrue(ws.closed)
+        self.dummy_cam.notify_camera_error.assert_awaited_with("Camera was unplugged")
+        self.assertEqual(self.stream_service.active_clients, 0)
+
+    async def test_restart_waits_for_a_frame_while_previous_error_is_present(self):
+        for camera_running, starting in [(True, False), (False, True)]:
+            with self.subTest(camera_running=camera_running, starting=starting):
+                ws = FakeWebSocket()
+                self.dummy_cam.camera_run = camera_running
+                self.stream_service.loading = starting
+                self.dummy_cam.stream_img = None
+                self.dummy_cam.camera_device_error = "Previous camera error"
+
+                async def deliver_frame(_delay):
+                    self.dummy_cam.camera_device_error = None
+                    self.dummy_cam.camera_run = True
+                    self.stream_service.loading = False
+                    self.dummy_cam.stream_img = np.zeros((1, 1), dtype=np.uint8)
+
+                with patch(
+                    "app.services.camera.stream_service.asyncio.sleep",
+                    side_effect=deliver_frame,
+                ):
+                    await self.stream_service._ws_video_loop(cast(WebSocket, ws))
+
+                self.assertEqual(ws.sent_bytes, [b"dummy_frame"])
+
     async def test_video_stream_with_camera_error(self):
         """
         Test that if camera_service.start_camera (via to_thread) raises a CameraDeviceError,

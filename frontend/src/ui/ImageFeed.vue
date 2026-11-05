@@ -1,17 +1,23 @@
 <template>
-  <ScanLines v-if="!isVideoVisible" class="w-full h-[99%]">
+  <ScanLines v-if="showScanLines" class="w-full h-[99%]" />
+  <div
+    v-else-if="!isVideoVisible"
+    data-testid="camera-offline-line"
+    class="relative w-full h-px shrink-0 bg-primary shadow-[0_0_4px_2px] shadow-primary"
+  >
     <div
-      class="text-center text-error text-xl font-black absolute inset-0 flex items-center justify-center uppercase"
+      role="status"
+      class="absolute bottom-full left-0 w-full pb-4 px-4 text-center text-error text-xl font-black uppercase"
     >
-      {{ errorMsg }}
+      {{ unavailableMessage }}
     </div>
-  </ScanLines>
+  </div>
   <img
     v-show="isVideoVisible"
     ref="imgRef"
     class="w-full block h-[99%] shadow-[0_0_4px_2px] shadow-primary-500 select-none cursor-grab touch-none"
     :draggable="false"
-    @load="handleImageOnLoad"
+    @load="handleFrameLoaded"
     :class="props.imgClass"
     alt="Video"
   />
@@ -43,6 +49,11 @@ const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 const imgRef = ref<HTMLImageElement>();
 
 const errorMsg = computed(() => camStore.error);
+const unavailableMessage = ref("");
+
+const markDisconnected = () => {
+  unavailableMessage.value ||= "Camera disconnected. Reconnecting…";
+};
 
 const {
   initWS: initVideoStreamWS,
@@ -50,10 +61,45 @@ const {
   handleImageOnLoad,
   imgLoading,
   active: isVideoStreamActive,
-} = useWebsocketStream({ url: "api/ws/video-stream", imgRef });
+} = useWebsocketStream({
+  url: "api/ws/video-stream",
+  imgRef,
+  onClose: markDisconnected,
+  onError: markDisconnected,
+});
+
+const handleFrameLoaded = () => {
+  if (!isVideoStreamActive.value) return;
+  handleImageOnLoad();
+  camStore.error = null;
+  unavailableMessage.value = "";
+};
 
 const isVideoVisible = computed(
-  () => isVideoStreamActive.value && !imgLoading.value && !errorMsg.value,
+  () =>
+    isVideoStreamActive.value &&
+    !imgLoading.value &&
+    !errorMsg.value &&
+    !unavailableMessage.value,
+);
+
+const showScanLines = computed(
+  () => !isVideoVisible.value && !unavailableMessage.value,
+);
+
+watch(
+  errorMsg,
+  (error) => {
+    if (error) unavailableMessage.value = error;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => camStore.fetchError,
+  (error) => {
+    if (error && !isVideoVisible.value) unavailableMessage.value = error;
+  },
 );
 
 const isOverlayEnabled = computed(
@@ -64,6 +110,14 @@ const font = useCssVar("--canvas-font");
 const colorText = useCssVar("--color-text");
 let overlayAnimationFrame: number | null = null;
 let disposed = false;
+let settingsRetryTimer: ReturnType<typeof setTimeout> | undefined;
+
+const loadCameraSettings = async () => {
+  const loaded = await camStore.fetchAllCameraSettings(false);
+  if (!disposed && !loaded) {
+    settingsRetryTimer = setTimeout(loadCameraSettings, 5000);
+  }
+};
 
 const {
   addListeners: addCameraRotateListeners,
@@ -168,12 +222,9 @@ const handleSocketsCleanup = () => {
   cleanupVideoStreamWS();
 };
 
-onMounted(async () => {
-  await camStore.fetchAllCameraSettings();
-  if (disposed) {
-    return;
-  }
+onMounted(() => {
   initVideoStreamWS();
+  void loadCameraSettings();
   if (detectionStore.data.active) {
     detectionStore.initializeWebSocket();
   }
@@ -186,6 +237,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   disposed = true;
+  clearTimeout(settingsRetryTimer);
   if (overlayAnimationFrame !== null) {
     cancelAnimationFrame(overlayAnimationFrame);
   }

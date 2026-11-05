@@ -132,6 +132,8 @@ export interface State {
   loading: boolean;
   devices: Device[];
   error: string | null;
+  settingsError: string | null;
+  devicesError: string | null;
 }
 
 export const defaultState: State = {
@@ -139,10 +141,15 @@ export const defaultState: State = {
   data: {},
   devices: [],
   error: null,
+  settingsError: null,
+  devicesError: null,
 };
 
 export const useStore = defineStore("camera", {
   state: () => ({ ...defaultState }),
+  getters: {
+    fetchError: (state) => state.settingsError || state.devicesError,
+  },
   actions: {
     async updateData(payload: CameraSettings) {
       const messager = useMessagerStore();
@@ -168,24 +175,34 @@ export const useStore = defineStore("camera", {
       return this.data;
     },
 
-    async fetchAllCameraSettings() {
-      await Promise.all([this.fetchDevices(), this.fetchData()]);
+    async fetchAllCameraSettings(notifyErrors = true) {
+      const results = await Promise.all([
+        this.fetchDevices(notifyErrors),
+        this.fetchData(notifyErrors),
+      ]);
+      return results.every(Boolean);
     },
 
-    async fetchData() {
+    async fetchData(notifyErrors = true) {
       const messager = useMessagerStore();
       try {
         this.loading = true;
         const data = await appApi.get<CameraSettings>("/api/camera/settings");
         this.data = data;
+        this.settingsError = null;
+        return true;
       } catch (error) {
-        messager.handleError(error, "Error fetching camera settings");
+        this.settingsError = `Error fetching camera settings: ${retrieveError(error).text}`;
+        if (notifyErrors) {
+          messager.handleError(error, "Error fetching camera settings");
+        }
+        return false;
       } finally {
         this.loading = false;
       }
     },
 
-    async fetchDevices() {
+    async fetchDevices(notifyErrors = true) {
       const messager = useMessagerStore();
       try {
         this.loading = true;
@@ -193,8 +210,14 @@ export const useStore = defineStore("camera", {
           "/api/camera/devices",
         );
         this.devices = data.devices;
+        this.devicesError = null;
+        return true;
       } catch (error) {
-        messager.handleError(error, "Error fetching camera devices");
+        this.devicesError = `Error fetching camera devices: ${retrieveError(error).text}`;
+        if (notifyErrors) {
+          messager.handleError(error, "Error fetching camera devices");
+        }
+        return false;
       } finally {
         this.loading = false;
       }

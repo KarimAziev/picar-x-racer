@@ -98,6 +98,12 @@ class StreamService:
             and not self._check_app_cancelled(websocket)
         ):
             try:
+                if (
+                    self.camera_service.camera_device_error
+                    and not self.camera_service.camera_run
+                    and not self.loading
+                ):
+                    raise CameraDeviceError(self.camera_service.camera_device_error)
                 frame = self.camera_service.stream_img
                 if last_frame is frame and last_frame is not None:
                     await asyncio.sleep(0.001)
