@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Annotated
 from app.api import deps
 from app.core.logger import Logger
 from app.schemas.common import Message
+from app.schemas.system import PmicStatus
+from app.services.pmic_service import PmicService
 from app.util.shutdown import power_off, restart
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -26,6 +28,13 @@ if TYPE_CHECKING:
 logger = Logger(__name__)
 
 router = APIRouter()
+pmic_service = PmicService()
+
+
+@router.get("/system/pmic", response_model=PmicStatus)
+def read_pmic() -> PmicStatus:
+    """Read the host's PMIC ADC channels in the request thread pool."""
+    return pmic_service.read()
 
 
 @router.post(

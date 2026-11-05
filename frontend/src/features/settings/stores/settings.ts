@@ -1,6 +1,12 @@
 import { defineStore } from "pinia";
 import { cycleValue } from "@/util/cycleValue";
-import { isObjectEquals, pick, setObjProp, getObjProp } from "@/util/obj";
+import {
+  cloneDeep,
+  isObjectEquals,
+  pick,
+  setObjProp,
+  getObjProp,
+} from "@/util/obj";
 import { retrieveError } from "@/util/error";
 
 import { SettingsTab } from "@/features/settings/enums";
@@ -38,6 +44,11 @@ export interface State {
 
 export const defaultState: State = {
   data: {
+    pmic: {
+      enabled: true,
+      selected_channels: ["3V3_SYS_V", "3V3_SYS_A"],
+      refresh_seconds: 5,
+    },
     general: {
       robot_3d_view: true,
       speedometer_view: true,
@@ -87,7 +98,7 @@ export const defaultState: State = {
 };
 
 export const useStore = defineStore("settings", {
-  state: () => ({ ...defaultState }),
+  state: () => ({ ...defaultState, data: cloneDeep(defaultState.data) }),
   getters: {
     detection({ data: { detection } }) {
       return detection;
@@ -96,7 +107,7 @@ export const useStore = defineStore("settings", {
     generalSettings({ data }) {
       const cameraStore = useCameraStore();
       const streamStore = useStreamStore();
-      const settingsData = pick(["general"], data);
+      const settingsData = pick(["general", "pmic"], data);
       return {
         ...settingsData,
         camera: cameraStore.data,

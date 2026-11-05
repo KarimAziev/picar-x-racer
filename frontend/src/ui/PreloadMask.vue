@@ -1,7 +1,7 @@
 <template>
   <transition name="fade">
     <div
-      class="HELLO fixed inset-0 flex items-center justify-center z-50 w-full h-full"
+      class="fixed inset-0 flex items-center justify-center z-50 w-full h-full"
       v-if="showPreloader"
     >
       <div class="flex items-center justify-center flex-auto">

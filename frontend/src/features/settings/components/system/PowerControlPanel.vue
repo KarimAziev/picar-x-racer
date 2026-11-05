@@ -3,6 +3,7 @@
     <slot></slot>
     <i v-if="isSettingsLoaded" class="pi pi-spin pi-spinner"></i>
     <Battery v-else-if="isBatteryEnabled" />
+    <PmicMonitor v-if="!isSettingsLoaded" />
     <ToggleableView setting="general.show_shutdown_reboot_button">
       <ShutdownPopover />
     </ToggleableView>
@@ -13,6 +14,7 @@
 import { computed, defineAsyncComponent } from "vue";
 import { useRobotStore, useSettingsStore } from "@/features/settings/stores";
 import ToggleableView from "@/ui/ToggleableView.vue";
+import PmicMonitor from "@/features/settings/components/system/PmicMonitor.vue";
 
 const robotStore = useRobotStore();
 const settingsStore = useSettingsStore();

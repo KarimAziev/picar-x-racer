@@ -20,6 +20,11 @@
     "show_avoid_obstacles_button": true,
     "show_dark_theme_toggle": false
   },
+  "pmic": {
+    "enabled": true,
+    "selected_channels": ["3V3_SYS_V", "3V3_SYS_A"],
+    "refresh_seconds": 5
+  },
   "robot": {
     "max_speed": 80,
     "auto_measure_distance_mode": false,

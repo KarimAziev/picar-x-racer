@@ -1,6 +1,18 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, FiniteFloat
+
+
+class PmicReading(BaseModel):
+    name: str
+    value: FiniteFloat
+    unit: Literal["V", "A"]
+
+
+class PmicStatus(BaseModel):
+    readings: list[PmicReading] = Field(default_factory=list)
+    measured_at: Optional[str] = None
+    error: Optional[str] = None
 
 
 class ShutdownResponse(BaseModel):

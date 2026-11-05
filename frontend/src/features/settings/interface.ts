@@ -17,6 +17,7 @@ export interface ValueLabelOption<T = string> {
 
 export interface Settings {
   general: General;
+  pmic: PmicSettings;
   robot: Robot;
   tts: TTS;
   music: Music;
@@ -24,6 +25,12 @@ export interface Settings {
   stream: StreamSettings;
   detection: DetectionSettings;
   keybindings: Partial<Record<ControllerActionName, string[] | null>>;
+}
+
+export interface PmicSettings {
+  enabled: boolean;
+  selected_channels: string[];
+  refresh_seconds: number;
 }
 
 export type ToggleableKey = FlattenBooleanObjectKeys<

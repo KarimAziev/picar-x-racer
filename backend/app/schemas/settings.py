@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from app.schemas.camera import CameraSettings
 from app.schemas.music import MusicSettings
@@ -196,6 +196,16 @@ class RobotSettings(BaseModel):
     )
 
 
+class PmicSettings(BaseModel):
+    """Display and polling preferences for Raspberry Pi power rails."""
+
+    enabled: bool = True
+    selected_channels: list[
+        Annotated[str, Field(pattern=r"^[A-Za-z0-9_]+_[AV]$", max_length=64)]
+    ] = Field(default_factory=lambda: ["3V3_SYS_V", "3V3_SYS_A"], max_length=64)
+    refresh_seconds: int = Field(default=5, ge=1, le=300)
+
+
 class Settings(BaseModel):
     """
     A model representing application-wide settings.
@@ -204,6 +214,11 @@ class Settings(BaseModel):
     general: General = Field(
         ...,
         description="General application settings, including UI widget visibility.",
+    )
+
+    pmic: PmicSettings = Field(
+        default_factory=PmicSettings,
+        description="PMIC monitor channels, polling interval, and enabled state.",
     )
 
     robot: RobotSettings = Field(..., description="Settings related to robot control.")
