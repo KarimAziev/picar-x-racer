@@ -75,7 +75,7 @@ export const commandLabels: Record<string, string> = {
   increaseQuality: "Increase Video Quality",
   decreaseQuality: "Decrease Video Quality",
   toggleAvoidObstaclesMode: "Toggle Avoid Obstacles Mode",
-  toggleCalibration: "Toggle Calibration Mode",
+  toggleCalibration: "Toggle Servo & Motor Keyboard Tuning",
   increaseFPS: "Increase FPS",
   decreaseFPS: "Decrease FPS",
   increaseDimension: "Increase dimension",
@@ -98,7 +98,6 @@ export const calibrationModeRemap: Partial<
   increaseCamTilt: "increaseCamTiltCali",
   decreaseCamPan: "decreaseCamPanCali",
   increaseCamPan: "increaseCamPanCali",
-  resetCameraRotate: "resetCalibration",
 };
 
 export const allCommandOptions = objectKeysToOptions(

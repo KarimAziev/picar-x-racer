@@ -9,7 +9,7 @@
     <template #legend="scope" v-if="$slots.legend">
       <slot name="legend" :toggleCallback="scope.toggleCallback" />
     </template>
-    <slot></slot>
+    <slot :collapsed="isCollapsed"></slot>
   </FieldsetPrimevue>
 </template>
 
@@ -27,6 +27,7 @@ export interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   toggleable: true,
+  collapsed: false,
 });
 
 const isCollapsed = useLocalStorage(props.id, props.collapsed);

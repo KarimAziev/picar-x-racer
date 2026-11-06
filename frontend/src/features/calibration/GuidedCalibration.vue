@@ -2,14 +2,14 @@
   <section
     id="guided-calibration"
     class="guided-calibration mb-5 rounded-xl border border-sky-500/40 bg-sky-50/50 p-4 dark:bg-slate-900 sm:p-6"
-    aria-label="Guided calibration"
+    aria-label="Guided motion calibration"
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Calibrate your robot</h2>
+        <h2 class="text-lg font-semibold">Measure robot motion & geometry</h2>
         <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          Measure together, one step at a time. Review every result before
-          saving it.
+          Measure body geometry, wheel travel, steering response, and sensors
+          step by step. Review each result before saving it.
         </p>
       </div>
       <button
@@ -415,15 +415,21 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { robotApi } from "@/api";
 import { useRobotStore } from "@/features/settings/stores";
 import type { Data } from "@/features/settings/stores/robot";
-import ManualMeasurements from "./ManualMeasurements.vue";
-import { guides, reviewLines, trialSummary, type GuideKind } from "./guides";
+import ManualMeasurements from "@/features/calibration/ManualMeasurements.vue";
+import {
+  guides,
+  reviewLines,
+  trialSummary,
+  type GuideKind,
+} from "@/features/calibration/guides";
 import {
   CalibrationLease,
   calibrationError,
   calibrationPath,
   type CalibrationStatus,
-} from "./session";
+} from "@/features/calibration/session";
 defineEmits<{ "open-section": [section: string] }>();
+const props = defineProps<{ suspended?: boolean }>();
 const store = useRobotStore();
 const phase = ref(0);
 const kind = ref<GuideKind | null>(null),
@@ -544,7 +550,7 @@ async function start() {
       },
     );
     if (!result.session_id) throw new Error("Missing session");
-    if (!mounted || document.hidden) {
+    if (!mounted || document.hidden || props.suspended) {
       await robotApi.post(`${calibrationPath}/${result.session_id}/cancel`);
       return;
     }
@@ -679,6 +685,12 @@ function loseFocus() {
     void cancel();
   }
 }
+watch(
+  () => props.suspended,
+  (suspended) => {
+    if (suspended) void cancel();
+  },
+);
 function visibilityChanged() {
   if (document.hidden) loseFocus();
 }

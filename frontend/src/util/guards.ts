@@ -86,6 +86,10 @@ export const isObjectLike = (v: unknown): v is object =>
 
 export const isUndefined = (v: unknown): v is undefined => v === undefined;
 
+export const isHTMLElement = (
+  value: EventTarget | null,
+): value is HTMLElement => value instanceof HTMLElement;
+
 export const isInput = (v: unknown): v is HTMLInputElement =>
   v instanceof HTMLInputElement;
 export const isButton = (v: unknown): v is HTMLButtonElement =>

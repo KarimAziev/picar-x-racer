@@ -324,6 +324,10 @@ class GuidedCalibrationService:
                 raise CalibrationError(
                     "Another calibration is active. Finish or cancel it first."
                 )
+            if getattr(self.hardware, "servo_tuning_active", False) is True:
+                raise CalibrationError(
+                    "Stop servo tuning before starting guided motion calibration"
+                )
             config = self.settings.saved_settings.model_copy(deep=True)
             obs = self.observation(config)
             errors = self.blockers(request, config, obs)
@@ -1120,6 +1124,10 @@ class GuidedCalibrationService:
 
     async def apply(self, request: CalibrationApply) -> CalibrationStatus:
         async with self._lock:
+            if getattr(self.hardware, "servo_tuning_active", False) is True:
+                raise CalibrationError(
+                    "Stop servo tuning before applying guided measurements"
+                )
             update = self.proposed_update(request)
             if self.motion:
                 self.motion.calibration_active = True

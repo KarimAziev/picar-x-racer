@@ -9,12 +9,12 @@
     :layout="layout"
     :field="field"
     :tooltip="tooltip"
-    :min="config.min_angle"
-    :max="config.max_angle"
+    :min="config.reverse ? -config.max_angle : config.min_angle"
+    :max="config.reverse ? -config.min_angle : config.max_angle"
     :invalid="invalid"
     :disabled="readonly || disabled"
     v-model="currentValue"
-    :step="1"
+    :step="step ?? 1"
     :useGrouping="useGrouping"
     :allowEmpty="allowEmpty"
     v-bind="{ ...otherAttrs }"
@@ -32,7 +32,7 @@ import { isNumber } from "@/util/guards";
 import { ServoConfig } from "@/features/settings/stores/robot";
 
 export interface Props extends FieldProps {
-  value?: any;
+  value?: number | null;
   invalid?: boolean;
   field: string;
   minFractionDigits?: number;

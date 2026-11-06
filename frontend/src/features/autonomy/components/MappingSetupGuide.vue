@@ -13,7 +13,7 @@
       class="mt-3 rounded border border-current px-3 py-2 font-semibold"
       @click="$emit('open-section', 'guided-calibration')"
     >
-      Start guided calibration
+      Open guided motion calibration
     </button>
     <p class="mt-2 text-xs">
       For a real robot, use the guides to measure wheel travel and driving speed
@@ -96,7 +96,7 @@ const steps = computed(() => [
     title: "Ackermann odometry",
     enabled: props.data.ackermann_odometry.enabled,
     description:
-      "This means tracking movement from wheel turns and steering. Complete Body measurements and Wheel travel in Guided calibration, then enable it. The guides calculate the wheel scale from measured travel.",
+      "This means tracking movement from wheel turns and steering. Complete Body measurements and Wheel travel in Guided motion calibration, then enable it. The guides calculate the wheel scale from measured travel.",
   },
   {
     section: "local_mapping",

@@ -6,6 +6,7 @@ from app.exceptions.settings import InvalidSettings, UnchangedSettings
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.schemas.robot.motors import I2CDCMotorConfig
 from app.schemas.robot.pwm import PWMDriverConfig
+from app.schemas.robot.servo_tuning import ServoTuningRequest, ServoTuningSettings
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.util.diff import recursive_diff
 from app.util.settings_errors import format_settings_errors
@@ -339,6 +340,22 @@ class SettingsService:
             serialize_as_any=serialize_as_any,
         )
 
+    def preview_servo_tuning(
+        self, request: ServoTuningRequest
+    ) -> Union[AngularServoConfig, GPIOAngularServoConfig]:
+        """Apply validated tuning and a test angle without writing configuration."""
+        with self._settings_lock, self.px.hardware_session():
+            previous = getattr(self.px.config, request.servo)
+            servo = getattr(self.px, request.servo)
+            if previous is None or servo is None or not previous.enabled:
+                raise InvalidSettings("Enable and configure the servo before tuning it")
+            data = previous.model_dump()
+            data.update(request.settings.model_dump(exclude_unset=True))
+            data["calibration_offset"] = servo.calibration_offset
+            candidate = type(previous).model_validate(data)
+            self.px.preview_servo_tuning(request.servo, candidate, request.angle)
+            return candidate
+
     def get_saved_settings(self) -> HardwareConfig:
         return self.saved_settings
 
@@ -351,6 +368,9 @@ class SettingsService:
             )
 
             if servo and servo_config:
+                runtime_config = getattr(self.px.config, servo_name)
+                for field in ServoTuningSettings.model_fields:
+                    setattr(servo_config, field, getattr(runtime_config, field))
                 servo_config.calibration_offset = servo.calibration_offset
 
         if self.px.motor_controller:

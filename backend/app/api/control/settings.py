@@ -9,6 +9,9 @@ from app.api import robot_deps
 from app.core.px_logger import Logger
 from app.exceptions.settings import InvalidSettings, UnchangedSettings
 from app.managers.file_management.json_data_manager import JsonDataManager
+from app.schemas.robot.servo_tuning import ServoTuningRequest
+from app.services.control.car_service import CarService
+from pydantic import ValidationError
 from app.schemas.robot.calibration import CalibrationConfig
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.services.connection_service import ConnectionService
@@ -462,3 +465,26 @@ def get_calibration_settings(
             motor.get("calibration_direction", 1) for motor in config.get("motors", [])
         ],
     }
+
+
+@router.post("/px/api/settings/servo-tuning")
+async def preview_servo_tuning(
+    tuning: ServoTuningRequest,
+    settings_service: Annotated[
+        SettingsService, Depends(robot_deps.get_robot_settings_service)
+    ],
+    robot: Annotated[CarService, Depends(robot_deps.get_robot_service)],
+):
+    """Preview servo limits and pulse geometry until tuning is saved or restarted."""
+    try:
+        await robot.start_servo_tuning()
+        config = await asyncio.to_thread(settings_service.preview_servo_tuning, tuning)
+    except (InvalidSettings, ValueError, ValidationError, RuntimeError) as err:
+        await robot.broadcast()
+        raise HTTPException(status_code=409, detail=str(err)) from err
+    payload = {tuning.servo: config.model_dump(mode="json")}
+    await robot.connection_manager.broadcast_json(
+        {"type": "robot_partial_settings", "payload": payload}
+    )
+    await robot.broadcast()
+    return payload

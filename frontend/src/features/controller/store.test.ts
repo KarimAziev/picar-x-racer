@@ -119,6 +119,30 @@ describe("controller motion heartbeat", () => {
     });
   });
 
+  it("uses the acknowledged center after adjusting a steering offset", () => {
+    const store = useControllerStore();
+    store.initializeWebSocket();
+    store.setDirServoAngle(20);
+    websocket.handleMessage?.({
+      type: "updateCalibration",
+      payload: { steering_servo: { calibration_offset: 2 } },
+    });
+    websocket.handleMessage?.({
+      type: "update",
+      payload: {
+        servoAngle: 0,
+        camPan: 0,
+        camTilt: 0,
+        servoTuningActive: true,
+      },
+    });
+    store.left();
+    expect(websocket.send).toHaveBeenLastCalledWith({
+      action: "setServoDirAngle",
+      payload: -5,
+    });
+  });
+
   it("accumulates steering steps without waiting for an echo", () => {
     const store = useControllerStore();
     store.initializeWebSocket();

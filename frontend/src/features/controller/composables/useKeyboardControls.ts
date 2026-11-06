@@ -1,10 +1,12 @@
-import { ref, computed } from "vue";
-import { renameKeys } from "rename-obj-map";
+import { ref, computed, watch } from "vue";
 import type { ControllerActionName } from "@/features/controller/store";
 import { useControllerStore } from "@/features/controller/store";
 import { useSettingsStore, usePopupStore } from "@/features/settings/stores";
-import { formatKeyEventItem, formatKeyboardEvents } from "@/util/keyboard-util";
+import { formatKeyboardEvents } from "@/util/keyboard-util";
 import { calibrationModeRemap } from "@/features/settings/defaultKeybindings";
+import { useServoTuningStore } from "@/features/settings/stores/servoTuning";
+import { keyboardInputID } from "@/features/controller/config";
+import { isHTMLElement } from "@/util/guards";
 import { groupKeys } from "@/features/settings/util";
 
 export type KeyboardEventPred = (event: KeyboardEvent) => boolean;
@@ -29,16 +31,13 @@ export const useKeyboardControls = (
     () => settingsStore.data?.keybindings ?? {},
   );
 
-  const keybindings = computed(() => {
-    const data = controllerStore.calibrationMode
-      ? groupKeys(
-          renameKeys(calibrationModeRemap, { ...settingsKeybindings.value }),
-        )
-      : groupKeys({ ...settingsKeybindings.value });
-    return data;
-  });
+  const tuning = useServoTuningStore();
+  const keybindings = computed(() =>
+    groupKeys({ ...settingsKeybindings.value }),
+  );
+  const pressedKeys = new Map<string, string>();
 
-  const loopTimer = ref();
+  const loopTimer = ref<ReturnType<typeof setTimeout>>();
   const activeKeys = ref(new Set<string>());
   const inactiveKeys = ref(new Set<string>());
 
@@ -48,31 +47,74 @@ export const useKeyboardControls = (
   const findInactiveKey = (keys?: string[] | null) =>
     keys && keys.find((k) => inactiveKeys.value.has(k));
 
+  const releaseKeys = () => {
+    activeKeys.value.clear();
+    pressedKeys.clear();
+  };
+  watch(
+    () => controllerStore.calibrationMode,
+    () => {
+      releaseKeys();
+      inactiveKeys.value.clear();
+    },
+    { flush: "sync" },
+  );
+
   const handleKeyUp = (event: KeyboardEvent) => {
-    if (keyboardEventPred && !keyboardEventPred(event)) {
-      return;
-    }
-    const key = formatKeyEventItem(event);
-    activeKeys.value.delete(key);
+    const identity = event.code || event.key.toLowerCase();
+    const key = pressedKeys.get(identity);
+    if (key) activeKeys.value.delete(key);
+    pressedKeys.delete(identity);
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (popupStore.isOpen || settingsStore.inhibitKeyHandling) {
+    if (popupStore.isOpen || settingsStore.inhibitKeyHandling || tuning.pending)
       return;
-    }
-    if (keyboardEventPred && !keyboardEventPred(event)) {
+    const target = event.target;
+    if (
+      isHTMLElement(target) &&
+      target.id !== keyboardInputID &&
+      target.closest("input, textarea, select, [contenteditable='true']")
+    )
       return;
-    }
+    if (keyboardEventPred && !keyboardEventPred(event)) return;
+
     const key = formatKeyboardEvents([event]);
     const commandName = keybindings.value[key];
-
+    if (controllerStore.calibrationMode && event[tuning.modifier]) {
+      const baseEvent = {
+        key:
+          tuning.modifier === "shiftKey" ? event.key.toLowerCase() : event.key,
+        code: event.code,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+        [tuning.modifier]: false,
+      };
+      // Arrow names are case-sensitive; only letter keys change with Shift.
+      if (event.key.length > 1) baseEvent.key = event.key;
+      const baseCommand = keybindings.value[formatKeyboardEvents([baseEvent])];
+      const offsetCommand = baseCommand && calibrationModeRemap[baseCommand];
+      if (offsetCommand) {
+        event.preventDefault();
+        releaseKeys();
+        controllerStore[offsetCommand]();
+        return;
+      }
+    }
+    if (
+      controllerStore.calibrationMode &&
+      (commandName === "accelerate" || commandName === "decelerate")
+    )
+      return;
     if (commandName) {
       event.preventDefault();
-
-      if (!deferredCommandDict[commandName] && controllerStore[commandName]) {
+      if (!deferredCommandDict[commandName]) {
         controllerStore[commandName]();
       } else if (!event.repeat) {
         activeKeys.value.add(key);
+        pressedKeys.set(event.code || event.key.toLowerCase(), key);
       }
     }
   };
@@ -90,6 +132,8 @@ export const useKeyboardControls = (
   };
 
   const updateCarState = () => {
+    if (popupStore.isOpen || settingsStore.inhibitKeyHandling || tuning.pending)
+      releaseKeys();
     const leftKey = findKey(settingsKeybindings.value?.left);
     const rightKey = findKey(settingsKeybindings.value?.right);
     const stopKey = findKey(settingsKeybindings.value?.stop);
@@ -129,7 +173,8 @@ export const useKeyboardControls = (
       findInactiveKey(settingsKeybindings.value?.left) ||
       findInactiveKey(settingsKeybindings.value?.right)
     ) {
-      controllerStore.resetDirServoAngle();
+      if (!controllerStore.calibrationMode)
+        controllerStore.resetDirServoAngle();
       const keys = [
         ...(settingsKeybindings.value?.left || []),
         ...(settingsKeybindings.value?.right || []),
@@ -146,12 +191,15 @@ export const useKeyboardControls = (
   };
 
   const addKeyEventListeners = () => {
+    window.addEventListener("blur", releaseKeys);
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("beforeunload", cleanup);
   };
 
   const removeKeyEventListeners = () => {
+    window.removeEventListener("blur", releaseKeys);
+    releaseKeys();
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
     window.removeEventListener("beforeunload", cleanup);

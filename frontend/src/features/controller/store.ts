@@ -56,6 +56,7 @@ export interface UpdatePayloadResponse {
   autoMeasureDistanceMode: boolean;
   ledBlinking: boolean;
   motionControlEnabled: boolean;
+  servoTuningActive?: boolean;
   robotMode: RobotMode;
   motionGeneration: number;
   motionReason: string | null;
@@ -192,6 +193,10 @@ export const useControllerStore = defineStore("controller", {
         switch (type) {
           case "update": {
             const typedPayload: UpdatePayloadResponse = payload;
+            const tuningActive = typedPayload.servoTuningActive ?? false;
+            if (tuningActive !== this.calibrationMode)
+              this.requestedServoAngle = null;
+            this.calibrationMode = tuningActive;
             this.speed = typedPayload.speed;
             this.direction = typedPayload.direction;
             this.servoAngle = typedPayload.servoAngle;
@@ -293,6 +298,7 @@ export const useControllerStore = defineStore("controller", {
             break;
 
           case "updateCalibration":
+            this.requestedServoAngle = null;
             robotStore.mergeCalibrationData(payload);
             break;
 
@@ -674,16 +680,15 @@ export const useControllerStore = defineStore("controller", {
     toggleCalibration() {
       const popupStore = usePopupStore();
       const messager = useMessagerStore();
-      this.calibrationMode = !this.calibrationMode;
       if (this.calibrationMode) {
-        this.stop();
-        this.resetCameraRotate();
-        this.resetDirServoAngle();
-        this.maxSpeed = MIN_SPEED;
-        popupStore.isOpen = false;
-        messager.info("Starting calibration");
+        this.sendMessage({ action: "stopServoTuning" });
+        messager.info(
+          "Keyboard tuning stopped; save tuning to keep adjustments",
+        );
       } else {
-        messager.info("Calibration finished");
+        this.stop();
+        this.sendMessage({ action: "startServoTuning" });
+        popupStore.isOpen = false;
       }
     },
     increaseCamPanCali() {

@@ -40,7 +40,7 @@ import { useRobotStore } from "@/features/settings/stores";
 import ServoInput from "@/features/settings/components/calibration/ServoInput.vue";
 
 export interface Props extends FieldProps {
-  modelValue?: any;
+  modelValue?: number | null;
   invalid?: boolean;
   field: string;
   minFractionDigits?: number;
@@ -73,17 +73,11 @@ const commandActions = {
   steering_servo: controllerStore.setDirServoAngle,
 };
 
-const servoValues = {
+const servoValues = computed(() => ({
   cam_pan_servo: controllerStore.camPan,
   cam_tilt_servo: controllerStore.camTilt,
   steering_servo: controllerStore.servoAngle,
-};
-
-const servosMap = {
-  cam_pan_servo: robotStore.data.cam_pan_servo,
-  cam_tilt_servo: robotStore.data.cam_tilt_servo,
-  steering_servo: robotStore.data.steering_servo,
-};
+}));
 
 const calibrationActionsMap = {
   "cam_pan_servo.calibration_offset": controllerStore.updateCamPanCali,
@@ -100,16 +94,22 @@ const calibrationAction = computed(
     calibrationActionsMap[props.field as keyof typeof calibrationActionsMap],
 );
 const currentServoName = computed(
-  () => props.field.split(".").shift() as keyof typeof servosMap,
+  () => props.field.split(".").shift() as keyof typeof commandActions,
 );
 
-const currentServoConfig = computed(() => servosMap[currentServoName.value]);
+const currentServoConfig = computed(
+  () => robotStore.data[currentServoName.value],
+);
 
-const currentServoValue = computed(() => servoValues[currentServoName.value]);
+const currentServoValue = computed(
+  () => servoValues.value[currentServoName.value],
+);
 
 const commandAction = computed(() => commandActions[currentServoName.value]);
 
 const handleServoMove = (value: number) => {
+  if (!controllerStore.calibrationMode)
+    controllerStore.sendMessage({ action: "startServoTuning" });
   commandAction.value(value);
 };
 

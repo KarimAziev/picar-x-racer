@@ -24,6 +24,7 @@ class CarServiceState(PicarBaseState):
     autoMeasureDistanceMode: Union[bool, None]
     ledBlinking: bool
     motionControlEnabled: bool
+    servoTuningActive: bool
     robotMode: str
     motionGeneration: int
     motionReason: Union[str, None]

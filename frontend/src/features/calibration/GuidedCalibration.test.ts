@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { createApp, nextTick, type App } from "vue";
+import { createApp, h, ref, nextTick, type App } from "vue";
 import { createPinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import GuidedCalibration from "./GuidedCalibration.vue";
+import GuidedCalibration from "@/features/calibration/GuidedCalibration.vue";
 const { get, post } = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("@/api", () => ({ robotApi: { get, post } }));
 let app: App, root: HTMLElement;
+const suspended = ref(false);
 const status = {
   active: false,
   session_id: null,
@@ -42,7 +43,10 @@ beforeEach(() => {
   );
   root = document.createElement("div");
   document.body.append(root);
-  app = createApp(GuidedCalibration);
+  suspended.value = false;
+  app = createApp({
+    setup: () => () => h(GuidedCalibration, { suspended: suspended.value }),
+  });
   app.use(createPinia());
   app.mount(root);
 });
@@ -51,6 +55,24 @@ afterEach(() => {
   root.remove();
 });
 describe("guided calibration workflow", () => {
+  it("cancels an active trial when its section is collapsed", async () => {
+    button("Wheel travel").click();
+    await flush();
+    const ready = root.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    )!;
+    ready.checked = true;
+    ready.dispatchEvent(new Event("change"));
+    await flush();
+    button("Start trial").click();
+    await flush();
+    suspended.value = true;
+    await flush();
+    expect(post).toHaveBeenCalledWith("px/api/calibration/owned/cancel");
+    expect(root.querySelector('[aria-current="step"]')?.textContent).toContain(
+      "Prepare",
+    );
+  });
   it("offers preparation, measurement and review without asking for a precise wheel radius", async () => {
     expect(root.textContent).toContain("Body measurements");
     button("Wheel travel").click();

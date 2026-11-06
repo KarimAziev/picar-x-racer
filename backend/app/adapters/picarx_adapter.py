@@ -29,6 +29,7 @@ from app.schemas.robot.motors import (
     PhaseMotorConfig,
 )
 from app.schemas.robot.pwm import PWMDriverConfig
+from app.schemas.robot.servo_tuning import ServoName
 from app.schemas.robot.servos import AngularServoConfig, GPIOAngularServoConfig
 from app.types.car import PicarState
 from robot_hat import (
@@ -76,6 +77,7 @@ class PicarxAdapter:
         self._hardware_lock = RLock()
         self._shutdown_requested = Event()
         self._calibration_owner: Optional[str] = None
+        self.servo_tuning_active = False
         self._calibration_writer = False
         self._calibration_interrupted = False
         self._motor_addresses: List[int] = []
@@ -114,6 +116,10 @@ class PicarxAdapter:
     @_synchronized
     def acquire_calibration(self, owner: str) -> None:
         self._ensure_active()
+        if getattr(self, "servo_tuning_active", False):
+            raise RuntimeError(
+                "Stop servo tuning before starting guided motion calibration"
+            )
         if self.motor_controller:
             self.stop()
         self._calibration_owner = owner
@@ -647,6 +653,36 @@ class PicarxAdapter:
         self._pwm_drivers[key] = driver
         self._pwm_driver_configs[key] = config.model_copy(deep=True)
         return driver
+
+    def preview_servo_tuning(
+        self,
+        name: ServoName,
+        config: Union[AngularServoConfig, GPIOAngularServoConfig],
+        angle: float,
+    ) -> None:
+        """Replace one servo under the hardware lock, restoring it on failure."""
+        with self.hardware_session():
+            previous = getattr(self.config, name)
+            servo = getattr(self, name)
+            if servo is None or previous is None:
+                raise ValueError("Servo is unavailable")
+            previous = previous.model_copy(deep=True)
+            previous.calibration_offset = servo.calibration_offset
+            previous_angle = servo.current_angle * (-1 if previous.reverse else 1)
+            servo.close()
+            replacement = None
+            try:
+                replacement = self._make_servo(config)
+                replacement.set_angle(angle)
+            except Exception:
+                if replacement is not None:
+                    replacement.close()
+                restored = self._make_servo(previous)
+                restored.set_angle(previous_angle)
+                setattr(self, name, restored)
+                raise
+            setattr(self, name, replacement)
+            setattr(self.config, name, config)
 
     def _make_servo(
         self, servo_config: Union[GPIOAngularServoConfig, AngularServoConfig]

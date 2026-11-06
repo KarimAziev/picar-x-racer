@@ -113,6 +113,8 @@ class CarService:
         self._last_broadcast: float = 0.0
         self._motion_sequences: Dict[MotionSource, int] = {}
         self._desired_steering_degrees = 0.0
+        self.servo_tuning_active = False
+        self._resume_motion_after_tuning = False
 
     @property
     def motion_control_enabled(self) -> bool:
@@ -123,7 +125,7 @@ class CarService:
 
         motion_service = self.motion_control_service
         applied = motion_service.applied_command if motion_service else None
-        if applied is None:
+        if applied is None or getattr(self, "servo_tuning_active", False):
             return (
                 cast(MotorServiceDirection, self.px.state["direction"]),
                 int(self.px.state["speed"]),
@@ -198,6 +200,7 @@ class CarService:
             "autoMeasureDistanceMode": self.auto_measure_distance_mode,
             "ledBlinking": self.led_blinking,
             "motionControlEnabled": motion_service is not None,
+            "servoTuningActive": getattr(self, "servo_tuning_active", False),
             "robotMode": motion_service.mode.value if motion_service else "legacy",
             "motionGeneration": (
                 motion_service.mode_generation if motion_service else 0
@@ -252,6 +255,16 @@ class CarService:
                 "Guided calibration is active. Use its controls or cancel it first."
             )
             return
+        if getattr(self, "servo_tuning_active", False) and action in {
+            "move",
+            "avoidObstacles",
+            "setRobotMode",
+            "servoTest",
+        }:
+            await self.connection_manager.error(
+                "Stop servo tuning before driving or changing motion mode"
+            )
+            return
         calibration_actions_map = {
             "increaseCamPanCali": self.calibration.increase_cam_pan_angle,
             "decreaseCamPanCali": self.calibration.decrease_cam_pan_angle,
@@ -273,6 +286,8 @@ class CarService:
         }
 
         actions_map = {
+            "startServoTuning": self.start_servo_tuning,
+            "stopServoTuning": self.stop_servo_tuning,
             "move": self.handle_move,
             "update": self.handle_update,
             "setServoDirAngle": self.handle_set_servo_dir_angle,
@@ -296,6 +311,8 @@ class CarService:
         }
 
         if action in calibration_actions_map:
+            if action not in {"saveCalibration", "getCalibrationData"}:
+                await self.start_servo_tuning()
             handler = calibration_actions_map[action]
             if inspect.iscoroutinefunction(handler):
                 calibrationData = await handler()
@@ -319,7 +336,12 @@ class CarService:
                     }
                 )
 
+            if action == "saveCalibration":
+                await self.stop_servo_tuning()
+            await self.broadcast()
+
         elif action in calibration_actions_with_payload:
+            await self.start_servo_tuning()
             func = calibration_actions_with_payload[action]
             try:
                 if inspect.iscoroutinefunction(func):
@@ -330,6 +352,7 @@ class CarService:
                 await self.connection_manager.error(str(e))
 
             await self.broadcast_calibration()
+            await self.broadcast()
         elif action in actions_map:
             func = actions_map[action]
             if inspect.iscoroutinefunction(func):
@@ -384,7 +407,9 @@ class CarService:
             await self.connection_manager.error(f"Failed to reset MCU: {e}")
 
     async def handle_stop(self, _: Any = None) -> None:
-        if getattr(self.px, "calibration_active", False) is True:
+        if getattr(self.px, "calibration_active", False) is True or getattr(
+            self, "servo_tuning_active", False
+        ):
             await asyncio.to_thread(self.px.stop)
             return
         if self.motion_control_service:
@@ -393,6 +418,7 @@ class CarService:
         await asyncio.to_thread(self.px.stop)
 
     async def handle_emergency_stop(self, payload: Any = None) -> None:
+        await self.stop_servo_tuning()
         reason = str(payload).strip() if payload is not None else "operator request"
         if self.motion_control_service:
             await self.motion_control_service.emergency_stop(reason)
@@ -427,10 +453,50 @@ class CarService:
             )
         await self.motion_control_service.set_mode(mode)
 
+    async def start_servo_tuning(self, _: Any = None) -> None:
+        """Stop drive output and reserve manual servo movement for tuning."""
+        self._ensure_running()
+        if self.px.calibration_active:
+            raise ValueError("Finish guided motion calibration before tuning servos")
+        motion = self.motion_control_service
+        if motion:
+            if motion.mode in {RobotMode.ESTOP, RobotMode.FAULT, RobotMode.AUTONOMOUS}:
+                raise ValueError(
+                    "Leave autonomous mode and clear motion faults before tuning servos"
+                )
+        if getattr(self, "servo_tuning_active", False):
+            return
+        self.avoid_obstacles_mode = False
+        if getattr(self, "_avoid_task", None):
+            await self._stop_avoid_loop()
+        if motion:
+            self._resume_motion_after_tuning = motion.running
+            await motion.set_mode(RobotMode.DISARMED)
+            await motion.stop()
+            motion.calibration_active = True
+        else:
+            await asyncio.to_thread(self.px.stop)
+        self.servo_tuning_active = True
+        self.px.servo_tuning_active = True
+
+    async def stop_servo_tuning(self, _: Any = None) -> None:
+        if not getattr(self, "servo_tuning_active", False):
+            return
+        await asyncio.to_thread(self.px.stop)
+        self.servo_tuning_active = False
+        self.px.servo_tuning_active = False
+        if self.motion_control_service:
+            self.motion_control_service.calibration_active = False
+        if self.motion_control_service and self._resume_motion_after_tuning:
+            self.motion_control_service.start()
+        self._resume_motion_after_tuning = False
+
     async def handle_set_servo_dir_angle(self, payload: float) -> None:
         angle = payload or 0
         self._desired_steering_degrees = float(angle)
-        if self.motion_control_service:
+        if self.motion_control_service and not getattr(
+            self, "servo_tuning_active", False
+        ):
             direction, speed, _ = self._current_drive_state()
             await self._submit_motion(
                 direction,
@@ -774,6 +840,9 @@ class CarService:
         Args:
             payload (dict): Payload containing direction and speed data.
         """
+        if getattr(self, "servo_tuning_active", False):
+            await self.handle_stop()
+            return
         direction = payload.get("direction", 0)
         speed = payload.get("speed", 0)
         if self.motion_control_service:

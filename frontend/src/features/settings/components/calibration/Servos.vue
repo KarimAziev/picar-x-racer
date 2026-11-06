@@ -1,69 +1,31 @@
 <template>
-  <Fieldset legend="Servos" toggleable>
-    <div class="flex flex-col gap-y-2">
-      <NumberInputField
-        layout="row"
-        v-for="(obj, groupName) in servoHandlers"
-        :key="groupName"
-        class="flex justify-between items-center select-none"
-        :step="0.1"
-        :min="-20"
-        :max="20"
-        :label="startCase(`${groupName.replace(/_servo$/gm, '')}`)"
-        v-model="robotStore.data[groupName].calibration_offset"
-        @update:model-value="
-          (value) => {
-            if (isNumber(value)) obj.calibration_offset(value);
-          }
-        "
-        :useGrouping="false"
-        :minFractionDigits="1"
-        :maxFractionDigits="1"
-        :allowEmpty="false"
-      />
-      <span class="flex gap-2 justify-self-start">
-        <Button size="small" outlined @click="controllerStore.servoTest">
-          Test servos
-        </Button>
-      </span>
-    </div>
-  </Fieldset>
+  <div class="flex flex-col gap-2">
+    <ServoTuning
+      ref="servos"
+      v-for="name in availableServos"
+      :key="name"
+      :name="name"
+    />
+  </div>
 </template>
-
 <script setup lang="ts">
-import { useControllerStore } from "@/features/controller/store";
+import { computed, useTemplateRef } from "vue";
 import { useRobotStore } from "@/features/settings/stores";
-import { startCase } from "@/util/str";
-import { isNumber } from "@/util/guards";
-import type {
-  ServoCalibrationData,
-  ServoData,
-} from "@/features/settings/stores/robot";
-import { DeepObjectsToHandlers } from "@/util/ts-helpers";
-import NumberInputField from "@/ui/NumberInputField.vue";
-import Fieldset from "primevue/fieldset";
-
-const controllerStore = useControllerStore();
-const robotStore = useRobotStore();
-
-const servoHandlers: DeepObjectsToHandlers<ServoCalibrationData, true> =
-  Object.entries({
-    steering_servo: {
-      calibration_offset: controllerStore.updateServoDirCali,
+import ServoTuning from "@/features/settings/components/calibration/ServoTuning.vue";
+import { servoNames } from "@/features/settings/components/calibration/servoTuning";
+const robot = useRobotStore();
+const availableServos = computed(() =>
+  servoNames.filter((name) => robot.data[name]),
+);
+const servos = useTemplateRef("servos");
+const applyDrafts = async () => {
+  return (servos.value ?? []).reduce<Promise<boolean>>(
+    async (previous, servo) => {
+      if (!(await previous)) return false;
+      return servo?.applyDraft() ?? true;
     },
-    cam_pan_servo: {
-      calibration_offset: controllerStore.updateCamPanCali,
-    },
-    cam_tilt_servo: {
-      calibration_offset: controllerStore.updateCamTiltCali,
-    },
-  }).reduce(
-    (acc, [key, item]) => {
-      if (robotStore.data[key as keyof ServoData]) {
-        acc[key as keyof ServoData] = item;
-      }
-      return acc;
-    },
-    {} as DeepObjectsToHandlers<ServoCalibrationData, true>,
+    Promise.resolve(true),
   );
+};
+defineExpose({ applyDrafts });
 </script>

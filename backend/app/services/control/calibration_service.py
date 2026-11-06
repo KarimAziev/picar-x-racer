@@ -29,13 +29,12 @@ class CalibrationService:
         self.settings_service = settings_service
 
     def reset_calibration(self) -> Dict[str, Any]:
-        for servo in [
-            self.px.steering_servo,
-            self.px.cam_tilt_servo,
-            self.px.cam_pan_servo,
-        ]:
-            if servo:
-                servo.reset_calibration()
+        saved = self.settings_service.get_saved_settings()
+        for name in ("steering_servo", "cam_tilt_servo", "cam_pan_servo"):
+            servo = getattr(self.px, name)
+            config = getattr(saved, name)
+            if servo and config:
+                servo.update_calibration(config.calibration_offset)
         if self.px.motor_controller:
             self.px.motor_controller.stop_all()
             self.px.motor_controller.reset_calibration()
