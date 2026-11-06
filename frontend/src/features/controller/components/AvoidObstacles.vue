@@ -1,12 +1,14 @@
 <template>
-  <div class="flex justify-between items-center">
-    <span class="font-bold">AVOID OBSTACLES</span>
+  <div class="flex justify-between gap-2 items-center">
+    <span class="font-bold">Ultrasonic obstacle avoidance</span>
     <ButtonIcon
       v-tooltip.left="
-        active ? 'Deactivate avoid obstacles' : 'Activate avoid obstacles'
+        active
+          ? 'Deactivate ultrasonic obstacle avoidance'
+          : 'Activate ultrasonic obstacle avoidance'
       "
       @click="handleToggle"
-      class="cursor-pointer px-2 py-0 border border-current rounded-md bg-transparent transition-opacity duration-300 ease-in-out hover:bg-button-text-primary-hover-background focus:opacity-70 focus:outline-none focus:ring-2 focus:ring-current"
+      class="shrink-0 cursor-pointer px-2 py-0 border border-current rounded-md bg-transparent transition-opacity duration-300 ease-in-out hover:bg-button-text-primary-hover-background focus:opacity-70 focus:outline-none focus:ring-2 focus:ring-current"
     >
       {{ label }}
     </ButtonIcon>

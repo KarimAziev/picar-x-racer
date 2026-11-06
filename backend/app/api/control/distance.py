@@ -1,5 +1,5 @@
 """
-Endpoints related to distance measurements.
+Endpoints for ultrasonic distance measurements.
 """
 
 from typing import TYPE_CHECKING, Annotated
@@ -20,7 +20,7 @@ router = APIRouter()
 @router.get(
     "/px/api/get-distance",
     response_model=DistanceData,
-    summary="Retrieve the last measured distance",
+    summary="Retrieve the last ultrasonic distance reading",
 )
 async def get_ultrasonic_distance(
     distance_service: Annotated[
@@ -28,7 +28,7 @@ async def get_ultrasonic_distance(
     ],
 ):
     """
-    Retrieve the last measured level of the distance.
+    Retrieve the last ultrasonic distance reading in centimeters.
     """
     value: float = distance_service.distance
     logger.debug("Ultrasonic distance %s", value)

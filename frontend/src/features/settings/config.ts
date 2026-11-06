@@ -60,8 +60,9 @@ export const generalSwitchSettings: {
     description: "Toggle the display of the active connections counter.",
   },
   show_auto_measure_distance_button: {
-    label: "Measure Distance Button",
-    description: "Toggle the display of the auto-measure distance button.",
+    label: "Ultrasonic Distance Control",
+    description:
+      "Show the ultrasonic distance reading and automatic measurement control.",
   },
   show_audio_stream_button: {
     label: "Audio Stream Button",
@@ -85,9 +86,8 @@ export const generalSwitchSettings: {
     description: "Toggle the display of the fullscreen icon button.",
   },
   show_avoid_obstacles_button: {
-    label: "Avoid Obstacles Button",
-    description:
-      "Whether to display the button to toggle the avoid obstacle mode.",
+    label: "Ultrasonic Obstacle Avoidance Control",
+    description: "Show the control for ultrasonic obstacle avoidance.",
   },
   show_dark_theme_toggle: {
     label: "Dark Theme Toggle",

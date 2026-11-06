@@ -121,7 +121,7 @@ class General(BaseModel):
     )
     show_auto_measure_distance_button: Optional[bool] = Field(
         None,
-        description="Whether to display the auto-measure distance button.",
+        description="Whether to display the ultrasonic distance reading and automatic measurement control.",
         examples=[True, False],
     )
     show_photo_capture_button: Optional[bool] = Field(
@@ -158,7 +158,7 @@ class General(BaseModel):
     )
     show_avoid_obstacles_button: Optional[bool] = Field(
         None,
-        description="Whether to display the button to toggle the avoid obstacle mode.",
+        description="Whether to display the control for ultrasonic obstacle avoidance.",
         examples=[True, False],
     )
 
@@ -189,7 +189,7 @@ class RobotSettings(BaseModel):
     auto_measure_distance_delay_ms: Optional[int] = Field(
         None,
         ge=0,
-        description="The time interval, in milliseconds, between successive automatic distance measurements. "
+        description="The time interval, in milliseconds, between successive automatic ultrasonic distance measurements. "
         "This is applicable only when `auto_measure_distance_mode` is enabled. "
         "The value must be at least 500 ms.",
         examples=[1000, 2000],

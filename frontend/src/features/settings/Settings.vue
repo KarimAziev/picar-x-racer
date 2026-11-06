@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[35vh] max-w-[92vw]">
+  <div ref="content" class="min-h-[35vh] max-w-[92vw]">
     <Tabs v-model:value="popupStore.tab" class="font-sans" lazy scrollable>
       <TabList ref="tabList">
         <Tab :value="SettingsTab.GENERAL">General</Tab>
@@ -56,6 +56,7 @@ import TabPanel from "primevue/tabpanel";
 import Skeleton from "@/ui/Skeleton.vue";
 import ErrorComponent from "@/ui/ErrorComponent.vue";
 import { isFunction } from "@/util/guards";
+import { useSettingsScroll } from "@/features/settings/composables/useSettingsScroll";
 
 const tabListRef = useTemplateRef("tabList");
 
@@ -123,6 +124,7 @@ const FileExplorer = defineAsyncComponent({
 });
 
 const popupStore = usePopupStore();
+useSettingsScroll(useTemplateRef<HTMLDivElement>("content"));
 
 const isMobile = inject<Ref<boolean, boolean>>("isMobile");
 

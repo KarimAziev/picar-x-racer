@@ -202,8 +202,8 @@ class HardwareConfig(BaseModel):
         Union[UltrasonicConfig, None],
         Field(
             ...,
-            title="Distance sensor",
-            description="Configuration for the distance sensor.",
+            title="Ultrasonic sensor",
+            description="Connection and timing settings for the ultrasonic distance sensor.",
         ),
     ] = None
 
@@ -220,8 +220,8 @@ class HardwareConfig(BaseModel):
         AvoidParams,
         Field(
             ...,
-            title="Obstacle avoidance",
-            description="Distance thresholds and motion behavior for obstacle mode.",
+            title="Ultrasonic obstacle avoidance",
+            description="Ultrasonic distance thresholds and motion behavior for ultrasonic obstacle avoidance.",
         ),
     ] = AvoidParams()
 

@@ -11,19 +11,17 @@
     @update:model-value="handleUpdateMaxSpeed"
   />
   <NumberInputField
-    label="Distance Measure Delay (ms)"
+    label="Ultrasonic measurement interval (ms)"
     v-model="store.data.robot.auto_measure_distance_delay_ms"
-    tooltip="
-      The time interval between successive auto distance measurements in milliseconds. This is applicable only when `auto_measure_distance_mode` is enabled.
-    "
+    tooltip="Time between ultrasonic readings while automatic measurement is enabled."
     inputId="auto_measure_distance_delay_ms"
     :min="1"
     :step="1"
     showButtons
   />
   <ToggleSwitchField
-    label="Auto-measure distance"
-    tooltip="Toggle auto-measuring with ultrasonic"
+    label="Auto-measure ultrasonic distance"
+    tooltip="Automatically read distance from the ultrasonic sensor."
     fieldClassName="flex-row-reverse gap-2.5 items-center justify-end mt-4"
     field="auto_measure_distance_mode"
     layout="row-reverse"

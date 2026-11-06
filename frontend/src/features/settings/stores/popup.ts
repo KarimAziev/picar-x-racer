@@ -22,5 +22,9 @@ export const useStore = defineStore("popup-dialog", {
   state: () => ({
     ...defaultState,
     tab: useLocalStorage<SettingsTab>("settings/tab", defaultState.tab),
+    scrollPositions: useLocalStorage<Partial<Record<SettingsTab, number>>>(
+      "settings/scroll-positions",
+      {},
+    ),
   }),
 });

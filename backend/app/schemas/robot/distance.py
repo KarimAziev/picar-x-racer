@@ -18,7 +18,7 @@ class DistanceData(BaseModel):
 
     distance: float = Field(
         ...,
-        description="The measured distance in centimeters",
+        description="The ultrasonic distance reading in centimeters",
         examples=[
             120.5,  # Successful measurement
             -1,  # No object detected (timeout)

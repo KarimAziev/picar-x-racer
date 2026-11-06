@@ -252,7 +252,7 @@ export const useControllerStore = defineStore("controller", {
 
           case "distance":
             if (error) {
-              messager.error(error, "distance error");
+              messager.error(error, "Ultrasonic measurement error");
             } else {
               distanceStore.distance = payload.distance;
               distanceStore.speed = payload.speed;
@@ -280,7 +280,7 @@ export const useControllerStore = defineStore("controller", {
 
           case "avoidObstacles":
             this.avoidObstacles = payload;
-            messager.info(`Avoid Obstacles: ${payload}`, {
+            messager.info(`Ultrasonic obstacle avoidance: ${payload}`, {
               immediately: true,
             });
             break;

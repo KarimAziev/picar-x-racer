@@ -1,15 +1,17 @@
 <template>
-  <div class="flex justify-between text-left items-center" v-if="isLoaded">
-    <span clas="flex items-center">
-      <span class="font-bold">Distance</span>
-      &nbsp;
+  <div
+    class="flex justify-between gap-2 text-left items-center"
+    v-if="isLoaded"
+  >
+    <span class="flex flex-wrap gap-2 items-center">
+      <span class="font-bold">Ultrasonic distance</span>
 
       <ButtonIcon
         :disabled="avoidObstacles"
         v-tooltip.left="
           avoidObstacles
-            ? 'Disabled while avoid obstacles mode is active'
-            : 'Toggle auto distance measuring'
+            ? 'Disabled while ultrasonic obstacle avoidance is active'
+            : 'Toggle automatic ultrasonic measurements'
         "
         @click="handleToggle"
         class="px-2 py-0 border border-current rounded-md"
