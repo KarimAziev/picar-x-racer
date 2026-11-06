@@ -304,7 +304,6 @@ export const useControllerStore = defineStore("controller", {
 
           case "saveCalibration":
             robotStore.data = payload;
-            this.calibrationMode = false;
             messager.info(`Calibration saved`);
             break;
 

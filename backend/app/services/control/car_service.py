@@ -336,8 +336,6 @@ class CarService:
                     }
                 )
 
-            if action == "saveCalibration":
-                await self.stop_servo_tuning()
             await self.broadcast()
 
         elif action in calibration_actions_with_payload:

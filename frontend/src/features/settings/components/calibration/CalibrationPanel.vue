@@ -8,7 +8,8 @@
     <p class="mb-3 text-sm text-muted-color">
       Adjust servo centers, travel, pulse calibration, and motor direction. Use
       guided motion calibration for measured geometry and driving response.
-      Tuning pauses driving until you stop tuning or save.
+      Tuning pauses driving until you stop tuning. Save tuning keeps your
+      adjustments while leaving the session open.
     </p>
     <SelectField
       label="Offset shortcut modifier"

@@ -49,6 +49,20 @@ describe("controller motion heartbeat", () => {
     vi.useRealTimers();
   });
 
+  it.each([true, false])("preserves tuning mode %s after saving", (active) => {
+    const store = useControllerStore();
+    store.initializeWebSocket();
+    store.calibrationMode = active;
+    const robot = useRobotStore();
+    const saved = {
+      ...robot.data,
+      steering_servo: { ...robot.data.steering_servo, max_pulse: 2400 },
+    };
+    websocket.handleMessage?.({ type: "saveCalibration", payload: saved });
+    expect(robot.data.steering_servo.max_pulse).toBe(2400);
+    expect(store.calibrationMode).toBe(active);
+  });
+
   it("refreshes active motion and stops refreshing after stop", () => {
     const store = useControllerStore();
     store.initializeWebSocket();

@@ -8,9 +8,9 @@
         <ServoInput
           :field="`${name}-current`"
           label="Current servo value (°)"
-          :config="config"
+          :config="draftConfig"
           :value="currentAngle"
-          :disabled="tuning.pending"
+          :disabled="blocked"
           @update:model-value="move"
         />
         <NumberInputField
@@ -30,7 +30,7 @@
         label="Reverse direction"
         v-model="draft.reverse"
         :disabled="tuning.pending"
-        tooltip-help="Reverse logical servo movement. Apply & test activates this setting; Save tuning keeps it."
+        tooltip-help="Reverse logical servo movement. Apply or move the current servo value to test it; Save tuning keeps it."
       />
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <NumberInputField
@@ -52,6 +52,22 @@
         Travel limits bound movement. Pulse widths and their measured angles
         define the pulse calibration.
       </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button
+          size="small"
+          outlined
+          label="Apply at current angle"
+          :disabled="blocked || !hasDraftChanges"
+          @click="applyDraft"
+        />
+        <span
+          v-if="hasDraftChanges"
+          class="text-sm text-muted-color"
+          role="status"
+        >
+          Unapplied field edits. Apply before testing with keyboard shortcuts.
+        </span>
+      </div>
       <NumberInputField
         :field="`${name}-test`"
         label="Test angle (°)"
@@ -101,9 +117,11 @@
         />
       </div>
       <p class="text-sm text-muted-color">
-        Apply & test moves this servo using these fields. Changes remain active
-        until restart; use Save tuning to keep them. Current servo value and
-        shortcuts use the applied limits.
+        Current servo value and Apply & test use the fields above without
+        saving. Apply at current angle activates them for keyboard shortcuts,
+        using the nearest travel limit if needed. Save tuning keeps the
+        adjustments and leaves tuning open; Stop keyboard tuning ends the
+        session.
       </p>
     </div>
   </Fieldset>
@@ -134,6 +152,14 @@ const controller = useControllerStore();
 const tuning = useServoTuningStore();
 const config = computed(() => robot.data[props.name]);
 const draft = ref(getServoTuning(config.value));
+const draftConfig = computed(() => ({ ...config.value, ...draft.value }));
+const hasDraftChanges = computed(() => {
+  const applied = getServoTuning(config.value);
+  return (
+    draft.value.reverse !== applied.reverse ||
+    tuningFields.some(({ key }) => draft.value[key] !== applied[key])
+  );
+});
 const error = ref("");
 const testAngle = ref<number | undefined>(0);
 const invalidFields = ref(new Set<NumericTuningField>());
@@ -164,6 +190,11 @@ const currentAngle = computed(
     })[props.name],
 );
 const move = (angle: number) => {
+  if (blocked.value) return;
+  if (hasDraftChanges.value) {
+    void preview(angle);
+    return;
+  }
   if (!controller.calibrationMode)
     controller.sendMessage({ action: "startServoTuning" });
   ({
@@ -211,12 +242,7 @@ const preview = async (angle: number | undefined) => {
 };
 const applyDraft = async () => {
   if (validation.value) return false;
-  const applied = getServoTuning(config.value);
-  if (
-    draft.value.reverse === applied.reverse &&
-    tuningFields.every(({ key }) => draft.value[key] === applied[key])
-  )
-    return true;
+  if (!hasDraftChanges.value) return true;
   return preview(
     Math.min(maximum.value, Math.max(minimum.value, currentAngle.value)),
   );

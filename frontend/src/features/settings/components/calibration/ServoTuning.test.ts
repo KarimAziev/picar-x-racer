@@ -40,6 +40,103 @@ beforeEach(() => {
   setActivePinia(createPinia());
 });
 describe("saving servo tuning drafts", () => {
+  it.each([
+    ["steering_servo", "setDirServoAngle"],
+    ["cam_pan_servo", "setCamPanAngle"],
+    ["cam_tilt_servo", "setCamTiltAngle"],
+  ] as const)(
+    "applies pulse edits when moving %s directly",
+    async (name, move) => {
+      const pinia = createPinia();
+      setActivePinia(pinia);
+      const controller = useControllerStore();
+      controller.initializeWebSocket();
+      controller.calibrationMode = true;
+      const robot = useRobotStore();
+      robot.data[name] = { ...robot.data[name], enabled: true };
+      const preview = vi
+        .spyOn(useServoTuningStore(), "preview")
+        .mockResolvedValue();
+      const movement = vi.spyOn(controller, move);
+      const save = vi.spyOn(controller, "saveCalibration");
+      const root = document.createElement("div");
+      const app = createApp(ServoTuning, { name });
+      app.use(pinia);
+      app.use(PrimeVue);
+      app.provide("isMobile", ref(false));
+      app.directive("tooltip", {});
+      app.mount(root);
+      const input = async (field: string, value: string) => {
+        const element = root.querySelector<HTMLInputElement>(
+          `#${name}-${field}`,
+        )!;
+        element.value = value;
+        element.dispatchEvent(new Event("input"));
+        await nextTick();
+      };
+      try {
+        await input("max_pulse", "2400");
+        await input("current", "20");
+        expect(preview).toHaveBeenCalledWith(
+          name,
+          expect.objectContaining({ max_pulse: 2400 }),
+          20,
+        );
+        expect(movement).not.toHaveBeenCalled();
+        expect(save).not.toHaveBeenCalled();
+
+        preview.mockClear();
+        await input("min_pulse", "2500");
+        await input("current", "30");
+        expect(preview).not.toHaveBeenCalled();
+        expect(movement).not.toHaveBeenCalled();
+      } finally {
+        app.unmount();
+      }
+    },
+  );
+
+  it("applies fields at the current angle for subsequent keyboard movement", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const controller = useControllerStore();
+    controller.initializeWebSocket();
+    controller.servoAngle = 12;
+    const robot = useRobotStore();
+    robot.data.steering_servo = { ...robot.data.steering_servo, enabled: true };
+    const preview = vi
+      .spyOn(useServoTuningStore(), "preview")
+      .mockResolvedValue();
+    const root = document.createElement("div");
+    const app = createApp(ServoTuning, { name: "steering_servo" });
+    app.use(pinia);
+    app.use(PrimeVue);
+    app.provide("isMobile", ref(false));
+    app.directive("tooltip", {});
+    app.mount(root);
+    try {
+      const pulse = root.querySelector<HTMLInputElement>(
+        "#steering_servo-max_pulse",
+      )!;
+      pulse.value = "2400";
+      pulse.dispatchEvent(new Event("input"));
+      await nextTick();
+      const apply = [...root.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("Apply at current angle"),
+      );
+      expect(apply).toBeDefined();
+      apply?.click();
+      await nextTick();
+      expect(preview).toHaveBeenCalledWith(
+        "steering_servo",
+        expect.objectContaining({ max_pulse: 2400 }),
+        12,
+      );
+    } finally {
+      app.unmount();
+    }
+  });
+
   it("applies a reverse-only edit and tests the reversed asymmetric limit", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

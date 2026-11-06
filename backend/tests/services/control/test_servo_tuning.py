@@ -78,6 +78,27 @@ class TestServoTuning(unittest.TestCase):
         )
         self.manager.update.assert_not_called()
 
+    def test_pulse_preview_configures_hardware_without_saving(self) -> None:
+        replacement = MagicMock()
+        replacement.calibration_offset = 2
+        original = self.service.get_saved_settings().steering_servo.model_copy(
+            deep=True
+        )
+        with patch.object(
+            self.adapter, "_make_servo", return_value=replacement
+        ) as make_servo:
+            self.service.preview_servo_tuning(
+                self.request(min_pulse=600, max_pulse=2400)
+            )
+        applied = make_servo.call_args.args[0]
+        self.assertEqual((applied.min_pulse, applied.max_pulse), (600, 2400))
+        replacement.set_angle.assert_called_once_with(40)
+        self.assertEqual(
+            self.service.get_current_settings().steering_servo.max_pulse, 2400
+        )
+        self.assertEqual(self.service.get_saved_settings().steering_servo, original)
+        self.manager.update.assert_not_called()
+
     def test_invalid_ranges_do_not_touch_hardware(self) -> None:
         with self.assertRaises(ValidationError):
             self.service.preview_servo_tuning(self.request(min_angle=80, max_angle=10))
@@ -108,6 +129,35 @@ class TestServoTuning(unittest.TestCase):
 
 
 class TestServoTuningMotion(unittest.IsolatedAsyncioTestCase):
+    async def test_saving_keeps_tuning_active_and_motion_paused(self) -> None:
+        from unittest.mock import AsyncMock
+        from app.services.control.car_service import CarService
+
+        car = CarService.__new__(CarService)
+        car._shutting_down = False
+        car.servo_tuning_active = True
+        car.px = MagicMock()
+        car.px.calibration_active = False
+        car.px.servo_tuning_active = True
+        car.calibration = MagicMock()
+        saved = {"steering_servo": {"max_pulse": 2400}}
+        car.calibration.save_calibration.return_value = saved
+        car.connection_manager = MagicMock()
+        car.connection_manager.broadcast_json = AsyncMock()
+        car.motion_control_service = MagicMock()
+        car.motion_control_service.calibration_active = True
+        car._resume_motion_after_tuning = True
+        with patch.object(car, "broadcast", new_callable=AsyncMock):
+            await car.process_action("saveCalibration", None, MagicMock())
+        car.calibration.save_calibration.assert_called_once()
+        car.connection_manager.broadcast_json.assert_awaited_once_with(
+            {"type": "saveCalibration", "payload": saved}
+        )
+        self.assertTrue(car.servo_tuning_active)
+        self.assertTrue(car.px.servo_tuning_active)
+        self.assertTrue(car.motion_control_service.calibration_active)
+        car.motion_control_service.start.assert_not_called()
+
     async def test_tuning_pauses_motion_and_reports_physical_steering(self) -> None:
         from unittest.mock import AsyncMock
         from app.services.control.car_service import CarService
