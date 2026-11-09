@@ -4,6 +4,7 @@
   <JoysticZone v-if="isMobile && isSettingsLoaded" />
   <RouterView />
   <LazySettings />
+  <CalibrationModeInfo id="calibration-mode-info" v-if="isSettingsLoaded" />
   <Messager v-if="!isMobile" />
   <TopRightPanel v-if="isSettingsLoaded" class="text-xs">
     <ToggleableView setting="stream.render_fps">
@@ -36,7 +37,6 @@
         <DetectionControls />
       </Fieldset>
     </ToggleableView>
-    <CalibrationModeInfo id="calibration-mode-info" />
     <ToggleableView setting="general.text_to_speech_input">
       <Fieldset
         id="controls-text-to-speech"

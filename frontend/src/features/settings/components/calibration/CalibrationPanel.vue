@@ -1,8 +1,11 @@
 <template>
-  <Fieldset
-    legend="Servo & motor tuning"
-    toggleable
-    :collapsed="collapsed"
+  <component
+    :is="embedded ? 'div' : Fieldset"
+    v-bind="
+      embedded
+        ? {}
+        : { legend: 'Servo & motor tuning', toggleable: true, collapsed }
+    "
     :id="id"
   >
     <p class="mb-3 text-sm text-muted-color">
@@ -61,7 +64,7 @@
         </span>
       </div>
     </div>
-  </Fieldset>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -79,6 +82,7 @@ import Fieldset from "@/ui/Fieldset.vue";
 const props = defineProps<{
   handleSave?: () => void;
   collapsed?: boolean;
+  embedded?: boolean;
   id: string;
 }>();
 
