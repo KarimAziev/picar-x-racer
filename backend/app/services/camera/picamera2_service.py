@@ -28,7 +28,7 @@ PICAMERA2_TO_PIXEL_FORMATS_MAP: Dict[str, str] = {
 
 PICAMERA_TO_PIXEL_FORMATS_KEYS = PIXEL_FORMATS_TO_PICAMERA2_MAP.keys()
 
-_picamera2_lock = threading.Lock()
+picamera2_lock = threading.RLock()
 
 
 def _load_picamera2_class() -> Optional[Any]:
@@ -50,7 +50,9 @@ def _load_picamera2_class() -> Optional[Any]:
 
 class PicameraService(VideoDeviceABC):
     def list_video_devices(self) -> List[DeviceType]:
-        return self._list_video_devices()
+        # Lock outside the cache: concurrent cache misses must not probe twice.
+        with picamera2_lock:
+            return self._list_video_devices()
 
     @lru_cache()
     def _list_video_devices(self) -> List[DeviceType]:
@@ -58,7 +60,7 @@ class PicameraService(VideoDeviceABC):
         if picamera2_class is None:
             return []
 
-        with _picamera2_lock:
+        with picamera2_lock:
             try:
                 _log.info("Listing picamera2 devices")
                 devices: List[GlobalCameraInfo] = picamera2_class.global_camera_info()
@@ -89,7 +91,7 @@ class PicameraService(VideoDeviceABC):
 
                     time.sleep(0.1)
 
-                    with _picamera2_lock:
+                    with picamera2_lock:
                         try:
                             picam2 = picamera2_class(device_num)
                             sensor_modes = list(picam2.sensor_modes or [])

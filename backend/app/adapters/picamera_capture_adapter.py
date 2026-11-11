@@ -1,3 +1,4 @@
+from concurrent.futures import CancelledError
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union, cast
 
 import cv2
@@ -10,6 +11,7 @@ from app.schemas.camera import CameraSettings
 from app.services.camera.picamera2_service import (
     PICAMERA2_TO_PIXEL_FORMATS_MAP,
     PIXEL_FORMATS_TO_PICAMERA2_MAP,
+    picamera2_lock,
 )
 
 if TYPE_CHECKING:
@@ -49,6 +51,8 @@ color_conversions: Dict[str, Union[int, None]] = {
 
 
 class PicameraCaptureAdapter(VideoCaptureABC):
+    FRAME_TIMEOUT_SECONDS = 5.0
+
     def __init__(
         self, device: str, camera_settings: CameraSettings, service: "PicameraService"
     ) -> None:
@@ -58,17 +62,34 @@ class PicameraCaptureAdapter(VideoCaptureABC):
         from picamera2 import Picamera2  # type: ignore
 
         self.service = service
+        self.device = device
+        self._released = False
 
         device_id = GStreamerParser.strip_api_prefix(device)
-        devices = Picamera2.global_camera_info()
-        index = next((i for i, d in enumerate(devices) if d["Id"] == device_id), None)
-        if index is None:
-            raise CameraDeviceError("Video device is not found in picam2")
-
-        self.picam2 = Picamera2(index)
         self.formats = formats
         self.format: Optional[str] = None
-        self._cap, self._settings = self._try_device_props(device, camera_settings)
+        with picamera2_lock:
+            devices = Picamera2.global_camera_info()
+            index = next((d["Num"] for d in devices if d["Id"] == device_id), None)
+            if index is None:
+                raise CameraDeviceError(f"Picamera2 device not found: {device}")
+            try:
+                self.picam2 = Picamera2(index)
+            except Exception as err:
+                raise CameraDeviceError(
+                    f"Cannot acquire Picamera2 {device}: {err}"
+                ) from err
+            try:
+                self._cap, self._settings = self._try_device_props(
+                    device, camera_settings
+                )
+            except Exception as err:
+                self.release()
+                if isinstance(err, CameraDeviceError):
+                    raise
+                raise CameraDeviceError(
+                    f"Cannot initialize Picamera2 {device}: {err}"
+                ) from err
 
     @property
     def settings(self) -> CameraSettings:
@@ -154,20 +175,10 @@ class PicameraCaptureAdapter(VideoCaptureABC):
             fps = None
             logger.warning("FrameDurationLimits not found in config")
 
-        try:
-            self.picam2.start()
-        except Exception as err:
-            self.release()
-            raise CameraDeviceError(f"Failed to start Picamera2: {err}")
-
-        try:
-            frame = self.picam2.capture_array()
-        except Exception as err:
-            self.release()
-            raise CameraDeviceError(f"Initial frame capture failed: {err}")
+        self.picam2.start()
+        frame = self._capture_frame()
 
         if frame is None or not isinstance(frame, np.ndarray):
-            self.release()
             raise CameraDeviceError("Initial frame capture failed: No image data")
 
         frame = cast(np.ndarray, frame)
@@ -190,6 +201,18 @@ class PicameraCaptureAdapter(VideoCaptureABC):
 
         return self.picam2, CameraSettings(**updated_settings)
 
+    def _capture_frame(self) -> np.ndarray:
+        try:
+            job = self.picam2.capture_array(wait=False)
+            return cast(np.ndarray, job.get_result(timeout=self.FRAME_TIMEOUT_SECONDS))
+        except TimeoutError as err:
+            raise CameraDeviceError(
+                f"Picamera2 {self.device}: no frame received within "
+                f"{self.FRAME_TIMEOUT_SECONDS:g} seconds. "
+                "The camera pipeline did not deliver an image; "
+                "check the service log for libcamera diagnostics."
+            ) from err
+
     def read(self) -> Tuple[bool, "MatLike"]:
         """
         Capture a single frame from the camera.
@@ -197,7 +220,7 @@ class PicameraCaptureAdapter(VideoCaptureABC):
         In the Picamera2 case, we use capture_array() to get the frame.
         """
         try:
-            frame = self.picam2.capture_array()
+            frame = self._capture_frame()
 
             if frame is not None:
                 frame = cast(np.ndarray, frame)
@@ -210,18 +233,31 @@ class PicameraCaptureAdapter(VideoCaptureABC):
                 return True, frame
             else:
                 return False, np.empty((0, 0), dtype=np.uint8)
+        except CancelledError:
+            if self._released:
+                return False, np.empty((0, 0), dtype=np.uint8)
+            raise CameraDeviceError(f"Picamera2 {self.device}: capture was cancelled")
+        except CameraDeviceError:
+            raise
         except Exception as e:
-            logger.error("Exception during Picamera2 frame capture: %s", e)
-            return False, np.empty((0, 0), dtype=np.uint8)
+            raise CameraDeviceError(
+                f"Picamera2 {self.device}: capture failed: {e}"
+            ) from e
 
     def release(self) -> None:
-        """
-        Stop the camera.
-        """
-        try:
-            self.picam2.stop()
-            logger.info("Picamera stopped")
-            self.picam2.close()
-            logger.info("Picamera closed")
-        except Exception as e:
-            logger.error("Exception occurred while stopping Picamera2: %s", e)
+        """Cancel pending captures and close the camera, including after a timeout."""
+        with picamera2_lock:
+            if self._released:
+                return
+            self._released = True
+            try:
+                # A pending capture can otherwise block the stop job behind it.
+                self.picam2.cancel_all_and_flush()
+            except Exception:
+                logger.warning("Failed to cancel Picamera2 captures", exc_info=True)
+            finally:
+                try:
+                    self.picam2.close()
+                    logger.info("Picamera closed")
+                except Exception:
+                    logger.error("Failed to close Picamera2", exc_info=True)
