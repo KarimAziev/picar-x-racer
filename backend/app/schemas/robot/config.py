@@ -3,6 +3,7 @@ from typing import List, Literal, Optional, Union
 from app.schemas.robot.avoid_obstacles import AvoidParams
 from app.schemas.robot.auxiliary_sensors import AuxiliarySensorsConfig
 from app.schemas.robot.battery import BatteryConfig
+from app.schemas.robot.calibration_progress import CalibrationProgress
 from app.schemas.robot.distance import UltrasonicConfig
 from app.schemas.robot.led import LedConfig
 from app.schemas.robot.localization_sensors import (
@@ -35,6 +36,12 @@ class HardwareConfig(BaseModel):
     """
     The configuration for the robot components and sensors.
     """
+
+    calibration_progress: CalibrationProgress = Field(
+        default_factory=dict,
+        description="Reviewed calibration settings; used to display guide completion.",
+        json_schema_extra={"props": {"hidden": True}},
+    )
 
     navigation: NavigationConfig = Field(
         default_factory=NavigationConfig,

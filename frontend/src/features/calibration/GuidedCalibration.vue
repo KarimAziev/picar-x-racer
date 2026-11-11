@@ -22,25 +22,92 @@
         All guides
       </button>
     </div>
+    <div class="mt-5" aria-live="polite">
+      <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <p class="font-semibold">
+          {{ completedCount }} of {{ guides.length }} guides completed
+        </p>
+        <p class="text-slate-600 dark:text-slate-300">
+          Progress is saved with the robot settings.
+        </p>
+      </div>
+      <div
+        class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+        role="progressbar"
+        aria-label="Completed calibration guides"
+        :aria-valuenow="completedCount"
+        :aria-valuemin="0"
+        :aria-valuemax="guides.length"
+      >
+        <div
+          class="h-full rounded-full bg-emerald-600 transition-all dark:bg-emerald-400"
+          :style="{ width: `${(completedCount / guides.length) * 100}%` }"
+        />
+      </div>
+    </div>
     <div v-if="!guide" class="mt-5 grid gap-3 sm:grid-cols-2">
       <button
-        v-for="(item, index) in guides"
+        v-for="(item, index) in guideCards"
         :key="item.kind"
         type="button"
-        class="rounded-lg border border-slate-300 p-4 text-left hover:border-sky-500 focus-visible:outline-2 focus-visible:outline-sky-500 dark:border-slate-600"
+        class="flex flex-col rounded-lg border p-4 text-left hover:border-sky-500 focus-visible:outline-2 focus-visible:outline-sky-500"
+        :class="
+          item.progress.state === 'complete'
+            ? 'border-emerald-500/60 bg-emerald-50/60 dark:bg-emerald-950/25'
+            : 'border-slate-300 dark:border-slate-600'
+        "
+        :data-guide="item.kind"
         @click="choose(item.kind)"
       >
-        <span class="text-xs text-sky-600 dark:text-sky-300"
-          >{{ index + 1 }} / {{ guides.length }}</span
-        >
+        <span class="flex w-full flex-wrap items-center justify-between gap-2">
+          <span class="text-xs text-sky-600 dark:text-sky-300"
+            >{{ index + 1 }} / {{ guides.length }}</span
+          >
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold"
+            :class="progressClass(item.progress.state)"
+          >
+            <i
+              :class="
+                item.progress.state === 'complete'
+                  ? 'pi pi-check-circle'
+                  : item.progress.state === 'todo'
+                    ? 'pi pi-circle'
+                    : 'pi pi-clock'
+              "
+              aria-hidden="true"
+            />
+            {{ item.progress.label }}
+          </span>
+        </span>
         <span class="mt-1 block font-semibold">{{ item.title }}</span
         ><span class="mt-1 block text-sm text-slate-600 dark:text-slate-300">{{
           item.description
         }}</span>
+        <span
+          class="mt-auto block pt-3 text-xs text-slate-600 dark:text-slate-300"
+          >{{ item.progress.detail }}</span
+        >
       </button>
     </div>
     <template v-else>
       <h3 class="mt-5 text-lg font-semibold">{{ guide.title }}</h3>
+      <p
+        v-if="activeProgress"
+        class="mt-2 text-sm"
+        :class="
+          activeProgress.state === 'complete'
+            ? 'text-emerald-700 dark:text-emerald-300'
+            : 'text-slate-600 dark:text-slate-300'
+        "
+      >
+        <i
+          v-if="activeProgress.state === 'complete'"
+          class="pi pi-check-circle mr-1"
+          aria-hidden="true"
+        />
+        {{ activeProgress.label }} — {{ activeProgress.detail }}
+      </p>
       <ol
         v-if="kind !== 'body' && kind !== 'mounting'"
         class="my-4 flex gap-4 border-b border-slate-400/30 pb-3 text-sm"
@@ -417,6 +484,10 @@ import { useRobotStore } from "@/features/settings/stores";
 import type { Data } from "@/features/settings/stores/robot";
 import ManualMeasurements from "@/features/calibration/ManualMeasurements.vue";
 import {
+  guideProgress,
+  type GuideState,
+} from "@/features/calibration/progress";
+import {
   guides,
   reviewLines,
   trialSummary,
@@ -435,6 +506,26 @@ const phase = ref(0);
 const kind = ref<GuideKind | null>(null),
   status = ref<CalibrationStatus | null>(null);
 const guide = computed(() => guides.find((g) => g.kind === kind.value));
+const guideCards = computed(() =>
+  guides.map((item) => ({
+    ...item,
+    progress: guideProgress(store.data, item.kind),
+  })),
+);
+const completedCount = computed(
+  () =>
+    guideCards.value.filter((item) => item.progress.state === "complete")
+      .length,
+);
+const activeProgress = computed(
+  () => guideCards.value.find((item) => item.kind === kind.value)?.progress,
+);
+const progressClass = (state: GuideState) =>
+  state === "complete"
+    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200"
+    : state === "todo"
+      ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+      : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200";
 const powered = computed(
   () => kind.value === "speed" || kind.value === "stopping",
 );

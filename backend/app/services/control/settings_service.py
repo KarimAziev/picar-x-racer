@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, Literal, Tuple, Union, ca
 from app.core.px_logger import Logger
 from app.exceptions.settings import InvalidSettings, UnchangedSettings
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
+from app.schemas.robot.calibration_progress import CalibrationStep
+from app.services.control.calibration_progress import calibration_snapshot
 from app.schemas.robot.motors import I2CDCMotorConfig
 from app.schemas.robot.pwm import PWMDriverConfig
 from app.schemas.robot.servo_tuning import ServoTuningRequest, ServoTuningSettings
@@ -67,12 +69,21 @@ class SettingsService:
     def refresh_config(self, data: Dict[str, Any]) -> None:
         self.saved_settings = HardwareConfig(**data)
 
-    def merge_settings(self, data: PartialHardwareConfig) -> PartialHardwareConfig:
+    def merge_settings(
+        self,
+        data: PartialHardwareConfig,
+        *,
+        calibration_step: CalibrationStep | None = None,
+    ) -> PartialHardwareConfig:
         with self._settings_lock:
-            return self._merge_settings(data)
+            return self._merge_settings(data, calibration_step=calibration_step)
 
     def merge_if_current(
-        self, data: PartialHardwareConfig, expected: HardwareConfig
+        self,
+        data: PartialHardwareConfig,
+        expected: HardwareConfig,
+        *,
+        calibration_step: CalibrationStep | None = None,
     ) -> PartialHardwareConfig:
         """Apply measurements only to the configuration they were collected with."""
         with self._settings_lock:
@@ -80,9 +91,14 @@ class SettingsService:
                 raise InvalidSettings(
                     "Robot settings changed. Repeat the calibration before applying it."
                 )
-            return self._merge_settings(data)
+            return self._merge_settings(data, calibration_step=calibration_step)
 
-    def _merge_settings(self, data: PartialHardwareConfig) -> PartialHardwareConfig:
+    def _merge_settings(
+        self,
+        data: PartialHardwareConfig,
+        *,
+        calibration_step: CalibrationStep | None = None,
+    ) -> PartialHardwareConfig:
         data_dict = self._model_json_dump(data, exclude_unset=True)
         _log.info("Merging hardware settings: %s", data_dict)
         updated_keys = set(data_dict)
@@ -90,6 +106,11 @@ class SettingsService:
             raise UnchangedSettings("No data to update")
 
         candidate = self.build_merged_settings(data)
+        if calibration_step is not None:
+            candidate.calibration_progress[calibration_step] = calibration_snapshot(
+                candidate, calibration_step
+            )
+            updated_keys.add("calibration_progress")
 
         _log.info("Applying data: %s", data_dict)
 

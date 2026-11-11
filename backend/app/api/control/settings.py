@@ -13,6 +13,7 @@ from app.schemas.robot.servo_tuning import ServoTuningRequest
 from app.services.control.car_service import CarService
 from pydantic import ValidationError
 from app.schemas.robot.calibration import CalibrationConfig
+from app.schemas.robot.calibration_progress import ManualCalibrationStep
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.services.connection_service import ConnectionService
 from app.services.autonomy import (
@@ -399,6 +400,7 @@ async def merge_partial_settings(
     connection_manager: Annotated[
         "ConnectionService", Depends(robot_deps.get_connection_manager)
     ],
+    calibration_step: ManualCalibrationStep | None = None,
 ):
     """
     Merge partial robot settings with saved configuration.
@@ -413,9 +415,16 @@ async def merge_partial_settings(
         if isinstance(previous, HardwareConfig):
             _preflight_simulation_transition(request, previous, candidate)
             _preflight_pose_estimation_transition(request, previous, candidate)
-        partial_settings = await asyncio.to_thread(
-            settings_service.merge_settings, settings
-        )
+        if calibration_step is None:
+            partial_settings = await asyncio.to_thread(
+                settings_service.merge_settings, settings
+            )
+        else:
+            partial_settings = await asyncio.to_thread(
+                settings_service.merge_settings,
+                settings,
+                calibration_step=calibration_step,
+            )
         current = getattr(settings_service, "saved_settings", None)
         if isinstance(previous, HardwareConfig) and isinstance(current, HardwareConfig):
             await _reload_running_autonomy_from_app(request, previous, current)

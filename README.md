@@ -333,6 +333,20 @@ bus/address in one full Robot settings save. Conflicting or hardware-invalid
 updates are rejected before the configuration file is written and are reported
 in the UI.
 
+#### Guided motion calibration
+
+**Measure robot motion & geometry** shows completion badges for its eight
+guides and an overall progress bar. A guide is completed when its reviewed
+measurements are successfully applied. LiDAR and IMU mounting are tracked
+separately; both must be applied to complete Sensor mounting.
+
+Completion records are saved atomically with the measurements in
+`calibration_progress` and travel with exported robot configurations. A record
+captures the settings used by that calibration. Changing those settings makes
+the guide show **Needs review**. Configurations without completion records keep
+their measurements and display existing values for review. Zero offsets and
+zero IMU bias can be valid measurements and count as completed after review.
+
 #### Servo angles and calibration
 
 Servo movement uses two independent ranges:

@@ -154,7 +154,7 @@ import { computed, reactive, ref } from "vue";
 import { robotApi } from "@/api";
 import { useRobotStore } from "@/features/settings/stores";
 import type { Data } from "@/features/settings/stores/robot";
-import { calibrationError } from "./session";
+import { calibrationError } from "@/features/calibration/session";
 const props = defineProps<{ kind: "body" | "mounting" }>();
 const store = useRobotStore();
 const sensor = ref<"lidar" | "imu">("lidar");
@@ -318,6 +318,7 @@ async function save() {
         : {
             localization_sensors: {
               [sensor.value]: {
+                driver: store.data.localization_sensors[sensor.value].driver,
                 transform: Object.fromEntries(
                   fields.value.map((f) => [
                     f.key,
@@ -328,7 +329,12 @@ async function save() {
               },
             },
           };
-    await robotApi.patch("px/api/settings/config", update);
+    await robotApi.patch("px/api/settings/config", update, {
+      params: {
+        calibration_step:
+          props.kind === "body" ? "body" : `${sensor.value}_mount`,
+      },
+    });
     store.data = await robotApi.get<Data>("px/api/settings/config");
     reviewing.value = false;
     saved.value = true;

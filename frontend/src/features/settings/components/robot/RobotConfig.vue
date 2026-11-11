@@ -26,7 +26,7 @@
     <Loader v-if="!store.config && loading" />
     <JsonSchema
       v-else-if="store.config"
-      v-for="(propSchema, propName) in store.config.properties"
+      v-for="(propSchema, propName) in editableProperties"
       ref="sections"
       :level="0"
       :schema="propSchema"
@@ -144,6 +144,13 @@ const handleSave = async () => {
 };
 
 const loading = ref(!store.config);
+const editableProperties = computed(() =>
+  Object.fromEntries(
+    Object.entries(store.config?.properties ?? {}).filter(
+      ([, schema]) => !schema.props?.hidden,
+    ),
+  ),
+);
 
 const resolvedSchemas = computed(() => {
   if (!store.config || !store.config["$defs"]) {

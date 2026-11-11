@@ -76,6 +76,33 @@ class TestPartialRobotSettings(unittest.TestCase):
         self.assertEqual(response.status_code, 422, response.text)
         self.settings_service.merge_settings.assert_not_called()
 
+    def test_mounting_guide_patch_supplies_driver_and_completion_step(self) -> None:
+        self.settings_service.merge_settings.side_effect = (
+            lambda settings, **kwargs: settings
+        )
+        response = self.client.patch(
+            "/px/api/settings/config?calibration_step=imu_mount",
+            json={
+                "localization_sensors": {
+                    "imu": {"driver": "lsm9ds1", "transform": {"z_m": 0.0438}}
+                }
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(
+            self.settings_service.merge_settings.call_args.kwargs,
+            {"calibration_step": "imu_mount"},
+        )
+        self.connection_service.broadcast_json.assert_awaited_once()
+
+    def test_settings_patch_cannot_mark_a_trial_based_guide_complete(self) -> None:
+        response = self.client.patch(
+            "/px/api/settings/config?calibration_step=speed",
+            json={"motion_control": {"enabled": False}},
+        )
+        self.assertEqual(response.status_code, 422, response.text)
+        self.settings_service.merge_settings.assert_not_called()
+
     def test_reports_partial_hardware_configuration_conflict(self) -> None:
         self.settings_service.merge_settings.side_effect = InvalidSettings(
             "Conflicting configurations for shared PWM device"

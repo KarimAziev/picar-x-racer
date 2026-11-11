@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, call
 from app.exceptions.settings import InvalidSettings
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
 from app.services.control.settings_service import SettingsService
+from app.services.control.calibration_progress import calibration_snapshot
 
 
 class TestSettingsServiceSharedPWMDrivers(unittest.TestCase):
@@ -38,6 +39,98 @@ class TestSettingsServiceSharedPWMDrivers(unittest.TestCase):
                 expected,
             )
         self.config_manager.update.assert_not_called()
+
+    def test_mounting_patch_preserves_driver_settings_and_saves_completion_atomically(
+        self,
+    ):
+        for driver in ("sh3001", "lsm9ds1", "lsm6ds33", "mock"):
+            with self.subTest(driver=driver):
+                data = deepcopy(self.config_data)
+                data["localization_sensors"]["imu"] = {
+                    "driver": driver,
+                    "enabled": False,
+                    "frame_id": "mounted_imu",
+                    "sample_frequency_hz": 80,
+                }
+                self.service.saved_settings = HardwareConfig.model_validate(data)
+                update = PartialHardwareConfig.model_validate(
+                    {
+                        "localization_sensors": {
+                            "imu": {
+                                "driver": driver,
+                                "transform": {
+                                    "x_m": 0.16588,
+                                    "y_m": -0.04,
+                                    "z_m": 0.0438,
+                                    "yaw_rad": -1.5707963267948966,
+                                },
+                            }
+                        },
+                    }
+                )
+                result = self.service.merge_settings(
+                    update, calibration_step="imu_mount"
+                )
+                persisted = HardwareConfig.model_validate(
+                    self.config_manager.update.call_args.args[0]
+                )
+                imu = persisted.localization_sensors.imu
+                self.assertEqual(imu.driver, driver)
+                self.assertFalse(imu.enabled)
+                self.assertEqual(imu.frame_id, "mounted_imu")
+                self.assertEqual(imu.sample_frequency_hz, 80)
+                self.assertEqual(imu.transform.z_m, 0.0438)
+                self.assertEqual(
+                    persisted.calibration_progress["imu_mount"],
+                    calibration_snapshot(persisted, "imu_mount"),
+                )
+                self.assertEqual(
+                    result.calibration_progress, persisted.calibration_progress
+                )
+                self.assertNotIn(
+                    "imu_mount", self.service.saved_settings.calibration_progress
+                )
+
+    def test_failed_measurement_save_does_not_mark_completion(self):
+        self.config_manager.update.side_effect = OSError("disk full")
+        with self.assertRaisesRegex(OSError, "disk full"):
+            self.service.merge_settings(
+                PartialHardwareConfig.model_validate(
+                    {"pose_estimation": {"imu_yaw_bias_radps": 0}}
+                ),
+                calibration_step="imu_bias",
+            )
+        self.assertEqual(self.service.saved_settings.calibration_progress, {})
+
+    def test_completion_snapshot_round_trips_and_detects_changed_dependencies(self):
+        config = self.service.saved_settings.model_copy(deep=True)
+        for step in (
+            "body",
+            "lidar_mount",
+            "imu_mount",
+            "wheel_distance",
+            "speed",
+            "imu_bias",
+            "steering_center",
+            "steering_range",
+            "stopping",
+        ):
+            config.calibration_progress[step] = calibration_snapshot(config, step)
+        restored = HardwareConfig.model_validate_json(config.model_dump_json())
+        self.assertEqual(restored.calibration_progress, config.calibration_progress)
+        restored.localization_sensors.imu.transform.yaw_rad = 1
+        self.assertNotEqual(
+            restored.calibration_progress["imu_bias"],
+            calibration_snapshot(restored, "imu_bias"),
+        )
+        self.assertNotEqual(
+            restored.calibration_progress["imu_mount"],
+            calibration_snapshot(restored, "imu_mount"),
+        )
+        self.assertEqual(
+            restored.calibration_progress["body"],
+            calibration_snapshot(restored, "body"),
+        )
 
     def test_odometry_setup_error_points_to_motion_control_without_debug_dump(
         self,

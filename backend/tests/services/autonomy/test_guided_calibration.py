@@ -468,7 +468,9 @@ class TestGuidedCalibration(unittest.IsolatedAsyncioTestCase):
         result = await self.service.apply(
             CalibrationApply(trial_ids=[trial.id, "repeat"])
         )
-        self.settings.merge_if_current.assert_called_once_with(saved, self.config)
+        self.settings.merge_if_current.assert_called_once_with(
+            saved, self.config, calibration_step="imu_bias"
+        )
         self.assertEqual(
             result.saved_config, {"pose_estimation": {"imu_yaw_bias_radps": 0.012}}
         )
@@ -549,6 +551,7 @@ class TestGuidedCalibration(unittest.IsolatedAsyncioTestCase):
             CalibrationApply(trial_ids=[t.id for t in self.service.trials])
         )
         steering = update["localization_sensors"]["steering"]
+        PartialHardwareConfig.model_validate(update)
         self.assertTrue(steering["invert_direction"])
         self.assertAlmostEqual(
             steering["calibration_points"][0]["wheel_angle_rad"], math.radians(-20)
@@ -580,6 +583,7 @@ class TestGuidedCalibration(unittest.IsolatedAsyncioTestCase):
                 CalibrationApply(trial_ids=[session.id])
             )
             self.assertEqual(update["steering_servo"]["calibration_offset"], expected)
+            PartialHardwareConfig.model_validate(update)
 
     def test_distance_fit_handles_irregular_timestamps(self):
         self.assertAlmostEqual(

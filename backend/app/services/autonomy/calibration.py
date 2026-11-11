@@ -14,6 +14,7 @@ from app.schemas.autonomy.calibration import (
     CalibrationApply,
     CalibrationFinish,
     CalibrationHeartbeat,
+    CalibrationKind,
     CalibrationStart,
     CalibrationStatus,
     CalibrationTrial,
@@ -994,11 +995,13 @@ class GuidedCalibrationService:
             )
             return {
                 "steering_servo": {
+                    **servo.model_dump(mode="json"),
                     "calibration_offset": offset,
                     "saved_calibration_offset": offset,
                 },
                 "localization_sensors": {
                     "steering": {
+                        "driver": config.localization_sensors.steering.driver,
                         "center_angle_deg": trial.sensor_angle_deg,
                         "calibration_points": [],
                     }
@@ -1054,6 +1057,7 @@ class GuidedCalibrationService:
             return {
                 "localization_sensors": {
                     "steering": {
+                        "driver": sensor.driver,
                         "calibration_points": points,
                         "invert_direction": decreasing,
                     }
@@ -1129,6 +1133,9 @@ class GuidedCalibrationService:
                     "Stop servo tuning before applying guided measurements"
                 )
             update = self.proposed_update(request)
+            step: CalibrationKind = next(
+                trial.kind for trial in self.trials if trial.id in request.trial_ids
+            )
             if self.motion:
                 self.motion.calibration_active = True
             try:
@@ -1138,6 +1145,7 @@ class GuidedCalibrationService:
                     self.settings.merge_if_current,
                     PartialHardwareConfig.model_validate(update),
                     self.settings.saved_settings.model_copy(deep=True),
+                    calibration_step=step,
                 )
                 if self.motion and "motion_control" in update:
                     self.motion.calibration_restart_required = True

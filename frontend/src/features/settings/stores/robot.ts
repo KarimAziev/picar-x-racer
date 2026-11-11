@@ -5,6 +5,7 @@ import { Battery } from "@/features/settings/interface";
 import type { JSONSchema } from "@/ui/JsonSchema/interface";
 import { robotApi } from "@/api";
 import { robotSettingsError } from "@/features/settings/robotErrors";
+import type { CalibrationProgress } from "@/features/calibration/progress";
 
 export interface State {
   data: Data;
@@ -360,6 +361,7 @@ export interface LEDConfig {
   name: string | null;
 }
 export interface Data extends ServoData, MotorsData {
+  calibration_progress?: CalibrationProgress;
   navigation: {
     prefer_forward: boolean;
     forward_search_nodes: number;
