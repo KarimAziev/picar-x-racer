@@ -73,6 +73,51 @@ class TestSteeringAngleCalibration(unittest.TestCase):
 
 
 class TestSteeringFeedbackService(unittest.IsolatedAsyncioTestCase):
+    async def test_range_error_keeps_raw_readings_and_recovers_without_restart(
+        self,
+    ) -> None:
+        bus = TopicBus()
+        subscription = bus.subscribe(STEERING_POSITION, max_queue_size=1)
+        sensor = MockAngularPosition(initial_angle_degrees=180)
+        service = SteeringFeedbackService(
+            lambda: sensor,
+            SteeringAngleCalibration(
+                center_angle_deg=180,
+                points=(
+                    SteeringCalibrationPoint(-20, -0.3),
+                    SteeringCalibrationPoint(20, 0.3),
+                ),
+            ),
+            sample_frequency_hz=100,
+            topic_bus=bus,
+        )
+
+        async def reading_at(angle: float):
+            while True:
+                sample = await subscription.get()
+                if sample.sensor_angle_deg == angle:
+                    return sample
+
+        await service.start()
+        try:
+            await asyncio.wait_for(reading_at(180), 1)
+            for outside, inside in ((200.01, 190), (159.99, 170), (230, 180)):
+                sensor.set_angle(outside)
+                raw = await asyncio.wait_for(reading_at(outside), 1)
+                self.assertIsNone(raw.wheel_angle_rad)
+                self.assertIsNone(service.latest)
+                self.assertTrue(service.running)
+                self.assertTrue(sensor.read_health().available)
+                self.assertIn("outside", service.status.error or "")
+                sensor.set_angle(inside)
+                restored = await asyncio.wait_for(reading_at(inside), 1)
+                self.assertIsNotNone(restored.wheel_angle_rad)
+                self.assertIsNotNone(service.latest)
+                self.assertIsNone(service.status.error)
+        finally:
+            await service.stop()
+            subscription.close()
+
     async def test_publishes_position_without_motion_control(self) -> None:
         bus = TopicBus()
         subscription = bus.subscribe(STEERING_POSITION, max_queue_size=1)
@@ -88,6 +133,7 @@ class TestSteeringFeedbackService(unittest.IsolatedAsyncioTestCase):
             first = await asyncio.wait_for(subscription.get(), timeout=1)
             second = await asyncio.wait_for(subscription.get(), timeout=1)
             self.assertEqual(first.sensor_angle_deg, 190.0)
+            assert first.wheel_angle_rad is not None
             self.assertAlmostEqual(first.wheel_angle_rad, math.radians(10))
             self.assertGreater(second.header.sequence, first.header.sequence)
             self.assertGreater(

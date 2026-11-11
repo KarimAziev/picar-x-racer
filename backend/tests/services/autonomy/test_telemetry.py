@@ -30,6 +30,18 @@ def header(sequence: int = 1) -> MessageHeader:
 
 
 class TestTelemetryContract(unittest.TestCase):
+    def test_uncalibrated_steering_keeps_raw_bearing_and_serializes_null_wheel_angle(
+        self,
+    ) -> None:
+        position = SteeringPosition(
+            header=header(), sensor_angle_deg=210, wheel_angle_rad=None
+        )
+        envelope = make_telemetry_envelope("steering", position)
+        data = envelope.model_dump(mode="json")
+        self.assertEqual(data["payload"]["sensor_angle_deg"], 210)
+        self.assertIsNone(data["payload"]["wheel_angle_rad"])
+        json.dumps(data, allow_nan=False)
+
     def test_steering_position_keeps_raw_and_calibrated_angles(self) -> None:
         position = SteeringPosition(
             header=header(), sensor_angle_deg=190, wheel_angle_rad=math.radians(10)

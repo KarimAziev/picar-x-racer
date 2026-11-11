@@ -119,11 +119,11 @@ class EncoderState(FrozenMessage):
 
 
 class SteeringPosition(FrozenMessage):
-    """Absolute sensor bearing and calibrated road-wheel angle."""
+    """Absolute bearing; wheel angle is absent outside the calibrated range."""
 
     header: MessageHeader
     sensor_angle_deg: Annotated[float, Field(ge=0, lt=360, allow_inf_nan=False)]
-    wheel_angle_rad: FiniteFloat
+    wheel_angle_rad: Optional[FiniteFloat] = None
 
 
 class SteeringState(FrozenMessage):

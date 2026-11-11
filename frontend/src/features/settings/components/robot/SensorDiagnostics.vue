@@ -145,6 +145,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from "vue";
+import { isNull } from "@/util/guards";
 import {
   useAutonomyStore,
   type SensorPublisherStatus,
@@ -200,8 +201,13 @@ const latestSummary = (sensor: SensorName) => {
     }
     case "imu":
       return `yaw rate ${formatNumber(envelope.payload.angular_velocity_z_radps)} rad/s`;
-    case "steering":
-      return `Sensor ${formatNumber(envelope.payload.sensor_angle_deg)}° · wheel ${formatNumber((envelope.payload.wheel_angle_rad * 180) / Math.PI)}°`;
+    case "steering": {
+      const angle = envelope.payload.wheel_angle_rad;
+      const wheel = isNull(angle)
+        ? "outside calibrated range"
+        : `${formatNumber((angle * 180) / Math.PI)}°`;
+      return `Sensor ${formatNumber(envelope.payload.sensor_angle_deg)}° · wheel ${wheel}`;
+    }
     case "encoder": {
       const readings = [
         envelope.payload.left &&

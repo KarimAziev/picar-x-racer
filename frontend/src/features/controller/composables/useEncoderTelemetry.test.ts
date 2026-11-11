@@ -115,6 +115,21 @@ describe("controller encoder telemetry", () => {
     expect(view.encoderSpeedKmh.value).toBeNull();
   });
 
+  it("keeps the raw steering bearing when the wheel angle is outside calibration", () => {
+    const view = mount();
+    useAutonomyStore().latest.steering = {
+      channel: "steering",
+      topic: "/steering/position",
+      payload: {
+        header: header(1, 1),
+        sensor_angle_deg: 210,
+        wheel_angle_rad: null,
+      },
+    };
+    expect(view.steering.value?.sensor_angle_deg).toBe(210);
+    expect(view.steering.value?.wheel_angle_rad).toBeNull();
+  });
+
   it("averages paired wheel readings and resets when the encoder roles change", () => {
     const view = mount();
     const store = useAutonomyStore();

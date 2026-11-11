@@ -14,6 +14,10 @@ from app.services.autonomy.topic_bus import TopicBus
 from app.services.autonomy.topics import STEERING_POSITION
 
 
+class SteeringCalibrationRangeError(ValueError):
+    """A valid sensor bearing has no calibrated wheel-angle mapping."""
+
+
 @dataclass(frozen=True)
 class SteeringCalibrationPoint:
     """One measured linkage offset and corresponding signed wheel angle."""
@@ -86,8 +90,10 @@ class SteeringAngleCalibration:
         first = self.points[0]
         last = self.points[-1]
         if not first.sensor_offset_deg <= sensor_offset_deg <= last.sensor_offset_deg:
-            raise ValueError(
-                "measured steering position is outside the calibrated linkage range"
+            raise SteeringCalibrationRangeError(
+                "measured steering position is outside the calibrated linkage range "
+                f"(sensor offset {sensor_offset_deg:.3f}°, "
+                f"calibrated {first.sensor_offset_deg:.3f}° to {last.sensor_offset_deg:.3f}°)"
             )
         for left, right in zip(self.points, self.points[1:]):
             if sensor_offset_deg <= right.sensor_offset_deg:
@@ -224,26 +230,36 @@ class SteeringFeedbackService:
             return
         loop = asyncio.get_running_loop()
         next_read = loop.time()
+        previous_timestamp_ns: int | None = None
         try:
             while True:
                 sample = await asyncio.to_thread(sensor.read_angle)
-                calibrated = SteeringFeedbackSample(
-                    wheel_angle_rad=self._calibration.to_wheel_angle_rad(
+                if (
+                    previous_timestamp_ns is not None
+                    and sample.timestamp_monotonic_ns <= previous_timestamp_ns
+                ):
+                    raise ValueError(
+                        "steering sensor timestamps must increase monotonically"
+                    )
+                previous_timestamp_ns = sample.timestamp_monotonic_ns
+                try:
+                    wheel_angle = self._calibration.to_wheel_angle_rad(
                         sample.angle_degrees
-                    ),
-                    timestamp_monotonic_ns=sample.timestamp_monotonic_ns,
-                )
+                    )
+                except SteeringCalibrationRangeError as error:
+                    wheel_angle = None
+                    self._last_error = error
+                else:
+                    self._last_error = None
                 with self._lock:
-                    previous = self._latest
-                    if (
-                        previous is not None
-                        and calibrated.timestamp_monotonic_ns
-                        <= previous.timestamp_monotonic_ns
-                    ):
-                        raise ValueError(
-                            "steering sensor timestamps must increase monotonically"
+                    self._latest = (
+                        None
+                        if wheel_angle is None
+                        else SteeringFeedbackSample(
+                            wheel_angle_rad=wheel_angle,
+                            timestamp_monotonic_ns=sample.timestamp_monotonic_ns,
                         )
-                    self._latest = calibrated
+                    )
                 if self._topic_bus is not None:
                     sequence = self._published_messages + 1
                     self._topic_bus.publish(
@@ -255,7 +271,7 @@ class SteeringFeedbackService:
                                 timestamp_monotonic_ns=sample.timestamp_monotonic_ns,
                             ),
                             sensor_angle_deg=sample.angle_degrees,
-                            wheel_angle_rad=calibrated.wheel_angle_rad,
+                            wheel_angle_rad=wheel_angle,
                         ),
                     )
                     self._published_messages = sequence
@@ -280,6 +296,7 @@ class SteeringFeedbackService:
 
 __all__ = [
     "SteeringAngleCalibration",
+    "SteeringCalibrationRangeError",
     "SteeringCalibrationPoint",
     "SteeringFeedbackSample",
     "SteeringFeedbackService",

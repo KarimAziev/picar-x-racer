@@ -11,7 +11,11 @@
       />
       <InfoItem
         label="Measured steering:"
-        :value="formatMetric((steering.wheel_angle_rad * 180) / Math.PI, '°')"
+        :value="
+          isNull(steering.wheel_angle_rad)
+            ? 'Outside calibrated range'
+            : formatMetric((steering.wheel_angle_rad * 180) / Math.PI, '°')
+        "
       />
     </template>
     <template v-for="reading in sensorStore.readings" :key="reading.name">

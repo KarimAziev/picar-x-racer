@@ -71,7 +71,7 @@ export interface EncoderReadingTelemetry {
 export interface SteeringPositionTelemetry {
   header: MessageHeader;
   sensor_angle_deg: number;
-  wheel_angle_rad: number;
+  wheel_angle_rad: number | null;
 }
 
 export interface OdometryTelemetry {

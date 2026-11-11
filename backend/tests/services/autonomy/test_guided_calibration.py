@@ -5,7 +5,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock
 
-from app.schemas.autonomy import EncoderReading, EncoderState, LaserScan, MessageHeader
+from app.schemas.autonomy import (
+    EncoderReading,
+    EncoderState,
+    LaserScan,
+    MessageHeader,
+    SteeringPosition,
+)
 from app.schemas.autonomy.calibration import (
     CalibrationApply,
     CalibrationFinish,
@@ -24,7 +30,7 @@ from app.services.autonomy.calibration import (
 from app.services.autonomy.topic_bus import TopicBus
 from app.services.autonomy.motion_control_service import MotionControlService
 from app.services.autonomy.messages import RobotMode
-from app.services.autonomy.topics import ENCODER_STATE, LIDAR_SCAN
+from app.services.autonomy.topics import ENCODER_STATE, LIDAR_SCAN, STEERING_POSITION
 from app.services.control.settings_service import SettingsService
 
 
@@ -100,6 +106,21 @@ class TestGuidedCalibration(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self.service.stop()
+
+    async def test_recalibration_can_observe_raw_steering_outside_existing_table(self):
+        self.bus.publish(
+            STEERING_POSITION,
+            SteeringPosition(
+                header=MessageHeader(
+                    sequence=1,
+                    timestamp_monotonic_ns=round(self.now * 1e9),
+                    frame_id="base_link",
+                ),
+                sensor_angle_deg=210,
+                wheel_angle_rad=None,
+            ),
+        )
+        self.assertEqual(self.service.observation(self.config).sensor_angle, 210)
 
     def publish(self, ticks: int = 0, distance: float = 3):
         header = MessageHeader(

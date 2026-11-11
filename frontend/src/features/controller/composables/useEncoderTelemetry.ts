@@ -4,6 +4,7 @@ import {
   type EncoderTelemetry,
 } from "@/features/autonomy/store";
 import { useRobotStore } from "@/features/settings/stores";
+import { isNull } from "@/util/guards";
 
 const MAX_READING_AGE_MS = 1000;
 
@@ -142,7 +143,8 @@ export function useEncoderTelemetry() {
       fresh(steeringReceivedAt.value) &&
       message?.channel === "steering" &&
       Number.isFinite(message.payload.sensor_angle_deg) &&
-      Number.isFinite(message.payload.wheel_angle_rad)
+      (isNull(message.payload.wheel_angle_rad) ||
+        Number.isFinite(message.payload.wheel_angle_rad))
       ? message.payload
       : null;
   });
