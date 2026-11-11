@@ -8,7 +8,7 @@
       <div>
         <h2 class="text-lg font-semibold">Measure robot motion & geometry</h2>
         <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          Measure body geometry, wheel travel, steering response, and sensors
+          Measure body geometry, encoder distance, steering response, and sensors
           step by step. Review each result before saving it.
         </p>
       </div>

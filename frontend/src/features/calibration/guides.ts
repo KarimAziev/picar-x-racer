@@ -48,8 +48,8 @@ export const guides: {
   },
   {
     kind: "wheel_distance",
-    title: "Wheel travel",
-    description: "Calculate wheel size from a distance you can measure easily.",
+    title: "Encoder distance calibration",
+    description: "Roll the robot over a measured distance to calibrate how encoder counts translate into travel distance.",
     steps: [
       "Enable physical drive encoders in Advanced settings. Mark a straight path of 50–100 cm on a level floor and measure the distance between the marks. Align the rear axle with the first mark before starting.",
       "Recording is active. Gently roll the robot forward with its wheels straight until the rear axle reaches the second mark. Do not lift or drag it.",

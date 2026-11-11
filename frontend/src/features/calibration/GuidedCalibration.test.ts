@@ -92,7 +92,7 @@ describe("guided calibration workflow", () => {
     ).toBe("0");
   });
   it("cancels an active trial when its section is collapsed", async () => {
-    button("Wheel travel").click();
+    button("Encoder distance calibration").click();
     await flush();
     const ready = root.querySelector<HTMLInputElement>(
       'input[type="checkbox"]',
@@ -111,7 +111,7 @@ describe("guided calibration workflow", () => {
   });
   it("offers preparation, measurement and review without asking for a precise wheel radius", async () => {
     expect(root.textContent).toContain("Body measurements");
-    button("Wheel travel").click();
+    button("Encoder distance calibration").click();
     await flush();
     expect(root.textContent).toContain("Distance between floor marks (cm)");
     expect(root.textContent).toContain("1. Prepare");
@@ -144,7 +144,7 @@ describe("guided calibration workflow", () => {
       ...status,
       blockers: ["Enable Drive encoders and wait for fresh readings."],
     });
-    button("Wheel travel").click();
+    button("Encoder distance calibration").click();
     await flush();
     const ready = root.querySelector<HTMLInputElement>(
       'input[type="checkbox"]',
@@ -156,7 +156,7 @@ describe("guided calibration workflow", () => {
     expect(button("Start trial").disabled).toBe(true);
   });
   it("cancels a trial when the window loses focus", async () => {
-    button("Wheel travel").click();
+    button("Encoder distance calibration").click();
     await flush();
     const ready = root.querySelector<HTMLInputElement>(
       'input[type="checkbox"]',
@@ -173,7 +173,7 @@ describe("guided calibration workflow", () => {
     expect(button("Start trial").disabled).toBe(true);
   });
   it("cancels the owned trial when the settings panel unmounts", async () => {
-    button("Wheel travel").click();
+    button("Encoder distance calibration").click();
     await flush();
     const ready = root.querySelector<HTMLInputElement>(
       'input[type="checkbox"]',
