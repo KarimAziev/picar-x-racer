@@ -32,37 +32,11 @@
     <div class="flex flex-col gap-y-2">
       <Servos ref="servos" />
       <Motors />
-      <div>
-        <span class="flex flex-wrap gap-2 justify-self-start">
-          <Button
-            severity="danger"
-            size="small"
-            text
-            @click="controllerStore.resetCalibration"
-          >
-            Reset offsets & directions
-          </Button>
-          <Button
-            @click="controllerStore.toggleCalibration"
-            size="small"
-            outlined
-            class="w-fit"
-          >
-            {{
-              controllerStore.calibrationMode
-                ? "Stop keyboard tuning"
-                : "Start keyboard tuning"
-            }}
-          </Button>
-          <Button
-            size="small"
-            label="Save tuning"
-            :disabled="saving || tuning.pending"
-            @click="handleSaveClick"
-            class="w-fit"
-          />
-        </span>
-      </div>
+      <CalibrationActions
+        v-if="!embedded"
+        :saving="saving"
+        @save="handleSaveClick"
+      />
     </div>
   </component>
 </template>
@@ -78,6 +52,7 @@ import {
   tuningModifiers,
 } from "@/features/settings/stores/servoTuning";
 import Fieldset from "@/ui/Fieldset.vue";
+import CalibrationActions from "@/features/settings/components/calibration/CalibrationActions.vue";
 
 const props = defineProps<{
   handleSave?: () => void;
@@ -105,4 +80,6 @@ const handleSaveClick = async () => {
 
 const controllerStore = useControllerStore();
 const tuning = useServoTuningStore();
+
+defineExpose({ save: handleSaveClick, saving });
 </script>
