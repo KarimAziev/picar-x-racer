@@ -277,7 +277,7 @@ machine provisioning remains `make all`; `make update` installs Python packages
 without running system package installation or changing Polkit rules.
 
 Python synchronization satisfies `backend/requirements.txt`, including
-`robot-hat[spi]>=3.3.3,<4`, and installs `requirements-no-deps.txt` with dependency
+`robot-hat[spi]>=3.3.4,<4`, and installs `requirements-no-deps.txt` with dependency
 resolution disabled as declared. Packages already satisfying the requirements
 can remain installed. This is not a locked Python environment or a package
 pruning operation. The frontend uses its committed lockfile. The individual
@@ -451,9 +451,12 @@ Real IMU acquisition supports the Robot HAT's SH3001, the Raspberry Pi Sense
 HAT's LSM9DS1, and the LSM6DS33 used by Pololu's MiniIMU-9 v5 and AltIMU-10 v5.
 Each driver exposes its supported full-scale ranges in the schema-driven Robot
 settings UI; LSM9DS1 and LSM6DS33 also expose hardware output rates.
-Configure the measured roll, pitch, and yaw
-from the sensor frame into `base_link`; the publisher applies that rotation to
-both acceleration and angular velocity before localization consumes them. The
+`robot-hat>=3.3.4` supplies acceleration and angular velocity in each driver's
+documented right-handed local frame. For LSM9DS1, this is native X, reversed
+native Y, and native Z; LSM6DS33 and SH3001 use their native right-handed axes.
+Configure the measured roll, pitch, and yaw from that local frame into
+`base_link`; the publisher applies that rotation to both acceleration and
+angular velocity before localization consumes them. The
 MiniIMU-9 v5 contains two independently addressed sensors. Configure both to
 read its gyro, accelerometer, and magnetic field:
 
