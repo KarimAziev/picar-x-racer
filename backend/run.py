@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from typing import Optional
 
@@ -111,6 +112,18 @@ def main() -> None:
             observer.start()
         while True:
             time.sleep(0.5)
+            # Production services must fail as a unit so systemd can restart them.
+            # Development workers are also stopped deliberately by the reloader.
+            if px_app_mode != "dev":
+                for process in (main_app_process, websocket_app_process):
+                    if process is not None and process.exitcode is not None:
+                        print(
+                            f"Required server {process.name} exited with code "
+                            f"{process.exitcode}; stopping the application.",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        raise SystemExit(1)
     except KeyboardInterrupt:
         COLOR_YELLOW = "\033[33m"
 

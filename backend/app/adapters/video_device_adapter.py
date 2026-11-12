@@ -2,6 +2,9 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
 from app.adapters.avfoundation_capture_adapter import AVFoundationCaptureAdapter
 from app.adapters.gstreamer_capture_adapter import GStreamerCaptureAdapter
+from app.adapters.isolated_gstreamer_capture_adapter import (
+    IsolatedGStreamerCaptureAdapter,
+)
 from app.adapters.picamera_capture_adapter import PicameraCaptureAdapter
 from app.adapters.v4l2_capture_adapter import V4l2CaptureAdapter
 from app.core.gstreamer_parser import GStreamerParser
@@ -76,7 +79,7 @@ class VideoDeviceAdapter:
                     service=self.gstreamer_service,
                 )
             ),
-            "libcamera": lambda: GStreamerCaptureAdapter(
+            "libcamera": lambda: IsolatedGStreamerCaptureAdapter(
                 device, camera_settings=camera_settings, service=self.gstreamer_service
             ),
         }

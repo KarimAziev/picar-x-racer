@@ -9,6 +9,63 @@ from app.exceptions.camera import CameraDeviceError, CameraFrameTimeout
 
 
 class TestGStreamerCapture(unittest.TestCase):
+    def test_pisp_rejects_formats_that_abort_native_validation(self):
+        with patch.object(
+            GStreamerService, "uses_pisp", return_value=True, create=True
+        ):
+            for pixel_format in ("YV12", "YVYU", "VYUY"):
+                with self.subTest(pixel_format=pixel_format):
+                    with self.assertRaisesRegex(CameraDeviceError, "Choose NV12"):
+                        GStreamerService.setup_pipeline(
+                            "libcamera:/base/camera", pixel_format=pixel_format
+                        )
+
+    def test_format_restriction_is_scoped_to_pisp_libcamera(self):
+        with patch.object(
+            GStreamerService, "uses_pisp", return_value=False, create=True
+        ):
+            self.assertIn(
+                "format=YV12",
+                GStreamerService.setup_pipeline(
+                    "libcamera:/base/camera", pixel_format="YV12"
+                ),
+            )
+        with patch.object(
+            GStreamerService, "uses_pisp", return_value=True, create=True
+        ):
+            self.assertIn(
+                "format=YV12",
+                GStreamerService.setup_pipeline(
+                    "v4l2:/dev/video0", pixel_format="YV12"
+                ),
+            )
+
+    def test_pisp_listing_omits_unsafe_formats_and_raw_streams(self):
+        with patch.object(GStreamerService, "uses_pisp", return_value=True):
+            self.assertFalse(
+                GStreamerService.supports_source_format(
+                    "libcamera", "video/x-raw", "YV12"
+                )
+            )
+            self.assertFalse(
+                GStreamerService.supports_source_format(
+                    "libcamera", "video/x-bayer", None
+                )
+            )
+            self.assertTrue(
+                GStreamerService.supports_source_format(
+                    "libcamera", "video/x-raw", "NV12"
+                )
+            )
+            self.assertTrue(
+                GStreamerService.supports_source_format(
+                    "libcamera", "video/x-raw", None
+                )
+            )
+            self.assertTrue(
+                GStreamerService.supports_source_format("v4l2", "video/x-raw", "YV12")
+            )
+
     def test_libcamera_defaults_select_processed_video(self):
         pipeline = GStreamerService.setup_pipeline(
             "libcamera:/base/camera", width=1280, height=720

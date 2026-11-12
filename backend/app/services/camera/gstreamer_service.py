@@ -5,20 +5,63 @@ to yield a list of DeviceType objects.
 
 import shutil
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, List, Optional
 
 from app.config.config import settings
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.video_device_abc import VideoDeviceABC
+from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import DeviceStepwise, DeviceType, DiscreteDevice
 from app.util.gstreamer_pipeline_builder import GstreamerPipelineBuilder
 from app.util.video_checksum import get_dev_video_checksum
 
 _log = Logger(__name__)
 
+# PiSP's native format validation can abort the process for advertised formats
+# outside this set, including GStreamer's YV12 (libcamera YVU420).
+PISP_PIXEL_FORMATS = frozenset(
+    {
+        "I420",
+        "NV12",
+        "NV21",
+        "YUY2",
+        "UYVY",
+        "NV16",
+        "NV61",
+        "RGB",
+        "BGR",
+        "RGBx",
+        "BGRx",
+        "xRGB",
+        "xBGR",
+    }
+)
+
 
 class GStreamerService(VideoDeviceABC):
+    @staticmethod
+    @lru_cache()
+    def uses_pisp() -> bool:
+        """Identify BCM2712 systems whose cameras use the PiSP pipeline."""
+        try:
+            return b"brcm,bcm2712" in Path(
+                "/proc/device-tree/compatible"
+            ).read_bytes().split(b"\0")
+        except OSError:
+            return False
+
+    @staticmethod
+    def supports_source_format(
+        api: Optional[str], media_type: Optional[str], pixel_format: Optional[str]
+    ) -> bool:
+        if api not in ("libcamera", "libcamerasrc") or not GStreamerService.uses_pisp():
+            return True
+        return media_type in (None, "video/x-raw") and (
+            pixel_format is None or pixel_format in PISP_PIXEL_FORMATS
+        )
+
     @staticmethod
     @lru_cache()
     def gstreamer_available() -> bool:
@@ -55,6 +98,12 @@ class GStreamerService(VideoDeviceABC):
     ) -> str:
 
         api, _ = GStreamerParser.parse_device_path(device)
+        if not GStreamerService.supports_source_format(api, media_type, pixel_format):
+            raise CameraDeviceError(
+                f"GStreamer format {pixel_format!r} ({media_type or 'video/x-raw'}) "
+                "is not supported by the Raspberry Pi PiSP camera pipeline. "
+                "Choose NV12 with video/x-raw."
+            )
         if api in ("libcamera", "libcamerasrc"):
             # Pin processed video caps to keep Bayer sensor modes out of negotiation.
             media_type = media_type or "video/x-raw"
@@ -203,6 +252,10 @@ class GStreamerService(VideoDeviceABC):
                 media_type = structure.get_name()
 
                 pixel_format = structure.get_string("format")
+                if not GStreamerService.supports_source_format(
+                    api, media_type, pixel_format
+                ):
+                    continue
                 common = {
                     "name": display_name,
                     "device": object_path,
