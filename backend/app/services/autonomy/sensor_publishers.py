@@ -710,6 +710,20 @@ class LocalizationSensorService:
             self._started = False
             await self._stop_publishers(self._publishers)
 
+    async def restart_failed(self, sensor_name: SensorName) -> SensorPublisherStatus:
+        """Reconnect a stopped publisher without disturbing other sensor streams."""
+        async with self._reconfigure_lock:
+            publisher = self._publishers.get(sensor_name)
+            if not self._started:
+                raise ValueError("Sensor acquisition is stopped")
+            if sensor_name not in self._enabled_sensors or publisher is None:
+                raise ValueError("Enable the sensor in robot settings first")
+            if publisher.running:
+                raise ValueError("The sensor is already running")
+            await publisher.stop()
+            await publisher.start()
+            return publisher.status
+
     async def reconfigure(
         self,
         publishers: Mapping[SensorName, SensorPublisher],

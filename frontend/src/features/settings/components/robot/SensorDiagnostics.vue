@@ -39,6 +39,26 @@
         <div v-if="sensor.error" class="mt-2 text-xs text-red-500 break-words">
           {{ sensor.error }}
         </div>
+        <template v-if="sensor.sensor === 'lidar'">
+          <Button
+            v-if="sensor.enabled && !sensor.running"
+            class="mt-3"
+            label="Restart LiDAR"
+            icon="pi pi-refresh"
+            size="small"
+            severity="secondary"
+            :loading="store.lidarRestarting"
+            :disabled="store.lidarRestarting"
+            @click="store.restartLidar()"
+          />
+          <div
+            v-if="store.lidarRestartError"
+            role="alert"
+            class="mt-2 break-words text-xs text-red-500"
+          >
+            {{ store.lidarRestartError }}
+          </div>
+        </template>
         <div v-if="latestSummary(sensor.sensor)" class="mt-2 text-xs">
           {{ latestSummary(sensor.sensor) }}
         </div>

@@ -429,6 +429,8 @@ export interface State {
   mappingActionLoading: boolean;
   mappingActionError: string | null;
   sensors: SensorPublisherStatus[];
+  lidarRestarting: boolean;
+  lidarRestartError: string | null;
   localMap: OccupancyGrid | null;
   mappingSession: MappingSessionStatus | null;
   mapClearGeneration: number;
@@ -483,6 +485,8 @@ const defaultState: State = {
   mappingActionLoading: false,
   mappingActionError: null,
   sensors: [],
+  lidarRestarting: false,
+  lidarRestartError: null,
   localMap: null,
   mappingSession: null,
   mapClearGeneration: 0,
@@ -616,6 +620,25 @@ export const useAutonomyStore = defineStore("autonomy-telemetry", {
         this.recordingLoading = false;
       }
     },
+    async restartLidar() {
+      if (this.lidarRestarting) return;
+      this.lidarRestarting = true;
+      this.lidarRestartError = null;
+      try {
+        const status = await robotApi.post<SensorPublisherStatus>(
+          "/px/api/sensors/lidar/restart",
+        );
+        this.sensors = this.sensors.map((sensor) =>
+          sensor.sensor === "lidar" ? status : sensor,
+        );
+        delete this.latest.lidar;
+      } catch (error) {
+        this.lidarRestartError = retrieveError(error).text;
+      } finally {
+        this.lidarRestarting = false;
+      }
+    },
+
     async refreshStatus() {
       try {
         this.loading = this.sensors.length === 0;

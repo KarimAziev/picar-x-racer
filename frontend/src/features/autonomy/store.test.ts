@@ -35,6 +35,38 @@ vi.mock("@/composables/useWebsocket", () => ({
 import { useAutonomyStore } from "@/features/autonomy/store";
 
 describe("autonomy telemetry store", () => {
+  it("restarts only LiDAR and prevents duplicate requests", async () => {
+    const store = useAutonomyStore();
+    store.sensors = [
+      { sensor: "lidar", enabled: true, running: false, published_messages: 4, last_timestamp_monotonic_ns: 1, error: "Timeout" },
+      { sensor: "encoder", enabled: true, running: true, published_messages: 20, last_timestamp_monotonic_ns: 2, error: null },
+    ];
+    const recovered = { ...store.sensors[0], running: true, error: null };
+    let complete!: (status: typeof recovered) => void;
+    mocks.post.mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const request = store.restartLidar();
+    expect(store.lidarRestarting).toBe(true);
+    await store.restartLidar();
+    expect(mocks.post).toHaveBeenCalledExactlyOnceWith("/px/api/sensors/lidar/restart");
+    complete(recovered);
+    await request;
+    expect(store.lidarRestarting).toBe(false);
+    expect(store.sensors[0]).toEqual(recovered);
+    expect(store.sensors[1].published_messages).toBe(20);
+  });
+
+  it("keeps LiDAR restart errors visible across status polling", async () => {
+    const store = useAutonomyStore();
+    mocks.post.mockRejectedValueOnce(new Error("LiDAR unavailable"));
+    await store.restartLidar();
+    const error = store.lidarRestartError;
+    expect(error).toContain("LiDAR unavailable");
+    mocks.get.mockResolvedValueOnce({ sensors: [] });
+    await store.refreshStatus();
+    expect(store.lidarRestartError).toBe(error);
+    expect(store.lidarRestarting).toBe(false);
+  });
+
   it("saves a named map without starting motion or changing the current map", async () => {
     const store = useAutonomyStore();
     const saved = { id: "a".repeat(32), name: "Flat", created_at: "2026-09-10T10:00:00Z", saved_pose: null };

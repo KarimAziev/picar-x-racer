@@ -1,7 +1,12 @@
 import unittest
+import json
+from pathlib import Path
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 
+from app.schemas.autonomy import SensorPublisherStatus
+from app.services.autonomy import LocalizationSensorService
+from app.schemas.robot.config import HardwareConfig
 from app.api import robot_deps
 from app.api.control.sensors import (
     _close_telemetry_websocket,
@@ -102,6 +107,63 @@ class MappingSessionEndpointTests(unittest.IsolatedAsyncioTestCase):
             _require_mapping_service(None)
 
         self.assertEqual(context.exception.status_code, 409)
+
+
+class LidarRestartRouteTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        data = json.loads(
+            (Path(__file__).resolve().parents[4] / "config.json").read_text()
+        )
+        data["localization_sensors"]["lidar"].update(
+            enabled=True, range_min_m=0.05, range_max_m=12
+        )
+        self.config = HardwareConfig.model_validate(data)
+        self.manager = Mock()
+        self.manager.load_data.side_effect = lambda: self.config.model_dump(mode="json")
+        self.service = Mock(spec=LocalizationSensorService)
+        self.service.restart_failed = AsyncMock(
+            return_value=SensorPublisherStatus(
+                sensor="lidar",
+                enabled=True,
+                running=True,
+            )
+        )
+        control_app.dependency_overrides[robot_deps.get_config_manager] = (
+            lambda: self.manager
+        )
+        control_app.dependency_overrides[robot_deps.get_localization_sensor_service] = (
+            lambda: self.service
+        )
+        self.client = AsyncClient(
+            transport=ASGITransport(app=control_app), base_url="http://testserver"
+        )
+
+    async def asyncTearDown(self) -> None:
+        await self.client.aclose()
+        control_app.dependency_overrides.clear()
+
+    async def test_restarts_only_lidar_without_saving_settings(self) -> None:
+        response = await self.client.post("/px/api/sensors/lidar/restart")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["running"])
+        self.service.restart_failed.assert_awaited_once_with("lidar")
+        self.manager.save_data.assert_not_called()
+
+    async def test_returns_actionable_conflict_and_connection_failure(self) -> None:
+        for error, code in [
+            (ValueError("Already running"), 409),
+            (OSError("USB unavailable"), 503),
+        ]:
+            self.service.restart_failed.side_effect = error
+            response = await self.client.post("/px/api/sensors/lidar/restart")
+            self.assertEqual(response.status_code, code, response.text)
+            self.assertEqual(response.json()["detail"], str(error))
+
+    async def test_rejects_disabled_lidar(self) -> None:
+        self.config.localization_sensors.lidar.enabled = False
+        response = await self.client.post("/px/api/sensors/lidar/restart")
+        self.assertEqual(response.status_code, 409)
+        self.service.restart_failed.assert_not_awaited()
 
 
 class MappingSessionRouteTests(unittest.IsolatedAsyncioTestCase):

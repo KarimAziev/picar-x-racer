@@ -84,6 +84,45 @@ def config_fingerprint(config: HardwareConfig) -> str:
     ).hexdigest()
 
 
+def encoder_noise_limits(config: HardwareConfig) -> tuple[int, ...]:
+    """Allow half a sensor-shaft degree of jitter, rounded up to whole counts.
+
+    Native magnetic counts measure absolute angle and fluctuate at rest. GPIO
+    edge counters and mock encoders have no angular measurement noise allowance.
+    Limits follow the role order used by Observation, independent of config order.
+    """
+    return tuple(
+        (
+            math.ceil(16384 / 720)
+            if isinstance(sensor, AS5048AEncoderConfig)
+            else (
+                math.ceil(4096 / 720) if isinstance(sensor, AS5600LEncoderConfig) else 0
+            )
+        )
+        for role in ("left_wheel", "right_wheel", "rear_axle_average")
+        for sensor in config.localization_sensors.encoder.sensors
+        if sensor.role == role
+    )
+
+
+def encoder_traces(
+    observations: list[Observation], limits: tuple[int, ...]
+) -> list[tuple[int, ...]]:
+    """Return each encoder's complete trial trace, rejecting gaps or role changes."""
+    rows = []
+    for obs in observations:
+        if obs.ticks is None:
+            raise CalibrationError(
+                "Wheel readings stopped during the measurement. Repeat the trial."
+            )
+        if len(obs.ticks) != len(limits) or not obs.ticks:
+            raise CalibrationError(
+                "Wheel sensors changed during measurement. Repeat the trial."
+            )
+        rows.append(obs.ticks)
+    return list(zip(*rows))
+
+
 def fit_speed(points: list[tuple[float, float]]) -> float:
     """Fit distance versus monotonic observation time, independent of video FPS."""
     if len(points) < 3 or points[-1][0] - points[0][0] < 0.3:
@@ -709,17 +748,12 @@ class GuidedCalibrationService:
                 raise CalibrationError(
                     "Enter the distance between your floor marks in centimetres."
                 )
-            if any(obs.ticks is None for obs in observations):
-                raise CalibrationError(
-                    "Wheel readings stopped during the measurement. Repeat the trial."
-                )
-            first, last = observations[0].ticks, observations[-1].ticks
-            if not first or not last or len(first) != len(last):
-                raise CalibrationError(
-                    "Wheel sensors changed during measurement. Repeat the trial."
-                )
-            deltas = [end - start for start, end in zip(first, last)]
-            if min(deltas) < 20:
+            limits = encoder_noise_limits(session.config)
+            traces = encoder_traces(observations, limits)
+            deltas = [trace[-1] - trace[0] for trace in traces]
+            if not deltas or any(
+                delta < max(20, 10 * limit) for delta, limit in zip(deltas, limits)
+            ):
                 raise CalibrationError(
                     "Too little forward wheel movement. Push forward with wheels rolling, or check encoder direction."
                 )
@@ -727,15 +761,14 @@ class GuidedCalibrationService:
                 raise CalibrationError(
                     "Left and right wheels disagree by more than 10%. Keep the wheels straight and check for slipping."
                 )
-            for previous, current in zip(observations, observations[1:]):
-                if (
-                    previous.ticks
-                    and current.ticks
-                    and any(b < a for a, b in zip(previous.ticks, current.ticks))
-                ):
-                    raise CalibrationError(
-                        "The wheels reversed during measurement. Repeat in one forward direction."
-                    )
+            for trace, limit in zip(traces, limits):
+                peak = trace[0]
+                for ticks in trace:
+                    peak = max(peak, ticks)
+                    if peak - ticks > limit:
+                        raise CalibrationError(
+                            "The wheels reversed during measurement. Repeat in one forward direction."
+                        )
             return self._trial(
                 session,
                 True,
@@ -763,11 +796,16 @@ class GuidedCalibrationService:
                 raise CalibrationError(
                     "The robot moved or the IMU readings were unstable. Leave it still and repeat."
                 )
-            ticks = [obs.ticks for obs in observations if obs.ticks]
-            if ticks and ticks[0] != ticks[-1]:
-                raise CalibrationError(
-                    "The wheels moved. Keep the robot still and repeat."
-                )
+            if session.config.localization_sensors.encoder.enabled:
+                limits = encoder_noise_limits(session.config)
+                traces = encoder_traces(observations, limits)
+                if any(
+                    max(trace) - min(trace) > limit
+                    for trace, limit in zip(traces, limits)
+                ):
+                    raise CalibrationError(
+                        "The wheels moved. Keep the robot still and repeat."
+                    )
             return self._trial(
                 session,
                 True,

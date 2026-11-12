@@ -19,6 +19,11 @@ from app.schemas.autonomy.calibration import (
     CalibrationStart,
 )
 from app.schemas.robot.config import HardwareConfig, PartialHardwareConfig
+from app.schemas.robot.localization_sensors import (
+    AS5600LEncoderConfig,
+    AS5048AEncoderConfig,
+    MockEncoderConfig,
+)
 from app.services.autonomy.calibration import (
     CalibrationError,
     GuidedCalibrationService,
@@ -413,6 +418,98 @@ class TestGuidedCalibration(unittest.IsolatedAsyncioTestCase):
         session.observations = [observation(10, gyro=0.012)] * 100
         with self.assertRaisesRegex(CalibrationError, "fresh IMU"):
             self.service.analyze(session, CalibrationFinish())
+
+    def test_stationary_bias_accepts_bounded_magnetic_encoder_noise(self):
+        session = self.session("imu_bias")
+        session.observations = [
+            observation(10 + i * 0.05, ticks=(-5, 9, 0)[i % 3], gyro=-0.034)
+            for i in range(81)
+        ]
+        trial = self.service.analyze(session, CalibrationFinish())
+        self.assertAlmostEqual(trial.gyro_bias_radps or 0, -0.034)
+
+    def test_stationary_bias_rejects_excursion_even_when_wheels_return(self):
+        session = self.session("imu_bias")
+        session.observations = [
+            observation(10 + i * 0.05, ticks=min(i, 80 - i), gyro=0.012)
+            for i in range(81)
+        ]
+        with self.assertRaisesRegex(CalibrationError, "wheels moved"):
+            self.service.analyze(session, CalibrationFinish())
+
+    def test_distance_accepts_noise_but_rejects_accumulated_reversal(self):
+        session = self.session()
+        for samples, accepted in (
+            ([0, -5, 9, 1000, 995, 1000], True),
+            ([0, 1000, 990, 980, 970, 1100], False),
+        ):
+            with self.subTest(samples=samples):
+                session.observations = [
+                    observation(10 + i * 0.05, ticks=value)
+                    for i, value in enumerate(samples)
+                ]
+                if accepted:
+                    trial = self.service.analyze(
+                        session, CalibrationFinish(measured_distance_m=1)
+                    )
+                    self.assertAlmostEqual(trial.distance_per_tick_m or 0, 0.001)
+                else:
+                    with self.assertRaisesRegex(CalibrationError, "reversed"):
+                        self.service.analyze(
+                            session, CalibrationFinish(measured_distance_m=1)
+                        )
+
+    def test_stationary_noise_limit_matches_each_encoder_resolution_and_role(self):
+        self.config.localization_sensors.encoder.sensors = [
+            AS5600LEncoderConfig(role="right_wheel"),
+            AS5048AEncoderConfig(role="left_wheel"),
+        ]
+        session = self.session("imu_bias")
+        for right_excursion, accepted in ((6, True), (7, False)):
+            with self.subTest(right_excursion=right_excursion):
+                session.observations = [
+                    Observation(
+                        10 + i * 0.05,
+                        (23 if i % 2 else 0, right_excursion if i % 2 else 0),
+                        i,
+                        None,
+                        None,
+                        0.012,
+                        10 + i * 0.05,
+                        None,
+                    )
+                    for i in range(81)
+                ]
+                if accepted:
+                    self.assertTrue(
+                        self.service.analyze(session, CalibrationFinish()).accepted
+                    )
+                else:
+                    with self.assertRaisesRegex(CalibrationError, "wheels moved"):
+                        self.service.analyze(session, CalibrationFinish())
+
+    def test_non_magnetic_encoder_does_not_get_noise_allowance(self):
+        self.config.localization_sensors.encoder.sensors = [
+            MockEncoderConfig(role="rear_axle_average"),
+        ]
+        session = self.session("imu_bias")
+        session.observations = [
+            observation(10 + i * 0.05, ticks=i % 2, gyro=0.012) for i in range(81)
+        ]
+        with self.assertRaisesRegex(CalibrationError, "wheels moved"):
+            self.service.analyze(session, CalibrationFinish())
+
+    def test_stationary_bias_rejects_gaps_and_sensor_count_changes(self):
+        session = self.session("imu_bias")
+        session.observations = [
+            observation(10 + i * 0.05, gyro=0.012) for i in range(81)
+        ]
+        for ticks, message in ((None, "readings stopped"), ((0, 0), "sensors changed")):
+            session.observations[40] = Observation(
+                12, ticks, 40, None, None, 0.012, 12, None
+            )
+            with self.assertRaisesRegex(CalibrationError, message):
+                self.service.analyze(session, CalibrationFinish())
 
     def speed_session(self, reverse=False) -> Session:
         session = self.session("speed", direction="reverse" if reverse else "forward")

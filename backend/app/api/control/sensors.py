@@ -75,6 +75,33 @@ def get_localization_sensor_status(
     )
 
 
+@router.post(
+    "/px/api/sensors/lidar/restart",
+    response_model=SensorPublisherStatus,
+    summary="Reconnect a stopped LiDAR without restarting other hardware",
+)
+async def restart_lidar(
+    sensor_service: Annotated[
+        LocalizationSensorService,
+        Depends(robot_deps.get_localization_sensor_service),
+    ],
+    config_manager: Annotated[JsonDataManager, Depends(robot_deps.get_config_manager)],
+) -> SensorPublisherStatus:
+    config = HardwareConfig.model_validate(config_manager.load_data())
+    if (
+        config.coherent_simulation.enabled
+        or not config.localization_sensors.lidar.enabled
+    ):
+        raise HTTPException(status_code=409, detail="Enable a physical LiDAR first")
+    try:
+        return await sensor_service.restart_failed("lidar")
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except Exception as error:
+        _log.warning("LiDAR reconnect failed: %s", error)
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
 @router.get(
     "/px/api/map/current",
     response_model=OccupancyGrid,

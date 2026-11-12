@@ -6,6 +6,7 @@
       icon="pi pi-cog"
       @click="handleShow"
     />
+    <GoToAutonomyButton />
   </MediaControls>
   <span v-else class="absolute z-12 top-0 left-1">
     <Button
@@ -22,7 +23,6 @@
 import { defineAsyncComponent, inject } from "vue";
 import { usePopupStore } from "@/features/settings/stores";
 import type { Ref } from "vue";
-import GoToAutonomyButton from "@/features/autonomy/components/GoToAutonomyButton.vue";
 
 const isMobile = inject<Ref<boolean, boolean>>("isMobile");
 
@@ -30,6 +30,10 @@ const popupStore = usePopupStore();
 
 const MediaControls = defineAsyncComponent({
   loader: () => import("@/ui/MediaControls.vue"),
+});
+
+const GoToAutonomyButton = defineAsyncComponent({
+  loader: () => import("@/features/autonomy/components/GoToAutonomyButton.vue"),
 });
 
 const handleShow = () => {

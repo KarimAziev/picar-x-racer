@@ -1,6 +1,7 @@
 import asyncio
 import math
 import unittest
+from unittest.mock import AsyncMock
 from typing import Iterator, List, Optional
 
 from app.services.autonomy import (
@@ -14,7 +15,13 @@ from app.services.autonomy import (
     TopicSensorMonitor,
     UnavailableEncoderPublisher,
 )
-from app.schemas.autonomy import EncoderReading, EncoderState, MessageHeader
+from app.schemas.autonomy import (
+    EncoderReading,
+    EncoderState,
+    MessageHeader,
+    SensorPublisherStatus,
+)
+from app.services.autonomy.sensor_publishers import SensorPublisher
 from app.services.autonomy.topics import ENCODER_STATE, IMU_DATA, LIDAR_SCAN
 from robot_hat import (
     EncoderABC,
@@ -437,6 +444,90 @@ class TestSensorPublishers(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(statuses["lidar"].enabled)
         self.assertTrue(statuses["encoder"].enabled)
         self.assertIn("not installed", statuses["encoder"].error or "")
+
+    async def test_restart_serializes_and_leaves_healthy_publishers_alone(self) -> None:
+        lidar = AsyncMock(spec=SensorPublisher)
+        lidar.running = False
+        lidar.status = SensorPublisherStatus(sensor="lidar", enabled=True, running=True)
+        imu = AsyncMock(spec=SensorPublisher)
+        suite = LocalizationSensorService(
+            {"lidar": lidar, "imu": imu}, enabled_sensors=("lidar", "imu")
+        )
+        await suite.start()
+        lidar.start.reset_mock()
+        imu.start.reset_mock()
+
+        async def start() -> None:
+            await asyncio.sleep(0)
+            lidar.running = True
+
+        lidar.start.side_effect = start
+        results = await asyncio.gather(
+            suite.restart_failed("lidar"),
+            suite.restart_failed("lidar"),
+            return_exceptions=True,
+        )
+        self.assertEqual(results[0], lidar.status)
+        self.assertIsInstance(results[1], ValueError)
+        lidar.stop.assert_awaited_once()
+        lidar.start.assert_awaited_once()
+        imu.stop.assert_not_awaited()
+        imu.start.assert_not_awaited()
+
+    async def test_restart_rejects_disabled_and_stopped_supervisor(self) -> None:
+        suite = LocalizationSensorService({}, enabled_sensors=())
+        with self.assertRaisesRegex(ValueError, "stopped"):
+            await suite.restart_failed("lidar")
+        await suite.start()
+        with self.assertRaisesRegex(ValueError, "Enable"):
+            await suite.restart_failed("lidar")
+
+    async def test_lidar_reconnect_closes_failed_device_and_uses_fresh_connection(
+        self,
+    ) -> None:
+        class FailingLidar(FakeLidar):
+            def iter_scans(
+                self, *, min_measurements: int = 1, max_scans: Optional[int] = None
+            ) -> Iterator[LidarScan]:
+                raise TimeoutError("scan timed out")
+                yield from ()
+
+        failed = FailingLidar([])
+        recovered = FakeLidar(
+            [LidarScan((measurement(0, 1),), started_at=1, ended_at=2)]
+        )
+        devices = iter((failed, recovered))
+        bus = TopicBus()
+        output = bus.subscribe(LIDAR_SCAN)
+        publisher = LidarPublisherService(
+            bus,
+            lambda: next(devices),
+            LaserScanConverter(
+                frame_id="laser",
+                range_min_m=0.05,
+                range_max_m=12,
+                angular_resolution_deg=45,
+            ),
+            min_measurements_per_scan=1,
+        )
+        suite = LocalizationSensorService(
+            {"lidar": publisher}, enabled_sensors=("lidar",)
+        )
+        await suite.start()
+
+        async def wait_for_failure() -> None:
+            while publisher.running:
+                await asyncio.sleep(0.001)
+
+        await asyncio.wait_for(wait_for_failure(), 1)
+        self.assertIn("timed out", publisher.status.error or "")
+        await suite.restart_failed("lidar")
+        message = await asyncio.wait_for(output.get(), 1)
+        self.assertEqual(message.ranges_m[0], 1)
+        self.assertIsNone(publisher.status.error)
+        self.assertFalse(failed.is_connected)
+        await suite.stop()
+        self.assertFalse(recovered.is_connected)
 
     async def test_suite_reconfigures_running_publishers_in_place(self) -> None:
         first = FakeIMU()
