@@ -29,6 +29,7 @@ export function useEncoderTelemetry() {
   const robot = useRobotStore();
   const now = ref(Date.now());
   const steeringReceivedAt = ref<number | null>(null);
+  const imuReceivedAt = ref<number | null>(null);
   const encoderReceivedAt = ref<number | null>(null);
   const measuredSpeed = ref<number | null>(null);
   let previousEncoder: EncoderTelemetry | null = null;
@@ -71,7 +72,31 @@ export function useEncoderTelemetry() {
     () => telemetry.connected,
     () => {
       steeringReceivedAt.value = null;
+      imuReceivedAt.value = null;
       resetEncoder();
+    },
+    { flush: "sync" },
+  );
+
+  watch(
+    () => robot.data.localization_sensors.imu,
+    () => {
+      imuReceivedAt.value = null;
+    },
+    { deep: true, flush: "sync" },
+  );
+
+  watch(
+    () => telemetry.latest.imu,
+    (message) => {
+      if (
+        message?.channel !== "imu" ||
+        !telemetry.connected ||
+        !robot.data.localization_sensors.imu.enabled
+      )
+        return;
+      now.value = Date.now();
+      imuReceivedAt.value = now.value;
     },
     { flush: "sync" },
   );
@@ -149,6 +174,16 @@ export function useEncoderTelemetry() {
       : null;
   });
 
+  const imuYawRateDegPerSecond = computed(() => {
+    const message = telemetry.latest.imu;
+    return robot.data.localization_sensors.imu.enabled &&
+      fresh(imuReceivedAt.value) &&
+      message?.channel === "imu" &&
+      Number.isFinite(message.payload.angular_velocity_z_radps)
+      ? (message.payload.angular_velocity_z_radps * 180) / Math.PI
+      : null;
+  });
+
   const encoderSpeedKmh = computed(() =>
     robot.data.localization_sensors.encoder.enabled &&
     fresh(encoderReceivedAt.value)
@@ -167,5 +202,10 @@ export function useEncoderTelemetry() {
     telemetry.cleanup();
   });
 
-  return { steering, encoderSpeedKmh, encoderCalibrationRequired };
+  return {
+    steering,
+    imuYawRateDegPerSecond,
+    encoderSpeedKmh,
+    encoderCalibrationRequired,
+  };
 }

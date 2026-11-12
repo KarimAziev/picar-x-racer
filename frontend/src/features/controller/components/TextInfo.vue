@@ -18,6 +18,11 @@
         "
       />
     </template>
+    <InfoItem
+      v-if="!isNull(imuYawRateDegPerSecond)"
+      label="IMU yaw rate:"
+      :value="formatMetric(imuYawRateDegPerSecond, '°/s')"
+    />
     <template v-for="reading in sensorStore.readings" :key="reading.name">
       <InfoItem
         v-if="!isNull(reading.temperature_c)"
@@ -71,7 +76,7 @@ import { isNull } from "@/util/guards";
 
 import { useEncoderTelemetry } from "@/features/controller/composables/useEncoderTelemetry";
 
-const { steering } = useEncoderTelemetry();
+const { steering, imuYawRateDegPerSecond } = useEncoderTelemetry();
 const store = useControllerStore();
 const sensorStore = useAuxiliarySensorStore();
 

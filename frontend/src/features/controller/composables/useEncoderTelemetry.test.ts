@@ -7,8 +7,17 @@ import {
   type EncoderTelemetry,
 } from "@/features/autonomy/store";
 import Speedometer from "@/features/controller/components/Speedometer.vue";
+import TextInfo from "@/features/controller/components/TextInfo.vue";
+import { useAuxiliarySensorStore } from "@/features/sensors";
 import { useRobotStore, useDistanceStore } from "@/features/settings/stores";
-import { useEncoderTelemetry } from "./useEncoderTelemetry";
+import { useEncoderTelemetry } from "@/features/controller/composables/useEncoderTelemetry";
+
+vi.mock("@/features/controller/components/MaxSpeed.vue", () => ({
+  default: { render: () => null },
+}));
+vi.mock("@/ui/ToggleableView.vue", () => ({
+  default: { render: () => null },
+}));
 
 const socket = vi.hoisted(() => ({ cleanup: vi.fn(), init: vi.fn() }));
 let connected = ref(true);
@@ -45,6 +54,22 @@ function steering() {
     channel: "steering",
     topic: "/steering/position",
     payload: { header: header(1, 1), sensor_angle_deg: 0, wheel_angle_rad: 0 },
+  };
+}
+
+function imu(yawRateRadps: number) {
+  useAutonomyStore().latest.imu = {
+    channel: "imu",
+    topic: "/imu/data",
+    payload: {
+      header: header(1, 1),
+      source_frame_id: "imu",
+      angular_velocity_z_radps: yawRateRadps,
+      acceleration_x_mps2: 0,
+      acceleration_y_mps2: 0,
+      acceleration_z_mps2: 0,
+      yaw_rad: null,
+    },
   };
 }
 
@@ -113,6 +138,68 @@ describe("controller encoder telemetry", () => {
     expect(view.encoderSpeedKmh.value).toBeCloseTo(-2 * Math.PI * 0.05 * 3.6);
     vi.advanceTimersByTime(1000);
     expect(view.encoderSpeedKmh.value).toBeNull();
+  });
+
+  it("requires fresh IMU readings after enabling, reconnecting, or changing configuration", () => {
+    const config = useRobotStore().data.localization_sensors.imu;
+    config.enabled = true;
+    imu(1);
+    const view = mount();
+    expect(view.imuYawRateDegPerSecond.value).toBeNull();
+    imu(-Math.PI / 2);
+    expect(view.imuYawRateDegPerSecond.value).toBeCloseTo(-90);
+    vi.advanceTimersByTime(1000);
+    expect(view.imuYawRateDegPerSecond.value).toBeNull();
+    imu(0);
+    expect(view.imuYawRateDegPerSecond.value).toBe(0);
+    connected.value = false;
+    imu(1);
+    connected.value = true;
+    expect(view.imuYawRateDegPerSecond.value).toBeNull();
+    imu(1);
+    config.enabled = false;
+    expect(view.imuYawRateDegPerSecond.value).toBeNull();
+    imu(1);
+    config.enabled = true;
+    expect(view.imuYawRateDegPerSecond.value).toBeNull();
+    imu(1);
+    config.driver = "lsm6ds33";
+    expect(view.imuYawRateDegPerSecond.value).toBeNull();
+    imu(1);
+    expect(view.imuYawRateDegPerSecond.value).toBeCloseTo(180 / Math.PI);
+  });
+
+  it.each([NaN, Infinity, -Infinity])("hides invalid IMU yaw rate %s", (value) => {
+    useRobotStore().data.localization_sensors.imu.enabled = true;
+    const view = mount();
+    imu(value);
+    expect(view.imuYawRateDegPerSecond.value).toBeNull();
+  });
+
+  it("renders signed IMU yaw rate in degrees per second, including zero", async () => {
+    vi.spyOn(useAuxiliarySensorStore(), "fetchReadings").mockResolvedValue();
+    const config = useRobotStore().data.localization_sensors.imu;
+    config.enabled = false;
+    const container = document.createElement("div");
+    const app = createApp(TextInfo);
+    app.mount(container);
+    apps.push(app);
+    imu(1);
+    await nextTick();
+    expect(container.textContent).not.toContain("IMU yaw rate:");
+    config.enabled = true;
+    await nextTick();
+    expect(container.textContent).not.toContain("IMU yaw rate:");
+    imu(-1);
+    await nextTick();
+    expect(container.textContent).toContain("IMU yaw rate:");
+    expect(container.textContent).toContain("-57.3°/s");
+    imu(0);
+    await nextTick();
+    expect(container.textContent).toContain("0°/s");
+    vi.advanceTimersByTime(1000);
+    await nextTick();
+    expect(container.textContent).not.toContain("IMU yaw rate:");
   });
 
   it("keeps the raw steering bearing when the wheel angle is outside calibration", () => {
