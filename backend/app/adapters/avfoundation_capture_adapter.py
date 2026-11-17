@@ -14,6 +14,7 @@ from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
 from app.util.device import release_video_capture_safe
+from app.adapters.avfoundation_camera_controls import AVFoundationCameraControls
 
 if TYPE_CHECKING:
     from app.services.camera.avfoundation_service import AVFoundationService
@@ -31,6 +32,7 @@ class AVFoundationCaptureAdapter(VideoCaptureABC):
     ) -> None:
         super().__init__(service=service)
         self.service = service
+        self._controls: Optional[AVFoundationCameraControls] = None
         self._stderr_lines: Deque[str] = deque(maxlen=20)
         self._stderr_thread: Optional[threading.Thread] = None
         self._process_lock = threading.Lock()
@@ -55,6 +57,10 @@ class AVFoundationCaptureAdapter(VideoCaptureABC):
                 self._buffered_frame = frame
             self._settings = updated_settings
         except CameraDeviceError as opencv_error:
+            if camera_settings.controls.requested:
+                raise CameraDeviceError(
+                    "Exposure and focus controls require OpenCV AVFoundation capture; FFmpeg fallback cannot apply them."
+                ) from opencv_error
             _log.warning(
                 "OpenCV AVFoundation capture failed, falling back to FFmpeg: %s",
                 opencv_error,
@@ -62,6 +68,14 @@ class AVFoundationCaptureAdapter(VideoCaptureABC):
             self._process, self._settings = self._start_process(
                 input_name, resolved_settings
             )
+        try:
+            if camera_settings.controls.requested:
+                self._controls = self.service.camera_controls(device)
+                self._controls.apply(camera_settings.controls)
+                self._buffered_frame = None
+        except Exception:
+            self.release()
+            raise
 
     @property
     def settings(self) -> CameraSettings:
@@ -375,6 +389,13 @@ class AVFoundationCaptureAdapter(VideoCaptureABC):
         return True, self._bytes_to_frame(frame_bytes)
 
     def release(self) -> None:
+        try:
+            if self._controls is not None:
+                self._controls.close()
+        finally:
+            self._release_capture()
+
+    def _release_capture(self) -> None:
         with self._process_lock:
             cap = self._cap
             self._cap = None

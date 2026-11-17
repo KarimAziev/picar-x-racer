@@ -19,6 +19,7 @@ from app.exceptions.camera import (
 )
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
 from app.schemas.photo import PhotoCaptureRequest, PhotoSettings
+from app.schemas.camera_controls import CameraControlCapabilities
 from app.exceptions.detection import DetectionProcessError
 from app.types.detection import DetectionQueueData, DetectionResultData
 from app.util.doc_util import build_response_description
@@ -145,6 +146,18 @@ def get_camera_devices(
     except Exception:
         _log.error("Unexpected error while listing camera devices", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to list camera devices")
+
+
+@router.get("/camera/controls", response_model=CameraControlCapabilities)
+async def get_camera_controls(
+    device: str,
+    camera_manager: Annotated["CameraService", Depends(deps.get_camera_service)],
+):
+    """Inspect supported exposure and focus modes without changing their values."""
+    try:
+        return await asyncio.to_thread(camera_manager.get_control_capabilities, device)
+    except (CameraDeviceError, CameraNotFoundError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.post(

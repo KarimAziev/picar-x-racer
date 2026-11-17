@@ -10,6 +10,11 @@ from app.exceptions.camera import (
     CameraShutdownInProgressError,
 )
 from app.schemas.photo import PhotoCameraSettings, PhotoPreset, PhotoSettings
+from app.schemas.camera_controls import (
+    CameraControls,
+    CameraControlCapabilities,
+    ControlRange,
+)
 from app.services.camera.camera_service import CameraService
 from pydantic import ValidationError
 
@@ -87,6 +92,53 @@ class TestPhotoCapture(unittest.IsolatedAsyncioTestCase):
             await self.service.capture_preset_photo(self.preset)
         self.start.assert_called_once_with(persist_settings=False)
         self.assertFalse(self.service.photo_capturing)
+
+    async def test_photo_controls_are_independent_and_stream_controls_are_restored(
+        self,
+    ):
+        stream_controls = CameraControls(exposure_mode="auto", focus_mode="auto")
+        self.service.camera_settings.controls = stream_controls
+        self.preset.camera.controls = CameraControls(
+            exposure_mode="manual",
+            exposure_time_us=10000,
+            focus_mode="manual",
+            focus_position=2,
+        )
+        self.adapter.control_capabilities.return_value = CameraControlCapabilities(
+            exposure_modes=["auto", "manual"],
+            exposure_time_us=ControlRange(min=100, max=100000, step=100, unit="µs"),
+            focus_modes=["auto", "manual"],
+            focus_position=ControlRange(min=0, max=10, unit="dioptres"),
+        )
+        await self.service.capture_preset_photo(self.preset)
+        self.adapter.setup_photo_capture.assert_called_once_with(self.preset.camera)
+        self.assertEqual(self.service.camera_settings.controls, stream_controls)
+        self.start.assert_called_once_with(persist_settings=False)
+
+    async def test_unsupported_photo_controls_do_not_interrupt_stream(self):
+        self.preset.camera.controls = CameraControls(focus_mode="auto")
+        self.adapter.control_capabilities.return_value = CameraControlCapabilities()
+        with self.assertRaisesRegex(CameraDeviceError, "Focus"):
+            await self.service.capture_preset_photo(self.preset)
+        self.stop.assert_not_called()
+        self.adapter.setup_photo_capture.assert_not_called()
+
+    async def test_failed_stream_control_update_restores_previous_settings(self):
+        original = self.service.camera_settings.model_copy(deep=True)
+        requested = original.model_copy(deep=True)
+        requested.controls = CameraControls(focus_mode="auto")
+        self.adapter.control_capabilities.return_value = CameraControlCapabilities(
+            focus_modes=["auto"]
+        )
+        with patch.object(
+            self.service,
+            "restart_camera",
+            side_effect=[CameraDeviceError("Rejected"), None],
+        ) as restart:
+            with self.assertRaisesRegex(CameraDeviceError, "Rejected"):
+                await self.service.update_camera_settings(requested)
+        self.assertEqual(restart.call_count, 2)
+        self.assertEqual(self.service.camera_settings, original)
 
     async def test_rejects_wrong_resolution_and_restores(self):
         self.cap.read.return_value = (True, np.zeros((3, 4, 3), dtype=np.uint8))

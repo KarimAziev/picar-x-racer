@@ -98,6 +98,73 @@ class TestPicameraCaptureAdapter(unittest.TestCase):
         self.assertEqual(adapter.read()[1].shape, (6, 8, 3))
         adapter.release()
 
+    def test_manual_controls_are_set_before_start(self):
+        self.camera.camera_controls = {
+            "AeEnable": (False, True, True),
+            "ExposureTime": (100, 100000, 10000),
+            "AfMode": (0, 2, 0),
+            "LensPosition": (0.0, 10.0, 1.0),
+        }
+        settings = CameraSettings.model_validate(
+            {
+                "fps": 30,
+                "controls": {
+                    "exposure_mode": "manual",
+                    "exposure_time_us": 10000,
+                    "focus_mode": "manual",
+                    "focus_position": 2.5,
+                },
+            }
+        )
+        adapter = PicameraCaptureAdapter("/camera", settings, PicameraService())
+        self.camera.set_controls.assert_called_once_with(
+            {"AeEnable": False, "ExposureTime": 10000, "AfMode": 0, "LensPosition": 2.5}
+        )
+        calls = self.camera.mock_calls
+        self.assertLess(
+            calls.index(
+                call.set_controls(
+                    {
+                        "AeEnable": False,
+                        "ExposureTime": 10000,
+                        "AfMode": 0,
+                        "LensPosition": 2.5,
+                    }
+                )
+            ),
+            calls.index(call.start()),
+        )
+        adapter.release()
+
+    def test_unsupported_focus_closes_camera_without_starting(self):
+        self.camera.camera_controls = {"AeEnable": (False, True, True)}
+        settings = CameraSettings.model_validate({"controls": {"focus_mode": "auto"}})
+        with self.assertRaisesRegex(CameraDeviceError, "Focus"):
+            PicameraCaptureAdapter("/camera", settings, PicameraService())
+        self.camera.start.assert_not_called()
+        self.camera.close.assert_called_once()
+
+    def test_manual_still_exposure_allows_variable_frame_duration(self):
+        self.camera.create_still_configuration.return_value = {
+            "main": {"format": "RGB888"},
+            "controls": {"FrameDurationLimits": (100, 1000000)},
+        }
+        self.camera.camera_controls = {
+            "AeEnable": (False, True, True),
+            "ExposureTime": (100, 1000000, 10000),
+        }
+        settings = CameraSettings.model_validate(
+            {"controls": {"exposure_mode": "manual", "exposure_time_us": 50000}}
+        )
+        adapter = PicameraCaptureAdapter(
+            "/camera", settings, PicameraService(), still=True
+        )
+        self.assertIsNone(adapter.settings.fps)
+        self.camera.set_controls.assert_called_once_with(
+            {"AeEnable": False, "ExposureTime": 50000}
+        )
+        adapter.release()
+
     def test_release_cancellation_ends_read_without_device_error(self):
         adapter = self.create_adapter()
         adapter.release()

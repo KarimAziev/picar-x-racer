@@ -85,3 +85,39 @@ describe("photo presets", () => {
     expect(store.savingPhotoSettings).toBe(false);
   });
 });
+
+describe("camera exposure and focus settings", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it("preserves controls when changing modes on the same camera", async () => {
+    const camera = useCameraStore();
+    camera.data = { device: "picamera2:camera", controls: { focus_mode: "manual", focus_position: 2 } };
+    postMock.mockImplementation(async (_url: string, payload: object) => payload);
+    await camera.updateData({ device: "picamera2:camera", width: 1920, height: 1080 });
+    expect(postMock).toHaveBeenCalledWith("/api/camera/settings", {
+      device: "picamera2:camera", width: 1920, height: 1080,
+      controls: { focus_mode: "manual", focus_position: 2 },
+    });
+  });
+
+  it("does not carry device-specific controls to a different camera", async () => {
+    const camera = useCameraStore();
+    camera.data = { device: "picamera2:camera", controls: { focus_mode: "manual", focus_position: 2 } };
+    postMock.mockResolvedValue({ device: "avfoundation:camera" });
+    await camera.updateData({ device: "avfoundation:camera" });
+    expect(postMock).toHaveBeenCalledWith("/api/camera/settings", { device: "avfoundation:camera" });
+  });
+
+  it("fetches capabilities for the selected device", async () => {
+    const camera = useCameraStore();
+    const capabilities = { exposure_modes: ["auto"], focus_modes: [] };
+    getMock.mockResolvedValue(capabilities);
+    await camera.fetchControlCapabilities("v4l2:/dev/video0");
+    expect(getMock).toHaveBeenCalledWith("/api/camera/controls?device=v4l2%3A%2Fdev%2Fvideo0");
+    expect(camera.controlCapabilities["v4l2:/dev/video0"]).toEqual(capabilities);
+    expect(camera.controlsLoading["v4l2:/dev/video0"]).toBe(false);
+  });
+});

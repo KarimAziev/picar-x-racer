@@ -605,6 +605,45 @@ API clients can send `{"preset_id": "<saved-preset-id>"}` to
 stream image. Presets and the UI selection are stored in the `photo` section of
 `/api/settings`.
 
+### Exposure and focus
+
+**Settings → General → Camera → Exposure and focus** configures the streaming
+camera. Photo presets have independent controls in their editor. Choose **Camera
+default** to leave a control untouched, **Automatic** for continuous adjustment,
+or **Manual** to supply a value. Only modes reported by the selected camera are
+offered. Applying streaming controls restarts the camera and saves the settings;
+photo capture restores the stream's settings before returning.
+
+Exposure is entered in microseconds (1,000 µs = 1 ms), up to one second, and must
+fit the selected frame interval. Lower the capture FPS for longer exposures.
+Manual focus uses the camera's native scale: Picamera2 uses dioptres (0 for
+infinity, 1 for approximately 1 metre), AVFoundation uses a lens position from
+0 to 1, and V4L2 uses device-specific integer positions. The form displays the
+reported limits and increments. Allow settling time for automatic adjustment
+and lens movement before a photo.
+
+Picamera2, native V4L2, V4L2 through GStreamer, and OpenCV AVFoundation capture
+support these controls when the device exposes them. Fixed-focus cameras and
+some Mac cameras expose no adjustable controls. Libcamera through GStreamer
+requires selecting the Picamera2 backend for exposure/focus control; the macOS
+FFmpeg fallback does not support overrides. Unsupported modes and invalid values
+report errors rather than silently ignoring a preset.
+
+`GET /api/camera/controls?device=<device>` reports available modes, units, and
+ranges. Camera settings and `photo.presets[].camera` accept a `controls` object:
+
+```json
+{
+  "exposure_mode": "manual",
+  "exposure_time_us": 10000,
+  "focus_mode": "manual",
+  "focus_position": 2.0
+}
+```
+
+This example uses a Picamera2 focus scale. A manual mode requires its value;
+automatic and default modes require that value to be omitted or `null`.
+
 ## Object Detection
 
 ![Object detection](./demo/demo-vision-custom.gif)

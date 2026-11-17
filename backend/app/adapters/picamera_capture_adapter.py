@@ -8,6 +8,10 @@ from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
+from app.adapters.picamera_camera_controls import (
+    picamera_control_capabilities,
+    picamera_control_values,
+)
 from app.services.camera.picamera2_service import (
     PICAMERA2_TO_PIXEL_FORMATS_MAP,
     PIXEL_FORMATS_TO_PICAMERA2_MAP,
@@ -174,17 +178,23 @@ class PicameraCaptureAdapter(VideoCaptureABC):
         self.picam2.align_configuration(config)
 
         self.picam2.configure(config)
+        self.control_capabilities = picamera_control_capabilities(
+            self.picam2.camera_controls
+        )
+        self.control_capabilities.validate_controls(camera_settings.controls)
+        if camera_settings.controls.requested:
+            self.picam2.set_controls(picamera_control_values(camera_settings.controls))
         logger.info("Picamera2 config: %s", config)
 
         frame_limits = config.get("controls", {}).get("FrameDurationLimits")
         logger.info("frame_limits=%s", frame_limits)
-        if frame_limits and frame_limits[0]:
+        if frame_limits and frame_limits[0] and frame_limits[0] == frame_limits[1]:
             min_duration: int = frame_limits[0]
             fps = round(self.frame_interval_to_fps(min_duration))
             logger.info("Configured FPS: %.2f", fps)
         else:
             fps = None
-            logger.warning("FrameDurationLimits not found in config")
+            logger.info("Camera frame rate is variable")
 
         self.picam2.start()
         frame = self._capture_frame()

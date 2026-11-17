@@ -19,6 +19,7 @@ from app.exceptions.camera import (
     CameraShutdownInProgressError,
 )
 from app.schemas.camera import CameraSettings
+from app.schemas.camera_controls import CameraControlCapabilities
 from app.schemas.photo import PhotoPreset
 from app.schemas.stream import StreamSettings
 from app.services.media.video_converter import VideoConverter
@@ -149,7 +150,22 @@ class CameraService:
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """Apply camera settings after any in-progress still capture is restored."""
         async with self._settings_operation_lock:
+            if settings.controls.requested and settings.device:
+                capabilities = await asyncio.to_thread(
+                    self.get_control_capabilities, settings.device
+                )
+                capabilities.validate_controls(settings.controls)
             return await self._update_camera_settings(settings)
+
+    def get_control_capabilities(self, device: str) -> CameraControlCapabilities:
+        from app.adapters.picamera_capture_adapter import PicameraCaptureAdapter
+
+        with self._camera_operation_lock:
+            if self.camera_settings.device == device and isinstance(
+                self.cap, PicameraCaptureAdapter
+            ):
+                return self.cap.control_capabilities.model_copy(deep=True)
+            return self.video_device_adapter.control_capabilities(device)
 
     async def _update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
@@ -179,8 +195,17 @@ class CameraService:
         if not isinstance(settings, CameraSettings):
             settings = CameraSettings(**settings)
 
+        previous = self.camera_settings.model_copy(deep=True)
+        was_running = self.camera_run
         self.camera_settings = settings
-        await asyncio.to_thread(self.restart_camera)
+        try:
+            await asyncio.to_thread(self.restart_camera)
+        except (CameraDeviceError, CameraNotFoundError):
+            self.camera_settings = previous
+            if was_running and not self.shutting_down:
+                await asyncio.to_thread(self.restart_camera)
+            raise
+        await asyncio.to_thread(self._persist_camera_settings, self.camera_settings)
         return self.camera_settings
 
     async def update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
@@ -645,6 +670,10 @@ class CameraService:
                 )
 
             self.video_device_adapter.validate_photo_settings(preset.camera)
+            if preset.camera.controls.requested and preset.camera.device:
+                self.get_control_capabilities(preset.camera.device).validate_controls(
+                    preset.camera.controls
+                )
             if self.shutting_down:
                 raise CameraShutdownInProgressError("The camera is shutting down.")
             saved_settings = self.camera_settings.model_copy(deep=True)

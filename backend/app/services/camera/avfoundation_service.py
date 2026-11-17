@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Any, List, Optional, Sequence, Tuple
+from pydantic import ValidationError
 
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
@@ -12,6 +13,7 @@ from app.schemas.camera import (
     DiscreteDevice,
 )
 from app.util.os_checks import is_macos
+from app.adapters.avfoundation_camera_controls import AVFoundationCameraControls
 
 _log = Logger(name=__name__)
 
@@ -25,6 +27,15 @@ _DISCOVERY_DEVICE_TYPE_NAMES = (
 
 
 class AVFoundationService(VideoDeviceABC):
+    def camera_controls(self, device: str) -> AVFoundationCameraControls:
+        frameworks = self._load_frameworks()
+        unique_id = GStreamerParser.strip_api_prefix(device).lstrip("/")
+        if frameworks is not None:
+            for item in self._discover_devices():
+                if str(item.uniqueID()) == unique_id:
+                    return AVFoundationCameraControls(item, frameworks)
+        raise CameraNotFoundError("AVFoundation camera device is not available")
+
     @staticmethod
     def _round_fps(value: float) -> float:
         return round(float(value), 3)
@@ -405,4 +416,9 @@ class AVFoundationService(VideoDeviceABC):
             updated_settings["height"] = camera_settings.height or 480
             updated_settings["fps"] = camera_settings.fps or 30.0
 
-        return str(av_device.localizedName()), CameraSettings(**updated_settings)
+        try:
+            return str(av_device.localizedName()), CameraSettings(**updated_settings)
+        except ValidationError as error:
+            raise CameraDeviceError(
+                f"Camera mode cannot use these controls: {error}"
+            ) from error

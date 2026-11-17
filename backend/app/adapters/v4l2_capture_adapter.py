@@ -1,12 +1,14 @@
 from typing import TYPE_CHECKING, Tuple
 
 import cv2
+from pydantic import ValidationError
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError
 from app.schemas.camera import CameraSettings
 from app.util.device import release_video_capture_safe
+from app.adapters.v4l2_camera_controls import V4L2CameraControls
 
 logger = Logger(name=__name__)
 
@@ -21,7 +23,17 @@ class V4l2CaptureAdapter(VideoCaptureABC):
     ) -> None:
         super().__init__(service=service)
         self.service = service
+        self._controls = None
         self._cap, self._settings = self._try_device_props(device, camera_settings)
+        try:
+            if camera_settings.controls.requested:
+                self._controls = V4L2CameraControls(
+                    GStreamerParser.strip_api_prefix(device)
+                )
+                self._controls.apply(camera_settings.controls)
+        except Exception:
+            self.release()
+            raise
 
     @property
     def settings(self) -> CameraSettings:
@@ -32,7 +44,11 @@ class V4l2CaptureAdapter(VideoCaptureABC):
         return self._cap.read()
 
     def release(self) -> None:
-        release_video_capture_safe(self._cap)
+        try:
+            if self._controls is not None:
+                self._controls.close()
+        finally:
+            release_video_capture_safe(self._cap)
 
     def _try_device_props(
         self, device: str, camera_settings: CameraSettings
@@ -82,4 +98,10 @@ class V4l2CaptureAdapter(VideoCaptureABC):
                 else None
             ),
         }
-        return cap, CameraSettings(**updated_settings)
+        try:
+            return cap, CameraSettings(**updated_settings)
+        except ValidationError as error:
+            release_video_capture_safe(cap)
+            raise CameraDeviceError(
+                f"Camera mode cannot use these controls: {error}"
+            ) from error

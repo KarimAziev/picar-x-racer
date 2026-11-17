@@ -5,6 +5,8 @@ from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError, CameraFrameTimeout
 from app.schemas.camera import CameraSettings
+from app.core.gstreamer_parser import GStreamerParser
+from app.adapters.v4l2_camera_controls import V4L2CameraControls
 
 logger = Logger(name=__name__)
 
@@ -24,6 +26,12 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
         created or appsink is missing, a CameraDeviceError is raised.
         """
         super().__init__(service=service)
+        self._controls = None
+        api, device_path = GStreamerParser.parse_device_path(device)
+        if camera_settings.controls.requested and api not in (None, "v4l2"):
+            raise CameraDeviceError(
+                "Exposure and focus controls require the Picamera2 backend for libcamera cameras."
+            )
         try:
             import gi
 
@@ -70,6 +78,14 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
             raise CameraDeviceError(
                 "Unable to set the GStreamer pipeline to PLAYING state."
             )
+
+        try:
+            if camera_settings.controls.requested:
+                self._controls = V4L2CameraControls(device_path)
+                self._controls.apply(camera_settings.controls)
+        except Exception:
+            self.release()
+            raise
 
         self._settings = CameraSettings(
             **{
@@ -152,8 +168,12 @@ class GStreamerCaptureAdapter(VideoCaptureABC):
         """
         Stops the pipeline and releases its resources.
         """
-        if self.pipeline and self.Gst is not None:
-            self.pipeline.set_state(self.Gst.State.NULL)
+        try:
+            if self._controls is not None:
+                self._controls.close()
+        finally:
+            if self.pipeline and self.Gst is not None:
+                self.pipeline.set_state(self.Gst.State.NULL)
 
     @property
     def settings(self) -> CameraSettings:

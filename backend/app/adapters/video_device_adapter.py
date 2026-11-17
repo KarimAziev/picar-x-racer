@@ -14,6 +14,10 @@ from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
 from app.schemas.camera import CameraSettings, DeviceType, DeviceStepwise
 from app.schemas.photo import PhotoCameraSettings
 from app.util.os_checks import is_macos, is_raspberry_pi
+from app.schemas.camera_controls import CameraControlCapabilities
+from app.adapters.v4l2_camera_controls import V4L2CameraControls
+from app.adapters.picamera_camera_controls import picamera_control_capabilities
+from app.services.camera.picamera2_service import picamera2_lock
 
 if TYPE_CHECKING:
     from app.services.camera.avfoundation_service import AVFoundationService
@@ -139,6 +143,44 @@ class VideoDeviceAdapter:
         self.devices = devices + results + picamera_devices
 
         return self.devices
+
+    def control_capabilities(self, device: str) -> CameraControlCapabilities:
+        api, path = GStreamerParser.parse_device_path(device)
+        if api == "avfoundation" or (api is None and is_macos()):
+            return self.avfoundation_service.camera_controls(device).capabilities
+        if api == "v4l2" or path.startswith("/dev/video"):
+            controls = V4L2CameraControls(path)
+            try:
+                return controls.capabilities
+            finally:
+                controls.close()
+        if api == "picamera2":
+            from picamera2 import Picamera2  # type: ignore
+
+            with picamera2_lock:
+                index = next(
+                    (
+                        item["Num"]
+                        for item in Picamera2.global_camera_info()
+                        if item["Id"] == path
+                    ),
+                    None,
+                )
+                if index is None:
+                    raise CameraNotFoundError("Picamera2 camera is not available")
+                try:
+                    camera = Picamera2(index)
+                except Exception as error:
+                    raise CameraDeviceError(
+                        f"Cannot inspect Picamera2 controls: {error}"
+                    ) from error
+                try:
+                    return picamera_control_capabilities(camera.camera_controls)
+                finally:
+                    camera.close()
+        return CameraControlCapabilities(
+            message="Select the Picamera2 backend to control exposure and focus on a libcamera camera."
+        )
 
     def setup_video_capture(
         self, camera_settings: CameraSettings

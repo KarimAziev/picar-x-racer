@@ -12,6 +12,9 @@
     <Fieldset legend="Stream" toggleable>
       <VideoSettings />
     </Fieldset>
+    <Fieldset legend="Exposure and focus" toggleable>
+      <StreamCameraControls />
+    </Fieldset>
     <Fieldset legend="Photos" toggleable>
       <PhotoPresets />
     </Fieldset>
@@ -37,6 +40,7 @@ import ErrorComponent from "@/ui/ErrorComponent.vue";
 import VideoDeviceSelect from "@/features/settings/components/camera/VideoDeviceSelect.vue";
 import VideoSettings from "@/features/settings/components/camera/VideoSettings.vue";
 import PhotoPresets from "@/features/settings/components/camera/PhotoPresets.vue";
+import StreamCameraControls from "@/features/settings/components/camera/StreamCameraControls.vue";
 
 const DetectionTheme = defineAsyncComponent({
   loader: () =>

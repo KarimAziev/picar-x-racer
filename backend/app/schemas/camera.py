@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Annotated, Self
+from app.schemas.camera_controls import CameraControls
 
 
 class PhotoResponse(BaseModel):
@@ -24,6 +25,8 @@ class CameraSettings(BaseModel):
     --------------
     - Ensures both `width` and `height` must either be specified together or not at all.
     """
+
+    controls: CameraControls = Field(default_factory=CameraControls)
 
     device: Annotated[
         Optional[str],
@@ -130,6 +133,11 @@ class CameraSettings(BaseModel):
             width is None and height is not None
         ):
             raise ValueError("Both 'width' and 'height' must be specified together.")
+        exposure = values.controls.exposure_time_us
+        if exposure is not None and values.fps and exposure > 1_000_000 / values.fps:
+            raise ValueError(
+                "Exposure time must fit within the requested frame interval; reduce FPS or exposure."
+            )
         return values
 
 

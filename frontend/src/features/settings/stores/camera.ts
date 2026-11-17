@@ -12,6 +12,7 @@ import {
 } from "@/features/settings/interface";
 import { retrieveError } from "@/util/error";
 import { appApi } from "@/api";
+import type { CameraControlCapabilities } from "@/features/settings/camera-controls";
 
 export const dimensions = [
   [640, 480],
@@ -128,6 +129,9 @@ export interface PhotoCaptureResponse {
 }
 
 export interface State {
+  controlCapabilities: Record<string, CameraControlCapabilities>;
+  controlErrors: Record<string, string>;
+  controlsLoading: Record<string, boolean>;
   capturing: boolean;
   data: CameraSettings;
   loading: boolean;
@@ -138,6 +142,9 @@ export interface State {
 }
 
 export const defaultState: State = {
+  controlCapabilities: {},
+  controlErrors: {},
+  controlsLoading: {},
   capturing: false,
   loading: false,
   data: {},
@@ -148,13 +155,22 @@ export const defaultState: State = {
 };
 
 export const useStore = defineStore("camera", {
-  state: () => ({ ...defaultState }),
+  state: (): State => ({
+    ...defaultState,
+    controlCapabilities: {},
+    controlErrors: {},
+    controlsLoading: {},
+  }),
   getters: {
     fetchError: (state) => state.settingsError || state.devicesError,
   },
   actions: {
     async updateData(payload: CameraSettings) {
       const messager = useMessagerStore();
+
+      if (payload.device && payload.device === this.data.device && !payload.controls && this.data.controls) {
+        payload = { ...payload, controls: { ...this.data.controls } };
+      }
 
       try {
         this.loading = true;
@@ -183,6 +199,22 @@ export const useStore = defineStore("camera", {
         this.fetchData(notifyErrors),
       ]);
       return results.every(Boolean);
+    },
+
+    async fetchControlCapabilities(device: string) {
+      if (this.controlsLoading[device]) return;
+      this.controlsLoading[device] = true;
+      delete this.controlErrors[device];
+      try {
+        this.controlCapabilities[device] = await appApi.get<CameraControlCapabilities>(
+          `/api/camera/controls?device=${encodeURIComponent(device)}`,
+        );
+      } catch (error) {
+        delete this.controlCapabilities[device];
+        this.controlErrors[device] = retrieveError(error).text;
+      } finally {
+        this.controlsLoading[device] = false;
+      }
     },
 
     async fetchData(notifyErrors = true) {

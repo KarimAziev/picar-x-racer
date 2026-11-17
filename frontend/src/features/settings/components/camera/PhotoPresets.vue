@@ -121,6 +121,13 @@
           />
         </div>
       </div>
+      <CameraControls
+        id="photo-controls"
+        v-model="draft.camera.controls"
+        :device="draft.camera.device"
+        :fps="draft.camera.fps"
+        :disabled="busy"
+      />
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="flex flex-col gap-1 min-w-0">
           <label for="photo-format">File format</label>
@@ -226,6 +233,8 @@ import type { PhotoPreset } from "@/features/settings/photo";
 import { isStepwiseDevice } from "@/features/settings/components/camera/util";
 import { cloneDeep } from "@/util/obj";
 import { isNumber } from "@/util/guards";
+import CameraControls from "@/features/settings/components/camera/CameraControls.vue";
+import { validCameraControls } from "@/features/settings/camera-controls";
 
 const cameraStore = useCameraStore();
 const settingsStore = useSettingsStore();
@@ -286,7 +295,8 @@ const validDraft = computed(() => {
     isNumber(item.camera.height) &&
     item.camera.height > 0 &&
     isNumber(item.quality) &&
-    isNumber(item.settle_seconds)
+    isNumber(item.settle_seconds) &&
+    validCameraControls(item.camera.controls ?? {}, cameraStore.controlCapabilities[item.camera.device], item.camera.fps)
   );
 });
 
@@ -334,6 +344,7 @@ const selectMode = (device: Device) => {
   if (!draft.value) return;
   draft.value.camera = {
     device: device.device,
+    controls: draft.value.camera.controls,
     width: isStepwiseDevice(device) ? device.max_width : device.width,
     height: isStepwiseDevice(device) ? device.max_height : device.height,
     fps: isStepwiseDevice(device) ? null : device.fps,

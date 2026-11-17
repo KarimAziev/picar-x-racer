@@ -1,6 +1,7 @@
 import { ControllerActionName } from "@/features/controller/store";
 import type { DetectionSettings } from "@/features/detection";
 import type { PhotoSettings } from "@/features/settings/photo";
+import type { CameraControls } from "@/features/settings/camera-controls";
 import type { StreamSettings } from "@/features/settings/stores/stream";
 import { MusicMode } from "@/features/music";
 import type {
@@ -151,6 +152,7 @@ export interface DeviceNode {
 }
 
 export interface CameraSettings {
+  controls?: CameraControls;
   /**
    * The ID or name of the camera device.
    */

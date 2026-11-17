@@ -300,7 +300,10 @@ class TestCameraServiceAsync(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(ret_settings.width, 800)
             self.assertEqual(ret_settings.height, 600)
             mock_restart.assert_called_once()
-            self.assertEqual(self.settings_service.saved_settings, [])
+            self.assertEqual(
+                self.settings_service.saved_settings,
+                [{"camera": new_settings.model_dump()}],
+            )
 
     async def test_update_stream_settings_restart(self):
         with patch.object(self.camera_service, "restart_camera") as mock_restart:
