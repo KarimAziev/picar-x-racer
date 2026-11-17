@@ -11,7 +11,8 @@ from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import CameraDeviceError, CameraNotFoundError
-from app.schemas.camera import CameraSettings, DeviceType
+from app.schemas.camera import CameraSettings, DeviceType, DeviceStepwise
+from app.schemas.photo import PhotoCameraSettings
 from app.util.os_checks import is_macos, is_raspberry_pi
 
 if TYPE_CHECKING:
@@ -176,3 +177,56 @@ class VideoDeviceAdapter:
                 raise CameraNotFoundError("Couldn't find video device")
             else:
                 return result
+
+    def setup_photo_capture(
+        self, settings: PhotoCameraSettings
+    ) -> Tuple[VideoCaptureABC, CameraSettings]:
+        """Open a camera for still acquisition using its native still configuration."""
+        api, device_path = GStreamerParser.parse_device_path(settings.device or "")
+        if api == "picamera2":
+            cap = PicameraCaptureAdapter(
+                device_path, settings, self.picam_service, still=True
+            )
+            return cap, cap.settings
+        return self.setup_video_capture(settings)
+
+    def validate_photo_settings(self, settings: PhotoCameraSettings) -> None:
+        """Reject unavailable devices and modes before interrupting a stream."""
+        if settings.width is None or settings.height is None:
+            raise CameraDeviceError("Photo presets require explicit dimensions.")
+        devices = [
+            item for item in self.list_devices() if item.device == settings.device
+        ]
+        if not devices:
+            raise CameraNotFoundError("The photo preset camera is not available.")
+        for item in devices:
+            if settings.pixel_format and item.pixel_format != settings.pixel_format:
+                continue
+            if settings.media_type and item.media_type != settings.media_type:
+                continue
+            if isinstance(item, DeviceStepwise):
+                dimensions_match = (
+                    item.min_width <= settings.width <= item.max_width
+                    and item.min_height <= settings.height <= item.max_height
+                    and (settings.width - item.min_width) % max(1, item.width_step) == 0
+                    and (settings.height - item.min_height) % max(1, item.height_step)
+                    == 0
+                )
+                fps_matches = (
+                    settings.fps is None or item.min_fps <= settings.fps <= item.max_fps
+                )
+            else:
+                dimensions_match = (item.width, item.height) == (
+                    settings.width,
+                    settings.height,
+                )
+                fps_matches = (
+                    settings.fps is None
+                    or item.fps is None
+                    or abs(item.fps - settings.fps) < 0.01
+                )
+            if dimensions_match and fps_matches:
+                return
+        raise CameraDeviceError(
+            "The photo preset resolution, frame rate, or pixel format is not supported by this camera."
+        )

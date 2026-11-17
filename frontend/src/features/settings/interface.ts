@@ -1,5 +1,6 @@
 import { ControllerActionName } from "@/features/controller/store";
 import type { DetectionSettings } from "@/features/detection";
+import type { PhotoSettings } from "@/features/settings/photo";
 import type { StreamSettings } from "@/features/settings/stores/stream";
 import { MusicMode } from "@/features/music";
 import type {
@@ -16,6 +17,7 @@ export interface ValueLabelOption<T = string> {
 }
 
 export interface Settings {
+  photo: PhotoSettings;
   general: General;
   pmic: PmicSettings;
   robot: Robot;

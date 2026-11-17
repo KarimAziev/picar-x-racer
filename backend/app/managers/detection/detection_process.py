@@ -15,6 +15,8 @@ from app.types.detection import (
     DetectionProcessOutput,
     DetectionQueueData,
     DetectionReadyMessage,
+    PhotoDetectionRequest,
+    PhotoDetectionResponse,
     SegmentationDetail,
 )
 from app.util.queue_helpers import put_to_queue
@@ -26,6 +28,23 @@ if TYPE_CHECKING:
 _log = Logger(name=__name__)
 
 verbose_enabled = sys.stdout.isatty()
+
+
+def publish_photo_result(
+    result_queue: "mp.Queue[PhotoDetectionResponse]",
+    response: PhotoDetectionResponse,
+    stop_event: "Event",
+) -> None:
+    """Deliver a photo result without letting an abandoned request stall inference."""
+    while not stop_event.is_set():
+        try:
+            result_queue.put(response, timeout=0.05)
+            return
+        except queue.Full:
+            try:
+                result_queue.get_nowait()
+            except queue.Empty:
+                pass
 
 
 def model_labels(model: object) -> List[str]:
@@ -49,6 +68,8 @@ def detection_process_func(
     detection_queue: "mp.Queue[DetectionQueueData]",
     control_queue: "mp.Queue[DetectionControlMessage]",
     out_queue: "mp.Queue[Union[DetectionReadyMessage, DetectionLoadErrorMessage, DetectionErrorMessage]]",
+    photo_frame_queue: "mp.Queue[PhotoDetectionRequest]",
+    photo_result_queue: "mp.Queue[PhotoDetectionResponse]",
 ) -> None:
     """
     A function that runs in a separate multiprocessing process to perform object detection on input frames.
@@ -60,6 +81,8 @@ def detection_process_func(
         detection_queue: A queue where object detection results are placed.
         control_queue: A queue for control commands (e.g., updating confidence thresholds or detection labels).
         out_queue: A queue for sending the detection process's success or error statuses.
+        photo_frame_queue: Still-image requests, independent of replaceable live frames.
+        photo_result_queue: Individually addressed still-image results or errors.
 
     Behavior:
         - Loads the specified YOLO model and initializes required settings.
@@ -123,8 +146,17 @@ def detection_process_func(
                 except queue.Empty:
                     pass
 
+                photo_request: Optional[PhotoDetectionRequest] = None
                 try:
-                    frame_data: DetectionFrameData = frame_queue.get(timeout=1)
+                    photo_request = photo_frame_queue.get_nowait()
+                except queue.Empty:
+                    pass
+                try:
+                    frame_data: DetectionFrameData = (
+                        photo_request["frame_data"]
+                        if photo_request is not None
+                        else frame_queue.get(timeout=0.1)
+                    )
                     frame = frame_data["frame"]
                     frame_timestamp = frame_data["timestamp"]
                 except queue.Empty:
@@ -137,9 +169,21 @@ def detection_process_func(
                     detection_output: DetectionProcessOutput = perform_detection(
                         frame=frame,
                         yolo_model=yolo_model,
-                        confidence_threshold=confidence_threshold,
-                        iou_threshold=iou_threshold,
-                        max_detections=max_detections,
+                        confidence_threshold=(
+                            photo_request["confidence"]
+                            if photo_request
+                            else confidence_threshold
+                        ),
+                        iou_threshold=(
+                            photo_request["iou_threshold"]
+                            if photo_request
+                            else iou_threshold
+                        ),
+                        max_detections=(
+                            photo_request["max_detections"]
+                            if photo_request
+                            else max_detections
+                        ),
                         verbose=verbose,
                         original_height=frame_data["original_height"],
                         original_width=frame_data["original_width"],
@@ -148,14 +192,41 @@ def detection_process_func(
                         pad_left=frame_data["pad_left"],
                         pad_top=frame_data["pad_top"],
                         should_resize=frame_data["should_resize"],
-                        labels_to_detect=labels,
-                        segmentation_detail=segmentation_detail,
+                        labels_to_detect=(
+                            photo_request["labels"] if photo_request else labels
+                        ),
+                        segmentation_detail=(
+                            photo_request["segmentation_detail"]
+                            if photo_request
+                            else segmentation_detail
+                        ),
                     )
                 except DetectionDimensionMismatch as e:
+                    if photo_request is not None:
+                        publish_photo_result(
+                            photo_result_queue,
+                            {
+                                "request_id": photo_request["request_id"],
+                                "error": str(e),
+                            },
+                            stop_event,
+                        )
+                        continue
                     err: DetectionErrorMessage = {"error": str(e)}
                     put_to_queue(out_queue, err, reraise=True)
                     break
                 except Exception as e:
+                    if photo_request is not None:
+                        _log.error("Photo inference failed", exc_info=True)
+                        publish_photo_result(
+                            photo_result_queue,
+                            {
+                                "request_id": photo_request["request_id"],
+                                "error": str(e),
+                            },
+                            stop_event,
+                        )
+                        continue
                     err: DetectionErrorMessage = {"error": str(e)}
                     _log.error(
                         "Unhandled exception in detection process", exc_info=True
@@ -174,9 +245,19 @@ def detection_process_func(
                     )
                     prev_time = time.time()
 
-                put_to_queue(
-                    detection_queue, detection_result_with_timestamp, reraise=True
-                )
+                if photo_request is not None:
+                    publish_photo_result(
+                        photo_result_queue,
+                        {
+                            "request_id": photo_request["request_id"],
+                            "result": detection_result_with_timestamp,
+                        },
+                        stop_event,
+                    )
+                else:
+                    put_to_queue(
+                        detection_queue, detection_result_with_timestamp, reraise=True
+                    )
         except (
             ConnectionError,
             ConnectionRefusedError,

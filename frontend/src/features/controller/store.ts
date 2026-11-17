@@ -644,7 +644,9 @@ export const useControllerStore = defineStore("controller", {
       const imageStore = useImageStore();
       const cameraStore = useCameraStore();
       const settingsStore = useSettingsStore();
-      const file = await cameraStore.capturePhoto();
+      const file = await cameraStore.capturePhoto(
+        settingsStore.data.photo?.selected_preset_id,
+      );
 
       if (file) {
         takePhotoEffect();

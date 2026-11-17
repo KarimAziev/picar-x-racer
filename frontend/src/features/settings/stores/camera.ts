@@ -128,6 +128,7 @@ export interface PhotoCaptureResponse {
 }
 
 export interface State {
+  capturing: boolean;
   data: CameraSettings;
   loading: boolean;
   devices: Device[];
@@ -137,6 +138,7 @@ export interface State {
 }
 
 export const defaultState: State = {
+  capturing: false,
   loading: false,
   data: {},
   devices: [],
@@ -281,16 +283,24 @@ export const useStore = defineStore("camera", {
         width: video_feed_width,
       });
     },
-    async capturePhoto() {
+    async capturePhoto(presetId?: string | null) {
+      if (this.capturing) return;
       const messager = useMessagerStore();
+      this.capturing = true;
       try {
-        const data = await appApi.post<PhotoCaptureResponse>(
-          "/api/camera/capture-photo",
-        );
+        const data = presetId
+          ? await appApi.post<PhotoCaptureResponse>(
+              "/api/camera/capture-photo",
+              { preset_id: presetId },
+              { timeout: 60000 },
+            )
+          : await appApi.post<PhotoCaptureResponse>("/api/camera/capture-photo");
 
         return data.file;
       } catch (error) {
         messager.handleError(error, "Error capturing photo");
+      } finally {
+        this.capturing = false;
       }
     },
   },

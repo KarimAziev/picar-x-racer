@@ -577,6 +577,34 @@ Set up predefined language packs and save custom lines of text for real-time con
 
 Manage and download photos taken with the Picar-X into your local environment.
 
+In **Settings → General → Camera → Photos**, choose **Current stream snapshot**
+to save the current preview, or create a photo preset for a specific camera.
+Presets store capture dimensions, frame rate, pixel format, JPEG or PNG output,
+JPEG quality, rotation, image effect, and an exposure/focus settling interval.
+Selecting an available camera mode fills in its capture settings. Saving a preset
+selects it for the photo button and the photo keyboard shortcut.
+
+Preset capture pauses the preview, opens the selected camera in the photo mode,
+captures a fresh image, and restores the streaming camera before encoding the
+file. Picamera2 uses its native still-image configuration. The preview remains
+connected during the pause; switching time depends on the camera and driver.
+Temporary capture settings do not overwrite the saved streaming settings.
+Unavailable modes and unexpected image dimensions produce an error.
+
+Stop video recording before using a photo preset. Current stream snapshots are
+available during recording and respect the media detection-overlay setting.
+When detection and media overlays are enabled, preset photos run inference on
+the captured image using the loaded model and current detection settings. Boxes,
+keypoints, segmentation masks, and depth overlays are mapped to the photo
+resolution and applied before rotation. Photo results are kept separate from live
+detections. The stream resumes before photo inference and encoding; an inference
+failure or timeout reports an error instead of saving a photo without its overlay.
+
+API clients can send `{"preset_id": "<saved-preset-id>"}` to
+`POST /api/camera/capture-photo`. A request without a preset captures the current
+stream image. Presets and the UI selection are stored in the `photo` section of
+`/api/settings`.
+
 ## Object Detection
 
 ![Object detection](./demo/demo-vision-custom.gif)

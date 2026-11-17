@@ -90,6 +90,8 @@ class TestDetectionServiceProfiles(unittest.IsolatedAsyncioTestCase):
                     service.detection_queue,
                     service.control_queue,
                     service.out_queue,
+                    service.photo_frame_queue,
+                    service.photo_result_queue,
                 ):
                     process_queue.close()
                     process_queue.cancel_join_thread()

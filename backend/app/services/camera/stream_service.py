@@ -98,6 +98,9 @@ class StreamService:
             and not self._check_app_cancelled(websocket)
         ):
             try:
+                if self.camera_service.photo_capturing:
+                    await asyncio.sleep(0.05)
+                    continue
                 if (
                     self.camera_service.camera_device_error
                     and not self.camera_service.camera_run

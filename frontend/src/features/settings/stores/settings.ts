@@ -29,7 +29,10 @@ import { useStore as useMusicStore, MusicMode } from "@/features/music";
 import type { Settings, ToggleableKey } from "@/features/settings/interface";
 import { appApi } from "@/api";
 
+import type { PhotoSettings } from "@/features/settings/photo";
+
 export interface State {
+  savingPhotoSettings: boolean;
   loading?: boolean;
   loaded?: boolean;
   saving?: boolean;
@@ -43,7 +46,9 @@ export interface State {
 }
 
 export const defaultState: State = {
+  savingPhotoSettings: false,
   data: {
+    photo: { presets: [], selected_preset_id: null },
     pmic: {
       enabled: true,
       selected_channels: ["3V3_SYS_V", "3V3_SYS_A"],
@@ -126,6 +131,20 @@ export const useStore = defineStore("settings", {
     },
   },
   actions: {
+    async savePhotoSettings(photo: PhotoSettings) {
+      this.savingPhotoSettings = true;
+      try {
+        const settings = await appApi.post<Settings>("/api/settings", { photo });
+        this.data.photo = settings.photo;
+        return true;
+      } catch (error) {
+        useMessagerStore().handleError(error, "Error saving photo presets");
+        return false;
+      } finally {
+        this.savingPhotoSettings = false;
+      }
+    },
+
     async fetchSettingsInitial() {
       const errText = "Couldn't load settings, retrying...";
       const messager = useMessagerStore();

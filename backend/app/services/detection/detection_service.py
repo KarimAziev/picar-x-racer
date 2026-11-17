@@ -4,6 +4,9 @@ import queue
 import re
 import time
 from typing import TYPE_CHECKING, Optional, Union
+from uuid import uuid4
+
+import numpy as np
 
 from app.core.logger import Logger
 from app.exceptions.detection import (
@@ -21,9 +24,12 @@ from app.types.detection import (
     DetectionQueueData,
     DetectionReadyMessage,
     DetectionResultData,
+    PhotoDetectionRequest,
+    PhotoDetectionResponse,
 )
 from app.util.file_util import resolve_absolute_path
 from app.util.queue_helpers import clear_queue
+from app.util.video_utils import letterbox
 
 if TYPE_CHECKING:
     from app.services.connection_service import ConnectionService
@@ -40,6 +46,8 @@ class DetectionService:
     starting, stopping, and updating settings for object detection using multiprocessing
     and asynchronous tasks.
     """
+
+    PHOTO_TIMEOUT_SECONDS = 30.0
 
     def __init__(
         self,
@@ -73,6 +81,8 @@ class DetectionService:
         self.frame_queue: mp.Queue[DetectionFrameData] = mp.Queue(maxsize=1)
         self.detection_queue: mp.Queue[DetectionQueueData] = mp.Queue(maxsize=1)
         self.control_queue: mp.Queue[DetectionControlMessage] = mp.Queue(maxsize=1)
+        self.photo_frame_queue: mp.Queue[PhotoDetectionRequest] = mp.Queue(maxsize=1)
+        self.photo_result_queue: mp.Queue[PhotoDetectionResponse] = mp.Queue(maxsize=1)
         self.out_queue: mp.Queue[
             Union[
                 DetectionReadyMessage, DetectionLoadErrorMessage, DetectionErrorMessage
@@ -227,6 +237,8 @@ class DetectionService:
                             self.detection_queue,
                             self.control_queue,
                             self.out_queue,
+                            self.photo_frame_queue,
+                            self.photo_result_queue,
                         ),
                     )
                     self.detection_process.start()
@@ -478,6 +490,8 @@ class DetectionService:
                 self.control_queue,
                 self.detection_queue,
                 self.out_queue,
+                self.photo_frame_queue,
+                self.photo_result_queue,
             ]:
                 clear_queue(queue_item, reraise=True)
         except (
@@ -503,6 +517,8 @@ class DetectionService:
             "detection_queue",
             "out_queue",
             "frame_queue",
+            "photo_frame_queue",
+            "photo_result_queue",
         ]:
             try:
                 queue_item: Optional["mp.Queue"] = getattr(self, name, None)
@@ -528,6 +544,89 @@ class DetectionService:
                     "Exception handled: %s",
                     type(e).__name__,
                 )
+
+    async def detect_photo(
+        self, frame: np.ndarray
+    ) -> tuple[DetectionSettings, DetectionQueueData]:
+        """Infer a still image with the loaded model without publishing live detections."""
+        async with self.lock:
+            process = self.detection_process
+            if (
+                self.shutting_down
+                or self.loading
+                or not self.detection_settings.active
+                or process is None
+                or not process.is_alive()
+            ):
+                raise DetectionProcessError(
+                    "Photo detection requires a ready, active detection model."
+                )
+            settings = self.detection_settings.model_copy(deep=True)
+            (
+                resized_frame,
+                original_width,
+                original_height,
+                resized_width,
+                resized_height,
+                pad_left,
+                pad_top,
+            ) = await asyncio.to_thread(
+                letterbox, frame, settings.img_size, settings.img_size
+            )
+            frame_data: DetectionFrameData = {
+                "frame": resized_frame,
+                "timestamp": time.time(),
+                "original_width": original_width,
+                "original_height": original_height,
+                "resized_width": resized_width,
+                "resized_height": resized_height,
+                "pad_left": pad_left,
+                "pad_top": pad_top,
+                "should_resize": False,
+            }
+            request_id = uuid4().hex
+            request: PhotoDetectionRequest = {
+                "request_id": request_id,
+                "frame_data": frame_data,
+                "confidence": settings.confidence,
+                "iou_threshold": settings.iou_threshold,
+                "max_detections": settings.max_detections,
+                "labels": settings.labels,
+                "segmentation_detail": settings.segmentation_detail.value,
+            }
+            deadline = time.monotonic() + self.PHOTO_TIMEOUT_SECONDS
+            submitted = False
+            try:
+                while time.monotonic() < deadline:
+                    if self.shutting_down or not process.is_alive():
+                        raise DetectionProcessError(
+                            "Detection stopped before the photo could be processed."
+                        )
+                    if not submitted:
+                        try:
+                            self.photo_frame_queue.put_nowait(request)
+                            submitted = True
+                        except queue.Full:
+                            pass
+                    try:
+                        response = self.photo_result_queue.get_nowait()
+                    except queue.Empty:
+                        await asyncio.sleep(0.01)
+                        continue
+                    if response["request_id"] != request_id:
+                        continue
+                    if "error" in response:
+                        raise DetectionProcessError(
+                            f"Photo detection failed: {response['error']}"
+                        )
+                    if "result" in response:
+                        return settings, response["result"]
+                    raise DetectionProcessError("Photo detection returned no result.")
+            except (OSError, EOFError, ValueError) as error:
+                raise DetectionProcessError(
+                    "Photo detection connection closed."
+                ) from error
+            raise DetectionProcessError("Timed out waiting for photo detection.")
 
     def put_frame(self, frame_data: DetectionFrameData) -> None:
         """Puts the frame data into the frame queue after clearing it."""
@@ -675,6 +774,8 @@ class DetectionService:
             "detection_queue",
             "out_queue",
             "detection_process",
+            "photo_frame_queue",
+            "photo_result_queue",
         ]:
             if hasattr(self, prop):
                 logger.info(f"Removing {prop.replace('_', ' ')}")

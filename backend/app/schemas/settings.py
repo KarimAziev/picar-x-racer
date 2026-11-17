@@ -1,6 +1,7 @@
 from typing import Annotated, List, Optional
 
 from app.schemas.camera import CameraSettings
+from app.schemas.photo import PhotoSettings
 from app.schemas.music import MusicSettings
 from app.schemas.stream import StreamSettings
 from app.schemas.tts import TTSSettings
@@ -210,6 +211,8 @@ class Settings(BaseModel):
     """
     A model representing application-wide settings.
     """
+
+    photo: PhotoSettings = Field(default_factory=PhotoSettings)
 
     general: General = Field(
         ...,

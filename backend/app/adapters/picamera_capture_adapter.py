@@ -54,7 +54,12 @@ class PicameraCaptureAdapter(VideoCaptureABC):
     FRAME_TIMEOUT_SECONDS = 5.0
 
     def __init__(
-        self, device: str, camera_settings: CameraSettings, service: "PicameraService"
+        self,
+        device: str,
+        camera_settings: CameraSettings,
+        service: "PicameraService",
+        *,
+        still: bool = False,
     ) -> None:
         super().__init__(service=service)
 
@@ -63,6 +68,7 @@ class PicameraCaptureAdapter(VideoCaptureABC):
 
         self.service = service
         self.device = device
+        self.still = still
         self._released = False
 
         device_id = GStreamerParser.strip_api_prefix(device)
@@ -150,10 +156,15 @@ class PicameraCaptureAdapter(VideoCaptureABC):
 
         logger.info("fps='%s', fps_interval=%s", camera_settings.fps, fps_interval)
 
+        create_configuration = (
+            self.picam2.create_still_configuration
+            if self.still
+            else self.picam2.create_video_configuration
+        )
         config = (
-            self.picam2.create_video_configuration(main=main_config)
+            create_configuration(main=main_config)
             if fps_interval is None
-            else self.picam2.create_video_configuration(
+            else create_configuration(
                 main=main_config,
                 controls={"FrameDurationLimits": (fps_interval, fps_interval)},
             )

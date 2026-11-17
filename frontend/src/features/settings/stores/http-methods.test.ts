@@ -45,3 +45,43 @@ describe("state-changing endpoint methods", () => {
     expect(getMock).not.toHaveBeenCalled();
   });
 });
+
+describe("photo presets", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it("captures the selected preset with time for camera restoration", async () => {
+    postMock.mockResolvedValue({ file: "high.jpg" });
+    const settings = useSettingsStore();
+    settings.data.photo.selected_preset_id = "high";
+    const store = useCameraStore();
+    expect(
+      await store.capturePhoto(settings.data.photo.selected_preset_id),
+    ).toBe("high.jpg");
+    expect(postMock).toHaveBeenCalledWith(
+      "/api/camera/capture-photo",
+      { preset_id: "high" },
+      { timeout: 60000 },
+    );
+    expect(store.capturing).toBe(false);
+  });
+
+  it("does not submit duplicate captures while the camera is busy", async () => {
+    const store = useCameraStore();
+    store.capturing = true;
+    expect(await store.capturePhoto()).toBeUndefined();
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("persists preset deletion and snapshot selection", async () => {
+    const photo = { presets: [], selected_preset_id: null };
+    postMock.mockResolvedValue({ photo });
+    const store = useSettingsStore();
+    expect(await store.savePhotoSettings(photo)).toBe(true);
+    expect(postMock).toHaveBeenCalledWith("/api/settings", { photo });
+    expect(useSettingsStore().data.photo).toEqual(photo);
+    expect(store.savingPhotoSettings).toBe(false);
+  });
+});

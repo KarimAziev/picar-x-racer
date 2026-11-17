@@ -61,6 +61,7 @@ class DummyCameraService:
     """Dummy CameraService to hand over to StreamService."""
 
     def __init__(self):
+        self.photo_capturing = False
         self.shutting_down = False
         self.camera_run = False
         self.loading = False
@@ -91,6 +92,22 @@ class TestStreamService(unittest.IsolatedAsyncioTestCase):
         )
         self.stream_service.active_clients = 0
         self.stream_service._generate_frame = MagicMock(return_value=b"dummy_frame")
+
+    async def test_preview_waits_during_photo_capture(self):
+        self.dummy_cam.photo_capturing = True
+        ws = FakeWebSocket()
+        with patch.object(
+            self.stream_service, "_generate_frame", return_value=b"dummy_frame"
+        ) as generate:
+            task = asyncio.create_task(
+                self.stream_service._ws_video_loop(cast(WebSocket, ws))
+            )
+            await asyncio.sleep(0.01)
+            self.assertFalse(task.done())
+            generate.assert_not_called()
+            self.dummy_cam.photo_capturing = False
+            await asyncio.wait_for(task, timeout=1)
+            self.assertEqual(ws.sent_bytes, [b"dummy_frame"])
 
     async def test_disconnect_when_cancelled(self):
         """

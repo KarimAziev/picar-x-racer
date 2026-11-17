@@ -12,12 +12,14 @@ from app.core.event_emitter import EventEmitter
 from app.core.logger import Logger
 from app.core.video_capture_abc import VideoCaptureABC
 from app.exceptions.camera import (
+    CameraBusyError,
     CameraDeviceError,
     CameraFrameTimeout,
     CameraNotFoundError,
     CameraShutdownInProgressError,
 )
 from app.schemas.camera import CameraSettings
+from app.schemas.photo import PhotoPreset
 from app.schemas.stream import StreamSettings
 from app.services.media.video_converter import VideoConverter
 from app.types.detection import DetectionFrameData
@@ -77,6 +79,8 @@ class CameraService:
         self.cap: Union[VideoCaptureABC, None] = None
         self._capture_thread: Optional[threading.Thread] = None
         self._camera_operation_lock = threading.RLock()
+        self._settings_operation_lock = asyncio.Lock()
+        self.photo_capturing = False
         self.frame_timestamps: collections.deque[float] = collections.deque(maxlen=30)
         self.camera_device_error: Optional[str] = None
         self.camera_loading: bool = False
@@ -143,6 +147,11 @@ class CameraService:
             self.emitter.emit("video_record_error", "Video processing error")
 
     async def update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
+        """Apply camera settings after any in-progress still capture is restored."""
+        async with self._settings_operation_lock:
+            return await self._update_camera_settings(settings)
+
+    async def _update_camera_settings(self, settings: CameraSettings) -> CameraSettings:
         """
         Updates the camera's settings and restarts the device.
 
@@ -175,6 +184,11 @@ class CameraService:
         return self.camera_settings
 
     async def update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
+        """Apply stream and recording settings between camera capture operations."""
+        async with self._settings_operation_lock:
+            return await self._update_stream_settings(settings)
+
+    async def _update_stream_settings(self, settings: StreamSettings) -> StreamSettings:
         """
         Updates the stream settings and restarts the camera if video recording is requested.
 
@@ -423,7 +437,7 @@ class CameraService:
             if not self.detection_service.shutting_down:
                 self.detection_service.put_frame(frame_data)
 
-    def _start_camera_locked(self) -> None:
+    def _start_camera_locked(self, persist_settings: bool = True) -> None:
         """
         Configures and starts the camera capture thread.
 
@@ -476,7 +490,10 @@ class CameraService:
 
             self.cap = cap
             self.camera_settings = props
-            if self.camera_settings.model_dump() != previous_camera_settings:
+            if (
+                persist_settings
+                and self.camera_settings.model_dump() != previous_camera_settings
+            ):
                 self._persist_camera_settings(self.camera_settings)
             if (
                 self.stream_settings.video_record
@@ -595,3 +612,117 @@ class CameraService:
     def shutdown(self) -> None:
         self.shutting_down = True
         self.stop_camera()
+
+    async def capture_preset_photo(self, preset: PhotoPreset) -> np.ndarray:
+        """Acquire a still frame and finish restoring the camera before returning."""
+        self.bind_notification_loop()
+        async with self._settings_operation_lock:
+            task = asyncio.create_task(
+                asyncio.to_thread(self._capture_preset_photo, preset)
+            )
+            try:
+                return await asyncio.shield(task)
+            except asyncio.CancelledError:
+                # The worker owns the device until its restoration block completes.
+                while not task.done():
+                    try:
+                        await asyncio.shield(task)
+                    except asyncio.CancelledError:
+                        continue
+                    except Exception:
+                        break
+                if not task.cancelled():
+                    task.exception()
+                raise
+
+    def _capture_preset_photo(self, preset: PhotoPreset) -> np.ndarray:
+        with self._camera_operation_lock:
+            if self.shutting_down:
+                raise CameraShutdownInProgressError("The camera is shutting down.")
+            if self.stream_settings.video_record:
+                raise CameraBusyError(
+                    "Stop video recording before capturing a photo preset."
+                )
+
+            self.video_device_adapter.validate_photo_settings(preset.camera)
+            if self.shutting_down:
+                raise CameraShutdownInProgressError("The camera is shutting down.")
+            saved_settings = self.camera_settings.model_copy(deep=True)
+            was_running = self.camera_run
+            cap: Optional[VideoCaptureABC] = None
+            self.photo_capturing = True
+            try:
+                self.stop_camera()
+                cap, _ = self.video_device_adapter.setup_photo_capture(preset.camera)
+                ready_at = time.monotonic() + preset.settle_seconds
+                deadline = ready_at + 5.0
+                while time.monotonic() < deadline:
+                    if self.shutting_down:
+                        raise CameraShutdownInProgressError(
+                            "The camera is shutting down."
+                        )
+                    try:
+                        ok, frame = cap.read()
+                    except CameraFrameTimeout:
+                        continue
+                    if self.shutting_down:
+                        raise CameraShutdownInProgressError(
+                            "The camera is shutting down."
+                        )
+                    if time.monotonic() >= deadline:
+                        raise CameraDeviceError("Timed out waiting for a photo frame.")
+                    if not ok or frame.size == 0:
+                        raise CameraDeviceError(
+                            "The photo camera did not produce an image."
+                        )
+                    height, width = frame.shape[:2]
+                    if (width, height) != (preset.camera.width, preset.camera.height):
+                        raise CameraDeviceError(
+                            f"Photo resolution {width}x{height} does not match requested "
+                            f"{preset.camera.width}x{preset.camera.height}."
+                        )
+                    if time.monotonic() >= ready_at:
+                        return frame.copy()
+                raise CameraDeviceError("Timed out waiting for a photo frame.")
+            finally:
+                self._release_cap_safe(cap)
+                self.camera_settings = saved_settings
+                try:
+                    if was_running and not self.shutting_down:
+                        self._start_camera_locked(persist_settings=False)
+                        deadline = time.monotonic() + 5.0
+                        while (
+                            self.stream_img is None
+                            and self.camera_run
+                            and not self.shutting_down
+                        ):
+                            if time.monotonic() >= deadline:
+                                raise CameraDeviceError(
+                                    "No frame received after restoring the stream."
+                                )
+                            time.sleep(0.01)
+                        if not self.shutting_down and (
+                            not self.camera_run or self.stream_img is None
+                        ):
+                            raise CameraDeviceError(
+                                self.camera_device_error or "Stream did not restart."
+                            )
+                        if (
+                            not self.shutting_down
+                            and self.img is not None
+                            and saved_settings.width is not None
+                            and saved_settings.height is not None
+                            and self.img.shape[:2]
+                            != (saved_settings.height, saved_settings.width)
+                        ):
+                            raise CameraDeviceError(
+                                "Restored stream dimensions do not match its saved configuration."
+                            )
+                except Exception as error:
+                    self.stop_camera()
+                    self.camera_settings = saved_settings
+                    message = f"Failed to restore camera stream: {error}"
+                    self._dispatch_camera_error(message)
+                    raise CameraDeviceError(message) from error
+                finally:
+                    self.photo_capturing = False

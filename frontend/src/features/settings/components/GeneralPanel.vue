@@ -12,6 +12,9 @@
     <Fieldset legend="Stream" toggleable>
       <VideoSettings />
     </Fieldset>
+    <Fieldset legend="Photos" toggleable>
+      <PhotoPresets />
+    </Fieldset>
   </Panel>
   <Panel header="Appearance" toggleable>
     <SwitchSettings />
@@ -33,6 +36,7 @@ import Skeleton from "@/features/settings/components/general/Skeleton.vue";
 import ErrorComponent from "@/ui/ErrorComponent.vue";
 import VideoDeviceSelect from "@/features/settings/components/camera/VideoDeviceSelect.vue";
 import VideoSettings from "@/features/settings/components/camera/VideoSettings.vue";
+import PhotoPresets from "@/features/settings/components/camera/PhotoPresets.vue";
 
 const DetectionTheme = defineAsyncComponent({
   loader: () =>

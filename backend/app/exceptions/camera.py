@@ -5,6 +5,10 @@ class CameraDeviceError(Exception):
     pass
 
 
+class CameraBusyError(Exception):
+    """The camera is performing an operation incompatible with the request."""
+
+
 class CameraFrameTimeout(TimeoutError):
     """A bounded capture read timed out without an end-of-stream or device error."""
 

@@ -52,6 +52,23 @@ export const makeDownloadURL = (
 export const makeSaveURL = (mediaType: Nullable<APIMediaType>) =>
   mapConcat(["/api/files/write", mediaType], "/");
 
+const saveBlob = (blob: Blob, fileName: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.hidden = true;
+
+  try {
+    document.body.appendChild(link);
+    link.click();
+  } finally {
+    link.remove();
+    // Let the browser start the download before releasing its URL.
+    setTimeout(() => window.URL.revokeObjectURL(url), 0);
+  }
+};
+
 export const downloadFile = async (
   fileName: string,
   mediaType: Nullable<APIMediaType>,
@@ -74,14 +91,7 @@ export const downloadFile = async (
       },
     },
   );
-  const url = window.URL.createObjectURL(new Blob([response]));
-  const link = document.createElement("a");
-
-  link.href = url;
-
-  link.setAttribute("download", fileName);
-  document.body.appendChild(link);
-  link.click();
+  saveBlob(new Blob([response]), fileName);
 };
 
 export const downloadFilesAsArchive = async (
@@ -123,15 +133,7 @@ export const downloadFilesAsArchive = async (
         response.headers["content-disposition"],
       ) || [aliasDir, `files_archive.zip`].filter((v) => v).join("_");
 
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.setAttribute("download", archiveName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    saveBlob(new Blob([response.data]), archiveName);
   } catch (error) {
     const errData = retrieveError(error);
     throw new Error(errData.text.length > 0 ? errData.text : errData.title);

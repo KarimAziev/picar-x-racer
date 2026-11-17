@@ -13,7 +13,9 @@ from app.util.overlay_detection import overlay_detection
 logger = Logger(__name__)
 
 
-async def capture_photo(img: np.ndarray, photo_name: str, path: str) -> bool:
+async def capture_photo(
+    img: np.ndarray, photo_name: str, path: str, quality: Optional[int] = None
+) -> bool:
     """
     Asynchronously take a photo and save it to the specified path.
 
@@ -21,6 +23,7 @@ async def capture_photo(img: np.ndarray, photo_name: str, path: str) -> bool:
         img (np.ndarray): Image data in numpy array format.
         photo_name (str): Name of the photo file.
         path (str): Directory path to save the photo.
+        quality: JPEG quality from 0 to 100, or the encoder default.
 
     Returns:
         bool: Status indicating success or failure of taking the photo.
@@ -30,7 +33,14 @@ async def capture_photo(img: np.ndarray, photo_name: str, path: str) -> bool:
         os.makedirs(name=path, mode=0o751, exist_ok=True)
         await asyncio.sleep(0.01)
 
-    status = await asyncio.to_thread(cv2.imwrite, os.path.join(path, photo_name), img)
+    params = (
+        [cv2.IMWRITE_JPEG_QUALITY, quality]
+        if quality is not None and photo_name.lower().endswith((".jpg", ".jpeg"))
+        else []
+    )
+    status = await asyncio.to_thread(
+        cv2.imwrite, os.path.join(path, photo_name), img, params
+    )
 
     return status
 

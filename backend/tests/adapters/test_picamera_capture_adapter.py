@@ -80,6 +80,24 @@ class TestPicameraCaptureAdapter(unittest.TestCase):
         self.camera_class.assert_called_once_with(2)
         adapter.release()
 
+    def test_photo_uses_native_still_configuration(self):
+        self.camera.create_still_configuration.return_value = {
+            "main": {"format": "RGB888"},
+            "controls": {},
+        }
+        self.camera.capture_array.return_value.get_result.return_value = np.zeros(
+            (6, 8, 3), dtype=np.uint8
+        )
+        adapter = PicameraCaptureAdapter(
+            "/camera", CameraSettings(width=8, height=6), PicameraService(), still=True
+        )
+        self.camera.create_still_configuration.assert_called_once_with(
+            main={"size": (8, 6)}
+        )
+        self.camera.create_video_configuration.assert_not_called()
+        self.assertEqual(adapter.read()[1].shape, (6, 8, 3))
+        adapter.release()
+
     def test_release_cancellation_ends_read_without_device_error(self):
         adapter = self.create_adapter()
         adapter.release()

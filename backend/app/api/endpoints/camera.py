@@ -2,18 +2,24 @@
 Endpoints for camera operations, including configuring the device and capturing photos.
 """
 
-from time import localtime, strftime
+import asyncio
+from datetime import datetime
+from uuid import uuid4
 from typing import TYPE_CHECKING, Annotated
 
 from app.api import deps
+from app.config.video_enhancers import frame_enhancers
 from app.core.gstreamer_parser import GStreamerParser
 from app.core.logger import Logger
 from app.exceptions.camera import (
+    CameraBusyError,
     CameraDeviceError,
     CameraNotFoundError,
     CameraShutdownInProgressError,
 )
 from app.schemas.camera import CameraDevicesResponse, CameraSettings, PhotoResponse
+from app.schemas.photo import PhotoCaptureRequest, PhotoSettings
+from app.exceptions.detection import DetectionProcessError
 from app.types.detection import DetectionQueueData, DetectionResultData
 from app.util.doc_util import build_response_description
 from app.util.photo import capture_photo, prepare_photo_frame
@@ -161,12 +167,74 @@ async def take_photo(
         "DetectionService", Depends(deps.get_detection_service)
     ],
     file_manager: Annotated["FileManagerService", Depends(deps.get_photo_file_manager)],
+    payload: PhotoCaptureRequest | None = None,
 ):
     """
     Capture a photo using the camera and save it to the specified file location.
     """
-    _time = strftime("%Y-%m-%d-%H-%M-%S", localtime())
-    name = f"photo_{_time}.jpg"
+    if payload and payload.preset_id:
+        settings = PhotoSettings.model_validate(
+            camera_manager.file_manager.settings.get("photo", {})
+        )
+        preset = next(
+            (item for item in settings.presets if item.id == payload.preset_id), None
+        )
+        if preset is None:
+            raise HTTPException(status_code=404, detail="Photo preset not found")
+        try:
+            frame = await camera_manager.capture_preset_photo(preset)
+        except CameraBusyError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        except CameraShutdownInProgressError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        except (CameraDeviceError, CameraNotFoundError) as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+
+        photo_detection = None
+        photo_detection_settings = None
+        if (
+            camera_manager.stream_settings.include_detection_overlay_in_media
+            and detection_service.detection_settings.active
+        ):
+            try:
+                photo_detection_settings, photo_detection = (
+                    await detection_service.detect_photo(frame)
+                )
+            except DetectionProcessError as error:
+                raise HTTPException(status_code=503, detail=str(error)) from error
+
+        enhancer = (
+            frame_enhancers.get(preset.enhance_mode) if preset.enhance_mode else None
+        )
+        if enhancer:
+            frame = await asyncio.to_thread(enhancer, frame)
+        frame = await asyncio.to_thread(
+            prepare_photo_frame,
+            frame,
+            preset.rotation,
+            detection_settings=photo_detection_settings,
+            detection_state=photo_detection,
+            frame_timestamp=(
+                photo_detection["timestamp"] if photo_detection is not None else None
+            ),
+            render_detection_overlay=photo_detection is not None,
+        )
+        name = (
+            f"photo_{datetime.now():%Y-%m-%d-%H-%M-%S}_{uuid4().hex[:8]}{preset.format}"
+        )
+        status = await capture_photo(
+            img=frame,
+            photo_name=name,
+            path=file_manager.root_directory,
+            quality=preset.quality,
+        )
+        if not status:
+            raise HTTPException(status_code=400, detail="Error saving photo")
+        return {"file": name}
+
+    if camera_manager.photo_capturing:
+        raise HTTPException(status_code=409, detail="A photo capture is in progress")
+    name = f"photo_{datetime.now():%Y-%m-%d-%H-%M-%S}_{uuid4().hex[:8]}.jpg"
     rotation = camera_manager.stream_settings.rotation
 
     frame = (

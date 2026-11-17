@@ -42,6 +42,18 @@ class DetectionControlMessage(TypedDict):
     command: DetectionProcessCommand
 
 
+class PhotoDetectionRequest(TypedDict):
+    """An individually addressed still image and its inference settings."""
+
+    request_id: str
+    frame_data: DetectionFrameData
+    confidence: float
+    iou_threshold: float
+    max_detections: int
+    labels: Optional[List[str]]
+    segmentation_detail: SegmentationDetail
+
+
 class DetectionKeypoint(TypedDict):
     """
     Represents a keypoint in an object detection result.
@@ -152,6 +164,12 @@ class DetectionResultData(DetectionQueueData):
     """
 
     loading: Optional[bool]
+
+
+class PhotoDetectionResponse(TypedDict):
+    request_id: str
+    result: NotRequired[DetectionQueueData]
+    error: NotRequired[str]
 
 
 class DetectionErrorMessage(TypedDict):

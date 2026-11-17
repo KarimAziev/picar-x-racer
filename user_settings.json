@@ -1,4 +1,8 @@
 {
+  "photo": {
+    "presets": [],
+    "selected_preset_id": null
+  },
   "general": {
     "robot_3d_view": true,
     "speedometer_view": true,

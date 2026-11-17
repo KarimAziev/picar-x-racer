@@ -243,3 +243,28 @@ class TestPhotoUtils(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPhotoEncoding(unittest.IsolatedAsyncioTestCase):
+    async def test_jpeg_quality_changes_encoding_and_preserves_dimensions(self):
+        import tempfile
+        from pathlib import Path
+        import cv2
+        from app.util.photo import capture_photo
+
+        pixels = np.random.default_rng(1).integers(0, 256, (80, 120, 3), dtype=np.uint8)
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertTrue(
+                await capture_photo(pixels, "low.jpg", directory, quality=10)
+            )
+            self.assertTrue(
+                await capture_photo(pixels, "high.jpg", directory, quality=95)
+            )
+            self.assertGreater(
+                (Path(directory) / "high.jpg").stat().st_size,
+                (Path(directory) / "low.jpg").stat().st_size,
+            )
+            decoded = cv2.imread(str(Path(directory) / "high.jpg"))
+            self.assertIsNotNone(decoded)
+            if decoded is not None:
+                self.assertEqual(decoded.shape, pixels.shape)
